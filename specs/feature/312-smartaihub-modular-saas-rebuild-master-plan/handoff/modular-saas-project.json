@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "projectId": "smartaihub-modular-saas-r14",
+  "source": {
+    "repository": "naibarn/SmartSpecPro",
+    "revision": "1f6e5432a278f05e9811e88fb7bc61fb70938d32"
+  },
+  "implementationRepository": {
+    "repository": "naibarn/smartaihub-platform",
+    "branch": "main"
+  },
+  "specs": [
+    {
+      "id": "312-smartaihub-modular-saas-rebuild-master-plan",
+      "specDigest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
+      "manifestDigest": "55321a7d5b2cb1f64ee55e18f1e627a00045d02d94753c9c690da42bf5d48eb9",
+      "ledgerDigest": "ebc06d6df0a887819c7d427326eeb80a11f3bd7a637a2f8416997a2730c75a3d"
+    },
+    {
+      "id": "313-smartaihub-saas-core-identity-commerce-entitlements",
+      "specDigest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "manifestDigest": "21ae3107e19cb04b928732a8e527f322fb67b638275c34394ba05e448de7df3e",
+      "ledgerDigest": "cab0e6b334264695d5cabf09d92db7b7ca1de747ca67290bc6bc76f3e0570704"
+    },
+    {
+      "id": "314-smartaihub-independent-module-runtime-and-sdk",
+      "specDigest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
+      "manifestDigest": "53547201424de4babb6743e4471a33fffdb7afa7ca725819a8810e28e37ffa32",
+      "ledgerDigest": "94c10ae906a0363f07cae4a1fdc686f3aa818b3aac062c7360af932b84968bb8"
+    },
+    {
+      "id": "315-smartaihub-parallel-environments-shared-postgres",
+      "specDigest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+      "manifestDigest": "b6c91b99d7c03ecf2da8e3ea28becfebf584ad9c70564374e3fd8bfe0e450b3a",
+      "ledgerDigest": "aa8dda9d276b1e50816008dcb3a9f0bdf8f79526619fce3bb797f1200fe735be"
+    },
+    {
+      "id": "316-smartaihub-gitops-independent-build-release",
+      "specDigest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+      "manifestDigest": "ef50ff5a8abc8304d1156e90423ff3a649ebf3abf0addb3b7fb819674a6a98cc",
+      "ledgerDigest": "e2b34a274dfa4ed2be5213aee949653e6a819d2e1b98a2356490b4918a0f2a26"
+    },
+    {
+      "id": "317-smartaihub-progressive-module-migration",
+      "specDigest": "85fa6f06ff48e141832f3da52df266808b4bf9ac159c101e1540a785be009a1b",
+      "manifestDigest": "10937aadd4337e593a98f81ffa80e75dee8e6243f885426a1c4554b32100d2eb",
+      "ledgerDigest": "5589c59f5dbe86d5534aa2d7901891ca564e987d85afce47940e93b32ad128a5"
+    },
+    {
+      "id": "318-smartaihub-durable-background-execution-and-rust-supervisor",
+      "specDigest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "manifestDigest": "635339857fa610b344f2b79847daf4228de7eccb7441b8e1bdbc7413241c1644",
+      "ledgerDigest": "456ed5dae19071b03d58cc7cc6160c77d51979482b46c22d88336fc3ab01feac"
+    },
+    {
+      "id": "319-smartaihub-ui-design-system-agent-ready-webmcp",
+      "specDigest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "manifestDigest": "2910c1939c47aa42b759c8fdf679c64d52217ad22c8ae8011ce39248416a2ae8",
+      "ledgerDigest": "198095675f62784c513ed34977a1dc49c99173030bcd4c6acd398ff8f4f28dbb"
+    },
+    {
+      "id": "320-smartaihub-public-portfolio-miniapp-service-marketplace",
+      "specDigest": "5296242e12e2d93067a40a9f706fbf6ab9844ab0cc14553c31ea4f94f65646f3",
+      "manifestDigest": "7d464e4070083e1db19673e4624995d355124711958400c5f689528a37eaf53e",
+      "ledgerDigest": "adff9f88be691a392326b5eea9277d1e2725a661d6e5b815f2d45f0d87162c7b"
+    },
+    {
+      "id": "321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+      "specDigest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+      "manifestDigest": "737d0f5545b7e6d11df347b03be97d2b4d38de6a286e2d5e981ecd47477dfda9",
+      "ledgerDigest": "34928d03dfa6f86b280181d847eaf9e1dee9c5b2603148a1b219f09f3b7227eb"
+    },
+    {
+      "id": "322-smartsi-agentic-payments-platform-subscriptions-payg",
+      "specDigest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+      "manifestDigest": "61a714d7b30a59bf3d8a51e24b1a010decf584ffccb54e3a6d16a74c3c3e9441",
+      "ledgerDigest": "a34486065c5691d3f9013cd7c521f97737fc4c027d274c76e2ebbebf318f62ff"
+    },
+    {
+      "id": "323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
+      "specDigest": "399fceeeed86c8f26458a648a51978cc838ec25aa46505512374c4b640d17caf",
+      "manifestDigest": "f8c42be116a490e8b75d607130cb1eeeaf2819e26863cd8924ffba85d914183a",
+      "ledgerDigest": "eca13a78287d0d812e456887386ab19c07893c64edcbc18a38a2308fc5ae1157"
+    },
+    {
+      "id": "324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
+      "specDigest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "manifestDigest": "1ede33d5a7e1c8cb02414c9e2749f606964b5640f268c483236f92fc7a28d341",
+      "ledgerDigest": "4dc6d583521495bf40661b8127e81c3aec55bb5dc32cd19c9e09df2bbaf30be3"
+    }
+  ],
+  "initialPackages": [
+    {
+      "id": "r14-canonical-project-catalog",
+      "specRefs": [
+        {
+          "specId": "312-smartaihub-modular-saas-rebuild-master-plan",
+          "requirementIds": [
+            "REQ-98A0B54A96F7"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "All 13 canonical Specs, manifests, and requirement ledgers resolve at the pinned source revision and match their recorded SHA-256 digests.",
+        "Canonical requirement IDs remain in their existing ledgers; the project descriptor contains references only.",
+        "Only dependency edges recorded in canonical handoffs are included; uncertain priority relationships remain non-blocking."
+      ],
+      "verification": [
+        "pnpm --dir apps/web exec vitest run server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
+        "python3 -m tools.spec_handoff validate --all"
+      ],
+      "writeSet": {
+        "repository": "naibarn/SmartSpecPro",
+        "paths": [
+          "apps/web/server/services/spec224FeatureSpecCatalog.ts",
+          "apps/web/server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
+        ]
+      }
+    }
+  ]
+}

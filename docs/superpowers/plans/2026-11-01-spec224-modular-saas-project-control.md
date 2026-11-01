@@ -48,11 +48,11 @@
 - Modify: evidenced child handoff manifests through `tools.spec_handoff update`
 - Test: `apps/web/server/services/spec224FeatureSpecCatalog.test.ts` (new if no service test exists)
 
-- [ ] Confirm the current SmartSpecPro SHA, all 13 Spec IDs, Spec/manifest/ledger digests, and explicit dependency evidence from their normative text.
-- [ ] Write the descriptor containing project semantic ID, canonical member Spec IDs, implementation repository identity, and only the first bounded package declaration.
-- [ ] Populate `dependencies.specs` only for evidenced relationships, preserving relationship type/status; leave ambiguous edges unresolved.
-- [ ] Add graph checks for missing Specs, digest mismatch, duplicate IDs, self-edge, and cycles.
-- [ ] Run focused service tests and `python3 -m tools.spec_handoff validate` for every touched Spec.
+- [x] Confirm the current SmartSpecPro SHA, all 13 Spec IDs, Spec/manifest/ledger digests, and explicit dependency evidence from their normative text.
+- [x] Write the descriptor containing project semantic ID, canonical member Spec IDs, implementation repository identity, and only the first bounded package declaration.
+- [x] Populate `dependencies.specs` only for evidenced relationships, preserving relationship type/status; leave ambiguous edges unresolved.
+- [x] Add graph checks for missing Specs, digest mismatch, duplicate IDs, self-edge, and cycles.
+- [x] Run focused service tests and `python3 -m tools.spec_handoff validate` for every touched Spec.
 
 ### Task 2: Preserve canonical requirement IDs in the SPEC-224 compiler
 

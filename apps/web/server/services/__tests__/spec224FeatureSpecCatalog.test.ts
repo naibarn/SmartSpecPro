@@ -8,6 +8,7 @@ import {
   listRepositoryFeatureSpecs,
   loadRepositoryFeatureSpec,
   loadRepositoryFeatureSpecContext,
+  loadModularSaasProject,
 } from "../spec224FeatureSpecCatalog";
 
 const temporaryRoots: string[] = [];
@@ -96,4 +97,97 @@ describe("repository feature spec catalog", () => {
     await writeFile(join(handoff, "manifest.json"), JSON.stringify({ identity: { digest: "0".repeat(64) } }));
     await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "101-example feature" })).resolves.toMatchObject({ handoff: { status: "STALE", nextReadyWorkunit: null } });
   });
+
+  it("loads a digest-bound modular project descriptor from canonical specs and handoffs", async () => {
+    const { root, featureRoot } = await createFeatureRoot();
+    await createProjectFixture(featureRoot, ["101-example feature"]);
+
+    const project = await loadModularSaasProject({ repositoryRoot: root });
+    expect(project.projectId).toBe("test-project");
+    expect(project.specs).toMatchObject([{ id: "101-example feature", requirements: [] }]);
+  });
+
+  it("rejects duplicate or missing project members and stale source digests", async () => {
+    const { root, featureRoot } = await createFeatureRoot();
+    await createProjectFixture(featureRoot, ["101-example feature"]);
+    const descriptorPath = join(featureRoot, "312-smartaihub-modular-saas-rebuild-master-plan", "handoff", "modular-saas-project.json");
+    const descriptor = JSON.parse(await (await import("node:fs/promises")).readFile(descriptorPath, "utf8"));
+
+    await writeFile(descriptorPath, JSON.stringify({ ...descriptor, specs: [...descriptor.specs, descriptor.specs[0]] }));
+    await expect(loadModularSaasProject({ repositoryRoot: root })).rejects.toThrow("MODULAR_PROJECT_DUPLICATE_SPEC");
+
+    await writeFile(descriptorPath, JSON.stringify({ ...descriptor, specs: [{ ...descriptor.specs[0], id: "999-missing" }] }));
+    await expect(loadModularSaasProject({ repositoryRoot: root })).rejects.toThrow("FEATURE_SPEC_NOT_FOUND");
+
+    await writeFile(descriptorPath, JSON.stringify({ ...descriptor, specs: [{ ...descriptor.specs[0], specDigest: "0".repeat(64) }] }));
+    await expect(loadModularSaasProject({ repositoryRoot: root })).rejects.toThrow("MODULAR_PROJECT_SOURCE_DIGEST_MISMATCH");
+  });
+
+  it("rejects self-dependencies and cycles in canonical project handoffs", async () => {
+    const { root, featureRoot } = await createFeatureRoot();
+    await createProjectFixture(featureRoot, ["101-example feature", "104-second"]);
+    await writeProjectHandoff(featureRoot, "101-example feature", ["104-second"]);
+    await writeProjectHandoff(featureRoot, "104-second", ["101-example feature"]);
+    await refreshProjectPins(featureRoot);
+    await expect(loadModularSaasProject({ repositoryRoot: root })).rejects.toThrow("MODULAR_PROJECT_DEPENDENCY_CYCLE");
+
+    await writeProjectHandoff(featureRoot, "101-example feature", ["101-example feature"]);
+    await writeProjectHandoff(featureRoot, "104-second", []);
+    await refreshProjectPins(featureRoot);
+    await expect(loadModularSaasProject({ repositoryRoot: root })).rejects.toThrow("MODULAR_PROJECT_SELF_DEPENDENCY");
+  });
 });
+
+async function writeProjectHandoff(featureRoot: string, specId: string, dependencyIds: string[]) {
+  const handoff = join(featureRoot, specId, "handoff");
+  await mkdir(handoff, { recursive: true });
+  const spec = await (await import("node:fs/promises")).readFile(join(featureRoot, specId, "spec.md"), "utf8");
+  const digest = createHash("sha256").update(spec).digest("hex");
+  const manifest = {
+    identity: { spec_id: specId.slice(0, 3), digest },
+    dependencies: { specs: dependencyIds.map(spec_id => ({ spec_id, relationship: "PREREQUISITE", status: "CANONICALIZED_PENDING_INTEGRATION" })) },
+  };
+  const ledger = { spec_digest: digest, requirements: [] };
+  await writeFile(join(handoff, "manifest.json"), JSON.stringify(manifest));
+  await writeFile(join(handoff, "requirement-ledger.json"), JSON.stringify(ledger));
+}
+
+async function createProjectFixture(featureRoot: string, specIds: string[]) {
+  await mkdir(join(featureRoot, "312-smartaihub-modular-saas-rebuild-master-plan", "handoff"), { recursive: true });
+  for (const specId of specIds) {
+    if (specId === "101-example feature") continue;
+    await mkdir(join(featureRoot, specId), { recursive: true });
+    await writeFile(join(featureRoot, specId, "spec.md"), `# ${specId}\n\nA second canonical feature.\n`);
+  }
+  for (const specId of specIds) await writeProjectHandoff(featureRoot, specId, []);
+  const specs = await Promise.all(specIds.map(async id => {
+    const spec = await (await import("node:fs/promises")).readFile(join(featureRoot, id, "spec.md"));
+    const handoff = join(featureRoot, id, "handoff");
+    return {
+      id,
+      specDigest: createHash("sha256").update(spec).digest("hex"),
+      manifestDigest: createHash("sha256").update(await (await import("node:fs/promises")).readFile(join(handoff, "manifest.json"))).digest("hex"),
+      ledgerDigest: createHash("sha256").update(await (await import("node:fs/promises")).readFile(join(handoff, "requirement-ledger.json"))).digest("hex"),
+    };
+  }));
+  await writeFile(join(featureRoot, "312-smartaihub-modular-saas-rebuild-master-plan", "handoff", "modular-saas-project.json"), JSON.stringify({
+    schemaVersion: 1,
+    projectId: "test-project",
+    source: { repository: "owner/repo", revision: "a".repeat(40) },
+    implementationRepository: { repository: "owner/app", branch: "main" },
+    specs,
+    initialPackages: [],
+  }));
+}
+
+async function refreshProjectPins(featureRoot: string) {
+  const descriptorPath = join(featureRoot, "312-smartaihub-modular-saas-rebuild-master-plan", "handoff", "modular-saas-project.json");
+  const descriptor = JSON.parse(await (await import("node:fs/promises")).readFile(descriptorPath, "utf8"));
+  descriptor.specs = await Promise.all(descriptor.specs.map(async (pin: { id: string }) => {
+    const handoff = join(featureRoot, pin.id, "handoff");
+    const manifest = await (await import("node:fs/promises")).readFile(join(handoff, "manifest.json"));
+    const ledger = await (await import("node:fs/promises")).readFile(join(handoff, "requirement-ledger.json"));
+    return { ...pin, manifestDigest: createHash("sha256").update(manifest).digest("hex"), ledgerDigest: createHash("sha256").update(ledger).digest("hex") };
+  }));
+  await writeFile(descriptorPath, JSON.stringify(descriptor));
+}

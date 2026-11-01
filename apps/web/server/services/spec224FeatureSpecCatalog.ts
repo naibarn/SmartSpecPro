@@ -21,6 +21,137 @@ export type RepositoryFeatureSpecHandoff = {
   integratedSha: string | null;
 };
 
+type ModularProjectSpecPin = { id: string; specDigest: string; manifestDigest: string; ledgerDigest: string };
+type ModularProjectDescriptor = {
+  schemaVersion: 1;
+  projectId: string;
+  source: { repository: string; revision: string };
+  implementationRepository: { repository: string; branch: string };
+  specs: ModularProjectSpecPin[];
+  initialPackages: Array<{
+    id: string;
+    specRefs: Array<{ specId: string; requirementIds: string[] }>;
+    dependencies: string[];
+    acceptanceCriteria: string[];
+    verification: string[];
+    writeSet: { repository: string; paths: string[] };
+  }>;
+};
+const SHA256 = /^[a-f0-9]{64}$/i;
+const SHA_REVISION = /^[a-f0-9]{40,64}$/i;
+
+function validateProjectGraph(specIds: string[], dependencies: Map<string, string[]>) {
+  const members = new Set(specIds);
+  const visited = new Set<string>();
+  const active = new Set<string>();
+  const visit = (specId: string) => {
+    if (active.has(specId)) throw new Error("MODULAR_PROJECT_DEPENDENCY_CYCLE");
+    if (visited.has(specId)) return;
+    active.add(specId);
+    for (const dependencyId of dependencies.get(specId) ?? []) {
+      if (dependencyId === specId) throw new Error("MODULAR_PROJECT_SELF_DEPENDENCY");
+      if (!members.has(dependencyId)) continue;
+      visit(dependencyId);
+    }
+    active.delete(specId);
+    visited.add(specId);
+  };
+  for (const specId of specIds) visit(specId);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isModularProjectDescriptor(value: unknown): value is ModularProjectDescriptor {
+  if (!isRecord(value) || value.schemaVersion !== 1 || typeof value.projectId !== "string" || !value.projectId.trim()) return false;
+  if (!isRecord(value.source) || typeof value.source.repository !== "string" || !SHA_REVISION.test(String(value.source.revision))) return false;
+  if (!isRecord(value.implementationRepository) || typeof value.implementationRepository.repository !== "string" || typeof value.implementationRepository.branch !== "string") return false;
+  if (!Array.isArray(value.specs) || !Array.isArray(value.initialPackages)) return false;
+  return value.specs.every(pin => isRecord(pin) && typeof pin.id === "string" && SHA256.test(String(pin.specDigest)) && SHA256.test(String(pin.manifestDigest)) && SHA256.test(String(pin.ledgerDigest)))
+    && value.initialPackages.every(pkg => isRecord(pkg) && typeof pkg.id === "string" && Array.isArray(pkg.specRefs)
+      && pkg.specRefs.every(ref => isRecord(ref) && typeof ref.specId === "string" && Array.isArray(ref.requirementIds) && ref.requirementIds.every(id => typeof id === "string"))
+      && Array.isArray(pkg.dependencies) && pkg.dependencies.every(id => typeof id === "string")
+      && Array.isArray(pkg.acceptanceCriteria) && pkg.acceptanceCriteria.every(item => typeof item === "string")
+      && Array.isArray(pkg.verification) && pkg.verification.every(item => typeof item === "string")
+      && isRecord(pkg.writeSet) && typeof pkg.writeSet.repository === "string" && Array.isArray(pkg.writeSet.paths) && pkg.writeSet.paths.every(path => typeof path === "string"));
+}
+
+async function readJsonRegularFile(path: string): Promise<{ bytes: Buffer; value: unknown }> {
+  const stats = await lstat(path).catch(() => null);
+  if (!stats?.isFile() || stats.isSymbolicLink()) throw new Error("MODULAR_PROJECT_HANDOFF_UNAVAILABLE");
+  const [resolvedPath, bytes] = await Promise.all([realpath(path), readFile(path)]);
+  if (resolve(resolvedPath) !== resolve(path)) throw new Error("MODULAR_PROJECT_HANDOFF_PATH_INVALID");
+  try {
+    return { bytes, value: JSON.parse(bytes.toString("utf8")) as unknown };
+  } catch {
+    throw new Error("MODULAR_PROJECT_HANDOFF_INVALID");
+  }
+}
+
+/** Loads the R1.4 project descriptor and verifies every member against canonical SPEC handoffs. */
+export async function loadModularSaasProject(input: { repositoryRoot?: string } = {}) {
+  const featureRoot = await resolveFeatureRoot(input.repositoryRoot);
+  const descriptorPath = join(featureRoot, "312-smartaihub-modular-saas-rebuild-master-plan", "handoff", "modular-saas-project.json");
+  const descriptorFile = await readJsonRegularFile(descriptorPath);
+  if (!isModularProjectDescriptor(descriptorFile.value)) throw new Error("MODULAR_PROJECT_DESCRIPTOR_INVALID");
+  const descriptor = descriptorFile.value;
+  const ids = descriptor.specs.map(pin => pin.id);
+  if (new Set(ids).size !== ids.length) throw new Error("MODULAR_PROJECT_DUPLICATE_SPEC");
+
+  const specs = await Promise.all(descriptor.specs.map(async pin => {
+    const spec = await readSpecFile(featureRoot, pin.id);
+    const specDigest = createHash("sha256").update(spec.content, "utf8").digest("hex");
+    if (specDigest !== pin.specDigest) throw new Error("MODULAR_PROJECT_SOURCE_DIGEST_MISMATCH");
+    const directoryPath = join(featureRoot, pin.id);
+    const handoffPath = join(directoryPath, "handoff");
+    const handoffStats = await lstat(handoffPath).catch(() => null);
+    if (!handoffStats?.isDirectory() || handoffStats.isSymbolicLink()) throw new Error("MODULAR_PROJECT_HANDOFF_UNAVAILABLE");
+    const [manifestFile, ledgerFile] = await Promise.all([
+      readJsonRegularFile(join(handoffPath, "manifest.json")),
+      readJsonRegularFile(join(handoffPath, "requirement-ledger.json")),
+    ]);
+    if (createHash("sha256").update(manifestFile.bytes).digest("hex") !== pin.manifestDigest || createHash("sha256").update(ledgerFile.bytes).digest("hex") !== pin.ledgerDigest) {
+      throw new Error("MODULAR_PROJECT_HANDOFF_DIGEST_MISMATCH");
+    }
+    const manifest = manifestFile.value;
+    const ledger = ledgerFile.value;
+    const numericId = pin.id.match(/^\d{3}/)?.[0];
+    if (!isRecord(manifest) || !isRecord(manifest.identity) || (manifest.identity.spec_id !== pin.id && manifest.identity.spec_id !== numericId) || manifest.identity.digest !== pin.specDigest) {
+      throw new Error("MODULAR_PROJECT_HANDOFF_IDENTITY_MISMATCH");
+    }
+    if (!isRecord(ledger) || ledger.spec_digest !== pin.specDigest || !Array.isArray(ledger.requirements)) throw new Error("MODULAR_PROJECT_LEDGER_IDENTITY_MISMATCH");
+    const requirements = ledger.requirements.map(row => {
+      if (!isRecord(row) || typeof row.requirement_id !== "string" || typeof row.requirement_text !== "string") throw new Error("MODULAR_PROJECT_LEDGER_INVALID");
+      return { id: row.requirement_id, text: row.requirement_text, finalState: typeof row.final_state === "string" ? row.final_state : "OPEN" };
+    });
+    const rawDependencies = isRecord(manifest.dependencies) && Array.isArray(manifest.dependencies.specs) ? manifest.dependencies.specs : [];
+    const memberNumericIds = new Map(descriptor.specs.map(member => [member.id.match(/^\d{3}/)?.[0] ?? member.id, member.id]));
+    const dependencies = rawDependencies.flatMap(edge => {
+      if (!isRecord(edge) || typeof edge.spec_id !== "string") throw new Error("MODULAR_PROJECT_DEPENDENCY_INVALID");
+      const memberId = memberNumericIds.get(edge.spec_id) ?? (ids.includes(edge.spec_id) ? edge.spec_id : undefined);
+      return memberId ? [memberId] : [];
+    });
+    return { id: pin.id, title: spec.title, path: `specs/feature/${pin.id}/spec.md`, digest: specDigest, manifestDigest: pin.manifestDigest, ledgerDigest: pin.ledgerDigest, requirements, dependencies };
+  }));
+  const specsById = new Map(specs.map(spec => [spec.id, spec]));
+  const packageIds = new Set<string>();
+  for (const pkg of descriptor.initialPackages) {
+    if (packageIds.has(pkg.id)) throw new Error("MODULAR_PROJECT_DUPLICATE_PACKAGE");
+    packageIds.add(pkg.id);
+    for (const ref of pkg.specRefs) {
+      const member = specsById.get(ref.specId);
+      if (!member) throw new Error("MODULAR_PROJECT_PACKAGE_SPEC_NOT_FOUND");
+      const requirementIds = new Set(member.requirements.map(requirement => requirement.id));
+      if (ref.requirementIds.some(id => !requirementIds.has(id))) throw new Error("MODULAR_PROJECT_PACKAGE_REQUIREMENT_NOT_FOUND");
+    }
+    if (pkg.dependencies.some(id => !packageIds.has(id) && !descriptor.initialPackages.some(candidate => candidate.id === id))) throw new Error("MODULAR_PROJECT_PACKAGE_DEPENDENCY_NOT_FOUND");
+  }
+  const dependencies = new Map(specs.map(spec => [spec.id, spec.dependencies]));
+  validateProjectGraph(ids, dependencies);
+  return { ...descriptor, descriptorDigest: createHash("sha256").update(descriptorFile.bytes).digest("hex"), specs };
+}
+
 async function readCanonicalHandoff(input: { featureRoot: string; directoryPath: string; specDigest: string }): Promise<RepositoryFeatureSpecHandoff> {
   const unavailable: RepositoryFeatureSpecHandoff = {
     status: "UNAVAILABLE", nextReadyWorkunit: null,
