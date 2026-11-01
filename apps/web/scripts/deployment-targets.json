@@ -24,6 +24,7 @@
       "domain": "aimarkethubs.com",
       "environment": "development",
       "application": "smartsihub-modular-core",
+      "specificationRange": "SPEC-312..SPEC-324",
       "runtime": "debian-systemd-with-local-workerd",
       "buildMode": "development",
       "deploymentAuthority": "delegated-development",

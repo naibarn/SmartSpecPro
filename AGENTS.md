@@ -133,6 +133,23 @@ SPEC-311 or infer authority from old service names, release directories,
 `NODE_ENV`, or historical docs. Preserve SPEC-311's historical evidence and
 append later owner decisions instead of rewriting prior events.
 
+### Owner clarification — development domains for Modular SaaS, 2026-11-01
+
+- `smartaihub.app` remains the default development deployment target for the
+  current SmartAIHub site on Debian/Linux. Every routine development release
+  for that site must explicitly select `legacy-debian-dev`; never redirect it
+  to `aimarkethubs.com` or Cloudflare.
+- `aimarkethubs.com` is the designated Debian development domain for the new
+  Modular SaaS Core work in SPEC-312 through SPEC-324. It is a separate
+  application/runtime, not an alias or fallback for `smartaihub.app`. Use only
+  its dedicated target/controller when the Core release is ready. Until then,
+  preserve the currently healthy site, port 3100 and Tunnel; do not claim a
+  Core deployment or hand over traffic before its replacement is healthy.
+- Before every release, verify the hostname, application, runtime, service,
+  port and target ID against `apps/web/scripts/deployment-targets.json`. If a
+  release command cannot prove the intended target, stop before building or
+  changing live traffic.
+
 ### Autonomous non-production approval across SPECs
 
 The user's instruction to start or continue a development task authorizes its
