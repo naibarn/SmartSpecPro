@@ -197,6 +197,10 @@ export async function createPlatformWorkspaceBinding(input: {
     throw new PlatformWorkspaceBindingError(
       "PLATFORM_RUNNER_WORKSPACE_NOT_CURRENT"
     );
+  if (workspace.runnerProjectId !== project.projectId)
+    throw new PlatformWorkspaceBindingError(
+      "PLATFORM_RUNNER_PROJECT_ID_MISMATCH"
+    );
 
   const db = getDb();
   const result = await db.transaction(async tx => {

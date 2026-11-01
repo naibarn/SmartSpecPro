@@ -129,16 +129,31 @@ export function MissionControlWorkspace({
       await Promise.all([modularProjectQuery.refetch(), bindingOptionsQuery.refetch()]);
     },
   });
-  const bindingWorkspaceOptions = bindingOptionsQuery.data?.workspaces ?? [];
+  const allBindingWorkspaceOptions = bindingOptionsQuery.data?.workspaces ?? [];
+  const bindingProjectOptions = (bindingOptionsQuery.data?.projects ?? []).filter(project =>
+    allBindingWorkspaceOptions.some(workspace => workspace.runnerProjectId === project.projectId),
+  );
+  const bindingWorkspaceOptions = allBindingWorkspaceOptions.filter(workspace =>
+    workspace.runnerProjectId === bindingProjectId,
+  );
+  const bindingIdentityMismatch =
+    (bindingOptionsQuery.data?.projects.length ?? 0) > 0 &&
+    allBindingWorkspaceOptions.length > 0 &&
+    bindingProjectOptions.length === 0;
   const bindingWorkspaceValue = (runnerId: string, workspaceId: string) => JSON.stringify([runnerId, workspaceId]);
   const selectedBindingWorkspace = bindingWorkspaceOptions.find(workspace =>
     bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId) === bindingWorkspaceKey,
   );
 
   useEffect(() => {
-    const projects = bindingOptionsQuery.data?.projects ?? [];
+    const workspacesReported = bindingOptionsQuery.data?.workspaces ?? [];
+    const projects = (bindingOptionsQuery.data?.projects ?? []).filter(project =>
+      workspacesReported.some(workspace => workspace.runnerProjectId === project.projectId),
+    );
     if (!bindingProjectId && projects.length === 1) setBindingProjectId(projects[0]!.projectId);
-    const workspaces = bindingOptionsQuery.data?.workspaces ?? [];
+    const workspaces = workspacesReported.filter(workspace =>
+      workspace.runnerProjectId === bindingProjectId,
+    );
     if (!bindingWorkspaceKey && workspaces.length === 1) {
       setBindingWorkspaceKey(bindingWorkspaceValue(workspaces[0]!.runnerId, workspaces[0]!.workspaceId));
     }
@@ -378,12 +393,17 @@ export function MissionControlWorkspace({
                       {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length === 0 ? (
                         <AstryxText as="p" type="supporting">ไม่พบ Platform Project ที่บัญชีนี้เป็น owner จึงยังสร้าง binding ไม่ได้</AstryxText>
                       ) : null}
-                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length > 0 && bindingWorkspaceOptions.length === 0 ? (
+                      {bindingIdentityMismatch ? (
+                        <AstryxText as="p" type="supporting" role="alert">
+                          Project identity ที่ Runner รายงานไม่ตรงกับ Platform Project จึงยังผูก workspace ไม่ได้ ให้จับคู่ Runner กับ tenant นี้และส่งสถานะ workspace ล่าสุดก่อน
+                        </AstryxText>
+                      ) : null}
+                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length > 0 && allBindingWorkspaceOptions.length === 0 ? (
                         <AstryxText as="p" type="supporting">
                           ไม่พบ workspace ที่ Runner รายงานในขณะนี้ ตรวจบน Debian ด้วย `smartaihub-runner workspace list` แล้วสั่ง `smartaihub-runner rescan`
                         </AstryxText>
                       ) : null}
-                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length > 0 && bindingWorkspaceOptions.length > 0 ? (
+                      {bindingOptionsQuery.data && bindingProjectOptions.length > 0 && bindingWorkspaceOptions.length > 0 ? (
                         <VStack gap={3}>
                           <Selector
                             label="Platform Project"
@@ -391,9 +411,10 @@ export function MissionControlWorkspace({
                             value={bindingProjectId}
                             onChange={value => {
                               setBindingProjectId(value);
+                              setBindingWorkspaceKey("");
                               setConfirmPlatformEngineering(false);
                             }}
-                            options={bindingOptionsQuery.data.projects.map(project => ({
+                            options={bindingProjectOptions.map(project => ({
                               value: project.projectId,
                               label: `${project.title} · ${project.projectType}`,
                             }))}
