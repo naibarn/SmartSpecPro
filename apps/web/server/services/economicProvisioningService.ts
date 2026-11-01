@@ -7,7 +7,7 @@ import {
   workerJobs,
 } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
-import { parseSpec224GoalGrant, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
+import { mapSpec224GoalGrantAuthorityEvidence, parseSpec224GoalGrant } from "./spec224GoalDelegationGrant";
 
 export class EconomicProvisioningError extends Error {
   constructor(readonly code: string) {
@@ -301,18 +301,11 @@ export async function provisionSpec224GoalBudget(database: DrizzleDB, input: {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`spec224-goal-budget:${input.tenantId}:${input.goalId}`}, 0))`);
     const rows = await tx.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
       current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
-      revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload
+      revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload, extra_data
       FROM approval_requests WHERE id = ${input.approvalRef} AND tenant_id = ${input.tenantId} FOR UPDATE`);
     const result = rows as unknown as { rows?: Array<Record<string, any>> } | Array<Record<string, any>>;
     const row = (Array.isArray(result) ? result : result.rows ?? [])[0];
-    const asIso = (value: unknown): string | null => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
-    const authority: Spec224GoalGrantAuthorityEvidence | null = row ? {
-      approvalRef: String(row.id), tenantId: row.tenant_id, executionId: row.execution_id,
-      requesterId: Number(row.requester_id), status: String(row.status).toLowerCase() as Spec224GoalGrantAuthorityEvidence["status"],
-      currentApprovals: Number(row.current_approvals), requiredApprovers: Number(row.required_approvers),
-      expiresAt: asIso(row.expires_at), revokedAt: asIso(row.revoked_at),
-      payload: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
-    } : null;
+    const authority = mapSpec224GoalGrantAuthorityEvidence(row ?? null);
     const grant = authority && parseSpec224GoalGrant(authority, new Date());
     if (!grant || grant.tenantId !== input.tenantId || grant.actorId !== input.actorId || grant.goalId !== input.goalId)
       throw new EconomicProvisioningError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");

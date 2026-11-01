@@ -356,6 +356,33 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
   };
 }
 
+/** Rebuild the grant authority projection without dropping owner-start proof. */
+export function mapSpec224GoalGrantAuthorityEvidence(
+  row: Record<string, unknown> | null | undefined,
+): Spec224GoalGrantAuthorityEvidence | null {
+  if (!row) return null;
+  const iso = (value: unknown): string | null =>
+    value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
+  const extraData = row.extra_data && typeof row.extra_data === "object" && !Array.isArray(row.extra_data)
+    ? row.extra_data as Record<string, unknown> : null;
+  const payload = row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
+    ? row.payload as Record<string, unknown> : {};
+  return {
+    approvalRef: String(row.id ?? ""),
+    tenantId: typeof row.tenant_id === "string" ? row.tenant_id : null,
+    executionId: typeof row.execution_id === "string" ? row.execution_id : null,
+    requesterId: Number.isSafeInteger(Number(row.requester_id)) ? Number(row.requester_id) : null,
+    status: String(row.status ?? "").toLowerCase() as Spec224GoalGrantAuthorityEvidence["status"],
+    currentApprovals: Number(row.current_approvals),
+    requiredApprovers: Number(row.required_approvers),
+    expiresAt: iso(row.expires_at),
+    revokedAt: iso(row.revoked_at),
+    ...(extraData?.spec224GoalGrantIssuerV1 === "owner_explicit_goal_start"
+      ? { issuer: "owner_explicit_goal_start" as const } : {}),
+    payload,
+  };
+}
+
 function isSafeGlob(value: string): boolean {
   return (
     value.length <= 240 &&

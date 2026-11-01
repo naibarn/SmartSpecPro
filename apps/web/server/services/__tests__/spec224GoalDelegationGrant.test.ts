@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildSpec224GoalGrantApprovalPayload,
   evaluateSpec224GoalDelegation,
+  mapSpec224GoalGrantAuthorityEvidence,
+  parseSpec224GoalGrant,
   type Spec224GoalDelegationInput,
   type Spec224GoalGrantScope,
 } from "../spec224GoalDelegationGrant";
@@ -64,6 +66,31 @@ const baseInput = (): Spec224GoalDelegationInput => ({
 });
 
 describe("SPEC-224 Goal delegation contract", () => {
+  it("preserves explicit owner-start approval evidence when an authority row is reloaded", () => {
+    const input = baseInput();
+    input.authority.currentApprovals = 0;
+    input.authority.requiredApprovers = 0;
+    input.authority.issuer = "owner_explicit_goal_start";
+    const row = {
+      id: input.authority.approvalRef,
+      tenant_id: input.authority.tenantId,
+      execution_id: input.authority.executionId,
+      requester_id: input.authority.requesterId,
+      status: input.authority.status,
+      current_approvals: 0,
+      required_approvers: 0,
+      expires_at: input.authority.expiresAt,
+      revoked_at: null,
+      extra_data: { spec224GoalGrantIssuerV1: "owner_explicit_goal_start" },
+      payload: input.authority.payload,
+    };
+
+    const reloaded = mapSpec224GoalGrantAuthorityEvidence(row);
+
+    expect(reloaded?.issuer).toBe("owner_explicit_goal_start");
+    expect(parseSpec224GoalGrant(reloaded!, input.now!)).toMatchObject({ goalId: "goal-1", actorId: 11 });
+  });
+
   it("accepts only an explicitly started, zero-reviewer bounded grant", () => {
     const input = baseInput();
     input.authority.currentApprovals = 0;
