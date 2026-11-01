@@ -107,8 +107,16 @@
         "Only dependency edges recorded in canonical handoffs are included; uncertain priority relationships remain non-blocking."
       ],
       "verification": [
-        "pnpm --dir apps/web exec vitest run server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
-        "python3 -m tools.spec_handoff validate --all"
+        {
+          "id": "spec224-feature-catalog-test",
+          "kind": "test",
+          "ref": "pnpm --dir apps/web exec vitest run server/services/__tests__/spec224FeatureSpecCatalog.test.ts"
+        },
+        {
+          "id": "spec-handoff-validation",
+          "kind": "manual",
+          "ref": "python3 -m tools.spec_handoff validate --all"
+        }
       ],
       "writeSet": {
         "repository": "naibarn/SmartSpecPro",

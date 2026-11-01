@@ -10,7 +10,7 @@ import {
   spec224WorkspaceSpecSetHeads,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
+import { compileSpec224IncrementalSpecSet, type Spec224IncrementalSpecFile } from "./spec224IncrementalSpecCompiler";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { resolveSpec224WorkspaceWritePolicy, type Spec224WorkspaceAccessMode } from "./spec224WorkspaceAccessPolicy";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
@@ -44,7 +44,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 }
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
-export type Spec224WorkspaceSpecFile = { path: string; digest: string; content: string };
+export type Spec224WorkspaceSpecFile = Spec224IncrementalSpecFile;
 export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null; modelCatalog?: RunnerModelCatalog | null; modelCatalogs?: RunnerModelCatalog[] };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
@@ -230,6 +230,47 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
     if (persisted.availability !== "current") fail("WORKSPACE_BINDING_STALE");
     return persisted;
   }
+  async function persistFiles(input: { tenantId: string; actorId: number; idempotencyKey: string }, binding: Spec224ConversationWorkspace, parsed: { files: Spec224WorkspaceSpecFile[]; digest: string }, replacePrefix?: string) {
+    const existing = await store.getRevisionByIdempotency({ ...binding, idempotencyKey: input.idempotencyKey });
+    if (existing) {
+      if (existing.requestDigest !== parsed.digest) fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
+      return summary(existing);
+    }
+    const previous = await store.getLatestRevision(binding);
+    const retainedPreviousFiles = previous?.files.filter(file => !replacePrefix || !file.path.startsWith(replacePrefix)) ?? [];
+    const merged = new Map(retainedPreviousFiles.map(file => [file.path, file]));
+    const incomingPaths = new Set(parsed.files.map(file => file.path));
+    const removedScopedPaths = replacePrefix
+      ? (previous?.files ?? []).filter(file => file.path.startsWith(replacePrefix) && !incomingPaths.has(file.path)).map(file => file.path)
+      : [];
+    const replacedPaths = [...new Set([...parsed.files.filter(file => merged.has(file.path)).map(file => file.path), ...removedScopedPaths])].sort();
+    for (const file of parsed.files) merged.set(file.path, file);
+    const files = [...merged.values()].sort((left, right) => left.path.localeCompare(right.path));
+    if (Buffer.byteLength(JSON.stringify(files), "utf8") > MAX_PERSISTED_MANIFEST_BYTES) fail("SPEC_SET_MANIFEST_OVERSIZED");
+    const digest = sha(canonicalJson(files.map(file => ({ path: file.path, digest: file.digest, ...(file.canonicalSource ? { canonicalSource: file.canonicalSource } : {}), ...(file.projectSource ? { projectSource: file.projectSource } : {}) }))));
+    const provisional: Spec224WorkspaceSpecSetRevision = {
+      id: "pending", tenantId: input.tenantId, actorId: input.actorId, runnerId: binding.runnerId, workspaceId: binding.workspaceId,
+      revision: (previous?.revision ?? 0) + 1, parentRevision: previous?.revision ?? null, digest, requestDigest: parsed.digest, idempotencyKey: input.idempotencyKey, files, replacedPaths,
+      requirementCount: 0, runnableWorkPackageCount: 0, blockedWorkPackageCount: 0,
+    };
+    const previousInput = previous ? { ...previous, previousRevision: undefined } : undefined;
+    const compiled = compileSpec224IncrementalSpecSet({
+      runnerId: provisional.runnerId, workspaceId: provisional.workspaceId, revision: provisional.revision,
+      digest: provisional.digest, files: provisional.files, ...(previousInput ? { previousRevision: previousInput } : {}),
+    });
+    provisional.requirementCount = compiled.requirements.length;
+    provisional.runnableWorkPackageCount = compiled.runnableWorkPackageIds.length;
+    provisional.blockedWorkPackageCount = compiled.workPackages.filter(item => item.readiness === "BLOCKED").length;
+    try {
+      return summary(await store.createRevision(provisional));
+    } catch (error) {
+      const code = error instanceof Spec224WorkspaceSpecSetError ? error.code : (error as { code?: unknown })?.code;
+      if (code !== "SPEC_SET_REVISION_STALE" && code !== "23505") throw error;
+      const replay = await store.getRevisionByIdempotency({ ...binding, idempotencyKey: input.idempotencyKey });
+      if (replay?.requestDigest === parsed.digest) return summary(replay);
+      fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
+    }
+  }
   return {
     availableWorkspaces: (input: { tenantId: string; actorId: number }) => store.listTrustedWorkspaces(input),
     async bindConversationWorkspace(input: { tenantId: string; actorId: number; conversationId: number; runnerId: string; workspaceId: string }) {
@@ -254,44 +295,48 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 160) fail("SPEC_SET_IDEMPOTENCY_KEY_INVALID");
       const { binding } = await requirePersistedBinding(input);
       const parsed = await parseSpec224WorkspaceArtifacts(input.artifacts);
-      const existing = await store.getRevisionByIdempotency({ ...binding, idempotencyKey: input.idempotencyKey });
-      if (existing) {
-        if (existing.requestDigest !== parsed.digest) fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
-        return summary(existing);
+      if (parsed.files.some(file => file.path.startsWith("canonical-projects/"))) fail("SPEC_SET_CANONICAL_SOURCE_RESERVED");
+      return persistFiles(input, binding, parsed);
+    },
+    async ingestModularSaasProject(input: {
+      tenantId: string; actorId: number; conversationId: number; idempotencyKey: string;
+      project: { projectId: string; sourceRevision: string; descriptorDigest: string; files: Array<Spec224IncrementalSpecFile & { projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string } }> };
+    }) {
+      if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 160) fail("SPEC_SET_IDEMPOTENCY_KEY_INVALID");
+      const { binding } = await requireCurrentBinding(input);
+      const workspaces = await store.listTrustedWorkspaces(input);
+      const workspace = workspaces.find(candidate => candidate.runnerId === binding.runnerId && candidate.workspaceId === binding.workspaceId);
+      if (!workspace || workspace.scope !== "PLATFORM_ENGINEERING") fail("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED");
+      if (workspace.snapshotRevision !== binding.snapshotRevision) fail("WORKSPACE_BINDING_STALE");
+      if (!workspace.gitHead || !workspace.contentFingerprint) fail("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.project.projectId) || !/^[a-f0-9]{40,64}$/i.test(input.project.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.project.descriptorDigest)) fail("MODULAR_PROJECT_BINDING_INVALID");
+      if (!Array.isArray(input.project.files) || !input.project.files.length || input.project.files.length > MAX_ARTIFACTS) fail("SPEC_SET_ARTIFACT_COUNT_INVALID");
+      let totalBytes = 0;
+      const seen = new Set<string>();
+      let projectDescriptorCount = 0;
+      const projectPathPrefix = `canonical-projects/${input.project.projectId}/`;
+      for (const file of input.project.files) {
+        const path = validatePath(file.path);
+        if (!path.startsWith(projectPathPrefix)) fail("CANONICAL_PROJECT_BINDING_INVALID");
+        if (seen.has(path.toLocaleLowerCase("en-US"))) fail("SPEC_SET_PATH_DUPLICATE");
+        seen.add(path.toLocaleLowerCase("en-US"));
+        const contentBytes = Buffer.byteLength(file.content, "utf8");
+        totalBytes += contentBytes;
+        if (contentBytes > MAX_FILE_BYTES) fail("SPEC_SET_FILE_OVERSIZED");
+        if (sha(file.content) !== file.digest) fail("SPEC_SET_FILE_INTEGRITY_INVALID");
+        if (file.canonicalSource && (file.canonicalSource.sourceDigest !== file.digest || !file.canonicalSource.sourcePath.trim())) fail("CANONICAL_SOURCE_BINDING_INVALID");
+        if (!file.canonicalSource && !file.projectSource) fail("CANONICAL_PROJECT_BINDING_INVALID");
+        if (file.projectSource) {
+          projectDescriptorCount += 1;
+          if (file.projectSource.projectId !== input.project.projectId || file.projectSource.sourceRevision !== input.project.sourceRevision || file.projectSource.descriptorDigest !== input.project.descriptorDigest || file.digest !== input.project.descriptorDigest) fail("CANONICAL_PROJECT_BINDING_INVALID");
+        }
+        if (totalBytes > MAX_EXPANDED_BYTES) fail("SPEC_SET_EXPANSION_LIMIT");
       }
-      const previous = await store.getLatestRevision(binding);
-      const merged = new Map(previous?.files.map(file => [file.path, file]) ?? []);
-      const replacedPaths = parsed.files.filter(file => merged.has(file.path)).map(file => file.path);
-      for (const file of parsed.files) merged.set(file.path, file);
-      const files = [...merged.values()].sort((left, right) => left.path.localeCompare(right.path));
-      if (Buffer.byteLength(JSON.stringify(files), "utf8") > MAX_PERSISTED_MANIFEST_BYTES) fail("SPEC_SET_MANIFEST_OVERSIZED");
-      const digest = sha(canonicalJson(files.map(file => ({ path: file.path, digest: file.digest }))));
-      const provisional: Spec224WorkspaceSpecSetRevision = {
-        id: "pending", tenantId: input.tenantId, actorId: input.actorId, runnerId: binding.runnerId, workspaceId: binding.workspaceId,
-        revision: (previous?.revision ?? 0) + 1, parentRevision: previous?.revision ?? null, digest, requestDigest: parsed.digest, idempotencyKey: input.idempotencyKey, files, replacedPaths,
-        requirementCount: 0, runnableWorkPackageCount: 0, blockedWorkPackageCount: 0,
-      };
-      const previousInput = previous ? { ...previous, previousRevision: undefined } : undefined;
-      const compiled = compileSpec224IncrementalSpecSet({
-        runnerId: provisional.runnerId,
-        workspaceId: provisional.workspaceId,
-        revision: provisional.revision,
-        digest: provisional.digest,
-        files: provisional.files,
-        ...(previousInput ? { previousRevision: previousInput } : {}),
-      });
-      provisional.requirementCount = compiled.requirements.length;
-      provisional.runnableWorkPackageCount = compiled.runnableWorkPackageIds.length;
-      provisional.blockedWorkPackageCount = compiled.workPackages.filter(item => item.readiness === "BLOCKED").length;
-      try {
-        return summary(await store.createRevision(provisional));
-      } catch (error) {
-        const code = error instanceof Spec224WorkspaceSpecSetError ? error.code : (error as { code?: unknown })?.code;
-        if (code !== "SPEC_SET_REVISION_STALE" && code !== "23505") throw error;
-        const replay = await store.getRevisionByIdempotency({ ...binding, idempotencyKey: input.idempotencyKey });
-        if (replay?.requestDigest === parsed.digest) return summary(replay);
-        fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
-      }
+      const projectFile = input.project.files.find(file => file.projectSource?.projectId === input.project.projectId);
+      if (projectDescriptorCount !== 1 || !projectFile || projectFile.digest !== input.project.descriptorDigest) fail("CANONICAL_PROJECT_BINDING_INVALID");
+      const digestFiles = input.project.files.map(({ path, digest, canonicalSource, projectSource }) => ({ path, digest, ...(canonicalSource ? { canonicalSource } : {}), ...(projectSource ? { projectSource } : {}) }));
+      const digest = sha(canonicalJson({ projectId: input.project.projectId, sourceRevision: input.project.sourceRevision, descriptorDigest: input.project.descriptorDigest, files: digestFiles }));
+      return persistFiles({ ...input, idempotencyKey: `modular-saas-project:${input.idempotencyKey}` }, binding, { files: input.project.files, digest }, projectPathPrefix);
     },
     async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number; writeScope?: string[]; workspaceAccessMode?: Spec224WorkspaceAccessMode }) {
       const { binding } = await requireCurrentBinding(input);
@@ -488,7 +533,9 @@ function filesForWorkPackage(
   files: readonly Spec224WorkspaceSpecFile[],
 ): Spec224WorkspaceSpecFile[] {
   const packages = new Map(workPackages.map(item => [item.id, item]));
-  const requirementSources = new Map(requirements.map(item => [item.id, item.artifactPath]));
+  const requirementSources = new Map(requirements.flatMap(item => item.canonicalSpecId && item.canonicalRequirementId
+    ? [[`canonical:${item.canonicalSpecId}#${item.canonicalRequirementId}`, item.artifactPath] as const]
+    : [[item.id, item.artifactPath] as const]));
   const paths = new Set<string>();
   const seenPackages = new Set<string>();
   const pending = [root];

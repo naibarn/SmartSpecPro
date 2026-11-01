@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { open, lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
+import type { Spec224IncrementalSpecFile } from "./spec224IncrementalSpecCompiler";
 
 const MAX_SPEC_BYTES = 1024 * 1024;
 const SAFE_SPEC_ID = /^[^/\\\u0000-\u001F\u007F]{1,160}$/u;
@@ -33,7 +34,7 @@ type ModularProjectDescriptor = {
     specRefs: Array<{ specId: string; requirementIds: string[] }>;
     dependencies: string[];
     acceptanceCriteria: string[];
-    verification: string[];
+    verification: Array<{ id: string; kind: "test" | "build" | "run" | "review" | "manual"; ref: string }>;
     writeSet: { repository: string; paths: string[] };
   }>;
 };
@@ -73,7 +74,7 @@ function isModularProjectDescriptor(value: unknown): value is ModularProjectDesc
       && pkg.specRefs.every(ref => isRecord(ref) && typeof ref.specId === "string" && Array.isArray(ref.requirementIds) && ref.requirementIds.every(id => typeof id === "string"))
       && Array.isArray(pkg.dependencies) && pkg.dependencies.every(id => typeof id === "string")
       && Array.isArray(pkg.acceptanceCriteria) && pkg.acceptanceCriteria.every(item => typeof item === "string")
-      && Array.isArray(pkg.verification) && pkg.verification.every(item => typeof item === "string")
+      && Array.isArray(pkg.verification) && pkg.verification.every(item => isRecord(item) && typeof item.id === "string" && ["test", "build", "run", "review", "manual"].includes(String(item.kind)) && typeof item.ref === "string")
       && isRecord(pkg.writeSet) && typeof pkg.writeSet.repository === "string" && Array.isArray(pkg.writeSet.paths) && pkg.writeSet.paths.every(path => typeof path === "string"));
 }
 
@@ -120,9 +121,12 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
     if (!isRecord(manifest) || !isRecord(manifest.identity) || (manifest.identity.spec_id !== pin.id && manifest.identity.spec_id !== numericId) || manifest.identity.digest !== pin.specDigest) {
       throw new Error("MODULAR_PROJECT_HANDOFF_IDENTITY_MISMATCH");
     }
-    if (!isRecord(ledger) || ledger.spec_digest !== pin.specDigest || !Array.isArray(ledger.requirements)) throw new Error("MODULAR_PROJECT_LEDGER_IDENTITY_MISMATCH");
+    if (!isRecord(ledger) || ledger.schema_version !== 1 || ledger.spec_digest !== pin.specDigest || ledger.spec_id !== numericId || !Number.isSafeInteger(ledger.generation) || !Array.isArray(ledger.requirements)) throw new Error("MODULAR_PROJECT_LEDGER_IDENTITY_MISMATCH");
+    if (manifest.schema_version !== 1 || !Number.isSafeInteger(manifest.generation)) throw new Error("MODULAR_PROJECT_HANDOFF_INVALID");
+    const requirementIds = new Set<string>();
     const requirements = ledger.requirements.map(row => {
-      if (!isRecord(row) || typeof row.requirement_id !== "string" || typeof row.requirement_text !== "string") throw new Error("MODULAR_PROJECT_LEDGER_INVALID");
+      if (!isRecord(row) || typeof row.requirement_id !== "string" || typeof row.requirement_text !== "string" || !["PASS", "FAIL", "BLOCKED_TRUE_EXTERNAL", "NOT_APPLICABLE", "OPEN", "PARTIAL", "VALIDATION_PENDING", "STALE_EVIDENCE"].includes(String(row.final_state)) || requirementIds.has(row.requirement_id)) throw new Error("MODULAR_PROJECT_LEDGER_INVALID");
+      requirementIds.add(row.requirement_id);
       return { id: row.requirement_id, text: row.requirement_text, finalState: typeof row.final_state === "string" ? row.final_state : "OPEN" };
     });
     const rawDependencies = isRecord(manifest.dependencies) && Array.isArray(manifest.dependencies.specs) ? manifest.dependencies.specs : [];
@@ -132,7 +136,11 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
       const memberId = memberNumericIds.get(edge.spec_id) ?? (ids.includes(edge.spec_id) ? edge.spec_id : undefined);
       return memberId ? [memberId] : [];
     });
-    return { id: pin.id, title: spec.title, path: `specs/feature/${pin.id}/spec.md`, digest: specDigest, manifestDigest: pin.manifestDigest, ledgerDigest: pin.ledgerDigest, requirements, dependencies };
+    return {
+      id: pin.id, title: spec.title, path: `specs/feature/${pin.id}/spec.md`, content: spec.content, digest: specDigest,
+      manifestDigest: pin.manifestDigest, manifestContent: manifestFile.bytes.toString("utf8"),
+      ledgerDigest: pin.ledgerDigest, ledgerContent: ledgerFile.bytes.toString("utf8"), requirements, dependencies,
+    };
   }));
   const specsById = new Map(specs.map(spec => [spec.id, spec]));
   const packageIds = new Set<string>();
@@ -149,7 +157,22 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
   }
   const dependencies = new Map(specs.map(spec => [spec.id, spec.dependencies]));
   validateProjectGraph(ids, dependencies);
-  return { ...descriptor, descriptorDigest: createHash("sha256").update(descriptorFile.bytes).digest("hex"), specs };
+  const descriptorDigest = createHash("sha256").update(descriptorFile.bytes).digest("hex");
+  const sourceFiles: Array<Spec224IncrementalSpecFile & { projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string } }> = specs.flatMap(spec => {
+    const safeSpecKey = `${spec.id.match(/^\d{3}/)?.[0] ?? "spec"}-${createHash("sha256").update(spec.id).digest("hex").slice(0, 12)}`;
+    const sourcePath = spec.path;
+    const handoffPath = sourcePath.replace(/spec\.md$/, "handoff/");
+    return [
+      { path: `canonical-projects/${descriptor.projectId}/specs/${safeSpecKey}/spec.md`, digest: spec.digest, content: spec.content, canonicalSource: { kind: "spec" as const, specId: spec.id, specDigest: spec.digest, sourcePath, sourceDigest: spec.digest } },
+      { path: `canonical-projects/${descriptor.projectId}/specs/${safeSpecKey}/manifest.json`, digest: spec.manifestDigest, content: spec.manifestContent, canonicalSource: { kind: "manifest" as const, specId: spec.id, specDigest: spec.digest, sourcePath: `${handoffPath}manifest.json`, sourceDigest: spec.manifestDigest } },
+      { path: `canonical-projects/${descriptor.projectId}/specs/${safeSpecKey}/requirement-ledger.json`, digest: spec.ledgerDigest, content: spec.ledgerContent, canonicalSource: { kind: "requirement-ledger" as const, specId: spec.id, specDigest: spec.digest, sourcePath: `${handoffPath}requirement-ledger.json`, sourceDigest: spec.ledgerDigest } },
+    ];
+  });
+  sourceFiles.push({
+    path: `canonical-projects/${descriptor.projectId}/project.json`, digest: descriptorDigest, content: descriptorFile.bytes.toString("utf8"),
+    projectSource: { projectId: descriptor.projectId, sourceRevision: descriptor.source.revision, descriptorDigest },
+  });
+  return { ...descriptor, descriptorDigest, specs, sourceFiles };
 }
 
 async function readCanonicalHandoff(input: { featureRoot: string; directoryPath: string; specDigest: string }): Promise<RepositoryFeatureSpecHandoff> {

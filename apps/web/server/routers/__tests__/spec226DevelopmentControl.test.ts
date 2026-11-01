@@ -21,10 +21,11 @@ const mocks = vi.hoisted(() => ({
     bindConversationWorkspace: vi.fn(),
     getConversationWorkspace: vi.fn(),
     ingestSpecSet: vi.fn(),
+    ingestModularSaasProject: vi.fn(),
     prepareWorkspaceRun: vi.fn(),
     resolveWorkspaceRunInput: vi.fn(),
   },
-  featureSpecCatalog: { list: vi.fn(), load: vi.fn(), loadContext: vi.fn() },
+  featureSpecCatalog: { list: vi.fn(), load: vi.fn(), loadContext: vi.fn(), loadProject: vi.fn() },
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
@@ -114,6 +115,7 @@ vi.mock("../../services/spec224WorkspaceSpecSet", () => ({
 
 vi.mock("../../services/spec224FeatureSpecCatalog", () => ({
   listRepositoryFeatureSpecs: (...args: unknown[]) => mocks.featureSpecCatalog.list(...args),
+  loadModularSaasProject: (...args: unknown[]) => mocks.featureSpecCatalog.loadProject(...args),
   loadRepositoryFeatureSpec: (...args: unknown[]) => mocks.featureSpecCatalog.load(...args),
   loadRepositoryFeatureSpecContext: (...args: unknown[]) => mocks.featureSpecCatalog.loadContext(...args),
 }));
@@ -167,6 +169,7 @@ beforeEach(() => {
   mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
   mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n", handoff: { status: "CURRENT" } });
   mocks.featureSpecCatalog.loadContext.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", summary: "Example", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1" } });
+  mocks.featureSpecCatalog.loadProject.mockReset();
   mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
@@ -448,6 +451,28 @@ describe("spec226DevelopmentControlRouter", () => {
     })).rejects.toMatchObject({ message: "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED" });
     expect(mocks.featureSpecCatalog.load).not.toHaveBeenCalled();
     expect(mocks.workspaceSpecSets.ingestSpecSet).not.toHaveBeenCalled();
+  });
+
+  it("ingests the Modular SaaS project only from the current bound platform Runner workspace", async () => {
+    const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING", snapshotRevision: "12", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64) };
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue(platformWorkspace ? [platformWorkspace] : []);
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValue({ workspace: { ...platformWorkspace }, availability: { status: "current", available: true } });
+    mocks.featureSpecCatalog.loadProject.mockResolvedValue({ projectId: "smartaihub-modular-saas-r14", source: { revision: "c".repeat(40) }, descriptorDigest: "d".repeat(64), specs: [{ id: "312-example" }], sourceFiles: [{ path: "canonical-projects/project/project.json", content: "{}", digest: "d".repeat(64) }] });
+    mocks.workspaceSpecSets.ingestModularSaasProject.mockResolvedValue({ revision: 1, digest: "e".repeat(64), files: [], requirementCount: 295, runnableWorkPackageCount: 1, blockedWorkPackageCount: 0 });
+
+    await expect((spec226DevelopmentControlRouter.ingestModularSaasProject as unknown as Function)({
+      ctx: CTX, input: { conversationId: 8, idempotencyKey: "modular-project-import-1" },
+    })).resolves.toMatchObject({ revision: 1, requirementCount: 295, project: { id: "smartaihub-modular-saas-r14", specCount: 1 } });
+    expect(mocks.workspaceSpecSets.ingestModularSaasProject).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-acme", actorId: 42, conversationId: 8, idempotencyKey: "modular-project-import-1",
+      project: expect.objectContaining({ sourceRevision: "c".repeat(40), descriptorDigest: "d".repeat(64) }),
+    }));
+
+    const staleBinding = { workspace: { ...platformWorkspace }, availability: { status: "stale", available: false } };
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce(staleBinding).mockResolvedValueOnce(staleBinding);
+    await expect((spec226DevelopmentControlRouter.ingestModularSaasProject as unknown as Function)({
+      ctx: CTX, input: { conversationId: 8, idempotencyKey: "modular-project-stale-1" },
+    })).rejects.toMatchObject({ message: "WORKSPACE_BINDING_STALE" });
   });
 
   it("limits canonical SPEC catalog access to an authorized Platform workspace", async () => {

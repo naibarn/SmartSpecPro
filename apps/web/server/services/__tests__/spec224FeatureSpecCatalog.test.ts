@@ -105,6 +105,9 @@ describe("repository feature spec catalog", () => {
     const project = await loadModularSaasProject({ repositoryRoot: root });
     expect(project.projectId).toBe("test-project");
     expect(project.specs).toMatchObject([{ id: "101-example feature", requirements: [] }]);
+    expect(project.sourceFiles).toHaveLength(4);
+    expect(project.sourceFiles.filter(file => file.canonicalSource?.kind === "requirement-ledger")).toHaveLength(1);
+    expect(project.sourceFiles.filter(file => file.projectSource)).toHaveLength(1);
   });
 
   it("rejects duplicate or missing project members and stale source digests", async () => {
@@ -144,10 +147,11 @@ async function writeProjectHandoff(featureRoot: string, specId: string, dependen
   const spec = await (await import("node:fs/promises")).readFile(join(featureRoot, specId, "spec.md"), "utf8");
   const digest = createHash("sha256").update(spec).digest("hex");
   const manifest = {
+    schema_version: 1, generation: 0,
     identity: { spec_id: specId.slice(0, 3), digest },
     dependencies: { specs: dependencyIds.map(spec_id => ({ spec_id, relationship: "PREREQUISITE", status: "CANONICALIZED_PENDING_INTEGRATION" })) },
   };
-  const ledger = { spec_digest: digest, requirements: [] };
+  const ledger = { schema_version: 1, spec_id: specId.slice(0, 3), spec_digest: digest, generation: 0, requirements: [] };
   await writeFile(join(handoff, "manifest.json"), JSON.stringify(manifest));
   await writeFile(join(handoff, "requirement-ledger.json"), JSON.stringify(ledger));
 }

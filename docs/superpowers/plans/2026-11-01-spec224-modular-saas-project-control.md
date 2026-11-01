@@ -23,7 +23,7 @@
 ## Review Focus
 
 - Stale Spec or ledger digest: catalog load and ingestion must fail closed before compile.
-- Duplicate requirement IDs across Specs: compiler must report a deterministic error and never merge rows silently.
+- Duplicate canonical requirement IDs across Specs: preserve each Spec-scoped row, surface a deterministic collision finding, and never merge rows. Duplicate requirement source keys within one Spec fail closed.
 - Missing dependency or dependency cycle: project graph must report a blocker and must not make the affected package runnable.
 - Missing acceptance, verification, or allowed write set: package remains blocked with actionable reasons.
 - Cross-tenant, non-platform workspace, or stale Runner source snapshot: existing authorization/admission checks must reject ingestion or preparation.
@@ -62,7 +62,7 @@
 
 - [x] Add a failing test for a JSON requirement object with canonical Spec ID, ledger `requirement_id`, source path, source digest, and requirement text.
 - [x] Add a failing test for a WorkPackage referencing a canonical requirement ID and cross-Spec dependency.
-- [x] Add duplicate-ID, unresolved-ref, missing acceptance/verification/write-set, and cycle tests.
+- [x] Add same-Spec duplicate-ID, Spec-scoped collision, unresolved-ref, missing acceptance/verification/write-set, and cycle tests.
 - [x] Implement the minimal normalized input extension; preserve existing Markdown line and JSON-pointer behavior.
 - [x] Run the compiler test file and confirm old behavior remains compatible.
 
@@ -74,11 +74,11 @@
 - Modify: `apps/web/server/routers/spec226DevelopmentControl.ts`
 - Test: matching service and `spec226DevelopmentControl.test.ts`
 
-- [ ] Add a catalog loader that reads only descriptor-listed Specs and their existing handoff manifest/ledger, validates all digests/statuses, and returns source refs plus immutable files.
-- [ ] Ensure catalog ingestion requires the registered `PLATFORM_ENGINEERING` Runner workspace already required by canonical Spec ingestion.
-- [ ] Add idempotent `ingestModularSaasProject` over the existing SpecSet writer; bind input to project descriptor digest and SmartSpecPro source SHA.
-- [ ] Ensure stale/missing source, stale Runner snapshot, oversized input, and conflicting idempotency key fail closed.
-- [ ] Run focused API/service tests; do not dispatch a live Runner job as part of ingestion.
+- [x] Add a catalog loader that reads only descriptor-listed Specs and their existing handoff manifest/ledger, validates all digests/statuses, and returns source refs plus immutable files.
+- [x] Ensure catalog ingestion requires the registered `PLATFORM_ENGINEERING` Runner workspace already required by canonical Spec ingestion.
+- [x] Add idempotent `ingestModularSaasProject` over the existing SpecSet writer; bind input to project descriptor digest and SmartSpecPro source SHA.
+- [x] Ensure stale/missing source, stale Runner snapshot, oversized input, and conflicting idempotency key fail closed.
+- [x] Run focused API/service tests; do not dispatch a live Runner job as part of ingestion.
 
 ### Task 4: Expose project readiness through Mission Control
 

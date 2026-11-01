@@ -43,7 +43,7 @@ import {
   type WorkspaceAuthorityAction,
 } from "../services/workspaceAuthoritySafeActions";
 import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
-import { loadRepositoryFeatureSpec, loadRepositoryFeatureSpecContext, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
+import { loadModularSaasProject, loadRepositoryFeatureSpec, loadRepositoryFeatureSpecContext, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
 import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval } from "../services/spec224GoalDelegationGrant";
 import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection";
 import { db, getDb } from "../db";
@@ -217,6 +217,35 @@ function asTrpcError(error: unknown): never {
       "SPEC_SET_ZIP_SYMLINK",
       "SPEC_SET_IDEMPOTENCY_KEY_INVALID",
       "SPEC_SET_IDEMPOTENCY_CONFLICT",
+      "SPEC_SET_CANONICAL_SOURCE_RESERVED",
+      "MODULAR_PROJECT_BINDING_INVALID",
+      "MODULAR_PROJECT_DESCRIPTOR_INVALID",
+      "MODULAR_PROJECT_DEPENDENCY_CYCLE",
+      "MODULAR_PROJECT_DEPENDENCY_INVALID",
+      "MODULAR_PROJECT_DUPLICATE_PACKAGE",
+      "MODULAR_PROJECT_DUPLICATE_SPEC",
+      "MODULAR_PROJECT_HANDOFF_DIGEST_MISMATCH",
+      "MODULAR_PROJECT_HANDOFF_IDENTITY_MISMATCH",
+      "MODULAR_PROJECT_HANDOFF_INVALID",
+      "MODULAR_PROJECT_HANDOFF_PATH_INVALID",
+      "MODULAR_PROJECT_HANDOFF_UNAVAILABLE",
+      "MODULAR_PROJECT_LEDGER_IDENTITY_MISMATCH",
+      "MODULAR_PROJECT_LEDGER_INVALID",
+      "MODULAR_PROJECT_PACKAGE_DEPENDENCY_NOT_FOUND",
+      "MODULAR_PROJECT_PACKAGE_REQUIREMENT_NOT_FOUND",
+      "MODULAR_PROJECT_PACKAGE_SPEC_NOT_FOUND",
+      "MODULAR_PROJECT_SELF_DEPENDENCY",
+      "MODULAR_PROJECT_SOURCE_DIGEST_MISMATCH",
+      "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED",
+      "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED",
+      "CANONICAL_SOURCE_BINDING_INVALID",
+      "CANONICAL_PROJECT_BINDING_INVALID",
+      "WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE",
+      "FEATURE_SPEC_CATALOG_UNAVAILABLE",
+      "FEATURE_SPEC_ID_INVALID",
+      "FEATURE_SPEC_NOT_FOUND",
+      "FEATURE_SPEC_PATH_INVALID",
+      "FEATURE_SPEC_SIZE_INVALID",
       "SPEC_SET_REVISION_NOT_FOUND",
       "PREPARE_PROMPT_INVALID",
       "SPEC_SET_WORK_PACKAGE_NOT_READY",
@@ -693,6 +722,50 @@ export const spec226DevelopmentControlRouter = router({
           idempotencyKey: `feature-spec:${digestSuffix}:${input.idempotencyKey}`,
         });
         return { ...result, sourceSpec: { id: spec.id, title: spec.title, path: spec.path, handoff: spec.handoff } };
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  ingestModularSaasProject: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      idempotencyKey: z.string().trim().min(1).max(120),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const scope = await authorizeFeatureSpecCatalog(ctx, input.conversationId);
+        const [binding, workspaces] = await Promise.all([
+          defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId }),
+          defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope),
+        ]);
+        if (!binding || binding.availability.status !== "current") {
+          throw new TRPCError({ code: "CONFLICT", message: "WORKSPACE_BINDING_STALE" });
+        }
+        const workspace = workspaces.find(candidate => candidate.runnerId === binding.workspace.runnerId && candidate.workspaceId === binding.workspace.workspaceId && candidate.scope === "PLATFORM_ENGINEERING");
+        if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED" });
+        if (workspace.snapshotRevision !== binding.workspace.snapshotRevision) {
+          throw new TRPCError({ code: "CONFLICT", message: "WORKSPACE_BINDING_STALE" });
+        }
+        if (!workspace.gitHead || !workspace.contentFingerprint) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE" });
+        }
+        const project = await loadModularSaasProject();
+        const result = await defaultSpec224WorkspaceSpecSetService.ingestModularSaasProject({
+          ...scope,
+          conversationId: input.conversationId,
+          idempotencyKey: input.idempotencyKey,
+          project: {
+            projectId: project.projectId,
+            sourceRevision: project.source.revision,
+            descriptorDigest: project.descriptorDigest,
+            files: project.sourceFiles,
+          },
+        });
+        return {
+          ...result,
+          project: { id: project.projectId, sourceRevision: project.source.revision, descriptorDigest: project.descriptorDigest, specCount: project.specs.length },
+        };
       } catch (error) {
         return asTrpcError(error);
       }

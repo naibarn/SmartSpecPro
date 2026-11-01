@@ -12,7 +12,8 @@ export type Spec224IncrementalSpecFile = Readonly<{
   digest: string;
   content: string;
   /** Trusted catalog binding supplied by the canonical SPEC adapter. */
-  canonicalSource?: Readonly<{ specId: string; specDigest: string; sourcePath: string; sourceDigest: string }>;
+  canonicalSource?: Readonly<{ kind?: "spec" | "manifest" | "requirement-ledger"; specId: string; specDigest: string; sourcePath: string; sourceDigest: string }>;
+  projectSource?: Readonly<{ projectId: string; sourceRevision: string; descriptorDigest: string }>;
 }>;
 
 /**
@@ -284,6 +285,21 @@ function parsePackageDeclarations(
   root: Record<string, unknown>,
   findings: Spec224CompilerFinding[]
 ): PackageDeclaration[] {
+  if ("initialPackages" in root) {
+    const workPackages = Array.isArray(root.initialPackages)
+      ? root.initialPackages.map(candidate => {
+        if (!candidate || Array.isArray(candidate) || typeof candidate !== "object") return candidate;
+        const record = candidate as Record<string, unknown>;
+        const writeSet = record.writeSet;
+        return {
+          ...record,
+          ...(record.dependencies !== undefined ? { dependsOn: record.dependencies } : {}),
+          ...(writeSet && !Array.isArray(writeSet) && typeof writeSet === "object" ? { allowedWriteSet: (writeSet as Record<string, unknown>).paths } : {}),
+        };
+      })
+      : root.initialPackages;
+    return parsePackageDeclarations(path, { spec224: { workPackages } }, findings);
+  }
   if (!("spec224" in root)) return [];
   const spec224 = root.spec224;
   if (!spec224 || Array.isArray(spec224) || typeof spec224 !== "object") {
@@ -400,12 +416,19 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
     }
     if (file.canonicalSource) {
       const source = file.canonicalSource;
-      if (!safeCanonicalSpecId(source.specId) || !HASH.test(source.specDigest) || safePath(source.sourcePath) !== file.path || source.sourceDigest !== file.digest) {
+      if (!safeCanonicalSpecId(source.specId) || !HASH.test(source.specDigest) || !safePath(source.sourcePath) || source.sourceDigest !== file.digest) {
         fail("CANONICAL_SOURCE_BINDING_INVALID");
       }
     }
+    if (file.projectSource && (!safeCanonicalSpecId(file.projectSource.projectId) || !/^[a-f0-9]{40,64}$/i.test(file.projectSource.sourceRevision) || !HASH.test(file.projectSource.descriptorDigest) || file.projectSource.descriptorDigest !== file.digest)) {
+      fail("CANONICAL_PROJECT_BINDING_INVALID");
+    }
+    if (file.canonicalSource?.kind === "spec" && !file.path.toLowerCase().endsWith(".md")) fail("CANONICAL_SOURCE_KIND_INVALID");
+    if (file.canonicalSource && file.canonicalSource.kind !== "spec" && !file.path.toLowerCase().endsWith(".json")) fail("CANONICAL_SOURCE_KIND_INVALID");
+    if (file.projectSource && !file.path.toLowerCase().endsWith(".json")) fail("CANONICAL_PROJECT_BINDING_INVALID");
     paths.add(file.path);
     if (file.path.toLowerCase().endsWith(".md")) {
+      if (file.canonicalSource?.kind === "spec") continue;
       const baseline = buildSpec224SpecBaseline({
         specId: `artifact-${sha(file.path).slice(0, 32)}`,
         revision: file.digest,
@@ -428,10 +451,11 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
       continue;
     }
     const root = parseJson(file.content, file.path);
+    if (file.canonicalSource?.kind === "manifest") continue;
     if ("requirements" in root) {
       if (!Array.isArray(root.requirements)) {
         finding(findings, "JSON_REQUIREMENTS_INVALID", { artifactPath: file.path });
-      } else if (file.canonicalSource) {
+      } else if (file.canonicalSource && (file.canonicalSource.kind === undefined || file.canonicalSource.kind === "requirement-ledger")) {
         if (root.spec_digest !== file.canonicalSource.specDigest) {
           finding(findings, "CANONICAL_SPEC_DIGEST_MISMATCH", { artifactPath: file.path });
         } else {
@@ -496,7 +520,25 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
       workPackageId: packageId(duplicates[0]!.declarationPath, externalId),
     });
   }
-  if (new Set(requirements.map(item => item.id)).size !== requirements.length) fail("REQUIREMENT_ID_DUPLICATE");
+  const sourceKeys = requirements.map(item => item.sourceKey);
+  if (new Set(sourceKeys).size !== sourceKeys.length) fail("REQUIREMENT_SOURCE_DUPLICATE");
+  const legacyIds = requirements.filter(item => !item.canonicalRequirementId).map(item => item.id);
+  if (new Set(legacyIds).size !== legacyIds.length) fail("REQUIREMENT_ID_DUPLICATE");
+  const canonicalIdsBySpec = new Map<string, Set<string>>();
+  for (const requirement of requirements) {
+    if (!requirement.canonicalSpecId || !requirement.canonicalRequirementId) continue;
+    const specs = canonicalIdsBySpec.get(requirement.canonicalRequirementId) ?? new Set<string>();
+    specs.add(requirement.canonicalSpecId);
+    canonicalIdsBySpec.set(requirement.canonicalRequirementId, specs);
+  }
+  for (const [requirementId, specIds] of canonicalIdsBySpec) {
+    if (specIds.size < 2) continue;
+    const matching = requirements.filter(item => item.canonicalRequirementId === requirementId);
+    findings.push({ code: "CANONICAL_REQUIREMENT_ID_SCOPED_COLLISION", severity: "warning",
+      artifactPath: matching.map(item => item.artifactPath).sort()[0],
+      requirementSourceKey: matching.map(item => item.sourceKey).sort()[0],
+    });
+  }
   return { requirements, declarations, findings };
 }
 
@@ -553,7 +595,10 @@ function computeImpact(
       .filter(([key, value]) => previousPackages.get(key)?.definitionDigest !== value.definitionDigest)
       .map(([key]) => key)
   );
-  const changedRequirementIds = new Set(changedRequirementSourceKeys.map(key => currentRequirements.get(key)!.id));
+  const changedRequirementIds = new Set(changedRequirementSourceKeys.flatMap(key => {
+    const requirement = currentRequirements.get(key)!;
+    return requirement.canonicalRequirementId ? [key] : [requirement.id];
+  }));
   for (const [key, value] of currentPackages) {
     if (value.requirementIds.some(id => changedRequirementIds.has(id))) directlyChangedKeys.add(key);
   }
@@ -613,7 +658,9 @@ function compileInternal(input: Spec224IncrementalSpecSetInput): Spec224Incremen
       if (!requirement || (ref.artifactPath && requirement.artifactPath !== ref.artifactPath)) {
         blockers.push("REQUIREMENT_REFERENCE_UNRESOLVED");
         collected.findings.push({ code: "REQUIREMENT_REFERENCE_UNRESOLVED", severity: "error", artifactPath: declaration.declarationPath, workPackageId: declaration.id, requirementSourceKey: sourceKey });
-      } else requirementIds.push(requirement.id);
+      } else requirementIds.push(requirement.canonicalRequirementId && requirement.canonicalSpecId
+        ? canonicalRequirementSourceKey(requirement.canonicalSpecId, requirement.canonicalRequirementId)
+        : requirement.id);
     }
     for (const dependency of declaration.dependsOn ?? []) {
       if (!declarationByExternalId.has(dependency)) blockers.push("DEPENDENCY_REFERENCE_UNRESOLVED");
@@ -678,7 +725,10 @@ function compileInternal(input: Spec224IncrementalSpecSetInput): Spec224Incremen
     packagesByRequirement.set(requirementId, [...(packagesByRequirement.get(requirementId) ?? []), workPackage]);
   }
   const requirements = collected.requirements.map(requirement => {
-    const linked = packagesByRequirement.get(requirement.id) ?? [];
+    const requirementKey = requirement.canonicalSpecId && requirement.canonicalRequirementId
+      ? canonicalRequirementSourceKey(requirement.canonicalSpecId, requirement.canonicalRequirementId)
+      : requirement.id;
+    const linked = packagesByRequirement.get(requirementKey) ?? [];
     const ready = linked.some(item => item.readiness === "READY");
     return {
       ...requirement,

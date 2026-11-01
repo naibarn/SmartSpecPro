@@ -425,17 +425,39 @@ describe("Spec 224 incremental SpecSet compiler", () => {
       { path: "specs/feature/312-project/handoff/project-plan.json", content: packagePlan },
     ]));
 
-    expect(result.workPackages[0]).toMatchObject({ readiness: "READY", requirementIds: ["REQ-CORE-001", "REQ-MODULE-001"] });
+    expect(result.workPackages[0]).toMatchObject({ readiness: "READY", requirementIds: ["canonical:313-core#REQ-CORE-001", "canonical:314-modules#REQ-MODULE-001"] });
     expect(result.requirements.map(item => item.canonicalSpecId)).toEqual(["313-core", "314-modules"]);
   });
 
-  it("rejects duplicate canonical requirement IDs instead of silently merging Specs", () => {
+  it("keeps repeated canonical IDs as separate Spec-scoped requirements", () => {
     const ledger = (specId: string) => JSON.stringify({ spec_digest: "c".repeat(64), requirements: [{ requirement_id: "REQ-SHARED-001", requirement_text: specId }] });
     const source = (specId: string) => ({ specId, specDigest: "c".repeat(64), sourcePath: `specs/${specId}/handoff/requirement-ledger.json`, sourceDigest: "0".repeat(64) });
-    expect(() => compileSpec224IncrementalSpecSet(revision([
+    const plan = JSON.stringify({ initialPackages: ["one", "two"].map(specId => ({
+      id: `package-${specId}`, specRefs: [{ specId, requirementIds: ["REQ-SHARED-001"] }], dependencies: [],
+      acceptanceCriteria: ["The scoped requirement remains traceable."], verification: [{ id: `check-${specId}`, kind: "test", ref: "test:scoped" }],
+      writeSet: { repository: "owner/repo", paths: [`apps/${specId}.ts`] },
+    })) });
+    const result = compileSpec224IncrementalSpecSet(revision([
       { path: "specs/one/handoff/requirement-ledger.json", content: ledger("one"), canonicalSource: source("one") },
       { path: "specs/two/handoff/requirement-ledger.json", content: ledger("two"), canonicalSource: source("two") },
-    ]))).toThrow("REQUIREMENT_ID_DUPLICATE");
+      { path: "specs/project.json", content: plan },
+    ]));
+
+    expect(result.requirements).toHaveLength(2);
+    expect(result.requirements.map(item => item.id)).toEqual(["REQ-SHARED-001", "REQ-SHARED-001"]);
+    expect(result.requirements.map(item => item.canonicalSpecId)).toEqual(["one", "two"]);
+    expect(result.workPackages.map(item => item.requirementIds).sort()).toEqual([["canonical:one#REQ-SHARED-001"], ["canonical:two#REQ-SHARED-001"]]);
+    expect(result.workPackages.every(item => item.readiness === "READY")).toBe(true);
+    expect(result.findings).toContainEqual(expect.objectContaining({ code: "CANONICAL_REQUIREMENT_ID_SCOPED_COLLISION", severity: "warning" }));
+  });
+
+  it("fails closed for a duplicated canonical requirement source key within one Spec", () => {
+    const content = JSON.stringify({ spec_digest: "9".repeat(64), requirements: [{ requirement_id: "REQ-DUPLICATE", requirement_text: "One source requirement." }] });
+    const source = { specId: "312-project", specDigest: "9".repeat(64), sourceDigest: contentDigest(content) };
+    expect(() => compileSpec224IncrementalSpecSet(revision([
+      { path: "specs/312-project/handoff/requirement-ledger.json", content, canonicalSource: { ...source, sourcePath: "specs/312-project/handoff/requirement-ledger.json" } },
+      { path: "specs/312-project/handoff/requirement-ledger-copy.json", content, canonicalSource: { ...source, sourcePath: "specs/312-project/handoff/requirement-ledger-copy.json" } },
+    ]))).toThrow("REQUIREMENT_SOURCE_DUPLICATE");
   });
 
   it("invalidates packages when their canonical ledger source changes", () => {

@@ -16383,7 +16383,13 @@ export const spec224WorkspaceSpecSetRevisions = pgTable(
     digest: varchar("digest", { length: 64 }).notNull(),
     requestDigest: varchar("requestDigest", { length: 64 }).notNull(),
     idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
-    filesJson: jsonb("filesJson").$type<Array<{ path: string; digest: string; content: string }>>().notNull(),
+    filesJson: jsonb("filesJson").$type<Array<{
+      path: string;
+      digest: string;
+      content: string;
+      canonicalSource?: { kind?: "spec" | "manifest" | "requirement-ledger"; specId: string; specDigest: string; sourcePath: string; sourceDigest: string };
+      projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string };
+    }>>().notNull(),
     replacedPathsJson: jsonb("replacedPathsJson").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     requirementCount: integer("requirementCount").notNull(),
     runnableWorkPackageCount: integer("runnableWorkPackageCount").notNull(),

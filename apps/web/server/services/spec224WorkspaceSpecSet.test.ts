@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import AdmZip from "adm-zip";
+import { createHash } from "node:crypto";
 
 import {
   canActorUseRunner,
@@ -11,6 +12,35 @@ import {
   type Spec224WorkspaceSpecSetStore,
 } from "./spec224WorkspaceSpecSet";
 import { validateRunnerCapabilitySnapshot } from "./runnerContracts";
+
+function makeCanonicalProjectInput(description = "Project catalog source binding.") {
+  const projectId = "smartaihub-modular-saas-r14";
+  const sourceRevision = "a".repeat(40);
+  const specDigest = "b".repeat(64);
+  const ledgerPath = "specs/feature/312-project/handoff/requirement-ledger.json";
+  const ledgerContent = JSON.stringify({ spec_digest: specDigest, requirements: [{ requirement_id: "REQ-001", requirement_text: "A canonical project requirement." }] });
+  const ledgerDigest = createHash("sha256").update(ledgerContent).digest("hex");
+  const descriptorContent = JSON.stringify({ initialPackages: [{
+    id: "catalog-binding", specRefs: [{ specId: "312-project", requirementIds: ["REQ-001"] }], dependencies: [],
+    acceptanceCriteria: [description], verification: [{ id: "catalog-test", kind: "test", ref: "test:catalog" }],
+    writeSet: { repository: "naibarn/SmartSpecPro", paths: ["apps/web/server/services/spec224FeatureSpecCatalog.ts"] },
+  }] });
+  const descriptorDigest = createHash("sha256").update(descriptorContent).digest("hex");
+  return {
+    projectId, sourceRevision, descriptorDigest,
+    files: [
+      {
+        path: "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/requirement-ledger.json",
+        digest: ledgerDigest, content: ledgerContent,
+        canonicalSource: { kind: "requirement-ledger" as const, specId: "312-project", specDigest, sourcePath: ledgerPath, sourceDigest: ledgerDigest },
+      },
+      {
+        path: `canonical-projects/${projectId}/project.json`, digest: descriptorDigest, content: descriptorContent,
+        projectSource: { projectId, sourceRevision, descriptorDigest },
+      },
+    ],
+  };
+}
 
 function memoryStore(): Spec224WorkspaceSpecSetStore & {
   bindings: Map<string, any>;
@@ -274,6 +304,54 @@ describe("spec224 workspace Spec Set", () => {
       artifacts: [{ path: "notes.md", contentBase64: Buffer.from("# Notes\nOnly context.", "utf8").toString("base64") }],
     });
     await expect(service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set" })).resolves.toMatchObject({ runnableWorkPackageIds: [], blockers: [expect.stringMatching(/REQUIREMENTS_REQUIRED/)] });
+  });
+
+  it("ingests the pinned modular project into the existing SpecSet with bound source files and idempotency", async () => {
+    const store = memoryStore();
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const project = makeCanonicalProjectInput();
+    const first = await service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-import-001", project });
+    const replay = await service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-import-001", project });
+
+    expect(first).toMatchObject({ revision: 1, requirementCount: 1, runnableWorkPackageCount: 1, blockedWorkPackageCount: 0 });
+    expect(replay).toEqual(first);
+    expect(store.revisions).toHaveLength(1);
+    expect(store.revisions[0].digest).not.toBe(store.revisions[0].requestDigest);
+    expect(store.revisions[0].files).toEqual(expect.arrayContaining([
+      expect.objectContaining({ projectSource: { projectId: "smartaihub-modular-saas-r14", sourceRevision: "a".repeat(40), descriptorDigest: project.descriptorDigest } }),
+      expect.objectContaining({ canonicalSource: expect.objectContaining({ kind: "requirement-ledger", specId: "312-project", sourceDigest: expect.any(String) }) }),
+    ]));
+  });
+
+  it("rejects stale or non-platform workspace bindings for canonical project ingestion", async () => {
+    const staleStore = memoryStore();
+    staleStore.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const staleService = createSpec224WorkspaceSpecSetService(staleStore);
+    await staleService.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    staleStore.availability = "stale";
+    await expect(staleService.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-stale-001", project: makeCanonicalProjectInput() })).rejects.toMatchObject({ code: "WORKSPACE_BINDING_STALE" });
+
+    const userStore = memoryStore();
+    userStore.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "USER_WORKSPACE", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const userService = createSpec224WorkspaceSpecSetService(userStore);
+    await userService.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    await expect(userService.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-user-001", project: makeCanonicalProjectInput() })).rejects.toMatchObject({ code: "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED" });
+  });
+
+  it("rejects an oversized project snapshot and an idempotency key reused for a changed descriptor", async () => {
+    const store = memoryStore();
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const project = makeCanonicalProjectInput();
+    await service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-conflict-001", project });
+    await expect(service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-conflict-001", project: makeCanonicalProjectInput("changed descriptor") })).rejects.toMatchObject({ code: "SPEC_SET_IDEMPOTENCY_CONFLICT" });
+    const oversized = makeCanonicalProjectInput();
+    const largeContent = "x".repeat(1024 * 1024 + 1);
+    oversized.files.push({ path: "canonical-projects/smartaihub-modular-saas-r14/oversized.json", content: largeContent, digest: createHash("sha256").update(largeContent).digest("hex") });
+    await expect(service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-oversized-001", project: oversized })).rejects.toMatchObject({ code: "SPEC_SET_FILE_OVERSIZED" });
   });
 
   it("prepares an explicitly complete package while an independent package stays blocked", async () => {
