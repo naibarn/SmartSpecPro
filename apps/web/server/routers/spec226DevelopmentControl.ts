@@ -53,6 +53,7 @@ import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
 import { assertConversationThreadScope, ConversationThreadError, touchConversationThread } from "../services/conversationThreadService";
 import {
+  createAndBindModularCoreWorkspace,
   createPlatformWorkspaceBinding,
   listPlatformWorkspaceBindingCandidates,
   PlatformWorkspaceBindingError,
@@ -455,6 +456,51 @@ export const spec226DevelopmentControlRouter = router({
           });
           throw new TRPCError({
             code: error.code === "PLATFORM_PROJECT_OWNER_REQUIRED" ? "FORBIDDEN" : "CONFLICT",
+            message: error.code,
+          });
+        }
+        throw error;
+      }
+  }),
+
+  createAndBindModularCoreWorkspace: adminProcedure
+    .input(z.object({
+      runnerId: z.string().min(1).max(160),
+      workspaceId: z.string().min(1).max(200),
+      confirmModularCore: z.literal(true),
+    }).strict())
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ADMIN_REQUIRED" });
+      const scope = requireScope(ctx);
+      try {
+        const result = await createAndBindModularCoreWorkspace({ ...scope, ...input });
+        auditLogger.log({
+          eventType: "spec224_platform_workspace_binding",
+          userId: scope.actorId,
+          tenantId: scope.tenantId,
+          endpoint: "spec226DevelopmentControl.createAndBindModularCoreWorkspace",
+          responsePayload: {
+            action: result.changed ? "created_and_bound_modular_core" : "modular_core_already_bound",
+            projectId: result.projectId,
+            runnerId: result.runnerId,
+            workspaceId: result.workspaceId,
+            repositoryId: result.repositoryId,
+            deploymentTargetId: result.deploymentTargetId,
+            scope: result.scope,
+          },
+        });
+        return result;
+      } catch (error) {
+        if (error instanceof PlatformWorkspaceBindingError) {
+          auditLogger.log({
+            eventType: "spec224_platform_workspace_binding",
+            userId: scope.actorId,
+            tenantId: scope.tenantId,
+            endpoint: "spec226DevelopmentControl.createAndBindModularCoreWorkspace",
+            responsePayload: { action: "rejected", errorCode: error.code },
+          });
+          throw new TRPCError({
+            code: error.code === "MODULAR_CORE_REPOSITORY_REQUIRED" ? "FORBIDDEN" : "CONFLICT",
             message: error.code,
           });
         }

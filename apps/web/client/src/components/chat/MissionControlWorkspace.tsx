@@ -116,6 +116,7 @@ export function MissionControlWorkspace({
   const [runnerFilter, setRunnerFilter] = useState("all");
   const [bindingProjectId, setBindingProjectId] = useState("");
   const [bindingWorkspaceKey, setBindingWorkspaceKey] = useState("");
+  const [modularCoreWorkspaceKey, setModularCoreWorkspaceKey] = useState("");
   const [confirmPlatformEngineering, setConfirmPlatformEngineering] = useState(false);
   const selected = jobs.find((job: any) => job.id === selectedId) ?? null;
   const needsPlatformBinding = modularProjectQuery.error?.message.includes("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED") ?? false;
@@ -129,7 +130,14 @@ export function MissionControlWorkspace({
       await Promise.all([modularProjectQuery.refetch(), bindingOptionsQuery.refetch()]);
     },
   });
+  const createModularCoreBindingMutation = trpc.spec226DevelopmentControl.createAndBindModularCoreWorkspace.useMutation({
+    onSuccess: async () => {
+      setConfirmPlatformEngineering(false);
+      await Promise.all([modularProjectQuery.refetch(), bindingOptionsQuery.refetch()]);
+    },
+  });
   const allBindingWorkspaceOptions = bindingOptionsQuery.data?.workspaces ?? [];
+  const modularCoreWorkspaceOptions = allBindingWorkspaceOptions.filter(workspace => workspace.deploymentTargetId === "modular-debian-dev");
   const bindingProjectOptions = (bindingOptionsQuery.data?.projects ?? []).filter(project =>
     allBindingWorkspaceOptions.some(workspace => workspace.runnerProjectId === project.projectId),
   );
@@ -143,6 +151,9 @@ export function MissionControlWorkspace({
   const bindingWorkspaceValue = (runnerId: string, workspaceId: string) => JSON.stringify([runnerId, workspaceId]);
   const selectedBindingWorkspace = bindingWorkspaceOptions.find(workspace =>
     bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId) === bindingWorkspaceKey,
+  );
+  const selectedModularCoreWorkspace = modularCoreWorkspaceOptions.find(workspace =>
+    bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId) === modularCoreWorkspaceKey,
   );
 
   useEffect(() => {
@@ -158,6 +169,13 @@ export function MissionControlWorkspace({
       setBindingWorkspaceKey(bindingWorkspaceValue(workspaces[0]!.runnerId, workspaces[0]!.workspaceId));
     }
   }, [bindingOptionsQuery.data, bindingProjectId, bindingWorkspaceKey]);
+
+  useEffect(() => {
+    if (!modularCoreWorkspaceKey && modularCoreWorkspaceOptions.length === 1) {
+      const workspace = modularCoreWorkspaceOptions[0]!;
+      setModularCoreWorkspaceKey(bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId));
+    }
+  }, [modularCoreWorkspaceKey, modularCoreWorkspaceOptions]);
 
   useEffect(() => {
     const known = new Set(jobs.map((job: any) => job.id));
@@ -391,7 +409,51 @@ export function MissionControlWorkspace({
                       {bindingOptionsQuery.isLoading ? <AstryxText as="p" type="supporting">กำลังตรวจ Project และ Runner ที่ผูกได้…</AstryxText> : null}
                       {bindingOptionsQuery.error ? <AstryxText as="p" type="supporting" role="alert">อ่านตัวเลือกไม่สำเร็จ: {bindingOptionsQuery.error.message}</AstryxText> : null}
                       {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length === 0 ? (
-                        <AstryxText as="p" type="supporting">ไม่พบ Platform Project ที่บัญชีนี้เป็น owner จึงยังสร้าง binding ไม่ได้</AstryxText>
+                        <AstryxText as="p" type="supporting">ไม่พบ Platform Project ที่บัญชีนี้เป็น owner เลือก Modular Core workspace ด้านล่างเพื่อสร้าง Project และ binding สำหรับ aimarkethubs.com ได้โดยตรง</AstryxText>
+                      ) : null}
+                      {modularCoreWorkspaceOptions.length > 0 ? (
+                        <VStack gap={3}>
+                          <Heading level={3}>เริ่มใช้ Modular Core workspace</Heading>
+                          <AstryxText as="p" type="supporting">
+                            ระบบจะสร้าง Platform Project โดยใช้ Project ID ที่ Runner รายงาน แล้วผูกกับ repository ที่กำหนดไว้สำหรับ aimarkethubs.com เท่านั้น
+                          </AstryxText>
+                          <Selector
+                            label="Core Runner workspace"
+                            placeholder="เลือก Modular Core workspace"
+                            value={modularCoreWorkspaceKey}
+                            onChange={value => {
+                              setModularCoreWorkspaceKey(value);
+                              setConfirmPlatformEngineering(false);
+                            }}
+                            options={modularCoreWorkspaceOptions.map(workspace => ({
+                              value: bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId),
+                              label: `${workspace.runnerDisplayName} · ${workspace.workspaceId}`,
+                            }))}
+                            width="100%"
+                          />
+                          <CheckboxInput
+                            label="ยืนยันว่า repository นี้เป็น Modular Core ของ SmartAIHub"
+                            description="จะสร้าง Project ระดับ Platform ให้บัญชี Admin ปัจจุบันเป็น owner และเปิดสิทธิ์เฉพาะ workspace นี้"
+                            value={confirmPlatformEngineering}
+                            onChange={setConfirmPlatformEngineering}
+                          />
+                          {createModularCoreBindingMutation.error ? <AstryxText as="p" type="supporting" role="alert">ตั้งค่า Modular Core ไม่สำเร็จ: {createModularCoreBindingMutation.error.message}</AstryxText> : null}
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!selectedModularCoreWorkspace || !confirmPlatformEngineering || createModularCoreBindingMutation.isPending}
+                            onClick={() => {
+                              if (!selectedModularCoreWorkspace) return;
+                              createModularCoreBindingMutation.mutate({
+                                runnerId: selectedModularCoreWorkspace.runnerId,
+                                workspaceId: selectedModularCoreWorkspace.workspaceId,
+                                confirmModularCore: true,
+                              });
+                            }}
+                          >
+                            {createModularCoreBindingMutation.isPending ? "กำลังสร้าง Project และผูก workspace…" : "สร้าง Project และเปิด SPEC-312–324"}
+                          </Button>
+                        </VStack>
                       ) : null}
                       {bindingIdentityMismatch ? (
                         <AstryxText as="p" type="supporting" role="alert">
