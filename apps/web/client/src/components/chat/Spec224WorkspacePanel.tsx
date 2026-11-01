@@ -1044,7 +1044,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         const reasonText = reasons || (typeof authorization?.status === "string" ? authorization.status : result.goalAdmissionStatus ?? result.dispatchStatus);
         toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasonText}`);
       } else {
-        const authorization = result.authorization as { reasons?: unknown; status?: unknown; errorCode?: unknown } | null | undefined;
+        const authorization = result.authorization as { reasons?: unknown; status?: unknown; errorCode?: unknown; ownerAction?: unknown } | null | undefined;
         const reasons = Array.isArray(authorization?.reasons)
           ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
           : "";
@@ -1053,7 +1053,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           || (typeof authorization?.status === "string" ? authorization.status : null)
           || result.goalAdmissionStatus
           || result.dispatchStatus;
-        toast.error(simpleMode ? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อม" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
+        const ownerAction = typeof authorization?.ownerAction === "string" ? authorization.ownerAction : null;
+        toast.error(simpleMode ? ownerAction ?? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อมของ Runner แล้วลองอีกครั้ง" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
       }
     } catch (error) {
       toast.error(presentCustomerError(error, "ทำ DevelopmentRun เดิมต่อไม่สำเร็จ"));

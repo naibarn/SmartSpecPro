@@ -256,6 +256,40 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.advanceStart).not.toHaveBeenCalled();
   });
 
+  it("does not fall back to legacy Start authorization when a granted Goal Runner is not ready", async () => {
+    mocks.runnerReadiness.mockResolvedValueOnce({
+      ready: false,
+      code: "CODEX_TASK_PROBE_NOT_RUN",
+      policyDecision: "pending",
+      ownerAction: "Runner → Tools → Codex → ทดสอบสั่งงานจริง",
+      projectId: null,
+    });
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-granted-not-ready", workerJobId: "job-granted-not-ready", state: "DISCOVERY",
+      workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}`,
+      metadata: {
+        spec224BudgetCapMinorUnits: 50,
+        spec224GoalGrantPayload: {
+          grantId: "goal-not-ready", goalId: "goal-not-ready", provider: "codex",
+          budgetLimitMinorUnits: 100, currency: "USD",
+        },
+      },
+    } });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId: "run-granted-not-ready", budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({
+      dispatchStatus: "BLOCKED",
+      goalAdmissionStatus: "RUNNER_BINDING_REQUIRED",
+      authorization: { status: "RUNNER_BINDING_REQUIRED", reasons: ["CODEX_TASK_PROBE_NOT_RUN"] },
+    });
+    expect(mocks.advanceStart).not.toHaveBeenCalled();
+    expect(mocks.requestGoalGrantApproval).not.toHaveBeenCalled();
+    expect(mocks.authorizeDelegatedChild).not.toHaveBeenCalled();
+  });
+
   it("does not resume a Run that belongs to another conversation workspace", async () => {
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
       runnerId: "runner-a", workspaceId: "workspace-a",

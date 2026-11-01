@@ -1782,10 +1782,17 @@ export const spec226DevelopmentControlRouter = router({
           ...(grantProvider === "codex" || grantProvider === "claude_code" || grantProvider === "microsoft_copilot"
             ? { provider: grantProvider } : {}),
           sourceCommit: /^git:([a-f0-9]{40})$/i.exec(record.run.baseRevision)?.[1] });
-        const goalAdmission = grantPayload && typeof grantPayload === "object" && runnerReadiness.ready && runnerReadiness.projectId
-          ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId: input.runId,
-            projectId: runnerReadiness.projectId, runnerId: binding.workspace.runnerId,
-            payload: grantPayload as Record<string, unknown> })
+        const hasPersistedGoalGrant = grantPayload && typeof grantPayload === "object";
+        const goalAdmission = hasPersistedGoalGrant
+          ? !runnerReadiness.ready || !runnerReadiness.projectId
+            ? {
+                status: "RUNNER_BINDING_REQUIRED" as const,
+                reasons: [runnerReadiness.ready ? "SPEC224_PROJECT_BINDING_REQUIRED" : runnerReadiness.code],
+                ...(runnerReadiness.ownerAction ? { ownerAction: runnerReadiness.ownerAction } : {}),
+              }
+            : await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId: input.runId,
+                projectId: runnerReadiness.projectId, runnerId: binding.workspace.runnerId,
+                payload: grantPayload as Record<string, unknown> })
           : await advanceWorkspaceStartAuthorization({
             context: authorizationContext(ctx), runId: input.runId, runnerId: binding.workspace.runnerId,
             // Resume reuses the original per-run cap. The current form's
