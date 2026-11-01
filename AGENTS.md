@@ -145,6 +145,11 @@ append later owner decisions instead of rewriting prior events.
   its dedicated target/controller when the Core release is ready. Until then,
   preserve the currently healthy site, port 3100 and Tunnel; do not claim a
   Core deployment or hand over traffic before its replacement is healthy.
+- The current Debian `smartaihub-runner.service` must pair with and report to
+  `https://smartaihub.app`. Do not point that Runner at `aimarkethubs.com`.
+  If the Core later needs its own Runner, provision a separate, explicitly
+  scoped instance; do not silently retarget or share the current Runner's
+  tenant-bound credentials.
 - Before every release, verify the hostname, application, runtime, service,
   port and target ID against `apps/web/scripts/deployment-targets.json`. If a
   release command cannot prove the intended target, stop before building or
