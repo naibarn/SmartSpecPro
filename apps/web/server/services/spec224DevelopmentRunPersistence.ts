@@ -13,6 +13,7 @@ import {
 import type { JobDefinition, JobRef } from "./jobControlPlaneTypes";
 import type { LeaseContext } from "./jobControlPlaneTypes";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { omitUndefinedJobPayloadProperties } from "./feature186VerticalDramaJobAdapter";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import { buildSpec224FullVerificationJobDefinition } from "./spec224VerificationJob";
 import { getDevelopmentLifecyclePredicate } from "./developmentLifecyclePredicateRegistry";
@@ -1871,13 +1872,13 @@ export async function createPersistedDevelopmentRun(input: {
     },
     definition: {
       ...prepared.definition,
-      input: {
+      input: omitUndefinedJobPayloadProperties({
         ...prepared.definition.input,
         spec224Run: projectionFromRun({
           ...input.run,
           workerJobId: canonicalJobId,
         }),
-      },
+      }) as Record<string, unknown>,
     },
     controlPlane: input.controlPlane,
     executorRegistry: input.executorRegistry,
