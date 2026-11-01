@@ -41,3 +41,26 @@ Development promotion uses the existing delegated server-side controller and
 health checks; a failed activation invokes its recorded rollback. Any later
 manual restoration must use a previously verified immutable build receipt via
 the same controller. No production target is enabled by these commands.
+
+## Development release evidence — 2026-11-01
+
+- Integrated source and deployed source: `950e33598b38b36484bba7aa3487f42f407a0553` (`origin/main`).
+- Target: `legacy-debian-dev` / `smartaihub.app`; receipt generation 276;
+  release `smartspec-web-950e33598b38b36484bba7aa3487f42f407a0553-ceb00a9bfd48`;
+  artifact digest `sha256:5c41b78417efe838b2911f8e1c37d80ecc4b24a8129baa86d778b3c842c0fb14`.
+- Existing Linux controller returned `DEPLOYED_VERIFIED`. `smartspec-web.service`
+  and `smartspec-node-worker.service` report the deployed SHA and healthy status;
+  the existing Python backend service remained active. Public `smartaihub.app`
+  root, login, and health endpoints returned HTTP 200.
+- `aimarkethubs.com` user web service and tunnel remained active; local port 3100
+  health and public root, login, and health endpoints returned HTTP 200. No
+  tenant, database, DNS, or schema changes were made.
+- Promotion failure recovery is automatic in the existing controller. For a
+  later restoration, use the same `release:web:linux -- --target
+  legacy-debian-dev --build-result <previous-verified-build-receipt>` path after
+  selecting a retained, verified receipt; no pointer was manually changed.
+- Modular Core remains unavailable (`release:dev:web -- --target
+  modular-debian-dev` fails closed with `MODULAR_APPLICATION_NOT_AVAILABLE`).
+  `smartsihub.com` remains registered but inactive; no Cloudflare deployment,
+  zone creation, or DNS operation occurred. SPEC-311 Cloudflare deployment and
+  all 20 acceptance requirements remain open.

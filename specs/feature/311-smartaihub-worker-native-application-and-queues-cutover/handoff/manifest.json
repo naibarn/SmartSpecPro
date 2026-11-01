@@ -26,7 +26,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "950e33598b38b36484bba7aa3487f42f407a0553",
     "expected_spec_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360"
   },
   "continuation": {
@@ -90,6 +90,11 @@
         "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
         "kind": "OWNER_DIRECTED_DECOMMISSION",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
+      },
+      {
+        "digest": "e61385b491d5aacd22f92bbc417c38bcc968b0598714c33e2063223549ac9256",
+        "kind": "LEGACY_DEVELOPMENT_REALIGNMENT",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/amendments/deployment-target-realignment-20261101.md"
       }
     ],
     "required": true,
@@ -113,7 +118,7 @@
     "rationale": "Owner explicitly requested this complete Worker-native and Queues migration spec on 2026-11-01; no conflicting canonical SPEC-311 entry was found.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
     "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
@@ -137,10 +142,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "950e33598b38b36484bba7aa3487f42f407a0553",
+    "integrated": true,
+    "integrated_at": "2026-11-01T04:54:36Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -866,7 +871,7 @@
     "unresolved": 20
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T01:15:15.296158Z",
+  "updated_at": "2026-11-01T04:55:02.513338Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

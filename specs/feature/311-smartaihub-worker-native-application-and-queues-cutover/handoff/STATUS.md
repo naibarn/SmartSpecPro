@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 20 unresolved of 20
 - Next action: Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.
-- Manifest generation: 9
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 
