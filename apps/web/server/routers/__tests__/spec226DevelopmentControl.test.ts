@@ -467,7 +467,7 @@ describe("spec226DevelopmentControlRouter", () => {
     await expect((spec226DevelopmentControlRouter.modularSaasProjectMissionControl as unknown as Function)({ ctx: CTX, input: {} }))
       .resolves.toMatchObject({ ingestionStatus: "CURRENT", linkedRuns: [{ runId: "run-current", specSetRevision: 5 }] });
     expect(mocks.workspaceSpecSets.getLatestRevision).toHaveBeenCalledWith({ tenantId: "tenant-acme", actorId: 42, runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId });
-    expect(mocks.bridge.list).toHaveBeenCalledWith({ scope: { tenantId: "tenant-acme", actorId: 42 }, limit: 100 });
+    expect(mocks.bridge.list).toHaveBeenCalledWith({ tenantId: "tenant-acme", actorId: 42, limit: 100 });
 
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([]);
     await expect((spec226DevelopmentControlRouter.modularSaasProjectMissionControl as unknown as Function)({ ctx: CTX, input: {} }))
