@@ -547,6 +547,33 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["status"], "BUILD_PASSED")
         self.assertEqual(result["build_target"], "fixture-policy-target")
 
+    def test_legacy_web_build_can_skip_cloudflare_staging_publication(self) -> None:
+        import canonical_source
+
+        self.assertIn(
+            "skip_cloudflare_staging_publication",
+            __import__("inspect").signature(canonical_source.build_canonical).parameters,
+        )
+        with mock.patch.object(
+            canonical_source,
+            "_cloudflare_staging_bundle",
+            side_effect=AssertionError("legacy Debian build must not inspect or publish a Cloudflare bundle"),
+        ):
+            result = canonical_source.build_canonical(
+                self.shared,
+                command=[sys.executable, "-c", "print('build')"],
+                required_revisions=[self.revision],
+                build_target="smartspec-web",
+                policy_path=self.policy,
+                skip_cloudflare_staging_publication=True,
+            )
+
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertEqual(
+            result["cloudflare_staging_artifact"],
+            {"status": "SKIPPED", "reason": "legacy_debian_deployment_target"},
+        )
+
     def test_web_build_admission_uses_fallback_with_required_artifact_space(self) -> None:
         import canonical_source
 

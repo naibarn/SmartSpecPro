@@ -98,6 +98,16 @@ mode, deployment authority, database authority and live traffic impact as
 separate facts. `NODE_ENV=production` is an optimized Node build/runtime mode;
 it does not classify a deployment as production or grant deployment authority.
 
+Treat the hostname-to-runtime mapping below as a hard boundary:
+
+- `smartaihub.app` is the current development site on Debian/Linux. Its release
+  must use the legacy immutable Linux controller and must not publish a
+  Cloudflare staging artifact or deploy a Worker. A Cloudflare proxy/header at
+  the public edge does not change the application runtime or release target.
+- `smartsihub.com` is the separate future production site for Modular SaaS on
+  Cloudflare Workers/Hono. It has an independent production release authority
+  and must not be activated by a `smartaihub.app` release.
+
 - `legacy-debian-dev`: `https://smartaihub.app`, Legacy SmartAIHub on the
   existing Debian `smartspec-web.service` at port 3000, development authority,
   existing PostgreSQL `smartspec`. Use the immutable Linux release controller

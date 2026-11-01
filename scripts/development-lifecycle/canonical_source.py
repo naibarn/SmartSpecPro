@@ -1272,6 +1272,7 @@ def build_canonical(
     command: Sequence[str],
     required_revisions: Sequence[str] = (),
     build_target: str | None = None,
+    skip_cloudflare_staging_publication: bool = False,
     policy_path: Path | None = None,
     lease_seconds: int = 900,
 ) -> dict[str, Any]:
@@ -1364,6 +1365,7 @@ def build_canonical(
         cloudflare_bundle = (
             _cloudflare_staging_bundle(Path(str(lease["isolated_workspace"])), str(lease["source_revision"]))
             if exit_code == 0 and lease["canonical_ref"] == "refs/heads/main"
+            and not skip_cloudflare_staging_publication
             else None
         )
         latest_tip = remote_canonical_tip(repo, policy)
@@ -1407,7 +1409,11 @@ def build_canonical(
             "started_at": started_at,
             "completed_at": completed_at,
             "artifact": artifact_manifest,
-            "cloudflare_staging_artifact": cloudflare_bundle or {"status": "PUBLISH_PENDING", "reason": "canonical_staging_bundle_unavailable"},
+            "cloudflare_staging_artifact": cloudflare_bundle or (
+                {"status": "SKIPPED", "reason": "legacy_debian_deployment_target"}
+                if skip_cloudflare_staging_publication
+                else {"status": "PUBLISH_PENDING", "reason": "canonical_staging_bundle_unavailable"}
+            ),
             "isolated_workspace": lease["isolated_workspace"],
             "primary_workspace_sync": primary_workspace_sync,
         }
@@ -1481,6 +1487,7 @@ def build_latest_canonical(
     command: Sequence[str],
     required_revisions: Sequence[str] = (),
     build_target: str | None = None,
+    skip_cloudflare_staging_publication: bool = False,
     policy_path: Path | None = None,
     lease_seconds: int = 900,
     max_stale_rebuilds: int = 0,
@@ -1500,6 +1507,7 @@ def build_latest_canonical(
             command=command,
             required_revisions=required_revisions,
             build_target=build_target,
+            skip_cloudflare_staging_publication=skip_cloudflare_staging_publication,
             policy_path=policy_path,
             lease_seconds=lease_seconds,
         )
@@ -1542,6 +1550,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--policy", type=Path)
     build.add_argument("--required-integrated-revision", action="append", default=[])
     build.add_argument("--build-target")
+    build.add_argument("--skip-cloudflare-staging-publication", action="store_true")
     build.add_argument("--lease-seconds", type=int, default=900)
     build.add_argument("--max-stale-rebuilds", type=int, default=0)
     build.add_argument("command", nargs=argparse.REMAINDER)
@@ -1594,6 +1603,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 command=command,
                 required_revisions=args.required_integrated_revision,
                 build_target=args.build_target,
+                skip_cloudflare_staging_publication=args.skip_cloudflare_staging_publication,
                 policy_path=args.policy,
                 lease_seconds=args.lease_seconds,
                 max_stale_rebuilds=args.max_stale_rebuilds,

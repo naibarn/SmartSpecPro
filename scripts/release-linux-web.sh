@@ -105,6 +105,10 @@ if [[ "${TARGET_ID}" != "legacy-debian-dev" ]]; then
   exit 20
 fi
 
+# The legacy Debian site has its own release authority. Building its artifact
+# must not trigger the independent Cloudflare staging artifact publisher.
+BUILD_ARGS+=(--skip-cloudflare-staging-publication)
+
 python3 - "${REPOSITORY_ROOT}" "${TARGET_ID}" <<'PY'
 import json
 import subprocess
