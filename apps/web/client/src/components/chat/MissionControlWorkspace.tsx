@@ -321,7 +321,18 @@ export function MissionControlWorkspace({
             <Section aria-label="SmartAIHub Modular SaaS project portfolio" variant="transparent" padding={0}>
               <Heading level={2}>SmartAIHub Modular SaaS</Heading>
               {modularProjectQuery.isLoading ? <AstryxText as="p" type="supporting">กำลังอ่านสถานะ Specs และ SPEC-224…</AstryxText> : null}
-              {modularProjectQuery.error ? <AstryxText as="p" type="supporting">อ่านข้อมูลโครงการไม่ได้ หรือบัญชีนี้ไม่มีสิทธิ์ PLATFORM_ENGINEERING</AstryxText> : null}
+              {modularProjectQuery.error ? (
+                <Section aria-label="Project access status" variant="muted" padding={3}>
+                  <AstryxText as="p" type="supporting" role="alert">
+                    {modularProjectQuery.error.message.includes("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED")
+                      ? "บัญชีนี้ยังไม่มีสิทธิ์เข้าถึง SmartAIHub Development Project ต้องมีสมาชิก Project ระดับ owner/editor และ Workspace binding สำหรับงาน Platform Engineering ใน tenant นี้ก่อน จึงจะดู Specs หรือเริ่มงานได้"
+                      : "โหลดข้อมูล Modular SaaS ไม่สำเร็จ โปรดลองโหลดใหม่อีกครั้ง"}
+                  </AstryxText>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void modularProjectQuery.refetch()}>
+                    ลองโหลดข้อมูลอีกครั้ง
+                  </Button>
+                </Section>
+              ) : null}
               {modularProjectQuery.data ? (
                 <>
                   <AstryxText as="p" type="supporting">
@@ -387,6 +398,7 @@ export function MissionControlWorkspace({
               ) : null}
             </Section>
           ) : null}
+          {section !== "projects" ? <>
           <header className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <section>
               <h2 className="text-xl font-semibold">
@@ -806,9 +818,10 @@ export function MissionControlWorkspace({
               </p>
             ) : null}
           </section>
+          </> : null}
         </section>
 
-        <aside
+        {section !== "projects" ? <aside
           className="min-h-0 overflow-auto border-t bg-background p-4 lg:border-l lg:border-t-0"
           aria-label="Execution inspector"
         >
@@ -953,7 +966,7 @@ export function MissionControlWorkspace({
               </section>
             </section>
           )}
-        </aside>
+        </aside> : null}
       </section>
     </main>
   );
