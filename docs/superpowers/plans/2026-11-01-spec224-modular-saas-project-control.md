@@ -100,11 +100,11 @@
 - Update generated `specs/_status/*` projections through `tools.spec_handoff`.
 - Update `orchestra/progress.md` only if this existing task needs a durable continuation pointer.
 
-- [ ] Compile one documentation/test-only package bound to exact SpecSet and `smartaihub-platform` source SHAs.
-- [ ] Prepare it through existing SPEC-224; if current authorized Runner capability is unavailable, record the precise `UNVERIFIED` boundary and continue other ready work.
-- [ ] Verify target-scoped readiness; do not touch `aimarkethubs.com` traffic or activate `smartsihub.com`.
-- [ ] Run focused diff, secret, unit, and handoff/index checks; repair task-caused failures.
-- [ ] Commit only owned files, push to `origin/main`, fetch, and verify local `main == origin/main`.
+- [x] Compile the documentation/catalog package against the descriptor-pinned SPEC source SHA `1f6e5432a278f05e9811e88fb7bc61fb70938d32` and implementation source SHA `7456bbe549050473543acbec2b9094d95e5a2e95`; result is READY with no blockers.
+- [ ] Prepare it through existing SPEC-224. **UNVERIFIED:** no authenticated Platform Engineering Runner binding or SpecSet preparation was exercised in this task; no plan/run or runtime evidence is claimed.
+- [x] Resolve deployment boundaries from `apps/web/scripts/deployment-targets.json`; existing port-3100 health returned 200 and was left unchanged. `smartsihub.com` remains registered-not-activated.
+- [x] Run focused unit/API tests, JSX transform, staged diff check, and staged secret-pattern scan. Handoff files were not changed in this checkpoint.
+- [x] Commit only owned files, push to `origin/main`, fetch, and verify local `main == origin/main`.
 
 ## Execution Notes
 
