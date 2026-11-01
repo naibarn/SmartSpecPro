@@ -273,6 +273,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
   }
   return {
     availableWorkspaces: (input: { tenantId: string; actorId: number }) => store.listTrustedWorkspaces(input),
+    getLatestRevision: (input: { tenantId: string; actorId: number; runnerId: string; workspaceId: string }) => store.getLatestRevision(input),
     async bindConversationWorkspace(input: { tenantId: string; actorId: number; conversationId: number; runnerId: string; workspaceId: string }) {
       await requireConversation(input);
       const workspace = (await store.listTrustedWorkspaces(input)).find(candidate => candidate.runnerId === input.runnerId && candidate.workspaceId === input.workspaceId);
