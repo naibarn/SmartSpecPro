@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 22 unresolved of 22
-- Next action: Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.
-- Manifest generation: 2
+- Next action: Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.
+- Manifest generation: 3
 
 ## Source-declared status and relationship claims
 

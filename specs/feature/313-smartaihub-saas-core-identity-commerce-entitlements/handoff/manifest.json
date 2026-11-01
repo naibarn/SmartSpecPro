@@ -28,10 +28,10 @@
     "expected_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98"
   },
   "continuation": {
-    "next_action": "Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.",
-    "next_ready_workunit": "SPEC-313 implementation slice",
+    "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
+    "next_ready_workunit": "SPEC-313 next implementation slice",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -39,10 +39,10 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
+      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
     ],
-    "next_action": "Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
+    "rationale": "Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,7 +75,7 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
     "digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
@@ -92,11 +92,20 @@
     "title": "SmartAIHub Minimal SaaS Core — Identity, Tenancy, Entitlements and Canonical Commerce Integration"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "7456bbe549050473543acbec2b9094d95e5a2e95"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/saas-core/package.json",
+      "apps/saas-core/src/index.ts",
+      "apps/saas-core/src/index.test.ts",
+      "apps/saas-core/wrangler.jsonc",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": null,
@@ -140,10 +149,10 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
+        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
       ],
-      "next_action": "Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
+      "rationale": "Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented.",
       "residual_requirements": []
     },
     "disposition": {
@@ -256,7 +265,7 @@
     "unresolved": 22
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:38.046943Z",
+  "updated_at": "2026-11-01T07:29:34.221741Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

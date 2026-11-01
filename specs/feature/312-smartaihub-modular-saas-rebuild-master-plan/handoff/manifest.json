@@ -28,10 +28,10 @@
     "expected_spec_digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4"
   },
   "continuation": {
-    "next_action": "Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.",
-    "next_ready_workunit": "SPEC-312 implementation slice",
+    "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+    "next_ready_workunit": "SPEC-312 next implementation slice",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -39,10 +39,10 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
     ],
-    "next_action": "Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+    "rationale": "Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,7 +75,7 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
@@ -92,11 +92,20 @@
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "7456bbe549050473543acbec2b9094d95e5a2e95"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/saas-core/package.json",
+      "apps/saas-core/src/index.ts",
+      "apps/saas-core/src/index.test.ts",
+      "apps/saas-core/wrangler.jsonc",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": null,
@@ -140,10 +149,10 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
       ],
-      "next_action": "Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+      "rationale": "Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main.",
       "residual_requirements": []
     },
     "disposition": {
@@ -256,7 +265,7 @@
     "unresolved": 21
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:37.634554Z",
+  "updated_at": "2026-11-01T07:29:34.175922Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

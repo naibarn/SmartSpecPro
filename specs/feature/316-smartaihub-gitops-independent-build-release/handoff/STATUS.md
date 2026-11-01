@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 21 unresolved of 21
-- Next action: Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.
-- Manifest generation: 2
+- Next action: Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.
+- Manifest generation: 3
 
 ## Source-declared status and relationship claims
 

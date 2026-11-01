@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 21 unresolved of 21
-- Next action: Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.
-- Manifest generation: 2
+- Next action: Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.
+- Manifest generation: 3
 
 ## Source-declared status and relationship claims
 

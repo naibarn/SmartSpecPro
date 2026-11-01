@@ -28,10 +28,10 @@
     "expected_spec_digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704"
   },
   "continuation": {
-    "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
-    "next_ready_workunit": "SPEC-316 implementation slice",
+    "next_action": "Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.",
+    "next_ready_workunit": "SPEC-316 next implementation slice",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Private modular repo created with one pnpm workspace and one JS lockfile; local test/typecheck/Wrangler dry-run pass. No release workflow or deployment is claimed. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -39,10 +39,10 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
     ],
-    "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.",
+    "rationale": "Private modular repo created with one pnpm workspace and one JS lockfile; local test/typecheck/Wrangler dry-run pass. No release workflow or deployment is claimed.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,7 +75,7 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
     "digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
@@ -92,11 +92,20 @@
     "title": "SmartAIHub GitHub Repository Federation, Targeted CI, Immutable Per-Module Release and Wrangler Deploy"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "7456bbe549050473543acbec2b9094d95e5a2e95"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/saas-core/package.json",
+      "apps/saas-core/src/index.ts",
+      "apps/saas-core/src/index.test.ts",
+      "apps/saas-core/wrangler.jsonc",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": null,
@@ -140,10 +149,10 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
       ],
-      "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.",
+      "rationale": "Private modular repo created with one pnpm workspace and one JS lockfile; local test/typecheck/Wrangler dry-run pass. No release workflow or deployment is claimed.",
       "residual_requirements": []
     },
     "disposition": {
@@ -256,7 +265,7 @@
     "unresolved": 21
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:39.298625Z",
+  "updated_at": "2026-11-01T07:29:34.267698Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
