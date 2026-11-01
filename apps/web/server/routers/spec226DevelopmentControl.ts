@@ -569,7 +569,7 @@ export const spec226DevelopmentControlRouter = router({
             sourceRevision: projectSource.sourceRevision,
           };
         }))).filter((item): item is NonNullable<typeof item> => item !== null);
-        const runList = await defaultSpec226DevelopmentControlBridge.list({ scope, limit: 100 });
+        const runList = await defaultSpec226DevelopmentControlBridge.list({ ...scope, limit: 100 });
         const runs = runList.flatMap(run => {
           if (!run.specSetRevision || !ingestions.some(item => item.workspaceId === run.workspaceId && item.revision === run.specSetRevision)) return [];
           return [{
