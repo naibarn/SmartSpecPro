@@ -410,6 +410,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
+  const platformBindingCandidatesQuery = trpc.spec226DevelopmentControl.listPlatformWorkspaceBindingCandidates.useQuery(undefined, {
+    enabled: isAdmin && Boolean(selectedRunnerId),
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const platformWorkspaces = workspaces.filter(item => item.scope === "PLATFORM_ENGINEERING");
   const platformWorkspace = platformWorkspaces.find(item => selectionKey(item) === selected) ?? platformWorkspaces[0];
@@ -442,6 +447,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     },
   });
   const bindMutation = trpc.spec226DevelopmentControl.bindConversationWorkspace.useMutation();
+  const createModularCoreBindingMutation = trpc.spec226DevelopmentControl.createAndBindModularCoreWorkspace.useMutation();
   const ingestMutation = trpc.spec226DevelopmentControl.ingestSpecSet.useMutation();
   const featureSpecsQuery = trpc.spec226DevelopmentControl.listFeatureSpecs.useQuery(
     { search: featureSpecSearch.trim() || undefined },
@@ -500,6 +506,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
+  const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
+    candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
+      && candidate.deploymentTargetId === "modular-debian-dev",
+  );
+  const selectedWorkspaceIsModularCoreBound = platformWorkspaces.some(workspace =>
+    workspace.runnerId === selectedWorkspace?.runnerId && workspace.workspaceId === selectedWorkspace?.workspaceId
+      && workspace.deploymentTarget?.id === "modular-debian-dev",
+  );
   const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
   const featureSpecs = featureSpecsQuery.data?.specs ?? [];
   const availableFeatureSpecs = featureSpecs.filter(spec =>
@@ -643,6 +657,43 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     } catch (error) {
       setSelected("");
       toast.error(error instanceof Error ? sanitizePlatformDiagnostic(error.message) : "ผูก workspace ไม่สำเร็จ");
+    }
+  }
+
+  async function enableSelectedModularCoreWorkspace() {
+    if (!isAdmin || !selectedModularCoreCandidate || selectedWorkspaceIsModularCoreBound) return;
+    setUploading(true);
+    try {
+      await createModularCoreBindingMutation.mutateAsync({
+        runnerId: selectedModularCoreCandidate.runnerId,
+        workspaceId: selectedModularCoreCandidate.workspaceId,
+        confirmModularCore: true,
+      });
+      const refreshed = await workspacesQuery.refetch();
+      const boundCoreWorkspace = refreshed.data?.workspaces.find(workspace =>
+        workspace.runnerId === selectedModularCoreCandidate.runnerId
+          && workspace.workspaceId === selectedModularCoreCandidate.workspaceId
+          && workspace.scope === "PLATFORM_ENGINEERING"
+          && workspace.deploymentTarget?.id === "modular-debian-dev",
+      );
+      if (!boundCoreWorkspace) throw new Error("MODULAR_CORE_WORKSPACE_BINDING_NOT_VISIBLE");
+      setSelectedRunnerId(boundCoreWorkspace.runnerId);
+      setSelected(selectionKey(boundCoreWorkspace));
+      setSpecSource("catalog");
+      setSelectedFeatureSpec("");
+      if (conversationId) {
+        await bindMutation.mutateAsync({
+          conversationId,
+          runnerId: boundCoreWorkspace.runnerId,
+          workspaceId: boundCoreWorkspace.workspaceId,
+        });
+        await workspaceQuery.refetch();
+      }
+      toast.success("ผูก Core workspace แล้ว · เลือก SPEC-312–324 ได้");
+    } catch (error) {
+      toast.error(presentCustomerError(error, "เปิดใช้ Core workspace ไม่สำเร็จ"));
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -1208,6 +1259,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     ? "มีการเปลี่ยนแปลงใน workspace"
                     : "ไม่มีการเปลี่ยนแปลงที่ยังไม่บันทึก"}
               </p>
+            </section>
+          ) : null}
+          {selectedModularCoreCandidate && !selectedWorkspaceIsModularCoreBound ? (
+            <section className="mt-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs" aria-label="เปิดใช้ Core Specs">
+              <p className="font-medium text-sky-950">Workspace นี้เป็น Core สำหรับ aimarkethubs.com แต่ยังไม่ได้ผูกสิทธิ์ Platform Engineering</p>
+              <p className="mt-1 text-sky-900">ผูก workspace นี้ก่อน แล้วรายการ Canonical SPEC-312–324 จะเปิดให้เลือกในหน้านี้</p>
+              {isAdmin ? (
+                <Button type="button" size="sm" className="mt-2" disabled={uploading || createModularCoreBindingMutation.isPending || workspacesQuery.isFetching} onClick={() => void enableSelectedModularCoreWorkspace()}>
+                  {createModularCoreBindingMutation.isPending ? "กำลังผูก Core workspace…" : "ผูก Core workspace และโหลด SPEC-312–324"}
+                </Button>
+              ) : <p className="mt-2 text-amber-800">ให้ผู้ดูแลระบบผูก Core workspace นี้ก่อน</p>}
             </section>
           ) : null}
           {!conversationId ? (
