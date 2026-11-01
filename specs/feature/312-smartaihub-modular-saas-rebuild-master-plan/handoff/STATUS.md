@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 21 unresolved of 21
 - Next action: Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.
-- Manifest generation: 3
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 

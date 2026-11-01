@@ -29,7 +29,7 @@
   },
   "continuation": {
     "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
-    "next_ready_workunit": "SPEC-312 next implementation slice",
+    "next_ready_workunit": "r14-core-p1-first-slice",
     "reactivation_predicate": null,
     "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
     "waiting_predicate": null
@@ -75,7 +75,7 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
@@ -265,7 +265,7 @@
     "unresolved": 21
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:29:34.175922Z",
+  "updated_at": "2026-11-01T14:59:05.198376Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
