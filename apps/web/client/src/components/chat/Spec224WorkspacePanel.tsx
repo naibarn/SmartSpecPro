@@ -1443,8 +1443,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {sanitizePlatformDiagnostic(featureSpecsQuery.error.message)}</p> : null}
                       {!featureSpecsQuery.isLoading && !featureSpecsQuery.error && featureSpecsQuery.data?.specs.length === 0 ? <p role="status" className="text-xs text-amber-800">ไม่พบไฟล์ SPEC ใน catalog ของเว็บไซต์นี้ โปรดลองโหลดหน้าใหม่ หรือแจ้งผู้ดูแลให้ตรวจชุดไฟล์ SPEC ที่ติดตั้งบนเซิร์ฟเวอร์</p> : null}
                       {selectedFeatureSpec && featureSpecContextQuery.data ? <section className="rounded-md bg-[var(--color-background-subtle)] p-2 text-xs" aria-label="Canonical SPEC work context">
-                        <p className="font-medium">{featureSpecContextQuery.data.title}</p><p>{featureSpecContextQuery.data.summary}</p>
-                        {featureSpecContextQuery.data.handoff.status === "CURRENT" ? <><p className="mt-1">Next WorkUnit: {featureSpecContextQuery.data.handoff.nextReadyWorkunit ?? "ยังไม่กำหนด"}</p><p>{featureSpecContextQuery.data.handoff.nextAction ?? featureSpecContextQuery.data.handoff.resumePoint}</p>{featureSpecContextQuery.data.handoff.openRequirements.map(item => <p key={item.id}>{item.id}: {item.text}{item.nextAction ? ` · ${item.nextAction}` : ""}</p>)}</> : <p role="alert">handoff {featureSpecContextQuery.data.handoff.status}: {featureSpecContextQuery.data.handoff.nextAction}</p>}
+                        <p className="font-medium">{featureSpecContextQuery.data.title}</p>
+                        {featureSpecContextQuery.data.summary ? <p className="mt-1">{featureSpecContextQuery.data.summary}</p> : null}
+                        {featureSpecContextQuery.data.handoff.status === "CURRENT" ? <>
+                          <p className="mt-2">สถานะ: พร้อมใช้ handoff · Next WorkUnit: {featureSpecContextQuery.data.handoff.nextReadyWorkunit ?? "ยังไม่กำหนด"}</p>
+                          {featureSpecContextQuery.data.handoff.nextAction || featureSpecContextQuery.data.handoff.resumePoint ? <p className="mt-1">ขั้นถัดไป: {(featureSpecContextQuery.data.handoff.nextAction ?? featureSpecContextQuery.data.handoff.resumePoint ?? "").slice(0, 280)}{(featureSpecContextQuery.data.handoff.nextAction ?? featureSpecContextQuery.data.handoff.resumePoint ?? "").length > 280 ? "…" : ""}</p> : null}
+                          {featureSpecContextQuery.data.handoff.openRequirements.length ? <details className="mt-2 rounded border border-[var(--color-border)] p-2">
+                            <summary className="cursor-pointer font-medium">ดู Requirements ที่ยังเปิด ({featureSpecContextQuery.data.handoff.openRequirements.length})</summary>
+                            <ul className="mt-2 list-inside list-disc space-y-1">
+                              {featureSpecContextQuery.data.handoff.openRequirements.map(item => <li key={item.id}><strong>{item.id}:</strong> {item.text}{item.nextAction ? ` · ขั้นถัดไป: ${item.nextAction}` : ""}</li>)}
+                            </ul>
+                          </details> : null}
+                        </> : <p role="alert" className="mt-2">handoff {featureSpecContextQuery.data.handoff.status}: {(featureSpecContextQuery.data.handoff.nextAction ?? "").slice(0, 280)}{(featureSpecContextQuery.data.handoff.nextAction?.length ?? 0) > 280 ? "…" : ""}</p>}
                         {!simpleMode ? <p className="mt-1 break-all">{featureSpecContextQuery.data.path} · SHA-256 {featureSpecContextQuery.data.digest}</p> : null}
                       </section> : null}
                       {selectedFeatureSpec ? <p className="break-all text-xs text-[var(--color-text-secondary)]">ต้นฉบับ: specs/feature/{selectedFeatureSpec}/spec.md</p> : null}
