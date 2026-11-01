@@ -19,7 +19,11 @@ import { UnifiedWorkspaceInspector } from "@/components/chat/UnifiedWorkspaceIns
 import { Section } from "@astryxdesign/core/Section";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text as AstryxText } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
+import { Selector } from "@astryxdesign/core/Selector";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Table, proportional } from "@astryxdesign/core/Table";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PresentationMode = "simple" | "developer";
 type MissionSection =
@@ -78,6 +82,8 @@ export function MissionControlWorkspace({
   initialJobId,
   initialJobIds,
 }: Props) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const query = trpc.workerJobs.observability.useQuery(
     {},
     {
@@ -108,7 +114,35 @@ export function MissionControlWorkspace({
   const [harnessFilter, setHarnessFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [runnerFilter, setRunnerFilter] = useState("all");
+  const [bindingProjectId, setBindingProjectId] = useState("");
+  const [bindingWorkspaceKey, setBindingWorkspaceKey] = useState("");
+  const [confirmPlatformEngineering, setConfirmPlatformEngineering] = useState(false);
   const selected = jobs.find((job: any) => job.id === selectedId) ?? null;
+  const needsPlatformBinding = modularProjectQuery.error?.message.includes("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED") ?? false;
+  const bindingOptionsQuery = trpc.spec226DevelopmentControl.listPlatformWorkspaceBindingCandidates.useQuery(undefined, {
+    enabled: isAdmin && presentationMode === "developer" && section === "projects" && needsPlatformBinding,
+    retry: false,
+  });
+  const bindingMutation = trpc.spec226DevelopmentControl.bindPlatformWorkspace.useMutation({
+    onSuccess: async () => {
+      setConfirmPlatformEngineering(false);
+      await Promise.all([modularProjectQuery.refetch(), bindingOptionsQuery.refetch()]);
+    },
+  });
+  const bindingWorkspaceOptions = bindingOptionsQuery.data?.workspaces ?? [];
+  const bindingWorkspaceValue = (runnerId: string, workspaceId: string) => JSON.stringify([runnerId, workspaceId]);
+  const selectedBindingWorkspace = bindingWorkspaceOptions.find(workspace =>
+    bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId) === bindingWorkspaceKey,
+  );
+
+  useEffect(() => {
+    const projects = bindingOptionsQuery.data?.projects ?? [];
+    if (!bindingProjectId && projects.length === 1) setBindingProjectId(projects[0]!.projectId);
+    const workspaces = bindingOptionsQuery.data?.workspaces ?? [];
+    if (!bindingWorkspaceKey && workspaces.length === 1) {
+      setBindingWorkspaceKey(bindingWorkspaceValue(workspaces[0]!.runnerId, workspaces[0]!.workspaceId));
+    }
+  }, [bindingOptionsQuery.data, bindingProjectId, bindingWorkspaceKey]);
 
   useEffect(() => {
     const known = new Set(jobs.map((job: any) => job.id));
@@ -325,12 +359,87 @@ export function MissionControlWorkspace({
                 <Section aria-label="Project access status" variant="muted" padding={3}>
                   <AstryxText as="p" type="supporting" role="alert">
                     {modularProjectQuery.error.message.includes("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED")
-                      ? "บัญชีนี้ยังไม่มีสิทธิ์เข้าถึง SmartAIHub Development Project ต้องมีสมาชิก Project ระดับ owner/editor และ Workspace binding สำหรับงาน Platform Engineering ใน tenant นี้ก่อน จึงจะดู Specs หรือเริ่มงานได้"
+                      ? isAdmin
+                        ? "ยังไม่มี Workspace binding สำหรับ Platform Engineering ใน tenant นี้ ต้องให้ Admin ที่เป็น owner ของ Platform Project เลือกและผูก workspace ที่ตรวจสอบแล้วก่อน จึงจะเปิด Specs ได้"
+                        : "ยังไม่มีสิทธิ์ Workspace สำหรับ Platform Engineering ใน tenant นี้ ให้ Admin ที่เป็น owner ของ Platform Project ตั้งค่า binding ก่อน จึงจะเปิด Specs ได้"
                       : "โหลดข้อมูล Modular SaaS ไม่สำเร็จ โปรดลองโหลดใหม่อีกครั้ง"}
                   </AstryxText>
                   <Button type="button" variant="outline" size="sm" onClick={() => void modularProjectQuery.refetch()}>
                     ลองโหลดข้อมูลอีกครั้ง
                   </Button>
+                  {isAdmin && needsPlatformBinding ? (
+                    <Section aria-label="ตั้งค่า Platform Engineering workspace" variant="transparent" padding={0}>
+                      <Heading level={3}>ผูก Runner workspace</Heading>
+                      <AstryxText as="p" type="supporting">
+                        เลือกได้เฉพาะ Project ที่บัญชี Admin นี้เป็น owner และ workspace จาก Runner ที่ trusted, online และรายงานสถานะล่าสุด
+                      </AstryxText>
+                      {bindingOptionsQuery.isLoading ? <AstryxText as="p" type="supporting">กำลังตรวจ Project และ Runner ที่ผูกได้…</AstryxText> : null}
+                      {bindingOptionsQuery.error ? <AstryxText as="p" type="supporting" role="alert">อ่านตัวเลือกไม่สำเร็จ: {bindingOptionsQuery.error.message}</AstryxText> : null}
+                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length === 0 ? (
+                        <AstryxText as="p" type="supporting">ไม่พบ Platform Project ที่บัญชีนี้เป็น owner จึงยังสร้าง binding ไม่ได้</AstryxText>
+                      ) : null}
+                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length > 0 && bindingWorkspaceOptions.length === 0 ? (
+                        <AstryxText as="p" type="supporting">
+                          ไม่พบ workspace ที่ Runner รายงานในขณะนี้ ตรวจบน Debian ด้วย `smartaihub-runner workspace list` แล้วสั่ง `smartaihub-runner rescan`
+                        </AstryxText>
+                      ) : null}
+                      {bindingOptionsQuery.data && bindingOptionsQuery.data.projects.length > 0 && bindingWorkspaceOptions.length > 0 ? (
+                        <VStack gap={3}>
+                          <Selector
+                            label="Platform Project"
+                            placeholder="เลือก Project ที่คุณเป็น owner"
+                            value={bindingProjectId}
+                            onChange={value => {
+                              setBindingProjectId(value);
+                              setConfirmPlatformEngineering(false);
+                            }}
+                            options={bindingOptionsQuery.data.projects.map(project => ({
+                              value: project.projectId,
+                              label: `${project.title} · ${project.projectType}`,
+                            }))}
+                            width="100%"
+                          />
+                          <Selector
+                            label="Runner workspace"
+                            placeholder="เลือก workspace จาก Runner ที่เชื่อถือได้"
+                            value={bindingWorkspaceKey}
+                            onChange={value => {
+                              setBindingWorkspaceKey(value);
+                              setConfirmPlatformEngineering(false);
+                            }}
+                            options={bindingWorkspaceOptions.map(workspace => ({
+                              value: bindingWorkspaceValue(workspace.runnerId, workspace.workspaceId),
+                              label: `${workspace.runnerDisplayName} · ${workspace.workspaceId} · ${workspace.repositoryId}`,
+                            }))}
+                            width="100%"
+                          />
+                          <CheckboxInput
+                            label="ยืนยันว่า workspace นี้เป็นของ Platform Engineering"
+                            description="การยืนยันจะอนุญาตให้ Project อ่าน Specs และใช้ flow พัฒนาที่มี approval, budget และ execution controls เดิม"
+                            value={confirmPlatformEngineering}
+                            onChange={setConfirmPlatformEngineering}
+                          />
+                          {bindingMutation.error ? <AstryxText as="p" type="supporting" role="alert">ผูก workspace ไม่สำเร็จ: {bindingMutation.error.message}</AstryxText> : null}
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!bindingProjectId || !selectedBindingWorkspace || !confirmPlatformEngineering || bindingMutation.isPending}
+                            onClick={() => {
+                              if (!selectedBindingWorkspace) return;
+                              bindingMutation.mutate({
+                                projectId: bindingProjectId,
+                                runnerId: selectedBindingWorkspace.runnerId,
+                                workspaceId: selectedBindingWorkspace.workspaceId,
+                                confirmPlatformEngineering: true,
+                              });
+                            }}
+                          >
+                            {bindingMutation.isPending ? "กำลังบันทึก binding…" : "ยืนยันและผูกเป็น Platform Engineering"}
+                          </Button>
+                        </VStack>
+                      ) : null}
+                    </Section>
+                  ) : null}
                 </Section>
               ) : null}
               {modularProjectQuery.data ? (

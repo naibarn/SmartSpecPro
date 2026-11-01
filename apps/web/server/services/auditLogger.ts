@@ -158,6 +158,7 @@ export type AuditEventType =
   | "desktop_host_outbound_policy_decision"
   | "desktop_host_device_offboarded"
   | "desktop_host_update_verified"
+  | "spec224_platform_workspace_binding"
   | "invite_code_used"
   | "user_disabled_inactive"
   | "user_reactivated"

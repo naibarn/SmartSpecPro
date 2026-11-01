@@ -51,6 +51,11 @@ import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection"
 import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
 import { assertConversationThreadScope, ConversationThreadError, touchConversationThread } from "../services/conversationThreadService";
+import {
+  createPlatformWorkspaceBinding,
+  listPlatformWorkspaceBindingCandidates,
+  PlatformWorkspaceBindingError,
+} from "../services/platformWorkspaceBindingService";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -404,6 +409,58 @@ function safeActionPayload(input: z.infer<typeof safeActionInput>): Record<strin
  * dispatch remains gated by the Spec 224 authorization authority.
  */
 export const spec226DevelopmentControlRouter = router({
+  listPlatformWorkspaceBindingCandidates: adminProcedure
+    .query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ADMIN_REQUIRED" });
+      const scope = requireScope(ctx);
+      return listPlatformWorkspaceBindingCandidates(scope);
+    }),
+
+  bindPlatformWorkspace: adminProcedure
+    .input(z.object({
+      projectId: z.string().uuid(),
+      runnerId: z.string().min(1).max(160),
+      workspaceId: z.string().min(1).max(200),
+      confirmPlatformEngineering: z.literal(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ADMIN_REQUIRED" });
+      const scope = requireScope(ctx);
+      try {
+        const result = await createPlatformWorkspaceBinding({ ...scope, ...input });
+        auditLogger.log({
+          eventType: "spec224_platform_workspace_binding",
+          userId: scope.actorId,
+          tenantId: scope.tenantId,
+          endpoint: "spec226DevelopmentControl.bindPlatformWorkspace",
+          responsePayload: {
+            action: result.changed ? "bound" : "already_bound",
+            projectId: result.projectId,
+            runnerId: result.runnerId,
+            workspaceId: result.workspaceId,
+            repositoryId: result.repositoryId,
+            scope: result.scope,
+          },
+        });
+        return result;
+      } catch (error) {
+        if (error instanceof PlatformWorkspaceBindingError) {
+          auditLogger.log({
+            eventType: "spec224_platform_workspace_binding",
+            userId: scope.actorId,
+            tenantId: scope.tenantId,
+            endpoint: "spec226DevelopmentControl.bindPlatformWorkspace",
+            responsePayload: { action: "rejected", errorCode: error.code },
+          });
+          throw new TRPCError({
+            code: error.code === "PLATFORM_PROJECT_OWNER_REQUIRED" ? "FORBIDDEN" : "CONFLICT",
+            message: error.code,
+          });
+        }
+        throw error;
+      }
+    }),
+
   startDeveloperFastLane: adminProcedure
     .input(z.object({
       idempotencyKey: z.string().trim().min(16).max(160),
