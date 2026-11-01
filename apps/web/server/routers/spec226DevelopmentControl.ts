@@ -30,6 +30,8 @@ import {
   defaultDevelopmentRunPersistenceAdapter,
 } from "../services/spec224DevelopmentRunPersistence";
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
+import { compileSpec224IncrementalSpecSet } from "../services/spec224IncrementalSpecCompiler";
+import { buildModularSaasMissionControlReadModel } from "../services/modularSaasMissionControlReadModel";
 import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
 import { createDeveloperFastLaneJob } from "../services/spec224DeveloperFastLane";
 import { prepareSpec224VisualReferenceInputs } from "../services/spec224VisualReferenceIntake";
@@ -475,6 +477,58 @@ export const spec226DevelopmentControlRouter = router({
     .query(async ({ ctx }) => {
       try {
         return await getWorkspaceAuthorityProjectReadModel(requireScope(ctx));
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  modularSaasProjectMissionControl: protectedProcedure
+    .input(z.object({}).optional())
+    .query(async ({ ctx }) => {
+      try {
+        const scope = await authorizeFeatureSpecCatalog(ctx);
+        const project = await loadModularSaasProject();
+        const compilation = compileSpec224IncrementalSpecSet({
+          runnerId: "canonical-project-catalog",
+          workspaceId: project.projectId,
+          revision: 1,
+          digest: project.descriptorDigest,
+          files: project.sourceFiles,
+        });
+        const workspaces = (await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope))
+          .filter(workspace => workspace.scope === "PLATFORM_ENGINEERING");
+        const ingestions = (await Promise.all(workspaces.map(async workspace => {
+          const revision = await defaultSpec224WorkspaceSpecSetService.getLatestRevision({
+            ...scope, runnerId: workspace.runnerId, workspaceId: workspace.workspaceId,
+          });
+          if (!revision) return null;
+          const projectSource = revision.files.find(file => file.projectSource?.projectId === project.projectId)?.projectSource;
+          if (!projectSource) return null;
+          return {
+            workspaceId: revision.workspaceId,
+            revision: revision.revision,
+            digest: revision.digest,
+            descriptorDigest: projectSource.descriptorDigest,
+            sourceRevision: projectSource.sourceRevision,
+          };
+        }))).filter((item): item is NonNullable<typeof item> => item !== null);
+        const runList = await defaultSpec226DevelopmentControlBridge.list({ scope, limit: 100 });
+        const runs = runList.flatMap(run => {
+          if (!run.specSetRevision || !ingestions.some(item => item.workspaceId === run.workspaceId && item.revision === run.specSetRevision)) return [];
+          return [{
+            runId: run.runId,
+            workspaceId: run.workspaceId,
+            specSetRevision: run.specSetRevision,
+            state: run.state,
+            workPackageExternalId: run.workPackageExternalId,
+          }];
+        });
+        return buildModularSaasMissionControlReadModel({
+          project,
+          compilation,
+          ingestions,
+          runs,
+        });
       } catch (error) {
         return asTrpcError(error);
       }

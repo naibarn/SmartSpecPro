@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   requestFullVerification: vi.fn(),
   workspaceSpecSets: {
     availableWorkspaces: vi.fn(),
+    getLatestRevision: vi.fn(),
     bindConversationWorkspace: vi.fn(),
     getConversationWorkspace: vi.fn(),
     ingestSpecSet: vi.fn(),
@@ -166,6 +167,7 @@ beforeEach(() => {
   mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "pending", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
   mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
   mocks.workspaceSpecSets.availableWorkspaces.mockReset();
+  mocks.workspaceSpecSets.getLatestRevision.mockReset().mockResolvedValue(null);
   mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
   mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n", handoff: { status: "CURRENT" } });
   mocks.featureSpecCatalog.loadContext.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", summary: "Example", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1" } });
@@ -439,6 +441,37 @@ describe("spec226DevelopmentControlRouter", () => {
       artifacts: [{ path: expect.stringMatching(/^feature-specs\/224-example-spec-[a-f0-9]{10}\.md$/), contentBase64: Buffer.from("# Example\n").toString("base64") }],
       idempotencyKey: expect.stringMatching(/^feature-spec:[a-f0-9]{10}:admin-spec-import-1$/),
     }));
+  });
+
+  it("projects only tenant-scoped, platform-workspace SpecSets and exact linked Run revisions", async () => {
+    const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING" };
+    const descriptorDigest = createHash("sha256").update("{}").digest("hex");
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([platformWorkspace]);
+    mocks.workspaceSpecSets.getLatestRevision.mockResolvedValue({
+      workspaceId: platformWorkspace.workspaceId, revision: 5, digest: "e".repeat(64),
+      files: [{ projectSource: { projectId: "modular-project", sourceRevision: "c".repeat(40), descriptorDigest } }],
+    });
+    mocks.featureSpecCatalog.loadProject.mockResolvedValue({
+      projectId: "modular-project", source: { revision: "c".repeat(40) }, descriptorDigest,
+      specs: [], initialPackages: [], sourceFiles: [{ path: "canonical-projects/modular-project/project.json", content: "{}", digest: descriptorDigest,
+        projectSource: { projectId: "modular-project", sourceRevision: "c".repeat(40), descriptorDigest } }],
+    });
+    mocks.bridge.list.mockResolvedValue([{
+      runId: "run-current", workspaceId: platformWorkspace.workspaceId, specSetRevision: 5,
+      state: "IMPLEMENT", workPackageExternalId: "core-docs",
+    }, {
+      runId: "run-other-revision", workspaceId: platformWorkspace.workspaceId, specSetRevision: 4,
+      state: "IMPLEMENT", workPackageExternalId: "core-docs",
+    }]);
+
+    await expect((spec226DevelopmentControlRouter.modularSaasProjectMissionControl as unknown as Function)({ ctx: CTX, input: {} }))
+      .resolves.toMatchObject({ ingestionStatus: "CURRENT", linkedRuns: [{ runId: "run-current", specSetRevision: 5 }] });
+    expect(mocks.workspaceSpecSets.getLatestRevision).toHaveBeenCalledWith({ tenantId: "tenant-acme", actorId: 42, runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId });
+    expect(mocks.bridge.list).toHaveBeenCalledWith({ scope: { tenantId: "tenant-acme", actorId: 42 }, limit: 100 });
+
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([]);
+    await expect((spec226DevelopmentControlRouter.modularSaasProjectMissionControl as unknown as Function)({ ctx: CTX, input: {} }))
+      .rejects.toMatchObject({ message: "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED" });
   });
 
   it("refuses to import a canonical SmartAIHub SPEC into a non-platform workspace, including for Admin", async () => {

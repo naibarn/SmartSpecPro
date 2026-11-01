@@ -10,7 +10,7 @@ import {
   spec224WorkspaceSpecSetHeads,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { compileSpec224IncrementalSpecSet, type Spec224IncrementalSpecFile } from "./spec224IncrementalSpecCompiler";
+import { compileSpec224IncrementalSpecSet, digestSpec224IncrementalFiles, type Spec224IncrementalSpecFile } from "./spec224IncrementalSpecCompiler";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { resolveSpec224WorkspaceWritePolicy, type Spec224WorkspaceAccessMode } from "./spec224WorkspaceAccessPolicy";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
@@ -247,7 +247,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
     for (const file of parsed.files) merged.set(file.path, file);
     const files = [...merged.values()].sort((left, right) => left.path.localeCompare(right.path));
     if (Buffer.byteLength(JSON.stringify(files), "utf8") > MAX_PERSISTED_MANIFEST_BYTES) fail("SPEC_SET_MANIFEST_OVERSIZED");
-    const digest = sha(canonicalJson(files.map(file => ({ path: file.path, digest: file.digest, ...(file.canonicalSource ? { canonicalSource: file.canonicalSource } : {}), ...(file.projectSource ? { projectSource: file.projectSource } : {}) }))));
+    const digest = digestSpec224IncrementalFiles(files);
     const provisional: Spec224WorkspaceSpecSetRevision = {
       id: "pending", tenantId: input.tenantId, actorId: input.actorId, runnerId: binding.runnerId, workspaceId: binding.workspaceId,
       revision: (previous?.revision ?? 0) + 1, parentRevision: previous?.revision ?? null, digest, requestDigest: parsed.digest, idempotencyKey: input.idempotencyKey, files, replacedPaths,

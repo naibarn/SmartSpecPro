@@ -200,6 +200,15 @@ function packageId(path: string, externalId: string): string {
   return `wp:${sha({ path, externalId }).slice(0, 40)}`;
 }
 
+export function digestSpec224IncrementalFiles(files: readonly Spec224IncrementalSpecFile[]): string {
+  return sha(canonicalJson(files.map(({ path, digest, canonicalSource, projectSource }) => ({
+    path,
+    digest,
+    ...(canonicalSource ? { canonicalSource } : {}),
+    ...(projectSource ? { projectSource } : {}),
+  }))));
+}
+
 function parseJson(content: string, path: string): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(content);

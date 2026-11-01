@@ -6,6 +6,7 @@ import {
   CircleAlert,
   Cpu,
   History,
+  FolderKanban,
   Radio,
   Workflow,
 } from "lucide-react";
@@ -15,6 +16,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import { UnifiedWorkspaceInspector } from "@/components/chat/UnifiedWorkspaceInspector";
+import { Section } from "@astryxdesign/core/Section";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text as AstryxText } from "@astryxdesign/core/Text";
+import { Table, proportional } from "@astryxdesign/core/Table";
 
 type PresentationMode = "simple" | "developer";
 type MissionSection =
@@ -24,7 +29,8 @@ type MissionSection =
   | "runners"
   | "active"
   | "waiting"
-  | "history";
+  | "history"
+  | "projects";
 type Props = {
   onOpenConversation: (
     id: number,
@@ -85,6 +91,11 @@ export function MissionControlWorkspace({
     staleTime: 10_000,
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
+    retry: false,
+  });
+  const modularProjectQuery = trpc.spec226DevelopmentControl.modularSaasProjectMissionControl.useQuery(undefined, {
+    enabled: presentationMode === "developer",
+    staleTime: 30_000,
     retry: false,
   });
   const jobs = query.data?.items ?? [];
@@ -211,6 +222,7 @@ export function MissionControlWorkspace({
       count: historyJobs.length,
       icon: History,
     },
+    ...(presentationMode === "developer" ? [{ id: "projects" as const, label: "Projects", icon: FolderKanban }] : []),
   ];
 
   const sectionJobs =
@@ -304,6 +316,76 @@ export function MissionControlWorkspace({
             <p role="status" className="mb-3 text-sm text-muted-foreground">
               กำลังอ่านสถานะงานจริง…
             </p>
+          ) : null}
+          {section === "projects" ? (
+            <Section aria-label="SmartAIHub Modular SaaS project portfolio" variant="transparent" padding={0}>
+              <Heading level={2}>SmartAIHub Modular SaaS</Heading>
+              {modularProjectQuery.isLoading ? <AstryxText as="p" type="supporting">กำลังอ่านสถานะ Specs และ SPEC-224…</AstryxText> : null}
+              {modularProjectQuery.error ? <AstryxText as="p" type="supporting">อ่านข้อมูลโครงการไม่ได้ หรือบัญชีนี้ไม่มีสิทธิ์ PLATFORM_ENGINEERING</AstryxText> : null}
+              {modularProjectQuery.data ? (
+                <>
+                  <AstryxText as="p" type="supporting">
+                    Source {modularProjectQuery.data.sourceStatus} · SpecSet {modularProjectQuery.data.ingestionStatus} · Deployment {modularProjectQuery.data.deployment.status}
+                  </AstryxText>
+                  <Section aria-label="Canonical Specs" variant="muted" padding={2}>
+                    <Heading level={3}>Canonical Specs ({modularProjectQuery.data.specs.length})</Heading>
+                    <Table
+                      data={modularProjectQuery.data.specs.map(spec => ({
+                        spec: `${spec.id} · ${spec.title}`,
+                        lifecycle: spec.lifecycleState,
+                        requirements: `${spec.requirements.closed}/${spec.requirements.total} closed · ${spec.requirements.compiledReady} ready · ${spec.requirements.compiledBlocked} blocked`,
+                        dependencies: spec.dependencyIds.join(", ") || "—",
+                        nextAction: spec.nextAction ?? "No next action recorded",
+                        digest: spec.sourceDigest.slice(0, 12),
+                      }))}
+                      columns={[
+                        { key: "spec", header: "Spec", width: proportional(1.4) },
+                        { key: "lifecycle", header: "Lifecycle", width: proportional(1) },
+                        { key: "requirements", header: "Requirements", width: proportional(1.4) },
+                        { key: "dependencies", header: "Depends on", width: proportional(1) },
+                        { key: "nextAction", header: "Next action", width: proportional(2) },
+                        { key: "digest", header: "Source SHA", width: proportional(0.8) },
+                      ]}
+                      density="compact"
+                      dividers="rows"
+                      hasHover
+                    />
+                  </Section>
+                  <Section aria-label="SPEC-224 packages" variant="muted" padding={2}>
+                    <Heading level={3}>SPEC-224 packages</Heading>
+                    <Table
+                      data={modularProjectQuery.data.packages.map(pkg => ({ package: pkg.id, specs: pkg.specIds.join(", "), readiness: pkg.readiness, blockers: pkg.blockers.join("; ") || "None" }))}
+                      columns={[
+                        { key: "package", header: "Package", width: proportional(1) },
+                        { key: "specs", header: "Specs", width: proportional(1) },
+                        { key: "readiness", header: "Readiness", width: proportional(0.8) },
+                        { key: "blockers", header: "Blockers", width: proportional(2) },
+                      ]}
+                      density="compact"
+                      dividers="rows"
+                    />
+                  </Section>
+                  <Section aria-label="Linked development runs" variant="muted" padding={2}>
+                    <Heading level={3}>Linked DevelopmentRuns ({modularProjectQuery.data.linkedRuns.length})</Heading>
+                    {modularProjectQuery.data.linkedRuns.length ? (
+                      <Table
+                        data={modularProjectQuery.data.linkedRuns.map(run => ({ run: run.runId, package: run.workPackageExternalId ?? "—", state: run.state, specSet: String(run.specSetRevision), alignment: run.sourceAlignment, evidence: run.evidenceScope }))}
+                        columns={[
+                          { key: "run", header: "Run", width: proportional(1) },
+                          { key: "package", header: "Package", width: proportional(1) },
+                          { key: "state", header: "State", width: proportional(0.8) },
+                          { key: "specSet", header: "SpecSet revision", width: proportional(0.8) },
+                          { key: "alignment", header: "Source alignment", width: proportional(0.8) },
+                          { key: "evidence", header: "Evidence scope", width: proportional(1) },
+                        ]}
+                        density="compact"
+                        dividers="rows"
+                      />
+                    ) : <AstryxText as="p" type="supporting">ยังไม่มี Run ที่ผูกกับ SpecSet revision ของโครงการนี้</AstryxText>}
+                  </Section>
+                </>
+              ) : null}
+            </Section>
           ) : null}
           <header className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <section>

@@ -140,6 +140,8 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
       id: pin.id, title: spec.title, path: `specs/feature/${pin.id}/spec.md`, content: spec.content, digest: specDigest,
       manifestDigest: pin.manifestDigest, manifestContent: manifestFile.bytes.toString("utf8"),
       ledgerDigest: pin.ledgerDigest, ledgerContent: ledgerFile.bytes.toString("utf8"), requirements, dependencies,
+      lifecycleState: isRecord(manifest.lifecycle) && typeof manifest.lifecycle.current_state === "string" ? manifest.lifecycle.current_state : "UNKNOWN",
+      nextAction: isRecord(manifest.continuation) && typeof manifest.continuation.next_action === "string" ? manifest.continuation.next_action : null,
     };
   }));
   const specsById = new Map(specs.map(spec => [spec.id, spec]));
@@ -172,7 +174,8 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
     path: `canonical-projects/${descriptor.projectId}/project.json`, digest: descriptorDigest, content: descriptorFile.bytes.toString("utf8"),
     projectSource: { projectId: descriptor.projectId, sourceRevision: descriptor.source.revision, descriptorDigest },
   });
-  return { ...descriptor, descriptorDigest, specs, sourceFiles };
+  const dependencyEdges = specs.flatMap(spec => spec.dependencies.map(specId => ({ fromSpecId: spec.id, toSpecId: specId })));
+  return { ...descriptor, descriptorDigest, specs, dependencyEdges, sourceFiles };
 }
 
 async function readCanonicalHandoff(input: { featureRoot: string; directoryPath: string; specDigest: string }): Promise<RepositoryFeatureSpecHandoff> {

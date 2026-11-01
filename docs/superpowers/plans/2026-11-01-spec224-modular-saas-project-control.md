@@ -87,11 +87,11 @@
 - Modify: `apps/web/client/src/components/chat/MissionControlWorkspace.tsx`
 - Test: focused read-model and component tests
 
-- [ ] Add a canonical project projection for 13 Specs, proven dependency edges, package readiness, requirement counts, next actions, source digests, and linked DevelopmentRuns.
-- [ ] Keep all status facts scoped and sourced from handoff/ledger, SpecSet/Run, GitHub, and existing release target authority.
-- [ ] Add compact project and per-Spec navigation with explicit unknown/stale/blocked states; commands continue through canonical SPEC-224/approval owners.
-- [ ] Add tests for tenant isolation, stale source, partially ready graph, truthful evidence scope, and responsive empty/loading states.
-- [ ] Run the focused UI/API tests and browser evidence only when the local development runtime is available.
+- [x] Add a canonical project projection for 13 Specs, proven dependency edges, package readiness, requirement counts, next actions, source digests, and linked DevelopmentRuns.
+- [x] Keep status facts tenant/actor scoped; source facts come from digest-validated handoffs, SpecSet revisions, and exact SPEC-224 Run references. Deployment remains UNKNOWN because no deployment/runtime evidence is connected.
+- [x] Add compact project and per-Spec navigation in Developer mode with stale, blocked, and not-ingested states; actions continue through canonical SPEC-224 flows.
+- [x] Add focused tests for tenant authority, stale source, partial package readiness, evidence scope, and missing ingestion.
+- [ ] Run browser evidence for responsive empty/loading states if the local development runtime is available; this checkpoint used a JSX transform and did not launch or change a runtime.
 
 ### Task 5: Pilot, handoff, and integration
 
