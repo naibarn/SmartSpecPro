@@ -1057,24 +1057,6 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ใช้ SmartAIHub Source Workspace
             </Button>
           ) : null}
-          {canUseCanonicalSpecs ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              disabled={bindMutation.isPending || workspacesQuery.isFetching}
-              onClick={() => {
-                setDevelopmentInputMode("spec");
-                setRequestKind("development");
-                selectCanonicalPlatformWorkspace();
-                setPreparation(null);
-                requestAnimationFrame(() => document.getElementById("feature-spec-search")?.scrollIntoView({ behavior: "smooth", block: "center" }));
-              }}
-            >
-              เลือกไฟล์ SPEC จากระบบ
-            </Button>
-          ) : null}
           <p className="mt-1 text-xs text-slate-600" role="status">Codex readiness: {selectedWorkspace && selectedRunnerId === platformWorkspace.runnerId ? runnerReadiness?.ready ? "พร้อม" : runnerReadiness?.code ?? "กำลังตรวจสอบจาก Runner" : "กำลังตรวจสอบจาก Runner"}</p>
           {selectedWorkspace && !platformSourceIsSafe ? <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">Runner หรือ Project Workspace binding เปลี่ยนไป โปรดโหลดข้อมูลใหม่และยืนยัน binding ปัจจุบันก่อนเริ่ม</p> : null}
         </section>
@@ -1298,6 +1280,15 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <input type="radio" name="spec224-mode" checked={developmentInputMode === "prompt"} onChange={() => { setDevelopmentInputMode("prompt"); setPreparation(null); }} />
               Prompt
             </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="radio" name="spec224-mode" checked={developmentInputMode === "spec"} onChange={() => { setDevelopmentInputMode("spec"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById("spec224-source-selection")?.scrollIntoView({ behavior: "smooth", block: "center" }))); }} />
+              เลือกไฟล์ SPEC
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="radio" name="spec224-mode" checked={developmentInputMode === "spec_prompt"} onChange={() => { setDevelopmentInputMode("spec_prompt"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById("spec224-source-selection")?.scrollIntoView({ behavior: "smooth", block: "center" }))); }} />
+              SPEC + Prompt
+            </label>
+            {!canUseCanonicalSpecs ? <p className="text-xs text-amber-800" role="status">ยังไม่พบ Platform Source Workspace ที่อนุญาต จึงเลือก SPEC ได้ด้วยการอัปโหลดไฟล์; รายการ Canonical SPEC จะแสดงเมื่อ Workspace นี้พร้อม</p> : null}
             {mode === "prompt" ? (
               <div className="flex flex-wrap gap-3 rounded-md bg-[var(--color-background-subtle)] p-2 text-xs">
                 <span className="font-medium">ประเภทงาน</span>
@@ -1378,12 +1369,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   <p className="text-xs text-[var(--color-text-secondary)]">ภาพถูกส่งเป็นไฟล์ Runner input แบบ tenant-bound; เนื้อหาเป็นหลักฐานภาพที่ไม่น่าเชื่อถือและไม่ใช่คำสั่ง. จำกัดตาม Runner ปัจจุบัน: 6 ภาพ, ภาพละ 1 MiB, รวมสูงสุด 1.5 MiB</p>
                 </fieldset> : null}
             </>
-            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec"} onChange={() => { setDevelopmentInputMode("spec"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); }} />Canonical SPEC</label>
-            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec_prompt"} onChange={() => { setDevelopmentInputMode("spec_prompt"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); }} />SPEC + Prompt</label>
             {mode === "spec_set" ? (
               <>
                 {developmentInputMode === "spec_prompt" ? <Textarea aria-label="คำสั่งเพิ่มเติมสำหรับ SPEC" value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder="คำสั่งเพิ่มเติมภายใต้ขอบเขตและ write scope ของ SPEC" maxLength={4_000} className="min-h-20 resize-y text-sm" /> : null}
-                <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Spec source">
+                <fieldset id="spec224-source-selection" className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Spec source">
                   <legend className="px-1 text-xs font-medium">เลือกแหล่ง Spec</legend>
                   <label className="flex items-center gap-2 text-xs">
                     <input type="radio" name="spec224-source" checked={effectiveSpecSource === "upload"} onChange={() => setSpecSource("upload")} />
