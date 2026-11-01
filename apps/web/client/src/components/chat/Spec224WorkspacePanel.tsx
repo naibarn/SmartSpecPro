@@ -1023,7 +1023,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   async function resumeExistingRun(runId: string, targetConversationId = conversationId) {
     if (!targetConversationId || resumeRunMutation.isPending) return;
     try {
-      const result = await resumeRunMutation.mutateAsync({ conversationId: targetConversationId, runId, budgetCapMinorUnits });
+      const result = await resumeRunMutation.mutateAsync({ conversationId: targetConversationId, runId });
       await workspaceQuery.refetch();
       if (result.dispatchStatus === "ENQUEUED") {
         toast.success(simpleMode ? "ส่งงานเดิมเข้าคิวเพื่อทำต่อแล้ว" : `ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);

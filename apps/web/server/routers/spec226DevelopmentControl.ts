@@ -1760,12 +1760,15 @@ export const spec226DevelopmentControlRouter = router({
         if (record.run.workspaceId !== binding.workspace.workspaceId)
           throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
         const persistedBudget = record.run.metadata?.spec224BudgetCapMinorUnits;
-        if (typeof persistedBudget === "number" && input.budgetCapMinorUnits > persistedBudget)
-          throw new Error("RUN_BUDGET_CAP_CANNOT_INCREASE");
         const grantPayload = record.run.metadata?.spec224GoalGrantPayload;
+        const grantProvider = grantPayload && typeof grantPayload === "object"
+          ? (grantPayload as Record<string, unknown>).provider : undefined;
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({ context: scope,
           runnerId: binding.workspace.runnerId, workspaceId: binding.workspace.workspaceId,
-          provider: record.run.provider,
+          // The delegated Goal Grant is the durable provider authority. A Run
+          // does not have a top-level `provider` field.
+          ...(grantProvider === "codex" || grantProvider === "claude_code" || grantProvider === "microsoft_copilot"
+            ? { provider: grantProvider } : {}),
           sourceCommit: /^git:([a-f0-9]{40})$/i.exec(record.run.baseRevision)?.[1] });
         const goalAdmission = grantPayload && typeof grantPayload === "object" && runnerReadiness.ready && runnerReadiness.projectId
           ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId: input.runId,
@@ -1773,7 +1776,10 @@ export const spec226DevelopmentControlRouter = router({
             payload: grantPayload as Record<string, unknown> })
           : await advanceWorkspaceStartAuthorization({
             context: authorizationContext(ctx), runId: input.runId, runnerId: binding.workspace.runnerId,
-            budgetCapMinorUnits: input.budgetCapMinorUnits,
+            // Resume reuses the original per-run cap. The current form's
+            // Goal-level budget must never be compared with or replace it.
+            budgetCapMinorUnits: typeof persistedBudget === "number" && Number.isSafeInteger(persistedBudget) && persistedBudget > 0
+              ? persistedBudget : input.budgetCapMinorUnits,
           });
         const dispatchStatus = ["READY_FOR_LIVE", "READY_FOR_DELEGATION"].includes(goalAdmission.status)
           ? "ENQUEUED" as const
@@ -1784,7 +1790,8 @@ export const spec226DevelopmentControlRouter = router({
           metadata: { runId: input.runId, jobId: record.run.workerJobId, action: "resume_existing_run",
             dispatchStatus, authorizationStatus: goalAdmission.status,
             reasons: "authorization" in goalAdmission ? goalAdmission.authorization.reasons : [],
-            workspaceId: record.run.workspaceId, budgetCapMinorUnits: input.budgetCapMinorUnits },
+            workspaceId: record.run.workspaceId,
+            budgetCapMinorUnits: typeof persistedBudget === "number" ? persistedBudget : input.budgetCapMinorUnits },
         });
         const threadId = typeof record.run.metadata?.chatThreadId === "string" ? record.run.metadata.chatThreadId : null;
         if (threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId });

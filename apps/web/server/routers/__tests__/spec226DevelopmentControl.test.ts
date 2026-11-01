@@ -231,6 +231,31 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.createRun).not.toHaveBeenCalled();
   });
 
+  it("resumes a granted Goal using its persisted child cap instead of rejecting the total Goal budget", async () => {
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-granted", workerJobId: "job-granted", state: "BLOCKED_RECOVERABLE", workspaceId: "workspace-a",
+      baseRevision: `git:${"a".repeat(40)}`,
+      metadata: {
+        spec224BudgetCapMinorUnits: 50,
+        spec224GoalGrantPayload: {
+          grantId: "goal-1", goalId: "goal-1", provider: "codex", budgetLimitMinorUnits: 100, currency: "USD",
+        },
+      },
+    } });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId: "run-granted", budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({ runId: "run-granted", dispatchStatus: "ENQUEUED", goalAdmissionStatus: "READY_FOR_LIVE" });
+    expect(mocks.runnerReadiness).toHaveBeenCalledWith(expect.objectContaining({ provider: "codex" }));
+    expect(mocks.requestGoalGrantApproval).toHaveBeenCalledWith(expect.objectContaining({
+      goalId: "goal-1", payload: expect.objectContaining({ budgetLimitMinorUnits: 100 }),
+    }));
+    expect(mocks.authorizeDelegatedChild).toHaveBeenCalled();
+    expect(mocks.advanceStart).not.toHaveBeenCalled();
+  });
+
   it("does not resume a Run that belongs to another conversation workspace", async () => {
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
       runnerId: "runner-a", workspaceId: "workspace-a",
