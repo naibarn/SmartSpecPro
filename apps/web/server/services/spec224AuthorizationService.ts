@@ -918,6 +918,10 @@ export function createSpec224AuthorizationService() {
       // the root and child job manifests above are the durable source of it.
       // Since both manifests were checked against this grant, use the grant's
       // provider for readiness rather than reading a nonexistent run.provider.
+      await createJobControlPlane(defaultJobControlPlaneRepository).resumeUnstartedAuthorizationHold({
+        jobId: run.workerJobId, runId: run.runId, tenantId: input.context.tenantId,
+        requestedByUserId: input.context.actorId,
+      });
       await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
       loaded = await loadRun(input.context, input.runId);
       if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
@@ -1182,7 +1186,7 @@ export function createSpec224AuthorizationService() {
             Number.isSafeInteger(value.maxBudgetMinorUnits) && value.maxBudgetMinorUnits > 0 &&
             Number.isSafeInteger(value.maxTtlSeconds) && value.maxTtlSeconds > 0 &&
             typeof value.currency === "string" && /^[A-Za-z]{3}$/.test(value.currency) &&
-            Boolean(harnessTool?.authorizationEvidenceRef) && requiredPolicyScopes.length === 7 &&
+            Boolean(codex?.authorizationEvidenceRef) && requiredPolicyScopes.length === 7 &&
             Array.isArray(value.resourceScopes) && requiredPolicyScopes.every(required =>
               value.resourceScopes.some((allowed: { kind?: string; id?: string }) => allowed.kind === required.kind && allowed.id === required.id)) &&
             Date.parse(value.expiresAt) > Date.now();

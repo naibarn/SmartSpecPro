@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql as drizzleSql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { provisionSpec224EconomicTestBudget } from "./helpers/spec224EconomicTestProvisioning";
@@ -250,6 +250,52 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
       expect(await check({ ...input, amount: 61 })).toBe(false);
       await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${approvalRef}`;
       expect(await check()).toBe(false);
+    } finally {
+      await sql`DELETE FROM approval_requests WHERE id = ${approvalRef}`;
+    }
+  });
+
+  it("releases an explicitly owner-started zero-quorum Goal grant", async () => {
+    const { defaultJobControlPlaneRepository } = await import("../jobControlPlane");
+    const { provisionSpec224GoalBudget } = await import("../economicProvisioningService");
+    const goalId = randomUUID(), approvalRef = randomUUID();
+    const expiresAt = new Date(Date.now() + 600_000);
+    const payload = {
+      kind: "spec224_goal_delegation_grant", grantId: goalId, goalId, actorId: userId,
+      provider: "codex", workspaceId: "workspace-owner-start", repositoryRef: "repo:owner-start",
+      sourceSha: "a".repeat(40), allowedActions: ["test"], writeScope: ["src/**"],
+      capabilities: ["agent.external_task"], budgetLimitMinorUnits: 100, currency: "USD",
+      issuedAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: expiresAt.toISOString(),
+    };
+    await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status,
+      payload, extra_data, required_approvers, current_approvals, expires_at, created_at)
+      VALUES (${approvalRef}, 'CUSTOM', 'Owner-started Goal', ${tenantId}, ${goalId}, ${userId}, 'APPROVED',
+        ${sql.json(payload)}, ${sql.json({ spec224GoalGrantIssuerV1: "owner_explicit_goal_start" })}, 0, 0, ${expiresAt}, NOW())`;
+    try {
+      const goalBudget = await provisionSpec224GoalBudget(db, { tenantId, actorId: userId, goalId, approvalRef });
+      const accounts = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-owner-start`, limitMinorUnits: 100 });
+      const job = await createAttempt(false);
+      const intent = await makeIntent(job, 50, `owner-start-${randomUUID()}`);
+      const hold = await reserveEconomicHold(db, { intent, budgetId: goalBudget.budgetId,
+        idempotencyKey: `owner-start-hold-${randomUUID()}`, journalLines: journalLines(accounts, 50),
+        journalDescription: "Owner-started Goal hold" });
+      const input = {
+        tenantId, actorId: userId, jobId: job.jobId, attemptId: job.attemptId, approvalRef,
+        holdRef: hold.id, amount: 50, currency: "USD", deadline: expiresAt.toISOString(), now: new Date(),
+        goal: { goalId, provider: "codex" as const, workspaceId: "workspace-owner-start", repositoryRef: "repo:owner-start",
+          sourceSha: "a".repeat(40), action: "test", changedPaths: [], allowedWriteSet: ["src/**"],
+          requiredCapabilities: ["agent.external_task"] },
+      };
+      const allowed = await defaultJobControlPlaneRepository.transaction(repo => repo.assertSpec224ReleaseAuthority!(input));
+      expect(allowed).toBe(true);
+      const releaseKey = `spec224:authorization-failed:${createHash("sha256").update(`${goalId}:${job.attemptId}`).digest("hex")}`;
+      await releaseEconomicHold(db, { tenantId, holdId: hold.id, idempotencyKey: releaseKey, actorId: String(userId),
+        policyVersion: "spec224-authorization-binding-v1", journalLines: journalLines(accounts, 50, true),
+        journalDescription: "Release failed owner-started authorization" });
+      const releasedProof = await defaultJobControlPlaneRepository.transaction(repo => repo.hasReleasedAuthorizationHold!({
+        tenantId, jobId: job.jobId, attemptId: job.attemptId, holdId: hold.id, releaseEventKey: `release:${releaseKey}`,
+      }));
+      expect(releasedProof).toBe(true);
     } finally {
       await sql`DELETE FROM approval_requests WHERE id = ${approvalRef}`;
     }

@@ -18,6 +18,8 @@ import {
   runnerNodes,
   runnerCapabilitySnapshots,
   tenantIdentityActions,
+  economicHolds,
+  economicEvents,
   type WorkerJob,
 } from "../../drizzle/schema";
 import {
@@ -48,7 +50,7 @@ import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContra
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
-import { evaluateSpec224GoalDelegation, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
+import { evaluateSpec224GoalDelegation, mapSpec224GoalGrantAuthorityEvidence, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
@@ -125,6 +127,9 @@ export type TxRepo = {
     approvalRef: string; holdRef: string; amount: number; currency: string; now: Date; deadline?: string;
     goal?: { goalId: string; provider: "codex" | "claude_code" | "microsoft_copilot"; workspaceId: string; repositoryRef: string;
       sourceSha: string; action: string; changedPaths: string[]; allowedWriteSet?: string[]; requiredCapabilities: string[] };
+  }): Promise<boolean>;
+  hasReleasedAuthorizationHold?(input: {
+    tenantId: string; jobId: string; attemptId: string; holdId: string; releaseEventKey: string;
   }): Promise<boolean>;
   markDispatchConsumed?(input: {
     jobId: string;
@@ -815,7 +820,7 @@ function buildDefaultRepository(): JobControlPlaneRepository {
               async assertSpec224ReleaseAuthority(input) {
                 const approvals = await query.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
                     current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
-                    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload FROM approval_requests
+                    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload, extra_data FROM approval_requests
                   WHERE id = ${input.approvalRef} AND tenant_id = ${input.tenantId}
                     AND requester_id = ${input.actorId}
                     AND status::text = 'APPROVED' AND revoked_at IS NULL
@@ -838,17 +843,30 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   hold.scopeRef !== `goal:${createHash("sha256").update(input.goal.goalId).digest("hex")}` ||
                   hold.budgetStatus !== "active" || hold.budgetCurrency !== input.currency ||
                   Number(hold.heldMinorUnits) + Number(hold.capturedMinorUnits) > Number(hold.limitMinorUnits)) return false;
-                const iso = (value: unknown) => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
-                const authority: Spec224GoalGrantAuthorityEvidence = { approvalRef: input.approvalRef, tenantId: approval.tenant_id,
-                  executionId: approval.execution_id, requesterId: Number(approval.requester_id), status: "approved",
-                  currentApprovals: Number(approval.current_approvals), requiredApprovers: Number(approval.required_approvers),
-                  expiresAt: iso(approval.expires_at), revokedAt: iso(approval.revoked_at), payload: approval.payload ?? {} };
+                const authority = mapSpec224GoalGrantAuthorityEvidence(approval);
+                if (!authority) return false;
                 const result = evaluateSpec224GoalDelegation({ now: input.now, authority, child: { ...input.goal,
                   tenantId: input.tenantId, actorId: input.actorId, workerJobId: input.jobId, attemptId: input.attemptId,
                   budgetHold: { reservationRef: input.holdRef, tenantId: input.tenantId, workerJobId: input.jobId,
                     attemptId: input.attemptId, status: "held", amountMinorUnits: input.amount, currency: input.currency } } });
                 return result.status === "READY_FOR_DELEGATION" && Number(hold.limitMinorUnits) === Number(authority.payload.budgetLimitMinorUnits) &&
                   typeof input.deadline === "string" && Date.parse(input.deadline) <= Date.parse(result.binding.expiresAt);
+              },
+              async hasReleasedAuthorizationHold(input) {
+                const [hold] = await query.select({ id: economicHolds.id, amount: economicHolds.amountMinorUnits,
+                  captured: economicHolds.capturedMinorUnits, released: economicHolds.releasedMinorUnits,
+                  status: economicHolds.status })
+                  .from(economicHolds)
+                  .where(and(eq(economicHolds.id, input.holdId), eq(economicHolds.tenantId, input.tenantId),
+                    eq(economicHolds.workerJobId, input.jobId), eq(economicHolds.attemptId, input.attemptId)))
+                  .for("update").limit(1);
+                if (!hold || hold.status !== "released" || hold.captured !== 0 || hold.released !== hold.amount) return false;
+                const [release] = await query.select({ eventType: economicEvents.eventType, payloadJson: economicEvents.payloadJson })
+                  .from(economicEvents)
+                  .where(and(eq(economicEvents.tenantId, input.tenantId), eq(economicEvents.idempotencyKey, input.releaseEventKey),
+                    eq(economicEvents.workerJobId, input.jobId), eq(economicEvents.attemptId, input.attemptId)))
+                  .limit(1);
+                return release?.eventType === "hold_released" && release.payloadJson?.holdId === hold.id;
               },
               async findAttemptDetails(jobId, attempt) {
                 const [row] = await query
@@ -2334,9 +2352,10 @@ export function createJobControlPlane(
         return attemptId;
       });
     },
-    /** Reopen the SAME SPEC-224 job only when it expired before authorization
-     * was released and before any dispatch/lease. The fresh attempt remains
-     * pending behind the authorization hold; this method never writes outbox. */
+    /** Recover the SAME SPEC-224 job only when it expired before dispatch, or
+     * when a proven unlaunched authorization hold was fully released. The
+     * fresh attempt remains pending behind a new authorization hold; this
+     * method never writes outbox. */
     async resumeUnstartedAuthorizationHold(input: {
       jobId: string;
       runId: string;
@@ -2354,11 +2373,47 @@ export function createJobControlPlane(
           run.workerJobId !== job.id || projection.workerJobId !== job.id) return null;
         if (await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`)) return null;
         const authorization = job.progressJson?.spec224Authorization as Record<string, unknown> | undefined;
-        if (authorization?.binding || authorization?.approvalRef || authorization?.budgetReservationRef) return null;
         if (job.status === "pending") {
           const current = await repo.findAttempt(job.id, job.attempt);
-          return current ? { attemptId: current.id, resumed: false } : null;
+          if (!current) return null;
+          const binding = authorization?.binding as Record<string, unknown> | undefined;
+          if (!binding) {
+            if (authorization?.approvalRef || authorization?.budgetReservationRef) return null;
+            return { attemptId: current.id, resumed: false };
+          }
+          if (job.attempt >= job.maxAttempts || job.startedAt != null || job.heartbeatAt != null ||
+            job.leaseOwnerToken != null || job.leaseExpiresAt != null || job.fencingVersion !== 0 ||
+            typeof binding.budgetReservationRef !== "string" ||
+            await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`) ||
+            await repo.findEventByIdempotency(job.id, `lease:${current.id}`) ||
+            await repo.findEventByIdempotency(job.id, `dispatch-requested:${job.id}:${job.attempt}`) ||
+            await repo.findOutboxForAttempt(job.id)) return null;
+          const releaseEventKey = `release:spec224:authorization-failed:${createHash("sha256").update(`${input.runId}:${current.id}`).digest("hex")}`;
+          const released = await repo.hasReleasedAuthorizationHold?.({ tenantId: input.tenantId, jobId: job.id,
+            attemptId: current.id, holdId: binding.budgetReservationRef, releaseEventKey });
+          if (!released) return null;
+          const inputJson = { ...job.inputJson };
+          const manifest = inputJson.manifest && typeof inputJson.manifest === "object" && !Array.isArray(inputJson.manifest)
+            ? { ...inputJson.manifest as Record<string, unknown> } : null;
+          if (!manifest || !isDeepStrictEqual(manifest.policyBinding, binding)) return null;
+          delete manifest.policyBinding;
+          inputJson.manifest = manifest;
+          const progressJson = { ...job.progressJson, spec224Authorization: {
+            status: "BUDGET_REQUIRED", recoveryCode: "PREVIOUS_HOLD_RELEASED", updatedAt: new Date().toISOString(),
+          } };
+          const nextAttempt = job.attempt + 1;
+          const attemptId = randomUUID();
+          const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedAttempt: job.attempt,
+            expectedFencingVersion: 0, expectedTenantId: input.tenantId, expectedRequestedByUserId: input.requestedByUserId,
+            values: { attempt: nextAttempt, statusReason: "spec224_authorization_hold_resumed", inputJson, progressJson } });
+          if (!updated) return null;
+          await repo.insertAttempt({ id: attemptId, workerJobId: job.id, attempt: nextAttempt, leaseGeneration: 0 });
+          await repo.insertEvent({ workerJobId: job.id, attemptId, eventType: "SPEC224_AUTHORIZATION_HOLD_RESUMED",
+            eventIdempotencyKey: `spec224-auth-hold-resumed:${job.id}:${job.attempt}:${nextAttempt}`,
+            payloadJson: { runId: input.runId, previousAttempt: job.attempt, attempt: nextAttempt, reason: "previous_hold_released_before_dispatch" } });
+          return { attemptId, resumed: true };
         }
+        if (authorization?.binding || authorization?.approvalRef || authorization?.budgetReservationRef) return null;
         if (job.status !== "expired" || job.errorCode !== "JOB_DEADLINE_EXPIRED" ||
           job.statusReason !== "job_deadline" || job.attempt >= job.maxAttempts ||
           job.startedAt != null || job.heartbeatAt != null || job.leaseOwnerToken != null ||

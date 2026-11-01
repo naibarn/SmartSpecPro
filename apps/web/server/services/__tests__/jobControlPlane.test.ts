@@ -23,6 +23,7 @@ function makeRepository() {
   const actions: any[] = [];
   const callbacks: any[] = [];
   const transitions: string[] = [];
+  let releasedAuthorizationHoldProof = false;
   const runnerReceiptLocks: Array<{ jobId: string; operationKey: string }> = [];
   const repository: JobControlPlaneRepository = {
     transaction: async work =>
@@ -84,6 +85,7 @@ function makeRepository() {
           ) ?? null,
         assertRunnerAuthorizationBinding: async () => true,
         assertSpec224ReleaseAuthority: async () => true,
+        hasReleasedAuthorizationHold: async () => releasedAuthorizationHoldProof,
         findEventByIdempotency: async (jobId, key) =>
           events.find(
             event =>
@@ -273,6 +275,7 @@ function makeRepository() {
     settlements,
     actions,
     callbacks,
+    setReleasedAuthorizationHoldProof: (value: boolean) => { releasedAuthorizationHoldProof = value; },
     transitions,
     runnerReceiptLocks,
   };
@@ -413,6 +416,34 @@ describe("job control plane", () => {
       eventIdempotencyKey: `dispatch-requested:${job.id}:2`, payloadJson: { attempt: 2 },
     });
     expect(state.outbox[0].envelopeJson.businessAttempt).toBe(2);
+  });
+
+  it("retries the same pending Goal run after a proven unlaunched authorization hold release", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: "deferred-spec224-released-hold-retry",
+      input: { manifest: {}, spec224Run: { runId: "run-retry", tenantId: "tenant-a", actorId: 1, workerJobId: "job-retry" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-retry" });
+    const job = state.jobs.get(created.jobId)!;
+    job.progressJson.spec224 = { runId: "run-retry", tenantId: "tenant-a", actorId: 1, workerJobId: "job-retry" };
+    const oldAttemptId = await controlPlane.prepareAuthorizationAttempt({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 });
+    const binding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "released-hold", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
+    job.inputJson.manifest.policyBinding = binding;
+    job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding };
+    state.setReleasedAuthorizationHoldProof(true);
+
+    const recovered = await controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "run-retry", tenantId: "tenant-a", requestedByUserId: 1 });
+
+    expect(recovered).toMatchObject({ resumed: true });
+    expect(recovered?.attemptId).not.toBe(oldAttemptId);
+    expect(job).toMatchObject({ status: "pending", attempt: 2, statusReason: "spec224_authorization_hold_resumed" });
+    expect(job.inputJson.manifest.policyBinding).toBeUndefined();
+    expect(job.progressJson.spec224Authorization).toMatchObject({ status: "BUDGET_REQUIRED", recoveryCode: "PREVIOUS_HOLD_RELEASED" });
+    expect(state.attempts).toHaveLength(2);
+    expect(state.outbox).toHaveLength(0);
   });
 
   it("refuses to resume an expired SPEC-224 job after dispatch, under another owner, or for another run", async () => {
