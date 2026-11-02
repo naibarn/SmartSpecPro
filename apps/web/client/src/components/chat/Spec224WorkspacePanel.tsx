@@ -208,6 +208,33 @@ function developmentRunStateLabel(state: string): string {
   return labels[state] ?? state;
 }
 
+function developmentWorkerJobStatusLabel(status: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    pending: "รอระบบรับงาน",
+    queued: "รอ Worker",
+    claimed: "Worker รับงานแล้ว",
+    preparing: "Worker กำลังเตรียมงาน",
+    running: "Worker กำลังทำงาน",
+    waiting_external: "รอผลจากบริการภายนอก",
+    retry_scheduled: "รอระบบลองใหม่",
+    uploading: "กำลังส่งผลลัพธ์",
+    publishing: "กำลังบันทึกผลลัพธ์",
+    indexing: "กำลังจัดทำดัชนีผลลัพธ์",
+    completed: "Worker เสร็จแล้ว",
+    succeeded: "Worker เสร็จแล้ว",
+    failed: "Worker ล้มเหลว",
+    canceled: "Worker ยกเลิกแล้ว",
+    cancelled: "Worker ยกเลิกแล้ว",
+    expired: "Worker หมดเวลา",
+  };
+  return status ? labels[status] ?? status : "ยังตรวจสถานะ Worker ไม่ได้";
+}
+
+function formatDevelopmentRunDate(value: string | null | undefined): string {
+  if (!value || !Number.isFinite(Date.parse(value))) return "เวลาเริ่มไม่พร้อมใช้งาน";
+  return new Date(value).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+}
+
 function selectionKey(workspace: WorkspaceOption): string {
   return JSON.stringify([workspace.runnerId, workspace.workspaceId]);
 }
@@ -1834,25 +1861,44 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <p className="text-xs font-medium">งานล่าสุดใน workspace นี้</p>
               {continuationNotice ? <p className="mt-1 rounded border border-[var(--color-border)] p-2 text-xs" role="status">{continuationNotice}</p> : null}
               {requestKind === "development" && requiresTenantLedger && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
-              <ul className="mt-1 list-inside list-disc text-xs">
-                {workspaceQuery.data.developmentRuns.map(run => (
-                  <li key={run.runId}>
-                    {simpleMode ? "งานพัฒนา" : run.workPackageExternalId ?? "Prompt"}
-                    {!simpleMode && run.specSetRevision ? ` · Spec r${run.specSetRevision}` : ""}
-                    {` · ${developmentRunStateLabel(run.state)}${simpleMode ? "" : ` · ${run.runId}`}`}
-                    {run.goalApproval?.status === "pending" ? " · รออนุมัติ Goal" : ""}
-                    {run.runnerReadiness ? ` · Runner ${run.runnerReadiness.ready ? "พร้อม" : run.runnerReadiness.code}` : ""}
-                    {run.budgetStatus?.limitMinorUnits ? ` · งบ Goal USD ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)}` : ""}
-                    {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
-                    {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
-                      <Button type="button" variant="outline" size="sm" className="ml-2"
-                        disabled={resumeRunMutation.isPending || !boundWorkspace || (run.economicsMode !== "provider_managed" && !economicLedgerReadyForRun)}
-                        onClick={() => void resumeExistingRun(run.runId)}>
-                        {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
-                      </Button>
-                    ) : null}
-                  </li>
-                ))}
+              <ul className="mt-2 list-none space-y-2 p-0 text-xs">
+                {workspaceQuery.data.developmentRuns.map((run, index) => {
+                  const specLabel = run.specId
+                    ? `${run.specId}${run.specTitle ? ` — ${run.specTitle}` : ""}`
+                    : run.workPackageExternalId ?? "งานพัฒนาที่ไม่ได้บันทึก Spec ID";
+                  const resumeLabel = `ทำงานต่อ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`;
+                  return (
+                    <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
+                      <p className="font-medium">{specLabel}</p>
+                      <p className="mt-1 text-[var(--color-text-secondary)]">
+                        {index === 0 ? "รายการล่าสุด" : `รายการก่อนหน้า #${index + 1}`} · {formatDevelopmentRunDate(run.createdAt)}
+                        {run.workPackageExternalId ? ` · WorkPackage ${run.workPackageExternalId}` : ""}
+                        {run.specSetRevision ? ` · Spec Set r${run.specSetRevision}` : ""}
+                      </p>
+                      {run.specFileNames?.length ? <p className="mt-1">ไฟล์ Spec: {run.specFileNames.join(", ")}</p> : null}
+                      <p className="mt-1">
+                        Run: {developmentRunStateLabel(run.state)} · Worker: {developmentWorkerJobStatusLabel(run.workerJobStatus)}
+                        {run.workerJobAttempt ? ` · ครั้งที่ ${run.workerJobAttempt}` : ""}
+                        {run.goalApproval?.status === "pending" ? " · รออนุมัติ Goal" : ""}
+                        {run.runnerReadiness ? ` · Runner ${run.runnerReadiness.ready ? "พร้อม" : run.runnerReadiness.code}` : ""}
+                        {run.budgetStatus?.limitMinorUnits ? ` · งบ Goal USD ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)}` : ""}
+                        {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
+                      </p>
+                      {!simpleMode ? <p className="mt-1 break-all text-[var(--color-text-secondary)]">
+                        Run {run.runId}{run.jobId ? ` · Worker Job ${run.jobId}` : ""}
+                        {run.workerJobErrorCode ? ` · Error ${run.workerJobErrorCode}` : ""}
+                      </p> : null}
+                      {!(["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)) ? (
+                        <Button type="button" variant="outline" size="sm" className="mt-2"
+                          aria-label={resumeLabel}
+                          disabled={resumeRunMutation.isPending || !boundWorkspace || (run.economicsMode !== "provider_managed" && !economicLedgerReadyForRun)}
+                          onClick={() => void resumeExistingRun(run.runId)}>
+                          {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : resumeLabel}
+                        </Button>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ) : null}

@@ -779,10 +779,13 @@ export const spec226DevelopmentControlRouter = router({
           limit: 100,
           workspaceId: workspaceState.workspace.workspaceId,
         });
-        const developmentRuns = await Promise.all(runs
+        const inWorkspaceRuns = await Promise.all(runs
           .filter(run => run.workspaceId === workspaceState.workspace.workspaceId)
-          .map(async run => {
-            const record = await developmentRunService.get({ ...scope, runId: run.runId }).catch(() => null);
+          .map(async run => ({
+            run,
+            record: await developmentRunService.get({ ...scope, runId: run.runId }).catch(() => null),
+          })));
+        const developmentRuns = await Promise.all(inWorkspaceRuns.map(async ({ run, record }) => {
             const metadata = record?.run.metadata ?? {};
             const admission = metadata.spec224GoalAdmission && typeof metadata.spec224GoalAdmission === "object"
               ? metadata.spec224GoalAdmission as Record<string, unknown> : {};
@@ -798,6 +801,14 @@ export const spec226DevelopmentControlRouter = router({
             const grantWriteScope = Array.isArray(grant.writeScope)
               ? grant.writeScope.filter((value): value is string => typeof value === "string")
               : [];
+            const workerJobId = record?.run.workerJobId ?? run.workerJobId;
+            const workerJob = workerJobId
+              ? await createJobControlPlane().getStatus(workerJobId, {
+                  tenantId: scope.tenantId,
+                  requestedByUserId: scope.actorId,
+                }).catch(() => null)
+              : null;
+            const createdAt = record?.events?.find(event => event.type === "RUN_CREATED")?.occurredAt ?? null;
             const isFirstRunPilot = allowedWriteSet.length === 1
               && allowedWriteSet[0] === "apps/runner-app/tests/spec224-live-pilot/**"
               && grantWriteScope.length === 1
@@ -821,18 +832,26 @@ export const spec226DevelopmentControlRouter = router({
             }
             return {
               runId: run.runId,
-              jobId: record?.run.workerJobId ?? null,
+              jobId: workerJobId,
               isFirstRunPilot,
               conversationId: Number.isSafeInteger(Number(metadata.conversationId)) && Number(metadata.conversationId) > 0
                 ? Number(metadata.conversationId) : null,
               threadId: typeof metadata.chatThreadId === "string" ? metadata.chatThreadId : null,
               runnerId: typeof runner.runnerId === "string" ? runner.runnerId : null,
+              specId: run.requestedSpec?.specId ?? run.specId ?? run.specSources[0]?.specId ?? null,
+              specTitle: run.requestedSpec?.title ?? null,
+              specFileNames: run.specSources.map(source => source.fileName),
+              createdAt,
               provider: typeof grant.provider === "string" ? grant.provider : null,
               modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
               economicsMode: grant.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget",
               writeScope: allowedWriteSet,
               budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
+              workerJobStatus: workerJob?.status ?? null,
+              workerJobAttempt: workerJob?.attempt ?? null,
+              workerJobErrorCode: workerJob?.errorCode && /^[A-Z][A-Z0-9_]{1,100}$/.test(workerJob.errorCode)
+                ? workerJob.errorCode : null,
               workPackageId: run.workPackageId,
               workPackageExternalId: run.workPackageExternalId,
               specSetRevision: run.specSetRevision,
@@ -851,6 +870,13 @@ export const spec226DevelopmentControlRouter = router({
               finalVerifyStatus: record?.run.state === "COMPLETED" ? "completed" : "pending",
             };
           }));
+        developmentRuns.sort((left, right) => {
+          const leftTime = left.createdAt ? Date.parse(left.createdAt) : Number.NaN;
+          const rightTime = right.createdAt ? Date.parse(right.createdAt) : Number.NaN;
+          if (!Number.isFinite(leftTime)) return Number.isFinite(rightTime) ? 1 : 0;
+          if (!Number.isFinite(rightTime)) return -1;
+          return rightTime - leftTime;
+        });
         return { ...workspaceState, developmentRuns };
       } catch (error) {
         return asTrpcError(error);

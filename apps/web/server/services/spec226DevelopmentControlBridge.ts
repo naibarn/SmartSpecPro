@@ -305,8 +305,19 @@ export function createSpec226DevelopmentControlBridge(input: {
       const ownedRuns = listed.filter(
         run => run.tenantId === scope.tenantId && run.actorId === scope.actorId && (!params.workspaceId || run.workspaceId === params.workspaceId)
       );
+      // A Run projection is copied to each phase worker job. Collapse those
+      // snapshots here so callers see one durable DevelopmentRun, preferring
+      // the newest projection revision. The database list is newest-job-first,
+      // so its first snapshot also wins when legacy projections share a revision.
+      const latestByRunId = new Map<string, (typeof ownedRuns)[number]>();
+      for (const run of ownedRuns) {
+        const existing = latestByRunId.get(run.runId);
+        if (!existing || projectionRevision(run) > projectionRevision(existing)) {
+          latestByRunId.set(run.runId, run);
+        }
+      }
       return Promise.all(
-        ownedRuns.map(async run => {
+        [...latestByRunId.values()].map(async run => {
           let closure: RequirementClosureGraph | null = null;
           try {
             closure = (
