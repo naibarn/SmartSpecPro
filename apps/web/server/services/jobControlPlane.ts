@@ -1328,16 +1328,23 @@ export async function commitSpec224GoalDelegatedExecutionStart(
       runnerSessionId: binding.runnerSessionId,
       capabilitySnapshotId: binding.capabilitySnapshotId,
       capabilitySnapshotRevision: binding.capabilitySnapshotRevision,
-      authorizationGrantRef: binding.authorizationGrantRef,
+      // Lifecycle events are recursively redacted by appendJobEvent. Store a
+      // stable digest so dispatch can verify the exact grant without persisting
+      // the protected authorization reference in event history.
+      grantRefDigest: createHash("sha256").update(binding.authorizationGrantRef).digest("hex"),
       workspaceId: run.workspaceId,
       sourceSha,
       startedAt: now.toISOString(),
     };
     if (prior) {
       const payload = prior.payloadJson ?? {};
-      if (prior.eventType !== "SPEC224_GOAL_EXECUTION_STARTED" || payload.runId !== run.runId ||
-        payload.attemptId !== attempt.id || payload.approvalRef !== binding.approvalRef ||
-        payload.sourceSha !== sourceSha || payload.workerJobFencingVersion !== input.lease.fencingVersion)
+      const expectedStablePayload = { ...expectedPayload };
+      const priorStablePayload = { ...payload };
+      delete expectedStablePayload.startedAt;
+      delete priorStablePayload.startedAt;
+      if (prior.eventType !== "SPEC224_GOAL_EXECUTION_STARTED" ||
+        typeof payload.startedAt !== "string" ||
+        !isDeepStrictEqual(priorStablePayload, expectedStablePayload))
         return { outcome: "DENIED", reason: "SPEC224_GOAL_START_EVENT_CONFLICT" };
       return { outcome: "ALREADY_STARTED", runId: run.runId, approvalRef: binding.approvalRef, eventIdempotencyKey };
     }
@@ -1363,7 +1370,7 @@ export async function hasSpec224GoalDelegatedExecutionStart(input: {
       payload.runnerSessionId === input.command.runnerSessionId &&
       payload.capabilitySnapshotId === input.command.capabilitySnapshotId &&
       payload.capabilitySnapshotRevision === input.command.capabilitySnapshotRevision &&
-      payload.authorizationGrantRef === input.command.authorizationGrantRef &&
+      payload.grantRefDigest === createHash("sha256").update(input.command.authorizationGrantRef).digest("hex") &&
       payload.workspaceId === input.command.workspaceRef && typeof payload.approvalRef === "string" &&
       payload.approvalRef.length > 0 && typeof payload.sourceSha === "string";
   });

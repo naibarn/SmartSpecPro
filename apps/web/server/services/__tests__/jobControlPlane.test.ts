@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import {
   appendJobEvent,
@@ -14,6 +15,7 @@ import {
 } from "../jobControlPlane";
 import { assertCanonicalJobTransition } from "../jobControlPlaneTypes";
 import type { JobControlPlaneRepository } from "../jobControlPlane";
+import { redactJobPayload } from "../jobCanonicalization";
 import { registerJobSettlementHook, resetJobSettlementHooksForTests } from "../jobSettlementHooks";
 
 function makeRepository() {
@@ -345,6 +347,10 @@ describe("job control plane", () => {
       attemptId: "attempt-1",
       payloadJson: { runId: "run-1", approvalRef: "approval-1", workspaceId: "workspace-1", sourceSha: "a".repeat(40) },
     });
+    expect(inserted[0].payloadJson.grantRefDigest).toBe(
+      createHash("sha256").update("runner-auth").digest("hex")
+    );
+    expect(inserted[0].payloadJson.authorizationGrantRef).toBeUndefined();
   });
 
   it("binds Runner dispatch to the exact committed owner Goal start event", async () => {
@@ -358,12 +364,14 @@ describe("job control plane", () => {
       transaction: async (work: (repo: any) => Promise<unknown>) => work({
         findEventByIdempotency: async () => ({
           eventType: "SPEC224_GOAL_EXECUTION_STARTED",
-          payloadJson: {
+          payloadJson: redactJobPayload({
             schemaVersion: "spec224.goal-execution-start.v1", workerJobId: "job-1", attempt: 2,
             workerJobFencingVersion: 9, tenantId: "tenant-1", actorId: 7, runnerId: "runner-1",
             runnerSessionId: "session-1", capabilitySnapshotId: "cap-1", capabilitySnapshotRevision: "rev-1",
-            authorizationGrantRef: "runner-auth", workspaceId: "workspace-1", approvalRef: "approval-1", sourceSha: "a".repeat(40),
-          },
+            authorizationGrantRef: "runner-auth",
+            grantRefDigest: createHash("sha256").update("runner-auth").digest("hex"),
+            workspaceId: "workspace-1", approvalRef: "approval-1", sourceSha: "a".repeat(40),
+          }),
         }),
       }),
     };
