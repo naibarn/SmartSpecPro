@@ -310,6 +310,22 @@ fn percent_encode(value: &str) -> String {
         .collect()
 }
 
+fn fetch_rejection_code(status: u16, body: &[u8]) -> String {
+    let code = serde_json::from_slice::<serde_json::Value>(body)
+        .ok()
+        .and_then(|value| value.get("error")?.as_str().map(str::to_owned));
+    if let Some(code) = code.filter(|code| {
+        code.starts_with("SPEC224_RUNNER_INPUT_")
+            && code.len() <= 100
+            && code
+                .bytes()
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+    }) {
+        return format!("RUNNER_INPUT_FETCH_REJECTED_{code}");
+    }
+    format!("RUNNER_INPUT_FETCH_REJECTED_HTTP_{status}")
+}
+
 pub fn materialize_command_input(
     config: &RunnerConfig,
     command: &RunnerJobCommand,
@@ -363,7 +379,14 @@ pub fn materialize_command_input_into(
         .call()
         .map_err(|_| "RUNNER_INPUT_FETCH_FAILED")?;
     if !response.status().is_success() {
-        return Err("RUNNER_INPUT_FETCH_REJECTED".into());
+        let status = response.status().as_u16();
+        let body = response
+            .into_body()
+            .with_config()
+            .limit(8 * 1024)
+            .read_to_vec()
+            .unwrap_or_default();
+        return Err(fetch_rejection_code(status, &body));
     }
     let bytes = response
         .into_body()
@@ -418,6 +441,25 @@ mod tests {
         assert!(safe_relative_file("design-references/screen-3.jpeg"));
         assert!(!safe_relative_file("../screen.png"));
         assert!(!safe_relative_file("design-references/run.sh"));
+    }
+
+    #[test]
+    fn preserves_safe_control_plane_code_for_rejected_input_fetches() {
+        assert_eq!(
+            fetch_rejection_code(
+                400,
+                br#"{"error":"SPEC224_RUNNER_INPUT_FETCH_GRANT_INVALID"}"#
+            ),
+            "RUNNER_INPUT_FETCH_REJECTED_SPEC224_RUNNER_INPUT_FETCH_GRANT_INVALID"
+        );
+        assert_eq!(
+            fetch_rejection_code(502, b"upstream failure"),
+            "RUNNER_INPUT_FETCH_REJECTED_HTTP_502"
+        );
+        assert_eq!(
+            fetch_rejection_code(400, br#"{"error":"INTERNAL_SECRET"}"#),
+            "RUNNER_INPUT_FETCH_REJECTED_HTTP_400"
+        );
     }
 
     #[test]

@@ -147,6 +147,15 @@ type PendingSpec224InputGrant = {
   inputFetchGrant: string;
 };
 
+export function spec224RunnerInputGrantIdempotencyKey(input: {
+  inputFetchGrant: string;
+}): string {
+  const grantDigest = createHash("sha256")
+    .update(input.inputFetchGrant, "utf8")
+    .digest("hex");
+  return `spec224-input-grant:${grantDigest}`;
+}
+
 /**
  * Process-memory bridge between the durable input binding and the protected
  * command dispatch. The raw credential never enters a job record or command.
@@ -848,6 +857,9 @@ export async function dispatchRunnerJobCommand(
     fingerprint
   );
   if (cached) {
+    // stageRunnerInput rotates one-time grants on retry. Refresh the Runner's
+    // in-memory grant even when the command envelope itself is a duplicate.
+    if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
     return {
       status: "duplicate",
       commandId: cached.commandId,
@@ -1031,7 +1043,10 @@ export async function deliverSpec224RunnerInputGrant(input: {
     fencingVersion: input.fencingToken,
     correlationId: `spec224-input:${input.inputRef}`,
     sequence,
-    idempotencyKey: `spec224-input-grant:${input.inputRef}:${input.fencingToken}`,
+    // A retry may rotate the one-time fetch grant while keeping the command
+    // identity. Give each capability its own idempotency key so the Runner
+    // applies the refreshed grant instead of deduplicating it as stale.
+    idempotencyKey: spec224RunnerInputGrantIdempotencyKey(input),
     payload: {
       type: "runner.spec224.input-grant",
       inputRef: input.inputRef,

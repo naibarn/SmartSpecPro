@@ -84,6 +84,7 @@ import {
   runnerSnapshotHasReadyExecution,
   sendRunnerSocketAndWait,
   sendRunnerEnvelopeAfterPrerequisite,
+  spec224RunnerInputGrantIdempotencyKey,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
   requestControlPlaneOrigin,
@@ -275,6 +276,19 @@ describe("Runner control transport routes", () => {
       code: "runner_websocket_send_timeout",
     });
     expect(ws.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("assigns refreshed one-time input grants distinct replay keys without exposing them", () => {
+    const first = spec224RunnerInputGrantIdempotencyKey({
+      inputFetchGrant: "a".repeat(48),
+    });
+    const refreshed = spec224RunnerInputGrantIdempotencyKey({
+      inputFetchGrant: "b".repeat(48),
+    });
+
+    expect(first).not.toBe(refreshed);
+    expect(first).not.toContain("a".repeat(48));
+    expect(refreshed).not.toContain("b".repeat(48));
   });
 
   it("assigns command sequence after the staged input grant has been delivered", async () => {
