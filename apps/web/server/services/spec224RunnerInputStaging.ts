@@ -89,6 +89,17 @@ export type Spec224RunnerInputStagingStore = {
     fencingToken: number;
     now: Date;
   }): Promise<boolean>;
+  currentExternalWait(input: {
+    tenantId: string;
+    workerJobId: string;
+    attempt: number;
+    attemptId: string;
+    fencingToken: number;
+    commandId: string;
+    leaseId: string;
+    runnerId: string;
+    runnerSessionId: string;
+  }): Promise<boolean>;
   markMaterialized(inputRef: string, at: Date): Promise<void>;
   rotateFetchGrant(inputRef: string, fetchGrantHash: string): Promise<void>;
   consumeFetchGrant(input: {
@@ -470,7 +481,22 @@ export function createSpec224RunnerInputStagingService(
         fencingToken: staged.fencingToken,
         now: now(),
       });
-      if (!active) fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
+      // waitForExternal deliberately releases the worker lease before the
+      // Runner receives its command. During that phase, authorize the fetch
+      // from the durable external-wait binding instead of requiring a lease
+      // that no longer exists.
+      const waitingForBoundRunner = !active && await store.currentExternalWait({
+        tenantId: staged.tenantId,
+        workerJobId: staged.workerJobId,
+        attempt: staged.attempt,
+        attemptId: staged.attemptId,
+        fencingToken: staged.fencingToken,
+        commandId: staged.commandId,
+        leaseId: staged.leaseId,
+        runnerId: staged.runnerId,
+        runnerSessionId: staged.runnerSessionId,
+      });
+      if (!active && !waitingForBoundRunner) fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
       if (!(await store.isCurrentRunnerSession(input)))
         fail("SPEC224_RUNNER_INPUT_SESSION_STALE");
       if (!(await store.consumeFetchGrant({ inputRef, fetchGrantHash, consumedAt: now() })))
@@ -637,6 +663,47 @@ class DrizzleSpec224RunnerInputStagingStore
           eq(workerJobs.fencingVersion, input.fencingToken),
           eq(workerJobAttempts.id, input.attemptId),
           gt(workerJobs.leaseExpiresAt, input.now)
+        )
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async currentExternalWait(input: {
+    tenantId: string;
+    workerJobId: string;
+    attempt: number;
+    attemptId: string;
+    fencingToken: number;
+    commandId: string;
+    leaseId: string;
+    runnerId: string;
+    runnerSessionId: string;
+  }) {
+    const metadata = sql`${workerJobs.progressJson}->'externalWait'->'metadata'`;
+    const [row] = await getDb()
+      .select({ id: workerJobs.id })
+      .from(workerJobs)
+      .innerJoin(
+        workerJobAttempts,
+        and(
+          eq(workerJobAttempts.workerJobId, workerJobs.id),
+          eq(workerJobAttempts.attempt, workerJobs.attempt)
+        )
+      )
+      .where(
+        and(
+          eq(workerJobs.id, input.workerJobId),
+          eq(workerJobs.tenantId, input.tenantId),
+          eq(workerJobs.status, "waiting_external"),
+          eq(workerJobs.attempt, input.attempt),
+          eq(workerJobs.fencingVersion, input.fencingToken),
+          eq(workerJobAttempts.id, input.attemptId),
+          sql`${metadata}->>'commandId' = ${input.commandId}`,
+          sql`${metadata}->>'leaseId' = ${input.leaseId}`,
+          sql`${metadata}->>'runnerId' = ${input.runnerId}`,
+          sql`${metadata}->>'runnerSessionId' = ${input.runnerSessionId}`,
+          sql`${metadata}->>'fenceVersion' = ${String(input.fencingToken)}`
         )
       )
       .limit(1);

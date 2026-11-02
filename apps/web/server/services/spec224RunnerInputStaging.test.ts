@@ -11,7 +11,7 @@ import {
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
-function memoryStore(): Spec224RunnerInputStagingStore {
+function memoryStore(state = { leaseActive: true, externalWaitActive: false }): Spec224RunnerInputStagingStore {
   const inputs = new Map<string, Spec224StagedRunnerInput>();
   const sources = new Map<string, Spec224RunnerInputSource>();
   const sourceJobs = new Map<string, string>();
@@ -28,7 +28,10 @@ function memoryStore(): Spec224RunnerInputStagingStore {
       return input;
     },
     async currentLease() {
-      return true;
+      return state.leaseActive;
+    },
+    async currentExternalWait() {
+      return state.externalWaitActive;
     },
     async markMaterialized(inputRef, at) {
       const input = inputs.get(inputRef);
@@ -169,6 +172,44 @@ describe("Spec224 Runner input staging", () => {
     await expect(
       service.getRunnerInputForMaterialization({ ...request, inputFetchGrant: regranted.inputFetchGrant })
     ).resolves.toMatchObject({ inputRef: bound.inputRef });
+  });
+
+  it("allows input materialization after the worker lease is released into its bound external wait", async () => {
+    const state = { leaseActive: true, externalWaitActive: false };
+    const service = createSpec224RunnerInputStagingService(memoryStore(state), {
+      inputSourceRef: () => "spec224-source:external-wait",
+      inputRef: () => "spec224-input:external-wait",
+    });
+    const source = await service.preStageRunnerInput({
+      tenantId: "tenant-1",
+      startRef: "development-run:external-wait",
+      files: [{ path: "prompt.md", contentBase64: Buffer.from("continue work").toString("base64") }],
+    });
+    const bound = await service.bindPreStagedRunnerInput({
+      inputSourceRef: source.inputSourceRef,
+      commandId: "command-external-wait",
+      workerJobId: "job-external-wait",
+      attemptId: "attempt-external-wait",
+      attempt: 1,
+      leaseId: "lease:job-external-wait:attempt-external-wait",
+      fencingToken: 1,
+      tenantId: "tenant-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+      authorizationGrantRef: "grant-1",
+      workspaceRef: "workspace-1",
+    });
+
+    state.leaseActive = false;
+    state.externalWaitActive = true;
+    await expect(service.getRunnerInputForMaterialization({
+      inputRef: bound.inputRef,
+      tenantId: "tenant-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+      authorizationGrantRef: "grant-1",
+      inputFetchGrant: bound.inputFetchGrant,
+    })).resolves.toMatchObject({ inputRef: bound.inputRef });
   });
 
   it("rejects a conflicting source for the same durable Start", async () => {
