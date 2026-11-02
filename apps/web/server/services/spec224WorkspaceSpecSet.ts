@@ -238,6 +238,16 @@ export function canActorUseRunner(ownerUserId: number | null, actorId: number): 
 }
 
 export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpecSetStore) {
+  const canonicalSpecSources = (files: readonly Spec224WorkspaceSpecFile[]) => [...new Map(files.flatMap(file => {
+    const source = file.canonicalSource;
+    if (source?.kind !== "spec") return [];
+    return [[source.specId, {
+      specId: source.specId,
+      sourcePath: source.sourcePath,
+      digest: source.sourceDigest,
+    }] as const];
+  })).values()].sort((a, b) => a.specId.localeCompare(b.specId));
+
   async function requireConversation(input: { tenantId: string; actorId: number; conversationId: number }) {
     if (!Number.isSafeInteger(input.conversationId) || input.conversationId < 1) fail("CONVERSATION_ID_INVALID");
     if (!(await store.getConversation(input))) fail("CONVERSATION_SCOPE_FORBIDDEN");
@@ -302,6 +312,20 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
   return {
     availableWorkspaces: (input: { tenantId: string; actorId: number }) => store.listTrustedWorkspaces(input),
     getLatestRevision: (input: { tenantId: string; actorId: number; runnerId: string; workspaceId: string }) => store.getLatestRevision(input),
+    async getWorkPackageSpecSources(input: { tenantId: string; actorId: number; runnerId: string; workspaceId: string; revision: number; workPackageId: string }) {
+      const revision = await store.getRevision({ ...input, revision: input.revision });
+      if (!revision) return [];
+      const compiled = compileSpec224IncrementalSpecSet({
+        runnerId: revision.runnerId,
+        workspaceId: revision.workspaceId,
+        revision: revision.revision,
+        digest: revision.digest,
+        files: revision.files,
+      });
+      const workPackage = compiled.workPackages.find(item => item.id === input.workPackageId);
+      if (!workPackage) return [];
+      return canonicalSpecSources(filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files));
+    },
     async bindConversationWorkspace(input: { tenantId: string; actorId: number; conversationId: number; runnerId: string; workspaceId: string }) {
       await requireConversation(input);
       const workspace = (await store.listTrustedWorkspaces(input)).find(candidate => candidate.runnerId === input.runnerId && candidate.workspaceId === input.workspaceId);
@@ -482,6 +506,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
           specSetRevision: null,
           workPackageId: null,
           workPackageExternalId: null,
+          specSources: [],
           allowedWriteSet: [...(allowedWriteSet ?? ["**"])],
           workspaceAccessMode: workspaceAccessMode ?? "bounded_scope",
           inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from(prompt, "utf8").toString("base64") }],
@@ -515,6 +540,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!workPackage || workPackage.readiness !== "READY" || !compiled.runnableWorkPackageIds.includes(workPackage.id))
         fail("SPEC_SET_WORK_PACKAGE_NOT_READY");
       const packageFiles = filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files);
+      const specSources = canonicalSpecSources(packageFiles);
       if (workspace.scope === "PLATFORM_ENGINEERING") {
         const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({
           gitHead: workspace.gitHead,
@@ -556,6 +582,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         specSetRevision: revision.revision,
         workPackageId: workPackage.id,
         workPackageExternalId: workPackage.externalId,
+        specSources,
         allowedWriteSet: [...workPackage.allowedWriteSet],
         inputFiles: [
           ...packageFiles.map(file => ({ path: file.path, contentBase64: Buffer.from(file.content, "utf8").toString("base64") })),

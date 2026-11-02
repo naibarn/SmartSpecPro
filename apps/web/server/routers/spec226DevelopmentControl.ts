@@ -1574,6 +1574,7 @@ export const spec226DevelopmentControlRouter = router({
           specSetRevision: prepared.specSetRevision,
           workPackageId,
           workPackageExternalId: prepared.workPackageExternalId ?? null,
+          specSources: prepared.specSources ?? [],
           executionMode: prepared.workPackageId ? "work_package" : "prompt",
           allowedWriteSet: prepared.allowedWriteSet,
           workspaceAccessMode: prepared.workspaceAccessMode,
@@ -1955,10 +1956,29 @@ export const spec226DevelopmentControlRouter = router({
     )
     .query(async ({ ctx, input }) => {
       try {
-        return await defaultSpec226DevelopmentControlBridge.list({
-          ...requireScope(ctx),
+        const scope = requireScope(ctx);
+        const runs = await defaultSpec226DevelopmentControlBridge.list({
+          ...scope,
           limit: input?.limit ?? 25,
         });
+        const sourceLookups = new Map<string, Promise<Array<{ specId: string; sourcePath: string; digest: string }>>>();
+        return await Promise.all(runs.map(async run => {
+          if (run.specSources.length || !run.runnerId || !run.specSetRevision || !run.workPackageId) return run;
+          const lookupKey = `${run.runnerId}\0${run.workspaceId}\0${run.specSetRevision}\0${run.workPackageId}`;
+          let lookup = sourceLookups.get(lookupKey);
+          if (!lookup) {
+            lookup = defaultSpec224WorkspaceSpecSetService.getWorkPackageSpecSources({
+              ...scope,
+              runnerId: run.runnerId,
+              workspaceId: run.workspaceId,
+              revision: run.specSetRevision,
+              workPackageId: run.workPackageId,
+            }).catch(() => []);
+            sourceLookups.set(lookupKey, lookup);
+          }
+          const specSources = await lookup;
+          return { ...run, specSources, specId: run.specId ?? (specSources.length === 1 ? specSources[0]!.specId : null) };
+        }));
       } catch (error) {
         return asTrpcError(error);
       }

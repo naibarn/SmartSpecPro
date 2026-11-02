@@ -64,6 +64,14 @@ function goalTitle(goal: any): string {
   return value?.trim() ?? `เป้าหมาย ${String(goal.goalId).slice(0, 8)}`;
 }
 
+export function specSourceLabel(source: { specId: string; sourcePath: string }, developer: boolean): string {
+  const specLabel = /^\d+(?:-|$)/.test(source.specId)
+    ? `SPEC-${source.specId.match(/^\d+/)?.[0]}`
+    : source.specId;
+  const file = source.sourcePath.split("/").at(-1) || "spec.md";
+  return `${specLabel} · ${developer ? source.sourcePath : file}`;
+}
+
 const CONTROL_PHASE: Record<string, string> = {
   DISCOVERY: "PLAN",
   PLANNING: "PLAN",
@@ -427,6 +435,29 @@ export function ProjectExecutionWorkspace({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <p className="font-medium">{goalTitle(selectedGoal)}</p>
+                      <section className="space-y-1 rounded-md border bg-muted/20 p-3 text-sm">
+                        <p>
+                          <span className="text-muted-foreground">Goal</span>{" "}
+                          <span className="font-mono">#{String(selectedGoal.goalId).slice(0, 8)}</span>
+                          {presentationMode === "developer" ? (
+                            <span className="ml-2 break-all font-mono text-xs text-muted-foreground">{selectedGoal.goalId}</span>
+                          ) : null}
+                        </p>
+                        {selectedGoal.specSources?.length ? (
+                          <p>
+                            <span className="text-muted-foreground">อ้างอิง SPEC:</span>{" "}
+                            {selectedGoal.specSources.map((source: { specId: string; sourcePath: string }, index: number) => (
+                              <span key={`${source.specId}:${source.sourcePath}`}>
+                                {index ? ", " : ""}{specSourceLabel(source, presentationMode === "developer")}
+                              </span>
+                            ))}
+                          </p>
+                        ) : selectedGoal.specId ? (
+                          <p><span className="text-muted-foreground">อ้างอิง SPEC:</span> {selectedGoal.specId}</p>
+                        ) : (
+                          <p className="text-muted-foreground">Run นี้ไม่มีข้อมูลอ้างอิง SPEC ที่บันทึกไว้</p>
+                        )}
+                      </section>
                       <section
                         className="grid grid-cols-2 gap-2 sm:grid-cols-3"
                         aria-label="Goal lifecycle evidence"
@@ -766,6 +797,19 @@ export function ProjectExecutionWorkspace({
                       {selectedGoal.workPackageExternalId ?? "ยังไม่มีข้อมูล"}
                     </dd>
                   </section>
+                  {selectedGoal.specSources?.length ? (
+                    <section>
+                      <dt className="text-muted-foreground">ไฟล์ SPEC ต้นทาง</dt>
+                      <dd className="break-all">
+                        {selectedGoal.specSources.map((source: { specId: string; sourcePath: string }) => specSourceLabel(source, presentationMode === "developer")).join(", ")}
+                      </dd>
+                    </section>
+                  ) : selectedGoal.specId ? (
+                    <section>
+                      <dt className="text-muted-foreground">SPEC</dt>
+                      <dd>{selectedGoal.specId}</dd>
+                    </section>
+                  ) : null}
                   <section>
                     <dt className="text-muted-foreground">หลักฐาน</dt>
                     <dd>{selectedGoal.evidenceRefs?.length ?? 0} รายการ</dd>

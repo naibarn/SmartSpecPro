@@ -109,6 +109,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
     const [view] = await bridge.list({ tenantId: run.tenantId, actorId: run.actorId, limit: 10 });
 
     expect(view).toMatchObject({
+      goalId: run.goalId,
       goal: "Implement SPEC-312 P0: r14-core-p1-first-slice",
       projectId: "project-modular-core",
       specId: "SPEC-312",
@@ -151,7 +152,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
     const run = {
       ...runAtPlanning(),
       workPackageId: "wp:opaque-id",
-      metadata: { spec224Workspace: { specSetRevision: 3, workPackageExternalId: "api" } },
+      metadata: { spec224Workspace: { specSetRevision: 3, workPackageExternalId: "api", specSources: [{ specId: "313-core", sourcePath: "specs/feature/313-core/spec.md", digest: "a".repeat(64) }] } },
     };
     const other = { ...run, runId: "run-other", workspaceId: "workspace-other" };
     const listRuns = vi.fn(async () => [run, other]);
@@ -167,6 +168,8 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         workPackageId: "wp:opaque-id",
         workPackageExternalId: "api",
         specSetRevision: 3,
+        specId: "313-core",
+        specSources: [{ specId: "313-core", sourcePath: "specs/feature/313-core/spec.md", digest: "a".repeat(64) }],
       }]);
     expect(listRuns).toHaveBeenCalledWith({
       scope: { tenantId: run.tenantId, actorId: run.actorId },

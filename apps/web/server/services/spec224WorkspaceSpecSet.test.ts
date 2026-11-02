@@ -350,6 +350,15 @@ describe("spec224 workspace Spec Set", () => {
       "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/spec.md",
     ]);
     expect(runInput.workPackageExternalId).toBe("catalog-binding");
+    expect(runInput.specSources).toEqual([{
+      specId: "312-project",
+      sourcePath: "specs/feature/312-project/spec.md",
+      digest: expect.any(String),
+    }]);
+    await expect(service.getWorkPackageSpecSources({
+      tenantId: "tenant-a", actorId: 42, runnerId: "runner-a", workspaceId: "workspace-a",
+      revision: runInput.specSetRevision, workPackageId: packageId,
+    })).resolves.toEqual(runInput.specSources);
   });
 
   it("does not dispatch a canonical package when its full referenced Spec is missing", async () => {

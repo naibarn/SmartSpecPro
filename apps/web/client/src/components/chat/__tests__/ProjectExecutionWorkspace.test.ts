@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findGoalWorkerJob, projectBinding } from "../ProjectExecutionWorkspace";
+import { findGoalWorkerJob, projectBinding, specSourceLabel } from "../ProjectExecutionWorkspace";
 
 describe("ProjectExecutionWorkspace project binding", () => {
   it("reads the safe project binding returned by the DevelopmentRun list DTO", () => {
@@ -37,5 +37,17 @@ describe("ProjectExecutionWorkspace goal job binding", () => {
   it("returns no job only when the Goal has no linked job or it is absent", () => {
     expect(findGoalWorkerJob({ workerJobId: "job-missing" }, [])).toBeNull();
     expect(findGoalWorkerJob({ workerJobId: null }, [{ id: "job-1" }])).toBeNull();
+  });
+});
+
+describe("ProjectExecutionWorkspace Spec source display", () => {
+  const source = { specId: "313-smartaihub-saas-core", sourcePath: "specs/feature/313-smartaihub-saas-core/spec.md" };
+
+  it("shows the Spec number and only the filename in Simple mode", () => {
+    expect(specSourceLabel(source, false)).toBe("SPEC-313 · spec.md");
+  });
+
+  it("shows the full repository-relative source in Developer mode", () => {
+    expect(specSourceLabel(source, true)).toBe("SPEC-313 · specs/feature/313-smartaihub-saas-core/spec.md");
   });
 });

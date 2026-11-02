@@ -32,10 +32,13 @@ export type Spec226DevelopmentRunAction = "pause" | "cancel";
 export type Spec226DevelopmentRunView = {
   bridgeVersion: typeof SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION;
   runId: string;
+  goalId: string;
   /** User-authored task text and explicit project binding for Task Control. */
   goal: string;
   projectId: string | null;
+  runnerId: string | null;
   specId: string | null;
+  specSources: Array<{ specId: string; sourcePath: string; digest: string }>;
   workspaceId: string;
   workPackageId: string | null;
   workPackageExternalId: string | null;
@@ -100,17 +103,36 @@ function toView(input: {
     : null;
   const metadata = input.run.metadata ?? {};
   const workspaceMetadata = metadata.spec224Workspace;
+  const workspaceRecord = workspaceMetadata && typeof workspaceMetadata === "object" && !Array.isArray(workspaceMetadata)
+    ? workspaceMetadata as Record<string, unknown>
+    : null;
+  const specSources = Array.isArray(workspaceRecord?.specSources)
+    ? workspaceRecord.specSources.flatMap(source => {
+      if (!source || typeof source !== "object" || Array.isArray(source)) return [];
+      const record = source as Record<string, unknown>;
+      if (typeof record.specId !== "string" || typeof record.sourcePath !== "string" || typeof record.digest !== "string") return [];
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(record.specId) ||
+          record.sourcePath.startsWith("/") || record.sourcePath.split("/").includes("..") ||
+          !/^[a-f0-9]{64}$/i.test(record.digest)) return [];
+      return [{ specId: record.specId, sourcePath: record.sourcePath, digest: record.digest }];
+    })
+    : [];
   const workspaceProjectId = workspaceMetadata && typeof workspaceMetadata === "object" && !Array.isArray(workspaceMetadata)
     ? (workspaceMetadata as Record<string, unknown>).projectId
     : null;
   return {
     bridgeVersion: SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION,
     runId: input.run.runId,
+    goalId: input.run.goalId ?? `goal:${input.run.runId}`,
     goal: input.run.goal.slice(0, 1_000),
     projectId: typeof metadata.projectId === "string"
       ? metadata.projectId
       : typeof workspaceProjectId === "string" ? workspaceProjectId : null,
-    specId: typeof metadata.specId === "string" ? metadata.specId : null,
+    runnerId: typeof workspaceRecord?.runnerId === "string" ? workspaceRecord.runnerId : null,
+    specId: typeof metadata.specId === "string"
+      ? metadata.specId
+      : specSources.length === 1 ? specSources[0]!.specId : null,
+    specSources,
     workspaceId: input.run.workspaceId,
     workPackageId: input.run.workPackageId ?? null,
     workPackageExternalId: (() => {
