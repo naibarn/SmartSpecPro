@@ -249,6 +249,35 @@ function equivalent(existing: Spec224StagedRunnerInput, staged: Spec224StagedRun
   );
 }
 
+async function assertCurrentInputExecution(
+  store: Spec224RunnerInputStagingStore,
+  staged: Spec224StagedRunnerInput,
+  now: Date
+): Promise<void> {
+  const active = await store.currentLease({
+    tenantId: staged.tenantId,
+    workerJobId: staged.workerJobId,
+    attempt: staged.attempt,
+    attemptId: staged.attemptId,
+    fencingToken: staged.fencingToken,
+    now,
+  });
+  // Dispatch releases the worker lease into a durable external wait. Fetch,
+  // grant refresh and materialization acknowledgement share that authority.
+  if (active || await store.currentExternalWait({
+    tenantId: staged.tenantId,
+    workerJobId: staged.workerJobId,
+    attempt: staged.attempt,
+    attemptId: staged.attemptId,
+    fencingToken: staged.fencingToken,
+    commandId: staged.commandId,
+    leaseId: staged.leaseId,
+    runnerId: staged.runnerId,
+    runnerSessionId: staged.runnerSessionId,
+  })) return;
+  fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
+}
+
 export function createSpec224RunnerInputStagingService(
   store: Spec224RunnerInputStagingStore = new DrizzleSpec224RunnerInputStagingStore(),
   options: { inputRef?: () => string; inputSourceRef?: () => string; now?: () => Date } = {}
@@ -436,15 +465,8 @@ export function createSpec224RunnerInputStagingService(
         staged.runnerSessionId !== input.runnerSessionId
       )
         fail("SPEC224_RUNNER_INPUT_BINDING_MISMATCH");
-      const active = await store.currentLease({
-        tenantId: staged.tenantId,
-        workerJobId: staged.workerJobId,
-        attempt: staged.attempt,
-        attemptId: staged.attemptId,
-        fencingToken: staged.fencingToken,
-        now: now(),
-      });
-      if (!active || !(await store.isCurrentRunnerSession(input)))
+      await assertCurrentInputExecution(store, staged, now());
+      if (!(await store.isCurrentRunnerSession(input)))
         fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
       return {
         inputRef: staged.inputRef,
@@ -473,30 +495,7 @@ export function createSpec224RunnerInputStagingService(
       const fetchGrantHash = sha256(input.inputFetchGrant);
       if (!sameHash(staged.fetchGrantHash, fetchGrantHash))
         fail("SPEC224_RUNNER_INPUT_FETCH_GRANT_INVALID");
-      const active = await store.currentLease({
-        tenantId: staged.tenantId,
-        workerJobId: staged.workerJobId,
-        attempt: staged.attempt,
-        attemptId: staged.attemptId,
-        fencingToken: staged.fencingToken,
-        now: now(),
-      });
-      // waitForExternal deliberately releases the worker lease before the
-      // Runner receives its command. During that phase, authorize the fetch
-      // from the durable external-wait binding instead of requiring a lease
-      // that no longer exists.
-      const waitingForBoundRunner = !active && await store.currentExternalWait({
-        tenantId: staged.tenantId,
-        workerJobId: staged.workerJobId,
-        attempt: staged.attempt,
-        attemptId: staged.attemptId,
-        fencingToken: staged.fencingToken,
-        commandId: staged.commandId,
-        leaseId: staged.leaseId,
-        runnerId: staged.runnerId,
-        runnerSessionId: staged.runnerSessionId,
-      });
-      if (!active && !waitingForBoundRunner) fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
+      await assertCurrentInputExecution(store, staged, now());
       if (!(await store.isCurrentRunnerSession(input)))
         fail("SPEC224_RUNNER_INPUT_SESSION_STALE");
       if (!(await store.consumeFetchGrant({ inputRef, fetchGrantHash, consumedAt: now() })))
@@ -529,15 +528,6 @@ export function createSpec224RunnerInputStagingService(
         !SHA256.test(input.inputDigest)
       )
         fail("SPEC224_RUNNER_INPUT_RECEIPT_MISMATCH");
-      const active = await store.currentLease({
-        tenantId: staged.tenantId,
-        workerJobId: staged.workerJobId,
-        attempt: staged.attempt,
-        attemptId: staged.attemptId,
-        fencingToken: staged.fencingToken,
-        now: now(),
-      });
-      if (!active) fail("SPEC224_RUNNER_INPUT_LEASE_STALE");
       if (
         !(await store.isCurrentRunnerSession({
           tenantId: staged.tenantId,
@@ -546,7 +536,12 @@ export function createSpec224RunnerInputStagingService(
         }))
       )
         fail("SPEC224_RUNNER_INPUT_SESSION_STALE");
-      if (!staged.materializedAt) await store.markMaterialized(staged.inputRef, now());
+      // Durable receipt replay may arrive after completion. An exact, already
+      // recorded materialization must still be acknowledged without reopening
+      // execution authority for a new fetch or a different receipt.
+      if (staged.materializedAt) return;
+      await assertCurrentInputExecution(store, staged, now());
+      await store.markMaterialized(staged.inputRef, now());
     },
   };
 }

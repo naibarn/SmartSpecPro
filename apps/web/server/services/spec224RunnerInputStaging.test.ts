@@ -176,7 +176,8 @@ describe("Spec224 Runner input staging", () => {
 
   it("allows input materialization after the worker lease is released into its bound external wait", async () => {
     const state = { leaseActive: true, externalWaitActive: false };
-    const service = createSpec224RunnerInputStagingService(memoryStore(state), {
+    const store = memoryStore(state);
+    const service = createSpec224RunnerInputStagingService(store, {
       inputSourceRef: () => "spec224-source:external-wait",
       inputRef: () => "spec224-input:external-wait",
     });
@@ -210,6 +211,30 @@ describe("Spec224 Runner input staging", () => {
       authorizationGrantRef: "grant-1",
       inputFetchGrant: bound.inputFetchGrant,
     })).resolves.toMatchObject({ inputRef: bound.inputRef });
+
+    const receipt = {
+      inputRef: bound.inputRef,
+      commandId: "command-external-wait",
+      tenantId: "tenant-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+      inputDigest: bound.inputDigest,
+      totalBytes: bound.totalBytes,
+      fileCount: 1,
+    };
+    state.externalWaitActive = false;
+    await expect(service.recordInputMaterialized(receipt)).rejects.toMatchObject({
+      code: "SPEC224_RUNNER_INPUT_LEASE_STALE",
+    });
+    state.externalWaitActive = true;
+    await expect(service.recordInputMaterialized(receipt)).resolves.toBeUndefined();
+    expect((await store.findByInputRef(bound.inputRef))?.materializedAt).toBeInstanceOf(Date);
+
+    // A persisted acknowledgement remains idempotent after the job settles.
+    state.externalWaitActive = false;
+    await expect(service.recordInputMaterialized(receipt)).resolves.toBeUndefined();
+    await expect(service.recordInputMaterialized({ ...receipt, inputDigest: "f".repeat(64) }))
+      .rejects.toMatchObject({ code: "SPEC224_RUNNER_INPUT_RECEIPT_MISMATCH" });
   });
 
   it("rejects a conflicting source for the same durable Start", async () => {

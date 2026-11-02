@@ -95,7 +95,8 @@ async function settleAndCrashProcess(fixture: {
 
 async function createPendingReceiptFixture(
   eventType: "EXECUTION_COMPLETED" | "UNKNOWN_OUTCOME" = "EXECUTION_COMPLETED",
-  persistReceipt = true
+  persistReceipt = true,
+  withStagedInput = false
 ) {
   const tenantId = randomUUID();
   const runnerId = `runner-${randomUUID()}`;
@@ -115,7 +116,7 @@ async function createPendingReceiptFixture(
   ownedUsers.push(Number(user.id));
   await sql`
     INSERT INTO runner_nodes ("runnerId", "tenantId", "ownerUserId", "nodeKind", "profile", "displayName", "trustState", "status", "currentSnapshotRevision", "snapshotExpiresAt", "activeSessionId")
-    VALUES (${runnerId}, ${tenantId}, ${Number(user.id)}, 'rust_runner', 'development', 'D343 deterministic runner', 'trusted', 'offline', ${snapshotRevision}, ${expiresAt}, ${runnerSessionId})
+    VALUES (${runnerId}, ${tenantId}, ${Number(user.id)}, 'rust_runner', 'development', 'D343 deterministic runner', 'trusted', ${withStagedInput ? "online" : "offline"}, ${snapshotRevision}, ${expiresAt}, ${runnerSessionId})
   `;
   await sql`
     INSERT INTO runner_capability_snapshots ("id", "runnerId", "tenantId", "revision", "idempotencyKey", "observedAt", "expiresAt", "snapshotJson")
@@ -196,6 +197,30 @@ async function createPendingReceiptFixture(
   const commandId = `command-${randomUUID()}`;
   const operationKey = `external-agent:${runId}:plan-1:1`;
   const leaseId = `lease:${lease.jobId}:${lease.attemptId}`;
+  let stagedInput: { inputRef: string; inputDigest: string; totalBytes: number; inputFetchGrant: string } | undefined;
+  if (withStagedInput) {
+    const { defaultSpec224RunnerInputStagingService: staging } = await import("../spec224RunnerInputStaging");
+    const source = await staging.preStageRunnerInput({
+      tenantId,
+      startRef: runId,
+      files: [{ path: "prompt.md", contentBase64: Buffer.from("Continue the selected development package.").toString("base64") }],
+    });
+    await staging.bindSourceToWorkerJob({ tenantId, startRef: runId, inputSourceRef: source.inputSourceRef, workerJobId: lease.jobId });
+    stagedInput = await staging.bindPreStagedRunnerInput({
+      inputSourceRef: source.inputSourceRef,
+      tenantId,
+      workerJobId: lease.jobId,
+      commandId,
+      attemptId: lease.attemptId,
+      attempt: 1,
+      leaseId,
+      fencingToken: lease.fencingVersion,
+      runnerId,
+      runnerSessionId,
+      authorizationGrantRef: policyBinding.authorizationGrantRef,
+      workspaceRef: run.workspaceId,
+    });
+  }
   await controlPlane.waitForExternal(lease, {
     operationKey,
     resumeAfter: expiresAt.toISOString(),
@@ -245,12 +270,16 @@ async function createPendingReceiptFixture(
     operationKey,
     resultRef: `d343-result:${runId}`,
     receipt,
+    stagedInput,
+    authorizationGrantRef: policyBinding.authorizationGrantRef,
   };
 }
 
 afterAll(async () => {
   if (enabled) {
     for (const jobId of ownedJobs) {
+      await sql`DELETE FROM spec224_runner_job_inputs WHERE "workerJobId" = ${jobId}`;
+      await sql`DELETE FROM spec224_runner_input_sources WHERE "workerJobId" = ${jobId}`;
       await sql`DELETE FROM worker_job_events WHERE "workerJobId" = ${jobId}`;
       await sql`DELETE FROM worker_job_outbox WHERE "workerJobId" = ${jobId}`;
       await sql`DELETE FROM worker_job_attempts WHERE "workerJobId" = ${jobId}`;
@@ -268,6 +297,43 @@ afterAll(async () => {
 });
 
 suite("Spec 224 durable Runner continuation — PostgreSQL", () => {
+  it("fetches and acknowledges staged input across the real external-wait lease release", async () => {
+    const fixture = await createPendingReceiptFixture("EXECUTION_COMPLETED", false, true);
+    const { defaultSpec224RunnerInputStagingService: staging } = await import("../spec224RunnerInputStaging");
+    const staged = fixture.stagedInput!;
+    const [waiting] = await sql`SELECT status, "leaseExpiresAt" FROM worker_jobs WHERE id = ${fixture.jobId}`;
+    expect(waiting).toMatchObject({ status: "waiting_external", leaseExpiresAt: null });
+    const scope = {
+      inputRef: staged.inputRef,
+      tenantId: fixture.tenantId,
+      runnerId: fixture.runnerId,
+      runnerSessionId: fixture.receipt.runnerSessionId,
+    };
+    const refreshed = await staging.rotateInputFetchGrant(scope);
+    await expect(staging.getRunnerInputForMaterialization({
+      ...scope,
+      authorizationGrantRef: fixture.authorizationGrantRef,
+      inputFetchGrant: refreshed.inputFetchGrant,
+    })).resolves.toMatchObject({ inputRef: staged.inputRef });
+    const materialization = {
+      ...scope,
+      commandId: fixture.receipt.commandId,
+      inputDigest: staged.inputDigest,
+      totalBytes: staged.totalBytes,
+      fileCount: 1,
+    };
+    await sql`UPDATE worker_jobs SET "progressJson" = jsonb_set("progressJson", '{externalWait,metadata,fenceVersion}', '2') WHERE id = ${fixture.jobId}`;
+    await expect(staging.recordInputMaterialized(materialization)).rejects.toMatchObject({ code: "SPEC224_RUNNER_INPUT_LEASE_STALE" });
+    await sql`UPDATE worker_jobs SET "progressJson" = jsonb_set("progressJson", '{externalWait,metadata,fenceVersion}', '1') WHERE id = ${fixture.jobId}`;
+    await expect(staging.recordInputMaterialized(materialization)).resolves.toBeUndefined();
+    const [persisted] = await sql`SELECT "materializedAt", "fetchGrantConsumedAt" FROM spec224_runner_job_inputs WHERE id = ${staged.inputRef}`;
+    expect(persisted.materializedAt).toBeInstanceOf(Date);
+    expect(persisted.fetchGrantConsumedAt).toBeInstanceOf(Date);
+    await sql`UPDATE worker_jobs SET status = 'cancelled' WHERE id = ${fixture.jobId}`;
+    await expect(staging.recordInputMaterialized(materialization)).resolves.toBeUndefined();
+    await expect(staging.rotateInputFetchGrant(scope)).rejects.toMatchObject({ code: "SPEC224_RUNNER_INPUT_LEASE_STALE" });
+  }, 30_000);
+
   it("restarts after receipt persistence and reconciles the DevelopmentRun exactly once", async () => {
     const fixture = await createPendingReceiptFixture();
     const [before] = await sql`
