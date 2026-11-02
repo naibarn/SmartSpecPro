@@ -576,15 +576,20 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const runnerReadiness = workspaceReadinessQuery.data ?? readinessQuery.data ?? preparation?.runnerReadiness;
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
+  const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
+  const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
+  const hasLegacyBudgetedPlatformRun = Boolean(platformWorkspaceSelected && (workspaceQuery.data?.developmentRuns ?? []).some(run =>
+    run.economicsMode !== "provider_managed" && !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
+  ));
+  const requiresTenantLedger = !platformWorkspaceSelected || hasLegacyBudgetedPlatformRun;
   const economicLedgerReadiness = trpc.economicControlPlane.listSpec224LedgerAccounts.useQuery(
-    { currency: "USD" }, { enabled: user?.role === "admin", retry: false },
+    { currency: "USD" }, { enabled: user?.role === "admin" && requiresTenantLedger, retry: false },
   );
-  const economicLedgerReadyForRun = user?.role !== "admin"
+  const economicLedgerReadyForRun = !requiresTenantLedger || user?.role !== "admin"
     || (!economicLedgerReadiness.isLoading && !economicLedgerReadiness.error && Boolean(economicLedgerReadiness.data?.configured));
   const hasUnfinishedDevelopmentRun = (workspaceQuery.data?.developmentRuns ?? []).some(run =>
     !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
   );
-  const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
     candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
       && candidate.deploymentTargetId === "modular-debian-dev",
@@ -593,7 +598,6 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     workspace.runnerId === selectedWorkspace?.runnerId && workspace.workspaceId === selectedWorkspace?.workspaceId
       && workspace.deploymentTarget?.id === "modular-debian-dev",
   );
-  const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
   const featureSpecs = featureSpecsQuery.data?.specs ?? [];
   const availableFeatureSpecs = featureSpecs.filter(spec =>
     !spec.requiredDeploymentTargetId || spec.requiredDeploymentTargetId === selectedWorkspace?.deploymentTarget?.id,
@@ -979,7 +983,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.error("Workspace มีการเปลี่ยนแปลงหรือหลักฐาน source ยังไม่ครบ โปรดโหลด snapshot ล่าสุดและตรวจผล preflight ก่อนเริ่ม");
       return;
     }
-    if (budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000) {
+    if (!platformWorkspaceSelected && (budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000)) {
       toast.error("ระบุวงเงิน USD ตั้งแต่ 0.01 ถึง 100,000.00");
       return;
     }
@@ -1002,7 +1006,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -1022,7 +1026,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           workPackageId,
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
-        budgetCapMinorUnits,
+        ...(platformWorkspaceSelected ? {} : { budgetCapMinorUnits }),
         ...(requestKind === "development" ? { provider: effectiveProvider as "codex" | "microsoft_copilot" } : {}),
         modelSelection,
         ...(visualReferences.length ? {
@@ -1421,7 +1425,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ) : null}
             </section>
           ) : null}
-          {selectedWorkspace && (requestKind !== "development" || !hasUnfinishedDevelopmentRun) ? <Spec224EconomicLedgerSetup /> : null}
+          {selectedWorkspace && requiresTenantLedger && (requestKind !== "development" || !hasUnfinishedDevelopmentRun) ? <Spec224EconomicLedgerSetup /> : null}
+          {hasLegacyBudgetedPlatformRun ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">มี DevelopmentRun เดิมที่เริ่มก่อนเปลี่ยนนโยบาย และยังผูกกับ budget/Ledger ของ tenant; งานใหม่ใน Platform workspace จะใช้โควต้าบัญชี Provider</p> : null}
 
           {selectedWorkspace && requestKind === "development" ? (
             <Section variant="transparent" padding={3} aria-labelledby="spec224-model-selection-heading">
@@ -1569,7 +1574,12 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   การสร้างและทดสอบ Preview ไม่ต้องใช้ Windows Runner หรือ GitHub ส่วน GitHub จะใช้เก็บ source ใน repo ส่วนตัวหลังมี artifact แล้ว หากยังไม่มี provider สำหรับสร้างแอป ให้ตั้งค่าได้ที่ <a className="underline" href="/settings?tab=localAi">Settings → Local AI</a>
                 </p>
               ) : null}
-              {requestKind === "development" ? (
+              {requestKind === "development" && platformWorkspaceSelected ? (
+                <section className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950" role="status" aria-label="Provider managed development usage">
+                  งานพัฒนา SmartAIHub ใช้โควต้าของบัญชี Codex/Provider ที่เลือก ระบบไม่หักเครดิต SmartAIHub และไม่ต้องตั้ง Ledger หรือ budget cap ส่วน tenant workspace ยังคงใช้ budget ของ tenant
+                </section>
+              ) : null}
+              {requestKind === "development" && !platformWorkspaceSelected ? (
                 <label className="block text-xs font-medium">
                   วงเงินสูงสุดของ DevelopmentRun นี้ (USD)
                   <input
@@ -1747,7 +1757,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {workspaceQuery.data?.developmentRuns?.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
               <p className="text-xs font-medium">งานล่าสุดใน workspace นี้</p>
-              {requestKind === "development" && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
+              {requestKind === "development" && requiresTenantLedger && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
               <ul className="mt-1 list-inside list-disc text-xs">
                 {workspaceQuery.data.developmentRuns.map(run => (
                   <li key={run.runId}>
@@ -1760,7 +1770,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
                     {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
                       <Button type="button" variant="outline" size="sm" className="ml-2"
-                        disabled={resumeRunMutation.isPending || !boundWorkspace || !economicLedgerReadyForRun}
+                        disabled={resumeRunMutation.isPending || !boundWorkspace || (run.economicsMode !== "provider_managed" && !economicLedgerReadyForRun)}
                         onClick={() => void resumeExistingRun(run.runId)}>
                         {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
                       </Button>

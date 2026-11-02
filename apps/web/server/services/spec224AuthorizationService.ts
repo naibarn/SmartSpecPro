@@ -171,7 +171,8 @@ export function hasReleasedSpec224AttemptBinding(input: {
       event.eventIdempotencyKey !== `authorization-hold-released:${input.jobId}` ||
       event.workerJobAttempt !== input.attempt ||
       event.payloadJson.approvalRef !== binding.approvalRef ||
-      event.payloadJson.budgetReservationRef !== binding.budgetReservationRef) return null;
+      (binding.economicsMode === "provider_managed" && event.payloadJson.economicsMode !== binding.economicsMode) ||
+      (binding.economicsMode !== "provider_managed" && event.payloadJson.budgetReservationRef !== binding.budgetReservationRef)) return null;
   return binding as unknown as Spec224PolicyBinding;
 }
 
@@ -197,10 +198,12 @@ function parseBinding(value: unknown): Spec224PolicyBinding | null {
     typeof raw.capabilitySnapshotRevision !== "string" ||
     typeof raw.authorizationGrantRef !== "string" ||
     typeof raw.approvalRef !== "string" ||
-    typeof raw.budgetReservationRef !== "string" ||
-    !Number.isSafeInteger(raw.budgetCapMinorUnits) ||
-    typeof raw.currency !== "string" ||
-    !/^[A-Z]{3}$/.test(raw.currency) ||
+    (raw.economicsMode !== undefined && raw.economicsMode !== "tenant_budget" && raw.economicsMode !== "provider_managed") ||
+    ((raw.economicsMode ?? "tenant_budget") === "tenant_budget" && (
+      typeof raw.budgetReservationRef !== "string" || !Number.isSafeInteger(raw.budgetCapMinorUnits) ||
+      typeof raw.currency !== "string" || !/^[A-Z]{3}$/.test(raw.currency))) ||
+    ((raw.economicsMode ?? "tenant_budget") === "provider_managed" &&
+      (raw.budgetReservationRef !== undefined || raw.budgetCapMinorUnits !== undefined || raw.currency !== undefined)) ||
     typeof raw.workspaceRef !== "string" ||
     typeof raw.deadline !== "string"
   )
@@ -801,7 +804,7 @@ async function persistBinding(
     await appendJobEvent(tx, {
       workerJobId: loaded.run.workerJobId!,
       eventType: "SPEC224_AUTHORIZATION_BOUND",
-      eventIdempotencyKey: `spec224:authorization-bound:${loaded.run.runId}:${binding.budgetReservationRef}`,
+      eventIdempotencyKey: `spec224:authorization-bound:${loaded.run.runId}:${binding.economicsMode}:${binding.budgetReservationRef ?? "provider-managed"}`,
       payloadJson: {
         runId: loaded.run.runId,
         runnerId: binding.runnerId,
@@ -810,7 +813,8 @@ async function persistBinding(
         capabilitySnapshotRevision: binding.capabilitySnapshotRevision,
         authorizationGrantRef: binding.authorizationGrantRef,
         approvalRef: binding.approvalRef,
-        budgetReservationRef: binding.budgetReservationRef,
+        economicsMode: binding.economicsMode,
+        ...(binding.economicsMode === "provider_managed" ? {} : { budgetReservationRef: binding.budgetReservationRef }),
         workspaceRef: binding.workspaceRef,
         deadline: binding.deadline,
       },
@@ -964,6 +968,7 @@ export function createSpec224AuthorizationService() {
       const paths = execution?.allowedWriteSet;
       const capabilities = childManifest?.requestedCapabilities;
       const amount = run.metadata?.spec224BudgetCapMinorUnits;
+      const providerManaged = platformScope && grant.economicsMode === "provider_managed";
       if (!rootManifest || !rootRun || !childManifest || !childRun || childRun.runId !== run.runId || childRun.workerJobId !== run.workerJobId ||
         rootRun.runId !== run.runId || rootRun.repositoryRef !== run.repositoryRef || rootRun.baseRevision !== run.baseRevision || rootRun.workspaceId !== run.workspaceId ||
         asRecord(rootRun.metadata)?.spec224BudgetCapMinorUnits !== amount ||
@@ -975,7 +980,8 @@ export function createSpec224AuthorizationService() {
         childManifest.workspaceId !== run.workspaceId || typeof workspace?.runnerId !== "string" ||
         !source || !action || !Array.isArray(paths) || !paths.every(p => typeof p === "string") ||
         !Array.isArray(capabilities) || !capabilities.every(c => typeof c === "string") ||
-        !Number.isSafeInteger(amount) || (amount as number) <= 0 || (amount as number) > grant.budgetLimitMinorUnits)
+        (providerManaged ? amount !== undefined : !Number.isSafeInteger(amount) || (amount as number) <= 0 || (amount as number) > (grant.budgetLimitMinorUnits ?? 0)) ||
+        (grant.economicsMode === "provider_managed" && !platformScope))
         throw new Spec224AuthorizationError("SPEC224_DELEGATED_CONFIGURATION_INVALID");
       // Verify readiness and authorization against this run's adapter. Never
       // reuse capability evidence from a different provider.
@@ -1016,11 +1022,11 @@ export function createSpec224AuthorizationService() {
       const sourceBlock = checkPinnedSource(runnerNode);
       if (sourceBlock) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [sourceBlock] };
       const runner = mapRunner(runnerNode);
-      const scope = { goalId: run.goalId, repositoryRef: run.repositoryRef, sourceSha: source, action, changedPaths: [], allowedWriteSet: paths as string[], requiredCapabilities: capabilities as string[] };
+      const scope = { goalId: run.goalId, repositoryRef: run.repositoryRef, sourceSha: source, action, changedPaths: [], allowedWriteSet: paths as string[], requiredCapabilities: capabilities as string[], economicsMode: grant.economicsMode };
       const runBinding = { ...runInput(loaded, grant.provider, grant.expiresAt), goalDelegationScope: scope };
       const preflight = evaluateSpec224Authorization({ run: runBinding, runner, approval: null, goalDelegationAuthority: authority,
-        budget: { budgetReservationRef: "preflight", tenantId: input.context.tenantId, workerJobId: run.workerJobId,
-          attemptId: loaded.attemptId, status: "held", amountMinorUnits: amount as number, currency: grant.currency, expiresAt: null } });
+        budget: providerManaged ? null : { budgetReservationRef: "preflight", tenantId: input.context.tenantId, workerJobId: run.workerJobId,
+          attemptId: loaded.attemptId, status: "held", amountMinorUnits: amount as number, currency: grant.currency!, expiresAt: null } });
       if (preflight.status !== "READY_FOR_LIVE") return preflight;
       let executionLease: Awaited<ReturnType<typeof acquireSpec224ExecutionLease>> | null = null;
       if (platformScope) {
@@ -1049,14 +1055,15 @@ export function createSpec224AuthorizationService() {
           tenantId: input.context.tenantId, actorId: input.context.actorId,
         });
       };
-      let budget: Awaited<ReturnType<typeof provisionSpec224GoalBudget>>;
-      let reservation: DurableReserveInput;
-      try {
-        budget = await provisionSpec224GoalBudget(db.instance, { tenantId: input.context.tenantId, actorId: input.context.actorId, goalId: run.goalId, approvalRef: authority.approvalRef });
-        reservation = await reserveInput(input.context, loaded, budget.budgetId, amount as number, grant.currency, true);
-      } catch (error) {
-        await releaseLeaseAfterAuthorizationFailure();
-        throw error;
+      let reservation: DurableReserveInput | null = null;
+      if (!providerManaged) {
+        try {
+          const budget = await provisionSpec224GoalBudget(db.instance, { tenantId: input.context.tenantId, actorId: input.context.actorId, goalId: run.goalId, approvalRef: authority.approvalRef });
+          reservation = await reserveInput(input.context, loaded, budget.budgetId, amount as number, grant.currency!, true);
+        } catch (error) {
+          await releaseLeaseAfterAuthorizationFailure();
+          throw error;
+        }
       }
       const hold = await db.transaction(async tx => {
         const rows = await tx.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
@@ -1066,40 +1073,46 @@ export function createSpec224AuthorizationService() {
         const row = (rows as unknown as Array<Record<string, any>>)[0];
         const current = mapSpec224GoalGrantAuthorityEvidence(row ?? null);
         const checked = current && evaluateSpec224Authorization({ run: runBinding, runner, approval: null, goalDelegationAuthority: current,
-          budget: { budgetReservationRef: "preflight", tenantId: input.context.tenantId, workerJobId: run.workerJobId!,
-            attemptId: loaded.attemptId!, status: "held", amountMinorUnits: amount as number, currency: grant.currency, expiresAt: null } });
+          budget: providerManaged ? null : { budgetReservationRef: "preflight", tenantId: input.context.tenantId, workerJobId: run.workerJobId!,
+            attemptId: loaded.attemptId!, status: "held", amountMinorUnits: amount as number, currency: grant.currency!, expiresAt: null } });
         if (!checked || checked.status !== "READY_FOR_LIVE") throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
-        return { hold: await reserveEconomicHoldInTransaction(tx, reservation), authority: current };
+        return { hold: reservation ? await reserveEconomicHoldInTransaction(tx, reservation) : null, authority: current };
       }).catch(async error => {
         await releaseLeaseAfterAuthorizationFailure();
         throw error;
       });
+      const releaseHoldAfterAuthorizationFailure = async () => {
+        if (hold.hold) await releaseUnlaunchedDelegatedHold({
+          context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold,
+        });
+      };
       // The runner snapshot and child attempt can change while the shared-budget
       // hold is being acquired. Revalidate both immediately before binding and
       // canonical outbox release so stale source facts cannot authorize a child.
       loaded = await loadRun(input.context, input.runId);
       if (!loaded.attemptId || loaded.attemptId !== authorizedAttemptId || loaded.run.workerJobId !== run.workerJobId) {
-        await releaseUnlaunchedDelegatedHold({ context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold });
+        await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         throw new Spec224AuthorizationError("RUN_ATTEMPT_CHANGED");
       }
       const currentRunnerNode = await defaultRunnerGateway.getNode(workspace.runnerId, input.context.tenantId);
       const currentSourceBlock = checkPinnedSource(currentRunnerNode);
       if (currentSourceBlock) {
-        await releaseUnlaunchedDelegatedHold({ context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold });
+        await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [currentSourceBlock] };
       }
       const currentRunner = mapRunner(currentRunnerNode);
       if (!currentRunner || currentRunner.activeSessionId !== runner?.activeSessionId ||
           currentRunner.snapshot?.capabilitySnapshotId !== runner?.snapshot?.capabilitySnapshotId) {
-        await releaseUnlaunchedDelegatedHold({ context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold });
+        await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: ["RUNNER_SNAPSHOT_CHANGED"] };
       }
-      const evaluated = evaluateSpec224Authorization({ run: runBinding, runner: currentRunner, approval: null, goalDelegationAuthority: hold.authority, budget: mapHold({ ...hold.hold, workerJobId: run.workerJobId, attemptId: loaded.attemptId }) });
+      const evaluated = evaluateSpec224Authorization({ run: runBinding, runner: currentRunner, approval: null, goalDelegationAuthority: hold.authority,
+        budget: hold.hold ? mapHold({ ...hold.hold, workerJobId: run.workerJobId, attemptId: loaded.attemptId }) : null });
       if (evaluated.status !== "READY_FOR_LIVE" || !evaluated.binding) {
-        await releaseUnlaunchedDelegatedHold({ context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold });
+        await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         return evaluated;
       }
@@ -1113,7 +1126,7 @@ export function createSpec224AuthorizationService() {
         const released = await createJobControlPlane().releaseAuthorizationHold({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
         if (!released) throw new Spec224AuthorizationError("HOLD_RELEASE_NOT_ALLOWED");
       } catch (error) {
-        await releaseUnlaunchedDelegatedHold({ context: input.context, runId: run.runId, attemptId: authorizedAttemptId, hold: hold.hold });
+        await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         throw error;
       }

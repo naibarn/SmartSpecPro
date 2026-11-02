@@ -155,6 +155,49 @@ describe("SPEC-224 Goal delegation contract", () => {
       .toThrow("SPEC224_GOAL_GRANT_SCOPE_INVALID");
   });
 
+  it("builds and admits a provider-managed platform grant without a SmartAIHub budget hold", () => {
+    const input = baseInput();
+    input.authority.payload.economicsMode = "provider_managed";
+    input.authority.payload.budgetLimitMinorUnits = null;
+    input.authority.payload.currency = null;
+    input.child.economicsMode = "provider_managed";
+    input.child.budgetHold = null;
+    expect(evaluateSpec224GoalDelegation(input)).toMatchObject({
+      status: "READY_FOR_DELEGATION",
+      binding: { economicsMode: "provider_managed" },
+    });
+    if (evaluateSpec224GoalDelegation(input).status === "READY_FOR_DELEGATION") {
+      const binding = evaluateSpec224GoalDelegation(input).binding;
+      expect(binding).not.toHaveProperty("budgetReservationRef");
+      expect(binding).not.toHaveProperty("budgetCapMinorUnits");
+    }
+  });
+
+  it("builds a provider-managed grant with no tenant budget fields", () => {
+    const scope: Spec224GoalGrantScope = {
+      grantId: "grant-platform",
+      goalId: "goal-platform",
+      actorId: 11,
+      provider: "codex" as const,
+      workspaceId: "smartaihub-platform",
+      repositoryRef: "repo:naibarn/SmartSpecPro",
+      sourceSha: "a".repeat(40),
+      allowedActions: ["implement", "test"],
+      writeScope: ["apps/web/**"],
+      capabilities: ["agent.external_task"],
+      economicsMode: "provider_managed" as const,
+      issuedAt: "2026-10-10T09:00:00.000Z",
+      expiresAt: "2026-10-10T11:00:00.000Z",
+      budgetLimitMinorUnits: null,
+      currency: null,
+    };
+    expect(buildSpec224GoalGrantApprovalPayload(scope)).toMatchObject({
+      economicsMode: "provider_managed",
+      budgetLimitMinorUnits: null,
+      currency: null,
+    });
+  });
+
   it("derives an attempt-scoped child binding from an approved authority record", () => {
     const input = baseInput();
     input.authority.payload.workspaceAccessMode = "exclude_risky";

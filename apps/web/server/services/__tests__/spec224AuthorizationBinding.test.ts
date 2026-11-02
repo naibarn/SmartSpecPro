@@ -365,6 +365,7 @@ describe("Spec 224 owner authorization binding", () => {
       budgetReservationRef: "hold-a",
       budgetCapMinorUnits: 500,
       currency: "USD",
+      economicsMode: "tenant_budget",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
     };
@@ -414,6 +415,7 @@ describe("Spec 224 owner authorization binding", () => {
       budgetReservationRef: "hold-a",
       budgetCapMinorUnits: 500,
       currency: "USD",
+      economicsMode: "tenant_budget",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
     };
@@ -453,6 +455,7 @@ describe("Spec 224 owner authorization binding", () => {
       budgetReservationRef: "hold-a",
       budgetCapMinorUnits: 500,
       currency: "USD",
+      economicsMode: "tenant_budget",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
     });

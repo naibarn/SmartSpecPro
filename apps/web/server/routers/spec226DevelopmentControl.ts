@@ -817,6 +817,7 @@ export const spec226DevelopmentControlRouter = router({
               runnerId: typeof runner.runnerId === "string" ? runner.runnerId : null,
               provider: typeof grant.provider === "string" ? grant.provider : null,
               modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
+              economicsMode: grant.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget",
               writeScope: allowedWriteSet,
               budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
@@ -1195,7 +1196,7 @@ export const spec226DevelopmentControlRouter = router({
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
-      budgetCapMinorUnits: z.number().int().positive().max(10_000_000).default(100),
+      budgetCapMinorUnits: z.number().int().positive().max(10_000_000).optional(),
       provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
       modelSelection: z.object({
         policy: z.enum(["auto", "explicit"]),
@@ -1390,6 +1391,8 @@ export const spec226DevelopmentControlRouter = router({
         }
         const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const providerManagedScope = requestKind === "development" && binding.workspace.scope === "PLATFORM_ENGINEERING";
+        const budgetCapMinorUnits = providerManagedScope ? undefined : input.budgetCapMinorUnits ?? 100;
         const provider = input.provider ?? "codex";
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
           context: scope,
@@ -1414,7 +1417,8 @@ export const spec226DevelopmentControlRouter = router({
           provider, visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
           modelSelection: input.modelSelection ?? { policy: "auto" },
-          budgetCapMinorUnits: input.budgetCapMinorUnits,
+          economicsMode: providerManagedScope ? "provider_managed" : "tenant_budget",
+          budgetCapMinorUnits: budgetCapMinorUnits ?? null,
         })).digest("hex");
         const existing = await developmentRunService.get({ ...scope, runId }).catch(error => {
           if (errorCode(error) === "RUN_NOT_FOUND") return null;
@@ -1430,7 +1434,7 @@ export const spec226DevelopmentControlRouter = router({
               runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
               payload: persistedGrant as Record<string, unknown> })
             : await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId,
-              runnerId: binding.workspace.runnerId, budgetCapMinorUnits: input.budgetCapMinorUnits });
+              runnerId: binding.workspace.runnerId, budgetCapMinorUnits: budgetCapMinorUnits ?? 100 });
           const source = existing.run.metadata?.spec224Input as { inputDigest: string };
           const workspace = existing.run.metadata?.spec224Workspace as { specSetRevision: number | null; workPackageId: string | null };
           if (input.threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId: input.threadId });
@@ -1589,8 +1593,8 @@ export const spec226DevelopmentControlRouter = router({
           ...(prepared.workspaceAccessMode === "workspace" || prepared.workspaceAccessMode === "exclude_risky"
             ? { workspaceAccessMode: prepared.workspaceAccessMode } : {}),
           capabilities: ["agent.external_task"],
-          budgetLimitMinorUnits: input.budgetCapMinorUnits ?? 100,
-          currency: "USD",
+          economicsMode: providerManagedScope ? "provider_managed" : "tenant_budget",
+          ...(providerManagedScope ? {} : { budgetLimitMinorUnits: budgetCapMinorUnits!, currency: "USD" }),
           modelSelection,
           issuedAt: issuedAt.toISOString(),
           expiresAt: new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
@@ -1630,10 +1634,10 @@ export const spec226DevelopmentControlRouter = router({
             profileId: runnerReadiness.profileId,
             environment: "development",
             spec224StartRequestDigest: requestDigest,
-            // `budgetCapMinorUnits` is the cumulative Goal Grant limit. Reserve
-            // at most half for one child so a receipt-driven successor can
-            // hold a distinct reservation against the same shared Goal Budget.
-            spec224BudgetCapMinorUnits: Math.max(1, Math.floor(input.budgetCapMinorUnits / 2)),
+            ...(providerManagedScope ? {} : {
+              // Keep each child within the tenant-funded Goal budget.
+              spec224BudgetCapMinorUnits: Math.max(1, Math.floor(budgetCapMinorUnits! / 2)),
+            }),
             spec224GoalGrantPayload: grantPayload,
             ...(factoryState ? { [MINI_APP_FACTORY_STATE_KEY]: factoryState } : {}),
             ...(factoryStageDocument && factoryPipeline && factoryState && firstFactoryStage ? {

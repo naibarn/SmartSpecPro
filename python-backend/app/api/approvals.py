@@ -2040,6 +2040,7 @@ async def create_spec224_goal_grant_approval(
     source_sha = payload.get("sourceSha")
     currency = payload.get("currency")
     budget_limit = payload.get("budgetLimitMinorUnits")
+    economics_mode = payload.get("economicsMode", "tenant_budget")
     if (payload.get("kind") != "spec224_goal_delegation_grant"
             or payload.get("goalId") != data.goal_id
             or payload.get("actorId") != int(current_user.id)
@@ -2058,8 +2059,12 @@ async def create_spec224_goal_grant_approval(
             or not isinstance(capabilities, list) or not capabilities
             or any(not isinstance(value, str) or not value or len(value) > 160 for value in capabilities)
             or len(capabilities) != len(set(capabilities))
-            or type(budget_limit) is not int or budget_limit <= 0
-            or not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency)
+            or economics_mode not in ("tenant_budget", "provider_managed")
+            or (economics_mode == "provider_managed" and (
+                budget_limit is not None or currency is not None))
+            or (economics_mode == "tenant_budget" and (
+                type(budget_limit) is not int or budget_limit <= 0
+                or not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency)))
             or not isinstance(payload.get("issuedAt"), str)
             or not isinstance(payload.get("expiresAt"), str)):
         raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_SCOPE_INVALID")
@@ -2086,6 +2091,41 @@ async def create_spec224_goal_grant_approval(
     if existing:
         if existing.action_digest != action_digest or existing.payload != payload:
             raise HTTPException(status_code=409, detail="SPEC224_GOAL_GRANT_IDEMPOTENCY_CONFLICT")
+        # A previous version left owner-started requests pending. An exact
+        # authenticated replay is the same explicit Start, so recover only
+        # that still-live pending row in place. Never revive a rejected,
+        # expired, cancelled, revoked, or differently scoped request.
+        expires_at = existing.expires_at
+        if (existing.status == DBApprovalStatus.PENDING
+                and existing.revoked_at is None
+                and existing.requester_id == int(current_user.id)
+                and existing.tenant_id == tenant_id
+                and existing.execution_id == data.goal_id
+                and expires_at is not None
+                and expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)):
+            now = datetime.now(timezone.utc)
+            existing.status = DBApprovalStatus.APPROVED
+            existing.required_approvers = 0
+            existing.current_approvals = 0
+            existing.resolved_at = now.replace(tzinfo=None)
+            existing.extra_data = {
+                **(existing.extra_data if isinstance(existing.extra_data, dict) else {}),
+                "spec224GoalGrantIssuerV1": "owner_explicit_goal_start",
+                "approvers": [],
+            }
+            db.add(AuditLog(
+                user_id=str(current_user.id),
+                user_role=str(getattr(current_user.role, "value", current_user.role)),
+                action="spec224.goal_grant.owner_started_replay",
+                resource_type="spec224_goal_delegation_grant",
+                resource_id=existing.id,
+                details={"tenantId": tenant_id, "projectId": data.project_id,
+                         "goalId": data.goal_id, "provider": payload["provider"],
+                         "workspaceId": payload["workspaceId"], "sourceSha": source_sha,
+                         "actionDigest": action_digest},
+            ))
+            await db.commit()
+            await db.refresh(existing)
         return existing
     # The authenticated Start action is the user's approval of this exact
     # provider/workspace/source/write-scope/budget grant. The worker still has
@@ -2096,7 +2136,9 @@ async def create_spec224_goal_grant_approval(
         id=str(uuid4()),
         request_type=ApprovalType.CUSTOM,
         title=f"Approve bounded development Goal {data.goal_id[:48]}",
-        description="Owner explicitly started this bounded development Goal; dispatch remains subject to live capability, source, lease and budget checks.",
+        description=("Owner explicitly started this bounded development Goal; dispatch remains subject to live capability, source and lease checks. Provider-managed runs use the selected provider account quota."
+                     if economics_mode == "provider_managed" else
+                     "Owner explicitly started this bounded development Goal; dispatch remains subject to live capability, source, lease and tenant budget checks."),
         tenant_id=tenant_id,
         requester_id=int(current_user.id),
         requester_type="user",
@@ -2130,6 +2172,7 @@ async def create_spec224_goal_grant_approval(
             "sourceSha": source_sha,
             "writeScope": write_scope,
             "allowedActions": actions,
+            "economicsMode": economics_mode,
             "budgetLimitMinorUnits": budget_limit,
             "expiresAt": expires_at.astimezone(timezone.utc).isoformat(),
         },

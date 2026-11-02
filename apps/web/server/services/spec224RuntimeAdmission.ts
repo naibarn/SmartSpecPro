@@ -252,9 +252,11 @@ export function isRunnerCommandBoundToCanonicalAgentManifest(
       mcpGrantIds: manifest.mcpGrantIds,
       requestedCapabilities: manifest.requestedCapabilities,
       approvalRef: policy.approvalRef,
-      budgetReservationRef: policy.budgetReservationRef,
-      budgetCapMinorUnits: policy.budgetCapMinorUnits,
-      currency: policy.currency,
+      ...(policy.economicsMode === "provider_managed" ? { economicsMode: "provider_managed" } : {
+        budgetReservationRef: policy.budgetReservationRef,
+        budgetCapMinorUnits: policy.budgetCapMinorUnits,
+        currency: policy.currency,
+      }),
     },
   };
   const actual = {

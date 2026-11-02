@@ -24,9 +24,10 @@ export type AgentTaskPolicyBinding = {
   capabilitySnapshotRevision: string;
   authorizationGrantRef: string;
   approvalRef: string;
-  budgetReservationRef: string;
-  budgetCapMinorUnits: number;
-  currency: string;
+  economicsMode?: "tenant_budget" | "provider_managed";
+  budgetReservationRef?: string;
+  budgetCapMinorUnits?: number;
+  currency?: string;
   workspaceRef: string;
   deadline: string;
   executionLeaseId?: string;
@@ -138,10 +139,22 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
   const raw = value as Record<string, unknown>;
   const deadline = requiredText(raw.deadline, "policyBinding.deadline", 64);
   if (!Number.isFinite(Date.parse(deadline))) invalid("policy binding deadline is invalid");
-  if (!Number.isSafeInteger(raw.budgetCapMinorUnits) || (raw.budgetCapMinorUnits as number) <= 0)
-    invalid("policy binding budget cap is invalid");
-  const currency = requiredText(raw.currency, "policyBinding.currency", 3).toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) invalid("policy binding currency is invalid");
+  const economicsMode = raw.economicsMode ?? "tenant_budget";
+  if (economicsMode !== "tenant_budget" && economicsMode !== "provider_managed") invalid("policy binding economics mode is invalid");
+  let budgetFields: Pick<AgentTaskPolicyBinding, "budgetReservationRef" | "budgetCapMinorUnits" | "currency"> = {};
+  if (economicsMode === "tenant_budget") {
+    if (!Number.isSafeInteger(raw.budgetCapMinorUnits) || (raw.budgetCapMinorUnits as number) <= 0)
+      invalid("policy binding budget cap is invalid");
+    const currency = requiredText(raw.currency, "policyBinding.currency", 3).toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) invalid("policy binding currency is invalid");
+    budgetFields = {
+      budgetReservationRef: requiredText(raw.budgetReservationRef, "policyBinding.budgetReservationRef", 200),
+      budgetCapMinorUnits: raw.budgetCapMinorUnits as number,
+      currency,
+    };
+  } else if (raw.budgetReservationRef !== undefined || raw.budgetCapMinorUnits !== undefined || raw.currency !== undefined) {
+    invalid("provider-managed policy binding cannot carry tenant budget fields");
+  }
   const leaseFields = ["executionLeaseId", "executionLeaseGeneration", "executionLeaseAttemptId", "executionLeaseRunId", "executionLeaseJobId", "executionLeaseSourceSha", "executionLeaseSourceFingerprint"];
   const hasLease = leaseFields.some(key => raw[key] !== undefined);
   if (hasLease && (typeof raw.executionLeaseId !== "string" || !raw.executionLeaseId ||
@@ -156,9 +169,8 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
     capabilitySnapshotRevision: requiredText(raw.capabilitySnapshotRevision, "policyBinding.capabilitySnapshotRevision", 160),
     authorizationGrantRef: requiredText(raw.authorizationGrantRef, "policyBinding.authorizationGrantRef", 200),
     approvalRef: requiredText(raw.approvalRef, "policyBinding.approvalRef", 200),
-    budgetReservationRef: requiredText(raw.budgetReservationRef, "policyBinding.budgetReservationRef", 200),
-    budgetCapMinorUnits: raw.budgetCapMinorUnits as number,
-    currency,
+    ...(raw.economicsMode !== undefined ? { economicsMode } : {}),
+    ...budgetFields,
     workspaceRef: requiredText(raw.workspaceRef, "policyBinding.workspaceRef", 200),
     deadline,
     ...(hasLease ? {
@@ -274,6 +286,8 @@ export function validateAgentTaskManifest(
   const policyBinding = raw.policyBinding === undefined
     ? undefined
     : validatePolicyBinding(raw.policyBinding);
+  if (policyBinding?.economicsMode === "provider_managed" && spec224Execution?.platformScope !== true)
+    invalid("provider-managed quota is only valid for platform-scoped development");
   return {
     taskId,
     tenantId,

@@ -118,6 +118,38 @@ describe("Feature 200 Agent control-plane contracts", () => {
     ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
+  it("allows provider-managed quota only for a platform-scoped development manifest", () => {
+    const platformExecution = {
+      sourceFingerprint: "a".repeat(64),
+      mode: "work_package" as const,
+      allowedWriteSet: ["apps/web/server/**"],
+      platformScope: true,
+      sourceSnapshotRevision: "git:revision-1",
+      sourceSha: "b".repeat(40),
+    };
+    const providerManaged = {
+      ...manifest,
+      spec224Execution: platformExecution,
+      policyBinding: {
+        runnerId: "runner-1",
+        runnerSessionId: "session-1",
+        capabilitySnapshotId: "capability-1",
+        capabilitySnapshotRevision: "revision-1",
+        authorizationGrantRef: "grant:1",
+        approvalRef: "approval:1",
+        economicsMode: "provider_managed" as const,
+        workspaceRef: "workspace-1",
+        deadline: "2099-01-01T00:00:00.000Z",
+      },
+    };
+    expect(validateAgentTaskManifest(providerManaged)).toMatchObject({
+      policyBinding: { economicsMode: "provider_managed" },
+      spec224Execution: { platformScope: true },
+    });
+    expect(() => validateAgentTaskManifest({ ...providerManaged, spec224Execution: { ...platformExecution, platformScope: false } }))
+      .toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
   it("keeps Spec 224 staged input references in the manifest without input bytes or fetch credentials", () => {
     const input = {
       ...manifest,

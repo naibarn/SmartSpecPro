@@ -42,6 +42,7 @@ export type Spec224AuthorizationRun = {
     changedPaths: string[];
     allowedWriteSet?: string[];
     requiredCapabilities: string[];
+    economicsMode?: "tenant_budget" | "provider_managed";
   };
 };
 
@@ -187,9 +188,10 @@ export type Spec224PolicyBinding = {
   capabilitySnapshotRevision: string;
   authorizationGrantRef: string;
   approvalRef: string;
-  budgetReservationRef: string;
-  budgetCapMinorUnits: number;
-  currency: string;
+  economicsMode: "tenant_budget" | "provider_managed";
+  budgetReservationRef?: string;
+  budgetCapMinorUnits?: number;
+  currency?: string;
   workspaceRef: string;
   deadline: string;
   executionLeaseId?: string;
@@ -388,6 +390,8 @@ export function evaluateSpec224Authorization(
   }
 
   let approvalRef: string;
+  let economicsMode: "tenant_budget" | "provider_managed" = "tenant_budget";
+  let delegatedBudgetReservationRef: string | undefined;
   let delegatedBudgetCap: number | null = null;
   let delegatedExpiresAt: string | null = null;
   if (approval && input.goalDelegationAuthority) {
@@ -432,8 +436,11 @@ export function evaluateSpec224Authorization(
     if (!scope || !run.workerJobId || !run.attemptId) {
       return result("APPROVAL_REQUIRED", ["GOAL_DELEGATION_SCOPE_INCOMPLETE"]);
     }
-    if (!budget)
+    economicsMode = scope.economicsMode ?? "tenant_budget";
+    if (economicsMode !== "provider_managed" && !budget)
       return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
+    if (economicsMode === "provider_managed" && budget)
+      return result("BUDGET_REQUIRED", ["PROVIDER_MANAGED_RUN_MUST_NOT_USE_TENANT_BUDGET"]);
     const delegated = evaluateSpec224GoalDelegation({
       now,
       authority: input.goalDelegationAuthority,
@@ -451,7 +458,8 @@ export function evaluateSpec224Authorization(
         requiredCapabilities: scope.requiredCapabilities,
         workerJobId: run.workerJobId,
         attemptId: run.attemptId,
-        budgetHold: {
+        economicsMode,
+        budgetHold: economicsMode === "provider_managed" || !budget ? null : {
           reservationRef: budget.budgetReservationRef,
           tenantId: budget.tenantId,
           workerJobId: budget.workerJobId,
@@ -489,13 +497,15 @@ export function evaluateSpec224Authorization(
       ]);
     }
     approvalRef = delegated.binding.authorityRef;
-    delegatedBudgetCap = delegated.binding.budgetCapMinorUnits;
+    delegatedBudgetReservationRef = delegated.binding.budgetReservationRef;
+    delegatedBudgetCap = delegated.binding.budgetCapMinorUnits ?? null;
     delegatedExpiresAt = delegated.binding.expiresAt;
+    economicsMode = delegated.binding.economicsMode;
   } else {
     return result("APPROVAL_REQUIRED", ["APPROVAL_NOT_FOUND"]);
   }
 
-  if (!budget)
+  if (economicsMode !== "provider_managed" && !budget)
     return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
   if (approval && (
     approval.payload.budgetCapMinorUnits !== budget.amountMinorUnits ||
@@ -504,19 +514,19 @@ export function evaluateSpec224Authorization(
   )) {
     return result("BUDGET_REQUIRED", ["APPROVAL_BUDGET_BINDING_MISMATCH"]);
   }
-  if (
+  if (economicsMode !== "provider_managed" && budget && (
     budget.tenantId !== run.tenantId ||
     budget.workerJobId !== run.workerJobId ||
     budget.attemptId !== run.attemptId ||
     budget.status !== "held" ||
     budget.amountMinorUnits <= 0
-  ) {
+  )) {
     return result("BUDGET_REQUIRED", ["BUDGET_BINDING_MISMATCH"]);
   }
-  if (delegatedBudgetCap !== null && delegatedBudgetCap !== budget.amountMinorUnits) {
+  if (economicsMode !== "provider_managed" && delegatedBudgetCap !== null && budget && delegatedBudgetCap !== budget.amountMinorUnits) {
     return result("BUDGET_REQUIRED", ["GOAL_DELEGATION_BUDGET_BINDING_MISMATCH"]);
   }
-  if (isExpired(budget.expiresAt, now))
+  if (economicsMode !== "provider_managed" && budget && isExpired(budget.expiresAt, now))
     return result("EXPIRED", ["BUDGET_RESERVATION_EXPIRED"]);
 
   const binding: Spec224PolicyBinding = {
@@ -526,9 +536,12 @@ export function evaluateSpec224Authorization(
     capabilitySnapshotRevision: snapshot.revision,
     authorizationGrantRef: tool.authorizationEvidenceRef,
     approvalRef,
-    budgetReservationRef: budget.budgetReservationRef,
-    budgetCapMinorUnits: budget.amountMinorUnits,
-    currency: budget.currency,
+    economicsMode,
+    ...(economicsMode === "provider_managed" ? {} : {
+      budgetReservationRef: delegatedBudgetReservationRef ?? budget!.budgetReservationRef,
+      budgetCapMinorUnits: budget!.amountMinorUnits,
+      currency: budget!.currency,
+    }),
     workspaceRef: run.workspaceId,
     deadline: delegatedExpiresAt && Date.parse(delegatedExpiresAt) < Date.parse(run.deadline)
       ? delegatedExpiresAt : run.deadline,

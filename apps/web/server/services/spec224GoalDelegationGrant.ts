@@ -47,8 +47,9 @@ export type Spec224GoalGrantScope = {
   writeScope: string[];
   workspaceAccessMode?: "workspace" | "exclude_risky";
   capabilities: string[];
-  budgetLimitMinorUnits: number;
-  currency: string;
+  economicsMode?: "tenant_budget" | "provider_managed";
+  budgetLimitMinorUnits?: number | null;
+  currency?: string | null;
   modelSelection?: {
     adapterId: string;
     policy: "auto" | "explicit";
@@ -69,6 +70,8 @@ export type Spec224GoalGrantScope = {
 export function buildSpec224GoalGrantApprovalPayload(
   scope: Spec224GoalGrantScope
 ): Record<string, unknown> {
+  const economicsMode = scope.economicsMode ?? "tenant_budget";
+  const providerManaged = economicsMode === "provider_managed";
   if (
     !isText(scope.grantId, 160) ||
     !isText(scope.goalId, 160) ||
@@ -90,9 +93,12 @@ export function buildSpec224GoalGrantApprovalPayload(
     !Array.isArray(scope.capabilities) ||
     scope.capabilities.length === 0 ||
     scope.capabilities.some(capability => !isText(capability, 160)) ||
-    !Number.isSafeInteger(scope.budgetLimitMinorUnits) ||
-    scope.budgetLimitMinorUnits <= 0 ||
-    !/^[A-Za-z]{3}$/.test(scope.currency) ||
+    !["tenant_budget", "provider_managed"].includes(economicsMode) ||
+    (providerManaged
+      ? (scope.budgetLimitMinorUnits !== undefined && scope.budgetLimitMinorUnits !== null) ||
+        (scope.currency !== undefined && scope.currency !== null)
+      : !Number.isSafeInteger(scope.budgetLimitMinorUnits) || Number(scope.budgetLimitMinorUnits) <= 0 ||
+        typeof scope.currency !== "string" || !/^[A-Za-z]{3}$/.test(scope.currency) ) ||
     !Number.isFinite(Date.parse(scope.issuedAt)) ||
     !Number.isFinite(Date.parse(scope.expiresAt)) ||
     Date.parse(scope.expiresAt) <= Date.parse(scope.issuedAt) ||
@@ -121,11 +127,12 @@ export function buildSpec224GoalGrantApprovalPayload(
   return {
     kind: "spec224_goal_delegation_grant",
     ...scope,
+    economicsMode,
     allowedActions: [...scope.allowedActions].sort(),
     writeScope: [...scope.writeScope].sort(),
     ...(scope.workspaceAccessMode ? { workspaceAccessMode: scope.workspaceAccessMode } : {}),
     capabilities: [...scope.capabilities].sort(),
-    currency: scope.currency.toUpperCase(),
+    ...(providerManaged ? { budgetLimitMinorUnits: null, currency: null } : { currency: scope.currency!.toUpperCase() }),
   };
 }
 
@@ -182,6 +189,7 @@ export type Spec224GoalDelegationInput = {
     requiredCapabilities: string[];
     workerJobId: string;
     attemptId: string;
+    economicsMode?: "tenant_budget" | "provider_managed";
     budgetHold: Spec224GoalGrantBudgetHold | null;
   };
 };
@@ -203,9 +211,10 @@ export type Spec224GoalDelegationBinding = {
   capabilities: string[];
   workerJobId: string;
   attemptId: string;
-  budgetReservationRef: string;
-  budgetCapMinorUnits: number;
-  currency: string;
+  economicsMode: "tenant_budget" | "provider_managed";
+  budgetReservationRef?: string;
+  budgetCapMinorUnits?: number;
+  currency?: string;
   expiresAt: string;
   digest: string;
 };
@@ -301,10 +310,11 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
     payload.capabilities.length > 128 ||
     !payload.capabilities.every(capability => isText(capability, 160)) ||
     new Set(payload.capabilities).size !== payload.capabilities.length ||
-    !Number.isSafeInteger(payload.budgetLimitMinorUnits) ||
-    (payload.budgetLimitMinorUnits as number) <= 0 ||
-    typeof payload.currency !== "string" ||
-    !/^[A-Za-z]{3}$/.test(payload.currency) ||
+    !["tenant_budget", "provider_managed"].includes(String(payload.economicsMode ?? "tenant_budget")) ||
+    (payload.economicsMode === "provider_managed"
+      ? payload.budgetLimitMinorUnits !== null || payload.currency !== null
+      : !Number.isSafeInteger(payload.budgetLimitMinorUnits) || (payload.budgetLimitMinorUnits as number) <= 0 ||
+        typeof payload.currency !== "string" || !/^[A-Za-z]{3}$/.test(payload.currency)) ||
     !issuedAt ||
     !Number.isFinite(Date.parse(issuedAt)) ||
     Date.parse(issuedAt) > now.getTime() ||
@@ -349,8 +359,11 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
     workspaceAccessMode: payload.workspaceAccessMode === "workspace" || payload.workspaceAccessMode === "exclude_risky"
       ? payload.workspaceAccessMode : "bounded_scope",
     capabilities: payload.capabilities as string[],
-    budgetLimitMinorUnits: payload.budgetLimitMinorUnits as number,
-    currency: (payload.currency as string).toUpperCase(),
+    economicsMode: payload.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget",
+    ...(payload.economicsMode === "provider_managed" ? {} : {
+      budgetLimitMinorUnits: payload.budgetLimitMinorUnits as number,
+      currency: (payload.currency as string).toUpperCase(),
+    }),
     expiresAt: authority.expiresAt && Date.parse(authority.expiresAt) < Date.parse(expiresAt)
       ? authority.expiresAt : expiresAt,
   };
@@ -476,8 +489,11 @@ export function evaluateSpec224GoalDelegation(
   )
     return denial("SCOPE_DENIED", "CHILD_SCOPE_EXCEEDS_GOAL_GRANT");
 
+  const economicsMode = grant.economicsMode;
+  if (child.economicsMode !== undefined && child.economicsMode !== economicsMode)
+    return denial("SCOPE_DENIED", "GOAL_GRANT_ECONOMICS_MODE_MISMATCH");
   const hold = child.budgetHold;
-  if (
+  if (economicsMode === "tenant_budget" && (
     !hold ||
     !isText(hold.tenantId, 36) ||
     hold.tenantId !== grant.tenantId ||
@@ -490,8 +506,10 @@ export function evaluateSpec224GoalDelegation(
     hold.amountMinorUnits > grant.budgetLimitMinorUnits ||
     !isText(hold.currency, 3) ||
     hold.currency.trim().toUpperCase() !== grant.currency
-  )
+  ))
     return denial("BUDGET_DENIED", "EXACT_CHILD_BUDGET_HOLD_REQUIRED");
+  if (economicsMode === "provider_managed" && hold !== null)
+    return denial("BUDGET_DENIED", "PROVIDER_MANAGED_RUN_MUST_NOT_CREATE_LEDGER_HOLD");
 
   const bindingBase = {
     version: SPEC224_GOAL_DELEGATION_GRANT_VERSION,
@@ -511,9 +529,12 @@ export function evaluateSpec224GoalDelegation(
     capabilities: [...child.requiredCapabilities].sort(),
     workerJobId: child.workerJobId,
     attemptId: child.attemptId,
-    budgetReservationRef: hold.reservationRef,
-    budgetCapMinorUnits: hold.amountMinorUnits,
-    currency: hold.currency.trim().toUpperCase(),
+    economicsMode,
+    ...(economicsMode === "tenant_budget" && hold ? {
+      budgetReservationRef: hold.reservationRef,
+      budgetCapMinorUnits: hold.amountMinorUnits,
+      currency: hold.currency.trim().toUpperCase(),
+    } : {}),
     expiresAt: grant.expiresAt,
   } as const;
   const digest = createHash("sha256")

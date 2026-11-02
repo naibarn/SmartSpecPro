@@ -124,9 +124,11 @@ export type TxRepo = {
   }): Promise<boolean>;
   assertSpec224ReleaseAuthority?(input: {
     tenantId: string; actorId: number; jobId: string; attemptId: string;
-    approvalRef: string; holdRef: string; amount: number; currency: string; now: Date; deadline?: string;
+    approvalRef: string; economicsMode?: "tenant_budget" | "provider_managed";
+    holdRef?: string; amount?: number; currency?: string; now: Date; deadline?: string;
     goal?: { goalId: string; provider: "codex" | "claude_code" | "microsoft_copilot"; workspaceId: string; repositoryRef: string;
-      sourceSha: string; action: string; changedPaths: string[]; allowedWriteSet?: string[]; requiredCapabilities: string[] };
+      sourceSha: string; action: string; changedPaths: string[]; allowedWriteSet?: string[]; requiredCapabilities: string[];
+      economicsMode?: "tenant_budget" | "provider_managed"; platformScope?: boolean };
   }): Promise<boolean>;
   hasReleasedAuthorizationHold?(input: {
     tenantId: string; jobId: string; attemptId: string; holdId: string; releaseEventKey: string;
@@ -829,6 +831,24 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   FOR UPDATE`);
                 const approval = (approvals as unknown as Array<Record<string, any>>)[0];
                 if (!approval) return false;
+                const economicsMode = input.economicsMode ?? "tenant_budget";
+                if (!input.goal && approval.execution_id === input.jobId &&
+                  approval.payload?.kind !== "spec224_goal_delegation_grant") return true;
+                if (economicsMode === "provider_managed") {
+                  if (!input.goal || input.goal.economicsMode !== "provider_managed" || input.goal.platformScope !== true ||
+                    approval.payload?.economicsMode !== "provider_managed" ||
+                    approval.payload?.kind !== "spec224_goal_delegation_grant" ||
+                    approval.execution_id !== input.goal.goalId) return false;
+                  const authority = mapSpec224GoalGrantAuthorityEvidence(approval);
+                  if (!authority) return false;
+                  const result = evaluateSpec224GoalDelegation({ now: input.now, authority, child: {
+                    ...input.goal, tenantId: input.tenantId, actorId: input.actorId,
+                    workerJobId: input.jobId, attemptId: input.attemptId, budgetHold: null,
+                    economicsMode: "provider_managed",
+                  } });
+                  return result.status === "READY_FOR_DELEGATION" && typeof input.deadline === "string" &&
+                    Date.parse(input.deadline) <= Date.parse(result.binding.expiresAt);
+                }
                 const holds = await query.execute(sql`SELECT h.id, b."scopeType", b."scopeRef", b.status AS "budgetStatus",
                     b."limitMinorUnits", b."heldMinorUnits", b."capturedMinorUnits", b.currency AS "budgetCurrency"
                   FROM economic_holds h JOIN economic_budgets b ON b.id = h."budgetId" AND b."tenantId" = h."tenantId"
@@ -838,7 +858,6 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                     AND h.currency = ${input.currency} FOR UPDATE OF h, b`);
                 const hold = (holds as unknown as Array<Record<string, any>>)[0];
                 if (!hold) return false;
-                if (approval.execution_id === input.jobId && approval.payload?.kind !== "spec224_goal_delegation_grant") return true;
                 if (!input.goal || approval.execution_id !== input.goal.goalId || hold.scopeType !== "spec224_goal" ||
                   hold.scopeRef !== `goal:${createHash("sha256").update(input.goal.goalId).digest("hex")}` ||
                   hold.budgetStatus !== "active" || hold.budgetCurrency !== input.currency ||
@@ -2381,16 +2400,20 @@ export function createJobControlPlane(
             if (authorization?.approvalRef || authorization?.budgetReservationRef) return null;
             return { attemptId: current.id, resumed: false };
           }
+          const providerManaged = binding.economicsMode === "provider_managed";
           if (job.attempt >= job.maxAttempts || job.startedAt != null || job.heartbeatAt != null ||
             job.leaseOwnerToken != null || job.leaseExpiresAt != null || job.fencingVersion !== 0 ||
-            typeof binding.budgetReservationRef !== "string" ||
+            (providerManaged
+              ? job.inputJson?.spec224Run?.metadata?.spec224Execution?.platformScope !== true ||
+                binding.budgetReservationRef !== undefined || binding.budgetCapMinorUnits !== undefined || binding.currency !== undefined
+              : typeof binding.budgetReservationRef !== "string") ||
             await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`) ||
             await repo.findEventByIdempotency(job.id, `lease:${current.id}`) ||
             await repo.findEventByIdempotency(job.id, `dispatch-requested:${job.id}:${job.attempt}`) ||
             await repo.findOutboxForAttempt(job.id)) return null;
           const releaseEventKey = `release:spec224:authorization-failed:${createHash("sha256").update(`${input.runId}:${current.id}`).digest("hex")}`;
-          const released = await repo.hasReleasedAuthorizationHold?.({ tenantId: input.tenantId, jobId: job.id,
-            attemptId: current.id, holdId: binding.budgetReservationRef, releaseEventKey });
+          const released = providerManaged || await repo.hasReleasedAuthorizationHold?.({ tenantId: input.tenantId, jobId: job.id,
+            attemptId: current.id, holdId: binding.budgetReservationRef as string, releaseEventKey });
           if (!released) return null;
           const inputJson = { ...job.inputJson };
           const manifest = inputJson.manifest && typeof inputJson.manifest === "object" && !Array.isArray(inputJson.manifest)
@@ -2399,7 +2422,8 @@ export function createJobControlPlane(
           delete manifest.policyBinding;
           inputJson.manifest = manifest;
           const progressJson = { ...job.progressJson, spec224Authorization: {
-            status: "BUDGET_REQUIRED", recoveryCode: "PREVIOUS_HOLD_RELEASED", updatedAt: new Date().toISOString(),
+            status: providerManaged ? "APPROVAL_REQUIRED" : "BUDGET_REQUIRED",
+            recoveryCode: providerManaged ? "PREVIOUS_PROVIDER_ADMISSION_RETRIED" : "PREVIOUS_HOLD_RELEASED", updatedAt: new Date().toISOString(),
           } };
           const nextAttempt = job.attempt + 1;
           const attemptId = randomUUID();
@@ -2475,8 +2499,13 @@ export function createJobControlPlane(
           !specRun || specRun.workerJobId !== job.id || specRun.tenantId !== job.tenantId ||
           Number(specRun.actorId) !== job.requestedByUserId ||
           [binding.runnerId, binding.runnerSessionId, binding.capabilitySnapshotId, binding.capabilitySnapshotRevision,
-            binding.authorizationGrantRef, binding.approvalRef, binding.budgetReservationRef, binding.workspaceRef, binding.deadline]
+            binding.authorizationGrantRef, binding.approvalRef, binding.workspaceRef, binding.deadline]
             .some(value => typeof value !== "string" || !value.trim())) return false;
+        const economicsMode = binding.economicsMode ?? "tenant_budget";
+        if (economicsMode !== "tenant_budget" && economicsMode !== "provider_managed") return false;
+        if (economicsMode === "tenant_budget" && specRun.goalId && (typeof binding.budgetReservationRef !== "string" ||
+          !Number.isSafeInteger(binding.budgetCapMinorUnits) || typeof binding.currency !== "string")) return false;
+        if (economicsMode === "provider_managed" && specRun.metadata?.spec224Execution?.platformScope !== true) return false;
         const deadline = Date.parse(binding.deadline);
         if (!Number.isFinite(deadline) || deadline <= Date.now()) return false;
         const authorized = await repo.assertRunnerAuthorizationBinding?.({
@@ -2509,7 +2538,9 @@ export function createJobControlPlane(
           Array.isArray(manifest.requestedCapabilities) && manifest.requestedCapabilities.every((c: unknown) => typeof c === "string")
           ? { goalId: specRun.goalId as string, provider: manifest.provider as "codex" | "claude_code" | "microsoft_copilot", workspaceId: specRun.workspaceId as string,
             repositoryRef: specRun.repositoryRef as string, sourceSha, action: actions[specRun.state],
-            changedPaths: [], allowedWriteSet: execution.allowedWriteSet as string[], requiredCapabilities: manifest.requestedCapabilities as string[] }
+            changedPaths: [], allowedWriteSet: execution.allowedWriteSet as string[], requiredCapabilities: manifest.requestedCapabilities as string[],
+            economicsMode: economicsMode as "tenant_budget" | "provider_managed",
+            platformScope: execution.platformScope === true }
           : undefined;
         const platformExecution = execution?.platformScope === true || specRun.metadata?.spec224Workspace?.platformScope === true;
         if (goal && platformExecution) {
@@ -2526,8 +2557,10 @@ export function createJobControlPlane(
         }
         if (!attempt || !repo.assertSpec224ReleaseAuthority || !(await repo.assertSpec224ReleaseAuthority({
           tenantId: input.tenantId, actorId: input.requestedByUserId, jobId: job.id, attemptId: attempt.id,
-          approvalRef: binding.approvalRef, holdRef: binding.budgetReservationRef,
-          amount: binding.budgetCapMinorUnits, currency: binding.currency, now: new Date(), deadline: binding.deadline, goal,
+          approvalRef: binding.approvalRef, economicsMode,
+          ...(economicsMode === "tenant_budget" && !goal && typeof binding.budgetCapMinorUnits !== "number" ? {} :
+            economicsMode === "provider_managed" ? {} : { holdRef: binding.budgetReservationRef,
+              amount: binding.budgetCapMinorUnits, currency: binding.currency }), now: new Date(), deadline: binding.deadline, goal,
         }))) return false;
         const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedTenantId: input.tenantId,
           expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null, scheduledAt: new Date() } });
@@ -2535,7 +2568,9 @@ export function createJobControlPlane(
         await repo.insertEvent({ workerJobId: job.id, eventType: "QUEUED", eventIdempotencyKey: `queued:${job.id}` });
         await repo.insertEvent({ workerJobId: job.id, eventType: "AUTHORIZATION_HOLD_RELEASED",
           eventIdempotencyKey: `authorization-hold-released:${job.id}`, payloadJson: { runnerId: binding.runnerId,
-            capabilitySnapshotId: binding.capabilitySnapshotId, approvalRef: binding.approvalRef, budgetReservationRef: binding.budgetReservationRef } });
+            capabilitySnapshotId: binding.capabilitySnapshotId, approvalRef: binding.approvalRef,
+            economicsMode,
+            ...(economicsMode === "provider_managed" ? {} : { budgetReservationRef: binding.budgetReservationRef }) } });
         await repo.insertEvent({ workerJobId: job.id, eventType: "DISPATCH_REQUESTED",
           eventIdempotencyKey: `dispatch-requested:${job.id}:${job.attempt}`, payloadJson: { attempt: job.attempt } });
         await repo.insertOutbox({ workerJobId: job.id, envelopeVersion: job.contractVersion,

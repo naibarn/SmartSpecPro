@@ -680,7 +680,7 @@ describe("Core goal readiness feedback", () => {
   it("creates and binds SPEC plus prompt, then starts exactly once from the primary development action", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
     mocks.prepare.mockResolvedValueOnce({ ...preparation(true), runnableWorkPackageIds: ["WU-1"], workPackages: [{ id: "WU-1", externalId: "WU-1", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
     const createConversation = vi.fn().mockResolvedValue(47);
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
@@ -705,7 +705,7 @@ describe("Core goal readiness feedback", () => {
   it("starts Platform prompt work with the selected workspace-level permission", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
     mocks.prepare.mockResolvedValueOnce({ ...preparation(true), workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
     const createConversation = vi.fn().mockResolvedValue(48);
     render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);
@@ -721,6 +721,10 @@ describe("Core goal readiness feedback", () => {
       prompt: "Create bounded tests",
       workspaceAccessMode: "workspace",
     }));
+    expect(mocks.start.mock.calls[0]?.[0]).not.toHaveProperty("budgetCapMinorUnits");
+    expect(screen.queryByLabelText("วงเงินสูงสุดสำหรับ DevelopmentRun เป็น USD")).not.toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Provider managed development usage" })).toHaveTextContent("ใช้โควต้าของบัญชี Codex/Provider");
+    expect(screen.queryByText("บัญชี Ledger สำหรับรับงบ Development Run (USD)")).not.toBeInTheDocument();
   });
 
   it("blocks a canonical SPEC package that is not the next handoff WorkUnit", async () => {
