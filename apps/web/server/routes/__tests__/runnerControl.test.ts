@@ -83,6 +83,7 @@ import {
   runnerSessionController,
   runnerSnapshotHasReadyExecution,
   sendRunnerSocketAndWait,
+  sendRunnerEnvelopeAfterPrerequisite,
   sendRunnerReceiptAckBeforeProcessing,
   validateRunnerCommandControlPlaneOrigin,
   requestControlPlaneOrigin,
@@ -274,6 +275,26 @@ describe("Runner control transport routes", () => {
       code: "runner_websocket_send_timeout",
     });
     expect(ws.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("assigns command sequence after the staged input grant has been delivered", async () => {
+    const channel = { nextServerSequence: 0 };
+    const sent: Array<{ type: string; sequence: number }> = [];
+
+    await sendRunnerEnvelopeAfterPrerequisite({
+      channel,
+      beforeSend: async () => {
+        // The staged-input grant is a server envelope on the same sequence lane.
+        sent.push({ type: "input_grant", sequence: channel.nextServerSequence++ });
+      },
+      createEnvelope: sequence => ({ type: "job_command", sequence }),
+      send: envelope => sent.push(envelope),
+    });
+
+    expect(sent).toEqual([
+      { type: "input_grant", sequence: 0 },
+      { type: "job_command", sequence: 1 },
+    ]);
   });
 
   it("sends a receipt ACK before semantic follow-up processing can dispatch the next command", async () => {

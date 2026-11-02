@@ -123,6 +123,18 @@ type RunnerSocketAuthContext = {
 
 const activeRunnerChannels = new Map<string, ActiveRunnerChannel>();
 
+export async function sendRunnerEnvelopeAfterPrerequisite<TEnvelope>(input: {
+  channel: { nextServerSequence: number };
+  beforeSend?: () => Promise<void>;
+  createEnvelope: (sequence: number) => TEnvelope;
+  send: (envelope: TEnvelope) => Promise<unknown> | unknown;
+}): Promise<TEnvelope> {
+  await input.beforeSend?.();
+  const envelope = input.createEnvelope(input.channel.nextServerSequence++);
+  await input.send(envelope);
+  return envelope;
+}
+
 type PendingSpec224InputGrant = {
   runnerId: string;
   tenantId: string;
@@ -843,8 +855,8 @@ export async function dispatchRunnerJobCommand(
       runnerSessionId: command.runnerSessionId,
     };
   }
-  const sequence = channel.nextServerSequence++;
-  const envelope = {
+  let dispatchAttempted = false;
+  const createCommandEnvelope = (sequence: number) => ({
     protocolVersion: RUNNER_CONTRACT_VERSION,
     profile: auth.profile,
     nodeKind: auth.nodeKind,
@@ -858,15 +870,25 @@ export async function dispatchRunnerJobCommand(
     sequence,
     idempotencyKey: command.idempotencyKey,
     payload: { type: "runner.job.command", command },
-  };
-  let dispatchAttempted = false;
+  });
+  const sendCommandEnvelope = (
+    send: (envelope: ReturnType<typeof createCommandEnvelope>) => Promise<unknown> | unknown
+  ) => sendRunnerEnvelopeAfterPrerequisite({
+    channel,
+    beforeSend: async () => {
+      dispatchAttempted = true;
+      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
+    },
+    createEnvelope: createCommandEnvelope,
+    send,
+  });
   const dispatch = async () => {
-    dispatchAttempted = true;
-    if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
-    await sendRunnerSocketAndWait(
-      channel.ws,
-      envelope,
-      PROTECTED_RUNNER_SEND_TIMEOUT_MS
+    await sendCommandEnvelope(envelope =>
+      sendRunnerSocketAndWait(
+        channel.ws,
+        envelope,
+        PROTECTED_RUNNER_SEND_TIMEOUT_MS
+      )
     );
   };
   if (command.commandType === "execute" && requiresSpec224GoalExecutionStart) {
@@ -877,8 +899,9 @@ export async function dispatchRunnerJobCommand(
       persistedStartProofValid: persistedGoalStartProofValid,
     });
     try {
-      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
-      await sendRunnerSocketAndWait(channel.ws, envelope, PROTECTED_RUNNER_SEND_TIMEOUT_MS);
+      await sendCommandEnvelope(envelope =>
+        sendRunnerSocketAndWait(channel.ws, envelope, PROTECTED_RUNNER_SEND_TIMEOUT_MS)
+      );
       channel.sentCommands.set(command.commandId, { fingerprint, state: "sent" });
       if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
     } catch (error) {
@@ -937,8 +960,9 @@ export async function dispatchRunnerJobCommand(
       persistedStartProofValid: false,
     });
     try {
-      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
-      sendRunnerSocket(channel.ws, envelope);
+      await sendCommandEnvelope(envelope => {
+        sendRunnerSocket(channel.ws, envelope);
+      });
       channel.sentCommands.set(command.commandId, {
         fingerprint,
         state: "sent",
