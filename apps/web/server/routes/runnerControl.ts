@@ -59,6 +59,7 @@ import {
 import {
   acceptRunnerJobReceiptDurably,
   assertRunnerExecutionEligibility,
+  isRunnerCommandLeaseCurrent,
   shouldDeferRunnerExecutionCompletion,
   validateRunnerJobCommand,
   validateRunnerJobReceipt,
@@ -764,21 +765,15 @@ export async function dispatchRunnerJobCommand(
   const jobStatus = await controlPlane.getStatus(command.jobId, {
     tenantId: command.tenantId,
   });
-  if (
-    !jobStatus ||
-    jobStatus.lease.fencingVersion !== command.fencingToken ||
-    jobStatus.attempt !== command.attempt ||
-    !jobStatus.lease.active ||
-    jobStatus.lease.stale
-  )
+  const jobContext = await controlPlane.getContext(command.jobId, {
+    tenantId: command.tenantId,
+  });
+  if (!isRunnerCommandLeaseCurrent(command, jobStatus))
     throw new RunnerAuthError(
       "runner_lease_stale",
       409,
       "Runner command lease fence is stale"
     );
-  const jobContext = await controlPlane.getContext(command.jobId, {
-    tenantId: command.tenantId,
-  });
   const requiresSpec224Admission = Boolean(
     jobContext?.requiresSpec224Admission
   );

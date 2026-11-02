@@ -336,6 +336,8 @@ export type SafeWorkerJobOrchestration = {
 export type UserWorkerJobSummary = {
   id: string;
   jobType: string;
+  /** Owner-authored Goal text used to distinguish delegated development jobs. */
+  contextLabel: string | null;
   status: UserWorkerJobStatus;
   statusReason: string | null;
   operatorReviewRequired: boolean;
@@ -881,10 +883,14 @@ function projectJob(
       row.jobType === "remotion_render_video"
       && (artifactsByJobId.get(row.id) ?? []).some(isPublishableRemotionArtifact),
   });
+  const input = asRecord(row.inputJson);
+  const spec224Run = asRecord(input.spec224Run);
+  const contextLabel = safeBoundedString(spec224Run.goal, 180) ?? null;
 
   return {
     id: row.id,
     jobType: row.jobType,
+    contextLabel,
     status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
     operatorReviewRequired: row.operatorReviewRequired,

@@ -546,6 +546,11 @@ export default function RenderJobsPage() {
                           >
                             <TableCell>
                               <div className="font-medium">{formatJobType(job.jobType)}</div>
+                              {job.contextLabel ? (
+                                <div className="max-w-72 truncate text-xs text-slate-600" title={job.contextLabel}>
+                                  {job.contextLabel}
+                                </div>
+                              ) : null}
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
                               {job.canRetry ? (
                                 <Button
@@ -611,6 +616,7 @@ export default function RenderJobsPage() {
                           <span className="truncate font-medium">{formatJobType(job.jobType)}</span>
                           <JobStatusBadge status={job.status} job={job} />
                         </div>
+                        {job.contextLabel ? <div className="mb-1 line-clamp-2 text-xs text-slate-600">{job.contextLabel}</div> : null}
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
                         <div className="mt-2 truncate text-sm">
                           {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined) || "ยังไม่มี progress event"}
@@ -644,6 +650,7 @@ export default function RenderJobsPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
+                        {detailQuery.data.contextLabel ? <div className="line-clamp-3 text-xs text-slate-300">{detailQuery.data.contextLabel}</div> : null}
                         <div className="truncate text-xs text-slate-400">{detailQuery.data.id}</div>
                       </div>
                       <JobStatusBadge status={detailQuery.data.status} job={detailQuery.data} />

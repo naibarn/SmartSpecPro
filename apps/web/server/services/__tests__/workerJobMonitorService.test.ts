@@ -566,6 +566,45 @@ describe("workerJobMonitorService", () => {
     });
   });
 
+  it("shows the persisted development goal beside its worker job", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([{
+        id: "job-spec224",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "external_runtime",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        status: "failed",
+        statusReason: "external_wait_timeout",
+        resourceProfile: "long_running",
+        outputJson: {},
+        instructionsJson: {},
+        failureReason: "runner_lease_stale",
+        errorCode: "EXTERNAL_WAIT_TIMEOUT",
+        errorMessage: "runner_lease_stale",
+        operatorReviewRequired: true,
+        operatorReviewReason: null,
+        inputJson: { spec224Run: { goal: "Continue SPEC-312 P0: r14-core-p1-first-slice" } },
+        progressJson: {},
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await listUserWorkerJobs(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(result.items[0]?.contextLabel).toBe("Continue SPEC-312 P0: r14-core-p1-first-slice");
+  });
+
   it("projects only safe verified output refs", async () => {
     const repo = createRepo();
 

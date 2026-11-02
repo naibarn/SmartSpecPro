@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   assertRunnerExecutionEligibility,
+  isRunnerCommandLeaseCurrent,
   acceptRunnerJobReceipt,
   acceptRunnerJobReceiptDurably,
   shouldDeferRunnerExecutionCompletion,
@@ -61,6 +62,39 @@ const receipt = (
 });
 
 describe("Runner Job Command/Receipt contract", () => {
+  it("allows a command bound to the matching durable external wait after the node lease is released", () => {
+    const external = {
+      ...command(),
+      executionKind: "external_agent_task",
+      adapterId: "codex.v1",
+    } as RunnerJobCommand;
+    const status = {
+      status: "waiting_external",
+      attempt: 1,
+      lease: { active: false, stale: false, fencingVersion: 3 },
+      progress: {
+        externalWait: {
+          operationKey: "external-agent:task-1:plan-1:1",
+          providerReference: `runner-command:${external.commandId}`,
+          metadata: {
+            commandId: external.commandId,
+            executionKind: "external_agent_task",
+            runnerId: external.runnerId,
+            runnerSessionId: external.runnerSessionId,
+            leaseId: external.leaseId,
+            fenceVersion: external.fencingToken,
+          },
+        },
+      },
+    };
+
+    expect(isRunnerCommandLeaseCurrent(external, status)).toBe(true);
+    expect(isRunnerCommandLeaseCurrent(external, {
+      ...status,
+      progress: { externalWait: { ...status.progress.externalWait, metadata: { ...status.progress.externalWait.metadata, runnerSessionId: "stale-session" } } },
+    })).toBe(false);
+  });
+
   it("validates the generic fenced browser command without accepting reusable secrets", () => {
     expect(validateRunnerJobCommand(command())).toMatchObject({
       commandId: "command-p213-1",

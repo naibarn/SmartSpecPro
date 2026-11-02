@@ -44,6 +44,56 @@ export type RunnerReceiptState = {
 export type RunnerReceiptPersistenceDisposition =
   "recorded" | "duplicate" | "late" | "ignored";
 
+/**
+ * A Runner execute command normally needs the live worker lease. External
+ * commands are the exception: their durable WAITING_EXTERNAL projection
+ * releases that lease before dispatch, so they must prove the exact command
+ * and fence through the persisted external-wait metadata instead.
+ */
+export function isRunnerCommandLeaseCurrent(
+  command: RunnerJobCommand,
+  jobStatus: {
+    status?: string;
+    attempt?: number;
+    lease?: { active?: boolean; stale?: boolean; fencingVersion?: number };
+    progress?: Record<string, unknown>;
+  } | null | undefined,
+): boolean {
+  if (
+    !jobStatus ||
+    jobStatus.attempt !== command.attempt ||
+    jobStatus.lease?.fencingVersion !== command.fencingToken
+  ) return false;
+
+  if (jobStatus.lease.active && !jobStatus.lease.stale) return true;
+  if (
+    command.commandType !== "execute" ||
+    command.executionKind !== "external_agent_task" ||
+    jobStatus.status !== "waiting_external" ||
+    jobStatus.lease.stale
+  ) return false;
+
+  const externalWait = jobStatus.progress?.externalWait;
+  if (!externalWait || typeof externalWait !== "object" || Array.isArray(externalWait))
+    return false;
+  const wait = externalWait as Record<string, unknown>;
+  const metadata = wait.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    return false;
+  const bound = metadata as Record<string, unknown>;
+  return (
+    typeof wait.operationKey === "string" &&
+    wait.operationKey.startsWith("external-agent:") &&
+    wait.providerReference === `runner-command:${command.commandId}` &&
+    bound.commandId === command.commandId &&
+    bound.executionKind === command.executionKind &&
+    bound.runnerId === command.runnerId &&
+    bound.runnerSessionId === command.runnerSessionId &&
+    bound.leaseId === command.leaseId &&
+    bound.fenceVersion === command.fencingToken
+  );
+}
+
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/;
 const SECRET_KEYS = new Set([
   "accessToken",
