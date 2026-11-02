@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { db } from "../db";
@@ -560,6 +560,13 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
 
   async listEvents(jobIds, limitPerJob = 25) {
     if (jobIds.length === 0) return [];
+    const eventScope = inArray(workerJobEvents.workerJobId, jobIds);
+    const eventQueryScope = limitPerJob === 1
+      ? and(eventScope, notInArray(workerJobEvents.eventType, [
+        "RECONCILED",
+        "SPEC224_CONTINUATION_RECONCILED",
+      ]))
+      : eventScope;
     const rows = await db
       .select({
         id: workerJobEvents.id,
@@ -570,7 +577,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         createdAt: workerJobEvents.createdAt,
       })
       .from(workerJobEvents)
-      .where(inArray(workerJobEvents.workerJobId, jobIds))
+      .where(eventQueryScope)
       .orderBy(desc(workerJobEvents.createdAt));
 
     const countByJob = new Map<string, number>();
