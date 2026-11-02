@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { projectExecutionStatus } from '../ui/executionStatusUi';
 
 describe('execution status projection', () => {
+  it.each([
+    ['failed', 'external_wait_timeout', 'failed'],
+    ['expired', 'waiting_for_worker', 'failed'],
+    ['failed', 'capability_blocked', 'failed'],
+    ['cancelled', 'external_operation_pending', 'canceled'],
+    ['canceled', 'revision_mismatch', 'canceled'],
+  ])('keeps terminal status %s ahead of reason %s', (status, statusReason, expected) => {
+    const result = projectExecutionStatus({ status, statusReason, canCancel: true });
+    expect(result.state).toBe(expected);
+    expect(result.isTerminal).toBe(true);
+    expect(result.canCancel).toBe(false);
+  });
+
   it('distinguishes a missing capability from a waiting worker', () => {
     expect(projectExecutionStatus({ status: 'queued', statusReason: 'capability_blocked' }).state).toBe('capability-blocked');
     expect(projectExecutionStatus({ status: 'queued', statusReason: 'waiting_for_worker' }).state).toBe('waiting-agent');

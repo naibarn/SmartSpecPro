@@ -156,6 +156,22 @@ function createRepo(overrides: Partial<WorkerJobMonitorRepository> = {}): Worker
 }
 
 describe("workerJobMonitorService", () => {
+  it("keeps the last execution milestone visible while retaining reconciliation in the timeline", async () => {
+    const repo = createRepo({
+      listEvents: vi.fn().mockResolvedValue([
+        { id: "reconcile-1", workerJobId: "job-1", eventType: "RECONCILED", eventSequence: 3, payloadJson: {}, createdAt: laterAt },
+        { id: "reconcile-2", workerJobId: "job-1", eventType: "SPEC224_CONTINUATION_RECONCILED", eventSequence: 2, payloadJson: {}, createdAt: laterAt },
+        { id: "input-1", workerJobId: "job-1", eventType: "RUNNER_INPUT_MATERIALIZED", eventSequence: 1, payloadJson: { status: "materialized" }, createdAt },
+      ]),
+    });
+    const detail = await getUserWorkerJobDetail(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-1" }, { repo },
+    );
+    expect(detail.latestEvent?.eventType).toBe("RUNNER_INPUT_MATERIALIZED");
+    expect(detail.events.map(event => event.eventType)).toContain("RECONCILED");
+    expect(detail.events).toHaveLength(3);
+  });
+
   it("projects the durable SPEC-224 stage into Task Control without inventing progress", async () => {
     const repo = createRepo({
       getUserJob: vi.fn().mockResolvedValue({

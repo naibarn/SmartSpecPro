@@ -876,7 +876,11 @@ function projectJob(
       : row.status;
   const orchestration = projectOrchestration(row);
   const persistedProgress = projectProgress(row);
-  const latestEvent = events[0] ?? null;
+  // Reconciliation records belong in the timeline, but are not execution
+  // progress and must not hide the Runner's latest milestone or failure.
+  const latestEvent = events.find(event =>
+    event.eventType !== "RECONCILED" && event.eventType !== "SPEC224_CONTINUATION_RECONCILED"
+  ) ?? events[0] ?? null;
   const retryPolicy = getUserWorkerJobRetryPolicy(row, {
     hasVerifiedOutput: outputRefs.length > 0,
     hasUnpublishedRemotionArtifact:

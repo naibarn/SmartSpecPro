@@ -78,7 +78,11 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
     && job.operatorReviewRequired !== true;
   let state: ExecutionDisplayState;
 
-  if (status === 'waiting_external') state = 'waiting-external';
+  // Terminal job state is authoritative; a historical wait/failure reason
+  // must not make a closed job look like it is still waiting for a worker.
+  if (status === 'failed' || status === 'expired') state = 'failed';
+  else if (status === 'cancelled' || status === 'canceled') state = 'canceled';
+  else if (status === 'waiting_external') state = 'waiting-external';
   else if (hasReason(reason, ['capability', 'no_eligible', 'unsupported'])) state = 'capability-blocked';
   else if (hasReason(reason, ['waiting', 'no_worker', 'external'])) state = 'waiting-agent';
   else if (hasReason(reason, ['stale', 'revision'])) state = 'stale';
@@ -91,8 +95,6 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
   else if (status === 'qc' || status === 'qc_pending' || status === 'quality_check') state = 'qc';
   else if (status === 'degraded') state = 'degraded';
   else if (status === 'completed' || status === 'succeeded') state = outputReady ? 'completed' : 'degraded';
-  else if (status === 'failed' || status === 'expired') state = 'failed';
-  else if (status === 'cancelled' || status === 'canceled') state = 'canceled';
   else state = 'degraded';
 
   const labels: Record<ExecutionDisplayState, string> = {
