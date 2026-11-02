@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L17"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L20"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L17",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -17,9 +17,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "167101fdb44dc369dd27c847da9c3626605d77b12249570cd030720b2eac4e25",
-      "requirement_id": "REQ-EE7F76925787",
+      "requirement_id": "REQ-8E5123ADE0DF",
       "requirement_text": "**Decision:** Keep SaaS Core/Hono, Queue producer and small Cloudflare Push Consumer on **TypeScript** by default. Use a separately built **native Rust executable** as the preferred new long-running `job-supervisor` and native I/O executor outside Cloudflare Workers. Go remains a qualified alternate executor implementation, not a mandatory dependency; Rust is not mandatory for every job. Retain Python OpenAI Agents SDK, Codex/Runner and FFmpeg/GPU/provider-specific executors. A thin Rust/Wasm Worker using `workers-rs` MAY be benchmarked for focused Cloudflare bindings, but SHALL NOT be substituted for a native multi-hour process and SHALL NOT enlarge the default TS Queue worker merely to share language.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L19"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L22"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L19",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L22",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -39,9 +39,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8a900fc44773b1fe01f67cec4c1ceb7ee9993e63dd50a5b5bb43592a6845622a",
-      "requirement_id": "REQ-6F6600A64F82",
+      "requirement_id": "REQ-9824B48789E9",
       "requirement_text": "**Critical truth:** Neither Go, Rust nor Cloudflare Queues guarantees a business effect executes exactly once, a task never crashes, or zero loss following failure of primary DB plus backups. Queue delivery is at least once. Reliability SHALL be defined by durable admission, idempotency, canonical state, recovery ownership and measured backup/restoration, not programming-language marketing.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L21"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L24"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L21",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -61,9 +61,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "d79b8d28c6e3293c318143ea7283484a63c486ea40f0e9db571a25521c321734",
-      "requirement_id": "REQ-7A6D18B15CA4",
+      "requirement_id": "REQ-58D0F27E1FCA",
       "requirement_text": "Canonical authorities remain unchanged: SPEC-224/278 and existing `smartspec.worker_jobs` + transactional outbox + canonical job/attempt/lease/fencing owner; SPEC-207 wallet/credit reserve/settlement; SPEC-280 pricing; SPEC-295 deployment/release; SPEC-293 Git provenance; SPEC-267/311 existing Cloudflare legacy context. This spec adds *implementation and reliability contracts*, never a second job ledger, settlement writer, approval subsystem, state machine or `worker_jobs` copy. Legacy schema is preserved; exact catalog introspection and compatible additive change are required where necessary.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L56"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L59"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L56",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L59",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -83,9 +83,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "5cad34f4a026134c847559549b772ac5252424e546a489cd908b5ea984df0926",
-      "requirement_id": "REQ-78DA3E3F86B3",
+      "requirement_id": "REQ-F2629F0ADCB0",
       "requirement_text": "- `aimarkethubs.com`: modular development on Debian; same canonical user/role/tenant/wallet data and business contracts as production; Rust supervisor can consume the **existing** DB job authority directly, without paid Cloudflare Queues. Development write authority must remain tenant/job scoped; no duplicate job claim by old Debian and new Rust processes.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -93,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L71"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L74"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L71",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -105,75 +105,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a8077a3aa818ddf52e009fd662253f48e123fcdb0eb619ef3f03da9752ec9770",
-      "requirement_id": "REQ-959D8DA6EDA2",
+      "requirement_id": "REQ-DC5018D0B8B8",
       "requirement_text": "Rust native and Rust `wasm32-unknown-unknown` builds are distinct targets: `tokio` OS-thread/process/file APIs and native DB drivers may not run inside Workers Wasm. Cross-compile only **pure versioned contracts** where demonstrated. Bundle size, initial CPU, throughput and peak RSS MUST be measured for each actual target. No automatic assertion that Rust/Wasm is faster or smaller than TS.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L80"
-      ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L80",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "93db303d91f040c58a6f528009930634389d9265cc494d73bc4a88845196fd07",
-      "requirement_id": "REQ-299553415CD6",
-      "requirement_text": "2. **Queue is only a notification/transport.** Outbox publisher retries unconfirmed sends. Messages are compact (~2KiB desired), contain IDs/version/tenant/capability class, and NEVER carry credentials or large customer payloads. Provider enqueue succeeding but outbox mark failing can yield duplicate dispatch; consumer MUST dedupe against canonical state.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L81"
-      ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L81",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0e97f982fc5b6a56df19fffa8d5bcd3d0a1c3921d45587777b42fb7ac166c2e8",
-      "requirement_id": "REQ-C75BAEA46770",
-      "requirement_text": "3. **Atomic claim.** Reuse existing atomic `worker_jobs` claim/lease/attempt ownership with unique attempt/dispatch and increasing fencing generation. A claim locks for only the DB transaction, not for job lifetime. Rust must not invent new lease or job tables to sidestep pre-existing controls.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L82"
-      ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L82",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a5c3af9c5d9044722f5df477ef18c2403375dd197727c56dd0a37ab4820eef8f",
-      "requirement_id": "REQ-3218867F64F6",
-      "requirement_text": "4. **Fenced writes.** Heartbeat, checkpoint, terminal transition and settlement request validate current attempt, tenant, owner and fence token. A stale executor cannot overwrite a newer worker's result. All DB-side effects must be conditional/idempotent.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -192,10 +126,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "18364c32f4706b676b2c9edc3ce59af38a9db5936e07fe66364fa180df3432f2",
-      "requirement_id": "REQ-19600B6F774F",
-      "requirement_text": "5. **Queue ACK after recovery ownership.** For short push jobs, ACK after verified terminal state or verified durable ownership transfer. For long jobs, ACK may follow durable DB claim + reconcilable handoff, **only if** the recovery scanner is implemented and tested; never ACK based merely on process spawning. If no durable handoff is proven, retry. Lost ACK and repeated deliveries must be harmless.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "requirement_digest": "93db303d91f040c58a6f528009930634389d9265cc494d73bc4a88845196fd07",
+      "requirement_id": "REQ-9FDAE14E340D",
+      "requirement_text": "2. **Queue is only a notification/transport.** Outbox publisher retries unconfirmed sends. Messages are compact (~2KiB desired), contain IDs/version/tenant/capability class, and NEVER carry credentials or large customer payloads. Provider enqueue succeeding but outbox mark failing can yield duplicate dispatch; consumer MUST dedupe against canonical state.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -214,10 +148,32 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "131b33bd448f00d282eafdd476e88ed11da18f4b630a052e3f24322634d8174a",
-      "requirement_id": "REQ-BC84F4B2B0DF",
-      "requirement_text": "6. **Restarts are normal.** Rust handles OS signals, stops claiming new work, gives current work bounded checkpoint/graceful cancellation, and leaves uncompleted jobs recoverable through expired lease. Sudden kill (OOM/power loss) also must be repaired by the canonical reconciler; do not depend on destructor/finally execution.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "requirement_digest": "0e97f982fc5b6a56df19fffa8d5bcd3d0a1c3921d45587777b42fb7ac166c2e8",
+      "requirement_id": "REQ-2446DDB8C2F2",
+      "requirement_text": "3. **Atomic claim.** Reuse existing atomic `worker_jobs` claim/lease/attempt ownership with unique attempt/dispatch and increasing fencing generation. A claim locks for only the DB transaction, not for job lifetime. Rust must not invent new lease or job tables to sidestep pre-existing controls.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a5c3af9c5d9044722f5df477ef18c2403375dd197727c56dd0a37ab4820eef8f",
+      "requirement_id": "REQ-FB8FD5AFA3EB",
+      "requirement_text": "4. **Fenced writes.** Heartbeat, checkpoint, terminal transition and settlement request validate current attempt, tenant, owner and fence token. A stale executor cannot overwrite a newer worker's result. All DB-side effects must be conditional/idempotent.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -236,10 +192,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "31efddf565f74316c763b9a78c05db8a19939751c1a6815a595189fcf735ec2a",
-      "requirement_id": "REQ-BB539F875C15",
-      "requirement_text": "8. **Exactly-one settlement owner.** Rust may report outcomes but cannot independently charge/refund Wallet. SPEC-207 accepts completion under canonical job/attempt idempotency. A job result and charge must not be committed twice after redelivery.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "requirement_digest": "18364c32f4706b676b2c9edc3ce59af38a9db5936e07fe66364fa180df3432f2",
+      "requirement_id": "REQ-AD577439F63A",
+      "requirement_text": "5. **Queue ACK after recovery ownership.** For short push jobs, ACK after verified terminal state or verified durable ownership transfer. For long jobs, ACK may follow durable DB claim + reconcilable handoff, **only if** the recovery scanner is implemented and tested; never ACK based merely on process spawning. If no durable handoff is proven, retry. Lost ACK and repeated deliveries must be harmless.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -247,9 +203,53 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L92"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L87"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L92",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "131b33bd448f00d282eafdd476e88ed11da18f4b630a052e3f24322634d8174a",
+      "requirement_id": "REQ-E522377ECA41",
+      "requirement_text": "6. **Restarts are normal.** Rust handles OS signals, stops claiming new work, gives current work bounded checkpoint/graceful cancellation, and leaves uncompleted jobs recoverable through expired lease. Sudden kill (OOM/power loss) also must be repaired by the canonical reconciler; do not depend on destructor/finally execution.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L89"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L89",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "31efddf565f74316c763b9a78c05db8a19939751c1a6815a595189fcf735ec2a",
+      "requirement_id": "REQ-62502044BE7F",
+      "requirement_text": "8. **Exactly-one settlement owner.** Rust may report outcomes but cannot independently charge/refund Wallet. SPEC-207 accepts completion under canonical job/attempt idempotency. A job result and charge must not be committed twice after redelivery.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L95"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L95",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -259,9 +259,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "44a86a8394ada91eddc530d796b7ed24e1162bf53959cdc0ca998e28dbf571f8",
-      "requirement_id": "REQ-2BD9B3021137",
+      "requirement_id": "REQ-F1A273D72FA2",
       "requirement_text": "The native supervisor SHALL implement a minimal versioned interface: `discover -> claim -> execute-or-dispatch -> checkpoint -> heartbeat -> cancel -> reconcile -> complete/fail`. It MAY delegate actual work to Python/Runner/media providers. The executor MUST enforce per-job resource caps, tenant and provider quotas, deadlines, cancellation signals and bounded concurrency, while surfacing live progress/status to the existing UI contract.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L105"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L108"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L105",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -281,9 +281,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "845e324bff66e638a03d0f6bd1d137f9a31e5a774ca7a0595d2ed1cd10bb6a20",
-      "requirement_id": "REQ-4A74CE0ECC4C",
+      "requirement_id": "REQ-D16E86B507EF",
       "requirement_text": "- Messages have retention max **14 days**, message max **128KB**, and per-queue throughput/consumer concurrency limits published by Cloudflare. DLQ messages also expire. The canonical DB scanner must detect stuck `accepted`, `queued`, `retryable`, `leased`, `running`, and `outcome_unknown` jobs even if Queue data disappeared.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L144"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L147"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L144",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L147",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -303,9 +303,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "47a8dfbe597c3464ca04af568a730f375062fa4116eecbbaddc3b4dca7a47ece",
-      "requirement_id": "REQ-49A0F23AC1EC",
+      "requirement_id": "REQ-5DDD50C3CD2E",
       "requirement_text": "- Only a newly written, App-exclusive Skill classified `APP_EXCLUSIVE_INCLUDED` by SPEC-321 is covered by the Mini App subscription without per-use subscriber debit. Any central/marketplace/other-App/shared Skill remains `SHARED_METERED` and incurs a credit charge **for every distinct invocation**, including nested child calls from an included Skill; persist unique child invocation IDs, source Skill ID/version, payer, quote and settlement linkage. Queue retry/lost ACK of the SAME logical child invocation must not debit again. Rust Supervisor only executes the resolved immutable billing decision and cannot grant subscription coverage, change Skill ownership or create a second wallet authority.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L164"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L167"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L164",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L167",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -325,9 +325,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
-      "requirement_id": "REQ-270F497E55BE",
+      "requirement_id": "REQ-4027D251F779",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L168"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L171"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L168",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L171",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -349,7 +349,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L170"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L173"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L170",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -369,9 +369,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ac3d5db45bd4c50fad181feb2db030cf93ff9466c15e01ba21f1a7b367f7b95d",
-      "requirement_id": "REQ-232D870EB1EC",
+      "requirement_id": "REQ-4F93F99FD78E",
       "requirement_text": "Existing `smartaihub.app` canonical job control plane performs P0–P4 development work and observes Runs/children. The new Rust/TS job substrate must be verified with real background tasks spawned by the old autonomous tool, especially process death, reconnect, persisted progress, resume and non-duplicated settlement. A failed Run triggers a scoped repair/retry child with identical stable Goal and an auditable attempt, not a new parallel worker_jobs ledger. P5 handover requires no lost/duplicate jobs.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L175"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L178"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L175",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L178",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -391,9 +391,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8e350e93045eac7aacce007121beec6fcdd06108529885803e94fc9caa79f524",
-      "requirement_id": "REQ-55645999F542",
+      "requirement_id": "REQ-8DCC8CF3DA15",
       "requirement_text": "Browser activity is an `worker_jobs`-backed asynchronous job. Browser sessions are leased ephemeral resources; timeout, provider restart, or user closing the Chat must not erase admitted job state. Use resume checkpoint with permitted idempotent steps, or return `NEEDS_HUMAN_REVIEW`/`OUTCOME_UNKNOWN` where an external side effect cannot safely be retried. Bookkeeping, credit reservation and settlement stay SPEC-207/280/318 authority; screenshot/trace/artifact pointers follow the artifact registry. Avoid retrying purchases, form submission or other irreversible browser actions blindly. Browser credentials must be per-tenant scoped and not carried into public chat artifacts.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L186"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L189"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L186",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L189",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -413,9 +413,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ee5c08bc9c9c5ceb10d18031d587667b1c1317636b767651d0705370e5c9725b",
-      "requirement_id": "REQ-4A44986A8235",
+      "requirement_id": "REQ-47F832831F04",
       "requirement_text": "- Recovery must not leave multiple supervisors acting on one desktop session or one browser side effect after a lease expires; action epoch/fencing and recipient confirmation are mandatory.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L200"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L205"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L200",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L205",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -435,31 +435,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
-      "requirement_id": "REQ-EB41E80506C2",
+      "requirement_id": "REQ-71AC5CAC47F6",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L201"
-      ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L201",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
-      "requirement_id": "REQ-4AC3AAC01581",
-      "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -478,10 +456,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
-      "requirement_id": "REQ-C0BFDD306AF4",
-      "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
+      "requirement_id": "REQ-726358A0517F",
+      "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -489,9 +467,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L207"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L211"
       ],
-      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L207",
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L211",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
+      "requirement_id": "REQ-266A61BAFFFD",
+      "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L212"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L212",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -501,15 +501,59 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
-      "requirement_id": "REQ-6E7ED9F5E8C9",
+      "requirement_id": "REQ-53D3615A5F8C",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L223"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L223",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b8512c4bafcd4dae2350510ad800934a7ea7e1b585d40f5ae3c5e45454e6b316",
+      "requirement_id": "R1.4-223",
+      "requirement_text": "Replace the R1.4 Rust-native-supervisor-first default for new-platform cloud Agent continuity with Cloudflare Agents SDK on Durable Objects for durable Agent identity/state and event wakeups, Workflows for recoverable multi-step work, Queues for asynchronous delivery, and Alarms/Schedules/Cron for future wakeups. These are event-driven services: a DO/Agent may hibernate or be evicted; an in-flight callback, timer or model process is not guaranteed to remain resident. Use Workflow checkpoints/retries and canonical durable job/outbox state for work that must recover.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L229"
+      ],
+      "authority_source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#L229",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e8834bf97b12ec2960b76065ee263440501a2b2beedb923009e9b73b7ee4eb1a",
+      "requirement_id": "REQ-19F9A8D16C31",
+      "requirement_text": "Presence is a short-lived server observation, not a sticky online flag. Model boot, authenticating, core-only, headless-ready, interactive-ready, executing, sleeping, reconnecting, update-required, paused, quarantined, revoked and shutdown distinctly. The Connector reconnects with bounded exponential backoff, jitter, fresh device proof and epoch checks, then reconciles cursor/lease state from canonical job authority; it never replays an unacknowledged OS effect blindly. Windows Session 0 and Linux user-session/Wayland limits are explicit, and locked or absent GUI sessions wait rather than bypassing OS controls.",
+      "source_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+  "spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
   "spec_id": "318"
 }

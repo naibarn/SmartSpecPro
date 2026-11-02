@@ -1,29 +1,7 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L16"
-      ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L16",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "53a5647d54f01975ed4ab764db26cad7494da33087f886cf88b272e656602d03",
-      "requirement_id": "REQ-956A8FCE8D33",
-      "requirement_text": "**The new SmartSIHub platform SHALL be built from the existing SmartAIHub autonomous facilities.** An administrator creates the program and child development Goals in the live `https://smartaihub.app` Autonomous Implements or Autonomous Mini App Creator surface. The current SPEC-224 execution authority, existing canonical `worker_jobs`, Runner and selected Codex/Claude/Pi/etc Harness shall build, test, deploy, diagnose and repair the new modular platform on the existing Debian Linux host. No parallel, independent project orchestrator is introduced for this build.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -38,10 +16,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dbabb506cbda94e961fe643e98a52623435cfaca6719179a70457e20d40bc0c1",
-      "requirement_id": "REQ-BED8C43D5605",
-      "requirement_text": "New code is placed in a clean, isolated modular workspace/repository; its web UAT runs on `https://aimarkethubs.com`. New production modules are deployed individually on Cloudflare for `https://smartsihub.com`. The old `smartaihub.app` runtime must continue serving the development command/control entry point until the new Autonomous Implements has proven real self-development and the owner is able to switch to it, with fallback available. The historical SPEC-311 full legacy cutover is a different workstream; it is not a prerequisite to restricted new-domain beta.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "requirement_digest": "53a5647d54f01975ed4ab764db26cad7494da33087f886cf88b272e656602d03",
+      "requirement_id": "REQ-7C69C2177BD4",
+      "requirement_text": "**The new SmartSIHub platform SHALL be built from the existing SmartAIHub autonomous facilities.** An administrator creates the program and child development Goals in the live `https://smartaihub.app` Autonomous Implements or Autonomous Mini App Creator surface. The current SPEC-224 execution authority, existing canonical `worker_jobs`, Runner and selected Codex/Claude/Pi/etc Harness shall build, test, deploy, diagnose and repair the new modular platform on the existing Debian Linux host. No parallel, independent project orchestrator is introduced for this build.",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -49,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L61"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L20"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L61",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L20",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -60,10 +38,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a5ad8b0541a7f57d13e85802d79dbab54c553ae02b7e68acc82c52822d3749af",
-      "requirement_id": "REQ-038891D9DEB2",
-      "requirement_text": "When implementing any P1–P7 work, record failures as (a) **bootstrap platform** defect (Goal/Runner/Queue/UI/Approval/Deploy/Logs); (b) **new platform** product defect; or (c) external/credential issue. For (a), open a repair child against existing SmartAIHub `smartaihub.app` under the same approved Goal; produce a reproducible failing step and focused fix, release to the old site using its scoped existing controller, verify browser and then resume the original new-platform step. Do not reset a completed phase, lose logs, clone the Goal or modify protected data to work around a guard. For (b), fix the new target module and redeploy only that module. For (c), report actionable required permission/evidence once, continue unrelated work.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "requirement_digest": "dbabb506cbda94e961fe643e98a52623435cfaca6719179a70457e20d40bc0c1",
+      "requirement_id": "REQ-40C004B92686",
+      "requirement_text": "New code is placed in a clean, isolated modular workspace/repository; its web UAT runs on `https://aimarkethubs.com`. New production modules are deployed individually on Cloudflare for `https://smartsihub.com`. The old `smartaihub.app` runtime must continue serving the development command/control entry point until the new Autonomous Implements has proven real self-development and the owner is able to switch to it, with fallback available. The historical SPEC-311 full legacy cutover is a different workstream; it is not a prerequisite to restricted new-domain beta.",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -82,10 +60,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "738c3432d9f1e94da30a0f5f7ea35e11e4fff768b677bd7287f4d9d8494ced77",
-      "requirement_id": "REQ-2FA5D7A6747D",
-      "requirement_text": "When the old web UI or orchestrator is itself unreachable, a **narrow break-glass direct Debian Codex/Runner repair** is permitted under pre-existing owner authorization and infrastructure permissions; this is a disaster-recovery exception only. Record exact shell/workspace/commit/deploy receipts and reconcile them with canonical history when UI returns. It must not become the normal development method.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "requirement_digest": "a5ad8b0541a7f57d13e85802d79dbab54c553ae02b7e68acc82c52822d3749af",
+      "requirement_id": "REQ-D25B4B37A6CF",
+      "requirement_text": "When implementing any P1–P7 work, record failures as (a) **bootstrap platform** defect (Goal/Runner/Queue/UI/Approval/Deploy/Logs); (b) **new platform** product defect; or (c) external/credential issue. For (a), open a repair child against existing SmartAIHub `smartaihub.app` under the same approved Goal; produce a reproducible failing step and focused fix, release to the old site using its scoped existing controller, verify browser and then resume the original new-platform step. Do not reset a completed phase, lose logs, clone the Goal or modify protected data to work around a guard. For (b), fix the new target module and redeploy only that module. For (c), report actionable required permission/evidence once, continue unrelated work.",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -93,9 +71,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L77"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L65"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L77",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "738c3432d9f1e94da30a0f5f7ea35e11e4fff768b677bd7287f4d9d8494ced77",
+      "requirement_id": "REQ-12B4EB358F87",
+      "requirement_text": "When the old web UI or orchestrator is itself unreachable, a **narrow break-glass direct Debian Codex/Runner repair** is permitted under pre-existing owner authorization and infrastructure permissions; this is a disaster-recovery exception only. Record exact shell/workspace/commit/deploy receipts and reconcile them with canonical history when UI returns. It must not become the normal development method.",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L79"
+      ],
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L79",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -105,9 +105,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "fbf3a17addb3dceeb06eb3c85355a71d05ef2f6f4f843ddbf2f8070c13db8f5b",
-      "requirement_id": "REQ-36E24D8FECF6",
+      "requirement_id": "REQ-C5933DB6A086",
       "requirement_text": "The new Autonomous Implements must successfully complete real development changes (not a mocked job), with visible Run→Child→Build→URL receipts, interruption/reconnect recovery, correct tenant and credit isolation, cancellation semantics, and rollback of a selected deploy. Run a shadow **read-only** status comparison where useful but never allow two executors to perform the same billable side effect. Move one selected Goal/workspace to the new control plane, observe and expand. Roll back that Goal to old control only after active execution has been drained or fenced; preserve its original identity and audit history. Once users can perform new development through SmartSIHub and it remains reliable, use new Autonomous Implements as default; do not shut down the old interface until rollback/reconciliation and its remaining user activity are addressed.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -115,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L92"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L94"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L92",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -127,9 +127,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ad509b06f6a7497cfd02e9076c0fdc8649aa1f465a5ec8ff15ea7babb51a4012",
-      "requirement_id": "REQ-BB81F4198CF6",
+      "requirement_id": "REQ-48A95C39A04E",
       "requirement_text": "P0 old `smartaihub.app` Autonomous Implements SHALL author the new Chat renderable block contract, Artifact Panel and agent browser adapter as target platform work. Development progress must appear in the old Task/Thread status until the new system has accepted a real run. First implementation proves static/streamed inline code+diagram and choice cards, then saves an artifact and opens it in a panel; after this, a browser session controlled by the agent can demonstrate UAT through `aimarkethubs.com`. A temporary outage in Moli or Cloudflare Browser Run is scoped provider fallback work, not an all-project stop. Keep state and development Run receipts even when user browsers close. Migration to the new Autonomous Implement occurs only after durable end-to-end jobs/deploys and retries are demonstrated, not when a mockup alone renders.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -137,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L120"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L124"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L120",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L124",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -149,9 +149,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
-      "requirement_id": "REQ-F6D473847E1C",
+      "requirement_id": "REQ-10829A9BE5FA",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L121"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L125"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L121",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L125",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -171,9 +171,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
-      "requirement_id": "REQ-F93EE3C0075E",
+      "requirement_id": "REQ-9F4BDD48233A",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L126"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L130"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L126",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L130",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -193,9 +193,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
-      "requirement_id": "REQ-9E2BAC6716B2",
+      "requirement_id": "REQ-2D5D4A4EA4DD",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L127"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L131"
       ],
-      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L127",
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L131",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -215,15 +215,37 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
-      "requirement_id": "REQ-EE4C5BE75775",
+      "requirement_id": "REQ-B9D392FE66BF",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L142"
+      ],
+      "authority_source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md#L142",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c03e59169d6ef7fef74756a3e0a39ed1749019e30927d50395186a89c5698d15",
+      "requirement_id": "REQ-08D247217492",
+      "requirement_text": "Build a usable new Core, then Chat plus a persistent Agent, then complex control workspaces and Mini Apps without making Legacy infrastructure cutover a global P0 gate. The existing smartaihub.app Autonomous Implements/Creator can remain operational for Legacy users and may be an optional development command tool where its route, source, authorization and receipts are currently proven. Repairing or migrating it is not required before independent new-platform progress.",
+      "source_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+  "spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
   "spec_id": "324"
 }

@@ -1,12 +1,15 @@
 ---
 spec_id: 321
 semantic_id: smartaihub.credit-v2-miniapp-subscription-multiparty-commerce
-revision: R1.4
-status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED
+revision: R1.5
+status: PROPOSED_NOT_IMPLEMENTED
 owner: Capability Commerce Contracts / Existing Financial Authorities
 production_domain: smartsihub.com
+date: 2026-11-02
 ---
 # SPEC-321 — Credit V2 (USD 1 = 10,000), Mini App Subscriptions & Multiparty Revenue
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 ledger, commerce, runtime, or autonomous-execution assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Fixed owner decisions / authority
 **Owner-confirmed**: NEW nominal credit conversion is **USD 1 = 10,000 SmartSIHub credits**, replacing historical **USD 1 = 1,000 credits**. Credits per USD multiply by 10. This is a *unit redenomination*, not by itself a 90% discount or increase in real spending power. A legacy available balance of 1,000 old credits economically corresponds to 10,000 new credits at an unchanged USD value.
@@ -155,7 +158,9 @@ P0–P4 use existing SPEC-207 financial authority for logged development work; d
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -173,3 +178,11 @@ P0–P4 use existing SPEC-207 financial authority for logged development work; d
 ### SPEC-321 targeted closure
 
 **Monetary contract:** Freeze old/new concurrent writers during denomination conversion of balances and nominal rates, capture precise before/after totals and value equivalence, use new-credit unit version on every changed offer and reserve, keep immutable old credit events without rewriting amounts. Earned credit allocations post idempotently to four verified accounts; referrals once only funded by platform promo budget. App-exclusive subscribed Skill is free per-call only within its exact `appId`; shared Skill (including nested) is a distinct billable invocation. Future cash redemption is separate and not silently implied by purchased/bonus credits.
+
+---
+
+## R1.5 — Credit authority under durable autonomous execution (2026-11-02)
+
+Keep the existing denomination, four-party allocation, referral and subscription boundaries from SPEC-207/280/303/321. Platform credit balances and entitlements have one canonical writer in each product environment. Agent goals receive bounded budget grants; they do not acquire wallet, ledger or subscription administration authority. Queue redelivery, Workflow retry, DO restart, Runner reconnect and resumed thread/run must share an idempotency key for each billable invocation and settlement attempt.
+
+Reserve the maximum authorized cost before execution, settle measured usage once, release unused holds and reconcile uncertain external outcomes before retry. Agent LLM quota/subscription remains distinct from user spendable credits and Mini App subscription. A failed or revoked mandate stops only the affected spend path; unrelated Chat and read-only work may continue. Preserve the existing 1 USD = 10,000 new-credit rule, exclusive-versus-shared Skill rules and four verified revenue roles. SPEC-325 and SPEC-322 define credential and spend authorization boundaries.

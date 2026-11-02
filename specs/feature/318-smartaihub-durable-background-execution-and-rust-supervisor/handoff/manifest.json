@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835"
+    "expected_spec_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291"
   },
   "continuation": {
     "next_action": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
@@ -39,10 +39,15 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md"
+      "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
+      {
+        "digest": null,
+        "kind": "R1.5_OWNER_DECISION",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
     ],
-    "next_action": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Reconcile active work classes with canonical worker_jobs/outbox/lease authority; implement Workers Agents/Workflows/Queues for cloud Agent continuity and start native or device Executors only for workloads that need them.",
+    "rationale": "R1.5 supersedes the Rust-native-supervisor-first default for new-platform cloud continuity. Rust remains an on-demand workload-specific executor; the OS-boot device Core Connector is separate from its on-demand Executor.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,18 +80,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
-    "digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+    "digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:40.125969Z",
+      "last_evidence_at": "2026-11-02T01:43:56.829094Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "318-smartaihub-durable-background-execution-and-rust-supervisor",
     "spec_id": "318",
     "title": "SPEC-318 — SmartAIHub Durable Background Execution, Cloudflare Queues & Native Rust Job Supervisor"
@@ -140,10 +145,15 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md"
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
+        {
+          "digest": null,
+          "kind": "R1.5_OWNER_DECISION",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
       ],
-      "next_action": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Reconcile active work classes with canonical worker_jobs/outbox/lease authority; implement Workers Agents/Workflows/Queues for cloud Agent continuity and start native or device Executors only for workloads that need them.",
+      "rationale": "R1.5 supersedes the Rust-native-supervisor-first default for new-platform cloud continuity. Rust remains an on-demand workload-specific executor; the OS-boot device Core Connector is separate from its on-demand Executor.",
       "residual_requirements": []
     },
     "disposition": {
@@ -183,10 +193,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:40.125969Z",
+    "reconciled_at": "2026-11-02T01:43:56.829094Z",
     "sources": [
       {
-        "digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+        "digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md"
       },
@@ -194,12 +204,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
-        "source_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-        "value": "PROPOSED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -226,17 +236,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
-        "source_digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-        "value": "PROPOSED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
+        "digest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md"
       }
@@ -252,11 +262,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 23,
-    "unresolved": 23
+    "total": 25,
+    "unresolved": 25
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:40.125969Z",
+  "updated_at": "2026-11-02T01:43:56.829094Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

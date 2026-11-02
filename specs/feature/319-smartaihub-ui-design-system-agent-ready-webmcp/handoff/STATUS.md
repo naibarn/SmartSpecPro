@@ -5,11 +5,11 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 28
-- Next action: Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.
-- Manifest generation: 2
+- Next action: Define the Chat-first shared frontend slice: compact web/desktop Chat, typed server-authorized actions, canonical thread/Goal/Run state and expanded Task/Mission views.
+- Manifest generation: 5
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Status claim: `PROPOSED_ADDITIVE_NOT_IMPLEMENTED` — `specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#5`
+- Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#5`

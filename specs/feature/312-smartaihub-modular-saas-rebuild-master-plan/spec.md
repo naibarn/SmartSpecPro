@@ -2,13 +2,15 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
 ---
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier R0.x–R1.4 proposal text is retained for provenance. Where earlier sequencing, runtime, domain, database, or always-on wording conflicts with the final R1.5 section or the current owner-decision register, R1.5 controls.
 
 ## 0. Owner decision
 
@@ -169,7 +171,9 @@ Computer Use and fast decision routing are **cross-cutting optional capabilities
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -187,3 +191,17 @@ Computer Use and fast decision routing are **cross-cutting optional capabilities
 ### SPEC-312 targeted closure
 
 **Program-level reconciliation:** Maintain ONE living feature-to-owner inventory with `CORE|CHAT|CREATOR|AUTONOMOUS|PUBLIC|MODULE|LEGACY` disposition. Prioritize P0–P4 completion and a real URL/working user journey over inventory percentage. Distinguish preview, verified deployment and general availability; no old SPEC-311 full cutover requirement for the *new* `smartsihub.com` product. Measure post-deploy real-user usability and time from Goal to first real preview.
+
+---
+
+## R1.5 — New-platform scope and delivery invariants (2026-11-02)
+
+This revision applies to the new SmartAIHub Modular SaaS platform at smartsihub.com. It is an independent product and is not a full migration or cutover of the existing smartaihub.app Legacy site. The Legacy site may remain operational for existing users and may serve as an optional development command tool only where the relevant workflow has current evidence; repairing or migrating the full Legacy infrastructure is not a prerequisite for Core, Chat, or new-platform work.
+
+The current development-target registry identifies aimarkethubs.com as modular-debian-dev, prepared but not deployable: applicationAvailable is false, deployable is false, and the current service on port 3100 is preserved until its replacement is healthy. The smartsihub.com target is registered but not activated. Treat these as registry facts, not deployment proof. No hostname or optimized build mode grants authority.
+
+The new sequence is a usable Core identity and action boundary, then Chat with a persistent Agent identity and durable run state, then complex workspaces and Mini Apps. Cloudflare Workers, Service Bindings, Durable Objects/Agents SDK, Workflows, Queues and appropriate data bindings are the default cloud compute. A Runner or approved Container is an on-demand executor for work that requires local OS, native, persistent-browser, GPU, large-memory or heavy-media capabilities. Always-on describes durable identity, schedules, wakeups, recovery and user control; it does not mean a continuously resident LLM, Worker, browser or cloud Container.
+
+Chat is the primary post-login workspace. Closing Chat or any companion UI does not cancel an authorized durable run. The OS-boot device Core Connector and its on-demand Executor are distinct from cloud Agent authority. SPEC-325 is the cross-cutting security design. R1.4 remains historical evidence; this R1.5 clause and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) control conflicting claims.
+
+Before remote device execution is enabled, the new product must pass the SPEC-325 enrollment, device proof-of-possession, signed-job-envelope, revoke/reconnect, locked-session and shared-Companion acceptance cases on a non-production environment. Device availability is a workload capability; it is never a prerequisite for cloud Agent identity or browser-closed job durability.

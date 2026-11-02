@@ -1,0 +1,146 @@
+{
+  "revision": "R1.5",
+  "status": "PASS",
+  "scope": "static documentation, registry, handoff, manifest and local-link checks only",
+  "runtime_or_deployment_claim": false,
+  "checked_at_utc": "2026-11-02T01:47:17Z",
+  "checks_passed": 11,
+  "checks_failed": 0,
+  "markdown_links_scanned": 142,
+  "checks": [
+    {
+      "id": "spec_frontmatter_and_revision",
+      "status": "PASS",
+      "evidence": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
+        "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md",
+        "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
+        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
+        "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
+        "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/spec.md",
+        "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md",
+        "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
+        "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/spec.md",
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
+        "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      ]
+    },
+    {
+      "id": "deployment_target_alignment",
+      "status": "PASS",
+      "evidence": {
+        "legacy-debian-dev": [
+          "smartaihub.app",
+          "smartspec-web.service",
+          3000
+        ],
+        "modular-debian-dev": [
+          "aimarkethubs.com",
+          "smartsihub-core-dev.service",
+          3200
+        ],
+        "modular-cloudflare-prod": [
+          "smartsihub.com",
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "id": "spec325_security_architecture",
+      "status": "PASS",
+      "evidence": {
+        "missing_controls": [],
+        "missing_messages": [],
+        "acceptance_test_count": 32
+      }
+    },
+    {
+      "id": "cross_spec_and_adr_alignment",
+      "status": "PASS",
+      "evidence": {
+        "specs_checked": [
+          312,
+          313,
+          314,
+          315,
+          316,
+          317,
+          318,
+          319,
+          320,
+          321,
+          322,
+          323,
+          324
+        ],
+        "adr_supersession": true
+      }
+    },
+    {
+      "id": "ten_pass_report_completeness",
+      "status": "PASS",
+      "evidence": {
+        "passes": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "risks": 10
+      }
+    },
+    {
+      "id": "r14_validator_preserved",
+      "status": "PASS",
+      "evidence": {
+        "validator": "docs/spec-reviews/smartsihub-r1.4/R1.4-VALIDATE.py",
+        "manifest_digest_match": true
+      }
+    },
+    {
+      "id": "canonical_handoff_digest_alignment",
+      "status": "PASS",
+      "evidence": 14
+    },
+    {
+      "id": "canonical_handoff_contract_validation",
+      "status": "PASS",
+      "evidence": {
+        "validated": 14,
+        "invalid": []
+      }
+    },
+    {
+      "id": "generated_spec_registry_alignment",
+      "status": "PASS",
+      "evidence": {
+        "canonical_spec_count": 331,
+        "occupied_325": true,
+        "next_safe": "326"
+      }
+    },
+    {
+      "id": "local_markdown_links",
+      "status": "PASS",
+      "evidence": {
+        "links_scanned": 142,
+        "errors": []
+      }
+    },
+    {
+      "id": "r15_file_manifest",
+      "status": "PASS",
+      "evidence": 91
+    }
+  ]
+}

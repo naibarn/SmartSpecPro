@@ -1,5 +1,7 @@
 # R1.3 Architecture Decision — Computer Use, Browser Providers and Cloudflare Clef
 
+> **Current profile note (R1.5, 2026-11-02):** The `smartaihub.app` bootstrap role below is historical and optional when a specific path is proven; it is not a prerequisite for the independent new platform. R1.5 Runner identity, boot-service, reconnect and UI-session boundaries are defined by SPEC-325 and the linked Runner ADRs. SPEC-208 remains the canonical Computer Use policy owner.
+
 **Status:** Proposed additive implementation profile; **date:** 2026-11-01.
 **Applies to:** SPEC-208 (canonical frozen Computer Use ownership), SPEC-318, 319, 324, 208/197/224/207/256/295.
 **Production domain:** `smartsihub.com`; **Debian new-platform UAT:** `aimarkethubs.com`; **bootstrap command UI:** `smartaihub.app`.
@@ -61,3 +63,7 @@
 - https://developers.cloudflare.com/browser-run/features/webmcp/
 - https://developers.cloudflare.com/changelog/product/sandbox/
 - https://github.com/lexmount/moli
+
+## R1.5 — Runner device identity and session boundary (2026-11-02)
+
+Windows/Linux Computer Use remains an on-demand workload-specific Executor behind existing SPEC-208 policy. The enrolled OS-boot Core Connector is a distinct minimal presence service, not a persistent executor or Cloud Agent authority. It reconnects with device-key proof and a current bounded grant. GUI actions require a valid interactive session and never borrow personal browser cookies. Offline or locked-device work reports WAITING_FOR_EXECUTOR or WAITING_FOR_INTERACTIVE_SESSION. See the [Secure Runner Connection and Device Trust ADR](SECURE-RUNNER-CONNECTION-AND-DEVICE-TRUST-ADR.md) and [SPEC-325](../../specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md).

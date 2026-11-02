@@ -1,0 +1,267 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SCOPE",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      {
+        "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SCOPE",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
+    ],
+    "next_action": "Retain SPECIFIED status. A future implementation task must realize the credential broker, identity controls and device protocol, then pass the guarded negative tests before enabling remote execution.",
+    "rationale": "The R1.5 security contract is current and required before remote Runner execution or secret-bearing features are enabled. This documentation task defines requirements only.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SCOPE",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
+    ],
+    "rationale": "Owner-commissioned R1.5 cross-cutting security architecture for the new SmartAIHub product. The SPEC is proposed and provides security ownership; it asserts no implementation or deployment.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 6,
+  "identity": {
+    "canonical_path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md",
+    "digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-11-02T01:45:30.199867Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.5",
+    "slug": "325-smartaihub-zero-trust-always-on-agent-security",
+    "spec_id": "325",
+    "title": "SmartAIHub Zero-Trust & Always-on Agent Security Architecture"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
+    "state_evidence": [],
+    "updated_at": "2026-11-02T01:45:30.199867Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SCOPE",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SCOPE",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
+      ],
+      "next_action": "Retain SPECIFIED status. A future implementation task must realize the credential broker, identity controls and device protocol, then pass the guarded negative tests before enabling remote execution.",
+      "rationale": "The R1.5 security contract is current and required before remote Runner execution or secret-bearing features are enabled. This documentation task defines requirements only.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "1612a75e5494a4bf1ccef2d0a756474ea374ffbe2b657be76c3db277a902dc50",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SCOPE",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
+      ],
+      "rationale": "Owner-commissioned R1.5 cross-cutting security architecture for the new SmartAIHub product. The SPEC is proposed and provides security ownership; it asserts no implementation or deployment.",
+      "value": "ACTIVE_CANONICAL"
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-02T01:45:30.199867Z",
+    "sources": [
+      {
+        "digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "source": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md",
+        "source_digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
+        "line": 7,
+        "source": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md",
+        "source_digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 54,
+    "unresolved": 54
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-02T01:45:30.199867Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

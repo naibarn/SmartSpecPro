@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734"
+    "expected_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881"
   },
   "continuation": {
     "next_action": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
@@ -39,10 +39,15 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md"
+      "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
+      {
+        "digest": null,
+        "kind": "R1.5_OWNER_DECISION",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
     ],
-    "next_action": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Define the Chat-first shared frontend slice: compact web/desktop Chat, typed server-authorized actions, canonical thread/Goal/Run state and expanded Task/Mission views.",
+    "rationale": "R1.5 makes Chat the primary signed-in workspace and requires the floating Companion to reuse the same frontend source and state. The R1.4 mockups remain design references.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,18 +80,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
-    "digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+    "digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:40.547578Z",
+      "last_evidence_at": "2026-11-02T01:43:57.098053Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "319-smartaihub-ui-design-system-agent-ready-webmcp",
     "spec_id": "319",
     "title": "SPEC-319 — Modern Modular UI, Design System, Agent-Ready Actions & WebMCP"
@@ -140,10 +145,15 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
+        {
+          "digest": null,
+          "kind": "R1.5_OWNER_DECISION",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
       ],
-      "next_action": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Define the Chat-first shared frontend slice: compact web/desktop Chat, typed server-authorized actions, canonical thread/Goal/Run state and expanded Task/Mission views.",
+      "rationale": "R1.5 makes Chat the primary signed-in workspace and requires the floating Companion to reuse the same frontend source and state. The R1.4 mockups remain design references.",
       "residual_requirements": []
     },
     "disposition": {
@@ -183,10 +193,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:40.547578Z",
+    "reconciled_at": "2026-11-02T01:43:57.098053Z",
     "sources": [
       {
-        "digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+        "digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md"
       },
@@ -194,12 +204,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
-        "source_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+        "source_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -226,17 +236,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 5,
         "source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
-        "source_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+        "source_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+        "digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md"
       }
@@ -256,7 +266,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:40.547578Z",
+  "updated_at": "2026-11-02T01:43:57.098053Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

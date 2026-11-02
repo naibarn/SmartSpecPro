@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98"
+    "expected_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80"
   },
   "continuation": {
     "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
@@ -75,18 +75,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-    "digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+    "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:38.046943Z",
+      "last_evidence_at": "2026-11-02T01:43:55.475638Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "313-smartaihub-saas-core-identity-commerce-entitlements",
     "spec_id": "313",
     "title": "SmartAIHub Minimal SaaS Core — Identity, Tenancy, Entitlements and Canonical Commerce Integration"
@@ -192,10 +192,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:38.046943Z",
+    "reconciled_at": "2026-11-02T01:43:55.475638Z",
     "sources": [
       {
-        "digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+        "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
       },
@@ -203,12 +203,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-        "source_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -235,17 +235,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-        "source_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+        "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
       }
@@ -261,11 +261,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 22,
-    "unresolved": 22
+    "total": 24,
+    "unresolved": 24
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:29:34.221741Z",
+  "updated_at": "2026-11-02T01:43:55.475638Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

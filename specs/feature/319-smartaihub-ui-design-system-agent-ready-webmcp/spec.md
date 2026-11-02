@@ -1,12 +1,15 @@
 ---
 spec_id: 319
 semantic_id: smartaihub.modular-ui-agent-ready-webmcp
-revision: R1.4
-status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED
+revision: R1.5
+status: PROPOSED_NOT_IMPLEMENTED
 owner: SmartSIHub UI and Agent Interaction Architecture
 production_domain: smartsihub.com
+date: 2026-11-02
 ---
 # SPEC-319 — Modern Modular UI, Design System, Agent-Ready Actions & WebMCP
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 post-login, runtime, browser-session, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Executive decision
 Build a NEW first-party SmartSIHub visual experience, not a legacy Astryx skin, generic AI dashboard, or copy/paste public template. SaaS Shell and interactive first-party modules use React 19, TypeScript, Vite, Tailwind CSS 4, semantic OKLCH tokens, an owned accessible component library (Base UI/shadcn-compatible primitives), and minimal interaction motion. Astro is the designated framework for the NEW public website under SPEC-320, with React islands where necessary. Exact dependency versions are pinned after compatibility verification, not guessed from examples.
@@ -163,7 +166,9 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and SPEC-208.
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -181,3 +186,13 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and SPEC-208.
 ### SPEC-319 targeted closure
 
 **Chat UI contract:** Fixed React shell + OpenUI allowed-component streaming renderer. Inline blocks support Mermaid/source fallback, code/YAML copy, table/chart, interactive multiple choice/form and live read-only Run Cards; mutations invoke approved typed Action IDs via Core. Artifacts open in inspector/panel/detached window with version and access checks; browser panel shows session evidence and optional takeover, not silently transferable cookies. Every panel follows user-visible thread/run refs; theme `light|dark|balance` must persist across routes, inline components, artifact inspector and mobile. [Three mockups and design rules](../../../docs/architecture/R1.4-THREE-THEME-MOCKUPS.md). Admin link requires server-authoritative admin rights; Public Website link visible when ready, never a fake live address.
+
+---
+
+## R1.5 — Chat-first workspace and unified Companion contract (2026-11-02)
+
+After login, Chat is the primary workspace. It presents the persistent Agent roster/status, schedules, scoped action previews, artifacts and thread/run inspector. Complex tasks open Mission Control, Task Control, Mini App Creator or Media routes that reference the same tenantId, threadId, agentId, goalId, jobId, runId, attemptId, deviceId, artifactId, actionId and policyEpoch. Chat, browser UI, desktop Companion and headless HTTPS/MCP use one server-authorized typed action registry and the same receipts.
+
+Inline UI is selected from a controlled component registry; model output cannot provide executable HTML/JavaScript or direct privileged IPC. Use authenticated WebSockets with bounded reconnect, replay protection, fresh authorization and cursor-based replay; use Secure HttpOnly session cookies and CSRF protections for browser mutations. User session identity is distinct from device identity and service proof. Closing a view only hides UI; server-authorized work continues. The floating Companion uses the same frontend components and state as the web app; it is not a screenshot/video mirror or second frontend. Require compact and expanded accessibility, Light/Dark/Balance continuity, truthful offline/locked states and cross-tenant tests. See SPEC-325 and the [secure Chat ADR](../../../docs/architecture/CHAT-NATIVE-INTERACTIVE-WORKSPACE-ADR.md).
+
+The Companion reports Cloud Agent/Goal state separately from device Core/Executor readiness. It opens compact shared Chat and expands to Task or Mission Control without changing thread/Goal/Run/action identity. Closing UI, expiring a browser cookie or losing an overlay cannot disconnect the boot service or revoke an otherwise valid bounded grant. Native IPC is limited to documented convenience methods and cannot execute jobs directly.

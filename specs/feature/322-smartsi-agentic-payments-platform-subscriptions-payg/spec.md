@@ -1,13 +1,15 @@
 ---
 spec_id: 322
 semantic_id: smartsi.agentic-payments-delegated-spending-platform-subscription-payg
-revision: R1.4
-status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED
+revision: R1.5
+status: PROPOSED_NOT_IMPLEMENTED
 owner: SPEC-207 financial authority / SPEC-280 commerce policy / SPEC-322 interoperability contract
 production_domain: smartsihub.com
-date: 2026-11-01
+date: 2026-11-02
 ---
 # SPEC-322 — Agentic Payments, Platform Subscriptions, Credit Reservation and Class-Bounded PAYG
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 payment, ledger, runtime, or autonomous-execution assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Owner decisions — normative
 1. `smartsihub.com` is the confirmed NEW production domain; `aimarkethubs.com` is the Debian Modular Development environment; `smartaihub.app` remains legacy Debian during transition. Preserve one canonical PostgreSQL `smartspec` identity and ledger; do not convert old backend into new core.
@@ -147,7 +149,9 @@ Autonomous development under P0–P4 is a delegated Goal with explicit payer, bu
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -165,3 +169,11 @@ Autonomous development under P0–P4 is a delegated Goal with explicit payer, bu
 ### SPEC-322 targeted closure
 
 **Payment/credit risk:** Before each agent spend, bind actor, mandate, tenant/app/skill, amount, timeframe, effect class and idempotency key to a signed server-side authorization. Quote estimated credits + buffer, atomically reserve against `balance+authorizedCreditLimit-activeHolds`, settle actual once, release unused. Preserve `-limit` across concurrent jobs. If actual cost exceeds hold or external payment outcome is uncertain, stop just the affected spend and reconcile; do not exceed class policy or fabricate funds. Paid platform monthly credit grants are idempotent per billing period and distinct from Mini App subscription; third-party checkout adapters may require human challenge.
+
+---
+
+## R1.5 — Agent spend mandates and independently verified effects (2026-11-02)
+
+Distinguish Agent compute/model quota or subscription from a user’s spendable wallet and from a Mini App subscription. A spend mandate binds the verified payer and tenant to permitted merchants/providers, action classes, Mini App/Skill, maximum amount and currency, time window, aggregate goal budget, expiry, policy epoch and revocation state. An Agent cannot create, increase, renew or transfer its own mandate.
+
+Ordinary in-scope autonomous work runs under one bounded Goal grant without repeated approval for each safe step. Step-up/confirmation applies to impact-based high-risk actions such as materially exceeding a mandate, an external purchase/payment, credential scope expansion, destructive data change or public publication when the grant excludes it. The server independently verifies the effect digest, destination, amount and current policy before dispatch and reconciles the receipt afterward. Idempotency and ledger settlement prevent duplicates across queue retries or device reconnect. Do not introduce a duplicate wallet, ledger, entitlement or job authority. See SPEC-325.

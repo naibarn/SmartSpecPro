@@ -1,13 +1,15 @@
 ---
 spec_id: 315
 semantic_id: smartaihub.parallel-environments-debian-first
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 title: SmartSIHub Three-Domain Parallel Development, Production-Parity Access and Canonical Core PostgreSQL
 ---
 
 # SPEC-315 — Three Domains, Debian-first Acceptance and Canonical Core PostgreSQL
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 environment, database, domain, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Owner-approved topology
 
@@ -129,7 +131,9 @@ The legacy website `smartaihub.app` is the *active administrative development en
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -147,3 +151,15 @@ The legacy website `smartaihub.app` is the *active administrative development en
 ### SPEC-315 targeted closure
 
 **Environment and data scope:** Keep three host purposes explicit, test developer parity on Debian without granting blanket cross-tenant data powers. Shared `smartspec` permission parity follows authenticated principal/tenant and financial policy, not a new `_dev` identity or fake wallet. Control live external effects and double charges with scoped effect IDs; legacy real users stay online. Cloudflare preview is an optional small target and must not be an always-running costly prerequisite.
+
+---
+
+## R1.5 — Environment, database and device separation (2026-11-02)
+
+Use the registered target IDs as distinct identities: legacy-debian-dev is smartaihub.app on the existing Debian service; modular-debian-dev is aimarkethubs.com and is currently prepared but unavailable while the healthy port-3100 service remains; modular-cloudflare-prod is smartsihub.com and is registered but not activated. Never infer application, runtime, database, privilege or deployment authority from a hostname, NODE_ENV, DNS proxy or account membership.
+
+New development, preview/staging and production use separate Cloudflare identities, Worker bindings, deployment credentials, secrets, database identities/roles, encryption keys and audit partitions. New production data is strongly isolated from Legacy and development. The current deployment-target map names smartspec for the modular production database contract; that mapping is not evidence of a live database or shared credential. Before future production provisioning, verify and reconcile the target map to an isolated production database authority. If Legacy continuity is required, specify and audit a narrow bridge; do not dual-write or copy credentials.
+
+Preview/test principals and data cannot reach production financial effects, tenant secrets, device grants or real external purchases. Device enrollment is environment-bound and cannot be replayed across dev, preview and production. See SPEC-325 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+Sign and verify Runner endpoint configuration and bind it to an explicit environment and approved hostname. A development device key, session, job envelope, KMS identity or update channel cannot authenticate in production. Production activation remains unavailable until target-map, database authority, Cloudflare account and release identity have been independently verified.

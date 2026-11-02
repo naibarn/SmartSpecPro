@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239"
+    "expected_spec_digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3"
   },
   "continuation": {
     "next_action": "Map the module contract and independent runtime boundaries against the canonical module inventory.",
@@ -75,18 +75,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md",
-    "digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
+    "digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:38.460683Z",
+      "last_evidence_at": "2026-11-02T01:43:55.751056Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "314-smartaihub-independent-module-runtime-and-sdk",
     "spec_id": "314",
     "title": "SmartAIHub Independent Module SDK, Build Boundaries, Worker Runtime and UI Shell"
@@ -183,10 +183,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:38.460683Z",
+    "reconciled_at": "2026-11-02T01:43:55.751056Z",
     "sources": [
       {
-        "digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
+        "digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md"
       },
@@ -194,12 +194,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md",
-        "source_digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -226,17 +226,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md",
-        "source_digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
+        "digest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md"
       }
@@ -252,11 +252,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 27,
-    "unresolved": 27
+    "total": 28,
+    "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:38.460683Z",
+  "updated_at": "2026-11-02T01:43:55.751056Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

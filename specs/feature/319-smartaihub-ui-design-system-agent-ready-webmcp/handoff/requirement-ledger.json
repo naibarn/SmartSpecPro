@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L14"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L17"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L14",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L17",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -17,75 +17,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2cf251a15aebefd0d9aaddd00197a8795055dfdfaa23ab27516321a54ae9bafa",
-      "requirement_id": "REQ-1E0A93B4B8EE",
+      "requirement_id": "REQ-F854A6CEA764",
       "requirement_text": "**The product invariant is `ACTION ≠ UI`:** Every agent-invokable capability SHALL have a server-side typed, authorized, versioned Action/Capability Contract. Human UI, in-browser WebMCP, headless HTTPS, remote MCP Tools, and existing agent/Skill adapters all invoke this SAME action authority. None are second business systems or duplicate payment/job engines. The UI must remain optional for headless execution. WebMCP cannot satisfy headless operation: it is a browser-tab-side early-preview API.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L19"
-      ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L19",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2842f84bcbd0cb94930ea9942a7227e8ad5e860926cd01915766beb719a3c6d7",
-      "requirement_id": "REQ-BA600426C966",
-      "requirement_text": "1. New SmartSIHub UI must NOT import or require the legacy `apps/web` runtime/component graph or be forced to use existing Astryx screens as templates. Existing assets/flows may be studied as behavioral references.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L20"
-      ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L20",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6f3644ea0317915d85b65c89ad20cbe50d52474472e8b1e456e5697455c94d9f",
-      "requirement_id": "REQ-982417C3289B",
-      "requirement_text": "2. Define one versioned `DESIGN.md` and semantic token contract: typography scale, visual hierarchy, colors/surfaces, spacing, density, radii, elevation, iconography, light/dark/high-contrast, interactive states, responsive breakpoints and locale. Existing SPEC-287 registry remains the source-of-truth for concepts; new platform may have a new versioned product profile and generated token projection.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L21"
-      ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L21",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c243d6e5dfc57cb24ad41c13a14409bb41df694d302960a29512ec48644e2251",
-      "requirement_id": "REQ-7EA3A81F3FF0",
-      "requirement_text": "3. Separate design profiles for Public Marketplace, SaaS Console, Creator Studio, Chat/Agent surfaces, and Data-Dense operations. Brand coherence does not require identical layouts.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -104,10 +38,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4f10ae96ca51574bef2a6398b3b11a8df9420604d4f3908a0b9e52cac75fb4de",
-      "requirement_id": "REQ-CE70E32A31E7",
-      "requirement_text": "4. Source design quality from competitor/task analysis, high-fidelity page briefs, real content, tangible portfolio imagery and human review. Explicitly reject generic center-aligned gradient hero, indiscriminate glowing cards, random glassmorphism, oversaturated neon, meaningless icons and excessive animations. These are review heuristics, not compile gates.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "2842f84bcbd0cb94930ea9942a7227e8ad5e860926cd01915766beb719a3c6d7",
+      "requirement_id": "REQ-528CDE9EDEF8",
+      "requirement_text": "1. New SmartSIHub UI must NOT import or require the legacy `apps/web` runtime/component graph or be forced to use existing Astryx screens as templates. Existing assets/flows may be studied as behavioral references.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -126,10 +60,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a6a78ab689b6a8f8fede83a92481df9d21b4f0230254fb06d462a554f7e1df08",
-      "requirement_id": "REQ-3AD3D7E9C4DF",
-      "requirement_text": "5. Component primitives: accessible Base UI or well-maintained equivalent; shadcn/ui may be used as copied implementation reference, not a default visual theme. Own tokens and components with explicit licensed usage. Avoid multiple general UI kits in production bundles.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "6f3644ea0317915d85b65c89ad20cbe50d52474472e8b1e456e5697455c94d9f",
+      "requirement_id": "REQ-5967F1631943",
+      "requirement_text": "2. Define one versioned `DESIGN.md` and semantic token contract: typography scale, visual hierarchy, colors/surfaces, spacing, density, radii, elevation, iconography, light/dark/high-contrast, interactive states, responsive breakpoints and locale. Existing SPEC-287 registry remains the source-of-truth for concepts; new platform may have a new versioned product profile and generated token projection.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -148,10 +82,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fb2e5461a47be8c4bd0adb91594ea7d2c3c252e6efab16d2fa73342a1491c7d6",
-      "requirement_id": "R2",
-      "requirement_text": "6. Performance: islands/client splitting, per-module CSS/JS build, responsive images via R2/CDN, no loading entire SaaS Shell for public visits; prefer native HTML and CSS for non-interactive content. Record route-level Core Web Vitals, bundle and hydration cost. Soft budgets from SPEC-312–314; report regressions rather than globally block beta.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "c243d6e5dfc57cb24ad41c13a14409bb41df694d302960a29512ec48644e2251",
+      "requirement_id": "REQ-06C2CFFE889D",
+      "requirement_text": "3. Separate design profiles for Public Marketplace, SaaS Console, Creator Studio, Chat/Agent surfaces, and Data-Dense operations. Brand coherence does not require identical layouts.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -170,10 +104,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6f40b14f1750522e8e78491b0ffd22b229250aa8254c04cb29f2c1a38159c1cf",
-      "requirement_id": "REQ-DB464993E790",
-      "requirement_text": "7. Accessibility: WCAG 2.2 AA target, keyboard focus, forms with real labels, touch targets, reduced-motion, color contrast, Thai/English content, locale-aware prices/currencies, loading/empty/error states, and meaningful voice/screen-reader labels.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "4f10ae96ca51574bef2a6398b3b11a8df9420604d4f3908a0b9e52cac75fb4de",
+      "requirement_id": "REQ-0BBDF8F53645",
+      "requirement_text": "4. Source design quality from competitor/task analysis, high-fidelity page briefs, real content, tangible portfolio imagery and human review. Explicitly reject generic center-aligned gradient hero, indiscriminate glowing cards, random glassmorphism, oversaturated neon, meaningless icons and excessive animations. These are review heuristics, not compile gates.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -192,10 +126,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f29bc92305677d0907a9f462097c2928467881615760ff4554e08e62d997a924",
-      "requirement_id": "REQ-F6BA22E1F443",
-      "requirement_text": "8. Test: Storybook components/states; Playwright E2E screenshot and keyboard/mobile/browser runs; axe accessibility scanning; Lighthouse/field RUM; human review on actual public routes. Accept scoped known issues with tracking. Do not block unrelated features due to aesthetic differences.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "a6a78ab689b6a8f8fede83a92481df9d21b4f0230254fb06d462a554f7e1df08",
+      "requirement_id": "REQ-77801EE0D55B",
+      "requirement_text": "5. Component primitives: accessible Base UI or well-maintained equivalent; shadcn/ui may be used as copied implementation reference, not a default visual theme. Own tokens and components with explicit licensed usage. Avoid multiple general UI kits in production bundles.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -203,9 +137,75 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L31"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L27"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L31",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L27",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fb2e5461a47be8c4bd0adb91594ea7d2c3c252e6efab16d2fa73342a1491c7d6",
+      "requirement_id": "R2",
+      "requirement_text": "6. Performance: islands/client splitting, per-module CSS/JS build, responsive images via R2/CDN, no loading entire SaaS Shell for public visits; prefer native HTML and CSS for non-interactive content. Record route-level Core Web Vitals, bundle and hydration cost. Soft budgets from SPEC-312–314; report regressions rather than globally block beta.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L28"
+      ],
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L28",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6f40b14f1750522e8e78491b0ffd22b229250aa8254c04cb29f2c1a38159c1cf",
+      "requirement_id": "REQ-32838324A6B2",
+      "requirement_text": "7. Accessibility: WCAG 2.2 AA target, keyboard focus, forms with real labels, touch targets, reduced-motion, color contrast, Thai/English content, locale-aware prices/currencies, loading/empty/error states, and meaningful voice/screen-reader labels.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L29"
+      ],
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L29",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f29bc92305677d0907a9f462097c2928467881615760ff4554e08e62d997a924",
+      "requirement_id": "REQ-01107563FE51",
+      "requirement_text": "8. Test: Storybook components/states; Playwright E2E screenshot and keyboard/mobile/browser runs; axe accessibility scanning; Lighthouse/field RUM; human review on actual public routes. Accept scoped known issues with tracking. Do not block unrelated features due to aesthetic differences.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L34"
+      ],
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L34",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -215,9 +215,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "863b1a5e9db5fed646af5ccbe415cbe643b749e6de484fbea0594ac58bd4017e",
-      "requirement_id": "REQ-0D6280474069",
+      "requirement_id": "REQ-0E1A260F45FF",
       "requirement_text": "Operations classified as public READ may permit anonymous use only if catalog policy allows. Mutating actions require scoped authenticated actor/tenant grants. Purchases, subscription changes, external publishing, ownership transfer and irreversible operations require appropriate existing authorization and, when truly necessary, explicit user confirmation; do not invent repeated global approvals. Revalidating authorization must happen server-side, not only in UI/WebMCP.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L38"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L41"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L38",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -237,9 +237,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a92588f5fd53c24811ca88fb6ff5971545beb322db33ca0bae1a27119158df18",
-      "requirement_id": "REQ-459D4FA4B66E",
+      "requirement_id": "REQ-7B5BE67698D0",
       "requirement_text": "- WebMCP is **client-side tab-scoped** and currently early preview; no claim of browser-universal production coverage. Feature detection and conventional UI must work elsewhere. It is not an HTTP server or the remote MCP protocol and currently does not expose MCP Resources/Prompts.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L62"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L65"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L62",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L65",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -259,9 +259,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "75835e425ebf45acf1ba36a3d69e8009f66c6b6b516d3c256708fa47ff8b74c7",
-      "requirement_id": "REQ-6970D70E9875",
+      "requirement_id": "REQ-57961961719D",
       "requirement_text": "Created Mini Apps inherit the Action Contract and minimal UI token profile but may declare their own licensed visual identity. First-party modules use no iframes by default; untrusted third-party runtime must use isolated origin/context with scoped bridge. Portable apps cannot assume Cloudflare-only APIs without declaring requirements per SPEC-261/273.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L74"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L77"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L74",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L77",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -281,31 +281,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "3a63096efe650790221992544e75412d025abbc38bff0f619e12f86dc5c729ae",
-      "requirement_id": "REQ-1BFB27B70310",
+      "requirement_id": "REQ-25B98D85B7AE",
       "requirement_text": "All action manifests and adapters MUST expose the server-authoritative billing classification and applicable quote for an invocation: `APP_EXCLUSIVE_INCLUDED` versus `SHARED_METERED`. A subscribed Mini App does not exempt shared/Marketplace/Core/other-App Skills, including nested calls. Browser and headless paths use the same SPEC-321 admission/reservation/settlement idempotency and cannot lie about price or app ownership. If a formerly included action now incurs credit charge, present a clear authorization/price-required response; do not silently charge or execute for free. Accessible UI distinguishes subscription-included and credits-per-use actions.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L81"
-      ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L81",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1678bfbbdbb1a5f06b16209d2661926ba47c3b2b4eafbf8ff8eac5c6ed5140c6",
-      "requirement_id": "REQ-E6BA3E66D726",
-      "requirement_text": "Platform Subscription plans, PAYG usage estimates, credit-line exposure, Agent spend mandates, Auto Top-up and Mini App subscription terms must appear clearly in new UI, while the SAME versioned Action contracts are accessible to headless MCP/HTTPS Agents. Browser WebMCP is optional/feature-detected and cannot serve as primary payment API. Agent can quote/reserve/run/pay autonomously within delegated spending policies; return structured human payment handoff if PSP demands interaction. Show forecast vs verified actual and release unused held credits. Protect payment method refs/tokens in frontend hydration and web tools.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -324,10 +302,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6c383bac80777b9aec3c7e9b167a60539bb4f57f222e37b4e7d4a01061295ba8",
-      "requirement_id": "REQ-7D08F666CB78",
-      "requirement_text": "Apps on root platform routes, custom domains, BYOC accounts or owner servers all use stable App action contracts. Browser WebMCP is optional and origin-scoped; headless API/MCP does not depend on pages loading. Untrusted Mini App JS must not execute under Core privileged browser origin; allow seamless navigation using isolated hosts and short-lived, audience-scoped account context, not shared Core database access.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "1678bfbbdbb1a5f06b16209d2661926ba47c3b2b4eafbf8ff8eac5c6ed5140c6",
+      "requirement_id": "REQ-31580A741A47",
+      "requirement_text": "Platform Subscription plans, PAYG usage estimates, credit-line exposure, Agent spend mandates, Auto Top-up and Mini App subscription terms must appear clearly in new UI, while the SAME versioned Action contracts are accessible to headless MCP/HTTPS Agents. Browser WebMCP is optional/feature-detected and cannot serve as primary payment API. Agent can quote/reserve/run/pay autonomously within delegated spending policies; return structured human payment handoff if PSP demands interaction. Show forecast vs verified actual and release unused held credits. Protect payment method refs/tokens in frontend hydration and web tools.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -335,9 +313,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L89"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L87"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L89",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6c383bac80777b9aec3c7e9b167a60539bb4f57f222e37b4e7d4a01061295ba8",
+      "requirement_id": "REQ-54C77E76C7E7",
+      "requirement_text": "Apps on root platform routes, custom domains, BYOC accounts or owner servers all use stable App action contracts. Browser WebMCP is optional and origin-scoped; headless API/MCP does not depend on pages loading. Untrusted Mini App JS must not execute under Core privileged browser origin; allow seamless navigation using isolated hosts and short-lived, audience-scoped account context, not shared Core database access.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L92"
+      ],
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L92",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -347,9 +347,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
-      "requirement_id": "REQ-6C1E46ECB1A6",
+      "requirement_id": "REQ-16BE1BA9B00A",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L93"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L96"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L93",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L96",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -371,7 +371,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L95"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L98"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L95",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L98",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -391,9 +391,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "e676c25a7bf171d7830cd112b6f35aef3125103204cce34bc2de55b763a9fde0",
-      "requirement_id": "REQ-C9E5C58A1C5D",
+      "requirement_id": "REQ-C76086E8B5B4",
       "requirement_text": "Chat is the first new UI module: modern UI plus exactly the same typed actions for headless API/MCP/WebMCP. P0 Admin operates the *old* `smartaihub.app` UI for autonomous development until the new Action/Mission UI is proven; never make a redesign of the old UI a prerequisite for Core builds. The new task inspector must expose selected Agent, Machine, Harness, Workspace, Run, steps, artifacts, cost, errors and next automatic action. Human testing occurs at each usable slice, without an aesthetics-only gate.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L102"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L105"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L102",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -413,9 +413,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "44bde09b6ff2163cd70950942f8fa4e02e6ececed4c00cd00c20ff5440649271",
-      "requirement_id": "REQ-E6AE4774A67A",
+      "requirement_id": "REQ-B4062B3DAE79",
       "requirement_text": "The old `smartaihub.app` is the P0 development control tool. The NEW Chat on `aimarkethubs.com` / eventual `smartsihub.com` SHALL become a **chat-native interactive workspace**, not a Markdown-only chatbot. The user-provided UI references show three non-negotiable patterns: (1) inline structured diagrams, (2) copyable/downloadable code/YAML views, and (3) interactive choice widgets. The new UI additionally provides persistent side-panel/window artifacts and agent-operated browser sessions. These are **presentations of existing canonical Jobs, Actions, Apps and Artifacts**, not new execution authorities. The existing three theme profiles—Light, Dark, Balance—MUST style the same semantic components and retain accessible contrast, focus and reduced-motion behavior.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L106"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L109"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L106",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -435,9 +435,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1dd9595e4082eee2edd4a0633b210d710fec4ec5923f7f67ece7f05bb62b495f",
-      "requirement_id": "REQ-E296E96BAA72",
+      "requirement_id": "REQ-5167C7224CFA",
       "requirement_text": "- **Inline message**: Text/Markdown, syntax-highlighted code/YAML, Mermaid, optional React Flow expanded diagram, tables with sorting/filter, charts, action cards, progress/receipts, multiple-choice, forms, file previews and tool results. Render on demand per message. Inline widgets MUST NOT be replaced with plain explanatory text when safe structured UI is available.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L119"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L122"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L119",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L122",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -457,9 +457,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "187baff2a3f9bdd231271a905caea4b393b2e511473d9a1a921f1bf582d7a569",
-      "requirement_id": "REQ-DFC15CB3AADF",
+      "requirement_id": "REQ-8DF8BB9AC33E",
       "requirement_text": "- Preserve renderability with missing OpenUI, unsupported browser, old block versions, JS disabled, network error or renderer failure: show safe text/source, direct links, downloadable artifact as appropriate. All interaction must be keyboard-usable; error states should be explicit.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L139"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L142"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L139",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L142",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -479,9 +479,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1b07139110bb24b037af97d1af337b4e29c5e864ef69fcba2927e45efc51c753",
-      "requirement_id": "REQ-00DB76EABBE2",
+      "requirement_id": "REQ-0B7AF08078D0",
       "requirement_text": "2. Chat offers multiple-choice/options; a click updates the selected state and submits a typed server action once (no model call required for local selection).",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L146"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L149"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L146",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L149",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -501,9 +501,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "3dc8f152c93db1aab8989e647c861e30dcfcbbd5f74409f72a4c5e6208a4cc78",
-      "requirement_id": "REQ-32F4249A26DA",
+      "requirement_id": "REQ-3D1B6DA76246",
       "requirement_text": "Ship partial working slices to `aimarkethubs.com` for authorized human UAT. OpenUI/Moli/Browser Panel integration MUST NOT delay the base Core/Chat/Creator migration or create new global approval gates. The next selected module can proceed in parallel once its own dependency surface works.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L171"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L176"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L171",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -523,31 +523,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
-      "requirement_id": "REQ-6E9F2107F946",
+      "requirement_id": "REQ-BBB031A779B9",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L172"
-      ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L172",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
-      "requirement_id": "REQ-C8A202260A96",
-      "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -566,10 +544,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
-      "requirement_id": "REQ-133DA56CCC26",
-      "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
+      "requirement_id": "REQ-3413932405A4",
+      "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -577,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L178"
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L182"
       ],
-      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L178",
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L182",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -588,10 +566,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
-      "requirement_id": "REQ-26461EEFCA6B",
-      "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
+      "requirement_id": "REQ-0E0BA753BDDC",
+      "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -610,16 +588,38 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
+      "requirement_id": "REQ-02F7D5870395",
+      "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L188"
+      ],
+      "authority_source": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md#L188",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8b63cb940cff630a53363317e62499de7ff0b7b5c370dd41d32a52503fc44a26",
       "requirement_id": "R1.4-THREE-THEME-MOCKUPS.MD",
       "requirement_text": "**Chat UI contract:** Fixed React shell + OpenUI allowed-component streaming renderer. Inline blocks support Mermaid/source fallback, code/YAML copy, table/chart, interactive multiple choice/form and live read-only Run Cards; mutations invoke approved typed Action IDs via Core. Artifacts open in inspector/panel/detached window with version and access checks; browser panel shows session evidence and optional takeover, not silently transferable cookies. Every panel follows user-visible thread/run refs; theme `light|dark|balance` must persist across routes, inline components, artifact inspector and mobile. [Three mockups and design rules](../../../docs/architecture/R1.4-THREE-THEME-MOCKUPS.md). Admin link requires server-authoritative admin rights; Public Website link visible when ready, never a fake live address.",
-      "source_spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+      "source_spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
+  "spec_digest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
   "spec_id": "319"
 }

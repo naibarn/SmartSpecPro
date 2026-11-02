@@ -1,5 +1,7 @@
 # ADR — Chat-native Interactive Workspace, OpenUI + Artifacts + Browser
 
+> **Current profile note (R1.5, 2026-11-02):** The R1.5 secure Chat-first addendum below controls conflicts with earlier login, session, always-on and desktop-Companion assumptions. See SPEC-319/SPEC-325 and the [current owner-decision register](R1.5-OWNER-DECISION-PRECEDENCE.md).
+
 **Date:** 2026-11-01<br>
 **Decision:** Proposed, additive; applies to SmartSIHub new Core/Chat, not the old UI.<br>
 **Authority:** SPEC-319 R1.2. Prior SPEC-270/287 design governance; SPEC-224/318 durable jobs; SPEC-207/280/321/322 commercial actions; SPEC-261/304/323 Apps and portability.
@@ -60,3 +62,7 @@ Renderer actions use `actionId`, `args`, `idempotencyKey` and `effectClass`; ser
 - Cloudflare Live View: https://developers.cloudflare.com/browser-run/features/live-view/
 - Cloudflare Human in the Loop: https://developers.cloudflare.com/browser-run/features/human-in-the-loop/
 - Moli: https://github.com/lexmount/moli
+
+## R1.5 — Chat-first secure shared workspace (2026-11-02)
+
+After login, Chat is the primary workspace. Desktop Companion compact Chat and expanded Task/Mission views reuse the shared frontend components, routes, typed server-side actions and canonical thread/goal/job/run/device IDs. UI does not own durable job state, device keys or provider credentials; closing it does not cancel authorized work. Browser, desktop, HTTPS and MCP clients call the same action authority. Enforce Secure/HttpOnly sessions, CSRF, trusted Origin checks, authenticated WebSocket reconnect/replay and policy-epoch validation. Render controlled typed components; do not execute model-generated HTML/JavaScript or expose generic native IPC. See [SPEC-325](../../specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md), [Runner device trust ADR](SECURE-RUNNER-CONNECTION-AND-DEVICE-TRUST-ADR.md) and [Unified Desktop Companion ADR](ALWAYS-ON-RUNNER-AND-UNIFIED-DESKTOP-COMPANION-ADR.md).

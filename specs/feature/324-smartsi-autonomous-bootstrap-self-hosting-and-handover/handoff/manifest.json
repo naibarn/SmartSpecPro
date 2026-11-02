@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd"
+    "expected_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869"
   },
   "continuation": {
     "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
@@ -39,10 +39,15 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
+      "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
+      {
+        "digest": null,
+        "kind": "R1.5_OWNER_DECISION",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
     ],
-    "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
+    "rationale": "R1.5 removes mandatory Legacy UI repair/cutover as a platform-wide prerequisite and requires a single owner for every Goal, with safe device enrollment and automatic reconnect after one-time pairing.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,18 +80,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-    "digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+    "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:42.643898Z",
+      "last_evidence_at": "2026-11-02T01:43:58.452088Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
     "spec_id": "324",
     "title": "SPEC-324 — Autonomous Bootstrap, Self-Hosted Development and Control-Plane Handover"
@@ -140,10 +145,15 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
+        {
+          "digest": null,
+          "kind": "R1.5_OWNER_DECISION",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
       ],
-      "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
+      "rationale": "R1.5 removes mandatory Legacy UI repair/cutover as a platform-wide prerequisite and requires a single owner for every Goal, with safe device enrollment and automatic reconnect after one-time pairing.",
       "residual_requirements": []
     },
     "disposition": {
@@ -183,10 +193,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:42.643898Z",
+    "reconciled_at": "2026-11-02T01:43:58.452088Z",
     "sources": [
       {
-        "digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+        "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
       },
@@ -194,12 +204,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_OWNER_DIRECTIVE",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-        "source_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
-        "value": "PROPOSED_ADDITIVE_OWNER_DIRECTIVE"
+        "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -226,17 +236,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_OWNER_DIRECTIVE",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-        "source_digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
-        "value": "PROPOSED_ADDITIVE_OWNER_DIRECTIVE"
+        "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
+        "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
       }
@@ -252,11 +262,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 10,
-    "unresolved": 10
+    "total": 11,
+    "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:42.643898Z",
+  "updated_at": "2026-11-02T01:43:58.452088Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

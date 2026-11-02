@@ -1,15 +1,17 @@
 ---
 spec_id: 324
 semantic_id: smartsi.autonomous-bootstrap-self-hosted-development-handover
-revision: R1.4
-date: 2026-11-01
-status: PROPOSED_ADDITIVE_OWNER_DIRECTIVE
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 primary_control_surface: https://smartaihub.app
 new_development_surface: https://aimarkethubs.com
 new_production_surface: https://smartsihub.com
 ---
 
 # SPEC-324 — Autonomous Bootstrap, Self-Hosted Development and Control-Plane Handover
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 mandatory Legacy bootstrap, cutover, runtime, database, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Binding owner decision
 
@@ -112,7 +114,9 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and SPEC-208 R9
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -130,3 +134,13 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and SPEC-208 R9
 ### SPEC-324 targeted closure
 
 **Dogfooding runbook:** Owner starts first Goal in old `smartaihub.app`; old SPEC-224 Goal→Run→Debian Runner→workspace→Codex→new project deploy to `aimarkethubs.com`. When old UI/Runner stalls, record blocker, create bounded repair child, verify old route, resume same Goal from last safe checkpoint (no restart-from-zero approval loop). New system receives ownership of an individual Goal only when it can independently execute, continue after disconnection, display true receipts and roll back; old authority observes then safely releases, never dual dispatches.
+
+---
+
+## R1.5 — New-platform-first bootstrap and single-owner Goal handover (2026-11-02)
+
+Build a usable new Core, then Chat plus a persistent Agent, then complex control workspaces and Mini Apps without making Legacy infrastructure cutover a global P0 gate. The existing smartaihub.app Autonomous Implements/Creator can remain operational for Legacy users and may be an optional development command tool where its route, source, authorization and receipts are currently proven. Repairing or migrating it is not required before independent new-platform progress.
+
+Every Goal has one dispatch owner at a time. If the Legacy tool is used, bind the Goal to its current worker_jobs/Runner authority and checkpoint receipts; when handing off, revoke the old dispatch lease before the new authority dispatches. No dual-run and no repeated approvals for ordinary in-grant work. New Goal authority is accepted only after the new platform demonstrates durable continuation after Chat closure, truthful executor-wait states, revocation, device reconnection and rollback. The three R1.4 UI mockups remain design references and are not implementation evidence. See SPEC-325 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+The first-time Runner install grants OS-service installation permission and performs one explicit owner pairing. Later boot, network recovery, service restart and routine session renewal happen without a recurring Connect/Login prompt. Pairing after revoke, device transfer, key loss or quarantine always enters a separate authenticated recovery flow; it cannot be triggered by reconnect. R1.5 remote-execution acceptance includes Windows boot before login, Linux systemd boot, Companion closure, lost/recovered network, stale/revoked grant, locked desktop and safe rollback.

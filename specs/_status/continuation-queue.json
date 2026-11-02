@@ -3930,7 +3930,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+      "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -3975,7 +3975,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+      "next_action": "Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.",
       "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/315-smartaihub-parallel-environments-shared-postgres",
@@ -4020,7 +4020,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
+      "next_action": "Reconcile active work classes with canonical worker_jobs/outbox/lease authority; implement Workers Agents/Workflows/Queues for cloud Agent continuity and start native or device Executors only for workloads that need them.",
       "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
@@ -4035,7 +4035,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
+      "next_action": "Define the Chat-first shared frontend slice: compact web/desktop Chat, typed server-authorized actions, canonical thread/Goal/Run state and expanded Task/Mission views.",
       "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
@@ -4110,7 +4110,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
+      "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
       "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
@@ -4120,6 +4120,21 @@
         "TEST": 0
       },
       "spec_id": "324"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Retain SPECIFIED status. A future implementation task must realize the credential broker, identity controls and device protocol, then pass the guarded negative tests before enabling remote execution.",
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/325-smartaihub-zero-trust-always-on-agent-security",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "325"
     },
     {
       "authority": "UNRESOLVED",
@@ -5214,7 +5229,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+      "rationale": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },
@@ -5241,7 +5256,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres",
       "priority": "P1",
-      "rationale": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+      "rationale": "Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.",
       "record_key": "canonical:specs/feature/315-smartaihub-parallel-environments-shared-postgres",
       "spec_id": "315"
     },
@@ -5268,7 +5283,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
       "priority": "P1",
-      "rationale": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
+      "rationale": "Reconcile active work classes with canonical worker_jobs/outbox/lease authority; implement Workers Agents/Workflows/Queues for cloud Agent continuity and start native or device Executors only for workloads that need them.",
       "record_key": "canonical:specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
       "spec_id": "318"
     },
@@ -5277,7 +5292,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
       "priority": "P1",
-      "rationale": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
+      "rationale": "Define the Chat-first shared frontend slice: compact web/desktop Chat, typed server-authorized actions, canonical thread/Goal/Run state and expanded Task/Mission views.",
       "record_key": "canonical:specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
       "spec_id": "319"
     },
@@ -5322,9 +5337,18 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
       "priority": "P1",
-      "rationale": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
+      "rationale": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
       "record_key": "canonical:specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
       "spec_id": "324"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security",
+      "priority": "P1",
+      "rationale": "Retain SPECIFIED status. A future implementation task must realize the credential broker, identity controls and device protocol, then pass the guarded negative tests before enabling remote execution.",
+      "record_key": "canonical:specs/feature/325-smartaihub-zero-trust-always-on-agent-security",
+      "spec_id": "325"
     },
     {
       "confidence": "LOW",

@@ -4,12 +4,12 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 21 unresolved of 21
+- Requirements: 0 pass / 24 unresolved of 24
 - Next action: Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.
-- Manifest generation: 3
+- Manifest generation: 5
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Status claim: `REVISED_DRAFT_NOT_IMPLEMENTED` — `specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#6`
+- Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#6`

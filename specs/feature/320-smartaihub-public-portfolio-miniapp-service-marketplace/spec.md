@@ -1,12 +1,15 @@
 ---
 spec_id: 320
 semantic_id: smartaihub.public-portfolio-miniapp-service-marketplace
-revision: R1.4
-status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED
+revision: R1.5
+status: PROPOSED_NOT_IMPLEMENTED
 owner: Public Web and Marketplace Product
 production_domain: smartsihub.com
+date: 2026-11-02
 ---
 # SPEC-320 — Rebuilt Public Website, Creator Portfolio, Mini App & Service Marketplace
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 public/authenticated-surface, migration, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Strategic decision
 The NEW `smartsihub.com` public website is a **complete greenfield product**, not a port of old marketing pages or a reskin of `apps/web`. It pivots from an agent-directory-first concept to **Mini App-first product and services commerce**. Agents/Skills remain executable capabilities and discoverable supply behind Mini Apps; creator/talent/service businesses are also first-class.
@@ -98,7 +101,9 @@ Public Marketplace remains Astro SEO-first; use interactive React islands only w
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -116,3 +121,11 @@ Public Marketplace remains Astro SEO-first; use interactive React islands only w
 ### SPEC-320 targeted closure
 
 **Marketplace UX policy:** Build public Astro site new, portfolio of creator-owned Apps, skill/service listings and paid Mini App offers; do not keep a legacy marketing/homepage implementation. Support creator publication, reviews and app ownership rights without exposing tenant/private portfolio data. Platform subscription and Mini App subscription have distinct price descriptions; exclusive Skill coverage must be explained, shared Skill credit pricing disclosed. Public URL navigation follows verified host; role-authorized admin link is in core only.
+
+---
+
+## R1.5 — Public, authenticated and agent authority separation (2026-11-02)
+
+Public pages, search indexing, creator portfolios, reviews, listings and deep links are untrusted presentation inputs. A deep link may request navigation to an authenticated Chat or module route, but cannot supply a valid tenant, agent, capability, credential, spend mandate or action grant. Authentication and authorization are re-evaluated at the destination.
+
+Escape and sanitize user listings, imported metadata and review content; render them as data. Do not inject marketplace text into system/developer prompts as trusted instructions. The authenticated API and typed action registry remain the only route to Agent or financial effects. Keep public marketing origins and authenticated Chat/module origins isolated with explicit cookie, CSP and CORS policies. This scope does not change public site deployment status; see SPEC-325 for prompt-injection and provenance rules.

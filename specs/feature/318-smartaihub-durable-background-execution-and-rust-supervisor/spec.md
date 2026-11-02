@@ -1,14 +1,17 @@
 ---
 spec_id: 318
 semantic_id: smartaihub.durable-background-execution
-revision: R1.4
-date: 2026-11-01
-status: PROPOSED_DRAFT_NOT_IMPLEMENTED
-scope: Canonical PostgreSQL worker_jobs, at-least-once Queue delivery, native Rust supervisor, multi-tenant execution and crash recovery
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
+scope: Canonical worker_jobs authority, Workers Agents/Workflows/Queues, OS-boot Runner Core Connector, on-demand native executors, multi-tenant recovery
 supersedes_draft: R0.4 optional Go executor proposal
 ---
 
 # SPEC-318 — SmartAIHub Durable Background Execution, Cloudflare Queues & Native Rust Job Supervisor
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. Its Rust-native-supervisor-first choice and old bootstrap sequence are superseded for new-platform cloud continuity by the final R1.5 section, Workers-first Durable Agents ADR and current owner-decision register. Rust remains a workload-specific executor; Legacy SPEC-267/311 scope is unchanged.
+
 
 ## 0. Owner decision: correctness first, small Workers, deploy early
 
@@ -192,7 +195,9 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and existing fr
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -210,3 +215,15 @@ See `docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md` and existing fr
 ### SPEC-318 targeted closure
 
 **Reliability profile:** Admit into canonical PostgreSQL transaction with stable `jobId` and outbox; dispatch may be duplicated or delayed; retries need lease epoch/fencing, checkpoint and idempotency. Queue ACK is transport-only, not Job completion; reconcile after dropped publish/ACK/expired leases. A job may be `WAITING_FOR_EXECUTOR` if only a disconnected local Runner exists; "always-on" promises require verified cloud/Debian-independent approved capacity. Never claim exactly-once execution of external side effects; support `OUTCOME_UNKNOWN`, compensations, provider lookup and no duplicate financial settlement.
+
+---
+
+## R1.5 — Cloudflare durable Agent first; device Executor on demand (2026-11-02)
+
+Replace the R1.4 Rust-native-supervisor-first default for new-platform cloud Agent continuity with Cloudflare Agents SDK on Durable Objects for durable Agent identity/state and event wakeups, Workflows for recoverable multi-step work, Queues for asynchronous delivery, and Alarms/Schedules/Cron for future wakeups. These are event-driven services: a DO/Agent may hibernate or be evicted; an in-flight callback, timer or model process is not guaranteed to remain resident. Use Workflow checkpoints/retries and canonical durable job/outbox state for work that must recover.
+
+The established worker_jobs plus transactional outbox, lease, attempt fencing, deduplication, idempotency and settlement contract remains the job authority. A Durable Object, Queue, Workflow, Runner or device-local journal is not a second job ledger or payment authority. Rust/native code and approved Cloudflare Containers remain workload-specific executors for capabilities Cloudflare Workers cannot safely or efficiently provide; neither is a universal cloud-Agent prerequisite.
+
+An enrolled powered-on Windows/Linux device runs a small Core Connector service from OS boot through shutdown, before user login where supported. The workload-specific Executor starts only for an authorized job under a bounded OS permission boundary. Headless tasks may run without an interactive session only when the grant allows them; GUI work on a locked, logged-out, sleeping or offline device reports WAITING_FOR_INTERACTIVE_SESSION or WAITING_FOR_EXECUTOR and does not bypass the boundary. Closing the browser or Companion leaves the durable job intact. Define deployed-preview acceptance for browser closure, DO hibernation/deploy, reboot-before-login, network loss, token renewal, lock/sleep and revoke. See SPEC-325 and the two Runner ADRs.
+
+Presence is a short-lived server observation, not a sticky online flag. Model boot, authenticating, core-only, headless-ready, interactive-ready, executing, sleeping, reconnecting, update-required, paused, quarantined, revoked and shutdown distinctly. The Connector reconnects with bounded exponential backoff, jitter, fresh device proof and epoch checks, then reconciles cursor/lease state from canonical job authority; it never replays an unacknowledged OS effect blindly. Windows Session 0 and Linux user-session/Wayland limits are explicit, and locked or absent GUI sessions wait rather than bypassing OS controls.

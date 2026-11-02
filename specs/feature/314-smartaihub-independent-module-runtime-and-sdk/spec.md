@@ -1,13 +1,15 @@
 ---
 spec_id: 314
 semantic_id: smartaihub.independent-first-party-modules
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Independent Module SDK, Build Boundaries, Worker Runtime and UI Shell
 ---
 
 # SPEC-314 — Independent First-Party Module Architecture
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 module, identity, database, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Objective
 
@@ -167,7 +169,9 @@ A Mini App MAY declare browser/desktop Computer Use requirements, e.g. `browserE
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -185,3 +189,13 @@ A Mini App MAY declare browser/desktop Computer Use requirements, e.g. `browserE
 ### SPEC-314 targeted closure
 
 **Module SDK:** One versioned `appId` binds hosting, domain, repository, separate app data, entitlement and agent-callable Action descriptors. Static-only apps need no Worker and stateless apps need no DB. Each app builds, tests, deploys and rolls back alone; exclusive Skill inclusion must be server-verified by provenance/app ownership, with nested shared usage independently charged. OpenUI rendering is opt-in; owner-owned custom UI and API-only apps remain valid.
+
+---
+
+## R1.5 — Module security isolation and bindings (2026-11-02)
+
+Independent build and deployment SHALL include an explicit security boundary. Every Worker and UI module publishes a versioned capability manifest naming its principal, audience, routes/actions, data bindings, allowed origins, resource limits and release identity. The deploy pipeline rejects undeclared bindings and production privilege expansion. A module receives only its own required D1/R2/Vectorize or approved service binding permissions; no shared master database or wildcard secret.
+
+A Service Binding is private routing, not caller authentication or authorization. Each downstream request/RPC carries a verified, short-lived caller identity with issuer, audience, tenant, capability and policy epoch. A downstream Worker independently verifies it; neither a binding declaration nor Access context automatically transfers authority. Third-party Mini Apps remain untrusted: use isolated origins, restrictive sandbox/CSP, no unrestricted navigation or dynamic executable HTML/JavaScript, and a separate app data plane under SPEC-323. Preserve independent deploy and rollback by module. See SPEC-325 for the threat model and negative-test contract.
+
+The Runner Gateway is a narrowly bound module with a typed, versioned device protocol; its Worker/DO binding does not authenticate a Runner. Validate device proof, environment audience, tenant assignment, current grant and policy epoch at the receiving boundary. Companion UI components may be shared across modules, but native IPC remains a separate allowlisted capability surface.

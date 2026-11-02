@@ -1,5 +1,7 @@
 # ADR — SmartAIHub Modular Core stack, R0.5
 
+> **Current profile note (R1.5, 2026-11-02):** This document retains the earlier stack proposal for history. For the new Modular SaaS cloud Agent lifecycle, the [R1.5 Workers-first profile](WORKERS-FIRST-DURABLE-AGENTS-ADR.md) and SPEC-318 R1.5 control; the R0.5 Rust-native-supervisor-first clause below is historical. Native Rust/Containers remain workload-specific on-demand executors. Legacy SPEC-267/311 authorities are unchanged.
+
 **Decision date:** 2026-11-01<br>
 **Scope:** NEW first-party Modular SaaS platform; this does not modify the existing Debian legacy runtime.<br>
 **Status:** Proposed technical decision, no implementation/deployment claimed.
@@ -50,3 +52,7 @@ Long-running work does NOT run inside the Core or a Cloudflare Push Queue Worker
 ## R1.4 clarification (overrides broad R0.5 database summary)
 
 `smartspec` is the **Core control-plane** existing PostgreSQL database and exceptional host for *already registered legacy data*. New stateful Mini Apps do **not** use it for domain records; they use separate D1 / independent PostgreSQL / BYOC / self-hosted stores under SPEC-323. Rust remains native executor, TypeScript/Hono remains Worker Core. The three concept mockups do not imply full UI is already rendered. See `R1.4-OWNER-DECISION-PRECEDENCE.md`.
+
+## R1.5 — New Modular SaaS execution/security profile (2026-11-02)
+
+For the new smartsihub.com product, use the [Workers-first Durable Agents ADR](WORKERS-FIRST-DURABLE-AGENTS-ADR.md): Hono/TypeScript Workers, Durable Objects/Agents SDK, Workflows, Queues and event-driven wakeups. The prior Rust-first supervisor choice is historical for this new platform; native Rust/Containers remain workload-specific on-demand executors. This profile does not alter Legacy migration authority in SPEC-267/311. Domain, target availability and database boundaries follow the [R1.5 owner-decision register](R1.5-OWNER-DECISION-PRECEDENCE.md).

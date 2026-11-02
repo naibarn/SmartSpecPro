@@ -4,12 +4,12 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 12 unresolved of 12
+- Requirements: 0 pass / 13 unresolved of 13
 - Next action: Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.
-- Manifest generation: 2
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Status claim: `REVISED_DRAFT_NOT_IMPLEMENTED` — `specs/feature/317-smartaihub-progressive-module-migration/spec.md#6`
+- Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/317-smartaihub-progressive-module-migration/spec.md#6`

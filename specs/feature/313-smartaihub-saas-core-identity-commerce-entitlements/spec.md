@@ -1,13 +1,15 @@
 ---
 spec_id: 313
 semantic_id: smartaihub.modular-saas-core
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Minimal SaaS Core — Identity, Tenancy, Entitlements and Canonical Commerce Integration
 ---
 
 # SPEC-313 — Small Hono SaaS Core
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 identity, database, bootstrap, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Boundary
 
@@ -191,7 +193,9 @@ Build P1 as the smallest fresh Worker-compatible Core/Shell vertical slice; iden
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -209,3 +213,15 @@ Build P1 as the smallest fresh Worker-compatible Core/Shell vertical slice; iden
 ### SPEC-313 targeted closure
 
 **Core acceptance slice:** Implement new Identity/Session/Tenant, scoped Action Registry, Credits facade, `worker_jobs` admission, App/Subscription registry from existing `smartspec` contract. Authenticate before paid Mini App entry. Reuse current password/hash and revocation semantics (verified from live schema); do NOT create an alternative users table, simulated ledger, duplicate job writer or import `apps/web` server. The Core API must remain independently callable by headless Agents; UI does not own authorization.
+
+---
+
+## R1.5 — Principal, session and authority boundaries (2026-11-02)
+
+The new platform SHALL distinguish human, tenant, agent, service, module/Mini App and device/Runner principals. Authentication of a human browser session never authenticates an Agent, Service Binding caller or device. Cloudflare Access may be an additional edge control; it is not the end-user identity system and Access context is not implicitly propagated across Service Bindings. Resolve tenant membership from verified server-side session or grant state, never from a request-supplied tenantId.
+
+Provide passkey/WebAuthn-ready authentication, MFA and recovery, secure short-lived sessions, HttpOnly/Secure/SameSite cookie policy, CSRF defenses, per-session revocation and auditable step-up authentication for sensitive effects. Delegated grants bind actor, tenant, audience, capability, goal/run, budget, expiry and policy epoch. Agents cannot mint grants or widen scopes. Recheck revocation and current policy before resolving a credential and before an externally consequential action.
+
+Each product environment has one canonical authority for its identity, entitlements, finance and job lifecycle. New production and development SHALL use isolated database identities, least-privilege DB roles and separate credentials from Legacy; do not assume the same PostgreSQL host, database credential or direct data access. Do not create a second ledger or job-settlement engine inside the new platform. If continuity with Legacy is required, use an explicit audited API/event bridge with a single writer and reconciliation; this mission changes no user or financial data. See SPEC-325 and the [R1.5 credential authority ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).
+
+Device enrollment is distinct from browser login. Pairing is owner-initiated and tenant-bound; reconnect uses device-key proof-of-possession and a short-lived audience-bound session, independent of the human web cookie. A bounded Goal grant covers ordinary authorized work without repeated prompts. Membership, device, credential and policy-epoch revocation prevent future actions while preserving truthful offline and locked-session outcomes. See SPEC-325.

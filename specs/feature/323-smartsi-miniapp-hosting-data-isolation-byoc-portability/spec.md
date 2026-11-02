@@ -1,13 +1,15 @@
 ---
 spec_id: 323
 semantic_id: smartsi.miniapp-hosting-data-isolation-byoc-portability
-revision: R1.4
-date: 2026-11-01
-status: OWNER_CONFIRMED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 production_domain: smartsihub.com
 authority: SPEC-261 portable-app; SPEC-273 data portability; SPEC-288 Resource Fabric; SPEC-304 routing; SPEC-295 deployment
 ---
 # SPEC-323 — Mini App Hosting, Isolated Data Plane, BYOC & Self-hosted Portability
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 App hosting, database, runtime, or authority assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Binding owner decision
 **No new persistent Mini App may place its business/domain tables inside the legacy PostgreSQL `smartspec` Core database.** `smartspec` is preserved for newly rewritten SaaS Core *control-plane* records and explicitly inventoried pre-existing business data of modules/Mini Apps migrated from the Legacy system. **A new stateless Mini App requires no database.** A new stateful Mini App receives a dedicated, independently owned logical database (default one D1 database per Mini App), never merely a `tenant_id` column in Core. An external customer-owned DB is first-class. No new separate identity, credit ledger, payment authority or global job authority is created.
@@ -93,7 +95,9 @@ P3 Mini App Creator first produces a true new App with its own resource binding 
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -111,3 +115,13 @@ P3 Mini App Creator first produces a true new App with its own resource binding 
 ### SPEC-323 targeted closure
 
 **Data ownership:** For new stateful Mini Apps use isolated D1 or independent PostgreSQL account/database, BYOC Cloudflare owner account or self-hosted DB. New app business tables in `smartspec` are prohibited; legacy-only exception needs table/App provenance. AppID/rights/listings/entitlements/credits/jobs stay core-owned through Core API while app data resides separately. D1→PostgreSQL requires schema translation, consistency/export/import/verification with rollback; no automatic connection-string swap. User-owned server/DB must operate within scoped API grants without Core credentials.
+
+---
+
+## R1.5 — Mini App and BYOC trust isolation (2026-11-02)
+
+Treat Mini App code, skills, user-provided configuration and BYOC environments as untrusted principals. Each App has an isolated origin, capability manifest, sandbox, runtime/data bindings and credentials. BYOC grants are scoped to the specific owner account, App, resource, operation and expiry; revocation removes future access and records the result. Do not pass Core database credentials, platform master keys, tenant vault plaintext or Runner device keys to App code, browser pages, skills or model context.
+
+App data remains in its own data plane. Core identity, entitlement, financial and canonical job effects are accessed only through the typed authenticated service contract. App-owned secrets use the Credential Broker with per-tenant, per-App and per-run policy checks; external providers are called through the broker where possible. Cross-App and cross-tenant export/retrieval is denied unless explicitly granted and audited. Preserve portability and owner-controlled deletion/revocation. See SPEC-325 and the credential authority ADR.
+
+Consumer device Runners and enterprise/BYOC Runners use separate environment and owner identities, enrollment policies, update channels and capability manifests. A BYOC Runner connects only to its named tenant/App/environment audience and cannot become a path to Core database credentials, another App, another tenant or the platform device fleet.

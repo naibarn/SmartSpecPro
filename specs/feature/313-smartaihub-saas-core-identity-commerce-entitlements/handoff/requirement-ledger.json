@@ -1,13 +1,13 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L16"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L18"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L16",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L18",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -17,9 +17,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2c575875c90bd9ccd3af606f1d2507b649f6b45796926ec349d51bd5a194b00d",
-      "requirement_id": "REQ-5724D37DA530",
+      "requirement_id": "REQ-03A0FF864CAD",
       "requirement_text": "The Core **coordinates existing canonical authorities**. It SHALL NOT create a second identity store, wallet/ledger/settlement engine, job queue, deployment authority, secret store or portable app standard.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L39"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L41"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L39",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L41",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -39,9 +39,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "b265770b63a337c95c7cd9bb05ac277ed2750408df11b3f0a4e43990322ce2a8",
-      "requirement_id": "REQ-71DE91510F14",
+      "requirement_id": "REQ-45CF12A63511",
       "requirement_text": "- Existing users log into BOTH domains separately (different domain-bound cookies, separate session IDs). Shared password/account state and revocation policy MUST work for both. No cross-site cookie tricks, no shared browser session assumption.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L42"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L44"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L42",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L44",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -61,9 +61,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a4e80c175ffeba16b45ddc46eccb87e3d9d9cdc2f4edd4357c6c2d3df2fd8983",
-      "requirement_id": "REQ-32834367C3E9",
+      "requirement_id": "REQ-9282843D09E2",
       "requirement_text": "- Authorization, ledger and mutable session/entitlement reads SHALL use transactional/consistent reads, not stale Hyperdrive query cache. Protect all records by tenant and principal.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L48"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L50"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L48",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L50",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -83,31 +83,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "10a8a99d54b8f46e386d7957d5ce4fc04cb5d7836d415d159e1c06728a922e18",
-      "requirement_id": "REQ-373775C89852",
+      "requirement_id": "REQ-DEFF6F89DA74",
       "requirement_text": "- For the same canonical `runId/jobId/attempt`, there MUST NOT be two independent charge authorities. Legacy and new Core MUST agree on transition ownership before any finance write cutover.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L58"
-      ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L58",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8d09b8e13c558fa1b82660a2623e1b98470af73e0f20b93c5bf0feabb03d95b9",
-      "requirement_id": "REQ-88DD4442F9CC",
-      "requirement_text": "- API and error schemas MUST be versioned in small `@smartaihub/saas-contracts`. Validate per-request subject/tenant/module context, entitlement/version and spend ceiling. Secret tokens cannot enter browser bundles.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -126,10 +104,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "25c7e8266c5e34e24f39911788a66cd08ac622ef05b7e0e809deeaddc00e2ccf",
-      "requirement_id": "REQ-4A5CA3EE06AF",
-      "requirement_text": "API spelling and `/trpc` adapter strategy MUST be decided from SPEC-312 route inventory; do not introduce duplicate endpoint authorities where current app contract can be preserved cleanly.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "requirement_digest": "8d09b8e13c558fa1b82660a2623e1b98470af73e0f20b93c5bf0feabb03d95b9",
+      "requirement_id": "REQ-A807845CFEFC",
+      "requirement_text": "- API and error schemas MUST be versioned in small `@smartaihub/saas-contracts`. Validate per-request subject/tenant/module context, entitlement/version and spend ceiling. Secret tokens cannot enter browser bundles.",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -137,9 +115,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L88"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L62"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L88",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "25c7e8266c5e34e24f39911788a66cd08ac622ef05b7e0e809deeaddc00e2ccf",
+      "requirement_id": "REQ-17338366C349",
+      "requirement_text": "API spelling and `/trpc` adapter strategy MUST be decided from SPEC-312 route inventory; do not introduce duplicate endpoint authorities where current app contract can be preserved cleanly.",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L90"
+      ],
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L90",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -149,9 +149,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "637ebf40f819311045bec7624fa121706ede39818055d2fee1ec974081a21d0e",
-      "requirement_id": "REQ-5C02B187DCE9",
+      "requirement_id": "REQ-10D2E48BF15F",
       "requirement_text": "**Human UAT loop:** authorized developer logs in, exercises actual navigation and module enablement; report observed bugs and user feedback; Codex fixes and redeploys same targeted unit. 'Automated passed' is not final human acceptance. New Core API may first go live on `smartsihub.com` as restricted beta without all future Core features implemented, provided required enabled actions are safe.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -159,9 +159,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L92"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L94"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L92",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L94",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -171,9 +171,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1fca83fcae75cd72d267562e26e096e345cd6b05c0989da2f7bdeb877b2389af",
-      "requirement_id": "REQ-EA8818E98C7E",
+      "requirement_id": "REQ-A62F095D34F5",
       "requirement_text": "Password/MFA algorithm compatibility, existing tRPC surface, full provider/payment configuration, schema drift and ledger writer ownership remain **unverified** until actual continuous discovery and test evidence. New domain application must not silently default to privileged tenant/admin. External email and payment provider integration requires endpoint/callback and actual delivery/readback evidence, not fake-success UI.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L100"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L102"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L100",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L102",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -193,9 +193,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "73f671a1d8224a18f5b1d433c71b60f794720f526b2f10fcf38ec1c7f80f1be8",
-      "requirement_id": "REQ-F96C861B5212",
+      "requirement_id": "REQ-1195F0A14819",
       "requirement_text": "Use a modern responsive SaaS Shell with functional Login, Account, Tenant Switcher and Modules navigation. User-facing beta status is truthful; no empty dashboard presented as completion. Codex may choose implementation details/libraries inside the stated API, financial and tenant contracts; no arbitrary new sign-off point for design systems, route naming, UI polish or package size. Required third-party credentials are surfaced as exact operational blockers to that integration only, not to development of the whole Core.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L157"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L159"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L157",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L159",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -215,9 +215,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "4c4f7c4c61f5ff523b0d344c2aa394e5e07a8e85703ff09b933feaa1686c177b",
-      "requirement_id": "REQ-A39C36D53A74",
+      "requirement_id": "REQ-11A177810694",
       "requirement_text": "- Core services expose typed business Action API independently of any UI; UI, browser WebMCP, remote MCP and headless HTTPS share existing SPEC-256 capability identity and identical billing/job semantics. Core MUST NOT import Astro, React, shadcn or any browser-only WebMCP runtime.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L163"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L165"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L163",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L165",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -237,9 +237,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "59e5d57067f52f8666beb407e591dab198bcf2aa6e1254a7d3db76ce06fa3c50",
-      "requirement_id": "REQ-3902FBB5E9D2",
+      "requirement_id": "REQ-2E47F4FE8E46",
       "requirement_text": "Core commerce facade checks app ID + exclusive Skill provenance/ownership at every admitted action. Only an `APP_EXCLUSIVE_INCLUDED` action can bypass per-call subscriber debit; shared Skills must generate distinct metered invocation charge/reservation through existing SPEC-207 authority even for active subscribers. App-only parent Skills may invoke shared child Skills only through individually billed canonical calls. Do not create a second Skill Registry or Credit Ledger.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L167"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L169"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L167",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L169",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -259,9 +259,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "cb039e94b8552b0e5e8bfaaef41836004880b2b4f25aa164b36f0e724aff9cc8",
-      "requirement_id": "REQ-1C475EA366D4",
+      "requirement_id": "REQ-9982572671D0",
       "requirement_text": "SaaS Core MUST expose read-only and action facades for existing wallet credit balance, owner-earned credit grants, transaction provenance and one-time promotional referral grants as defined by SPEC-321, without introducing a second ledger or independent revenue payout service. The only owner revenue slots are Platform/Tenant/Mini App/Skill; monetary withdrawals are **future, out of scope**. Do not conflate purchased credits, earned credits and bonus credits even when presented as one spendable user balance.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L174"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L176"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L174",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L176",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -281,9 +281,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a9c4758d9dbf6cfd8c5d9422d1c71b2807fcd10507a8c744514d1c8775f6dbeb",
-      "requirement_id": "REQ-AEDB39AF3EFC",
+      "requirement_id": "REQ-FEA718794413",
       "requirement_text": "SaaS Core SHALL provide one canonical signed-in user identity usable by human and delegated Agents, platform subscription plan/period/grants distinct from Mini App subscription, and thin facade on SPEC-207 existing credit reserve, PAYG, user-class limits and payment intents. Identity registration is prerequisite to accessing Mini Apps; a **paid** Platform plan is optional unless a published offer restricts a tier. Build Hono actions and schema adapters fresh, not a conversion of Express, and never emit PSP credentials to Agents. Financial actions remain durable/idempotent across Debian and Cloudflare and respect shared PostgreSQL `smartspec` schema.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L177"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L179"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L177",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L179",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -303,9 +303,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "0db5b81d17fec232a6fcca9fd55d7d6497866170c30131fe8fe4baa48fbd0301",
-      "requirement_id": "REQ-0C2748373D8A",
+      "requirement_id": "REQ-AF6A568C807A",
       "requirement_text": "`apps/saas-core` may read/write canonical identity, tenancy, installation, product listing, subscription, wallet, payment and jobs metadata using existing `smartspec` schema/authority. **New Mini App business records** (orders, customers, creator-specific documents, appointments, domain business tables etc.) MUST NOT be written into `smartspec` through Core, except explicitly inventoried migrated-legacy tables. Core exposes signed, narrowly scoped API actions for auth, entitlements, payments and job admission to hosted/BYOC/self-hosted Apps; **no app receives Core PostgreSQL credentials**. Cross-service calls must not duplicate core identity/financial ledger. SPEC-323 owns new App data-plane placement.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L182"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L184"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L182",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L184",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -325,31 +325,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
-      "requirement_id": "REQ-A624B51593DE",
+      "requirement_id": "REQ-15D4F18A2072",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L186"
-      ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L186",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
-      "requirement_id": "R1.4",
-      "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -368,10 +346,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9e7b19e0f85d4dbdd22a45c194c7346a16e23590b48f2676214016a60455ef45",
-      "requirement_id": "REQ-E77EACED5BB5",
-      "requirement_text": "Build P1 as the smallest fresh Worker-compatible Core/Shell vertical slice; identity/session, tenant role, existing `smartspec` control-plane reads, canonical job admission and minimal entitlement interface first. Chat and Creator consumers must not need a complete marketplace, all billing adapters or a rewritten job ledger to begin. Integrate canonical financial writers only after verifying unit compatibility; do not gate the rest of development on those slices.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
+      "requirement_id": "R1.4",
+      "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -379,9 +357,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L199"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L190"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L199",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L190",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9e7b19e0f85d4dbdd22a45c194c7346a16e23590b48f2676214016a60455ef45",
+      "requirement_id": "REQ-4A32FF1BCCA5",
+      "requirement_text": "Build P1 as the smallest fresh Worker-compatible Core/Shell vertical slice; identity/session, tenant role, existing `smartspec` control-plane reads, canonical job admission and minimal entitlement interface first. Chat and Creator consumers must not need a complete marketplace, all billing adapters or a rewritten job ledger to begin. Integrate canonical financial writers only after verifying unit compatibility; do not gate the rest of development on those slices.",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L203"
+      ],
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L203",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -391,9 +391,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
-      "requirement_id": "REQ-B4311A17B883",
+      "requirement_id": "REQ-8226E576E0ED",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L200"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L204"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L200",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L204",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -413,9 +413,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
-      "requirement_id": "REQ-1E92226B7592",
+      "requirement_id": "REQ-BF7936A54886",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L205"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L209"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L205",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L209",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -435,9 +435,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
-      "requirement_id": "REQ-FE434CAC57DC",
+      "requirement_id": "REQ-1C4DA428E755",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L206"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L210"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L206",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L210",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -457,9 +457,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
-      "requirement_id": "REQ-8573F07D3796",
+      "requirement_id": "REQ-26B0A7962D6E",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L211"
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L215"
       ],
-      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L211",
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L215",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -479,15 +479,59 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1a4cef077a2158d99ba0811591300d74784a88e967db5105e706bc108e18400c",
-      "requirement_id": "REQ-0E0BADC4AA3C",
+      "requirement_id": "REQ-20B8966FB5FA",
       "requirement_text": "**Core acceptance slice:** Implement new Identity/Session/Tenant, scoped Action Registry, Credits facade, `worker_jobs` admission, App/Subscription registry from existing `smartspec` contract. Authenticate before paid Mini App entry. Reuse current password/hash and revocation semantics (verified from live schema); do NOT create an alternative users table, simulated ledger, duplicate job writer or import `apps/web` server. The Core API must remain independently callable by headless Agents; UI does not own authorization.",
-      "source_spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L221"
+      ],
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L221",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d611cebfe3e7ffb306aafacd88c7361851dc0d65d59fb5df4998134223e9fd00",
+      "requirement_id": "REQ-7053A2E39E2A",
+      "requirement_text": "The new platform SHALL distinguish human, tenant, agent, service, module/Mini App and device/Runner principals. Authentication of a human browser session never authenticates an Agent, Service Binding caller or device. Cloudflare Access may be an additional edge control; it is not the end-user identity system and Access context is not implicitly propagated across Service Bindings. Resolve tenant membership from verified server-side session or grant state, never from a request-supplied tenantId.",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L225"
+      ],
+      "authority_source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md#L225",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "83bf00b4de87bf3ba2a5e3f6d77515185bdd1e418972bf5ae05976acf1f76116",
+      "requirement_id": "R1.5",
+      "requirement_text": "Each product environment has one canonical authority for its identity, entitlements, finance and job lifecycle. New production and development SHALL use isolated database identities, least-privilege DB roles and separate credentials from Legacy; do not assume the same PostgreSQL host, database credential or direct data access. Do not create a second ledger or job-settlement engine inside the new platform. If continuity with Legacy is required, use an explicit audited API/event bridge with a single writer and reconciliation; this mission changes no user or financial data. See SPEC-325 and the [R1.5 credential authority ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).",
+      "source_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
+  "spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
   "spec_id": "313"
 }

@@ -1,13 +1,15 @@
 ---
 spec_id: 317
 semantic_id: smartaihub.progressive-modular-migration
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover
 ---
 
 # SPEC-317 — Progressive Module Migration and Independent Legacy Retirement
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 migration sequencing, deployment, runtime, database, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Decision
 
@@ -131,7 +133,9 @@ During Chat migration, demonstrate a headless job that continues when the user c
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -149,3 +153,13 @@ During Chat migration, demonstrate a headless job that continues when the user c
 ### SPEC-317 targeted closure
 
 **Ordering correction:** The first moved user-facing module is Chat, second Mini App Creator. After Creator is working, new Autonomous Implements becomes the next authority candidate, then selective Goal-by-Goal handover. Public/Portfolio design can progress in parallel but not replace Chat/Creator as the migration pilot. Every legacy module chooses copy/isolate, rebuild from behavior, keep legacy pending, or retire with explicit owner decision; *Core and public site are intentional fresh rewrites*, not conversions.
+
+---
+
+## R1.5 — Selective reuse without Legacy runtime dependency (2026-11-02)
+
+Migrate capabilities by bounded module, not by converting the whole Legacy application. Existing code, schemas, screens and UI assets are references only. Each new or reused module must document owner/provenance, permitted source inputs, data authority, capability manifest, tenant boundary, secret placement, target-specific release and rollback before enabling its route. No Legacy server import, worker process or shared all-powerful credential may become a hidden dependency of ordinary Cloudflare Core or Chat paths.
+
+A module may be developed and accepted while unrelated Legacy repair or migration continues. Existing smartaihub.app remains available to Legacy users; it is an optional development command surface when the particular Goal path is proven. New-platform authority handover is per Goal and single-owner: observe, transfer at a durable checkpoint, verify and retain rollback evidence without dual dispatch. Security acceptance is specific to each migrated route. See SPEC-325 for the common isolation and prompt-injection controls.
+
+An existing Runner installation or pairing is a reference/integration candidate, not automatically trusted by the new product. Do not copy Legacy device keys, bearer tokens, local grants or browser sessions. Re-enrollment uses the SPEC-325 device trust flow and the new environment key hierarchy.

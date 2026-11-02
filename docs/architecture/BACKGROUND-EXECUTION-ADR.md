@@ -1,5 +1,8 @@
 # ADR-002 — Rust-first Native Job Supervisor with TypeScript Edge Queues (R0.5, 2026-11-01)
 
+> **Historical R0.5 decision:** Rust-native supervisor-first was the previous proposal. Superseded for the new Modular SaaS platform by [Workers-first Durable Agents ADR](WORKERS-FIRST-DURABLE-AGENTS-ADR.md) and R1.5 SPEC-318/SPEC-325. This file remains provenance for prior reasoning and workload-specific native executors; it is not implementation or deployment evidence.
+
+
 ## Decision
 
 Use **Rust (native, outside Cloudflare Workers)** for the new optional/extendable long-running job supervisor and capacity-controlled executor. Keep **Hono/TypeScript** for core job HTTP intake, compact Queue producer, short push consumer and service-bound API. **Go stays supported as an alternative native executor** but is not the chosen new default. Keep Python OpenAI Agents SDK, Codex/Runner and FFmpeg/GPU/provider executors. Share only small versioned job contracts where feasible; do not force native OS execution crates into a `workers-rs` Wasm bundle.

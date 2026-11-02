@@ -6,10 +6,10 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 21 unresolved of 21
 - Next action: Define the per-Mini-App data-plane contract before the first stateful App is created.
-- Manifest generation: 2
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Status claim: `OWNER_CONFIRMED_DRAFT_NOT_IMPLEMENTED` — `specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/spec.md#6`
+- Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/spec.md#6`

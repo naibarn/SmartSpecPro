@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4"
+    "expected_spec_digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627"
   },
   "continuation": {
     "next_action": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
@@ -75,18 +75,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
-    "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+    "digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:41.804088Z",
+      "last_evidence_at": "2026-11-02T01:43:57.914782Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "322-smartsi-agentic-payments-platform-subscriptions-payg",
     "spec_id": "322",
     "title": "SPEC-322 — Agentic Payments, Platform Subscriptions, Credit Reservation and Class-Bounded PAYG"
@@ -183,10 +183,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:41.804088Z",
+    "reconciled_at": "2026-11-02T01:43:57.914782Z",
     "sources": [
       {
-        "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
       },
@@ -194,12 +194,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
-        "source_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
-        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+        "source_digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -226,17 +226,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 5,
         "source": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
-        "source_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
-        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+        "source_digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "digest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
       }
@@ -256,7 +256,7 @@
     "unresolved": 26
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T07:21:41.804088Z",
+  "updated_at": "2026-11-02T01:43:57.914782Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

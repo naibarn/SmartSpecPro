@@ -1,0 +1,495 @@
+{
+  "revision": "R1.5",
+  "baseline": {
+    "branch": "main",
+    "sha": "4d56fe666bf7fcb1a250503a73140e01ee998ada",
+    "origin_main_at_start": "4d56fe666bf7fcb1a250503a73140e01ee998ada"
+  },
+  "scope": "SPEC/ADR/documentation and generated handoff/index outputs; no runtime code",
+  "file_count_excluding_self_and_result": 91,
+  "files": [
+    {
+      "path": "docs/architecture/ALWAYS-ON-RUNNER-AND-UNIFIED-DESKTOP-COMPANION-ADR.md",
+      "bytes": 6110,
+      "sha256": "41124d3c3607347302e75de46c539b3d546577cb180ca99ed8c4cc3ae297c109"
+    },
+    {
+      "path": "docs/architecture/BACKGROUND-EXECUTION-ADR.md",
+      "bytes": 4791,
+      "sha256": "5c57c4646295ac2992fb611631483877fb580f56bb5a6d0725d457a05b012eaf"
+    },
+    {
+      "path": "docs/architecture/CHAT-NATIVE-INTERACTIVE-WORKSPACE-ADR.md",
+      "bytes": 6949,
+      "sha256": "f984beec3488fa78bc0332dd1048571e57774e5a6140acf2ed9c5c5dec9af81f"
+    },
+    {
+      "path": "docs/architecture/COMPUTER-USE-CLEF-BROWSER-ROUTING-ADR.md",
+      "bytes": 10078,
+      "sha256": "66d40f669662d2a0695edc3c166b9d23d08ddd6ecb8d2994ac4870e880e3dda1"
+    },
+    {
+      "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+      "bytes": 11656,
+      "sha256": "95e73f407df00c8eb2df32105be2cb31fcca8d82b85a927e9119341417bc615f"
+    },
+    {
+      "path": "docs/architecture/SECURE-RUNNER-CONNECTION-AND-DEVICE-TRUST-ADR.md",
+      "bytes": 8214,
+      "sha256": "1186d3b8ade777c3f6d1aa6e410b784e118d787ce8cdac8d37612a37d8df8145"
+    },
+    {
+      "path": "docs/architecture/STACK-DECISION-ADR.md",
+      "bytes": 6271,
+      "sha256": "198b2d2e94a007aa1dbc68c87e8da21eb2f8d4a803f9dbea95265a97d1c9ce9a"
+    },
+    {
+      "path": "docs/architecture/WORKERS-FIRST-DURABLE-AGENTS-ADR.md",
+      "bytes": 4656,
+      "sha256": "ffb88fa11b705607696ea0f22985e71ebd6d1efccc8c6f2cee2b9025b515864d"
+    },
+    {
+      "path": "docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md",
+      "bytes": 5644,
+      "sha256": "e0360c6d0c680f97e8d6045466bd49c36ff2f8e722ba6d87965c8f6f6f7ffbdd"
+    },
+    {
+      "path": "docs/smartsihub-r1.5/CODEX-MISSION-BOOTSTRAP.md",
+      "bytes": 4762,
+      "sha256": "ee72ec5a261c89e5c7ebc86dd97724c8d6aceb9c12a022edf1a86afe273bac50"
+    },
+    {
+      "path": "docs/smartsihub-r1.5/CODEX-MISSION-M0.md",
+      "bytes": 3242,
+      "sha256": "5e47e54233a1417e335436292b7fd9be02e230cbf380e4eb906df4690c79e392"
+    },
+    {
+      "path": "docs/smartsihub-r1.5/README.md",
+      "bytes": 3680,
+      "sha256": "82cbc16ec40b2936f29970144aa6eb86ab466edd77ea31c1a8cdf5758edf9dbd"
+    },
+    {
+      "path": "docs/smartsihub-r1.5/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md",
+      "bytes": 4969,
+      "sha256": "7c460ffa159585b200d55dee9fd8c938e1ce746fd486e75b6caea6d3b2f1b12c"
+    },
+    {
+      "path": "docs/smartsihub-r1.5/WORK-PACKAGES.md",
+      "bytes": 3387,
+      "sha256": "942c8e0cc5db75a35cea0d8a189adf4cb87f471d37ae5c14d84341a102ed6f90"
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.5/R1.5-CROSS-SPEC-TRACEABILITY.md",
+      "bytes": 3396,
+      "sha256": "e1fab9f9009ec0f43571bd13472927ae75c63c1692783a5ebcbe5fbdd47da645"
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.5/R1.5-TEN-PASS-GAP-AUDIT.md",
+      "bytes": 14453,
+      "sha256": "ef951a3d64ef74654c93b898fbaf5935916b71f545bb730fe63f0fb65fb1b59b"
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.5/R1.5-VALIDATE.py",
+      "bytes": 17643,
+      "sha256": "9dba7fadd2f6f24511db83aaee0cb720224ff15857690aff11a1d8006b7908f8"
+    },
+    {
+      "path": "specs/_status/SPEC-STATUS.md",
+      "bytes": 164767,
+      "sha256": "830886f3212e43c1e5a6a7e496510ca86135072e582474572dfb1fa4c08c0a66"
+    },
+    {
+      "path": "specs/_status/continuation-queue.json",
+      "bytes": 209546,
+      "sha256": "8456cb5cf80c91ef3776604c095f1a33653859c36dd5272a16ff85ea598bbafd"
+    },
+    {
+      "path": "specs/_status/spec-id-registry.json",
+      "bytes": 12752,
+      "sha256": "88936ca72c85fb5aeb32d4f80b5f317905503deaec3be1a8a0e562c7252b1ed2"
+    },
+    {
+      "path": "specs/_status/spec-index.json",
+      "bytes": 6677329,
+      "sha256": "312568e50858f38fb67719e3e8f38fb7c13863ec936309ce02d197607ba62c9a"
+    },
+    {
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/STATUS.md",
+      "bytes": 884,
+      "sha256": "1bf3f4d4530c89cc28e885b69dc2ef33838bef16f7b9610ff8dff9aeb6eda6fd"
+    },
+    {
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/history.jsonl",
+      "bytes": 2810,
+      "sha256": "412d242b90f5212761d4a2d282209fd320ab05883c3c6e85f395baa7d56c7300"
+    },
+    {
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/manifest.json",
+      "bytes": 10511,
+      "sha256": "25ad6f89c0dca97db0be547584688de8c2b0f02bc5a2d9b30d079d6465f95e34"
+    },
+    {
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/requirement-ledger.json",
+      "bytes": 34735,
+      "sha256": "db62b0611da887ba42be3a09c6b00a8aa0d4c9fd7945dcabd64db8c703bc3091"
+    },
+    {
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      "bytes": 34938,
+      "sha256": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce"
+    },
+    {
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/handoff/STATUS.md",
+      "bytes": 853,
+      "sha256": "b4becd70b64c94b9d14dd12047df40660358bfe3db0921450bb977a0f2127294"
+    },
+    {
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/handoff/history.jsonl",
+      "bytes": 2318,
+      "sha256": "06c46280b20a904ede84cb28a85539ab06a49d6ffe7ccf9c2549754613df1d8e"
+    },
+    {
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/handoff/manifest.json",
+      "bytes": 10053,
+      "sha256": "5a5436ac9e2ccbf7367d23bcee0dfb883fba795614fa46f67941982cf4c6d24e"
+    },
+    {
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/handoff/requirement-ledger.json",
+      "bytes": 37299,
+      "sha256": "a67b7a99f5691d63f0d4378a5a7a84475b8eff564450f8c5fa06b6d72f35a554"
+    },
+    {
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
+      "bytes": 35001,
+      "sha256": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80"
+    },
+    {
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/handoff/STATUS.md",
+      "bytes": 751,
+      "sha256": "9909416d4682e986d80005d320a9563b0e7420cebd0d90344048b56901b25131"
+    },
+    {
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/handoff/history.jsonl",
+      "bytes": 1852,
+      "sha256": "cb47021e6083c7794340ecbba2d35789446282385130955786fafbc13f81ae3d"
+    },
+    {
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/handoff/manifest.json",
+      "bytes": 9031,
+      "sha256": "06a81ca877f029291215915c37de5919985768ff3a58eadf550c5c5373552d28"
+    },
+    {
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/handoff/requirement-ledger.json",
+      "bytes": 41580,
+      "sha256": "da1d8352e1a39eb04619c1de55073af1ee2a6022ace7177d1402acc1eef594f6"
+    },
+    {
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk/spec.md",
+      "bytes": 27839,
+      "sha256": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3"
+    },
+    {
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/handoff/STATUS.md",
+      "bytes": 877,
+      "sha256": "f9830781e28bc24cc0f62eecc235c5c0626626379c337a6de20317aab32ac7f8"
+    },
+    {
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/handoff/history.jsonl",
+      "bytes": 2497,
+      "sha256": "2851f15393f4aa9c722995a29fcdf311be0972b5717522fe53f97f2af3ae222b"
+    },
+    {
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/handoff/manifest.json",
+      "bytes": 9755,
+      "sha256": "a2ccd0b2ed8f152a39d8d031f758f881cb6f455ba982138f6be4f1787288b5a4"
+    },
+    {
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/handoff/requirement-ledger.json",
+      "bytes": 67967,
+      "sha256": "536a04f7794fc6f6b6ecb69e52fe67b634ad87db7c9e1faa6931889f6c9826c9"
+    },
+    {
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
+      "bytes": 28462,
+      "sha256": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176"
+    },
+    {
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release/handoff/STATUS.md",
+      "bytes": 819,
+      "sha256": "9a3f3f79126075173067e7e876724eef34958b4b59f196d624708d164096127b"
+    },
+    {
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release/handoff/history.jsonl",
+      "bytes": 2310,
+      "sha256": "324e8f0ccdfbad768d99d81b46c9696765bda51ea922a1e8f7f89f664aaed136"
+    },
+    {
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release/handoff/manifest.json",
+      "bytes": 9954,
+      "sha256": "a76457bd0d3e35e7f7cd676aa4dedc992136b3630fc56af14afde94d89c63898"
+    },
+    {
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release/handoff/requirement-ledger.json",
+      "bytes": 37551,
+      "sha256": "8258f4322e2590ac6187458b5679608869484e780b686adf58573e07ef965b8d"
+    },
+    {
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
+      "bytes": 26937,
+      "sha256": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416"
+    },
+    {
+      "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/STATUS.md",
+      "bytes": 764,
+      "sha256": "e9680ff9558612f156d9060f4538de1129b4b9e88f09ed881f862f6e93470571"
+    },
+    {
+      "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/history.jsonl",
+      "bytes": 1846,
+      "sha256": "b66f9202958955776e17937c4336f4c82fdac9a0b72c27c4cc4ee4c4c80cd5e7"
+    },
+    {
+      "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/manifest.json",
+      "bytes": 8978,
+      "sha256": "0281c52a7be7cecd239e9e2d155a10b66749c047e54e6471c9d204dcc1a39a62"
+    },
+    {
+      "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/requirement-ledger.json",
+      "bytes": 20826,
+      "sha256": "909218eded23e4dcd4103d33566fbb34b12f0bf762ac817130848568569daa8c"
+    },
+    {
+      "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
+      "bytes": 25242,
+      "sha256": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29"
+    },
+    {
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/handoff/STATUS.md",
+      "bytes": 908,
+      "sha256": "f6219b619ecf3d793e3bff233cf0c490d848fb936f803ef0dbc5a7408b263ead"
+    },
+    {
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/handoff/history.jsonl",
+      "bytes": 2191,
+      "sha256": "c4514caa9e1240e589213bda0a97231805cac8395643b3d948ac6fccd1fbb01a"
+    },
+    {
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/handoff/manifest.json",
+      "bytes": 10015,
+      "sha256": "50006763a47c03fa2f8aa5cfaa3bc850a648cc72df16fc4e835a21e5091d9fb2"
+    },
+    {
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/handoff/requirement-ledger.json",
+      "bytes": 39729,
+      "sha256": "2da507dc90412afde014b292ab51d8c9c5f14bbf001e8735adaece1f685b5509"
+    },
+    {
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md",
+      "bytes": 36703,
+      "sha256": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291"
+    },
+    {
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/handoff/STATUS.md",
+      "bytes": 817,
+      "sha256": "5c9ca3f91eb15c4c227e8dbd27104a7c79074058844f939748abf2ff3ef560d2"
+    },
+    {
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/handoff/history.jsonl",
+      "bytes": 2178,
+      "sha256": "c097ba7b00ab9e911ca60fb02aa18b999ced0cc427ae2cd5239f9907d7cc0989"
+    },
+    {
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/handoff/manifest.json",
+      "bytes": 9600,
+      "sha256": "919fefe0b5f1647436e76f60412934a6dbe8a06c1a33ecd3cb6cc24f07ddaf8f"
+    },
+    {
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/handoff/requirement-ledger.json",
+      "bytes": 42714,
+      "sha256": "21125cea0418a51cc2b545efe7aa1bf10c8d3a2acaafee4b9af1517b5f6994bd"
+    },
+    {
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp/spec.md",
+      "bytes": 34704,
+      "sha256": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881"
+    },
+    {
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/handoff/STATUS.md",
+      "bytes": 757,
+      "sha256": "a8919531d0dc92e3925dcbd5d0c57d4c1e3e8fee30f810e123904a33aa11ee54"
+    },
+    {
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/handoff/history.jsonl",
+      "bytes": 1862,
+      "sha256": "79f31f385ad3f04e9bb50748a267fbec0859647d754b025a6fa6642de91b42ff"
+    },
+    {
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/handoff/manifest.json",
+      "bytes": 9147,
+      "sha256": "513b1770229d7b2b18e05ff87f33971e63d7eae1cd7c307e6352870201995da6"
+    },
+    {
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/handoff/requirement-ledger.json",
+      "bytes": 22439,
+      "sha256": "ca252d784a67d7797144ca1dc9d24c026db28b6b4a6e5a88cb34c0ce73f8b82e"
+    },
+    {
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace/spec.md",
+      "bytes": 22147,
+      "sha256": "36c504c2c51cc31af4be290be7aa4907b6c65f248cf4932a2751e60533315f29"
+    },
+    {
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/handoff/STATUS.md",
+      "bytes": 781,
+      "sha256": "7c51c6d0551bc0aae895923f9a0513c5ee5a06f96b441ce68a24f172026f9569"
+    },
+    {
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/handoff/history.jsonl",
+      "bytes": 1863,
+      "sha256": "f8969b4f0ea8f05e7c5a81f1456d9d076b27a91f2d06a5e279d29a500073cca4"
+    },
+    {
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/handoff/manifest.json",
+      "bytes": 9234,
+      "sha256": "622d0646a1e9a9a461f9542b94d874c6fe9144640560c3b2965fc0afe3b7bd1f"
+    },
+    {
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/handoff/requirement-ledger.json",
+      "bytes": 43482,
+      "sha256": "3c604a2c1dc6edd0f69e8fc1736a7c5533dcf1067f43b690378d32bea9ae9764"
+    },
+    {
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md",
+      "bytes": 37941,
+      "sha256": "1ae0aea92fce73415638aa922a6caf1648588c538b07b8dcd0a777315084854d"
+    },
+    {
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/handoff/STATUS.md",
+      "bytes": 781,
+      "sha256": "f30ec4b11e936632151102562a993102cc7697544588a9c72c501b1c267b26b6"
+    },
+    {
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/handoff/history.jsonl",
+      "bytes": 1859,
+      "sha256": "9584b14f55e8dede50af693184924d9ba8e52bdda3e3cf4fa367f8b510a7921d"
+    },
+    {
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/handoff/manifest.json",
+      "bytes": 9166,
+      "sha256": "851045ee52c624d2124c2d83eafc684d1855f0cf2c1e4921262ade982256fe65"
+    },
+    {
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/handoff/requirement-ledger.json",
+      "bytes": 41204,
+      "sha256": "8bb7e576252a1d6f75c8af7ebd34d746b28293d97574132b4c81d8974d9c1751"
+    },
+    {
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
+      "bytes": 35805,
+      "sha256": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627"
+    },
+    {
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/handoff/STATUS.md",
+      "bytes": 750,
+      "sha256": "25006075fa9ac17e3980779ea1614dcfe4bf9b03238eb436db7259c79d7f0c56"
+    },
+    {
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/handoff/history.jsonl",
+      "bytes": 1862,
+      "sha256": "910a9d17bce45c3949aab8874ceaaeb0f8db1b8bb577a86c75290d7577a6939d"
+    },
+    {
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/handoff/manifest.json",
+      "bytes": 9134,
+      "sha256": "f4ab6836f76f2b8f183af93752bef3b9ae23a83371889d789e73518ae9629e9c"
+    },
+    {
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/handoff/requirement-ledger.json",
+      "bytes": 30917,
+      "sha256": "5a1720a33d1a28f44e1f1229e0ff02c2cfee2a2c9854e50c1320558281c97663"
+    },
+    {
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability/spec.md",
+      "bytes": 23212,
+      "sha256": "be7956a01ef13034cc7e1eedf9797d6159f03bb23396a8098dc2c5c623e6e0df"
+    },
+    {
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/handoff/STATUS.md",
+      "bytes": 872,
+      "sha256": "9a76e949a64dd4c70223d19006e46c2d99314d0c5fdc4b3219ada3a88c207900"
+    },
+    {
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/handoff/history.jsonl",
+      "bytes": 2186,
+      "sha256": "9186a3d199551c519e5e46f4f85a58ee1e4048b8f9ebe8250153a4280a3399fc"
+    },
+    {
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/handoff/manifest.json",
+      "bytes": 9876,
+      "sha256": "d539729af90250eecd6d7c4d1717f3675285b47d442677c7dbd8cebf879fb023"
+    },
+    {
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/handoff/requirement-ledger.json",
+      "bytes": 18750,
+      "sha256": "eb14bd1a7599c816215d99bd8bcf98a3e1de0bc35381fa0924b176af00c30153"
+    },
+    {
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
+      "bytes": 22800,
+      "sha256": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869"
+    },
+    {
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/handoff/STATUS.md",
+      "bytes": 831,
+      "sha256": "25741691c7f8056673561e3b63c76163e50fc51886dc2c23830c9d8539f01ca9"
+    },
+    {
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/handoff/history.jsonl",
+      "bytes": 2451,
+      "sha256": "23d0c9b48fb47a0125cfe7529ba8a3eed766982360ede314627646df5674e9b1"
+    },
+    {
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/handoff/manifest.json",
+      "bytes": 9200,
+      "sha256": "1f844a6e7bcad3c297c791e809e1c5f8472b9350c5b8bdfb919a3b8f16fd144f"
+    },
+    {
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/handoff/requirement-ledger.json",
+      "bytes": 70959,
+      "sha256": "90eb85611762fab3727ebfcb55bfa3f58f5a0d2eced5734e5f390e9a0a0fe3cc"
+    },
+    {
+      "path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md",
+      "bytes": 68804,
+      "sha256": "4c8e5c22b2fd78f8ba4ffa38acffdf356d653b9959d58a59ffbc01162f62bf1c"
+    }
+  ],
+  "source_references": [
+    {
+      "path": "apps/web/scripts/deployment-targets.json",
+      "sha256": "6149c1236234a68d23d7b56516be92595cd4a44bd71bdffa6eeb412ee5f74814"
+    },
+    {
+      "path": "specs/_config/spec-id-registry.json",
+      "sha256": "7b9646b5e1d4c34b5baa6e836cbe046e606e14d960a44be9a46acbe10520883d"
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.4/R1.4-FILE-MANIFEST.json",
+      "sha256": "21c7c6385b9da5531a6cda03aa4ebf250b6f612df1d0119b17cb56b99dd0cf0d"
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.4/R1.4-VALIDATE.py",
+      "sha256": "c2ab610dd4a26fecb82b014a9eee92647ca1379302bcaa568076092224644848"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.5/R1.5-FILE-MANIFEST.json",
+      "reason": "Self-referential manifest; cannot include its own digest."
+    },
+    {
+      "path": "docs/spec-reviews/smartsihub-r1.5/R1.5-VALIDATION-RESULT.json",
+      "reason": "Generated validator output; excluded to avoid a manifest/result digest cycle."
+    }
+  ]
+}

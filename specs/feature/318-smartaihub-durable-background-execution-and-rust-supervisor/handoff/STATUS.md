@@ -4,12 +4,12 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 23 unresolved of 23
-- Next action: Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.
-- Manifest generation: 2
+- Requirements: 0 pass / 25 unresolved of 25
+- Next action: Reconcile active work classes with canonical worker_jobs/outbox/lease authority; implement Workers Agents/Workflows/Queues for cloud Agent continuity and start native or device Executors only for workloads that need them.
+- Manifest generation: 5
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Status claim: `PROPOSED_DRAFT_NOT_IMPLEMENTED` — `specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#6`
+- Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor/spec.md#6`

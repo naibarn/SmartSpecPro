@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4"
+    "expected_spec_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce"
   },
   "continuation": {
     "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
@@ -39,10 +39,15 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
+      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95",
+      {
+        "digest": null,
+        "kind": "R1.5_OWNER_DECISION",
+        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+      }
     ],
-    "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
-    "rationale": "Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main.",
+    "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
+    "rationale": "The R1.5 owner decision separates the new SmartAIHub product from Legacy and makes the old development tool optional where its path is proven. Durable execution is cloud-first and device execution is optional by workload.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,18 +80,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 4,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
+    "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T07:21:37.634554Z",
+      "last_evidence_at": "2026-11-02T01:43:55.196771Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-11-01T14:22:39+07:00",
+      "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -149,10 +154,15 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
+        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95",
+        {
+          "digest": null,
+          "kind": "R1.5_OWNER_DECISION",
+          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
+        }
       ],
-      "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
-      "rationale": "Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main.",
+      "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
+      "rationale": "The R1.5 owner decision separates the new SmartAIHub product from Legacy and makes the old development tool optional where its path is proven. Durable execution is cloud-first and device execution is optional by workload.",
       "residual_requirements": []
     },
     "disposition": {
@@ -192,10 +202,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T07:21:37.634554Z",
+    "reconciled_at": "2026-11-02T01:43:55.196771Z",
     "sources": [
       {
-        "digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
+        "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -203,12 +213,12 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "stale_fields": [
@@ -235,17 +245,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
-        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+        "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
+        "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       }
@@ -261,11 +271,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 21,
-    "unresolved": 21
+    "total": 22,
+    "unresolved": 22
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T14:59:05.198376Z",
+  "updated_at": "2026-11-02T01:43:55.196771Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -1,13 +1,15 @@
 ---
 spec_id: 316
 semantic_id: smartaihub.module-gitops-independent-delivery
-revision: R1.4
-date: 2026-11-01
-status: REVISED_DRAFT_NOT_IMPLEMENTED
+revision: R1.5
+date: 2026-11-02
+status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub GitHub Repository Federation, Targeted CI, Immutable Per-Module Release and Wrangler Deploy
 ---
 
 # SPEC-316 — GitHub and Independent Delivery
+
+> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 deployment, target, database, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
 
 ## 0. Intent
 
@@ -142,7 +144,9 @@ All new-platform Git operations and deployments MUST be commissioned/observable 
 
 ## R1.4 — Cross-SPEC owner reconciliation and execution contract (2026-11-01)
 
-> **R1.4 authoritative cross-spec review (2026-11-01):** This section is the controlling addendum for SPEC-312–324. When an earlier R0.x/R1.x addendum, specimen YAML, screenshot, or old SPEC conflicts with the latest owner decisions, follow this revision's [Cross-SPEC precedence and owner decisions](../../../docs/architecture/R1.4-OWNER-DECISION-PRECEDENCE.md). Historical sections remain for context; none may silently reintroduce a global gate. All changes in this artifact are proposals, not deployed code or official GitHub changes.
+> **Historical R1.4 provenance:** retained as the 2026-11-01 proposal record. For conflicting current requirements, R1.5 controls; see [R1.5 owner-decision precedence](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
+
+> **Historical R1.4 cross-spec review (2026-11-01):** This was the controlling addendum for the R1.4 proposal. It remains historical provenance; current conflicts follow R1.5 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md). Earlier sections remain for context and are not deployment or implementation evidence.
 
 
 ### R1.4 shared invariants (normative)
@@ -160,3 +164,13 @@ All new-platform Git operations and deployments MUST be commissioned/observable 
 ### SPEC-316 targeted closure
 
 **Release mechanics:** All migration development Goals originate from old authenticated Autonomous Implements. Dev target builds direct on Debian; Cloudflare deploy is only the *exact* explicitly selected `smartsihub.com` Worker/asset version with bounded target authority, provenance and rollback. GitHub tracks source, contracts and receipts, but is not required to be the sole deploy launcher. No blanket CI pass or all-module build required for scoped UAT; never silently recreate SPEC-311 decommissioned resources.
+
+---
+
+## R1.5 — Workers-native release integrity and target authorization (2026-11-02)
+
+Release each Worker/module independently through Wrangler or another authorized deployment client; GitHub Actions is not the only valid release authority. Build jobs use per-environment, least-privilege credentials scoped to named Workers and required bindings. Deployment checks assert the exact target ID, domain, application, runtime, database authority, source SHA and release identity before upload or traffic change. A missing or mismatched assertion fails closed.
+
+The release record SHOULD include provenance, dependency lock state, SBOM, build inputs and immutable artifact digest; use signed or otherwise verifiable artifacts where the selected distribution supports it. Review skills, generated code and third-party modules as supply-chain inputs. Restrict production effects to a separate production release identity and require separation of duties for high-impact production mutations. Rollback targets one module/release and does not alter unrelated modules or data. All applicable Worker secrets are declared with Wrangler secrets.required; deploy/version upload must fail when a required binding is absent, and runtime startup/readiness must fail closed if required configuration is unavailable. See SPEC-325 and the [R1.5 credential ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).
+
+Runner/Core packages, signed update manifests and shared-WebView client compatibility follow separate release identities and rollback paths from Workers. Windows SCM and Linux systemd lifecycle metadata must be explicit; an update cannot silently re-pair a device, downgrade protocol security, add an undeclared capability or bypass quarantine. Verify installer publisher, artifact digest, signer rotation and anti-downgrade behavior before remote execution is enabled.
