@@ -66,6 +66,7 @@ import {
 import { cn } from "@/lib/utils";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { createChatInferenceIdempotencyKey } from "@/lib/chatInferenceIdempotency";
+import { isSpecContinuationCommand } from "@/lib/specContinuationCommand";
 import { ImageLightbox } from "./media/ImageLightbox";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { SafeMarkdown } from "./SafeMarkdown";
@@ -4198,6 +4199,15 @@ export function ChatView({
       return;
     }
 
+    if (workspaceCommandMode === "chat" && onWorkspaceGoalSubmit && isSpecContinuationCommand(text)) {
+      if (messageAttachments.length > 0 || messageSelectedLibrarySources.length > 0) {
+        toast.error("คำสั่งต่อ SPEC เดิมยังไม่รองรับไฟล์แนบ กรุณานำไฟล์แนบออกแล้วส่งคำสั่งอีกครั้ง");
+        return;
+      }
+      onWorkspaceGoalSubmit(text, "development");
+      return;
+    }
+
     if (workspaceCommandMode && workspaceCommandMode !== "chat" && onWorkspaceGoalSubmit) {
       if (messageAttachments.length > 0 || messageSelectedLibrarySources.length > 0) {
         toast.error("Goal review ยังรับเฉพาะคำสั่งข้อความ กรุณานำไฟล์แนบออกก่อนเริ่ม Goal");
@@ -6796,7 +6806,7 @@ export function ChatView({
             <Button type="button" size="sm" variant={workspaceCommandMode === "mini_app" ? "default" : "outline"} aria-pressed={workspaceCommandMode === "mini_app"} onClick={() => onWorkspaceCommandModeChange("mini_app")}>Mini App Goal</Button>
             <span className="text-xs text-muted-foreground">
               {workspaceCommandMode === "chat"
-                ? "ส่งข้อความเข้า Chat ตามปกติ"
+                ? "ส่งข้อความเข้า Chat ตามปกติ; คำสั่งให้พัฒนาต่อจาก SPEC เดิมจะเปิด Development Goal review"
                 : "คำสั่งสั้นได้ ระบบจะให้ตรวจ Skill และขอบเขตใน Goal review ก่อนเริ่มงาน"}
             </span>
           </div>
