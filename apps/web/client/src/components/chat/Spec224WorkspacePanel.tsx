@@ -104,11 +104,12 @@ type Spec224TaskDraft = {
   modelPolicy: "auto" | "explicit";
   selectedModelId: string;
   reasoningEffort: string;
+  selectedFeatureSpec: string;
 };
 
 type Spec224TaskPreferences = Pick<Spec224TaskDraft,
   "selectedRunnerId" | "selectedWorkspace" | "harnessPolicy" | "selectedHarnessAdapterId" | "modelPolicy" | "selectedModelId" | "reasoningEffort"
->;
+> & Pick<Spec224TaskDraft, "developmentInputMode"> & { selectedFeatureSpec?: string };
 
 const FIRST_RUN_PILOT_SCOPE = ["apps/runner-app/tests/spec224-live-pilot/**"];
 const FIRST_RUN_PILOT_PROMPT = [
@@ -141,6 +142,8 @@ function readTaskPreferences(key: string): Partial<Spec224TaskPreferences> | nul
       ...(preferences.modelPolicy === "auto" || preferences.modelPolicy === "explicit" ? { modelPolicy: preferences.modelPolicy } : {}),
       ...(typeof preferences.selectedModelId === "string" ? { selectedModelId: preferences.selectedModelId.slice(0, 200) } : {}),
       ...(typeof preferences.reasoningEffort === "string" ? { reasoningEffort: preferences.reasoningEffort.slice(0, 32) } : {}),
+      ...(preferences.developmentInputMode === "prompt" || preferences.developmentInputMode === "spec" || preferences.developmentInputMode === "spec_prompt" ? { developmentInputMode: preferences.developmentInputMode } : {}),
+      ...(typeof preferences.selectedFeatureSpec === "string" ? { selectedFeatureSpec: preferences.selectedFeatureSpec.slice(0, 160) } : {}),
     };
   } catch {
     return null;
@@ -167,6 +170,7 @@ function readTaskDraft(key: string): Partial<Spec224TaskDraft> | null {
       ...(draft.modelPolicy === "auto" || draft.modelPolicy === "explicit" ? { modelPolicy: draft.modelPolicy } : {}),
       ...(typeof draft.selectedModelId === "string" ? { selectedModelId: draft.selectedModelId.slice(0, 200) } : {}),
       ...(typeof draft.reasoningEffort === "string" ? { reasoningEffort: draft.reasoningEffort.slice(0, 32) } : {}),
+      ...(typeof draft.selectedFeatureSpec === "string" ? { selectedFeatureSpec: draft.selectedFeatureSpec.slice(0, 160) } : {}),
     };
   } catch {
     return null;
@@ -298,7 +302,7 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, pilotMode = false, initialPrompt, initialRequestKind = "development" }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, pilotMode = false, initialPrompt, initialRequestKind = "development", resumeSpecId }: {
   conversationId: number | null;
   threadId?: string | null;
   simpleMode?: boolean;
@@ -307,6 +311,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   pilotMode?: boolean;
   initialPrompt?: string;
   initialRequestKind?: "development" | "mini_app";
+  resumeSpecId?: string;
 }) {
   const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
@@ -332,14 +337,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [targetDevices, setTargetDevices] = useState<Array<"mobile" | "tablet" | "desktop">>(["mobile", "desktop"]);
   const [designNotes, setDesignNotes] = useState("");
   const [miniAppPreviewUrl, setMiniAppPreviewUrl] = useState<string | null>(null);
-  const [developmentInputMode, setDevelopmentInputMode] = useState<"prompt" | "spec" | "spec_prompt">("prompt");
+  const [developmentInputMode, setDevelopmentInputMode] = useState<"prompt" | "spec" | "spec_prompt">(resumeSpecId ? "spec" : "prompt");
   const mode = developmentInputMode === "prompt" ? "prompt" : "spec_set";
-  const [specSource, setSpecSource] = useState<"upload" | "catalog">("upload");
+  const [specSource, setSpecSource] = useState<"upload" | "catalog">(resumeSpecId ? "catalog" : "upload");
   const lastPlatformWorkspaceKey = useRef<string | null>(null);
   const creatingTaskInFlight = useRef(false);
   const startInFlight = useRef(false);
   const [featureSpecSearch, setFeatureSpecSearch] = useState("");
   const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
+  const continuationSpecRestored = useRef(false);
+  const continuationResumeAttempt = useRef<string | null>(null);
+  const [continuationNotice, setContinuationNotice] = useState<string | null>(null);
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">(pilotMode ? "development" : initialRequestKind);
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
@@ -353,6 +361,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [preparing, setPreparing] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [startKeys, setStartKeys] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!resumeSpecId) return;
+    setDevelopmentInputMode("spec");
+    setRequestKind("development");
+    setSpecSource("catalog");
+  }, [resumeSpecId]);
 
   useEffect(() => {
     if (!draftKey) return;
@@ -386,13 +401,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       if (preferences.modelPolicy) setModelPolicy(preferences.modelPolicy);
       if (preferences.selectedModelId !== undefined) setSelectedModelId(preferences.selectedModelId);
       if (preferences.reasoningEffort !== undefined) setReasoningEffort(preferences.reasoningEffort);
+      if (!resumeSpecId && preferences.developmentInputMode) setDevelopmentInputMode(preferences.developmentInputMode);
+      if (preferences.selectedFeatureSpec) {
+        setSelectedFeatureSpec(preferences.selectedFeatureSpec);
+        setSpecSource("catalog");
+      }
     }
     if (draft) {
       restoringTaskDraft.current = restoreConversationSelection && draft.selectedWorkspace !== undefined;
       if (draft.prompt !== undefined) setPrompt(draft.prompt);
       if (draft.workspaceAccessMode) setWorkspaceAccessMode(draft.workspaceAccessMode);
-      if (draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
-      if (draft.requestKind) setRequestKind(draft.requestKind);
+      if (!resumeSpecId && draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
+      if (!resumeSpecId && draft.requestKind) setRequestKind(draft.requestKind);
       if (restoreConversationSelection && draft.selectedRunnerId !== undefined) setSelectedRunnerId(draft.selectedRunnerId);
       if (restoreConversationSelection && draft.selectedWorkspace !== undefined) {
         setSelected(draft.selectedWorkspace);
@@ -404,9 +424,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       if (restoreConversationSelection && draft.modelPolicy) setModelPolicy(draft.modelPolicy);
       if (restoreConversationSelection && draft.selectedModelId !== undefined) setSelectedModelId(draft.selectedModelId);
       if (restoreConversationSelection && draft.reasoningEffort !== undefined) setReasoningEffort(draft.reasoningEffort);
+      if (restoreConversationSelection && draft.selectedFeatureSpec !== undefined) {
+        setSelectedFeatureSpec(draft.selectedFeatureSpec);
+        if (draft.selectedFeatureSpec) setSpecSource("catalog");
+      }
     }
     setHydratedDraftKey(draftKey);
-  }, [draftKey, draftOwnerKey, preferencesKey]);
+  }, [draftKey, draftOwnerKey, preferencesKey, resumeSpecId]);
 
   useEffect(() => {
     if (!draftKey || hydratedDraftKey !== draftKey) return;
@@ -423,13 +447,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       modelPolicy,
       selectedModelId,
       reasoningEffort,
+      selectedFeatureSpec,
     };
     try {
       window.sessionStorage.setItem(draftKey, JSON.stringify(draft));
     } catch {
       // Storage may be disabled or full; the in-memory draft remains usable.
     }
-  }, [draftKey, hydratedDraftKey, prompt, workspaceAccessMode, developmentInputMode, requestKind, selectedRunnerId, selected, budgetCapUsd, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort]);
+  }, [draftKey, hydratedDraftKey, prompt, workspaceAccessMode, developmentInputMode, requestKind, selectedRunnerId, selected, budgetCapUsd, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort, selectedFeatureSpec]);
 
   useEffect(() => {
     if (!preferencesKey || !draftKey || hydratedDraftKey !== draftKey) return;
@@ -442,13 +467,15 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       modelPolicy,
       selectedModelId,
       reasoningEffort,
+      developmentInputMode,
+      selectedFeatureSpec,
     };
     try {
       window.localStorage.setItem(preferencesKey, JSON.stringify(preferences));
     } catch {
       // Storage may be disabled or full; current selections remain usable.
     }
-  }, [preferencesKey, draftKey, hydratedDraftKey, conversationId, selectedRunnerId, selected, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort]);
+  }, [preferencesKey, draftKey, hydratedDraftKey, conversationId, selectedRunnerId, selected, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort, developmentInputMode, selectedFeatureSpec]);
 
   function addVisualReferences(files: FileList | null) {
     if (!files?.length) return;
@@ -609,6 +636,21 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     spec.requiredDeploymentTargetId && spec.requiredDeploymentTargetId !== selectedWorkspace?.deploymentTarget?.id,
   );
   const unavailableTargetDomain = unavailableTargetSpecs[0]?.requiredDeploymentTargetDomain;
+  useEffect(() => {
+    if (!resumeSpecId || continuationSpecRestored.current || !featureSpecsQuery.data) return;
+    continuationSpecRestored.current = true;
+    const spec = availableFeatureSpecs.find(item => item.id.match(new RegExp(`^${resumeSpecId}-`)));
+    if (!spec) {
+      setContinuationNotice(`ไม่พบ SPEC-${resumeSpecId} ในรายการของ workspace นี้ จึงยังไม่สั่งทำงานต่อ`);
+      return;
+    }
+    setDevelopmentInputMode("spec");
+    setRequestKind("development");
+    setSpecSource("catalog");
+    setSelectedFeatureSpec(spec.id);
+    preferencesTouched.current = true;
+    setContinuationNotice(`เปิดบริบท SPEC-${resumeSpecId} จาก workspace เดิมแล้ว กำลังตรวจว่ามี WorkUnit เดิมที่ทำต่อได้หรือไม่`);
+  }, [resumeSpecId, featureSpecsQuery.data, availableFeatureSpecs]);
   const hasWorkspaceForUnavailableTarget = unavailableTargetSpecs.some(spec =>
     platformWorkspaces.some(workspace => workspace.deploymentTarget?.id === spec.requiredDeploymentTargetId),
   );
@@ -1124,8 +1166,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       const result = await resumeRunMutation.mutateAsync({ conversationId: targetConversationId, runId });
       await workspaceQuery.refetch();
       if (result.dispatchStatus === "ENQUEUED") {
+        if (continuationResumeAttempt.current === runId) setContinuationNotice("ส่ง DevelopmentRun เดิมใน Project นี้เข้าคิวแล้ว");
         toast.success(simpleMode ? "ส่งงานเดิมเข้าคิวเพื่อทำต่อแล้ว" : `ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
       } else if (result.dispatchStatus === "PENDING_AUTHORIZATION") {
+        if (continuationResumeAttempt.current === runId) setContinuationNotice("พบ Run เดิมแล้ว แต่ยังรอการอนุมัติสิทธิ์ก่อนทำงานต่อ");
         const authorization = result.authorization as { reasons?: unknown; status?: unknown } | null | undefined;
         const reasons = Array.isArray(authorization?.reasons)
           ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
@@ -1133,6 +1177,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         const reasonText = reasons || (typeof authorization?.status === "string" ? authorization.status : result.goalAdmissionStatus ?? result.dispatchStatus);
         toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasonText}`);
       } else {
+        if (continuationResumeAttempt.current === runId) setContinuationNotice("พบ Run เดิมแล้ว แต่ยังทำงานต่อไม่ได้ โปรดตรวจสถานะสิทธิ์และความพร้อมใน Task Control");
         const authorization = result.authorization as { reasons?: unknown; status?: unknown; errorCode?: unknown; ownerAction?: unknown } | null | undefined;
         const reasons = Array.isArray(authorization?.reasons)
           ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
@@ -1146,9 +1191,30 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         toast.error(simpleMode ? ownerAction ?? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อมของ Runner แล้วลองอีกครั้ง" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
       }
     } catch (error) {
+      if (continuationResumeAttempt.current === runId) setContinuationNotice("พบ Run เดิมแล้ว แต่ระบบส่งทำงานต่อไม่สำเร็จ โปรดตรวจข้อความแจ้งเตือนและสถานะใน Task Control");
       toast.error(presentCustomerError(error, "ทำ DevelopmentRun เดิมต่อไม่สำเร็จ"));
     }
   }
+
+  useEffect(() => {
+    if (!resumeSpecId || !conversationId || !canonicalHandoff || !workspaceQuery.data) return;
+    const nextWorkUnit = canonicalHandoff.nextReadyWorkunit;
+    const matchingRun = nextWorkUnit
+      ? workspaceQuery.data.developmentRuns?.find(run => run.workPackageExternalId === nextWorkUnit)
+      : undefined;
+    if (!matchingRun) {
+      setContinuationNotice(`โหลด SPEC-${resumeSpecId} ใน Project เดิมแล้ว แต่ยังไม่พบ DevelopmentRun ที่ตรงกับ WorkUnit ถัดไป${nextWorkUnit ? ` (${nextWorkUnit})` : ""}; ระบบยังไม่สร้างงานใหม่อัตโนมัติ`);
+      return;
+    }
+    if (["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(matchingRun.state)) {
+      setContinuationNotice(`พบ Run เดิมของ WorkUnit ${nextWorkUnit} แต่สถานะ ${developmentRunStateLabel(matchingRun.state)} ไม่สามารถ resume ได้`);
+      return;
+    }
+    if (continuationResumeAttempt.current === matchingRun.runId) return;
+    continuationResumeAttempt.current = matchingRun.runId;
+    setContinuationNotice(`พบ WorkUnit ${nextWorkUnit} ใน Project เดิม กำลังตรวจสิทธิ์และส่ง Run เดิมทำงานต่อ`);
+    void resumeExistingRun(matchingRun.runId, matchingRun.conversationId ?? conversationId);
+  }, [resumeSpecId, conversationId, canonicalHandoff?.nextReadyWorkunit, workspaceQuery.data?.developmentRuns]);
 
   if (pilotMode) {
     const pilotRuns = (workspaceQuery.data?.developmentRuns ?? []).filter(run => run.isFirstRunPilot);
@@ -1688,7 +1754,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       <select
                         id="feature-spec-select"
                         value={selectedFeatureSpec}
-                        onChange={event => setSelectedFeatureSpec(event.target.value)}
+                        onChange={event => { preferencesTouched.current = true; setSelectedFeatureSpec(event.target.value); }}
                         disabled={!platformWorkspaceSelected || bindMutation.isPending || featureSpecsQuery.isLoading || !featureSpecsQuery.data?.specs.length}
                         className="w-full rounded-md border border-[var(--color-border)] bg-background px-3 py-2 text-sm"
                       >
@@ -1757,6 +1823,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {workspaceQuery.data?.developmentRuns?.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
               <p className="text-xs font-medium">งานล่าสุดใน workspace นี้</p>
+              {continuationNotice ? <p className="mt-1 rounded border border-[var(--color-border)] p-2 text-xs" role="status">{continuationNotice}</p> : null}
               {requestKind === "development" && requiresTenantLedger && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
               <ul className="mt-1 list-inside list-disc text-xs">
                 {workspaceQuery.data.developmentRuns.map(run => (
@@ -1780,6 +1847,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               </ul>
             </section>
           ) : null}
+          {continuationNotice && !workspaceQuery.data?.developmentRuns?.length ? <p className="mt-3 rounded-md border border-[var(--color-border)] p-2 text-xs" role="status">{continuationNotice}</p> : null}
           {!conversationId && requestKind === "development" ? (
             <Button
               type="button"

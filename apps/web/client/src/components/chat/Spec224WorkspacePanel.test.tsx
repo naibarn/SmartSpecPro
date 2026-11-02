@@ -469,6 +469,41 @@ describe("Core goal readiness feedback", () => {
     expect(mocks.start).not.toHaveBeenCalled();
   });
 
+  it("restores a Chat-requested SPEC and resumes the matching existing WorkUnit", async () => {
+    usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
+      availability: { available: true, status: "current" },
+      specSet: null,
+      developmentRuns: [{
+        runId: "run-spec-312",
+        conversationId: 8,
+        state: "DISCOVERY",
+        workPackageId: "pkg-r14-core-p1-first-slice",
+        workPackageExternalId: "r14-core-p1-first-slice",
+        specSetRevision: 2,
+        revision: 1,
+        economicsMode: "provider_managed",
+      }],
+    };
+    mocks.featureSpecs = [{ id: "312-smartaihub-modular-saas-rebuild-master-plan", title: "SPEC-312 · Modular SaaS Rebuild", path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md", summary: "Continue the modular platform." }];
+    mocks.featureSpecContext = {
+      id: "312-smartaihub-modular-saas-rebuild-master-plan",
+      title: "SPEC-312 · Modular SaaS Rebuild",
+      path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      summary: "Continue the modular platform.",
+      digest: "c".repeat(64),
+      handoff: { status: "CURRENT", nextReadyWorkunit: "r14-core-p1-first-slice", nextAction: "Continue the existing WorkUnit.", resumePoint: "Continue the existing WorkUnit.", openRequirements: [] },
+    };
+    mocks.resume.mockResolvedValue({ runId: "run-spec-312", jobId: "job-existing", dispatchStatus: "ENQUEUED" });
+
+    render(<Spec224WorkspacePanel conversationId={8} simpleMode resumeSpecId="312" />);
+
+    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 8, runId: "run-spec-312" }));
+    expect(screen.getByText(/ส่ง DevelopmentRun เดิมใน Project นี้เข้าคิวแล้ว/)).toBeInTheDocument();
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
   it("binds an existing conversation to the authoritative SmartAIHub source workspace when selected", async () => {
     usePlatformSourceWorkspace();
     render(<Spec224WorkspacePanel conversationId={8} />);

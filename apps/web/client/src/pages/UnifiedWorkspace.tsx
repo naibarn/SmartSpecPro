@@ -111,6 +111,7 @@ export default function UnifiedWorkspace() {
     { enabled: Boolean(conversationId), staleTime: 30_000, retry: false }
   );
   const title = titleQuery.data?.title ?? null;
+  const conversationProjectId = typeof titleQuery.data?.projectId === "string" ? titleQuery.data.projectId : null;
   useEffect(() => {
     const legacyPanel = params.get("panel");
     const legacyBrowserOrAlert =
@@ -204,9 +205,14 @@ export default function UnifiedWorkspace() {
   const openGoalReviewFromChat = (prompt: string, intent: Exclude<ChatCommandIntent, "chat">) => {
     if (!isAdmin || !conversationId || !prompt.trim()) return;
     setChatCommandIntent("chat");
+    const continuation = intent === "development"
+      && /(?:ต่อจากเดิม|ทำต่อ|ทำงานเดิมต่อ|continue|resume)/i.test(prompt)
+      ? /(?:spec(?:ification)?\s*[-#]?\s*|สเปก\s*|ข้อกำหนด\s*)(\d{3})/i.exec(prompt)?.[1]
+      : undefined;
     sessionStorage.setItem(`workspace-goal-draft:${conversationId}`, JSON.stringify({
-      prompt: addSkillFirstGuidance(prompt, intent),
+      ...(!continuation ? { prompt: addSkillFirstGuidance(prompt, intent) } : {}),
       intent,
+      ...(continuation ? { resumeSpecId: continuation } : {}),
       returnToChat: true,
       originalPrompt: prompt.trim(),
     }));
@@ -214,7 +220,8 @@ export default function UnifiedWorkspace() {
     next.set("mode", "tasks");
     next.set("c", String(conversationId));
     if (threadId) next.set("t", threadId);
-    if (params.get("projectId")) next.set("projectId", params.get("projectId")!);
+    const projectId = conversationProjectId ?? params.get("projectId");
+    if (projectId) next.set("projectId", projectId);
     next.set("newGoal", "1");
     setLocation(`/chat?${next.toString()}`);
   };
@@ -573,7 +580,7 @@ export default function UnifiedWorkspace() {
         />
       ) : null}
       {mode === "tasks" && isAdmin && params.get("newGoal") === "1" && conversationId ? (() => {
-        let draft: { prompt?: string; intent?: StartIntent } = {};
+        let draft: { prompt?: string; intent?: StartIntent; resumeSpecId?: string } = {};
         try { draft = JSON.parse(sessionStorage.getItem(`workspace-goal-draft:${conversationId}`) ?? "{}"); } catch { /* ignore corrupt local draft */ }
         return <Dialog open={params.get("newGoal") === "1"} onOpenChange={open => {
           if (!open) {
@@ -596,6 +603,7 @@ export default function UnifiedWorkspace() {
               simpleMode
               initialPrompt={draft.prompt}
               initialRequestKind={draft.intent === "mini_app" ? "mini_app" : "development"}
+              resumeSpecId={draft.resumeSpecId}
               onCreateConversation={async title => {
                 const created = await createConversation.mutateAsync({ title });
                 return created.id;

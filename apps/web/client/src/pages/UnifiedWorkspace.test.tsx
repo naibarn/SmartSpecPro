@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   goals: [] as Array<Record<string, any>>,
   runners: [] as Array<Record<string, any>>,
   recentThreads: [] as Array<Record<string, any>>,
+  conversationProjectId: null as string | null,
+  goalPrompt: "fix login",
   create: vi.fn(async () => ({ id: 902 })),
   user: { role: "admin" } as { role: string } | null,
 }));
@@ -65,7 +67,7 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({ mutateAsync: state.create }),
       },
       getConversation: {
-        useQuery: () => ({ data: { id: 901, title: "Saved session" } }),
+        useQuery: () => ({ data: { id: 901, title: "Saved session", projectId: state.conversationProjectId } }),
       },
       listRecentConversationThreads: {
         useInfiniteQuery: () => ({
@@ -83,11 +85,12 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, threadId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind }: { conversationId: number; threadId?: string | null; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string }) => (
+  Spec224WorkspacePanel: ({ conversationId, threadId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind, resumeSpecId }: { conversationId: number; threadId?: string | null; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string; resumeSpecId?: string }) => (
     <>
       <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
       {threadId ? <p data-testid="goal-review-thread">{threadId}</p> : null}
       {initialPrompt ? <p data-testid="goal-review-prompt">{initialRequestKind}: {initialPrompt}</p> : null}
+      {resumeSpecId ? <p data-testid="goal-review-resume-spec">{resumeSpecId}</p> : null}
     </>
   ),
 }));
@@ -129,7 +132,7 @@ vi.mock("@/components/chat/ChatView", () => ({
       {workspaceCommandMode ? (
         <div aria-label="Chat command mode">
           <button type="button" onClick={() => onWorkspaceCommandModeChange?.("development")}>Development task mode</button>
-          <button type="button" onClick={() => onWorkspaceGoalSubmit?.("fix login", workspaceCommandMode)}>Review current chat as Goal</button>
+          <button type="button" onClick={() => onWorkspaceGoalSubmit?.(state.goalPrompt, workspaceCommandMode)}>Review current chat as Goal</button>
         </div>
       ) : null}
       {showBrowserSessionEntry ? (
@@ -193,6 +196,8 @@ describe("UnifiedWorkspace", () => {
       },
     ];
     state.recentThreads = [];
+    state.conversationProjectId = null;
+    state.goalPrompt = "fix login";
     state.user = { role: "admin" };
     window.localStorage.clear();
   });
@@ -340,6 +345,38 @@ describe("UnifiedWorkspace", () => {
     act(() => { state.search = "mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1"; });
     view.rerender(<UnifiedWorkspace />);
     expect((await screen.findByTestId("goal-review-thread")).textContent).toBe("thread-55");
+  });
+
+  it("opens the saved SPEC project context from a Chat continuation command", async () => {
+    state.search = "c=901&t=thread-55&projectId=project-1";
+    state.goalPrompt = "ให้ทำงานพัฒนา spec 312 ต่อจากเดิม";
+    const view = render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Development task mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review current chat as Goal" }));
+
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith(
+      "/chat?mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1",
+    ));
+    const savedDraft = JSON.parse(sessionStorage.getItem("workspace-goal-draft:901") ?? "{}");
+    expect(savedDraft).toMatchObject({ intent: "development", resumeSpecId: "312", returnToChat: true });
+    expect(savedDraft.prompt).toBeUndefined();
+
+    act(() => { state.search = "mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect(await screen.findByTestId("goal-review-resume-spec")).toHaveTextContent("312");
+  });
+
+  it("recovers the saved project id from the conversation when the Chat URL has no project id", async () => {
+    state.search = "c=901&t=thread-55";
+    state.conversationProjectId = "project-1";
+    state.goalPrompt = "ให้ทำงานพัฒนา spec 312 ต่อจากเดิม";
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Development task mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review current chat as Goal" }));
+
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith(
+      "/chat?mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1",
+    ));
   });
 
   it("binds a first Chat conversation to a project selected from authorized session context", async () => {
