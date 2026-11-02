@@ -1177,8 +1177,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         const reasonText = reasons || (typeof authorization?.status === "string" ? authorization.status : result.goalAdmissionStatus ?? result.dispatchStatus);
         toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasonText}`);
       } else {
-        if (continuationResumeAttempt.current === runId) setContinuationNotice("พบ Run เดิมแล้ว แต่ยังทำงานต่อไม่ได้ โปรดตรวจสถานะสิทธิ์และความพร้อมใน Task Control");
         const authorization = result.authorization as { reasons?: unknown; status?: unknown; errorCode?: unknown; ownerAction?: unknown } | null | undefined;
+        if (continuationResumeAttempt.current === runId) {
+          const terminalRun = authorization?.status === "RUN_TERMINAL_FAILED" || authorization?.status === "RUN_TERMINAL_CLOSED";
+          setContinuationNotice(terminalRun
+            ? "Run เดิมปิดแล้ว สร้าง Goal ใหม่เพื่อทำงานต่อจาก Project และ Workspace เดิม"
+            : "พบ Run เดิมแล้ว แต่ยังทำงานต่อไม่ได้ โปรดตรวจสถานะและความพร้อมใน Task Control");
+        }
         const reasons = Array.isArray(authorization?.reasons)
           ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
           : "";
@@ -1188,7 +1193,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           || result.goalAdmissionStatus
           || result.dispatchStatus;
         const ownerAction = typeof authorization?.ownerAction === "string" ? authorization.ownerAction : null;
-        toast.error(simpleMode ? ownerAction ?? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อมของ Runner แล้วลองอีกครั้ง" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
+        const terminalRun = authorization?.status === "RUN_TERMINAL_FAILED" || authorization?.status === "RUN_TERMINAL_CLOSED";
+        toast.error(terminalRun
+          ? ownerAction ?? "Run เดิมปิดแล้ว ให้สร้าง Goal ใหม่เพื่อทำงานต่อจาก Project และ Workspace เดิม"
+          : simpleMode ? ownerAction ?? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อมของ Runner แล้วลองอีกครั้ง" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
       }
     } catch (error) {
       if (continuationResumeAttempt.current === runId) setContinuationNotice("พบ Run เดิมแล้ว แต่ระบบส่งทำงานต่อไม่สำเร็จ โปรดตรวจข้อความแจ้งเตือนและสถานะใน Task Control");

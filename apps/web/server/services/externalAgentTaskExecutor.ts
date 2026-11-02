@@ -6,6 +6,7 @@ import {
 } from "./agentControlPlaneContracts";
 import { commitSpec224ProtectedExecutionStart } from "./spec224RuntimeAdmission";
 import type { Spec224ProtectedExecutionStartResult } from "./spec224RuntimeAdmission";
+import { commitSpec224GoalDelegatedExecutionStart, type Spec224GoalExecutionStart } from "./jobControlPlane";
 
 export type ExternalAgentTaskDispatchInput = {
   manifest: AgentTaskManifest;
@@ -17,6 +18,7 @@ export type ExternalAgentTaskDispatchInput = {
     Spec224ProtectedExecutionStartResult,
     { outcome: "STARTED" | "ALREADY_STARTED" }
   >;
+  goalExecutionStart?: Spec224GoalExecutionStart;
 };
 
 export type ExternalAgentTaskDispatcher = (
@@ -52,7 +54,17 @@ export function isExternalAgentTaskDispatcherConfigured(): boolean {
 
 export const executeExternalAgentTask: JobExecutor = async input => {
   const rawInput = input.context.input;
-  if (input.context.requiresSpec224Admission) {
+  const requiresProtectedStart = input.context.requiresSpec224ProtectedExecutionStart === true;
+  const requiresGoalStart = input.context.requiresSpec224GoalExecutionStart === true;
+  if (input.context.requiresSpec224Admission && requiresProtectedStart === requiresGoalStart) {
+    throw new JobControlPlaneError(
+      "SPEC224_RUNTIME_SCOPE_UNRESOLVED",
+      "DevelopmentRun dispatch requires exactly one canonical execution-start authority"
+    );
+  }
+  let protectedExecutionStart: ExternalAgentTaskDispatchInput["protectedExecutionStart"];
+  let goalExecutionStart: Spec224GoalExecutionStart | undefined;
+  if (requiresProtectedStart || requiresGoalStart) {
     if (
       !input.context.spec224AdmissionBindingValid ||
       input.lease.jobId !== input.context.jobId ||
@@ -63,16 +75,32 @@ export const executeExternalAgentTask: JobExecutor = async input => {
         "DevelopmentRun projection does not match the current canonical worker fence"
       );
     }
-    const start = await commitSpec224ProtectedExecutionStart({
-      tenantId: input.context.tenantId,
-      workerJobId: input.context.jobId,
-      lease: input.lease,
-    });
-    if (start.outcome === "DENIED") {
-      throw new JobControlPlaneError(
-        start.reason,
-        "DevelopmentRun protected dispatch is fail-closed until canonical admission commits a durable execution-start"
-      );
+    if (requiresProtectedStart) {
+      const start = await commitSpec224ProtectedExecutionStart({
+        tenantId: input.context.tenantId,
+        workerJobId: input.context.jobId,
+        lease: input.lease,
+      });
+      if (start.outcome === "DENIED") {
+        throw new JobControlPlaneError(
+          start.reason,
+          "Platform Engineering dispatch requires canonical protected execution-start admission"
+        );
+      }
+      protectedExecutionStart = start;
+    } else {
+      if (input.context.requestedByUserId === undefined) {
+        throw new JobControlPlaneError("SPEC224_GOAL_START_ACTOR_REQUIRED", "Owner-scoped Goal start requires its authenticated actor");
+      }
+      const start = await commitSpec224GoalDelegatedExecutionStart({
+        tenantId: input.context.tenantId,
+        requestedByUserId: input.context.requestedByUserId,
+        lease: input.lease,
+      });
+      if (start.outcome === "DENIED") {
+        throw new JobControlPlaneError(start.reason, "Owner-scoped Goal Grant is no longer valid for this Runner attempt");
+      }
+      goalExecutionStart = start;
     }
     const manifest = validateAgentTaskManifest(
       rawInput && typeof rawInput === "object" && !Array.isArray(rawInput)
@@ -101,7 +129,8 @@ export const executeExternalAgentTask: JobExecutor = async input => {
       lease: input.lease,
       reporter: input.reporter,
       controlPlane: input.controlPlane,
-      protectedExecutionStart: start,
+      ...(protectedExecutionStart ? { protectedExecutionStart } : {}),
+      ...(goalExecutionStart ? { goalExecutionStart } : {}),
     });
   }
   const manifest = validateAgentTaskManifest(

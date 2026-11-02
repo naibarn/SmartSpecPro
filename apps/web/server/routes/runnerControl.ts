@@ -39,7 +39,7 @@ import {
   compareCachedInternalToken,
   getCachedRunnerControlPlaneOrigin,
 } from "../services/appRuntimeConfig";
-import { createJobControlPlane } from "../services/jobControlPlane";
+import { createJobControlPlane, hasSpec224GoalDelegatedExecutionStart } from "../services/jobControlPlane";
 import { recordSpec224RunnerDispatchDenied } from "../services/spec224AdmissionAudit";
 import { dispatchWithPersistedSpec224RunnerStart } from "../services/spec224RuntimeAdmission";
 import {
@@ -782,6 +782,8 @@ export async function dispatchRunnerJobCommand(
   const requiresSpec224Admission = Boolean(
     jobContext?.requiresSpec224Admission
   );
+  const requiresSpec224ProtectedExecutionStart = Boolean(jobContext?.requiresSpec224ProtectedExecutionStart);
+  const requiresSpec224GoalExecutionStart = Boolean(jobContext?.requiresSpec224GoalExecutionStart);
   const pendingInputGrant = pendingSpec224InputGrants.get(command.commandId);
   if (command.inputRef.startsWith("spec224-input:")) {
     const mismatch =
@@ -871,7 +873,26 @@ export async function dispatchRunnerJobCommand(
       PROTECTED_RUNNER_SEND_TIMEOUT_MS
     );
   };
-  if (command.commandType === "execute" && requiresSpec224Admission) {
+  if (command.commandType === "execute" && requiresSpec224GoalExecutionStart) {
+    const persistedGoalStartProofValid = await hasSpec224GoalDelegatedExecutionStart({ command });
+    assertSpec224RunnerCommandAdmissionBoundary({
+      commandType: command.commandType,
+      requiresSpec224Admission: true,
+      persistedStartProofValid: persistedGoalStartProofValid,
+    });
+    try {
+      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
+      await sendRunnerSocketAndWait(channel.ws, envelope, PROTECTED_RUNNER_SEND_TIMEOUT_MS);
+      channel.sentCommands.set(command.commandId, { fingerprint, state: "sent" });
+      if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
+    } catch (error) {
+      const cachedCommand = channel.sentCommands.get(command.commandId);
+      if (cachedCommand?.state === "dispatching") {
+        channel.sentCommands.set(command.commandId, { ...cachedCommand, state: "unknown" });
+      }
+      throw error;
+    }
+  } else if (command.commandType === "execute" && requiresSpec224ProtectedExecutionStart) {
     try {
       const result = await dispatchWithPersistedSpec224RunnerStart({
         tenantId: command.tenantId,

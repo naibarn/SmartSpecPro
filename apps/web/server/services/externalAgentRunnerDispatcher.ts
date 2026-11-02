@@ -161,6 +161,7 @@ export function createExternalAgentTaskDispatcher(
       adapterVersionConstraint: "0.1.0",
       idempotencyKey:
         startProof?.eventIdempotencyKey ??
+        input.goalExecutionStart?.eventIdempotencyKey ??
         `agent:${input.manifest.taskId}:plan:${input.manifest.planId}:${input.manifest.planRevision}`.slice(
           0,
           128

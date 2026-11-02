@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import type { JobExecutorContext } from "../jobExecutor";
 import * as runtimeAdmission from "../spec224RuntimeAdmission";
+import * as jobControlPlane from "../jobControlPlane";
 import {
   configureExternalAgentTaskDispatcher,
   resetExternalAgentTaskDispatcherForTests,
@@ -43,6 +44,8 @@ const context = {
   timeoutSeconds: 60,
   timeoutPolicy: { softTimeoutMs: 1_000, hardTimeoutMs: 60_000 },
   requiresSpec224Admission: false,
+  requiresSpec224GoalExecutionStart: false,
+  requiresSpec224ProtectedExecutionStart: false,
   spec224AdmissionBindingValid: false,
   workerJobFencingVersion: 0,
   statusReason: null,
@@ -177,6 +180,7 @@ describe("Feature 206 external agent executor registration", () => {
             },
           },
           requiresSpec224Admission: true,
+          requiresSpec224ProtectedExecutionStart: true,
           spec224AdmissionBindingValid: true,
         },
         lease: {
@@ -259,6 +263,7 @@ describe("Feature 206 external agent executor registration", () => {
         context: {
           ...context,
           requiresSpec224Admission: true,
+          requiresSpec224ProtectedExecutionStart: true,
           spec224AdmissionBindingValid: true,
         },
         lease: {
@@ -270,6 +275,47 @@ describe("Feature 206 external agent executor registration", () => {
       })
     ).rejects.toMatchObject({ code: "SPEC224_RUNTIME_BINDING_STALE" });
     expect(dispatcher).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a DevelopmentRun has no canonical scope classification", async () => {
+    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve("external_agent_task", "feature-186-v1");
+    await expect(registration!.executor({
+      context: { ...context, requiresSpec224Admission: true, spec224AdmissionBindingValid: true },
+      lease: { jobId: context.jobId, attemptId: "attempt-1", leaseToken: "lease-token", fencingVersion: 0,
+        expiresAt: "2099-01-01T00:00:00.000Z" },
+      reporter: {} as any,
+      controlPlane: {} as any,
+    })).rejects.toMatchObject({ code: "SPEC224_RUNTIME_SCOPE_UNRESOLVED" });
+    expect(dispatcher).not.toHaveBeenCalled();
+  });
+
+  it("uses the owner Goal Grant start fence for explicitly tenant-scoped DevelopmentRuns", async () => {
+    const goalStart = {
+      outcome: "STARTED" as const,
+      runId: "run-1",
+      approvalRef: "approval-1",
+      eventIdempotencyKey: "spec224:goal-execution-started:run-1:attempt-1",
+    };
+    const startSpy = vi.spyOn(jobControlPlane, "commitSpec224GoalDelegatedExecutionStart").mockResolvedValue(goalStart);
+    const protectedStartSpy = vi.spyOn(runtimeAdmission, "commitSpec224ProtectedExecutionStart");
+    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve("external_agent_task", "feature-186-v1");
+
+    await expect(registration!.executor({
+      context: { ...context, requiresSpec224Admission: true, requiresSpec224GoalExecutionStart: true,
+        spec224AdmissionBindingValid: true },
+      lease: { jobId: context.jobId, attemptId: "attempt-1", leaseToken: "lease-token", fencingVersion: 0,
+        expiresAt: "2099-01-01T00:00:00.000Z" },
+      reporter: {} as any,
+      controlPlane: {} as any,
+    })).resolves.toEqual({ output: { accepted: true } });
+
+    expect(startSpy).toHaveBeenCalledOnce();
+    expect(protectedStartSpy).not.toHaveBeenCalled();
+    expect(dispatcher).toHaveBeenCalledWith(expect.objectContaining({ goalExecutionStart: goalStart }));
   });
 
   it("forwards only a committed protected-start identity to the Runner dispatcher", async () => {
@@ -297,6 +343,7 @@ describe("Feature 206 external agent executor registration", () => {
         context: {
           ...context,
           requiresSpec224Admission: true,
+          requiresSpec224ProtectedExecutionStart: true,
           spec224AdmissionBindingValid: true,
         },
         lease: {

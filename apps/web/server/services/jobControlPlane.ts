@@ -49,6 +49,7 @@ import { validateSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority"
 import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContracts";
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
+import type { RunnerJobCommand } from "./runnerContracts";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import { evaluateSpec224GoalDelegation, mapSpec224GoalGrantAuthorityEvidence, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 
@@ -1222,6 +1223,151 @@ function buildDefaultRepository(): JobControlPlaneRepository {
 }
 
 export const defaultJobControlPlaneRepository = buildDefaultRepository();
+
+export type Spec224GoalExecutionStart = {
+  outcome: "STARTED" | "ALREADY_STARTED";
+  runId: string;
+  approvalRef: string;
+  eventIdempotencyKey: string;
+};
+
+export type Spec224GoalExecutionStartResult = Spec224GoalExecutionStart | {
+  outcome: "DENIED";
+  reason: string;
+};
+
+/**
+ * Owner-scoped Goal runs use the exact approved Goal Grant and held budget as
+ * their start authority. Platform Engineering runs continue through the
+ * stronger source-attestation/recovery-grant admission path.
+ */
+export async function commitSpec224GoalDelegatedExecutionStart(
+  input: { tenantId: string; requestedByUserId: number; lease: LeaseContext },
+  repository: JobControlPlaneRepository = defaultJobControlPlaneRepository,
+): Promise<Spec224GoalExecutionStartResult> {
+  return repository.transaction(async repo => {
+    const job = await repo.findJobForUpdate?.(input.lease.jobId);
+    if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId ||
+      job.status !== "running" ||
+      job.fencingVersion !== input.lease.fencingVersion)
+      return { outcome: "DENIED", reason: "SPEC224_GOAL_START_JOB_FENCE_INVALID" };
+
+    const inputJson = job.inputJson as Record<string, any> | null;
+    const progressJson = job.progressJson as Record<string, any> | null;
+    const run = (progressJson?.spec224 ?? inputJson?.spec224Run) as Record<string, any> | null;
+    const metadata = run?.metadata as Record<string, any> | null;
+    const execution = metadata?.spec224Execution as Record<string, any> | null;
+    const manifest = inputJson?.manifest as Record<string, any> | null;
+    const binding = (progressJson?.spec224Authorization as Record<string, any> | null)?.binding ??
+      (manifest?.policyBinding as Record<string, any> | null);
+    const attempt = await repo.findAttemptDetails?.(job.id, job.attempt);
+    const sourceSha = typeof run?.baseRevision === "string" ? /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(run.baseRevision)?.[1] : null;
+    const actions: Record<string, string> = {
+      DISCOVERY: "discover", PLANNING: "plan", PLAN_VERIFY: "verify", IMPLEMENT: "implement",
+      BUILD: "build", TEST: "test", DEBUG_REPAIR: "repair", REVIEW: "review",
+      FIX_REVIEW_FINDINGS: "repair", VERIFY: "verify", REGRESSION: "test", FINAL_VERIFY: "verify",
+    };
+    const action = typeof run?.state === "string" ? actions[run.state] : undefined;
+    if (!attempt || attempt.id !== input.lease.attemptId || !run || !execution || execution.platformScope !== false ||
+      !run.runId || !run.goalId || run.tenantId !== input.tenantId || Number(run.actorId) !== input.requestedByUserId ||
+      run.workerJobId !== job.id || !sourceSha || !action || !Array.isArray(execution.allowedWriteSet) ||
+      !Array.isArray(manifest?.requestedCapabilities) || !binding || binding.workspaceRef !== run.workspaceId ||
+      !binding.approvalRef || !binding.runnerId || !binding.runnerSessionId || !binding.capabilitySnapshotId ||
+      !binding.capabilitySnapshotRevision || !binding.authorizationGrantRef || !binding.deadline ||
+      !repo.assertRunnerAuthorizationBinding || !repo.assertSpec224ReleaseAuthority)
+      return { outcome: "DENIED", reason: "SPEC224_GOAL_START_BINDING_INVALID" };
+
+    const now = new Date();
+    // `attempt.runnerId` identifies the worker_jobs consumer holding this
+    // lease; it is not the downstream SmartAIHub Runner selected by the Goal.
+    // Bind the target Runner through the live authorization snapshot below.
+    if (Date.parse(binding.deadline) <= now.getTime() ||
+      !(await repo.assertRunnerAuthorizationBinding({ tenantId: input.tenantId, runnerId: binding.runnerId,
+        runnerSessionId: binding.runnerSessionId, capabilitySnapshotId: binding.capabilitySnapshotId,
+        capabilitySnapshotRevision: binding.capabilitySnapshotRevision, now, requireOnline: true })))
+      return { outcome: "DENIED", reason: "SPEC224_GOAL_START_RUNNER_BINDING_INVALID" };
+
+    const economicsMode = binding.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget";
+    if (economicsMode === "provider_managed")
+      return { outcome: "DENIED", reason: "SPEC224_GOAL_START_ECONOMICS_MODE_INVALID" };
+    const goal = {
+      goalId: run.goalId,
+      provider: manifest.provider,
+      workspaceId: run.workspaceId,
+      repositoryRef: run.repositoryRef,
+      sourceSha,
+      action,
+      changedPaths: [],
+      allowedWriteSet: execution.allowedWriteSet as string[],
+      requiredCapabilities: manifest.requestedCapabilities as string[],
+      economicsMode,
+      platformScope: false,
+    };
+    const authorityValid = await repo.assertSpec224ReleaseAuthority({
+      tenantId: input.tenantId, actorId: input.requestedByUserId, jobId: job.id, attemptId: attempt.id,
+      approvalRef: binding.approvalRef, economicsMode,
+      holdRef: binding.budgetReservationRef, amount: binding.budgetCapMinorUnits,
+      currency: binding.currency, now, deadline: binding.deadline, goal,
+    });
+    if (!authorityValid)
+      return { outcome: "DENIED", reason: "SPEC224_GOAL_GRANT_OR_BUDGET_NOT_ACTIVE" };
+
+    const eventIdempotencyKey = `spec224:goal-start:${createHash("sha256").update(`${run.runId}:${attempt.id}`).digest("hex")}`;
+    const prior = await repo.findEventByIdempotency(job.id, eventIdempotencyKey);
+    const expectedPayload = {
+      schemaVersion: "spec224.goal-execution-start.v1",
+      tenantId: input.tenantId,
+      actorId: input.requestedByUserId,
+      runId: run.runId,
+      workerJobId: job.id,
+      attemptId: attempt.id,
+      attempt: job.attempt,
+      workerJobFencingVersion: input.lease.fencingVersion,
+      approvalRef: binding.approvalRef,
+      runnerId: binding.runnerId,
+      runnerSessionId: binding.runnerSessionId,
+      capabilitySnapshotId: binding.capabilitySnapshotId,
+      capabilitySnapshotRevision: binding.capabilitySnapshotRevision,
+      authorizationGrantRef: binding.authorizationGrantRef,
+      workspaceId: run.workspaceId,
+      sourceSha,
+      startedAt: now.toISOString(),
+    };
+    if (prior) {
+      const payload = prior.payloadJson ?? {};
+      if (prior.eventType !== "SPEC224_GOAL_EXECUTION_STARTED" || payload.runId !== run.runId ||
+        payload.attemptId !== attempt.id || payload.approvalRef !== binding.approvalRef ||
+        payload.sourceSha !== sourceSha || payload.workerJobFencingVersion !== input.lease.fencingVersion)
+        return { outcome: "DENIED", reason: "SPEC224_GOAL_START_EVENT_CONFLICT" };
+      return { outcome: "ALREADY_STARTED", runId: run.runId, approvalRef: binding.approvalRef, eventIdempotencyKey };
+    }
+    await repo.insertEvent({ workerJobId: job.id, eventType: "SPEC224_GOAL_EXECUTION_STARTED",
+      eventIdempotencyKey, attemptId: attempt.id, payloadJson: expectedPayload });
+    return { outcome: "STARTED", runId: run.runId, approvalRef: binding.approvalRef, eventIdempotencyKey };
+  });
+}
+
+export async function hasSpec224GoalDelegatedExecutionStart(input: {
+  command: Pick<RunnerJobCommand, "jobId" | "attempt" | "fencingToken" | "tenantId" | "userId" | "runnerId" | "runnerSessionId" | "capabilitySnapshotId" | "capabilitySnapshotRevision" | "idempotencyKey" | "workspaceRef" | "authorizationGrantRef">;
+  repository?: JobControlPlaneRepository;
+}): Promise<boolean> {
+  const repository = input.repository ?? defaultJobControlPlaneRepository;
+  return repository.transaction(async repo => {
+    const event = await repo.findEventByIdempotency(input.command.jobId, input.command.idempotencyKey);
+    const payload = event?.payloadJson ?? {};
+    return event?.eventType === "SPEC224_GOAL_EXECUTION_STARTED" &&
+      payload.schemaVersion === "spec224.goal-execution-start.v1" &&
+      payload.workerJobId === input.command.jobId && payload.attempt === input.command.attempt &&
+      payload.workerJobFencingVersion === input.command.fencingToken && payload.tenantId === input.command.tenantId &&
+      payload.actorId === input.command.userId && payload.runnerId === input.command.runnerId &&
+      payload.runnerSessionId === input.command.runnerSessionId &&
+      payload.capabilitySnapshotId === input.command.capabilitySnapshotId &&
+      payload.capabilitySnapshotRevision === input.command.capabilitySnapshotRevision &&
+      payload.authorizationGrantRef === input.command.authorizationGrantRef &&
+      payload.workspaceId === input.command.workspaceRef && typeof payload.approvalRef === "string" &&
+      payload.approvalRef.length > 0 && typeof payload.sourceSha === "string";
+  });
+}
 
 function omitUndefinedEventValues(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(omitUndefinedEventValues);
@@ -2629,6 +2775,12 @@ export function createJobControlPlane(
           validSpec224Input && typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim()
         );
         const requiresSpec224Admission = hasSpec224Projection || hasSpec224InputMarker;
+        const projectedMetadata = (validProjectedRun?.metadata ?? validSpec224Input?.metadata) as Record<string, any> | undefined;
+        const projectedExecution = projectedMetadata?.spec224Execution as Record<string, unknown> | undefined;
+        const projectedWorkspace = projectedMetadata?.spec224Workspace as Record<string, unknown> | undefined;
+        const explicitlyOwnerScoped = projectedExecution?.platformScope === false || projectedWorkspace?.platformScope === false;
+        const requiresSpec224GoalExecutionStart = requiresSpec224Admission && explicitlyOwnerScoped;
+        const requiresSpec224ProtectedExecutionStart = requiresSpec224Admission && !explicitlyOwnerScoped;
         return {
           jobId: job.id,
           tenantId: job.tenantId,
@@ -2649,6 +2801,8 @@ export function createJobControlPlane(
             hardTimeoutMs: job.timeoutSeconds * 1000,
           },
           requiresSpec224Admission,
+          requiresSpec224GoalExecutionStart,
+          requiresSpec224ProtectedExecutionStart,
           spec224AdmissionBindingValid,
           workerJobFencingVersion: job.fencingVersion,
           statusReason: job.statusReason,

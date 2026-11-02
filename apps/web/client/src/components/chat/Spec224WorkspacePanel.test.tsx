@@ -685,6 +685,20 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
   });
 
+  it("explains that a terminally failed Run needs a new Goal instead of claiming approval is pending", async () => {
+    mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "run-failed", state: "IMPLEMENT",
+      workPackageId: "pkg", workPackageExternalId: "SPEC-312", specSetRevision: 2, revision: 3 }] };
+    mocks.resume.mockResolvedValueOnce({ runId: "run-failed", dispatchStatus: "BLOCKED",
+      goalAdmissionStatus: "RUN_TERMINAL_FAILED", workerJobStatus: "failed", terminal: true,
+      authorization: { status: "RUN_TERMINAL_FAILED", ownerAction: "Run เดิมปิดถาวรแล้ว ให้สร้าง Goal ใหม่" } });
+    render(<Spec224WorkspacePanel conversationId={235} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
+
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("ให้สร้าง Goal ใหม่")));
+    expect(mocks.info).not.toHaveBeenCalledWith(expect.stringContaining("รอ authorization"));
+  });
+
   it("shows recoverable Goal approval errors when the response has no authorization reasons", async () => {
     mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "run-approval-retry", state: "BLOCKED_RECOVERABLE" }] };
     mocks.resume.mockResolvedValueOnce({ runId: "run-approval-retry", dispatchStatus: "BLOCKED",

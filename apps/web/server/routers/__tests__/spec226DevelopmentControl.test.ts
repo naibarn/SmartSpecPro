@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
     get: vi.fn(),
     recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
   },
+  jobControlPlane: { getStatus: vi.fn() },
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
   workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
@@ -74,6 +75,10 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
   defaultDevelopmentRunPersistenceAdapter: {},
+}));
+
+vi.mock("../../services/jobControlPlane", () => ({
+  createJobControlPlane: () => mocks.jobControlPlane,
 }));
 
 vi.mock("../../services/miniAppFactoryStageWorker", () => ({
@@ -112,6 +117,8 @@ vi.mock("../../services/auditLogger", () => ({
 
 vi.mock("../../services/spec224WorkspaceSpecSet", () => ({
   defaultSpec224WorkspaceSpecSetService: mocks.workspaceSpecSets,
+  resolveFeatureSpecDeploymentTarget: () => null,
+  resolveDeploymentTargetDomain: () => null,
 }));
 
 vi.mock("../../services/spec224FeatureSpecCatalog", () => ({
@@ -173,6 +180,7 @@ beforeEach(() => {
   mocks.featureSpecCatalog.loadContext.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", summary: "Example", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1" } });
   mocks.featureSpecCatalog.loadProject.mockReset();
   mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
+  mocks.jobControlPlane.getStatus.mockReset().mockResolvedValue({ status: "running", terminal: false });
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
 
@@ -200,7 +208,7 @@ describe("spec226DevelopmentControlRouter", () => {
       budgetCapMinorUnits: 100, provider: "codex", modelSelection: { policy: "auto" }, visualReferences: [], visualFiles: [], designPreferences: {} };
     const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt, writeScope: null, workspaceAccessMode: null,
       specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {},
-      modelSelection: { policy: "auto" }, budgetCapMinorUnits: 100 })).digest("hex");
+      modelSelection: { policy: "auto" }, economicsMode: "tenant_budget", budgetCapMinorUnits: 100 })).digest("hex");
     const runId = `run-${createHash("sha256").update(`${CTX.tenantId}:${CTX.user.id}:${input.idempotencyKey}`).digest("hex").slice(0, 40)}`;
     mocks.developmentRunService.get.mockResolvedValueOnce({ run: { runId, workerJobId: "existing-job", state: "DISCOVERY", workspaceId: "workspace-a",
       metadata: { spec224StartRequestDigest: digest, spec224Input: { inputDigest: "c".repeat(64) }, spec224Workspace: { specSetRevision: null, workPackageId: null } } } });
@@ -227,8 +235,31 @@ describe("spec226DevelopmentControlRouter", () => {
 
     expect(result).toMatchObject({ runId: "run-existing", jobId: "job-existing", resumedExistingRun: true, dispatchStatus: "PENDING_AUTHORIZATION" });
     expect(mocks.developmentRunService.get).toHaveBeenCalledWith({ tenantId: "tenant-acme", actorId: 42, runId: "run-existing" });
+    expect(mocks.jobControlPlane.getStatus).toHaveBeenCalledWith("job-existing", { tenantId: "tenant-acme", requestedByUserId: 42 });
     expect(mocks.advanceStart).toHaveBeenCalledWith(expect.objectContaining({ runId: "run-existing", runnerId: "runner-a", budgetCapMinorUnits: 100 }));
     expect(mocks.createRun).not.toHaveBeenCalled();
+  });
+
+  it("does not misreport a terminally failed worker job as waiting for approval", async () => {
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-failed", workerJobId: "job-failed", state: "IMPLEMENT", workspaceId: "workspace-a",
+      metadata: { spec224GoalGrantPayload: { grantId: "goal-grant-1", goalId: "goal-1", provider: "codex" } },
+    } });
+    mocks.jobControlPlane.getStatus.mockResolvedValueOnce({
+      status: "failed", terminal: true, attempt: 2, maxAttempts: 2,
+      errorCode: "JobControlPlaneError", errorMessage: "DevelopmentRun protected dispatch is fail-closed",
+    });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId: "run-failed", budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({
+      runId: "run-failed", dispatchStatus: "BLOCKED", workerJobStatus: "failed", terminal: true,
+      authorization: { status: "RUN_TERMINAL_FAILED", ownerAction: expect.stringContaining("สร้าง Goal ใหม่") },
+    });
+    expect(mocks.advanceStart).not.toHaveBeenCalled();
+    expect(mocks.authorizeDelegatedChild).not.toHaveBeenCalled();
   });
 
   it("resumes a granted Goal using its persisted child cap instead of rejecting the total Goal budget", async () => {
@@ -549,7 +580,7 @@ describe("spec226DevelopmentControlRouter", () => {
     const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING", snapshotRevision: "12", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64) };
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue(platformWorkspace ? [platformWorkspace] : []);
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValue({ workspace: { ...platformWorkspace }, availability: { status: "current", available: true } });
-    mocks.featureSpecCatalog.loadProject.mockResolvedValue({ projectId: "smartaihub-modular-saas-r14", source: { revision: "c".repeat(40) }, descriptorDigest: "d".repeat(64), specs: [{ id: "312-example" }], sourceFiles: [{ path: "canonical-projects/project/project.json", content: "{}", digest: "d".repeat(64) }] });
+    mocks.featureSpecCatalog.loadProject.mockResolvedValue({ projectId: "smartaihub-modular-saas-r14", source: { revision: "c".repeat(40) }, descriptorDigest: "d".repeat(64), implementationRepository: { repository: "repo:platform/modular-core" }, specs: [{ id: "312-example" }], sourceFiles: [{ path: "canonical-projects/project/project.json", content: "{}", digest: "d".repeat(64) }] });
     mocks.workspaceSpecSets.ingestModularSaasProject.mockResolvedValue({ revision: 1, digest: "e".repeat(64), files: [], requirementCount: 295, runnableWorkPackageCount: 1, blockedWorkPackageCount: 0 });
 
     await expect((spec226DevelopmentControlRouter.ingestModularSaasProject as unknown as Function)({

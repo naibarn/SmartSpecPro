@@ -4,7 +4,9 @@ import {
   appendJobEvent,
   calculateRetryDelay,
   classifyJobError,
+  commitSpec224GoalDelegatedExecutionStart,
   createJobControlPlane,
+  hasSpec224GoalDelegatedExecutionStart,
   matchesExistingJobDefinitionAfterAdminDeadlineChange,
   normalizeResultReference,
   recordAuthenticatedJobCallback,
@@ -301,6 +303,75 @@ const definition = {
 };
 
 describe("job control plane", () => {
+  it("commits a live owner Goal Grant check before dispatching a tenant-scoped DevelopmentRun", async () => {
+    const inserted: any[] = [];
+    const job: any = {
+      id: "job-owner-goal",
+      tenantId: "tenant-1",
+      requestedByUserId: 7,
+      status: "running",
+      attempt: 1,
+      fencingVersion: 4,
+      inputJson: {
+        manifest: { provider: "codex", workspaceId: "workspace-1", goalId: "goal-1", requestedCapabilities: ["agent.external_task"] },
+        spec224Run: { runId: "run-1", goalId: "goal-1", actorId: 7, state: "IMPLEMENT", tenantId: "tenant-1", workerJobId: "job-owner-goal", workspaceId: "workspace-1", repositoryRef: "repo:1", baseRevision: `git:${"a".repeat(40)}`, workPackageId: "wp-1", metadata: { spec224Execution: { platformScope: false, allowedWriteSet: ["src/**"] } } },
+      },
+      progressJson: { spec224Authorization: { binding: { approvalRef: "approval-1", runnerId: "runner-1", runnerSessionId: "session-1", capabilitySnapshotId: "cap-1", capabilitySnapshotRevision: "rev-1", workspaceRef: "workspace-1", authorizationGrantRef: "runner-auth", budgetReservationRef: "hold-1", budgetCapMinorUnits: 50, currency: "USD", deadline: "2099-01-01T00:00:00.000Z" } } },
+    };
+    const repository: any = {
+      transaction: vi.fn(async (work: (repo: any) => Promise<unknown>) => work({
+        findJobForUpdate: async () => job,
+        // The lease runner is the worker_jobs consumer, distinct from the
+        // downstream SmartAIHub Runner bound to this Goal.
+        findAttemptDetails: async () => ({ id: "attempt-1", leaseGeneration: 4, runnerId: "postgres-pull:worker" }),
+        assertRunnerAuthorizationBinding: vi.fn().mockResolvedValue(true),
+        assertSpec224ReleaseAuthority: vi.fn().mockResolvedValue(true),
+        findEventByIdempotency: async () => null,
+        insertEvent: async (event: any) => { inserted.push(event); },
+      })),
+    };
+
+    const result = await commitSpec224GoalDelegatedExecutionStart({
+      tenantId: "tenant-1", requestedByUserId: 7,
+      lease: { jobId: "job-owner-goal", attemptId: "attempt-1", leaseToken: "lease-token", fencingVersion: 4, expiresAt: "2099-01-01T00:00:00.000Z" },
+    }, repository);
+
+    expect(result).toMatchObject({ outcome: "STARTED", runId: "run-1", approvalRef: "approval-1" });
+    expect(repository.transaction).toHaveBeenCalledOnce();
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]).toMatchObject({
+      workerJobId: "job-owner-goal",
+      eventType: "SPEC224_GOAL_EXECUTION_STARTED",
+      attemptId: "attempt-1",
+      payloadJson: { runId: "run-1", approvalRef: "approval-1", workspaceId: "workspace-1", sourceSha: "a".repeat(40) },
+    });
+  });
+
+  it("binds Runner dispatch to the exact committed owner Goal start event", async () => {
+    const command: any = {
+      jobId: "job-1", attempt: 2, fencingToken: 9, tenantId: "tenant-1", userId: 7,
+      runnerId: "runner-1", runnerSessionId: "session-1", capabilitySnapshotId: "cap-1",
+      capabilitySnapshotRevision: "rev-1", idempotencyKey: "spec224:goal-execution-started:run-1:attempt-2",
+      workspaceRef: "workspace-1", authorizationGrantRef: "runner-auth",
+    };
+    const repository: any = {
+      transaction: async (work: (repo: any) => Promise<unknown>) => work({
+        findEventByIdempotency: async () => ({
+          eventType: "SPEC224_GOAL_EXECUTION_STARTED",
+          payloadJson: {
+            schemaVersion: "spec224.goal-execution-start.v1", workerJobId: "job-1", attempt: 2,
+            workerJobFencingVersion: 9, tenantId: "tenant-1", actorId: 7, runnerId: "runner-1",
+            runnerSessionId: "session-1", capabilitySnapshotId: "cap-1", capabilitySnapshotRevision: "rev-1",
+            authorizationGrantRef: "runner-auth", workspaceId: "workspace-1", approvalRef: "approval-1", sourceSha: "a".repeat(40),
+          },
+        }),
+      }),
+    };
+
+    await expect(hasSpec224GoalDelegatedExecutionStart({ command, repository })).resolves.toBe(true);
+    await expect(hasSpec224GoalDelegatedExecutionStart({ command: { ...command, fencingToken: 10 }, repository })).resolves.toBe(false);
+  });
+
   it("keeps deferred external runs out of the outbox until a job-bound authorization is persisted", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

@@ -21,6 +21,7 @@ import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "../services/miniAppFactoryDurableState";
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
+import { createJobControlPlane } from "../services/jobControlPlane";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import { importMiniAppGitRevisionCandidate, listMiniAppGitRevisionCandidates, resolvePersonalMiniAppFactoryHome, restoreMiniAppDeploymentVersion } from "../services/personalMiniAppPreview";
 import { getUserGitHubConnection } from "../services/userGithubConnectionService";
@@ -1391,7 +1392,10 @@ export const spec226DevelopmentControlRouter = router({
         }
         const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
-        const providerManagedScope = requestKind === "development" && binding.workspace.scope === "PLATFORM_ENGINEERING";
+        // This endpoint only creates DevelopmentRuns; scope comes from the
+        // authorized workspace binding. A requestKind discriminator does not
+        // exist on this route (and referencing one throws before Goal creation).
+        const providerManagedScope = binding.workspace.scope === "PLATFORM_ENGINEERING";
         const budgetCapMinorUnits = providerManagedScope ? undefined : input.budgetCapMinorUnits ?? 100;
         const provider = input.provider ?? "codex";
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
@@ -1775,6 +1779,32 @@ export const spec226DevelopmentControlRouter = router({
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
         if (record.run.workspaceId !== binding.workspace.workspaceId)
           throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
+        const workerJob = record.run.workerJobId
+          ? await createJobControlPlane().getStatus(record.run.workerJobId, {
+              tenantId: scope.tenantId,
+              requestedByUserId: scope.actorId,
+            })
+          : null;
+        if (!workerJob) {
+          const authorization = {
+            status: "RUN_JOB_STATUS_UNAVAILABLE" as const,
+            reasons: ["WORKER_JOB_NOT_FOUND"],
+            ownerAction: "ตรวจสอบ Task Control ก่อนเริ่ม Goal ใหม่ เพื่อยืนยันสถานะงานเดิม",
+          };
+          return { runId: input.runId, jobId: record.run.workerJobId ?? null, state: record.run.state,
+            dispatchStatus: "BLOCKED" as const, authorization, goalAdmissionStatus: authorization.status,
+            workerJobStatus: null, terminal: false, resumedExistingRun: true };
+        }
+        if (["failed", "cancelled", "expired"].includes(workerJob.status)) {
+          const authorization = {
+            status: workerJob.status === "failed" ? "RUN_TERMINAL_FAILED" as const : "RUN_TERMINAL_CLOSED" as const,
+            reasons: [workerJob.errorCode ?? workerJob.status],
+            ownerAction: "Run เดิมปิดถาวรแล้วและเริ่มซ้ำไม่ได้ ให้สร้าง Goal ใหม่โดยใช้ Project, Runner และ Workspace เดิม เพื่อทำงานต่อจาก SPEC นี้",
+          };
+          return { runId: input.runId, jobId: record.run.workerJobId, state: record.run.state,
+            dispatchStatus: "BLOCKED" as const, authorization, goalAdmissionStatus: authorization.status,
+            workerJobStatus: workerJob.status, terminal: true, resumedExistingRun: true };
+        }
         const persistedBudget = record.run.metadata?.spec224BudgetCapMinorUnits;
         const grantPayload = record.run.metadata?.spec224GoalGrantPayload;
         const grantProvider = grantPayload && typeof grantPayload === "object"
@@ -1819,7 +1849,8 @@ export const spec226DevelopmentControlRouter = router({
         const threadId = typeof record.run.metadata?.chatThreadId === "string" ? record.run.metadata.chatThreadId : null;
         if (threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId });
         return { runId: input.runId, jobId: record.run.workerJobId, state: record.run.state,
-          dispatchStatus, authorization: goalAdmission, goalAdmissionStatus: goalAdmission.status, resumedExistingRun: true };
+          dispatchStatus, authorization: goalAdmission, goalAdmissionStatus: goalAdmission.status,
+          workerJobStatus: workerJob.status, terminal: false, resumedExistingRun: true };
       } catch (error) {
         auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
           traceId, tenantId: scope.tenantId, userId: scope.actorId,
