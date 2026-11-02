@@ -3137,13 +3137,14 @@ fn send_external_progress_receipt<T: ControlTransport>(
             "taskId": command.payload.get("taskId"),
             "adapterId": command.adapter_id,
         })),
-        payload: Some(json!({
-            "executionKind": command.execution_kind,
-            "adapterId": command.adapter_id,
-            "attempt": command.attempt,
-            "workspaceRef": command.workspace_ref,
-            "harnessEvent": harness_event,
-        })),
+        payload: Some(runner_receipt_payload(
+            command,
+            Some(json!({
+                "workspaceRef": command.workspace_ref,
+                "harnessEvent": harness_event,
+            })),
+            None,
+        )),
     };
     let envelope = channel.build_receipt(node_kind, command, receipt)?;
     persist_and_send_runner_receipt(endpoint, transport, receipt_journal, envelope)
@@ -3480,6 +3481,9 @@ fn send_enqueued_runner_receipt<T: ControlTransport>(
         Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
             receipt_journal.acknowledge(&idempotency_key)
         }
+        Ok(AckState::Rejected) if is_progress_receipt_envelope(&envelope) => {
+            receipt_journal.reject_progress_observation(&idempotency_key)
+        }
         Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
         Err(error) => Err(format!(
             "RUNNER_RECEIPT_DELIVERY_{}",
@@ -3499,6 +3503,9 @@ fn replay_pending_runner_receipts<T: ControlTransport>(
             Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
                 receipt_journal.acknowledge(&idempotency_key)?;
             }
+            Ok(AckState::Rejected) if is_progress_receipt_envelope(&envelope) => {
+                receipt_journal.reject_progress_observation(&idempotency_key)?;
+            }
             Ok(other) => return Err(format!("RUNNER_RECEIPT_REPLAY_REJECTED_{other:?}")),
             Err(error) => {
                 return Err(format!(
@@ -3509,6 +3516,20 @@ fn replay_pending_runner_receipts<T: ControlTransport>(
         }
     }
     Ok(())
+}
+
+fn is_progress_receipt_envelope(envelope: &Envelope) -> bool {
+    envelope
+        .payload
+        .get("type")
+        .and_then(|value| value.as_str())
+        == Some("runner.job.receipt")
+        && envelope
+            .payload
+            .get("receipt")
+            .and_then(|receipt| receipt.get("eventType"))
+            .and_then(|value| value.as_str())
+            == Some("PROGRESS")
 }
 
 fn runner_receipt_payload(
@@ -5505,8 +5526,9 @@ mod lifecycle_tests {
         delivery_transport_label, external_agent_readiness_ref, keepalive_due,
         parse_refresh_interval, persist_and_send_runner_receipt,
         recover_interrupted_external_agent_commands, replay_pending_runner_receipts,
-        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
-        CAPABILITY_SNAPSHOT_REFRESH_INTERVAL, CAPABILITY_SNAPSHOT_TTL,
+        runner_receipt_payload, semantic_receipt_payload, send_external_progress_receipt,
+        snapshot_evidence, update_ack_statuses, CAPABILITY_SNAPSHOT_REFRESH_INTERVAL,
+        CAPABILITY_SNAPSHOT_TTL,
     };
     #[cfg(target_os = "linux")]
     use super::{build_local_session_inventories, MAX_SAFE_JS_INTEGER};
@@ -6292,6 +6314,36 @@ mod lifecycle_tests {
         received: Vec<serde_json::Value>,
     }
 
+    fn external_agent_test_command() -> RunnerJobCommand {
+        RunnerJobCommand {
+            command_id: "external-command-1".into(),
+            command_type: "execute".into(),
+            contract_version: crate::protocol::RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "external-job-1".into(),
+            attempt: 2,
+            lease_id: "external-lease-2".into(),
+            fencing_token: 7,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: Some("workspace-1".into()),
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "external-operation-1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-ref-1".into(),
+            input_ref: "input-ref-1".into(),
+            payload: json!({ "taskId": "task-1" }),
+        }
+    }
+
     impl ControlTransport for ReceiptTransport {
         fn send_wss(&mut self, _: &str, event: &Envelope) -> Result<AckState, TransportError> {
             self.received.push(serde_json::to_value(event).unwrap());
@@ -6486,5 +6538,166 @@ mod lifecycle_tests {
             serde_json::to_value(&envelope).unwrap()
         );
         assert!(restarted_outbox.pending().unwrap().is_empty());
+    }
+
+    #[test]
+    fn external_agent_progress_receipt_includes_current_execution_fence() {
+        let root = tempfile::tempdir().unwrap();
+        let endpoint =
+            ControlEndpoint::from_control_url("http://127.0.0.1:31111/api/runners").unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut channel = ControlChannel::default();
+        channel.connect();
+        channel.authenticated();
+        let mut sequences = std::collections::HashMap::new();
+        let mut transport = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Accepted)]),
+            received: Vec::new(),
+        };
+
+        send_external_progress_receipt(
+            &endpoint,
+            &mut transport,
+            &mut channel,
+            NodeKind::LocalDevice,
+            &external_agent_test_command(),
+            &mut sequences,
+            &mut journal,
+            json!({ "state": "running" }),
+        )
+        .unwrap();
+
+        let receipt_payload = &transport.received[0]["payload"]["receipt"]["payload"];
+        assert_eq!(receipt_payload["attempt"], 2);
+        assert_eq!(receipt_payload["leaseId"], "external-lease-2");
+        assert_eq!(receipt_payload["fenceVersion"], 7);
+        assert_eq!(receipt_payload["capabilitySnapshotId"], "capability-1");
+        assert_eq!(receipt_payload["capabilitySnapshotRevision"], "revision-1");
+        assert_eq!(receipt_payload["harnessEvent"]["state"], "running");
+    }
+
+    #[test]
+    fn rejected_progress_replay_is_settled_without_blocking_runner_receipts() {
+        let root = tempfile::tempdir().unwrap();
+        let endpoint =
+            ControlEndpoint::from_control_url("http://127.0.0.1:31111/api/runners").unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut progress = Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-1",
+            Some("external-job-1"),
+            Some("2"),
+            Some("external-lease-2"),
+            json!({
+                "type": "runner.job.receipt",
+                "receipt": {
+                    "eventId": "external-command-1:5",
+                    "eventType": "PROGRESS",
+                    "commandId": "external-command-1",
+                    "sequence": 5,
+                    "payload": { "attempt": 2 }
+                }
+            }),
+        );
+        progress.correlation_id = "external-command-1".into();
+        progress.idempotency_key = "external-command-1:5".into();
+        journal.enqueue(&progress).unwrap();
+        let mut terminal = progress.clone();
+        terminal.payload["receipt"]["eventId"] = json!("external-command-1:6");
+        terminal.payload["receipt"]["eventType"] = json!("EXECUTION_COMPLETED");
+        terminal.payload["receipt"]["sequence"] = json!(6);
+        terminal.sequence = 0;
+        terminal.idempotency_key = "external-command-1:6".into();
+        journal.enqueue(&terminal).unwrap();
+        let mut transport = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Rejected), Ok(AckState::Accepted)]),
+            received: Vec::new(),
+        };
+
+        replay_pending_runner_receipts(&endpoint, &mut transport, &mut journal).unwrap();
+
+        assert!(journal.pending().unwrap().is_empty());
+        assert_eq!(
+            journal.next_receipt_sequence("external-command-1").unwrap(),
+            7
+        );
+        assert_eq!(transport.received.len(), 2);
+        assert_eq!(
+            transport.received[0]["payload"]["receipt"]["eventType"],
+            "PROGRESS"
+        );
+        assert_eq!(
+            transport.received[1]["payload"]["receipt"]["eventType"],
+            "EXECUTION_COMPLETED"
+        );
+    }
+
+    #[test]
+    fn a_newly_rejected_progress_receipt_does_not_abort_external_agent_execution() {
+        let root = tempfile::tempdir().unwrap();
+        let endpoint =
+            ControlEndpoint::from_control_url("http://127.0.0.1:31111/api/runners").unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut channel = ControlChannel::default();
+        channel.connect();
+        channel.authenticated();
+        let mut sequences = std::collections::HashMap::new();
+        let mut transport = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Rejected)]),
+            received: Vec::new(),
+        };
+
+        send_external_progress_receipt(
+            &endpoint,
+            &mut transport,
+            &mut channel,
+            NodeKind::LocalDevice,
+            &external_agent_test_command(),
+            &mut sequences,
+            &mut journal,
+            json!({ "state": "running" }),
+        )
+        .unwrap();
+
+        assert!(journal.pending().unwrap().is_empty());
+        assert_eq!(
+            journal.next_receipt_sequence("external-command-1").unwrap(),
+            2
+        );
+    }
+
+    #[test]
+    fn rejected_terminal_receipt_stays_pending_and_fails_closed() {
+        let root = tempfile::tempdir().unwrap();
+        let endpoint =
+            ControlEndpoint::from_control_url("http://127.0.0.1:31111/api/runners").unwrap();
+        let mut journal = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut terminal = Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-1",
+            Some("external-job-1"),
+            Some("2"),
+            Some("external-lease-2"),
+            json!({
+                "type": "runner.job.receipt",
+                "receipt": {
+                    "eventId": "external-command-1:6",
+                    "eventType": "EXECUTION_COMPLETED",
+                    "commandId": "external-command-1",
+                    "sequence": 6,
+                    "payload": { "attempt": 2 }
+                }
+            }),
+        );
+        terminal.correlation_id = "external-command-1".into();
+        terminal.idempotency_key = "external-command-1:6".into();
+        journal.enqueue(&terminal).unwrap();
+        let mut transport = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Rejected)]),
+            received: Vec::new(),
+        };
+
+        assert!(replay_pending_runner_receipts(&endpoint, &mut transport, &mut journal).is_err());
+        assert_eq!(journal.pending().unwrap().len(), 1);
     }
 }

@@ -8,6 +8,7 @@ const RUNNER_RECEIPT_JOURNAL_MAX_EVENTS: usize = 4096;
 const RUNNER_RECEIPT_JOURNAL_MAX_BYTES: usize = 4 * 1024 * 1024;
 const RUNNER_RECEIPT_PENDING_KIND: &str = "runner_receipt_pending";
 const RUNNER_RECEIPT_ACK_KIND: &str = "runner_receipt_ack";
+const RUNNER_RECEIPT_REJECTED_PROGRESS_KIND: &str = "runner_receipt_rejected_progress";
 const RUNNER_COMMAND_CLAIM_KIND: &str = "runner_command_claim";
 const RUNNER_COMMAND_TERMINAL_KIND: &str = "runner_command_terminal";
 const RUNNER_RECEIPT_SEQUENCE_KIND: &str = "runner_receipt_sequence";
@@ -253,7 +254,12 @@ impl Journal {
         let acknowledged = self
             .records
             .iter()
-            .filter(|record| record.kind == RUNNER_RECEIPT_ACK_KIND)
+            .filter(|record| {
+                matches!(
+                    record.kind.as_str(),
+                    RUNNER_RECEIPT_ACK_KIND | RUNNER_RECEIPT_REJECTED_PROGRESS_KIND
+                )
+            })
             .filter_map(|record| {
                 record
                     .metadata
@@ -311,6 +317,63 @@ impl Journal {
             &format!("runner-receipt-ack:{idempotency_key}"),
             RUNNER_RECEIPT_ACK_KIND,
             serde_json::json!({ "receiptIdempotencyKey": idempotency_key }),
+        )?;
+        updated.append(
+            updated.next_sequence(),
+            &format!("runner-receipt-sequence:{sequence_key_hash}:{receipt_sequence}"),
+            RUNNER_RECEIPT_SEQUENCE_KIND,
+            serde_json::json!({
+                "commandId": command_id,
+                "sequence": receipt_sequence,
+            }),
+        )?;
+        *self = updated;
+        Ok(())
+    }
+
+    /// Settles a server-rejected progress observation while retaining its
+    /// sequence. Progress is advisory; replaying a malformed/stale progress
+    /// event must not prevent later terminal receipts from being delivered.
+    /// Terminal receipts are deliberately ineligible for this path.
+    pub fn reject_progress_runner_receipt(&mut self, idempotency_key: &str) -> Result<(), String> {
+        let pending = self.pending_runner_receipts()?;
+        let Some(receipt) = pending
+            .iter()
+            .find(|receipt| receipt.idempotency_key == idempotency_key)
+        else {
+            return Ok(());
+        };
+        if receipt
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            != Some("runner.job.receipt")
+            || receipt
+                .payload
+                .get("receipt")
+                .and_then(|value| value.get("eventType"))
+                .and_then(serde_json::Value::as_str)
+                != Some("PROGRESS")
+        {
+            return Err("only rejected progress receipts may be settled".into());
+        }
+        let command_id = receipt.correlation_id.as_str();
+        let receipt_sequence = receipt
+            .payload
+            .get("receipt")
+            .and_then(|value| value.get("sequence"))
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| "runner receipt sequence is invalid".to_string())?;
+        let sequence_key_hash = sha256(command_id.as_bytes());
+        let mut updated = self.clone();
+        updated.append(
+            updated.next_sequence(),
+            &format!("runner-receipt-rejected-progress:{idempotency_key}"),
+            RUNNER_RECEIPT_REJECTED_PROGRESS_KIND,
+            serde_json::json!({
+                "receiptIdempotencyKey": idempotency_key,
+                "reasonCode": "server_rejected_progress",
+            }),
         )?;
         updated.append(
             updated.next_sequence(),
@@ -761,6 +824,14 @@ impl RunnerReceiptJournal {
         self.journal.compact_runner_receipts()?;
         self.journal.persist(&self.path)
     }
+
+    pub fn reject_progress_observation(&mut self, idempotency_key: &str) -> Result<(), String> {
+        self.journal
+            .reject_progress_runner_receipt(idempotency_key)?;
+        self.journal.persist(&self.path)?;
+        self.journal.compact_runner_receipts()?;
+        self.journal.persist(&self.path)
+    }
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -961,6 +1032,72 @@ mod tests {
         restarted.acknowledge(&receipt.idempotency_key).unwrap();
         let restarted_again = RunnerReceiptJournal::open(root.path()).unwrap();
         assert!(restarted_again.pending().unwrap().is_empty());
+    }
+
+    #[test]
+    fn rejected_progress_is_settled_and_its_sequence_survives_restart() {
+        let root = tempfile::tempdir().unwrap();
+        let mut progress = Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-1",
+            Some("job-1"),
+            Some("1"),
+            Some("lease-1"),
+            serde_json::json!({
+                "type": "runner.job.receipt",
+                "receipt": {
+                    "eventId": "command-1:5",
+                    "eventType": "PROGRESS",
+                    "commandId": "command-1",
+                    "sequence": 5,
+                }
+            }),
+        );
+        progress.correlation_id = "command-1".into();
+        progress.idempotency_key = "command-1:5".into();
+        {
+            let mut outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+            outbox.enqueue(&progress).unwrap();
+            outbox
+                .reject_progress_observation(&progress.idempotency_key)
+                .unwrap();
+            assert!(outbox.pending().unwrap().is_empty());
+            assert_eq!(outbox.next_receipt_sequence("command-1").unwrap(), 6);
+        }
+
+        let restarted = RunnerReceiptJournal::open(root.path()).unwrap();
+        assert!(restarted.pending().unwrap().is_empty());
+        assert_eq!(restarted.next_receipt_sequence("command-1").unwrap(), 6);
+    }
+
+    #[test]
+    fn rejected_terminal_receipt_cannot_be_discarded_as_progress() {
+        let root = tempfile::tempdir().unwrap();
+        let mut terminal = Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-1",
+            Some("job-1"),
+            Some("1"),
+            Some("lease-1"),
+            serde_json::json!({
+                "type": "runner.job.receipt",
+                "receipt": {
+                    "eventId": "command-1:6",
+                    "eventType": "EXECUTION_COMPLETED",
+                    "commandId": "command-1",
+                    "sequence": 6,
+                }
+            }),
+        );
+        terminal.correlation_id = "command-1".into();
+        terminal.idempotency_key = "command-1:6".into();
+        let mut outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+        outbox.enqueue(&terminal).unwrap();
+
+        assert!(outbox
+            .reject_progress_observation(&terminal.idempotency_key)
+            .is_err());
+        assert_eq!(outbox.pending().unwrap().len(), 1);
     }
 
     #[test]
