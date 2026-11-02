@@ -435,6 +435,28 @@ fn apply_cached_task_probe_evidence(
     }
 }
 
+fn apply_fresh_task_probe_evidence(
+    config: &RunnerConfig,
+    tools: &mut [ToolCandidate],
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+) {
+    let now_ms = current_time_ms();
+    let entries = load_task_probe_evidence(&config.data_root)
+        .into_iter()
+        .filter(|entry| entry.expires_at_ms > now_ms)
+        .collect::<Vec<_>>();
+    for tool in tools {
+        apply_task_probe_evidence(
+            tool,
+            &entries,
+            &config.runner_id,
+            runner_session_id,
+            tenant_id,
+        );
+    }
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolTaskCheck {
@@ -2664,6 +2686,12 @@ fn run_live_control_loop_inner(
                 .and_then(|mut candidate| {
                     let probe = probe_candidate(&candidate, std::time::Duration::from_secs(1))?;
                     apply_probe(&mut candidate, probe)?;
+                    apply_fresh_task_probe_evidence(
+                        config,
+                        std::slice::from_mut(&mut candidate),
+                        Some(&runner_session_id),
+                        Some(&tenant_id),
+                    );
                     start_external_agent(
                         config,
                         &command,
@@ -5562,6 +5590,66 @@ mod lifecycle_tests {
             different_session.task_probe_state,
             crate::discovery::ProbeState::NotRun
         );
+    }
+
+    #[test]
+    fn fresh_task_probe_evidence_survives_execution_version_recheck() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config =
+            RunnerConfig::local("runner-execution-probe", "device", "https://example.test");
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let mut verified = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
+            .into_iter()
+            .find(|candidate| candidate.tool_id == "codex")
+            .unwrap();
+        verified.version = Some("test-codex".into());
+        verified.version_probe_state = crate::discovery::ProbeState::Passed;
+        verified.auth_state = crate::discovery::CapabilityDimension::Ready;
+        verified.health_state = crate::discovery::CapabilityDimension::Ready;
+        verified.availability_state = crate::discovery::CapabilityDimension::Ready;
+        let evidence = super::save_task_probe_evidence(
+            &config,
+            &verified,
+            crate::discovery::ProbeState::Passed,
+            Some("task_probe_ok"),
+        )
+        .unwrap();
+
+        // A dispatch-time version/auth probe has no task_probe_ok result and
+        // therefore downgrades the candidate until its matching task evidence
+        // is restored.
+        let mut candidate = verified;
+        crate::adapters::apply_probe(
+            &mut candidate,
+            crate::adapters::AdapterProbeResult {
+                version: "test-codex".into(),
+                authenticated: true,
+                healthy: true,
+                available: true,
+                reason_codes: vec!["version_probe_ok".into(), "auth_status_ok".into()],
+            },
+        )
+        .unwrap();
+        assert_eq!(candidate.trust_state, crate::discovery::TrustState::Probed);
+        assert!(!crate::adapters::can_execute(&candidate));
+
+        super::apply_fresh_task_probe_evidence(
+            &config,
+            std::slice::from_mut(&mut candidate),
+            None,
+            None,
+        );
+
+        assert_eq!(
+            candidate.task_probe_state,
+            crate::discovery::ProbeState::Passed
+        );
+        assert_eq!(
+            candidate.task_probe_evidence_ref.as_deref(),
+            Some(evidence.evidence_ref.as_str())
+        );
+        assert_eq!(candidate.trust_state, crate::discovery::TrustState::Ready);
+        assert!(crate::adapters::can_execute(&candidate));
     }
 
     #[test]

@@ -63,7 +63,7 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
-import RenderJobsPage from "../RenderJobsPage";
+import RenderJobsPage from "../RenderJobsPage.tsx";
 
 const REMOTION_JOB = {
   id: "job-remotion-1",

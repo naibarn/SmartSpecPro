@@ -5706,23 +5706,36 @@ export function createJobControlPlane(
         Spec224ApprovalDeliveryReceiptInput,
         "acknowledged"
       >,
-      failure?: { failureKind: "timeout" | "dispatch_failed"; errorCode?: string }
+      failure?: { failureKind: "timeout" | "dispatch_failed" | "runner_failed" | "runner_unknown"; errorCode?: string }
     ): Promise<"failed" | "ignored"> {
+      const failureKind = failure?.failureKind ?? "timeout";
       const safeReason = sanitizeJobErrorMessage(
         reason,
         2000,
-        failure?.failureKind === "dispatch_failed"
+        failureKind === "dispatch_failed"
           ? "runner_command_dispatch_failed"
-          : "external_wait_timeout"
+          : failureKind === "runner_failed"
+            ? "runner_execution_failed"
+            : failureKind === "runner_unknown"
+              ? "runner_execution_outcome_unknown"
+            : "external_wait_timeout"
       );
-      const failureCode = failure?.failureKind === "dispatch_failed"
-        ? (failure.errorCode && /^[A-Z][A-Z0-9_]{1,100}$/.test(failure.errorCode)
+      const failureCode = failureKind === "timeout"
+        ? "EXTERNAL_WAIT_TIMEOUT"
+        : (failure?.errorCode && /^[A-Z][A-Z0-9_]{1,100}$/.test(failure.errorCode)
           ? failure.errorCode
-          : "RUNNER_COMMAND_DISPATCH_FAILED")
-        : "EXTERNAL_WAIT_TIMEOUT";
-      const failureReason = failure?.failureKind === "dispatch_failed"
+          : failureKind === "dispatch_failed"
+            ? "RUNNER_COMMAND_DISPATCH_FAILED"
+            : failureKind === "runner_unknown"
+              ? "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN"
+              : "RUNNER_EXTERNAL_AGENT_FAILED");
+      const failureReason = failureKind === "dispatch_failed"
         ? "external_dispatch_failed"
-        : "external_wait_timeout";
+        : failureKind === "runner_failed"
+          ? "external_runner_failed"
+          : failureKind === "runner_unknown"
+            ? "external_runner_outcome_unknown"
+            : "external_wait_timeout";
       return repository.transaction(async repo => {
         if (operationKey)
           await repo.lockRunnerReceiptStream(jobId, operationKey);
@@ -5788,7 +5801,7 @@ export function createJobControlPlane(
           reason: `failed:${failureReason}`,
           cancelledAt: now,
         });
-        if (failure?.failureKind !== "dispatch_failed")
+        if (failureKind === "timeout")
           await repo.insertEvent({
             workerJobId: jobId,
             eventType: "TIMEOUT",

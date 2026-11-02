@@ -103,6 +103,7 @@ async function createPendingReceiptFixture(
   const runnerSessionId = `session-${randomUUID()}`;
   const snapshotId = randomUUID();
   const snapshotRevision = `rev-${randomUUID()}`;
+  const observedAt = new Date();
   const expiresAt = new Date(Date.now() + 10 * 60_000);
   const [user] = await sql`
     INSERT INTO users ("openId", "role", "plan", "credits", "isDisabled")
@@ -120,7 +121,7 @@ async function createPendingReceiptFixture(
   `;
   await sql`
     INSERT INTO runner_capability_snapshots ("id", "runnerId", "tenantId", "revision", "idempotencyKey", "observedAt", "expiresAt", "snapshotJson")
-    VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${snapshotRevision}, ${`d343-${snapshotId}`}, NOW(), ${expiresAt}, ${sql.json({ capabilitySnapshotId: snapshotId, capabilities: ["workspace.read"] })})
+    VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${snapshotRevision}, ${`d343-${snapshotId}`}, ${observedAt}, ${expiresAt}, ${sql.json({ capabilitySnapshotId: snapshotId, runnerSessionId, observedAt: observedAt.toISOString(), expiresAt: expiresAt.toISOString(), capabilities: ["workspace.read"] })})
   `;
 
   const [

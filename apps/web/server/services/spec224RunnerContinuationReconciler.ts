@@ -4,7 +4,6 @@ import { alias } from "drizzle-orm/pg-core";
 import { db, getDb } from "../db";
 import {
   runnerCapabilitySnapshots,
-  runnerNodes,
   workerJobAttempts,
   workerJobEvents,
   workerJobs,
@@ -58,6 +57,33 @@ type ContinuationIntent = {
   resultRef: string | null;
   errorCode: string | null;
 };
+
+export function runnerCapabilitySnapshotCoversReceipt(
+  intent: Pick<
+    ContinuationIntent,
+    "capabilitySnapshotId" | "capabilitySnapshotRevision" | "runnerSessionId"
+  >,
+  snapshot: {
+    revision: string;
+    observedAt: Date;
+    expiresAt: Date;
+    snapshotJson: unknown;
+  } | null | undefined,
+  receiptCreatedAt: Date
+): boolean {
+  if (!snapshot || !Number.isFinite(receiptCreatedAt.getTime())) return false;
+  const projection = snapshot.snapshotJson;
+  if (!projection || typeof projection !== "object" || Array.isArray(projection))
+    return false;
+  const snapshotIdentity = projection as Record<string, unknown>;
+  return (
+    snapshot.revision === intent.capabilitySnapshotRevision &&
+    snapshot.observedAt <= receiptCreatedAt &&
+    snapshot.expiresAt > receiptCreatedAt &&
+    snapshotIdentity.capabilitySnapshotId === intent.capabilitySnapshotId &&
+    snapshotIdentity.runnerSessionId === intent.runnerSessionId
+  );
+}
 
 function parseIntent(value: unknown): ContinuationIntent | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -257,7 +283,11 @@ export async function reconcileSpec224RunnerContinuations(
         )
         .limit(1);
       const receiptRows = await db
-        .select({ id: workerJobEvents.id })
+        .select({
+          id: workerJobEvents.id,
+          payloadJson: workerJobEvents.payloadJson,
+          createdAt: workerJobEvents.createdAt,
+        })
         .from(workerJobEvents)
         .where(
           and(
@@ -302,26 +332,12 @@ export async function reconcileSpec224RunnerContinuations(
           intent.developmentRunRevision &&
         (projection as Record<string, unknown>).fencingVersion ===
           intent.developmentRunFencingVersion;
-      const [runner] = await db
-        .select({
-          trustState: runnerNodes.trustState,
-          activeSessionId: runnerNodes.activeSessionId,
-          currentSnapshotRevision: runnerNodes.currentSnapshotRevision,
-          snapshotExpiresAt: runnerNodes.snapshotExpiresAt,
-          revokedAt: runnerNodes.revokedAt,
-        })
-        .from(runnerNodes)
-        .where(
-          and(
-            eq(runnerNodes.runnerId, intent.runnerId),
-            eq(runnerNodes.tenantId, intent.tenantId)
-          )
-        )
-        .limit(1);
       const [snapshot] = await db
         .select({
           revision: runnerCapabilitySnapshots.revision,
+          observedAt: runnerCapabilitySnapshots.observedAt,
           expiresAt: runnerCapabilitySnapshots.expiresAt,
+          snapshotJson: runnerCapabilitySnapshots.snapshotJson,
         })
         .from(runnerCapabilitySnapshots)
         .where(
@@ -335,18 +351,10 @@ export async function reconcileSpec224RunnerContinuations(
           )
         )
         .limit(1);
-      const now = new Date();
-      const validCapability = Boolean(
-        runner &&
-        snapshot &&
-        runner.trustState === "trusted" &&
-        runner.activeSessionId === intent.runnerSessionId &&
-        runner.currentSnapshotRevision === intent.capabilitySnapshotRevision &&
-        snapshot.revision === intent.capabilitySnapshotRevision &&
-        runner.revokedAt === null &&
-        runner.snapshotExpiresAt &&
-        runner.snapshotExpiresAt > now &&
-        snapshot.expiresAt > now
+      const validCapability = runnerCapabilitySnapshotCoversReceipt(
+        intent,
+        snapshot,
+        receiptRows[0]?.createdAt ?? new Date(Number.NaN)
       );
 
       if (
@@ -423,13 +431,31 @@ export async function reconcileSpec224RunnerContinuations(
             "RUNNER_UNKNOWN_OUTCOME",
           ].includes(intent.receiptEventType)
         ) {
+          const receiptPayload = receiptRows[0]?.payloadJson;
+          const reportedRunnerErrorCode =
+            typeof receiptPayload?.errorSummary === "string" &&
+            /^[A-Z][A-Z0-9_]{1,100}$/.test(receiptPayload.errorSummary)
+              ? receiptPayload.errorSummary
+              : intent.errorCode;
+          const outcomeUnknown =
+            intent.receiptEventType === "RUNNER_UNKNOWN_OUTCOME";
           settlementOk =
             (await controlPlane.failExternalWait(
               intent.workerJobId,
-              intent.errorCode ?? intent.receiptEventType,
-              intent.receiptEventType === "RUNNER_UNKNOWN_OUTCOME",
+              reportedRunnerErrorCode ?? intent.receiptEventType,
+              outcomeUnknown,
               new Date(),
-              intent.operationKey
+              intent.operationKey,
+              undefined,
+              undefined,
+              {
+                failureKind: outcomeUnknown ? "runner_unknown" : "runner_failed",
+                errorCode:
+                  reportedRunnerErrorCode ??
+                  (outcomeUnknown
+                    ? "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN"
+                    : "RUNNER_EXTERNAL_AGENT_FAILED"),
+              }
             )) === "failed";
         } else {
           settlementOk = false;

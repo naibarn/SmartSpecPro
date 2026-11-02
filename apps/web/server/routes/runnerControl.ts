@@ -1456,14 +1456,38 @@ export async function handleRunnerSocketMessage(
             receipt.eventType
           )
         ) {
+          const runnerFailureCode = [
+            receipt.errorSummary,
+            receipt.errorCode,
+          ].find(
+            (value): value is string =>
+              typeof value === "string" &&
+              /^[A-Z][A-Z0-9_]{1,100}$/.test(value)
+          );
           await controlPlane.failExternalWait(
             receipt.jobId,
-            receipt.errorCode ?? receipt.eventType,
+            runnerFailureCode ??
+              (receipt.eventType === "UNKNOWN_OUTCOME"
+                ? "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN"
+                : "RUNNER_EXTERNAL_AGENT_FAILED"),
             receipt.eventType === "UNKNOWN_OUTCOME" ||
               (receipt.payload?.cancellationOperationId !== undefined &&
                 receipt.eventType === "COMMAND_REJECTED"),
             new Date(),
-            operationKey
+            operationKey,
+            undefined,
+            undefined,
+            {
+              failureKind:
+                receipt.eventType === "UNKNOWN_OUTCOME"
+                  ? "runner_unknown"
+                  : "runner_failed",
+              errorCode:
+                runnerFailureCode ??
+                (receipt.eventType === "UNKNOWN_OUTCOME"
+                  ? "RUNNER_EXTERNAL_AGENT_OUTCOME_UNKNOWN"
+                  : "RUNNER_EXTERNAL_AGENT_FAILED"),
+            }
           );
         }
       }

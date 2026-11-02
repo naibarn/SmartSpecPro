@@ -3359,6 +3359,56 @@ describe("job control plane", () => {
     });
   });
 
+  it("records an accepted Runner execution failure as a failure, never as an external timeout", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:runner-failure:plan:1",
+      providerReference: "runner-command:command-runner-failure",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-runner-failure",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+
+    await controlPlane.failExternalWait(
+      created.jobId,
+      "RUNNER_AGENT_CAPABILITY_NOT_READY",
+      true,
+      new Date("2026-11-02T06:26:03.791Z"),
+      "external-agent:runner-failure:plan:1",
+      undefined,
+      undefined,
+      { failureKind: "runner_failed", errorCode: "RUNNER_AGENT_CAPABILITY_NOT_READY" },
+    );
+
+    expect(state.jobs.get(created.jobId)).toMatchObject({
+      status: "failed",
+      statusReason: "external_runner_failed",
+      errorCode: "RUNNER_AGENT_CAPABILITY_NOT_READY",
+    });
+    expect(state.events.some(event => event.eventType === "TIMEOUT")).toBe(false);
+    expect(state.events.find(event => event.eventType === "FAILED")?.payloadJson).toMatchObject({
+      code: "RUNNER_AGENT_CAPABILITY_NOT_READY",
+    });
+  });
+
   it("persists a stable Spec 224 continuation intent with a terminal Runner receipt", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

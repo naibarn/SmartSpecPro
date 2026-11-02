@@ -262,7 +262,7 @@ const VideoStudioListPage = lazy(() => import("./pages/VideoStudioListPage"));
 const VideoStudioWorkspacePage = lazy(
   () => import("./pages/VideoStudioWorkspacePage")
 );
-const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage"));
+const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage.tsx"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
 const MediaHistory = lazy(() => import("./pages/MediaHistory"));
