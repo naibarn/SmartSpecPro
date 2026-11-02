@@ -36,9 +36,11 @@ export type Spec226DevelopmentRunView = {
   /** User-authored task text and explicit project binding for Task Control. */
   goal: string;
   projectId: string | null;
+  projectName: string | null;
   runnerId: string | null;
+  requestedSpec: { specId: string; title: string } | null;
   specId: string | null;
-  specSources: Array<{ specId: string; sourcePath: string; digest: string }>;
+  specSources: Array<{ specId: string; fileName: string }>;
   workspaceId: string;
   workPackageId: string | null;
   workPackageExternalId: string | null;
@@ -112,11 +114,24 @@ function toView(input: {
       const record = source as Record<string, unknown>;
       if (typeof record.specId !== "string" || typeof record.sourcePath !== "string" || typeof record.digest !== "string") return [];
       if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(record.specId) ||
-          record.sourcePath.startsWith("/") || record.sourcePath.split("/").includes("..") ||
+          record.sourcePath.length > 512 || record.sourcePath.startsWith("/") || record.sourcePath.split("/").includes("..") ||
           !/^[a-f0-9]{64}$/i.test(record.digest)) return [];
-      return [{ specId: record.specId, sourcePath: record.sourcePath, digest: record.digest }];
+      const fileName = record.sourcePath.split("/").at(-1);
+      return fileName && !/[\u0000-\u001f\u007f]/.test(fileName)
+        ? [{ specId: record.specId, fileName }]
+        : [];
     })
     : [];
+  const requestedSpecRecord = workspaceRecord?.requestedSpec && typeof workspaceRecord.requestedSpec === "object" && !Array.isArray(workspaceRecord.requestedSpec)
+    ? workspaceRecord.requestedSpec as Record<string, unknown>
+    : null;
+  const requestedSpecId = typeof requestedSpecRecord?.specId === "string" ? requestedSpecRecord.specId.slice(0, 160) : null;
+  const requestedSpecTitle = typeof requestedSpecRecord?.title === "string" && !/[\u0000-\u001f\u007f]/.test(requestedSpecRecord.title)
+    ? requestedSpecRecord.title.slice(0, 200).trim()
+    : null;
+  const requestedSpec = requestedSpecId && requestedSpecTitle && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(requestedSpecId)
+    ? { specId: requestedSpecId, title: requestedSpecTitle }
+    : null;
   const workspaceProjectId = workspaceMetadata && typeof workspaceMetadata === "object" && !Array.isArray(workspaceMetadata)
     ? (workspaceMetadata as Record<string, unknown>).projectId
     : null;
@@ -128,7 +143,9 @@ function toView(input: {
     projectId: typeof metadata.projectId === "string"
       ? metadata.projectId
       : typeof workspaceProjectId === "string" ? workspaceProjectId : null,
+    projectName: null,
     runnerId: typeof workspaceRecord?.runnerId === "string" ? workspaceRecord.runnerId : null,
+    requestedSpec,
     specId: typeof metadata.specId === "string"
       ? metadata.specId
       : specSources.length === 1 ? specSources[0]!.specId : null,

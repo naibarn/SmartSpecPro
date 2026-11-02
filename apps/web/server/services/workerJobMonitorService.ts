@@ -338,8 +338,15 @@ export type UserWorkerJobSummary = {
   jobType: string;
   /** Owner-authored Goal text used to distinguish delegated development jobs. */
   contextLabel: string | null;
+  goalId: string | null;
+  runId: string | null;
+  runnerBound: boolean;
+  requestedSpec: { specId: string; title: string } | null;
+  specSources: Array<{ specId: string; fileName: string }>;
+  workPackageExternalId: string | null;
   status: UserWorkerJobStatus;
   statusReason: string | null;
+  errorCode: string | null;
   operatorReviewRequired: boolean;
   operatorReviewReason: string | null;
   failureReason: string | null;
@@ -890,13 +897,47 @@ function projectJob(
   const input = asRecord(row.inputJson);
   const spec224Run = asRecord(input.spec224Run);
   const contextLabel = safeBoundedString(spec224Run.goal, 180) ?? null;
+  const runMetadata = asRecord(spec224Run.metadata);
+  const workspaceMetadata = asRecord(runMetadata.spec224Workspace);
+  const manifest = asRecord(input.manifest);
+  const manifestBinding = asRecord(manifest.policyBinding);
+  const requestedSpecRecord = asRecord(workspaceMetadata.requestedSpec);
+  const requestedSpecId = safeBoundedString(requestedSpecRecord.specId, 160);
+  const requestedSpecTitle = safeBoundedString(requestedSpecRecord.title, 200);
+  const requestedSpec = requestedSpecId && requestedSpecTitle && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(requestedSpecId)
+    ? { specId: requestedSpecId, title: requestedSpecTitle }
+    : null;
+  const specSources = Array.isArray(workspaceMetadata.specSources)
+    ? workspaceMetadata.specSources.slice(0, 64).flatMap(source => {
+      const record = asRecord(source);
+      const specId = safeBoundedString(record.specId, 160);
+      const sourcePath = safeBoundedString(record.sourcePath, 512);
+      if (!specId || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(specId) || !sourcePath || sourcePath.startsWith("/") || sourcePath.split("/").includes("..")) return [];
+      const fileName = sourcePath.split("/").at(-1);
+      return fileName ? [{ specId, fileName }] : [];
+    })
+    : [];
+  const goalId = safeBoundedString(spec224Run.goalId, 120) ?? null;
+  const runId = safeBoundedString(spec224Run.runId, 128) ?? null;
+  const runnerBound = Boolean(safeBoundedString(workspaceMetadata.runnerId ?? manifestBinding.runnerId, 160));
+  const workPackageExternalId = safeBoundedString(workspaceMetadata.workPackageExternalId ?? manifest.workPackageId, 96) ?? null;
 
   return {
     id: row.id,
     jobType: row.jobType,
     contextLabel,
+    goalId,
+    runId,
+    runnerBound,
+    requestedSpec,
+    specSources,
+    workPackageExternalId,
     status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
+    errorCode: (() => {
+      const code = safeBoundedString(row.errorCode, 160);
+      return code && /^[A-Z][A-Z0-9_]{1,159}$/.test(code) ? code : null;
+    })(),
     operatorReviewRequired: row.operatorReviewRequired,
     operatorReviewReason: row.operatorReviewReason,
     failureReason:

@@ -21,6 +21,7 @@ export interface ExecutionJobLike {
   failureReason?: string | null;
   operatorReviewRequired?: boolean | null;
   runtimeType?: string | null;
+  runnerBound?: boolean;
   worker?: { displayName?: string | null; machineName?: string | null } | null;
   progressPercent?: number | null;
   progressPhase?: string | null;
@@ -137,11 +138,14 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
     job.worker?.machineName,
     job.pinnedRevisionId ? `revision ${job.pinnedRevisionId}` : undefined,
   ].filter(Boolean);
+  const statusReason = state === 'waiting-agent' && job.runnerBound
+    ? 'กำหนด Runner ไว้แล้ว แต่ยังไม่มี ACK ยืนยันการรับงาน'
+    : reasons[state];
 
   return {
     state,
     label: labels[state],
-    reason: reasons[state],
+    reason: statusReason,
     context: contextParts.join(' · '),
     progress: typeof job.progressPercent === 'number' ? Math.max(0, Math.min(100, job.progressPercent)) : undefined,
     outputReady,

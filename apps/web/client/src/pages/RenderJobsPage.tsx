@@ -110,6 +110,44 @@ function formatJobType(jobType: string): string {
   return JOB_TYPE_LABELS[jobType] ?? jobType;
 }
 
+function formatSpecId(specId: string): string {
+  const number = /^(?:SPEC-)?(\d+)(?:-|$)/i.exec(specId)?.[1];
+  return number ? `SPEC-${number}` : specId;
+}
+
+function formatRequestedSpec(
+  spec: { specId: string; title: string } | null | undefined,
+  hasWorkPackageContext = false,
+): string | null {
+  if (spec) return `ผู้ใช้เลือก ${formatSpecId(spec.specId)} · ${spec.title}`;
+  return hasWorkPackageContext ? "SPEC ที่ผู้ใช้เลือกไม่ได้บันทึกไว้ (รายการเดิม)" : null;
+}
+
+function formatWorkPackageSources(job: {
+  specSources?: Array<{ specId: string; fileName?: string }> | null;
+  workPackageExternalId?: string | null;
+}): string | null {
+  const sources = job.specSources?.map(source =>
+    `${formatSpecId(source.specId)}${source.fileName ? ` · ${source.fileName}` : ""}`
+  ) ?? [];
+  if (sources.length) return `WorkPackage อ้างอิง ${sources.join(", ")}`;
+  return job.workPackageExternalId ? `WorkPackage ${job.workPackageExternalId}` : null;
+}
+
+function formatGoalRunReference(job: { goalId?: string | null; runId?: string | null }, full = false): string | null {
+  const goal = job.goalId ? `Goal ID ${job.goalId.slice(0, 8)}` : null;
+  const run = job.runId ? `Run ID ${full ? job.runId : job.runId.slice(0, 16)}` : null;
+  const reference = [goal, run].filter(Boolean).join(" · ");
+  return reference || null;
+}
+
+function runnerStatusLabel(job: { jobType?: string | null; runnerBound?: boolean; status?: string | null }): string | null {
+  if (!job.runnerBound) return null;
+  if (job.jobType === "external_agent_task" && job.status === "waiting_external") return "Runner ส่งงานแล้ว · รอผลจากบริการภายนอก";
+  if (["pending", "queued", "leased", "retry_scheduled"].includes(job.status ?? "")) return "กำหนด Runner แล้ว · รอยืนยันรับงาน";
+  return "กำหนด Runner แล้ว";
+}
+
 // Spec 143 §5 R1: job-type filter options, sourced from the same Thai label
 // map used to render job type text elsewhere on this page, so the filter
 // dropdown always matches what the user sees in the table/detail panel.
@@ -551,6 +589,9 @@ export default function RenderJobsPage() {
                                   {job.contextLabel}
                                 </div>
                               ) : null}
+                              {formatRequestedSpec(job.requestedSpec, Boolean(job.workPackageExternalId || job.specSources?.length)) ? <p className="max-w-72 truncate text-xs text-sky-700">{formatRequestedSpec(job.requestedSpec, Boolean(job.workPackageExternalId || job.specSources?.length))}</p> : null}
+                              {formatWorkPackageSources(job) ? <p className="max-w-72 truncate text-xs text-slate-500">{formatWorkPackageSources(job)}</p> : null}
+                              {formatGoalRunReference(job) ? <p className="max-w-72 truncate text-xs text-slate-500">{formatGoalRunReference(job)}</p> : null}
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
                               {job.canRetry ? (
                                 <Button
@@ -572,7 +613,8 @@ export default function RenderJobsPage() {
                             </TableCell>
                             <TableCell><JobStatusBadge status={job.status} job={job} /></TableCell>
                             <TableCell>
-                              {job.worker?.displayName ?? "ยังไม่ assign"}
+                              <p>{job.worker?.displayName ?? (job.runnerBound ? "SmartAIHub Runner" : "ยังไม่ assign")}</p>
+                              {!job.worker ? <p className="text-xs text-slate-500">{runnerStatusLabel(job) ?? ""}</p> : null}
                               {job.worker?.machineName ? (
                                 <div className="text-xs text-slate-500">{job.worker.machineName}</div>
                               ) : null}
@@ -584,6 +626,7 @@ export default function RenderJobsPage() {
                               <div className="max-w-72 truncate text-xs text-slate-500">
                                 {projectExecutionStatus(job).reason}
                               </div>
+                              {job.errorCode ? <p className="max-w-72 truncate font-mono text-[11px] text-rose-700">{job.errorCode}</p> : null}
                               {job.latestEvent?.cacheHit ? (
                                 <div className="text-xs text-emerald-600">ใช้ cache แล้ว</div>
                               ) : null}
@@ -617,11 +660,16 @@ export default function RenderJobsPage() {
                           <JobStatusBadge status={job.status} job={job} />
                         </div>
                         {job.contextLabel ? <div className="mb-1 line-clamp-2 text-xs text-slate-600">{job.contextLabel}</div> : null}
+                        {formatRequestedSpec(job.requestedSpec, Boolean(job.workPackageExternalId || job.specSources?.length)) ? <p className="text-xs text-sky-700">{formatRequestedSpec(job.requestedSpec, Boolean(job.workPackageExternalId || job.specSources?.length))}</p> : null}
+                        {formatWorkPackageSources(job) ? <p className="text-xs text-slate-500">{formatWorkPackageSources(job)}</p> : null}
+                        {formatGoalRunReference(job) ? <p className="text-xs text-slate-500">{formatGoalRunReference(job)}</p> : null}
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
                         <div className="mt-2 truncate text-sm">
                           {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined) || "ยังไม่มี progress event"}
                         </div>
                         <div className="mt-1 line-clamp-2 text-xs text-slate-500">{projectExecutionStatus(job).reason}</div>
+                        {job.errorCode ? <p className="mt-1 font-mono text-[11px] text-rose-700">{job.errorCode}</p> : null}
+                        <p className="mt-1 text-xs text-slate-500">{job.worker?.displayName ?? (job.runnerBound ? "SmartAIHub Runner" : "ยังไม่ assign")}{!job.worker && runnerStatusLabel(job) ? ` · ${runnerStatusLabel(job)}` : ""}</p>
                       </button>
                     ))}
                   </div>
@@ -651,6 +699,9 @@ export default function RenderJobsPage() {
                       <div className="min-w-0">
                         <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
                         {detailQuery.data.contextLabel ? <div className="line-clamp-3 text-xs text-slate-300">{detailQuery.data.contextLabel}</div> : null}
+                        {formatRequestedSpec(detailQuery.data.requestedSpec, Boolean(detailQuery.data.workPackageExternalId || detailQuery.data.specSources?.length)) ? <p className="text-xs text-cyan-200">{formatRequestedSpec(detailQuery.data.requestedSpec, Boolean(detailQuery.data.workPackageExternalId || detailQuery.data.specSources?.length))}</p> : null}
+                        {formatWorkPackageSources(detailQuery.data) ? <p className="text-xs text-slate-300">{formatWorkPackageSources(detailQuery.data)}</p> : null}
+                        {formatGoalRunReference(detailQuery.data, true) ? <p className="break-all font-mono text-xs text-slate-400">{formatGoalRunReference(detailQuery.data, true)}</p> : null}
                         <div className="truncate text-xs text-slate-400">{detailQuery.data.id}</div>
                       </div>
                       <JobStatusBadge status={detailQuery.data.status} job={detailQuery.data} />
@@ -681,7 +732,8 @@ export default function RenderJobsPage() {
                     ) : null}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                       <div className="text-xs text-slate-400">Worker</div>
-                      {detailQuery.data.worker?.displayName ?? "ยังไม่มี worker รับงาน"}
+                      {detailQuery.data.worker?.displayName ?? (detailQuery.data.runnerBound ? "SmartAIHub Runner" : "ยังไม่มี worker รับงาน")}
+                      {!detailQuery.data.worker && runnerStatusLabel(detailQuery.data) ? <p className="text-xs text-slate-400">{runnerStatusLabel(detailQuery.data)}</p> : null}
                       {detailQuery.data.worker?.status ? (
                         <span className="ml-2 text-xs text-slate-400">({detailQuery.data.worker.status})</span>
                       ) : null}
@@ -702,9 +754,10 @@ export default function RenderJobsPage() {
                     ) : null}
                   </div>
 
-                  {detailQuery.data.failureReason ? (
+                  {detailQuery.data.failureReason || detailQuery.data.errorCode ? (
                     <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 p-3 text-sm text-rose-100">
-                      {detailQuery.data.failureReason}
+                      {detailQuery.data.errorCode ? <p className="mb-1 font-mono text-xs">{detailQuery.data.errorCode}</p> : null}
+                      {detailQuery.data.failureReason ?? "ยังไม่มีรายละเอียดความล้มเหลว"}
                     </div>
                   ) : null}
 

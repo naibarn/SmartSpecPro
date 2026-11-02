@@ -97,6 +97,19 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       metadata: {
         projectId: "project-modular-core",
         specId: "SPEC-312",
+        spec224Workspace: {
+          requestedSpec: {
+            specId: "312-smartaihub-modular-saas-rebuild-master-plan",
+            title: "Modular SaaS Rebuild",
+            path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+            digest: "a".repeat(64),
+          },
+          specSources: [{
+            specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+            sourcePath: "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
+            digest: "b".repeat(64),
+          }],
+        },
         spec224Execution: { internalOnly: true },
       },
     };
@@ -113,7 +126,17 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       goal: "Implement SPEC-312 P0: r14-core-p1-first-slice",
       projectId: "project-modular-core",
       specId: "SPEC-312",
+      requestedSpec: {
+        specId: "312-smartaihub-modular-saas-rebuild-master-plan",
+        title: "Modular SaaS Rebuild",
+      },
+      specSources: [{
+        specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+        fileName: "spec.md",
+      }],
     });
+    expect(view?.requestedSpec).not.toHaveProperty("path");
+    expect(JSON.stringify(view?.specSources)).not.toContain("specs/feature/");
     expect(view).not.toHaveProperty("metadata");
   });
 
@@ -169,7 +192,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         workPackageExternalId: "api",
         specSetRevision: 3,
         specId: "313-core",
-        specSources: [{ specId: "313-core", sourcePath: "specs/feature/313-core/spec.md", digest: "a".repeat(64) }],
+        specSources: [{ specId: "313-core", fileName: "spec.md" }],
       }]);
     expect(listRuns).toHaveBeenCalledWith({
       scope: { tenantId: run.tenantId, actorId: run.actorId },

@@ -52,7 +52,7 @@ import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval }
 import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection";
 import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
-import { assertConversationThreadScope, ConversationThreadError, touchConversationThread } from "../services/conversationThreadService";
+import { assertConversationThreadScope, ConversationThreadError, listVisibleConversationProjectTitles, touchConversationThread } from "../services/conversationThreadService";
 import {
   createAndBindModularCoreWorkspace,
   createPlatformWorkspaceBinding,
@@ -165,6 +165,9 @@ function asTrpcError(error: unknown): never {
       message: "Development run changed; refresh and retry",
     });
   }
+  if (code === "RUN_IDEMPOTENCY_CONFLICT") {
+    throw new TRPCError({ code: "CONFLICT", message: code });
+  }
   if (code === "SPEC_SET_REVISION_STALE") {
     throw new TRPCError({ code: "CONFLICT", message: "Spec Set changed; refresh and retry" });
   }
@@ -172,7 +175,6 @@ function asTrpcError(error: unknown): never {
     [
       "CONTROL_ACTION_INVALID_STATE",
       "CONTROL_ACTION_UNSUPPORTED",
-      "RUN_IDEMPOTENCY_CONFLICT",
       "RUN_IDEMPOTENCY_KEY_INVALID",
       "EVENT_CURSOR_INVALID",
       "EVENT_LIMIT_INVALID",
@@ -1196,6 +1198,7 @@ export const spec226DevelopmentControlRouter = router({
       additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
+      requestedSpecId: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/).optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
       budgetCapMinorUnits: z.number().int().positive().max(10_000_000).optional(),
       provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
@@ -1219,6 +1222,8 @@ export const spec226DevelopmentControlRouter = router({
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "work package required" });
       if (input.mode === "prompt" && input.additionalInstructions)
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "additional instructions require a canonical Spec" });
+      if (input.mode === "prompt" && input.requestedSpecId)
+        refinement.addIssue({ code: z.ZodIssueCode.custom, message: "requested SPEC requires a canonical WorkPackage" });
       if (input.appId && !input.factoryMode)
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "app continuation requires factory mode" });
       if (input.visualReferences.length !== input.visualFiles.length)
@@ -1418,6 +1423,7 @@ export const spec226DevelopmentControlRouter = router({
           workspaceAccessMode: input.workspaceAccessMode ?? null,
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
+          ...(input.requestedSpecId ? { requestedSpecId: input.requestedSpecId } : {}),
           provider, visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
           modelSelection: input.modelSelection ?? { policy: "auto" },
@@ -1449,6 +1455,18 @@ export const spec226DevelopmentControlRouter = router({
             workPackageId: workspace.workPackageId,
             modelSelection: existing.run.metadata?.spec224ModelSelection ?? null,
             idempotent: true };
+        }
+        let requestedSpec: { specId: string; title: string; path: string; digest: string } | null = null;
+        if (input.mode === "spec_set" && input.requestedSpecId) {
+          await authorizeFeatureSpecCatalog(ctx, input.conversationId);
+          const selectedSpec = await loadRepositoryFeatureSpecContext({ specId: input.requestedSpecId });
+          if (selectedSpec.id !== input.requestedSpecId) throw new Error("REQUESTED_SPEC_IDENTITY_MISMATCH");
+          requestedSpec = {
+            specId: selectedSpec.id,
+            title: selectedSpec.title.slice(0, 200),
+            path: selectedSpec.path,
+            digest: selectedSpec.digest,
+          };
         }
         const prepared = await defaultSpec224WorkspaceSpecSetService.resolveWorkspaceRunInput({
           ...scope,
@@ -1574,6 +1592,7 @@ export const spec226DevelopmentControlRouter = router({
           specSetRevision: prepared.specSetRevision,
           workPackageId,
           workPackageExternalId: prepared.workPackageExternalId ?? null,
+          ...(requestedSpec ? { requestedSpec } : {}),
           specSources: prepared.specSources ?? [],
           executionMode: prepared.workPackageId ? "work_package" : "prompt",
           allowedWriteSet: prepared.allowedWriteSet,
@@ -1961,9 +1980,18 @@ export const spec226DevelopmentControlRouter = router({
           ...scope,
           limit: input?.limit ?? 25,
         });
+        const projectIds = runs.flatMap(run => run.projectId ? [run.projectId] : []);
+        const projectTitles = projectIds.length
+          ? await listVisibleConversationProjectTitles({
+              tenantId: scope.tenantId,
+              userId: scope.actorId,
+              projectIds,
+            }).catch(() => new Map<string, string>())
+          : new Map<string, string>();
         const sourceLookups = new Map<string, Promise<Array<{ specId: string; sourcePath: string; digest: string }>>>();
         return await Promise.all(runs.map(async run => {
-          if (run.specSources.length || !run.runnerId || !run.specSetRevision || !run.workPackageId) return run;
+          const projectName = run.projectId ? projectTitles.get(run.projectId) ?? null : null;
+          if (run.specSources.length || !run.runnerId || !run.specSetRevision || !run.workPackageId) return { ...run, projectName };
           const lookupKey = `${run.runnerId}\0${run.workspaceId}\0${run.specSetRevision}\0${run.workPackageId}`;
           let lookup = sourceLookups.get(lookupKey);
           if (!lookup) {
@@ -1976,8 +2004,13 @@ export const spec226DevelopmentControlRouter = router({
             }).catch(() => []);
             sourceLookups.set(lookupKey, lookup);
           }
-          const specSources = await lookup;
-          return { ...run, specSources, specId: run.specId ?? (specSources.length === 1 ? specSources[0]!.specId : null) };
+          const specSources = (await lookup).flatMap(source => {
+            if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(source.specId) || source.sourcePath.length > 512 ||
+                source.sourcePath.startsWith("/") || source.sourcePath.split("/").includes("..") || !/^[a-f0-9]{64}$/i.test(source.digest)) return [];
+            const fileName = source.sourcePath.split("/").at(-1);
+            return fileName ? [{ specId: source.specId, fileName }] : [];
+          });
+          return { ...run, projectName, specSources, specId: run.specId ?? (specSources.length === 1 ? specSources[0]!.specId : null) };
         }));
       } catch (error) {
         return asTrpcError(error);

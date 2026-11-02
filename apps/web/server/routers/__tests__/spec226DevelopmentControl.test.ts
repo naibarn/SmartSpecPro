@@ -162,6 +162,7 @@ vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
 }));
 
 import { spec226DevelopmentControlRouter } from "../spec226DevelopmentControl";
+import * as conversationThreadService from "../../services/conversationThreadService";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../../services/miniAppFactoryDurableState";
 
 const CTX = { tenantId: "tenant-acme", user: { id: 42, role: "admin" } };
@@ -218,6 +219,32 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.createRun).not.toHaveBeenCalled();
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
     expect(mocks.advanceStart).toHaveBeenCalledWith(expect.objectContaining({ runId, runnerId: "runner-a" }));
+  });
+
+  it("rejects reusing a Start key for a different selected canonical SPEC", async () => {
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-existing-spec-selection",
+      workerJobId: "existing-job",
+      state: "DISCOVERY",
+      workspaceId: "workspace-a",
+      metadata: { spec224StartRequestDigest: "digest-for-another-selected-spec" },
+    } });
+
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "spec_set",
+        specSetRevision: 12,
+        workPackageId: "r14-core-p1-first-slice",
+        requestedSpecId: "312-smartaihub-modular-saas-rebuild-master-plan",
+        idempotencyKey: "same-start-key-selected-spec",
+        provider: "codex",
+      },
+    })).rejects.toMatchObject({ code: "CONFLICT", message: "RUN_IDEMPOTENCY_CONFLICT" });
+
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
   });
 
   it("continues an existing owner-scoped Run by ID without creating a replacement", async () => {
@@ -910,12 +937,27 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("dispatches the Codex child after the explicit Goal Start grant is approved", async () => {
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING",
+    }]);
+    mocks.featureSpecCatalog.loadContext.mockResolvedValueOnce({
+      id: "312-smartaihub-modular-saas-rebuild-master-plan",
+      title: "Modular SaaS Rebuild",
+      path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      digest: "e".repeat(64),
+      handoff: { status: "CURRENT" },
+    });
     mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
       workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
       runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64), modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test", accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } },
       goal: "Implement the selected work package.", planId: "plan:ready", planRevision: 1,
       contextPackHash: "b".repeat(64), repositoryRef: "runner:runner-a/workspace-a",
       baseRevision: `git:${"a".repeat(40)}`, specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      specSources: [{
+        specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+        sourcePath: "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
+        digest: "f".repeat(64),
+      }],
       allowedWriteSet: ["apps/saas-core/**"], inputFiles: [{ path: "spec.md", contentBase64: Buffer.from("# Canonical Spec").toString("base64") }],
     });
     mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({
@@ -932,6 +974,7 @@ describe("spec226DevelopmentControlRouter", () => {
 
     const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
       conversationId: 8, mode: "spec_set", specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      requestedSpecId: "312-smartaihub-modular-saas-rebuild-master-plan",
       idempotencyKey: "spec224-start-codex-work-package-0001", provider: "codex",
     } });
 
@@ -942,6 +985,23 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId: result.runId }));
     expect(mocks.runnerInputStaging.bindSourceToWorkerJob).toHaveBeenCalledWith(expect.objectContaining({
       inputSourceRef: "spec224-source:run-1", workerJobId: "canonical-job-1",
+    }));
+    expect(mocks.createRun).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({
+        metadata: expect.objectContaining({
+          spec224Workspace: expect.objectContaining({
+            requestedSpec: expect.objectContaining({
+              specId: "312-smartaihub-modular-saas-rebuild-master-plan",
+              title: "Modular SaaS Rebuild",
+            }),
+            specSources: [{
+              specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+              sourcePath: "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
+              digest: expect.any(String),
+            }],
+          }),
+        }),
+      }),
     }));
   });
   it("requires authenticated tenant scope and records full verification requests", async () => {
@@ -1114,5 +1174,30 @@ describe("spec226DevelopmentControlRouter", () => {
         metadata: expect.objectContaining({ action: "pause", accepted: true }),
       })
     );
+  });
+
+  it("adds only the caller-visible canonical Project title to Goal summaries", async () => {
+    const projectTitleLookup = vi.spyOn(conversationThreadService, "listVisibleConversationProjectTitles")
+      .mockResolvedValue(new Map([["project-visible", "Modular SaaS Core"]]));
+    mocks.bridge.list.mockResolvedValueOnce([{
+      runId: "run-project-title",
+      projectId: "project-visible",
+      runnerId: null,
+      specSources: [],
+      specSetRevision: null,
+      workPackageId: null,
+    }]);
+
+    await expect((spec226DevelopmentControlRouter.list as unknown as Function)({
+      ctx: CTX,
+      input: { limit: 10 },
+    })).resolves.toMatchObject([{ projectId: "project-visible", projectName: "Modular SaaS Core" }]);
+
+    expect(projectTitleLookup).toHaveBeenCalledWith({
+      tenantId: CTX.tenantId,
+      userId: CTX.user.id,
+      projectIds: ["project-visible"],
+    });
+    projectTitleLookup.mockRestore();
   });
 });

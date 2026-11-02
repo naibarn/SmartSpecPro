@@ -1048,7 +1048,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${effectiveSpecSource === "catalog" ? selectedFeatureSpec : ""}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -1066,6 +1066,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           // Chat section may append a newer SpecSet while this preview is open.
           specSetRevision: targetPreparation.planRevision,
           workPackageId,
+          ...(effectiveSpecSource === "catalog" && selectedFeatureSpec ? { requestedSpecId: selectedFeatureSpec } : {}),
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
         ...(platformWorkspaceSelected ? {} : { budgetCapMinorUnits }),

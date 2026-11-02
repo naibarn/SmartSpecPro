@@ -64,12 +64,22 @@ function goalTitle(goal: any): string {
   return value?.trim() ?? `เป้าหมาย ${String(goal.goalId).slice(0, 8)}`;
 }
 
-export function specSourceLabel(source: { specId: string; sourcePath: string }, developer: boolean): string {
+export function specSourceLabel(source: { specId: string; fileName: string }): string {
   const specLabel = /^\d+(?:-|$)/.test(source.specId)
     ? `SPEC-${source.specId.match(/^\d+/)?.[0]}`
     : source.specId;
-  const file = source.sourcePath.split("/").at(-1) || "spec.md";
-  return `${specLabel} · ${developer ? source.sourcePath : file}`;
+  return `${specLabel} · ${source.fileName || "spec.md"}`;
+}
+
+export function requestedSpecDisplayLabel(requestedSpec: { specId: string; title: string }): string {
+  const specLabel = /^\d+(?:-|$)/.test(requestedSpec.specId)
+    ? `SPEC-${requestedSpec.specId.match(/^\d+/)?.[0]}`
+    : requestedSpec.specId;
+  return `${specLabel} · ${requestedSpec.title}`;
+}
+
+function hasUnrecordedRequestedSpec(goal: any): boolean {
+  return !goal?.requestedSpec && Boolean(goal?.workPackageExternalId || goal?.specSources?.length || goal?.specId);
 }
 
 const CONTROL_PHASE: Record<string, string> = {
@@ -171,8 +181,13 @@ export function ProjectExecutionWorkspace({
     for (const thread of threads)
       if (thread.projectId && thread.projectTitle)
         result.set(thread.projectId, thread.projectTitle);
+    for (const goal of goals) {
+      const projectId = projectBinding(goal);
+      if (projectId && typeof goal.projectName === "string" && goal.projectName.trim())
+        result.set(projectId, goal.projectName.trim());
+    }
     return result;
-  }, [threads]);
+  }, [goals, threads]);
   const projects = useMemo(() => {
     const result = new Map<
       string,
@@ -443,19 +458,24 @@ export function ProjectExecutionWorkspace({
                             <span className="ml-2 break-all font-mono text-xs text-muted-foreground">{selectedGoal.goalId}</span>
                           ) : null}
                         </p>
+                        {selectedGoal.requestedSpec ? (
+                          <p><span className="text-muted-foreground">ผู้ใช้เลือก SPEC:</span> {requestedSpecDisplayLabel(selectedGoal.requestedSpec)}</p>
+                        ) : hasUnrecordedRequestedSpec(selectedGoal) ? (
+                          <p className="text-muted-foreground">ไม่มีข้อมูล SPEC ที่ผู้ใช้เลือกบันทึกไว้ (รายการเดิม)</p>
+                        ) : null}
                         {selectedGoal.specSources?.length ? (
                           <p>
-                            <span className="text-muted-foreground">อ้างอิง SPEC:</span>{" "}
-                            {selectedGoal.specSources.map((source: { specId: string; sourcePath: string }, index: number) => (
-                              <span key={`${source.specId}:${source.sourcePath}`}>
-                                {index ? ", " : ""}{specSourceLabel(source, presentationMode === "developer")}
+                            <span className="text-muted-foreground">WorkPackage อ้างอิง:</span>{" "}
+                            {selectedGoal.specSources.map((source: { specId: string; fileName: string }, index: number) => (
+                              <span key={`${source.specId}:${source.fileName}`}>
+                                {index ? ", " : ""}{specSourceLabel(source)}
                               </span>
                             ))}
                           </p>
                         ) : selectedGoal.specId ? (
-                          <p><span className="text-muted-foreground">อ้างอิง SPEC:</span> {selectedGoal.specId}</p>
+                          <p><span className="text-muted-foreground">SPEC ID ที่ Run บันทึกไว้:</span> {selectedGoal.specId}</p>
                         ) : (
-                          <p className="text-muted-foreground">Run นี้ไม่มีข้อมูลอ้างอิง SPEC ที่บันทึกไว้</p>
+                          <p className="text-muted-foreground">Run นี้ไม่มีข้อมูล SPEC ที่บันทึกไว้</p>
                         )}
                       </section>
                       <section
@@ -666,23 +686,31 @@ export function ProjectExecutionWorkspace({
                           <p className="line-clamp-2 font-medium">
                             {goalTitle(goal)}
                           </p>
+                          {goal.requestedSpec ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              <span className="font-medium">ผู้ใช้เลือก SPEC:</span>{" "}
+                              {requestedSpecDisplayLabel(goal.requestedSpec)}
+                            </p>
+                          ) : hasUnrecordedRequestedSpec(goal) ? (
+                            <p className="mt-1 text-xs text-muted-foreground">ไม่มีข้อมูล SPEC ที่ผู้ใช้เลือกบันทึกไว้ (รายการเดิม)</p>
+                          ) : null}
                           {goal.specSources?.length ? (
                             <p className="mt-1 break-all text-xs text-muted-foreground">
-                              <span className="font-medium">อ้างอิง SPEC:</span>{" "}
+                              <span className="font-medium">WorkPackage อ้างอิง:</span>{" "}
                               {goal.specSources
-                                .map((source: { specId: string; sourcePath: string }) =>
-                                  specSourceLabel(source, presentationMode === "developer")
+                                .map((source: { specId: string; fileName: string }) =>
+                                  specSourceLabel(source)
                                 )
                                 .join(", ")}
                             </p>
                           ) : goal.specId ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              <span className="font-medium">อ้างอิง SPEC:</span>{" "}
+                              <span className="font-medium">SPEC ID ที่ Run บันทึกไว้:</span>{" "}
                               {goal.specId}
                             </p>
                           ) : (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              ไม่มีข้อมูลอ้างอิง SPEC
+                              ไม่มีข้อมูล SPEC ต้นทาง
                             </p>
                           )}
                           <p className="mt-1 text-sm text-muted-foreground">
@@ -816,16 +844,27 @@ export function ProjectExecutionWorkspace({
                       {selectedGoal.workPackageExternalId ?? "ยังไม่มีข้อมูล"}
                     </dd>
                   </section>
+                  {selectedGoal.requestedSpec ? (
+                    <section>
+                      <dt className="text-muted-foreground">SPEC ที่ผู้ใช้เลือก</dt>
+                      <dd>{requestedSpecDisplayLabel(selectedGoal.requestedSpec)}</dd>
+                    </section>
+                  ) : hasUnrecordedRequestedSpec(selectedGoal) ? (
+                    <section>
+                      <dt className="text-muted-foreground">SPEC ที่ผู้ใช้เลือก</dt>
+                      <dd>ไม่มีข้อมูลบันทึกไว้ (รายการเดิม)</dd>
+                    </section>
+                  ) : null}
                   {selectedGoal.specSources?.length ? (
                     <section>
-                      <dt className="text-muted-foreground">ไฟล์ SPEC ต้นทาง</dt>
+                      <dt className="text-muted-foreground">WorkPackage อ้างอิง</dt>
                       <dd className="break-all">
-                        {selectedGoal.specSources.map((source: { specId: string; sourcePath: string }) => specSourceLabel(source, presentationMode === "developer")).join(", ")}
+                        {selectedGoal.specSources.map((source: { specId: string; fileName: string }) => specSourceLabel(source)).join(", ")}
                       </dd>
                     </section>
                   ) : selectedGoal.specId ? (
                     <section>
-                      <dt className="text-muted-foreground">SPEC</dt>
+                      <dt className="text-muted-foreground">SPEC ID ที่ Run บันทึกไว้</dt>
                       <dd>{selectedGoal.specId}</dd>
                     </section>
                   ) : null}

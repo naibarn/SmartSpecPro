@@ -181,6 +181,43 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
     expect(screen.getAllByText(/Shot 2\/4/).length).toBeGreaterThan(0);
   });
 
+  it("identifies a delegated development job by its Runner, selected SPEC, and WorkPackage SPEC sources", () => {
+    const job = {
+      id: "job-spec224-bound",
+      jobType: "external_agent_task",
+      status: "waiting_external",
+      statusReason: "provider_wait",
+      errorCode: "EXTERNAL_WAIT_TIMEOUT",
+      worker: null,
+      runnerBound: true,
+      goalId: "goal-312-abcd",
+      runId: "run-312-work-package",
+      contextLabel: "Continue SPEC-312 P0",
+      requestedSpec: { specId: "312-smartaihub-modular-saas-rebuild-master-plan", title: "Modular SaaS Rebuild" },
+      specSources: [{ specId: "313-smartaihub-saas-core-identity-commerce-entitlements", fileName: "spec.md" }],
+      workPackageExternalId: "r14-core-p1-first-slice",
+      executionIdentity: { harness: "codex" },
+      latestEvent: { id: "evt-runner-accepted", eventType: "RUNNER_COMMAND_ACCEPTED", createdAt: new Date().toISOString() },
+      createdAt: new Date().toISOString(),
+    };
+    listQueryMock.mockReturnValue({ data: { items: [job] }, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() });
+    detailQueryMock.mockReturnValue({
+      data: { ...job, startedAt: null, finishedAt: null, failureReason: null, canCancel: true, outputRefs: [], events: [] },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<RenderJobsPage />);
+
+    expect(screen.getAllByText("SmartAIHub Runner").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ผู้ใช้เลือก SPEC-312/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/WorkPackage อ้างอิง SPEC-313/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Goal ID goal-312/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Run ID run-312-work/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("EXTERNAL_WAIT_TIMEOUT").length).toBeGreaterThan(0);
+    expect(screen.queryByText("ยังไม่ assign")).not.toBeInTheDocument();
+  });
+
   it("shows a retry button for a server-approved job and sends the canonical job id", () => {
     const mutate = vi.fn();
     retryMutationMock.mockReturnValue({ mutate, isPending: false });

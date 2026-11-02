@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findGoalWorkerJob, projectBinding, specSourceLabel } from "../ProjectExecutionWorkspace";
+import { findGoalWorkerJob, projectBinding, requestedSpecDisplayLabel, specSourceLabel } from "../ProjectExecutionWorkspace";
 
 describe("ProjectExecutionWorkspace project binding", () => {
   it("reads the safe project binding returned by the DevelopmentRun list DTO", () => {
@@ -41,13 +41,20 @@ describe("ProjectExecutionWorkspace goal job binding", () => {
 });
 
 describe("ProjectExecutionWorkspace Spec source display", () => {
-  const source = { specId: "313-smartaihub-saas-core", sourcePath: "specs/feature/313-smartaihub-saas-core/spec.md" };
+  const source = { specId: "313-smartaihub-saas-core", fileName: "spec.md" };
 
-  it("shows the Spec number and only the filename in Simple mode", () => {
-    expect(specSourceLabel(source, false)).toBe("SPEC-313 · spec.md");
+  it("shows the Spec number and filename without exposing the source path", () => {
+    expect(specSourceLabel(source)).toBe("SPEC-313 · spec.md");
   });
 
-  it("shows the full repository-relative source in Developer mode", () => {
-    expect(specSourceLabel(source, true)).toBe("SPEC-313 · specs/feature/313-smartaihub-saas-core/spec.md");
+  it("keeps the user-selected master SPEC separate from a WorkPackage source", () => {
+    expect(requestedSpecDisplayLabel({
+      specId: "312-smartaihub-modular-saas-rebuild-master-plan",
+      title: "Modular SaaS Rebuild",
+    })).toBe("SPEC-312 · Modular SaaS Rebuild");
+    expect(specSourceLabel({
+      specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+      fileName: "spec.md",
+    })).toBe("SPEC-313 · spec.md");
   });
 });

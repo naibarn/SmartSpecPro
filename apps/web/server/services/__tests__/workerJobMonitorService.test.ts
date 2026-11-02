@@ -621,6 +621,74 @@ describe("workerJobMonitorService", () => {
     expect(result.items[0]?.contextLabel).toBe("Continue SPEC-312 P0: r14-core-p1-first-slice");
   });
 
+  it("projects the selected SPEC separately from package sources and preserves the configured Runner", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([{
+        id: "job-spec224-bound",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "external_runtime",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        status: "waiting_external",
+        statusReason: "provider_wait",
+        resourceProfile: "long_running",
+        outputJson: {},
+        instructionsJson: {},
+        failureReason: null,
+        errorCode: "EXTERNAL_WAIT_TIMEOUT",
+        errorMessage: null,
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        inputJson: {
+          manifest: { provider: "codex", workspaceId: "workspace-core" },
+          spec224Run: {
+            goalId: "goal-312",
+            runId: "run-312-work-package",
+            goal: "Continue SPEC-312 P0",
+            metadata: {
+              projectId: "project-core",
+              spec224Workspace: {
+                runnerId: "runner-core",
+                workPackageExternalId: "r14-core-p1-first-slice",
+                requestedSpec: { specId: "312-smartaihub-modular-saas-rebuild-master-plan", title: "Modular SaaS Rebuild" },
+                specSources: [{ specId: "313-smartaihub-saas-core-identity-commerce-entitlements", sourcePath: "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md" }],
+              },
+            },
+          },
+        },
+        progressJson: {},
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: null,
+        worker: null,
+      }]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await listUserWorkerJobs(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(result.items[0]).toMatchObject({
+      goalId: "goal-312",
+      runId: "run-312-work-package",
+      runnerBound: true,
+      errorCode: "EXTERNAL_WAIT_TIMEOUT",
+      workPackageExternalId: "r14-core-p1-first-slice",
+      requestedSpec: { specId: "312-smartaihub-modular-saas-rebuild-master-plan", title: "Modular SaaS Rebuild" },
+      specSources: [{ specId: "313-smartaihub-saas-core-identity-commerce-entitlements" }],
+    });
+    expect(result.items[0]?.specSources).toEqual([{
+      specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
+      fileName: "spec.md",
+    }]);
+    expect(JSON.stringify(result.items[0]?.specSources)).not.toContain("specs/feature/");
+  });
+
   it("projects only safe verified output refs", async () => {
     const repo = createRepo();
 

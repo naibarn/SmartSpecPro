@@ -24,6 +24,14 @@ describe('execution status projection', () => {
     expect(external.reason).toContain('บริการภายนอก');
   });
 
+  it('shows a configured Runner that has not ACKed instead of claiming no Runner is assigned', () => {
+    const queued = projectExecutionStatus({ status: 'queued', statusReason: 'waiting_for_worker', runnerBound: true });
+    expect(queued.state).toBe('waiting-agent');
+    expect(queued.reason).toContain('กำหนด Runner ไว้แล้ว');
+    expect(queued.reason).toContain('ACK');
+    expect(queued.context).not.toContain('runner');
+  });
+
   it('does not call an output complete without a verified output reference', () => {
     const result = projectExecutionStatus({ status: 'completed', jobType: 'remotion_render_video', outputRefs: [] });
     expect(result.state).toBe('degraded');
