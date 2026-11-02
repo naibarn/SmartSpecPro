@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -27,6 +28,32 @@ import { acquireSpec224RecoveryGrantFence } from "./spec224RecoveryGrantFence";
 import { appendJobEvent } from "./jobControlPlane";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
 import { matchesSpec224WindowsRunnerTarget, SPEC224_WINDOWS_CODEX_PROFILE_TEMPLATE } from "./spec224ExecutionProfile";
+
+const deploymentTargets = JSON.parse(readFileSync(
+  new URL("../../scripts/deployment-targets.json", import.meta.url),
+  "utf8",
+)) as { targets?: Record<string, {
+  environment?: string;
+  deploymentAuthority?: string;
+  runtime?: string;
+  deployable?: boolean;
+}> };
+
+export function isSpec224LocalNonProductionRuntime(
+  environment: Pick<NodeJS.ProcessEnv, "NODE_ENV" | "SMARTSPEC_ENVIRONMENT" | "SMARTSPEC_DEPLOYMENT_TARGET"> = process.env,
+): boolean {
+  if (environment.NODE_ENV === "test") return true;
+  const targetId = environment.SMARTSPEC_DEPLOYMENT_TARGET;
+  if (!targetId) return environment.SMARTSPEC_ENVIRONMENT === "development";
+  const target = deploymentTargets.targets?.[targetId];
+  return Boolean(
+    target?.environment === "development" &&
+    target.deploymentAuthority === "delegated-development" &&
+    target.runtime === "debian-systemd" &&
+    target.deployable === true &&
+    (!environment.SMARTSPEC_ENVIRONMENT || environment.SMARTSPEC_ENVIRONMENT === target.environment)
+  );
+}
 
 export function spec224ProfileRunnerTargetMatches(input: {
   profileId: unknown;
@@ -1042,9 +1069,9 @@ export async function checkSpec224RuntimeAdmission(input: {
 /**
  * Commits the canonical protected execution-start authority on the existing
  * worker job event stream. The shared grant fence is held until transaction
- * commit, which is the start/revocation linearization point. The current
- * admission evaluator is deny-only, so this service cannot currently create a
- * start event in normal runtime.
+ * commit, which is the start/revocation linearization point. Local integrity
+ * attestations are accepted only in development/test or on an explicitly
+ * registered deployable development target; build mode does not grant trust.
  */
 export async function commitSpec224ProtectedExecutionStart(input: {
   tenantId: string;
@@ -1585,7 +1612,7 @@ async function evaluateAndValidateSnapshot(
       : snapshot.attestation?.trustLevel;
   const isLocalNonProduction =
     trustLevel === "LOCAL_NONPRODUCTION_INTEGRITY_ONLY" &&
-    (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development");
+    isSpec224LocalNonProductionRuntime();
   const finalDecision = evaluateSpec224RuntimeAdmissionWithLocalGrant(
     snapshot,
     isLocalNonProduction

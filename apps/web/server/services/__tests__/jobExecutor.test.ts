@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { executeCanonicalJob } from "../jobExecutor";
+import { JobControlPlaneError } from "../jobControlPlaneTypes";
 
 describe("canonical job executor", () => {
   it("asserts the lease fence before entering the business executor", async () => {
@@ -103,6 +104,40 @@ describe("canonical job executor", () => {
           diagnosticFingerprint: "f".repeat(64),
         },
       }),
+    );
+  });
+
+  it("persists a control-plane error code instead of the generic Error name", async () => {
+    const lease = {
+      jobId: "job-control-error",
+      attemptId: "attempt-control-error",
+      leaseToken: "token",
+      fencingVersion: 1,
+      expiresAt: "2026-09-13T00:00:00.000Z",
+    };
+    const controlPlane = {
+      claim: vi.fn().mockResolvedValue(lease),
+      getContext: vi.fn().mockResolvedValue({ jobId: lease.jobId, jobType: "demo" }),
+      start: vi.fn(),
+      assertActive: vi.fn(),
+      complete: vi.fn(),
+      fail: vi.fn(),
+    } as any;
+
+    await expect(executeCanonicalJob(
+      { jobId: lease.jobId, runnerId: "runner-1", adapter: "fake" },
+      {
+        controlPlane,
+        executor: vi.fn().mockRejectedValue(new JobControlPlaneError(
+          "DENIED_LOCAL_ONLY_ATTESTATION",
+          "Protected execution admission denied",
+        )),
+      },
+    )).rejects.toThrow("Protected execution admission denied");
+
+    expect(controlPlane.fail).toHaveBeenCalledWith(
+      lease,
+      expect.objectContaining({ code: "DENIED_LOCAL_ONLY_ATTESTATION" }),
     );
   });
 });

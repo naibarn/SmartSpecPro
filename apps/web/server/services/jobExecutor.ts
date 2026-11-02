@@ -1,7 +1,7 @@
 import { classifyJobError } from "./jobControlPlane";
 import type { JobControlPlane } from "./jobControlPlane";
 import { createJobReporter } from "./jobReporter";
-import type { JobResult, LeaseContext } from "./jobControlPlaneTypes";
+import { JobControlPlaneError, type JobResult, type LeaseContext } from "./jobControlPlaneTypes";
 
 export type JobExecutorContext = NonNullable<Awaited<ReturnType<JobControlPlane["getContext"]>>>;
 export type JobExecutor = (input: {
@@ -58,7 +58,9 @@ export async function executeCanonicalJob(
       }).filter(([, value]) => value !== undefined),
     );
     await reporter.fail(lease, {
-      code: diagnosticCode ?? (error instanceof Error ? error.name.slice(0, 100) : "JOB_EXECUTOR_ERROR"),
+      code: error instanceof JobControlPlaneError
+        ? error.code
+        : diagnosticCode ?? (error instanceof Error ? error.name.slice(0, 100) : "JOB_EXECUTOR_ERROR"),
       message: error instanceof Error ? error.message.slice(0, 2000) : "Job executor failed",
       class: errorClass,
       operatorReviewRequired: errorClass === "unknown",

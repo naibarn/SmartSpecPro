@@ -524,7 +524,7 @@ class Runtime(Protocol):
     def assert_supported_target(self) -> None: ...
     def daemon_reload(self) -> None: ...
     def restart(self) -> None: ...
-    def verify(self, release_path: Path, source_sha: str) -> dict[str, Any]: ...
+    def verify(self, release_path: Path, source_sha: str, target_id: str) -> dict[str, Any]: ...
     def verify_rollback(self, previous_working_directory: str, previous_node_worker_directory: str) -> dict[str, Any]: ...
     def working_directory(self) -> str: ...
     def node_worker_working_directory(self) -> str: ...
@@ -588,7 +588,7 @@ class SystemdRuntime:
     def _main_pid(self) -> int:
         return int(self._run("show", self.service, "--property=MainPID", "--value"))
 
-    def verify(self, release_path: Path, source_sha: str) -> dict[str, Any]:
+    def verify(self, release_path: Path, source_sha: str, target_id: str) -> dict[str, Any]:
         deadline = time.monotonic() + self.timeout
         last_error = "service_not_ready"
         while time.monotonic() < deadline:
@@ -601,9 +601,16 @@ class SystemdRuntime:
                 if process_cwd != release_path.resolve():
                     raise ReleaseError("serving process cwd does not match promoted release")
                 environ = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
-                runtime_release = next((item.split(b"=", 1)[1].decode() for item in environ if item.startswith(b"RELEASE=")), None)
+                values = {
+                    item.split(b"=", 1)[0].decode(): item.split(b"=", 1)[1].decode()
+                    for item in environ
+                    if b"=" in item
+                }
+                runtime_release = values.get("RELEASE")
                 if runtime_release != source_sha:
                     raise ReleaseError("serving process RELEASE value does not match promoted revision")
+                if values.get("SMARTSPEC_DEPLOYMENT_TARGET") != target_id:
+                    raise ReleaseError("serving process deployment target does not match promoted target")
                 with urllib.request.urlopen("http://127.0.0.1:3000/healthz", timeout=2) as response:
                     if response.status != 200:
                         raise ReleaseError("health endpoint did not return HTTP 200")
@@ -617,7 +624,7 @@ class SystemdRuntime:
                     route_status = exc.code
                 if route_status not in {401, 403}:
                     raise ReleaseError(f"Admin diagnostics route did not deny anonymous access (HTTP {route_status})")
-                worker = self._verify_node_worker(release_path, source_sha)
+                worker = self._verify_node_worker(release_path, source_sha, target_id)
                 return {
                     "status": "HEALTHY",
                     "service": self.service,
@@ -625,6 +632,7 @@ class SystemdRuntime:
                     "nodeRuntime": node_runtime,
                     "workingDirectory": str(process_cwd),
                     "runtimeRevision": runtime_release,
+                    "deploymentTarget": target_id,
                     "healthHttp": 200,
                     "anonymousDiagnosticsHttp": route_status,
                     "nodeWorker": worker,
@@ -634,7 +642,7 @@ class SystemdRuntime:
                 time.sleep(1)
         raise ReleaseError(f"Promotion health check timed out: {last_error}")
 
-    def _verify_node_worker(self, release_path: Path, source_sha: str) -> dict[str, Any]:
+    def _verify_node_worker(self, release_path: Path, source_sha: str, target_id: str) -> dict[str, Any]:
         if self._run("is-active", NODE_WORKER_SERVICE) != "active":
             raise ReleaseError(f"{NODE_WORKER_SERVICE} is not active")
         pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
@@ -650,6 +658,8 @@ class SystemdRuntime:
         }
         if values.get("RELEASE") != source_sha:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} revision does not match promoted release")
+        if values.get("SMARTSPEC_DEPLOYMENT_TARGET") != target_id:
+            raise ReleaseError(f"{NODE_WORKER_SERVICE} deployment target does not match promoted target")
         heartbeat = Path(values.get("FEATURE_186_NODE_WORKER_HEARTBEAT_FILE", ""))
         if not heartbeat.is_file():
             raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat is missing")
@@ -658,7 +668,7 @@ class SystemdRuntime:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat does not match its process")
         if time.time() - int(fields[0]) / 1000 > 30:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} heartbeat is stale")
-        return {"service": NODE_WORKER_SERVICE, "pid": pid, "nodeRuntime": node_runtime, "workingDirectory": str(process_cwd), "runtimeRevision": source_sha}
+        return {"service": NODE_WORKER_SERVICE, "pid": pid, "nodeRuntime": node_runtime, "workingDirectory": str(process_cwd), "runtimeRevision": source_sha, "deploymentTarget": target_id}
 
     def verify_rollback(
         self,
@@ -1048,7 +1058,7 @@ def promote_artifact(
             try:
                 active_manifest = json.loads((active_target / "release-manifest.json").read_text(encoding="utf-8"))
                 if active_manifest.get("release_id") == release_id and active_manifest.get("source_revision") == source_sha:
-                    runtime_result = runtime.verify(active_target, source_sha)
+                    runtime_result = runtime.verify(active_target, source_sha, deployment_target["id"])
                     retention = _release_retention_result(release_root, current_link)
                     return {
                         "status": "ALREADY_PROMOTED",
@@ -1140,11 +1150,13 @@ def promote_artifact(
             "[Service]\n"
             f"WorkingDirectory={current_link}\n"
             f"Environment=RELEASE={source_sha}\n"
+            f"Environment=SMARTSPEC_DEPLOYMENT_TARGET={target_id}\n"
         )
         node_worker_dropin = (
             "[Service]\n"
             f"WorkingDirectory={current_link}\n"
             f"Environment=RELEASE={source_sha}\n"
+            f"Environment=SMARTSPEC_DEPLOYMENT_TARGET={target_id}\n"
         )
         node_executable = str(NODE_EXECUTABLE)
         web_node_security_dropin = (
@@ -1177,7 +1189,7 @@ def promote_artifact(
             atomic_symlink(target, current_link)
             activation_started = True
             runtime.restart()
-            health = runtime.verify(target, source_sha)
+            health = runtime.verify(target, source_sha, deployment_target["id"])
             activation_tip = current_tip(manifest)
             if not source_candidate_is_eligible(workspace, source_sha, activation_tip, release_policy,
                                                 str(source_policy["remote"]), str(source_policy["canonical_ref"])):

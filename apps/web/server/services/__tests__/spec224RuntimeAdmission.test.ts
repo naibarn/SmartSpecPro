@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateSpec224RuntimeAdmission, spec224ProfileRunnerTargetMatches } from "../spec224RuntimeAdmission";
+import {
+  evaluateSpec224RuntimeAdmission,
+  isSpec224LocalNonProductionRuntime,
+  spec224ProfileRunnerTargetMatches,
+} from "../spec224RuntimeAdmission";
 
 const current = {
   tenantId: "tenant-1",
@@ -51,6 +55,32 @@ const localAttestation = {
 };
 
 describe("Spec 224 runtime admission decision", () => {
+  it("allows local integrity attestations on an explicitly registered development target even with production build mode", () => {
+    expect(isSpec224LocalNonProductionRuntime({
+      NODE_ENV: "production",
+      SMARTSPEC_DEPLOYMENT_TARGET: "legacy-debian-dev",
+    })).toBe(true);
+  });
+
+  it("does not allow local integrity attestations on production or unknown targets", () => {
+    expect(isSpec224LocalNonProductionRuntime({
+      NODE_ENV: "production",
+      SMARTSPEC_DEPLOYMENT_TARGET: "modular-cloudflare-prod",
+    })).toBe(false);
+    expect(isSpec224LocalNonProductionRuntime({
+      NODE_ENV: "production",
+      SMARTSPEC_ENVIRONMENT: "production",
+      SMARTSPEC_DEPLOYMENT_TARGET: "legacy-debian-dev",
+    })).toBe(false);
+    expect(isSpec224LocalNonProductionRuntime({
+      NODE_ENV: "production",
+      SMARTSPEC_DEPLOYMENT_TARGET: "unregistered-target",
+    })).toBe(false);
+    expect(isSpec224LocalNonProductionRuntime({
+      NODE_ENV: "development",
+    })).toBe(false);
+  });
+
   it("denies a cancellation request before trust evaluation", () => {
     expect(
       evaluateSpec224RuntimeAdmission({

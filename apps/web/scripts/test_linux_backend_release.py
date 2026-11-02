@@ -66,7 +66,9 @@ class IsolatedSystemdRuntime:
     def node_worker_working_directory(self):
         return str(self.node_worker_active_path)
 
-    def verify(self, release_path: Path, source_sha: str):
+    def verify(self, release_path: Path, source_sha: str, target_id: str):
+        if target_id != "legacy-debian-dev":
+            raise release.ReleaseError("deployment target differs from test runtime target")
         if self.unhealthy_revision == source_sha:
             raise release.ReleaseError("injected readiness failure")
         if self.active_path.resolve() != release_path.resolve():
@@ -81,12 +83,14 @@ class IsolatedSystemdRuntime:
             "service": release.SERVICE,
             "workingDirectory": str(release_path.resolve()),
             "runtimeRevision": source_sha,
+            "deploymentTarget": target_id,
             "healthHttp": 200,
             "anonymousDiagnosticsHttp": 401,
             "nodeWorker": {
                 "service": release.NODE_WORKER_SERVICE,
                 "workingDirectory": str(self.node_worker_active_path.resolve()),
                 "runtimeRevision": source_sha,
+                "deploymentTarget": target_id,
             },
         }
 
@@ -369,6 +373,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(result["target_domain"], "smartaihub.app")
         self.assertEqual(result["logical_environment"], "development")
         self.assertEqual(result["runtime_verification"]["runtimeRevision"], self.source_sha)
+        self.assertEqual(result["runtime_verification"]["deploymentTarget"], "legacy-debian-dev")
+        self.assertEqual(result["runtime_verification"]["nodeWorker"]["deploymentTarget"], "legacy-debian-dev")
         self.assertEqual(result["runtime_verification"]["anonymousDiagnosticsHttp"], 401)
         self.assertEqual(self.current_link.resolve(), Path(result["release_path"]))
         self.assertIn(f"Environment=RELEASE={self.source_sha}", self.dropin_path.read_text())
@@ -377,6 +383,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertIn("v22.23.4/bin/node --import tsx server/_core/index.ts", self.node_security_dropin_path.read_text())
         self.assertIn("v22.23.4/bin/node --import tsx server/jobs/postgresNodeJobWorker.ts", self.node_worker_security_dropin_path.read_text())
         self.assertEqual(self.runtime.node_worker_active_path.resolve(), self.current_link.resolve())
+        self.assertIn("Environment=SMARTSPEC_DEPLOYMENT_TARGET=legacy-debian-dev", self.dropin_path.read_text())
+        self.assertIn("Environment=SMARTSPEC_DEPLOYMENT_TARGET=legacy-debian-dev", self.node_worker_dropin_path.read_text())
         self.assertEqual(result["generation"], 1)
         release_path = Path(result["release_path"])
         self.assertTrue((release_path / "logs").is_symlink())
