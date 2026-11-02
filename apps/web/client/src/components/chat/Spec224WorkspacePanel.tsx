@@ -106,6 +106,10 @@ type Spec224TaskDraft = {
   reasoningEffort: string;
 };
 
+type Spec224TaskPreferences = Pick<Spec224TaskDraft,
+  "selectedRunnerId" | "selectedWorkspace" | "harnessPolicy" | "selectedHarnessAdapterId" | "modelPolicy" | "selectedModelId" | "reasoningEffort"
+>;
+
 const FIRST_RUN_PILOT_SCOPE = ["apps/runner-app/tests/spec224-live-pilot/**"];
 const FIRST_RUN_PILOT_PROMPT = [
   "Run the bounded SmartAIHub first-run autonomous development pilot in two receipt-bound phases.",
@@ -116,6 +120,31 @@ const FIRST_RUN_PILOT_PROMPT = [
 
 function taskDraftStorageKey(userId: string, tenantId: string | null | undefined, conversationId: number | null, threadId?: string | null): string {
   return `spec224-task-draft:v1:${encodeURIComponent(tenantId ?? "personal")}:${encodeURIComponent(userId)}:${conversationId ?? "new"}:${threadId ?? "main"}`;
+}
+
+function taskPreferencesStorageKey(userId: string, tenantId: string | null | undefined): string {
+  return `spec224-task-preferences:v1:${encodeURIComponent(tenantId ?? "personal")}:${encodeURIComponent(userId)}`;
+}
+
+function readTaskPreferences(key: string): Partial<Spec224TaskPreferences> | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const preferences = value as Record<string, unknown>;
+    return {
+      ...(typeof preferences.selectedRunnerId === "string" ? { selectedRunnerId: preferences.selectedRunnerId.slice(0, 200) } : {}),
+      ...(typeof preferences.selectedWorkspace === "string" ? { selectedWorkspace: preferences.selectedWorkspace.slice(0, 500) } : {}),
+      ...(preferences.harnessPolicy === "auto" || preferences.harnessPolicy === "explicit" ? { harnessPolicy: preferences.harnessPolicy } : {}),
+      ...(typeof preferences.selectedHarnessAdapterId === "string" ? { selectedHarnessAdapterId: preferences.selectedHarnessAdapterId.slice(0, 100) } : {}),
+      ...(preferences.modelPolicy === "auto" || preferences.modelPolicy === "explicit" ? { modelPolicy: preferences.modelPolicy } : {}),
+      ...(typeof preferences.selectedModelId === "string" ? { selectedModelId: preferences.selectedModelId.slice(0, 200) } : {}),
+      ...(typeof preferences.reasoningEffort === "string" ? { reasoningEffort: preferences.reasoningEffort.slice(0, 32) } : {}),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function readTaskDraft(key: string): Partial<Spec224TaskDraft> | null {
@@ -284,9 +313,12 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const trpcUtils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
   const draftKey = user?.id ? taskDraftStorageKey(user.id, user.currentTenantId, conversationId, threadId) : null;
+  const preferencesKey = user?.id ? taskPreferencesStorageKey(user.id, user.currentTenantId) : null;
   const draftOwnerKey = user?.id ? `${user.currentTenantId ?? "personal"}:${user.id}` : null;
   const previousDraftOwnerKey = useRef<string | null>(null);
   const restoringTaskDraft = useRef(false);
+  const restoredSelection = useRef<string | null>(null);
+  const preferencesTouched = useRef(false);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const mockupInput = useRef<HTMLInputElement>(null);
@@ -331,6 +363,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       setRequestKind("development");
       setSelectedRunnerId("");
       setSelected("");
+      restoredSelection.current = null;
       setBudgetCapUsd("1.00");
       setHarnessPolicy("auto");
       setSelectedHarnessAdapterId("");
@@ -340,23 +373,40 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
     previousDraftOwnerKey.current = draftOwnerKey;
     const draft = readTaskDraft(draftKey);
+    const restoreConversationSelection = conversationId !== null;
+    const preferences = readTaskPreferences(preferencesKey ?? "");
+    if (preferences) {
+      if (preferences.selectedRunnerId !== undefined) setSelectedRunnerId(preferences.selectedRunnerId);
+      if (preferences.selectedWorkspace !== undefined) {
+        setSelected(preferences.selectedWorkspace);
+        restoredSelection.current = preferences.selectedWorkspace || null;
+      }
+      if (preferences.harnessPolicy) setHarnessPolicy(preferences.harnessPolicy);
+      if (preferences.selectedHarnessAdapterId !== undefined) setSelectedHarnessAdapterId(preferences.selectedHarnessAdapterId);
+      if (preferences.modelPolicy) setModelPolicy(preferences.modelPolicy);
+      if (preferences.selectedModelId !== undefined) setSelectedModelId(preferences.selectedModelId);
+      if (preferences.reasoningEffort !== undefined) setReasoningEffort(preferences.reasoningEffort);
+    }
     if (draft) {
-      restoringTaskDraft.current = draft.selectedWorkspace !== undefined;
+      restoringTaskDraft.current = restoreConversationSelection && draft.selectedWorkspace !== undefined;
       if (draft.prompt !== undefined) setPrompt(draft.prompt);
       if (draft.workspaceAccessMode) setWorkspaceAccessMode(draft.workspaceAccessMode);
       if (draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
       if (draft.requestKind) setRequestKind(draft.requestKind);
-      if (draft.selectedRunnerId !== undefined) setSelectedRunnerId(draft.selectedRunnerId);
-      if (draft.selectedWorkspace !== undefined) setSelected(draft.selectedWorkspace);
+      if (restoreConversationSelection && draft.selectedRunnerId !== undefined) setSelectedRunnerId(draft.selectedRunnerId);
+      if (restoreConversationSelection && draft.selectedWorkspace !== undefined) {
+        setSelected(draft.selectedWorkspace);
+        restoredSelection.current = draft.selectedWorkspace || null;
+      }
       if (draft.budgetCapUsd) setBudgetCapUsd(draft.budgetCapUsd);
-      if (draft.harnessPolicy) setHarnessPolicy(draft.harnessPolicy);
-      if (draft.selectedHarnessAdapterId !== undefined) setSelectedHarnessAdapterId(draft.selectedHarnessAdapterId);
-      if (draft.modelPolicy) setModelPolicy(draft.modelPolicy);
-      if (draft.selectedModelId !== undefined) setSelectedModelId(draft.selectedModelId);
-      if (draft.reasoningEffort !== undefined) setReasoningEffort(draft.reasoningEffort);
+      if (restoreConversationSelection && draft.harnessPolicy) setHarnessPolicy(draft.harnessPolicy);
+      if (restoreConversationSelection && draft.selectedHarnessAdapterId !== undefined) setSelectedHarnessAdapterId(draft.selectedHarnessAdapterId);
+      if (restoreConversationSelection && draft.modelPolicy) setModelPolicy(draft.modelPolicy);
+      if (restoreConversationSelection && draft.selectedModelId !== undefined) setSelectedModelId(draft.selectedModelId);
+      if (restoreConversationSelection && draft.reasoningEffort !== undefined) setReasoningEffort(draft.reasoningEffort);
     }
     setHydratedDraftKey(draftKey);
-  }, [draftKey, draftOwnerKey]);
+  }, [draftKey, draftOwnerKey, preferencesKey]);
 
   useEffect(() => {
     if (!draftKey || hydratedDraftKey !== draftKey) return;
@@ -380,6 +430,25 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       // Storage may be disabled or full; the in-memory draft remains usable.
     }
   }, [draftKey, hydratedDraftKey, prompt, workspaceAccessMode, developmentInputMode, requestKind, selectedRunnerId, selected, budgetCapUsd, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort]);
+
+  useEffect(() => {
+    if (!preferencesKey || !draftKey || hydratedDraftKey !== draftKey) return;
+    if (conversationId !== null && !preferencesTouched.current) return;
+    const preferences: Spec224TaskPreferences = {
+      selectedRunnerId,
+      selectedWorkspace: selected,
+      harnessPolicy,
+      selectedHarnessAdapterId,
+      modelPolicy,
+      selectedModelId,
+      reasoningEffort,
+    };
+    try {
+      window.localStorage.setItem(preferencesKey, JSON.stringify(preferences));
+    } catch {
+      // Storage may be disabled or full; current selections remain usable.
+    }
+  }, [preferencesKey, draftKey, hydratedDraftKey, conversationId, selectedRunnerId, selected, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort]);
 
   function addVisualReferences(files: FileList | null) {
     if (!files?.length) return;
@@ -621,6 +690,21 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
   useEffect(() => {
+    if (workspacesQuery.isLoading || !selected || workspaceQuery.data?.workspace) return;
+    if (workspaces.some(workspace => selectionKey(workspace) === selected)) return;
+    setSelectedRunnerId("");
+    setSelected("");
+  }, [workspacesQuery.isLoading, workspaces, selected, workspaceQuery.data?.workspace]);
+  useEffect(() => {
+    if (restoredSelection.current) {
+      if (selected === restoredSelection.current) {
+        restoredSelection.current = null;
+        restoringTaskDraft.current = false;
+        return;
+      }
+      if (!selected) return;
+      restoredSelection.current = null;
+    }
     if (restoringTaskDraft.current) {
       restoringTaskDraft.current = false;
       return;
@@ -654,7 +738,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }, [readinessQuery.data?.capabilitySnapshotRevision, preparation?.runnerReadiness?.ready]);
 
-  async function bindWorkspace(value: string) {
+  async function bindWorkspace(value: string, persistPreference = true) {
+    if (persistPreference) preferencesTouched.current = true;
     setSelected(value);
     setPreparation(null);
     if (!value) return;
@@ -728,7 +813,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
 
   useEffect(() => {
     if (!pilotMode || !conversationId || !platformWorkspace || workspaceQuery.isLoading || workspaceQuery.data?.workspace || selected !== selectionKey(platformWorkspace)) return;
-    void bindWorkspace(selectionKey(platformWorkspace));
+    void bindWorkspace(selectionKey(platformWorkspace), false);
   }, [pilotMode, conversationId, platformWorkspace, workspaceQuery.isLoading, workspaceQuery.data?.workspace?.workspaceId, selected]);
 
   function selectCanonicalPlatformWorkspace() {
@@ -1087,10 +1172,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {!isAdmin ? <p className="text-sm text-rose-700" role="alert">ต้องใช้บัญชี Admin เพื่อเริ่ม First Run Pilot</p> : null}
           {pilotRuns.length > 0 ? <AstryxText as="p" type="supporting" role="status">พบ Goal/Run ของ First Run Pilot ที่บันทึกไว้แล้ว ระบบปิดการสร้าง Goal ซ้ำและแสดง Run เดิมเพื่อทำงานต่อ</AstryxText> : null}
           <VStack as="section" gap={3} aria-label="เลือกเครื่องมือที่ยืนยันจาก Runner">
-            <Selector label="Runner" value={selectedRunnerId} options={pilotRunners.map(runner => ({ value: runner.runnerId, label: runner.displayName }))} onChange={value => { setSelectedRunnerId(value); setSelected(""); setPreparation(null); }} isDisabled={runnersQuery.isLoading || creatingTask || pilotRunners.length <= 1} disabledMessage="ใช้ Runner ที่ได้รับอนุญาตสำหรับ Project นี้" placeholder="เลือก Runner ที่ได้รับอนุญาต" emptyText="ไม่พบ Runner ที่ได้รับอนุญาต" width="100%" />
+            <Selector label="Runner" value={selectedRunnerId} options={pilotRunners.map(runner => ({ value: runner.runnerId, label: runner.displayName }))} onChange={value => { preferencesTouched.current = true; setSelectedRunnerId(value); setSelected(""); setPreparation(null); }} isDisabled={runnersQuery.isLoading || creatingTask || pilotRunners.length <= 1} disabledMessage="ใช้ Runner ที่ได้รับอนุญาตสำหรับ Project นี้" placeholder="เลือก Runner ที่ได้รับอนุญาต" emptyText="ไม่พบ Runner ที่ได้รับอนุญาต" width="100%" />
             <Selector label="Project Workspace" value={selected} options={pilotWorkspaces.map(workspace => ({ value: selectionKey(workspace), label: workspace.displayName }))} onChange={value => void bindWorkspace(value)} isDisabled={!selectedRunnerId || workspacesQuery.isLoading || bindMutation.isPending} disabledMessage="โหลดเฉพาะ Workspace ที่อนุญาตสำหรับ Runner นี้" placeholder="เลือก Workspace ที่ได้รับอนุญาต" emptyText="ไม่พบ Workspace ที่ได้รับอนุญาต" width="100%" />
             <Selector label="Harness" value={harnessPolicy === "auto" ? "auto" : selectedHarnessAdapterId} options={[{ value: "auto", label: pilotHarnesses[0] ? `Auto · ${harnessLabel(pilotHarnesses[0])}` : "Auto · รอ Runner catalog" }, ...pilotHarnesses.map(adapterId => ({ value: adapterId, label: harnessLabel(adapterId) }))]} onChange={value => { setHarnessPolicy(value === "auto" ? "auto" : "explicit"); setSelectedHarnessAdapterId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh} emptyText="Runner ยังไม่รายงาน Harness ที่รองรับ" width="100%" />
-            <Selector label="Model" value={modelPolicy === "auto" ? "auto" : selectedModelId} options={[{ value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto · รอ Runner catalog" }, ...catalogModels.map(model => ({ value: model.id, label: model.displayName }))]} onChange={value => { setModelPolicy(value === "auto" ? "auto" : "explicit"); setSelectedModelId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh || catalogModels.length === 0} emptyText="Runner ยังไม่รายงาน Model" width="100%" />
+            <Selector label="Model" value={modelPolicy === "auto" ? "auto" : selectedModelId} options={[{ value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto · รอ Runner catalog" }, ...catalogModels.map(model => ({ value: model.id, label: model.displayName }))]} onChange={value => { preferencesTouched.current = true; setModelPolicy(value === "auto" ? "auto" : "explicit"); setSelectedModelId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh || catalogModels.length === 0} emptyText="Runner ยังไม่รายงาน Model" width="100%" />
           </VStack>
           {selectedRunner ? <AstryxText as="p" type="supporting" role="status">Runner {selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" ? "ออนไลน์และ trusted" : "ยังไม่พร้อม"} · {runnerReadiness?.ready ? "execution readiness ผ่าน" : "กำลังตรวจสอบ readiness จาก Runner"}</AstryxText> : null}
           <Spec224EconomicLedgerSetup />
@@ -1238,7 +1323,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             aria-label="1. เลือก Runner"
             className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
             value={selectedRunnerId}
-            onChange={event => { setSelectedRunnerId(event.target.value); setSelected(""); setPreparation(null); }}
+            onChange={event => { preferencesTouched.current = true; setSelectedRunnerId(event.target.value); setSelected(""); setPreparation(null); }}
             disabled={runnersQuery.isLoading || creatingTask}
           >
             <option value="">เลือก Runner</option>
@@ -1365,6 +1450,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     ...catalogHarnesses.map(adapterId => ({ value: adapterId, label: harnessLabel(adapterId) })),
                   ]}
                   onChange={value => {
+                    preferencesTouched.current = true;
                     if (value === "auto") {
                       setHarnessPolicy("auto");
                       setSelectedHarnessAdapterId("");
@@ -1388,6 +1474,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     ...catalogModels.map(model => ({ value: model.id, label: `${model.displayName}${model.isDefault ? " · Default" : ""}` })),
                   ]}
                   onChange={value => {
+                      preferencesTouched.current = true;
                       if (value === "auto") {
                         setModelPolicy("auto");
                         setSelectedModelId("");
@@ -1404,7 +1491,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <RadioList
                 label="Reasoning Effort"
                 value={supportedEffort}
-                onChange={setReasoningEffort}
+                onChange={value => { preferencesTouched.current = true; setReasoningEffort(value); }}
                 orientation="horizontal"
                 isDisabled={!catalogFresh || availableEfforts.length === 0}
                 description={availableEfforts.length ? "ระบบจะแสดงระดับที่รุ่นนี้รองรับเท่านั้น" : "รุ่นที่เลือกไม่ได้ประกาศระดับ reasoning"}

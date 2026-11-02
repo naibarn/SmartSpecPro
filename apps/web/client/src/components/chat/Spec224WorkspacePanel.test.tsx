@@ -65,6 +65,7 @@ function usePlatformSourceWorkspace() {
 beforeEach(() => {
   cleanup();
   window.sessionStorage.clear();
+  window.localStorage.clear();
   vi.clearAllMocks();
   mocks.readiness = undefined;
   mocks.ledgerAccounts = { accounts: [], configured: { debitAccountId: "test-debit", creditAccountId: "test-credit" } };
@@ -252,6 +253,52 @@ describe("Core goal readiness feedback", () => {
     render(<Spec224WorkspacePanel conversationId={9} simpleMode />);
     expect(await screen.findByLabelText("Spec 224 prompt")).toHaveValue("Resume this bounded pilot after switching apps");
     expect(screen.getByRole("radio", { name: /อนุญาตทุกไฟล์ใน Workspace/ })).toBeChecked();
+  });
+
+  it("remembers the latest Runner, Workspace, Model and reasoning choice for the user's next Goal", async () => {
+    mocks.workspace = { workspace: null, availability: null, specSet: null };
+    mocks.workspaces[0].modelCatalog = {
+      ...discoveredModelCatalog(),
+      models: [
+        { id: "model-a", displayName: "Model A", isDefault: true, reasoningEfforts: ["low", "medium", "high"] },
+        { id: "model-b", displayName: "Model B", isDefault: false, reasoningEfforts: ["high"] },
+      ],
+    };
+    const key = "spec224-task-preferences:v1:tenant-test:user-test";
+    window.localStorage.setItem(key, JSON.stringify({
+      selectedRunnerId: "runner-test",
+      selectedWorkspace: '["runner-test","workspace-test"]',
+      harnessPolicy: "auto",
+      selectedHarnessAdapterId: "",
+      modelPolicy: "explicit",
+      selectedModelId: "model-b",
+      reasoningEffort: "high",
+    }));
+
+    const first = render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("1. เลือก Runner")).toHaveValue("runner-test");
+      expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","workspace-test"]');
+    });
+    expect(screen.getByRole("combobox", { name: "AI Model" })).toHaveTextContent("Model B");
+    expect(screen.getByRole("radio", { name: "High" })).toBeChecked();
+
+    const modelSelector = screen.getByRole("combobox", { name: "AI Model" });
+    fireEvent.click(modelSelector);
+    fireEvent.click(screen.getByRole("option", { name: "Model A · Default" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Low" }));
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem(key) ?? "{}")).toMatchObject({
+      selectedRunnerId: "runner-test",
+      selectedWorkspace: '["runner-test","workspace-test"]',
+      modelPolicy: "explicit",
+      selectedModelId: "model-a",
+      reasoningEffort: "low",
+    }));
+
+    first.unmount();
+    render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "AI Model" })).toHaveTextContent("Model A");
+    expect(screen.getByRole("radio", { name: "Low" })).toBeChecked();
   });
 
   it("explains stale probe publication and missing workspace source facts separately", () => {
