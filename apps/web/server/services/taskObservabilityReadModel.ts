@@ -20,6 +20,7 @@ import {
 } from "../../drizzle/schema";
 import { aggregateUsageEvidence, taskUsageEvidenceCallSchema } from "../../shared/taskUsageEvidence";
 import { goalBaselineSchema, projectGoalProgress } from "../../shared/taskGoalProgress";
+import { listVisibleConversationProjectTitles } from "./conversationThreadService";
 import { projectAuthorizedTaskAcceptance } from "./taskObservabilityAcceptance";
 
 const PAGE_SIZE = 25;
@@ -134,6 +135,21 @@ export function projectExecutionIdentity(input: Record<string, unknown> | null, 
     harness: safeText(manifest?.provider ?? input?.provider, 80),
     model: safeText(modelSelection?.resolvedModelId ?? modelSelection?.selectedModelId, 160),
     reasoningEffort: safeText(modelSelection?.reasoningEffort, 32),
+  };
+}
+
+/** Project and user-facing task identity persisted by the SPEC-224 run writer. */
+export function projectJobContext(
+  input: Record<string, unknown> | null,
+  progress: Record<string, unknown> | null,
+) {
+  const run = objectValue(input?.spec224Run);
+  const runMetadata = objectValue(run?.metadata);
+  const development = objectValue(progress?.spec224);
+  return {
+    projectId: safeText(input?.projectId ?? development?.projectId ?? runMetadata?.projectId, 160),
+    specId: safeText(input?.specId ?? development?.specId ?? runMetadata?.specId, 64),
+    contextLabel: safeText(run?.goal ?? input?.goal, 180),
   };
 }
 
@@ -466,11 +482,16 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     lastResolvedModel: safeText(selection.lastResolvedModelId, 120),
     updatedAt: asIso(conversation?.updatedAt),
   } : null;
-  const projectId = safeText(input?.projectId ?? development?.projectId, 160);
-  const specId = safeText(input?.specId ?? development?.specId, 64);
+  const { projectId, specId, contextLabel } = projectJobContext(input, progress);
+  const runMetadata = objectValue(objectValue(input?.spec224Run)?.metadata);
+  const projectNames = projectId
+    ? await listVisibleConversationProjectTitles({ tenantId: scope.tenantId, userId: scope.userId, projectIds: [projectId] })
+    : new Map<string, string>();
   const identityBinding = {
     status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const,
-    source: development?.projectId || development?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null,
+    source: development?.projectId || development?.specId || runMetadata?.projectId || runMetadata?.specId
+      ? "spec224_run_projection"
+      : projectId || specId ? "worker_job_metadata" : null,
   };
   const updatedAt = new Date(Math.max(
     job.createdAt.getTime(), job.startedAt?.getTime() ?? 0,
@@ -480,6 +501,8 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
   return {
     id: job.id,
     jobType: job.jobType,
+    contextLabel,
+    projectName: projectId ? projectNames.get(projectId) ?? null : null,
     status: job.status,
     stage: safeText(job.progressJson?.phase ?? job.progressJson?.stage ?? job.statusReason, 120),
     attempt: job.attempt,
@@ -650,8 +673,8 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
   const projectionToken = input.projectionToken ?? encodeProjectionSnapshotToken(input.scope, asOf, expiresAtMs);
   const predicates = [eq(workerJobs.tenantId, input.scope.tenantId), lte(workerJobs.createdAt, new Date(asOf))];
   if (!input.scope.isAdmin) predicates.push(eq(workerJobs.requestedByUserId, input.scope.userId));
-  if (input.projectId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId') = ${input.projectId}`);
-  if (input.specId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId') = ${input.specId}`);
+  if (input.projectId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId', ${workerJobs.inputJson}->'spec224Run'->'metadata'->>'projectId') = ${input.projectId}`);
+  if (input.specId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId', ${workerJobs.inputJson}->'spec224Run'->'metadata'->>'specId') = ${input.specId}`);
   if (input.jobId) predicates.push(eq(workerJobs.id, input.jobId));
   if (input.conversationId) {
     const conversationPredicates = [
@@ -750,12 +773,17 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       ? [[candidate.jobId, candidate.conversationId] as const]
       : [],
   ));
+  const projectIds = [...new Set(page.flatMap(job => {
+    const context = projectJobContext(objectValue(job.inputJson), objectValue(job.progressJson));
+    return context.projectId ? [context.projectId] : [];
+  }))];
+  const projectNames = await listVisibleConversationProjectTitles({ tenantId: input.scope.tenantId, userId: input.scope.userId, projectIds });
   const items = page.map((job) => {
     const progress = objectValue(job.progressJson);
     const inputMetadata = objectValue(job.inputJson);
     const development = objectValue(progress?.spec224);
-    const projectId = safeText(inputMetadata?.projectId ?? development?.projectId, 160);
-    const specId = safeText(inputMetadata?.specId ?? development?.specId, 64);
+    const { projectId, specId, contextLabel } = projectJobContext(inputMetadata, progress);
+    const runMetadata = objectValue(objectValue(inputMetadata?.spec224Run)?.metadata);
     const authorizedConversationId = authorizedConversationByJob.get(job.id) ?? null;
     const conversation = authorizedConversationId ? conversationById.get(authorizedConversationId) : undefined;
     const thread = authorizedConversationId && job.threadId ? threadById.get(job.threadId) : undefined;
@@ -763,6 +791,8 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       id: job.id,
       ownerUserId: job.requestedByUserId,
       jobType: job.jobType,
+      contextLabel,
+      projectName: projectId ? projectNames.get(projectId) ?? null : null,
       status: job.status,
       stage: safeText(progress?.phase ?? progress?.stage ?? job.statusReason, 120),
       attempt: job.attempt,
@@ -782,7 +812,7 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       executionIdentity: projectExecutionIdentity(inputMetadata, job.jobType),
       projectId,
       specId,
-      identityBinding: { status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const, source: development?.projectId || development?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null },
+      identityBinding: { status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const, source: development?.projectId || development?.specId || runMetadata?.projectId || runMetadata?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null },
       operatorAttention: { required: job.operatorReviewRequired, reason: job.operatorReviewRequired ? safeText(job.operatorReviewReason, 300) : null },
       recovery: { nextRetryAt: asIso(job.nextRetryAt), retryEligible: job.status === "retry_scheduled" && Boolean(job.nextRetryAt) },
     };
@@ -805,8 +835,8 @@ export async function aggregateTaskObservability(input: { scope: Scope; projectI
   const asOf = snapshot ? new Date(snapshot.asOf) : new Date();
   const jobPredicates = [eq(workerJobs.tenantId, input.scope.tenantId), lte(workerJobs.createdAt, asOf)];
   if (!input.scope.isAdmin) jobPredicates.push(eq(workerJobs.requestedByUserId, input.scope.userId));
-  if (input.projectId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId') = ${input.projectId}`);
-  if (input.specId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId') = ${input.specId}`);
+  if (input.projectId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId', ${workerJobs.inputJson}->'spec224Run'->'metadata'->>'projectId') = ${input.projectId}`);
+  if (input.specId) jobPredicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId', ${workerJobs.inputJson}->'spec224Run'->'metadata'->>'specId') = ${input.specId}`);
   const jobs = await db.select().from(workerJobs).where(and(...jobPredicates))
     .orderBy(desc(workerJobs.createdAt), desc(workerJobs.id)).limit(MAX_AGGREGATE_JOBS + 1);
   const jobsCapped = jobs.length > MAX_AGGREGATE_JOBS;

@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskHarnessOutputEvents, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectExecutionIdentity, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskHarnessOutputEvents, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectExecutionIdentity, projectJobContext, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -123,6 +123,29 @@ describe("projectExecutionIdentity", () => {
 
   it("does not mislabel a worker task identifier as a DevelopmentRun", () => {
     expect(projectExecutionIdentity({ manifest: { taskId: "job-224" } }, "external_agent_task").runId).toBeNull();
+  });
+});
+
+describe("projectJobContext", () => {
+  it("reads the canonical project and goal from the persisted SPEC-224 run metadata", () => {
+    expect(projectJobContext({
+      spec224Run: {
+        goal: "Continue SPEC-312 P0: r14-core-p1-first-slice",
+        metadata: { projectId: "modular-core-project" },
+      },
+    }, {})).toEqual({
+      projectId: "modular-core-project",
+      specId: null,
+      contextLabel: "Continue SPEC-312 P0: r14-core-p1-first-slice",
+    });
+  });
+
+  it("keeps explicit legacy job project and spec metadata higher priority", () => {
+    expect(projectJobContext({
+      projectId: "legacy-project",
+      specId: "SPEC-311",
+      spec224Run: { goal: "Goal from run", metadata: { projectId: "run-project" } },
+    }, {})).toMatchObject({ projectId: "legacy-project", specId: "SPEC-311", contextLabel: "Goal from run" });
   });
 });
 

@@ -84,12 +84,12 @@ function phaseForState(state: string): string {
   return CONTROL_PHASE[state.toUpperCase()] ?? "";
 }
 
-function projectBinding(run: any): string | null {
-  const workspace = run?.metadata?.spec224Workspace;
-  return workspace &&
-    typeof workspace === "object" &&
-    typeof workspace.projectId === "string"
-    ? workspace.projectId
+export function projectBinding(run: any): string | null {
+  const metadata = run?.metadata;
+  const workspace = metadata?.spec224Workspace;
+  const projectId = metadata?.projectId ?? workspace?.projectId;
+  return typeof projectId === "string" && projectId.trim()
+    ? projectId
     : null;
 }
 
@@ -626,6 +626,7 @@ export function ProjectExecutionWorkspace({
                             <p className="truncate font-medium">
                               {job.threadTitle ??
                                 job.conversationTitle ??
+                                job.contextLabel ??
                                 "Work item without a title"}
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground">
@@ -641,9 +642,9 @@ export function ProjectExecutionWorkspace({
                               )}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {group
+                              สถานะ {label(job.status)} · {group
                                 ? `${group.completedSteps}/${group.totalSteps} งานย่อยเสร็จ · ${group.progressPercent == null ? "ความคืบหน้าไม่ระบุ" : `${group.progressPercent}%`}`
-                                : `สถานะ ${label(job.status)} · ไม่มี Task group ที่ยืนยันได้`}
+                                : "ไม่มี Task group ที่ยืนยันได้"}
                             </p>
                             {job.operatorAttention.required ? (
                               <p className="mt-1 flex items-center gap-1 text-sm text-accent-foreground">
