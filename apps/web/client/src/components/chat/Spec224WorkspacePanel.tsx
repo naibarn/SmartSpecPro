@@ -632,10 +632,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
-  const hasLegacyBudgetedPlatformRun = Boolean(platformWorkspaceSelected && (workspaceQuery.data?.developmentRuns ?? []).some(run =>
-    run.economicsMode !== "provider_managed" && !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
-  ));
-  const requiresTenantLedger = !platformWorkspaceSelected || hasLegacyBudgetedPlatformRun;
+  const requiresTenantLedger = !platformWorkspaceSelected;
   const economicLedgerReadiness = trpc.economicControlPlane.listSpec224LedgerAccounts.useQuery(
     { currency: "USD" }, { enabled: user?.role === "admin" && requiresTenantLedger, retry: false },
   );
@@ -1045,8 +1042,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
-  async function startWorkPackage(workPackageId: string, targetConversationId = conversationId, targetPreparation = preparation, stableKey?: string) {
+  async function startWorkPackage(
+    workPackageId: string,
+    targetConversationId = conversationId,
+    targetPreparation = preparation,
+    stableKey?: string,
+    startOptions?: { mode?: "prompt" | "spec_set"; requestedSpecId?: string | null; skipAdditionalInstructions?: boolean },
+  ) {
     if (!targetConversationId || !targetPreparation || startInFlight.current) return;
+    const startMode = startOptions?.mode ?? mode;
+    const requestedSpecId = startOptions?.requestedSpecId !== undefined
+      ? startOptions.requestedSpecId
+      : effectiveSpecSource === "catalog" ? selectedFeatureSpec : null;
     const packageSourceAdmission = targetPreparation.workPackages?.find(item => item.id === workPackageId)?.sourceAdmission;
     if (!platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(packageSourceAdmission?.status ?? "BLOCKED"))) {
       toast.error("Workspace มีการเปลี่ยนแปลงหรือหลักฐาน source ยังไม่ครบ โปรดโหลด snapshot ล่าสุดและตรวจผล preflight ก่อนเริ่ม");
@@ -1075,7 +1082,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${effectiveSpecSource === "catalog" ? selectedFeatureSpec : ""}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${threadId ?? "main"}:${startMode}:${targetPreparation.planRevision}:${workPackageId}:${requestedSpecId ?? ""}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -1083,9 +1090,9 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       const result = await startMutation.mutateAsync({
         conversationId: targetConversationId,
         ...(threadId ? { threadId } : {}),
-        mode,
+        mode: startMode,
         factoryMode: requestKind === "mini_app",
-        ...(mode === "prompt" ? {
+        ...(startMode === "prompt" ? {
           prompt: effectivePrompt,
           ...(pilotMode ? { writeScope: FIRST_RUN_PILOT_SCOPE } : requestKind === "development" ? { workspaceAccessMode } : {}),
         } : {
@@ -1093,8 +1100,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           // Chat section may append a newer SpecSet while this preview is open.
           specSetRevision: targetPreparation.planRevision,
           workPackageId,
-          ...(effectiveSpecSource === "catalog" && selectedFeatureSpec ? { requestedSpecId: selectedFeatureSpec } : {}),
-          ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
+          ...(requestedSpecId ? { requestedSpecId } : {}),
+          ...(developmentInputMode === "spec_prompt" && !startOptions?.skipAdditionalInstructions ? { additionalInstructions: prompt } : {}),
         }),
         ...(platformWorkspaceSelected ? {} : { budgetCapMinorUnits }),
         ...(requestKind === "development" ? { provider: effectiveProvider as "codex" | "microsoft_copilot" } : {}),
@@ -1124,6 +1131,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         } : {}),
         idempotencyKey,
       });
+      await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
       if (pilotMode) {
         const approvalRef = result.authorization
           && typeof result.authorization === "object"
@@ -1232,6 +1240,46 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
+  async function restartPlatformRunWithoutTenantBudget(run: {
+    runId: string;
+    workPackageId: string | null;
+    workPackageExternalId: string | null;
+    specId: string | null;
+  }) {
+    if (!conversationId || !isAdmin || !platformWorkspaceSelected || requestKind !== "development" || preparing || startMutation.isPending) return;
+    setPreparing(true);
+    try {
+      const prepared = await prepareMutation.mutateAsync({ conversationId, mode: "spec_set" });
+      setPreparation(prepared);
+      const workPackage = prepared.workPackages?.find(item =>
+        item.id === run.workPackageId || item.externalId === run.workPackageExternalId,
+      );
+      if (!workPackage) {
+        toast.error("ไม่พบ WorkPackage เดิมใน Spec Set ล่าสุด โปรดตรวจหรือซิงก์ SPEC ก่อนเริ่ม Run ใหม่");
+        return;
+      }
+      if (!prepared.runnableWorkPackageIds.includes(workPackage.id)) {
+        toast.error("WorkPackage เดิมยังไม่พร้อมเริ่ม ตรวจ blocker และ source preflight ในแผนล่าสุดก่อน");
+        return;
+      }
+      if (run.specId && effectiveSpecSource === "catalog" && !availableFeatureSpecs.some(spec => spec.id === run.specId)) {
+        toast.error("SPEC เดิมไม่อยู่ใน Catalog ที่พร้อมใช้กับ Workspace นี้ โปรดเลือกหรือซิงก์ SPEC ก่อน");
+        return;
+      }
+      await startWorkPackage(
+        workPackage.id,
+        conversationId,
+        prepared,
+        `platform-provider-managed-restart:${run.runId}:${prepared.planRevision}`,
+        { mode: "spec_set", requestedSpecId: run.specId, skipAdditionalInstructions: true },
+      );
+    } catch (error) {
+      toast.error(presentCustomerError(error, "เตรียม Run ระบบต่อจาก SPEC เดิมไม่สำเร็จ"));
+    } finally {
+      setPreparing(false);
+    }
+  }
+
   useEffect(() => {
     if (!resumeSpecId || !conversationId || !canonicalHandoff || !workspaceQuery.data) return;
     const nextWorkUnit = canonicalHandoff.nextReadyWorkunit;
@@ -1242,6 +1290,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       setContinuationNotice(`โหลด SPEC-${resumeSpecId} ใน Project เดิมแล้ว แต่ยังไม่พบ DevelopmentRun ที่ตรงกับ WorkUnit ถัดไป${nextWorkUnit ? ` (${nextWorkUnit})` : ""}; ระบบยังไม่สร้างงานใหม่อัตโนมัติ`);
       return;
     }
+    if (platformWorkspaceSelected && matchingRun.economicsMode !== "provider_managed") {
+      const oldRunClosed = ["failed", "cancelled", "expired"].includes(matchingRun.workerJobStatus ?? "")
+        || (!matchingRun.workerJobStatus && ["FAILED_TERMINAL", "CANCELLED"].includes(matchingRun.state));
+      setContinuationNotice(oldRunClosed
+        ? `พบ Run เก่าของ WorkUnit ${nextWorkUnit} ที่ยังผูก tenant budget รุ่นเดิม ระบบจะเก็บประวัติไว้และไม่ resume grant เก่า; เลือก “เริ่ม Run ใหม่ · ใช้โควต้า Provider” ในรายการงาน`
+        : `พบ Run เก่าของ WorkUnit ${nextWorkUnit} ที่ยังผูก tenant budget รุ่นเดิม ระบบจะไม่ resume หรือสร้างงานซ้ำจนกว่า Worker จะปิด Run เดิม`);
+      return;
+    }
     if (["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(matchingRun.state)) {
       setContinuationNotice(`พบ Run เดิมของ WorkUnit ${nextWorkUnit} แต่สถานะ ${developmentRunStateLabel(matchingRun.state)} ไม่สามารถ resume ได้`);
       return;
@@ -1250,7 +1306,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     continuationResumeAttempt.current = matchingRun.runId;
     setContinuationNotice(`พบ WorkUnit ${nextWorkUnit} ใน Project เดิม กำลังตรวจสิทธิ์และส่ง Run เดิมทำงานต่อ`);
     void resumeExistingRun(matchingRun.runId, matchingRun.conversationId ?? conversationId);
-  }, [resumeSpecId, conversationId, canonicalHandoff?.nextReadyWorkunit, workspaceQuery.data?.developmentRuns]);
+  }, [resumeSpecId, conversationId, canonicalHandoff?.nextReadyWorkunit, platformWorkspaceSelected, workspaceQuery.data?.developmentRuns]);
 
   if (pilotMode) {
     const pilotRuns = (workspaceQuery.data?.developmentRuns ?? []).filter(run => run.isFirstRunPilot);
@@ -1272,7 +1328,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <AstryxText as="p"><strong>Write scope:</strong> apps/runner-app/tests/spec224-live-pilot/** เท่านั้น</AstryxText>
             <AstryxText as="p"><strong>Harness:</strong> {effectiveHarnessAdapterId ? harnessLabel(effectiveHarnessAdapterId) : "ยังไม่พบ Harness จาก Runner"}</AstryxText>
             <AstryxText as="p"><strong>Model:</strong> {activeModel?.displayName ?? "ยังไม่พบ Model จาก Runner"}</AstryxText>
-            <AstryxText as="p"><strong>Budget cap:</strong> {budgetCapMinorUnits > 0 ? `USD ${(budgetCapMinorUnits / 100).toFixed(2)} · ครอบคลุมทั้งสอง Child และ Final Verify` : "ระบุวงเงินที่ถูกต้องก่อนตรวจสอบ"}</AstryxText>
+            <AstryxText as="p"><strong>ค่าใช้จ่าย:</strong> ใช้โควต้า Codex/Provider ที่ผูกกับ Runner · ไม่หักเครดิตหรือ budget ของ tenant</AstryxText>
           </VStack>
           {!platformWorkspace ? <p className="text-sm text-amber-800" role="status">ไม่พบ Platform Project Workspace ที่ได้รับอนุญาต ระบบจะไม่เริ่มงานจนกว่า registry จะพร้อม</p> : null}
           {!isAdmin ? <p className="text-sm text-rose-700" role="alert">ต้องใช้บัญชี Admin เพื่อเริ่ม First Run Pilot</p> : null}
@@ -1284,8 +1340,6 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <Selector label="Model" value={modelPolicy === "auto" ? "auto" : selectedModelId} options={[{ value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto · รอ Runner catalog" }, ...catalogModels.map(model => ({ value: model.id, label: model.displayName }))]} onChange={value => { preferencesTouched.current = true; setModelPolicy(value === "auto" ? "auto" : "explicit"); setSelectedModelId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh || catalogModels.length === 0} emptyText="Runner ยังไม่รายงาน Model" width="100%" />
           </VStack>
           {selectedRunner ? <AstryxText as="p" type="supporting" role="status">Runner {selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" ? "ออนไลน์และ trusted" : "ยังไม่พร้อม"} · {runnerReadiness?.ready ? "execution readiness ผ่าน" : "กำลังตรวจสอบ readiness จาก Runner"}</AstryxText> : null}
-          <Spec224EconomicLedgerSetup />
-          <TextInput label="งบสูงสุดของ Goal (USD)" value={budgetCapUsd} onChange={value => { setBudgetCapUsd(value.replace(/[^\d.]/g, "").slice(0, 9)); setPreparation(null); }} description="วงเงินนี้ครอบคลุมทุก Child และ Final Verify ของ Goal" />
           <VStack as="ol" gap={2}>
             <li><AstryxText as="p"><strong>Implement:</strong> สร้าง JavaScript utility แบบไม่เพิ่ม dependency และ unit tests ภายใน scope แล้วรันทดสอบจริง</AstryxText></li>
             <li><AstryxText as="p"><strong>Review & edge cases:</strong> ตรวจและปรับปรุงผล Implement เพิ่ม edge-case tests แล้วรันชุดทดสอบทั้งหมด</AstryxText></li>
@@ -1296,7 +1350,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <Textarea aria-label="ขอบเขตคำสั่ง Pilot" value={prompt} readOnly />
             <AstryxText as="p" type="supporting">คาดหวังไฟล์ utility และ tests ใน write scope, test output จาก Runner, execution timeline, receipts, usage/settlement และผล Final Verify · Goal approval ครั้งเดียวครอบคลุม phase ภายในขอบเขตที่อนุมัติ</AstryxText>
           </details>
-          <AstryxText as="p" type="supporting">อนุมัติ Goal ครั้งเดียวครอบคลุม phase ภายในขอบเขตที่อนุมัติ; ระบบยังคงขอสิทธิ์ใหม่หากงานเกิน scope, budget หรือ permission</AstryxText>
+          <AstryxText as="p" type="supporting">อนุมัติ Goal ครั้งเดียวครอบคลุม phase ภายในขอบเขตที่อนุมัติ; ระบบยังคงตรวจ scope, permission, Provider quota และความพร้อมของ Runner</AstryxText>
           <Button type="button" className="w-full" disabled={!canReviewPilot || !workspaceQuery.data?.workspace || !runnerReadiness?.ready || !catalogFresh || !activeModel || !supportedEffort || bindMutation.isPending} onClick={() => void prepare()}>
             {preparing ? "กำลังตรวจสอบ Runner และเตรียม Goal…" : "ตรวจสอบความพร้อมและแผน Pilot"}
           </Button>
@@ -1309,7 +1363,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             {(preparation.workPackages ?? []).map((workPackage, index) => <section key={workPackage.id} className="border-t border-[var(--color-border)] pt-3">
               <p className="text-sm font-medium">ขั้นตอน {index + 1} · {workPackage.readiness}</p>
               {workPackage.blockers.length ? <ul className="list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((blocker, blockerIndex) => <li key={`${blocker}-${blockerIndex}`}>{blocker}</li>)}</ul> : null}
-              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !runnerReadiness?.ready || !catalogFresh || !activeModel || !economicLedgerReadyForRun || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
+              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !runnerReadiness?.ready || !catalogFresh || !activeModel || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
             </section>)}
             <AstryxText as="p" type="supporting">ระบบจะขอ Goal Grant ผ่าน Approval Authority ก่อนเริ่ม จากนั้น phase ถัดไปจะถูก dispatch ตามผลและ receipt ที่บันทึกใน DevelopmentRun</AstryxText>
           </section>
@@ -1328,7 +1382,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">DevelopmentRun:</dt><dd className="break-all font-mono">{run.runId}</dd></HStack>
               {run.goalApproval?.approvalRef ? <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">Approval Authority request:</dt><dd className="break-all font-mono">{run.goalApproval.approvalRef}</dd></HStack> : null}
             </VStack>
-            <p className="text-[var(--color-text-secondary)]">{run.goalApproval?.status === "pending" ? "รออนุมัติจาก Approval Authority" : run.goalApproval?.status ? `สถานะ Approval: ${run.goalApproval.status}` : "สถานะ Goal แสดงจาก DevelopmentRun จริง"} · Final Verify: {run.finalVerifyStatus ?? "ยังไม่มีผล"} · execution evidence refs {run.intermediateReceipts?.length ?? 0}{run.budgetStatus ? ` · งบ ${run.budgetStatus.currency} ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)} · captured ${(run.budgetStatus.capturedMinorUnits / 100).toFixed(2)} · held ${(run.budgetStatus.heldMinorUnits / 100).toFixed(2)}` : ""}</p>
+            <p className="text-[var(--color-text-secondary)]">{run.goalApproval?.status === "pending" ? "รออนุมัติจาก Approval Authority" : run.goalApproval?.status ? `สถานะ Approval: ${run.goalApproval.status}` : "สถานะ Goal แสดงจาก DevelopmentRun จริง"} · Final Verify: {run.finalVerifyStatus ?? "ยังไม่มีผล"} · execution evidence refs {run.intermediateReceipts?.length ?? 0}{run.economicsMode === "provider_managed" ? " · ใช้โควต้า Provider ไม่มี tenant budget" : run.budgetStatus ? ` · tenant budget เดิม ${run.budgetStatus.currency} ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)} · captured ${(run.budgetStatus.capturedMinorUnits / 100).toFixed(2)} · held ${(run.budgetStatus.heldMinorUnits / 100).toFixed(2)}` : ""}</p>
             {run.goalApproval?.status === "pending" ? (() => {
               const request = pilotApprovalsQuery.data?.requests?.find((item: any) => item.id === run.goalApproval?.approvalRef);
               return (
@@ -1658,7 +1712,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   <legend className="px-1 text-xs font-medium">สิทธิ์การแก้ไขใน Workspace</legend>
                   <label className="flex items-start gap-2 text-xs">
                     <input type="radio" name="spec224-workspace-access" value="workspace" checked={workspaceAccessMode === "workspace"} onChange={() => { setWorkspaceAccessMode("workspace"); setPreparation(null); }} />
-                    <p><strong>อนุญาตทุกไฟล์ใน Workspace</strong><br />งานยังถูกจำกัดอยู่ใน Workspace ที่เลือก และต้องผ่าน Goal Grant, Budget และ Writer Lease</p>
+                    <p><strong>อนุญาตทุกไฟล์ใน Workspace</strong><br />งานยังถูกจำกัดอยู่ใน Workspace ที่เลือก และต้องผ่าน Goal Grant, นโยบายค่าใช้จ่ายของ workspace และ Writer Lease</p>
                   </label>
                   <label className="flex items-start gap-2 text-xs">
                     <input type="radio" name="spec224-workspace-access" value="exclude_risky" checked={workspaceAccessMode === "exclude_risky"} onChange={() => { setWorkspaceAccessMode("exclude_risky"); setPreparation(null); }} />
@@ -1867,6 +1921,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     ? `${run.specId}${run.specTitle ? ` — ${run.specTitle}` : ""}`
                     : run.workPackageExternalId ?? "งานพัฒนาที่ไม่ได้บันทึก Spec ID";
                   const resumeLabel = `ทำงานต่อ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`;
+                  const legacyPlatformBudgetedRun = platformWorkspaceSelected && run.economicsMode !== "provider_managed";
+                  const legacyRunClosed = ["failed", "cancelled", "expired"].includes(run.workerJobStatus ?? "")
+                    || (!run.workerJobStatus && ["FAILED_TERMINAL", "CANCELLED"].includes(run.state));
+                  const canStartProviderManagedReplacement = legacyPlatformBudgetedRun
+                    && legacyRunClosed
+                    && run.state !== "COMPLETED"
+                    && run.goalApproval?.status !== "pending";
                   return (
                     <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
                       <p className="font-medium">{specLabel}</p>
@@ -1881,16 +1942,35 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                         {run.workerJobAttempt ? ` · ครั้งที่ ${run.workerJobAttempt}` : ""}
                         {run.goalApproval?.status === "pending" ? " · รออนุมัติ Goal" : ""}
                         {run.runnerReadiness ? ` · Runner ${run.runnerReadiness.ready ? "พร้อม" : run.runnerReadiness.code}` : ""}
-                        {run.budgetStatus?.limitMinorUnits ? ` · งบ Goal USD ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)}` : ""}
+                        {run.budgetStatus?.limitMinorUnits ? ` · ${legacyPlatformBudgetedRun ? "tenant budget เดิม" : "งบ Goal"} USD ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)}` : ""}
                         {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
                       </p>
+                      {legacyPlatformBudgetedRun ? <p className="mt-1 text-[var(--color-text-secondary)]" role="status">
+                        Run นี้สร้างก่อนเปลี่ยนนโยบาย จึงยังเก็บ tenant budget เดิมไว้ในประวัติและจะไม่แก้ grant ย้อนหลัง
+                        {canStartProviderManagedReplacement
+                          ? " เริ่ม Run ใหม่จาก SPEC/WorkPackage เดิมได้ โดยใช้โควต้า Provider และไม่ใช้ budget ของ tenant"
+                          : run.state === "COMPLETED"
+                            ? " งานนี้เสร็จแล้ว"
+                            : run.goalApproval?.status === "pending"
+                              ? " รอผลอนุมัติเดิมก่อน เพื่อป้องกันการสร้างงานซ้ำ"
+                              : " กำลังรอให้ Worker ปิดงานเดิมก่อน จึงจะเริ่ม Run ใหม่ได้"}
+                      </p> : null}
                       {!simpleMode ? <p className="mt-1 break-all text-[var(--color-text-secondary)]">
                         Run {run.runId}{run.jobId ? ` · Worker Job ${run.jobId}` : ""}
                         {run.workerJobErrorCode ? ` · Error ${run.workerJobErrorCode}` : ""}
                       </p> : null}
+                      {legacyPlatformBudgetedRun && canStartProviderManagedReplacement ? (
+                        <Button type="button" variant="outline" size="sm" className="mt-2"
+                          aria-label={`เริ่ม Run ใหม่แบบ Provider quota สำหรับ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`}
+                          disabled={preparing || startMutation.isPending || resumeRunMutation.isPending || !boundWorkspace}
+                          onClick={() => void restartPlatformRunWithoutTenantBudget(run)}>
+                          {preparing || startMutation.isPending ? "กำลังเตรียม Run ใหม่…" : "เริ่ม Run ใหม่ · ใช้โควต้า Provider"}
+                        </Button>
+                      ) : null}
                       {!(["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)) ? (
                         <Button type="button" variant="outline" size="sm" className="mt-2"
                           aria-label={resumeLabel}
+                          hidden={legacyPlatformBudgetedRun}
                           disabled={resumeRunMutation.isPending || !boundWorkspace || (run.economicsMode !== "provider_managed" && !economicLedgerReadyForRun)}
                           onClick={() => void resumeExistingRun(run.runId)}>
                           {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : resumeLabel}
@@ -1958,7 +2038,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   ) : null}
                 </section>
               ))}
-              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start จะบันทึกขอบเขต Goal และขออนุมัติผ่าน Approval Authority ก่อนส่ง Child แรก จากนั้นระยะถัดไปจะทำงานอัตโนมัติภายใน provider, workspace, source, write scope, budget และเวลาที่อนุมัติไว้</p>
+              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start จะบันทึกขอบเขต Goal และขออนุมัติผ่าน Approval Authority ก่อนส่ง Child แรก จากนั้นระยะถัดไปจะทำงานอัตโนมัติภายใน provider, workspace, source, write scope และเวลาที่อนุมัติไว้{platformWorkspaceSelected ? " โดยงานพัฒนา Platform ใช้โควต้า Provider ไม่หัก budget ของ tenant" : " และ budget ของ tenant ที่อนุมัติไว้"}</p>
             </section>
           ) : null}
     </section>

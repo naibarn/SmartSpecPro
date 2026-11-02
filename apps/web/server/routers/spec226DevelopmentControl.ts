@@ -823,8 +823,9 @@ export const spec226DevelopmentControlRouter = router({
                 ...(typeof admission.approvalRef === "string" ? { approvalRef: admission.approvalRef } : {})
               }).catch(() => null))?.status ?? "unavailable";
             }
+            const economicsMode = grant.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget";
             let budgetStatus = null;
-            if (record?.run.goalId) {
+            if (record?.run.goalId && economicsMode !== "provider_managed") {
               getDb();
               budgetStatus = await readSpec224GoalBudgetStatus(db.instance, {
                 tenantId: scope.tenantId, goalId: record.run.goalId,
@@ -844,7 +845,7 @@ export const spec226DevelopmentControlRouter = router({
               createdAt,
               provider: typeof grant.provider === "string" ? grant.provider : null,
               modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
-              economicsMode: grant.economicsMode === "provider_managed" ? "provider_managed" : "tenant_budget",
+              economicsMode,
               writeScope: allowedWriteSet,
               budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
@@ -1435,7 +1436,11 @@ export const spec226DevelopmentControlRouter = router({
         // This endpoint only creates DevelopmentRuns; scope comes from the
         // authorized workspace binding. A requestKind discriminator does not
         // exist on this route (and referencing one throws before Goal creation).
-        const providerManagedScope = binding.workspace.scope === "PLATFORM_ENGINEERING";
+        const platformEngineeringWorkspace = binding.workspace.scope === "PLATFORM_ENGINEERING";
+        if (platformEngineeringWorkspace && ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
+        }
+        const providerManagedScope = platformEngineeringWorkspace && ctx.user?.role === "admin";
         const budgetCapMinorUnits = providerManagedScope ? undefined : input.budgetCapMinorUnits ?? 100;
         const provider = input.provider ?? "codex";
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
@@ -1474,12 +1479,19 @@ export const spec226DevelopmentControlRouter = router({
             throw new Error("RUN_IDEMPOTENCY_CONFLICT");
           }
           const persistedGrant = existing.run.metadata?.spec224GoalGrantPayload;
-          const authorization = persistedGrant && runnerReadiness.projectId
-            ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
-              runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
-              payload: persistedGrant as Record<string, unknown> })
-            : await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId,
-              runnerId: binding.workspace.runnerId, budgetCapMinorUnits: budgetCapMinorUnits ?? 100 });
+          const authorization = providerManagedScope
+            ? persistedGrant && runnerReadiness.projectId
+              ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
+                  runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
+                  payload: persistedGrant as Record<string, unknown> })
+              : { version: "spec-224-authorization-binding-v1" as const, status: "RUNNER_BINDING_REQUIRED" as const,
+                  reasons: ["PLATFORM_PROVIDER_MANAGED_GRANT_REQUIRED"] }
+            : persistedGrant && runnerReadiness.projectId
+              ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
+                  runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
+                  payload: persistedGrant as Record<string, unknown> })
+              : await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId,
+                  runnerId: binding.workspace.runnerId, budgetCapMinorUnits: budgetCapMinorUnits ?? 100 });
           const source = existing.run.metadata?.spec224Input as { inputDigest: string };
           const workspace = existing.run.metadata?.spec224Workspace as { specSetRevision: number | null; workPackageId: string | null };
           if (input.threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId: input.threadId });
@@ -1831,9 +1843,26 @@ export const spec226DevelopmentControlRouter = router({
           ...scope, conversationId: input.conversationId,
         });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
+        }
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
         if (record.run.workspaceId !== binding.workspace.workspaceId)
           throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
+        const persistedGrant = record.run.metadata?.spec224GoalGrantPayload;
+        const economicsMode = persistedGrant && typeof persistedGrant === "object"
+          ? (persistedGrant as Record<string, unknown>).economicsMode : undefined;
+        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && ctx.user?.role === "admin"
+          && economicsMode !== "provider_managed") {
+          const authorization = {
+            status: "PLATFORM_RUN_RESTART_REQUIRED" as const,
+            reasons: ["LEGACY_TENANT_BUDGET_BINDING"],
+            ownerAction: "Run เดิมยังผูกงบ tenant รุ่นเก่าไว้ ระบบจะไม่แก้ grant ย้อนหลัง ให้เริ่ม Run ใหม่จาก SPEC/WorkPackage เดิมเพื่อใช้ provider quota ของงานระบบ",
+          };
+          return { runId: input.runId, jobId: record.run.workerJobId ?? null, state: record.run.state,
+            dispatchStatus: "BLOCKED" as const, authorization, goalAdmissionStatus: authorization.status,
+            workerJobStatus: null, terminal: false, resumedExistingRun: true, requiresNewProviderManagedRun: true };
+        }
         const workerJob = record.run.workerJobId
           ? await createJobControlPlane().getStatus(record.run.workerJobId, {
               tenantId: scope.tenantId,
