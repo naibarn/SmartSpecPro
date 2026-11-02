@@ -2,6 +2,14 @@ import { createHash } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { and, eq, sql } from "drizzle-orm";
+
+import {
+  runnerExecutionSessions,
+  spec224RunnerJobInputs,
+  workerJobEvents,
+  workerJobs,
+} from "../../drizzle/schema";
 
 import { adminProcedure, protectedProcedure as authenticatedProcedure, router } from "../_core/trpc";
 import { requireDevelopmentBearerScope } from "../services/developmentBearerScope";
@@ -30,6 +38,7 @@ import {
   createPersistedDevelopmentRun,
   defaultDevelopmentRunPersistenceAdapter,
 } from "../services/spec224DevelopmentRunPersistence";
+import { createAndBindNextPhase } from "../services/spec224PhaseController";
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
 import { compileSpec224IncrementalSpecSet } from "../services/spec224IncrementalSpecCompiler";
 import { buildModularSaasMissionControlReadModel } from "../services/modularSaasMissionControlReadModel";
@@ -1816,6 +1825,128 @@ export const spec226DevelopmentControlRouter = router({
             workerJobStatus: null, terminal: false, resumedExistingRun: true };
         }
         if (["failed", "cancelled", "expired"].includes(workerJob.status)) {
+          const canRetryModelBindingFailure = workerJob.status === "failed" &&
+            workerJob.jobType === "external_agent_task" &&
+            workerJob.operatorReviewRequired === true &&
+            workerJob.operatorReviewReason === "RUNNER_MODEL_SELECTION_BINDING_MISMATCH" &&
+            (record.run.state === "PLANNING" ||
+              (record.run.state === "RECOVERY" && record.run.resumeState === "PLANNING")) &&
+            Boolean(record.run.goalId && record.run.workerJobId && record.run.metadata?.spec224GoalGrantPayload);
+          if (canRetryModelBindingFailure) {
+            const [runnerEvent] = await db.select({ id: workerJobEvents.id })
+              .from(workerJobEvents)
+              .where(and(
+                eq(workerJobEvents.workerJobId, workerJob.jobId),
+                sql`left(${workerJobEvents.eventType}, 7) = 'RUNNER_'`
+              ))
+              .limit(1);
+            const [runnerInput] = await db.select({ id: spec224RunnerJobInputs.id })
+              .from(spec224RunnerJobInputs)
+              .where(eq(spec224RunnerJobInputs.workerJobId, workerJob.jobId))
+              .limit(1);
+            const [runnerSession] = await db.select({ sessionId: runnerExecutionSessions.sessionId })
+              .from(runnerExecutionSessions)
+              .where(eq(runnerExecutionSessions.workerJobId, workerJob.jobId))
+              .limit(1);
+            const [failedJob] = await db.select({
+              tenantId: workerJobs.tenantId,
+              requestedByUserId: workerJobs.requestedByUserId,
+              jobType: workerJobs.jobType,
+              status: workerJobs.status,
+              operatorReviewRequired: workerJobs.operatorReviewRequired,
+              operatorReviewReason: workerJobs.operatorReviewReason,
+              inputJson: workerJobs.inputJson,
+            }).from(workerJobs).where(and(
+              eq(workerJobs.id, workerJob.jobId),
+              eq(workerJobs.tenantId, scope.tenantId),
+              eq(workerJobs.requestedByUserId, scope.actorId)
+            )).limit(1);
+            const jobInput = failedJob?.inputJson;
+            const manifest = jobInput?.manifest && typeof jobInput.manifest === "object" && !Array.isArray(jobInput.manifest)
+              ? jobInput.manifest as Record<string, unknown> : null;
+            const projectedRun = jobInput?.spec224Run && typeof jobInput.spec224Run === "object" && !Array.isArray(jobInput.spec224Run)
+              ? jobInput.spec224Run as Record<string, unknown> : null;
+            const manifestReady = manifest && projectedRun &&
+              projectedRun.runId === record.run.runId && projectedRun.goalId === record.run.goalId &&
+              manifest.goalId === record.run.goalId && manifest.workspaceId === record.run.workspaceId &&
+              ["codex", "claude_code", "microsoft_copilot"].includes(String(manifest.provider)) &&
+              ["local_runner", "cloudflare_container"].includes(String(manifest.runtime)) &&
+              typeof manifest.planId === "string" && Number.isSafeInteger(manifest.planRevision) &&
+              Array.isArray(manifest.skillIds) && Array.isArray(manifest.requestedCapabilities);
+            if (!runnerEvent && !runnerInput && !runnerSession && failedJob?.status === "failed" &&
+                failedJob.tenantId === scope.tenantId && failedJob.requestedByUserId === scope.actorId &&
+                failedJob.jobType === "external_agent_task" && failedJob.operatorReviewRequired &&
+                failedJob.operatorReviewReason === "RUNNER_MODEL_SELECTION_BINDING_MISMATCH" && manifestReady) {
+              let recoveryRevision = record.revision;
+              let recoveryRun = record.run;
+              if (record.run.state === "PLANNING") {
+                const reconciled = await developmentRunService.reconcile({
+                  runId: input.runId,
+                  tenantId: scope.tenantId,
+                  actorId: scope.actorId,
+                  expectedWorkerJobId: workerJob.jobId,
+                  expectedAttempt: workerJob.attempt,
+                });
+                if (reconciled.run.state !== "WAITING_HUMAN_DECISION" || reconciled.run.resumeState !== "PLANNING")
+                  throw new Error("SAFE_MODEL_SELECTION_RETRY_STATE_MISMATCH");
+                const recovery = await developmentRunService.command({
+                  runId: input.runId,
+                  tenantId: scope.tenantId,
+                  actorId: scope.actorId,
+                  expectedRevision: reconciled.revision,
+                  expectedFencingVersion: reconciled.run.fencingVersion,
+                  idempotencyKey: `spec224:model-selection-recovery:${workerJob.jobId}:${workerJob.attempt}`,
+                  command: {
+                    kind: "transition",
+                    nextState: "RECOVERY",
+                    eventType: "RECOVERY_SCHEDULED",
+                    payload: { workerJobId: workerJob.jobId, reason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH" },
+                  },
+                });
+                recoveryRevision = recovery.revision;
+                recoveryRun = recovery.run;
+              }
+              if (recoveryRun.state !== "RECOVERY" || recoveryRun.resumeState !== "PLANNING")
+                throw new Error("SAFE_MODEL_SELECTION_RETRY_STATE_MISMATCH");
+              const controlPlane = createJobControlPlane();
+              const successor = await createAndBindNextPhase({
+                runId: input.runId,
+                tenantId: scope.tenantId,
+                actorId: scope.actorId,
+                expectedRevision: recoveryRevision,
+                expectedFencingVersion: recoveryRun.fencingVersion,
+                idempotencyKey: `spec224:model-selection-retry:${workerJob.jobId}:${workerJob.attempt}`,
+                provider: manifest!.provider as "codex" | "claude_code" | "microsoft_copilot",
+                runtime: manifest!.runtime as "local_runner" | "cloudflare_container",
+                planId: manifest!.planId as string,
+                planRevision: manifest!.planRevision as number,
+                skillIds: manifest!.skillIds as string[],
+                requestedCapabilities: manifest!.requestedCapabilities as string[],
+                authorizationScope: "spec224.development.run",
+                deferredAdmission: true,
+                persistence: defaultDevelopmentRunPersistenceAdapter,
+                controlPlane,
+              });
+              const authorization = await defaultSpec224AuthorizationService.authorizeDelegatedChild({
+                context: authorizationContext(ctx),
+                runId: input.runId,
+              });
+              const dispatchStatus = authorization.status === "READY_FOR_LIVE"
+                ? "ENQUEUED" as const
+                : ["APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(authorization.status)
+                  ? "PENDING_AUTHORIZATION" as const : "BLOCKED" as const;
+              auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
+                traceId, tenantId: scope.tenantId, userId: scope.actorId,
+                metadata: { runId: input.runId, previousJobId: workerJob.jobId,
+                  jobId: successor.jobRef.jobId, action: "retry_safe_pre_runner_model_binding_failure",
+                  dispatchStatus, authorizationStatus: authorization.status },
+              });
+              return { runId: input.runId, jobId: successor.jobRef.jobId, state: successor.run.state,
+                dispatchStatus, authorization, goalAdmissionStatus: authorization.status,
+                workerJobStatus: "queued", terminal: false, resumedExistingRun: true,
+                recoveredPreRunnerFailure: true };
+            }
+          }
           const authorization = {
             status: workerJob.status === "failed" ? "RUN_TERMINAL_FAILED" as const : "RUN_TERMINAL_CLOSED" as const,
             reasons: [workerJob.errorCode ?? workerJob.status],

@@ -40,6 +40,11 @@ import {
   type AgentTaskManifest,
   validateAgentTaskManifest,
 } from "./agentControlPlaneContracts";
+import {
+  rebindSpec224ModelSelection,
+  validateSpec224ResolvedModelSelection,
+  type Spec224ResolvedModelSelection,
+} from "./spec224ModelSelection";
 import { defaultRunnerGateway, type RunnerGatewayNode } from "./runnerGateway";
 import {
   canPersistSpec224PolicyBinding,
@@ -740,7 +745,8 @@ async function releaseUnlaunchedDelegatedHold(input: {
 async function persistBinding(
   ctx: Spec224AuthorizationContext,
   loaded: LoadedRun,
-  binding: Spec224PolicyBinding
+  binding: Spec224PolicyBinding,
+  modelSelection?: Spec224ResolvedModelSelection
 ): Promise<void> {
   if (!loaded.run.workerJobId)
     throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
@@ -783,6 +789,7 @@ async function persistBinding(
     }
     const validated = validateAgentTaskManifest({
       ...manifest,
+      ...(modelSelection ? { spec224ModelSelection: modelSelection } : {}),
       policyBinding: binding,
     } as AgentTaskManifest);
     const manifestHash = createHash("sha256")
@@ -817,6 +824,16 @@ async function persistBinding(
         ...(binding.economicsMode === "provider_managed" ? {} : { budgetReservationRef: binding.budgetReservationRef }),
         workspaceRef: binding.workspaceRef,
         deadline: binding.deadline,
+        ...(modelSelection ? {
+          modelSelection: {
+            adapterId: modelSelection.adapterId,
+            policy: modelSelection.policy,
+            resolvedModelId: modelSelection.resolvedModelId,
+            reasoningEffort: modelSelection.reasoningEffort,
+            catalogRevision: modelSelection.catalogRevision,
+            capabilitySnapshotRevision: modelSelection.capabilitySnapshotRevision,
+          },
+        } : {}),
       },
     });
   });
@@ -1122,7 +1139,30 @@ export function createSpec224AuthorizationService() {
         executionLeaseSourceSha: executionLease.sourceSha,
         executionLeaseSourceFingerprint: executionLease.sourceFingerprint } : evaluated.binding;
       try {
-        await persistBinding(input.context, loaded, bound);
+        const rawModelSelection = grant.modelSelection ?? rootManifest?.spec224ModelSelection ?? childManifest?.spec224ModelSelection;
+        let modelSelection: Spec224ResolvedModelSelection | undefined;
+        if (rawModelSelection !== undefined) {
+          const pinnedSelection = validateSpec224ResolvedModelSelection(rawModelSelection);
+          const expectedAdapterId = grant.provider === "microsoft_copilot"
+            ? "microsoft-copilot.v1"
+            : grant.provider === "claude_code" ? "claude.v1" : "codex.v1";
+          if (pinnedSelection.adapterId !== expectedAdapterId)
+            throw new Spec224AuthorizationError("SPEC224_MODEL_SELECTION_ADAPTER_MISMATCH");
+          const modelCatalog = currentRunner.snapshot?.toolInventory?.find(
+            tool => tool.adapterId === pinnedSelection.adapterId
+          )?.modelCatalog;
+          try {
+            modelSelection = rebindSpec224ModelSelection({
+              selection: pinnedSelection,
+              catalog: modelCatalog,
+              capabilitySnapshotRevision: bound.capabilitySnapshotRevision,
+            });
+          } catch (error) {
+            const code = error instanceof Error ? error.message : "SPEC224_MODEL_SELECTION_REFRESH_FAILED";
+            throw new Spec224AuthorizationError(code);
+          }
+        }
+        await persistBinding(input.context, loaded, bound, modelSelection);
         const released = await createJobControlPlane().releaseAuthorizationHold({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
         if (!released) throw new Spec224AuthorizationError("HOLD_RELEASE_NOT_ALLOWED");
       } catch (error) {

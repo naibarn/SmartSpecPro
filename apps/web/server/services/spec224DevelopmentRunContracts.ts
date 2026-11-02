@@ -539,8 +539,10 @@ export function transitionDevelopmentRun(
         ? run.decisionEpoch + 1
         : run.decisionEpoch,
     resumeState:
-      nextState === "RECOVERY" || nextState === "WAITING_HUMAN_DECISION"
-        ? run.state
+      nextState === "RECOVERY"
+        ? run.resumeState ?? run.state
+        : nextState === "WAITING_HUMAN_DECISION"
+          ? run.state
         : run.resumeState,
   };
 }

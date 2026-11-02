@@ -91,6 +91,32 @@ describe("SPEC-224 Goal delegation contract", () => {
     expect(parseSpec224GoalGrant(reloaded!, input.now!)).toMatchObject({ goalId: "goal-1", actorId: 11 });
   });
 
+  it("retains the approved model intent for authorized continuation rebinding", () => {
+    const input = baseInput();
+    input.authority.payload.modelSelection = {
+      adapterId: "codex.v1",
+      policy: "explicit",
+      selectedModelId: "gpt-6-luna",
+      resolvedModelId: "gpt-6-luna",
+      reasoningEffort: "high",
+      catalogRevision: "catalog:old",
+      accountProviderFingerprint: "codex-account:sha256:account",
+      capabilitySnapshotRevision: "snapshot:old",
+      capabilityProfile: ["text"],
+      cliVersion: "codex-cli 0.165.0",
+    };
+
+    expect(parseSpec224GoalGrant(input.authority, input.now!)).toMatchObject({
+      modelSelection: {
+        adapterId: "codex.v1",
+        policy: "explicit",
+        selectedModelId: "gpt-6-luna",
+        reasoningEffort: "high",
+        capabilitySnapshotRevision: "snapshot:old",
+      },
+    });
+  });
+
   it("accepts only an explicitly started, zero-reviewer bounded grant", () => {
     const input = baseInput();
     input.authority.currentApprovals = 0;

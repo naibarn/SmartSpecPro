@@ -52,6 +52,19 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     });
   });
 
+  it("keeps the failed phase when a human-approved recovery is scheduled", () => {
+    const waiting = {
+      ...buildDevelopmentRun(baseRun),
+      state: "WAITING_HUMAN_DECISION" as const,
+      resumeState: "PLANNING" as const,
+    };
+
+    expect(transitionDevelopmentRun(waiting, "RECOVERY")).toMatchObject({
+      state: "RECOVERY",
+      resumeState: "PLANNING",
+    });
+  });
+
   it("enforces resumable transitions and blocks completion without final verification", () => {
     const run = buildDevelopmentRun(baseRun);
     expect(() => transitionDevelopmentRun(run, "COMPLETED")).toThrow(

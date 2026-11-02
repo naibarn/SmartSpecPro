@@ -100,3 +100,29 @@ export function resolveSpec224ModelSelection(input: {
     cliVersion: catalog.cliVersion,
   };
 }
+
+/** Re-resolve the approved model intent when a successor binds to a newer Runner snapshot. */
+export function rebindSpec224ModelSelection(input: {
+  selection: Spec224ResolvedModelSelection;
+  catalog: RunnerModelCatalog | null | undefined;
+  capabilitySnapshotRevision: string;
+  now?: Date;
+}): Spec224ResolvedModelSelection {
+  const selection = validateSpec224ResolvedModelSelection(input.selection);
+  const refreshed = resolveSpec224ModelSelection({
+    adapterId: selection.adapterId,
+    catalog: input.catalog,
+    capabilitySnapshotRevision: input.capabilitySnapshotRevision,
+    now: input.now,
+    request: {
+      policy: selection.policy,
+      ...(selection.policy === "explicit" ? { modelId: selection.selectedModelId ?? undefined } : {}),
+      reasoningEffort: selection.reasoningEffort,
+    },
+  });
+  if (refreshed.accountProviderFingerprint !== selection.accountProviderFingerprint)
+    throw new Error("SPEC224_MODEL_ACCOUNT_SCOPE_CHANGED");
+  if (refreshed.resolvedModelId !== selection.resolvedModelId)
+    throw new Error("SPEC224_MODEL_SELECTION_CHANGED");
+  return refreshed;
+}

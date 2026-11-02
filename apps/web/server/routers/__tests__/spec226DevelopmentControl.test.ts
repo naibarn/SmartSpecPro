@@ -39,9 +39,13 @@ const mocks = vi.hoisted(() => ({
   developmentRunService: {
     initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })),
     get: vi.fn(),
+    reconcile: vi.fn(),
+    command: vi.fn(),
     recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
   },
   jobControlPlane: { getStatus: vi.fn() },
+  dbSelect: vi.fn(),
+  createAndBindNextPhase: vi.fn(),
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
   workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
@@ -61,6 +65,17 @@ vi.mock("../../_core/trpc", () => {
   };
 });
 
+vi.mock("../../db", async () => {
+  const actual = await vi.importActual<typeof import("../../db")>("../../db");
+  return {
+    ...actual,
+    db: {
+      get instance() { return actual.db.instance; },
+      select: (...args: unknown[]) => mocks.dbSelect(...args),
+    },
+  };
+});
+
 vi.mock("../../services/spec226DevelopmentControlBridge", () => ({
   defaultSpec226DevelopmentControlBridge: mocks.bridge,
 }));
@@ -71,10 +86,16 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
   createDevelopmentRunService: () => ({
     initialize: (...args: unknown[]) => mocks.developmentRunService.initialize(...args),
     get: (...args: unknown[]) => mocks.developmentRunService.get(...args),
+    reconcile: (...args: unknown[]) => mocks.developmentRunService.reconcile(...args),
+    command: (...args: unknown[]) => mocks.developmentRunService.command(...args),
     recordVerificationEvent: (...args: unknown[]) => mocks.developmentRunService.recordVerificationEvent(...args),
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
   defaultDevelopmentRunPersistenceAdapter: {},
+}));
+
+vi.mock("../../services/spec224PhaseController", () => ({
+  createAndBindNextPhase: (...args: unknown[]) => mocks.createAndBindNextPhase(...args),
 }));
 
 vi.mock("../../services/jobControlPlane", () => ({
@@ -181,7 +202,11 @@ beforeEach(() => {
   mocks.featureSpecCatalog.loadContext.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", summary: "Example", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1" } });
   mocks.featureSpecCatalog.loadProject.mockReset();
   mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
+  mocks.developmentRunService.reconcile.mockReset();
+  mocks.developmentRunService.command.mockReset();
   mocks.jobControlPlane.getStatus.mockReset().mockResolvedValue({ status: "running", terminal: false });
+  mocks.dbSelect.mockReset();
+  mocks.createAndBindNextPhase.mockReset();
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
 
@@ -287,6 +312,152 @@ describe("spec226DevelopmentControlRouter", () => {
     });
     expect(mocks.advanceStart).not.toHaveBeenCalled();
     expect(mocks.authorizeDelegatedChild).not.toHaveBeenCalled();
+  });
+
+  it("safely retries a pre-Runner model-binding failure through the canonical phase controller", async () => {
+    const runId = "run-model-binding-mismatch";
+    const jobId = "job-model-binding-mismatch";
+    const grantPayload = { grantId: "grant-1", goalId: "goal-1", provider: "codex" };
+    mocks.developmentRunService.get.mockResolvedValueOnce({ revision: 4, run: {
+      runId, workerJobId: jobId, goalId: "goal-1", state: "PLANNING", workspaceId: "workspace-a",
+      fencingVersion: 7, phaseAttempt: 0, metadata: { spec224GoalGrantPayload: grantPayload },
+    } });
+    mocks.jobControlPlane.getStatus.mockResolvedValueOnce({
+      jobId, jobType: "external_agent_task", status: "failed", terminal: true, attempt: 1,
+      operatorReviewRequired: true, operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+    });
+
+    const query = (rows: unknown[]) => {
+      const builder: any = { from: () => builder, where: () => builder, limit: async () => rows };
+      return builder;
+    };
+    mocks.dbSelect
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([{
+        tenantId: CTX.tenantId, requestedByUserId: CTX.user.id, jobType: "external_agent_task",
+        status: "failed", operatorReviewRequired: true,
+        operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+        inputJson: {
+          manifest: { goalId: "goal-1", workspaceId: "workspace-a", provider: "codex", runtime: "local_runner",
+            planId: "plan-1", planRevision: 3, skillIds: [], requestedCapabilities: [] },
+          spec224Run: { runId, goalId: "goal-1" },
+        },
+      }]));
+    mocks.developmentRunService.reconcile.mockResolvedValueOnce({
+      action: "RECOVER", revision: 5,
+      run: { runId, workerJobId: jobId, goalId: "goal-1", state: "WAITING_HUMAN_DECISION",
+        resumeState: "PLANNING", workspaceId: "workspace-a", fencingVersion: 7 },
+    });
+    mocks.developmentRunService.command.mockResolvedValueOnce({ accepted: true, revision: 6,
+      run: { runId, workerJobId: jobId, goalId: "goal-1", state: "RECOVERY", resumeState: "PLANNING",
+        workspaceId: "workspace-a", fencingVersion: 8 }, event: null });
+    mocks.createAndBindNextPhase.mockResolvedValueOnce({
+      jobRef: { jobId: "job-model-binding-retry", created: true },
+      run: { runId, workerJobId: "job-model-binding-retry", state: "PLANNING" },
+    });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId, budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({
+      runId, jobId: "job-model-binding-retry", state: "PLANNING", dispatchStatus: "ENQUEUED",
+      workerJobStatus: "queued", resumedExistingRun: true, recoveredPreRunnerFailure: true,
+    });
+    expect(mocks.developmentRunService.reconcile).toHaveBeenCalledWith(expect.objectContaining({
+      runId, expectedWorkerJobId: jobId, expectedAttempt: 1,
+    }));
+    expect(mocks.createAndBindNextPhase).toHaveBeenCalledWith(expect.objectContaining({
+      runId, expectedRevision: 6, expectedFencingVersion: 8, planId: "plan-1", planRevision: 3,
+      idempotencyKey: `spec224:model-selection-retry:${jobId}:1`, deferredAdmission: true,
+    }));
+    expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId }));
+  });
+
+  it("continues an idempotent recovery if the process stopped after scheduling recovery", async () => {
+    const runId = "run-model-binding-recovery";
+    const jobId = "job-model-binding-recovery";
+    mocks.developmentRunService.get.mockResolvedValueOnce({ revision: 6, run: {
+      runId, workerJobId: jobId, goalId: "goal-1", state: "RECOVERY", resumeState: "PLANNING",
+      workspaceId: "workspace-a", fencingVersion: 8,
+      metadata: { spec224GoalGrantPayload: { grantId: "grant-1", goalId: "goal-1", provider: "codex" } },
+    } });
+    mocks.jobControlPlane.getStatus.mockResolvedValueOnce({
+      jobId, jobType: "external_agent_task", status: "failed", terminal: true, attempt: 1,
+      operatorReviewRequired: true, operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+    });
+    const query = (rows: unknown[]) => {
+      const builder: any = { from: () => builder, where: () => builder, limit: async () => rows };
+      return builder;
+    };
+    mocks.dbSelect
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([{
+        tenantId: CTX.tenantId, requestedByUserId: CTX.user.id, jobType: "external_agent_task",
+        status: "failed", operatorReviewRequired: true,
+        operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+        inputJson: {
+          manifest: { goalId: "goal-1", workspaceId: "workspace-a", provider: "codex", runtime: "local_runner",
+            planId: "plan-1", planRevision: 3, skillIds: [], requestedCapabilities: [] },
+          spec224Run: { runId, goalId: "goal-1" },
+        },
+      }]));
+    mocks.createAndBindNextPhase.mockResolvedValueOnce({
+      jobRef: { jobId: "job-model-binding-retry", created: false },
+      run: { runId, workerJobId: "job-model-binding-retry", state: "PLANNING" },
+    });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId, budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({ jobId: "job-model-binding-retry", recoveredPreRunnerFailure: true });
+    expect(mocks.developmentRunService.reconcile).not.toHaveBeenCalled();
+    expect(mocks.developmentRunService.command).not.toHaveBeenCalled();
+    expect(mocks.createAndBindNextPhase).toHaveBeenCalledWith(expect.objectContaining({
+      expectedRevision: 6, expectedFencingVersion: 8,
+      idempotencyKey: `spec224:model-selection-retry:${jobId}:1`,
+    }));
+  });
+
+  it("does not retry a model-binding failure when a Runner session already exists", async () => {
+    const runId = "run-model-binding-runner-session";
+    const jobId = "job-model-binding-runner-session";
+    mocks.developmentRunService.get.mockResolvedValueOnce({ revision: 4, run: {
+      runId, workerJobId: jobId, goalId: "goal-1", state: "PLANNING", workspaceId: "workspace-a",
+      fencingVersion: 7, metadata: { spec224GoalGrantPayload: { goalId: "goal-1" } },
+    } });
+    mocks.jobControlPlane.getStatus.mockResolvedValueOnce({
+      jobId, jobType: "external_agent_task", status: "failed", terminal: true, attempt: 1,
+      operatorReviewRequired: true, operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+    });
+    const query = (rows: unknown[]) => {
+      const builder: any = { from: () => builder, where: () => builder, limit: async () => rows };
+      return builder;
+    };
+    mocks.dbSelect
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([{ sessionId: "s278-existing-runner-session" }]))
+      .mockReturnValueOnce(query([{
+        tenantId: CTX.tenantId, requestedByUserId: CTX.user.id, jobType: "external_agent_task",
+        status: "failed", operatorReviewRequired: true,
+        operatorReviewReason: "RUNNER_MODEL_SELECTION_BINDING_MISMATCH",
+        inputJson: { manifest: {}, spec224Run: {} },
+      }]));
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId, budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({ dispatchStatus: "BLOCKED", terminal: true,
+      authorization: { status: "RUN_TERMINAL_FAILED" } });
+    expect(mocks.developmentRunService.reconcile).not.toHaveBeenCalled();
+    expect(mocks.createAndBindNextPhase).not.toHaveBeenCalled();
   });
 
   it("resumes a granted Goal using its persisted child cap instead of rejecting the total Goal budget", async () => {

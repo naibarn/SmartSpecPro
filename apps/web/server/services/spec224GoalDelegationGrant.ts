@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import {
+  validateSpec224ResolvedModelSelection,
+  type Spec224ResolvedModelSelection,
+} from "./spec224ModelSelection";
 
 export const SPEC224_GOAL_DELEGATION_GRANT_VERSION =
   "spec224.goal-delegation-grant.v1" as const;
@@ -325,6 +329,19 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
   )
     return null;
 
+  let modelSelection: Spec224ResolvedModelSelection | undefined;
+  if (payload.modelSelection !== undefined) {
+    try {
+      modelSelection = validateSpec224ResolvedModelSelection(payload.modelSelection);
+    } catch {
+      return null;
+    }
+    const expectedAdapterId = payload.provider === "microsoft_copilot"
+      ? "microsoft-copilot.v1"
+      : payload.provider === "claude_code" ? "claude.v1" : "codex.v1";
+    if (modelSelection.adapterId !== expectedAdapterId) return null;
+  }
+
   if (
     authority.status !== "approved" ||
     (typeof authority.revokedAt === "string" &&
@@ -364,6 +381,7 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
       budgetLimitMinorUnits: payload.budgetLimitMinorUnits as number,
       currency: (payload.currency as string).toUpperCase(),
     }),
+    ...(modelSelection ? { modelSelection } : {}),
     expiresAt: authority.expiresAt && Date.parse(authority.expiresAt) < Date.parse(expiresAt)
       ? authority.expiresAt : expiresAt,
   };

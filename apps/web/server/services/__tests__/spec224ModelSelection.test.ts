@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSpec224ModelSelection } from "../spec224ModelSelection";
+import { rebindSpec224ModelSelection, resolveSpec224ModelSelection } from "../spec224ModelSelection";
 import type { RunnerModelCatalog } from "../runnerContracts";
 
 const catalog: RunnerModelCatalog = {
@@ -42,6 +42,63 @@ describe("SPEC-224 model selection", () => {
     });
     expect(() => resolveSpec224ModelSelection({ ...base, request: { policy: "explicit", modelId: "missing-model" } })).toThrow("SPEC224_SELECTED_MODEL_UNAVAILABLE");
     expect(() => resolveSpec224ModelSelection({ ...base, request: { policy: "explicit", modelId: "gpt-6.1-terra", reasoningEffort: "medium" } })).toThrow("SPEC224_MODEL_REASONING_EFFORT_UNSUPPORTED");
+  });
+
+  it("refreshes an approved model choice against the current Runner snapshot", () => {
+    const original = resolveSpec224ModelSelection({
+      ...base,
+      capabilitySnapshotRevision: "snapshot-6",
+      request: { policy: "explicit", modelId: "gpt-6.1-terra", reasoningEffort: "high" },
+    });
+    const currentCatalog = { ...catalog, revision: "catalog:sha256:fresh", observedAt: "2026-10-28T12:06:00Z" };
+
+    expect(rebindSpec224ModelSelection({
+      selection: original,
+      catalog: currentCatalog,
+      capabilitySnapshotRevision: "snapshot-7",
+      now: new Date("2026-10-28T12:07:00Z"),
+    })).toMatchObject({
+      policy: "explicit",
+      resolvedModelId: "gpt-6.1-terra",
+      reasoningEffort: "high",
+      catalogRevision: "catalog:sha256:fresh",
+      capabilitySnapshotRevision: "snapshot-7",
+      accountProviderFingerprint: catalog.accountProviderFingerprint,
+    });
+  });
+
+  it("fails closed when a refreshed catalog changes the approved provider account", () => {
+    const original = resolveSpec224ModelSelection({
+      ...base,
+      capabilitySnapshotRevision: "snapshot-6",
+      request: { policy: "explicit", modelId: "gpt-6.1-terra", reasoningEffort: "high" },
+    });
+
+    expect(() => rebindSpec224ModelSelection({
+      selection: original,
+      catalog: { ...catalog, accountProviderFingerprint: "codex-account:sha256:changed" },
+      capabilitySnapshotRevision: "snapshot-7",
+      now: new Date("2026-10-28T12:07:00Z"),
+    })).toThrow("SPEC224_MODEL_ACCOUNT_SCOPE_CHANGED");
+  });
+
+  it("does not silently change the model behind an approved Auto selection", () => {
+    const original = resolveSpec224ModelSelection({ ...base, capabilitySnapshotRevision: "snapshot-6" });
+    const changedDefault = {
+      ...catalog,
+      revision: "catalog:sha256:fresh",
+      observedAt: "2026-10-28T12:06:00Z",
+      models: catalog.models.map(model => model.id === "gpt-6.1-terra"
+        ? { ...model, reasoningEfforts: ["low", "medium", "high"], defaultReasoningEffort: "medium", isDefault: true }
+        : { ...model, isDefault: false }),
+    };
+
+    expect(() => rebindSpec224ModelSelection({
+      selection: original,
+      catalog: changedDefault,
+      capabilitySnapshotRevision: "snapshot-7",
+      now: new Date("2026-10-28T12:07:00Z"),
+    })).toThrow("SPEC224_MODEL_SELECTION_CHANGED");
   });
 
   it("uses an explicit Copilot model when the SDK advertises no reasoning controls", () => {
