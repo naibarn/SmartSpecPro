@@ -666,6 +666,25 @@ export function ProjectExecutionWorkspace({
                           <p className="line-clamp-2 font-medium">
                             {goalTitle(goal)}
                           </p>
+                          {goal.specSources?.length ? (
+                            <p className="mt-1 break-all text-xs text-muted-foreground">
+                              <span className="font-medium">อ้างอิง SPEC:</span>{" "}
+                              {goal.specSources
+                                .map((source: { specId: string; sourcePath: string }) =>
+                                  specSourceLabel(source, presentationMode === "developer")
+                                )
+                                .join(", ")}
+                            </p>
+                          ) : goal.specId ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              <span className="font-medium">อ้างอิง SPEC:</span>{" "}
+                              {goal.specId}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              ไม่มีข้อมูลอ้างอิง SPEC
+                            </p>
+                          )}
                           <p className="mt-1 text-sm text-muted-foreground">
                             Goal · {label(goal.state)} ·{" "}
                             {nextActionLabel(goal.nextSafeAction)}
