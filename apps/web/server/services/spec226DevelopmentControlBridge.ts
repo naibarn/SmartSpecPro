@@ -32,6 +32,10 @@ export type Spec226DevelopmentRunAction = "pause" | "cancel";
 export type Spec226DevelopmentRunView = {
   bridgeVersion: typeof SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION;
   runId: string;
+  /** User-authored task text and explicit project binding for Task Control. */
+  goal: string;
+  projectId: string | null;
+  specId: string | null;
   workspaceId: string;
   workPackageId: string | null;
   workPackageExternalId: string | null;
@@ -94,9 +98,19 @@ function toView(input: {
   const miniAppId = factory && typeof factory === "object" && !Array.isArray(factory)
     ? (factory as Record<string, unknown>).miniAppId
     : null;
+  const metadata = input.run.metadata ?? {};
+  const workspaceMetadata = metadata.spec224Workspace;
+  const workspaceProjectId = workspaceMetadata && typeof workspaceMetadata === "object" && !Array.isArray(workspaceMetadata)
+    ? (workspaceMetadata as Record<string, unknown>).projectId
+    : null;
   return {
     bridgeVersion: SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION,
     runId: input.run.runId,
+    goal: input.run.goal.slice(0, 1_000),
+    projectId: typeof metadata.projectId === "string"
+      ? metadata.projectId
+      : typeof workspaceProjectId === "string" ? workspaceProjectId : null,
+    specId: typeof metadata.specId === "string" ? metadata.specId : null,
     workspaceId: input.run.workspaceId,
     workPackageId: input.run.workPackageId ?? null,
     workPackageExternalId: (() => {

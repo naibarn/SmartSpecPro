@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { projectBinding } from "../ProjectExecutionWorkspace";
 
 describe("ProjectExecutionWorkspace project binding", () => {
+  it("reads the safe project binding returned by the DevelopmentRun list DTO", () => {
+    expect(projectBinding({ projectId: "modular-core-project" })).toBe("modular-core-project");
+  });
+
   it("reads the canonical project id persisted on the Goal metadata", () => {
     expect(projectBinding({
       metadata: {

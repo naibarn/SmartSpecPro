@@ -90,6 +90,32 @@ function memoryAdapter(initial: DevelopmentRunStoreRecord) {
 }
 
 describe("Spec 226 DevelopmentRun control bridge", () => {
+  it("keeps the displayed Goal and safe Project binding in its list projection", async () => {
+    const run = {
+      ...runAtPlanning(),
+      goal: "Implement SPEC-312 P0: r14-core-p1-first-slice",
+      metadata: {
+        projectId: "project-modular-core",
+        specId: "SPEC-312",
+        spec224Execution: { internalOnly: true },
+      },
+    };
+    const memory = memoryAdapter({ run, revision: 0, events: [] });
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memory.adapter,
+      listRuns: async () => [memory.read().run],
+    });
+
+    const [view] = await bridge.list({ tenantId: run.tenantId, actorId: run.actorId, limit: 10 });
+
+    expect(view).toMatchObject({
+      goal: "Implement SPEC-312 P0: r14-core-p1-first-slice",
+      projectId: "project-modular-core",
+      specId: "SPEC-312",
+    });
+    expect(view).not.toHaveProperty("metadata");
+  });
+
   it("sanitizes platform diagnostics in customer events while preserving user-owned repository names", async () => {
     const run = runAtPlanning();
     const recorded = recordDevelopmentEvent(run, {

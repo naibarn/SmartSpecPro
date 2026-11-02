@@ -87,7 +87,7 @@ function phaseForState(state: string): string {
 export function projectBinding(run: any): string | null {
   const metadata = run?.metadata;
   const workspace = metadata?.spec224Workspace;
-  const projectId = metadata?.projectId ?? workspace?.projectId;
+  const projectId = run?.projectId ?? metadata?.projectId ?? workspace?.projectId;
   return typeof projectId === "string" && projectId.trim()
     ? projectId
     : null;
