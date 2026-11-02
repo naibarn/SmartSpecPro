@@ -50,7 +50,7 @@ export type RunnerReceiptPersistenceDisposition =
  * releases that lease before dispatch, so they must prove the exact command
  * and fence through the persisted external-wait metadata instead.
  */
-export function isRunnerCommandLeaseCurrent(
+export function runnerCommandLeaseRejectionReason(
   command: RunnerJobCommand,
   jobStatus: {
     status?: string;
@@ -58,40 +58,45 @@ export function isRunnerCommandLeaseCurrent(
     lease?: { active?: boolean; stale?: boolean; fencingVersion?: number };
     progress?: Record<string, unknown>;
   } | null | undefined,
-): boolean {
-  if (
-    !jobStatus ||
-    jobStatus.attempt !== command.attempt ||
-    jobStatus.lease?.fencingVersion !== command.fencingToken
-  ) return false;
+): string | null {
+  if (!jobStatus) return "job_missing";
+  if (jobStatus.attempt !== command.attempt) return "attempt_mismatch";
+  if (jobStatus.lease?.fencingVersion !== command.fencingToken) return "fence_mismatch";
 
-  if (jobStatus.lease.active && !jobStatus.lease.stale) return true;
+  if (jobStatus.lease.active && !jobStatus.lease.stale) return null;
   if (
     command.commandType !== "execute" ||
     command.executionKind !== "external_agent_task" ||
     jobStatus.status !== "waiting_external" ||
     jobStatus.lease.stale
-  ) return false;
+  ) return "lease_not_active_or_waiting";
 
   const externalWait = jobStatus.progress?.externalWait;
   if (!externalWait || typeof externalWait !== "object" || Array.isArray(externalWait))
-    return false;
+    return "wait_missing";
   const wait = externalWait as Record<string, unknown>;
+  if (typeof wait.operationKey !== "string" || !wait.operationKey.startsWith("external-agent:"))
+    return "wait_operation_mismatch";
+  if (wait.providerReference !== `runner-command:${command.commandId}`)
+    return "wait_command_mismatch";
   const metadata = wait.metadata;
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
-    return false;
+    return "wait_metadata_missing";
   const bound = metadata as Record<string, unknown>;
-  return (
-    typeof wait.operationKey === "string" &&
-    wait.operationKey.startsWith("external-agent:") &&
-    wait.providerReference === `runner-command:${command.commandId}` &&
-    bound.commandId === command.commandId &&
-    bound.executionKind === command.executionKind &&
-    bound.runnerId === command.runnerId &&
-    bound.runnerSessionId === command.runnerSessionId &&
-    bound.leaseId === command.leaseId &&
-    bound.fenceVersion === command.fencingToken
-  );
+  if (bound.commandId !== command.commandId) return "wait_command_mismatch";
+  if (bound.executionKind !== command.executionKind) return "wait_execution_kind_mismatch";
+  if (bound.runnerId !== command.runnerId) return "wait_runner_mismatch";
+  if (bound.runnerSessionId !== command.runnerSessionId) return "wait_runner_session_mismatch";
+  if (bound.leaseId !== command.leaseId) return "wait_lease_mismatch";
+  if (bound.fenceVersion !== command.fencingToken) return "wait_fence_mismatch";
+  return null;
+}
+
+export function isRunnerCommandLeaseCurrent(
+  command: RunnerJobCommand,
+  jobStatus: Parameters<typeof runnerCommandLeaseRejectionReason>[1],
+): boolean {
+  return runnerCommandLeaseRejectionReason(command, jobStatus) === null;
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/;

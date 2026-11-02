@@ -433,7 +433,13 @@ export function createExternalAgentTaskDispatcher(
           : "RUNNER_COMMAND_DISPATCH_FAILED",
         true,
         now(),
-        operationKey
+        operationKey,
+        undefined,
+        undefined,
+        {
+          failureKind: "dispatch_failed",
+          errorCode: dispatchFailureCode(error),
+        }
       );
       return {
         deferred: true,
@@ -450,4 +456,10 @@ export function createExternalAgentTaskDispatcher(
       },
     };
   };
+}
+
+function dispatchFailureCode(error: unknown): string {
+  const message = error instanceof Error ? error.message.trim() : "";
+  if (/^[A-Z][A-Z0-9_]{1,100}$/.test(message)) return message;
+  return "RUNNER_COMMAND_DISPATCH_FAILED";
 }

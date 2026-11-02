@@ -3301,6 +3301,56 @@ describe("job control plane", () => {
     });
   });
 
+  it("records Runner dispatch rejection as a dispatch failure, never as a timeout", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:dispatch-test:plan:1",
+      providerReference: "runner-command:command-dispatch-test",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-dispatch-test",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+
+    await controlPlane.failExternalWait(
+      created.jobId,
+      "RUNNER_LEASE_STALE_FENCE_MISMATCH",
+      true,
+      new Date("2026-11-02T06:26:03.791Z"),
+      "external-agent:dispatch-test:plan:1",
+      undefined,
+      undefined,
+      { failureKind: "dispatch_failed", errorCode: "RUNNER_LEASE_STALE_FENCE_MISMATCH" },
+    );
+
+    expect(state.jobs.get(created.jobId)).toMatchObject({
+      status: "failed",
+      statusReason: "external_dispatch_failed",
+      errorCode: "RUNNER_LEASE_STALE_FENCE_MISMATCH",
+    });
+    expect(state.events.some(event => event.eventType === "TIMEOUT")).toBe(false);
+    expect(state.events.find(event => event.eventType === "FAILED")?.payloadJson).toMatchObject({
+      code: "RUNNER_LEASE_STALE_FENCE_MISMATCH",
+    });
+  });
+
   it("persists a stable Spec 224 continuation intent with a terminal Runner receipt", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

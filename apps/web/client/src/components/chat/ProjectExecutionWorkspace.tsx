@@ -93,6 +93,14 @@ export function projectBinding(run: any): string | null {
     : null;
 }
 
+export function findGoalWorkerJob(
+  goal: { workerJobId?: string | null } | null | undefined,
+  jobs: Array<{ id: string }>,
+) {
+  if (!goal?.workerJobId) return null;
+  return jobs.find(job => job.id === goal.workerJobId) ?? null;
+}
+
 function nextActionLabel(action: any): string {
   if (!action) return "ยังไม่ระบุจากระบบควบคุม";
   return (
@@ -231,9 +239,20 @@ export function ProjectExecutionWorkspace({
   const selectedGoal =
     selectedGoals.find(goal => goal.goalId === selectedGoalId) ?? null;
   const selectedJobs = selectedProject?.[1].jobs ?? [];
-  const selectedGoalJob = selectedGoal
-    ? (selectedJobs.find(job => job.id === selectedGoal.workerJobId) ?? null)
-    : null;
+  const linkedGoalJobQuery = trpc.workerJobs.observability.useQuery(
+    { jobId: selectedGoal?.workerJobId ?? undefined },
+    {
+      enabled: Boolean(selectedGoal?.workerJobId),
+      staleTime: 5_000,
+      refetchInterval: 10_000,
+      refetchIntervalInBackground: false,
+      retry: false,
+    },
+  );
+  const selectedGoalJob = findGoalWorkerJob(
+    selectedGoal,
+    [...jobs, ...(linkedGoalJobQuery.data?.items ?? [])],
+  );
 
   const activeCount = selectedJobs.filter(job => ACTIVE.has(job.status)).length;
   const waitingCount = selectedJobs.filter(
@@ -468,7 +487,9 @@ export function ProjectExecutionWorkspace({
                         </section>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          ยังไม่มี Worker Run ที่ยืนยันว่าเชื่อมกับ Goal นี้
+                          {selectedGoal.workerJobId
+                            ? "Goal นี้ผูกกับ Worker Job แล้ว แต่ยังโหลดรายละเอียดงานไม่พบในรายการปัจจุบัน"
+                            : "Goal นี้ยังไม่มี Worker Job ที่เชื่อมอยู่"}
                         </p>
                       )}
                       <p className="text-sm">
@@ -504,6 +525,18 @@ export function ProjectExecutionWorkspace({
                                 {selectedGoal.runId ?? "ยังไม่มี"}
                               </dd>
                             </section>
+                            {selectedGoalJob ? (
+                              <>
+                                <section>
+                                  <dt className="text-muted-foreground">Job status reason</dt>
+                                  <dd className="break-all">{selectedGoalJob.statusReason ?? "ไม่ระบุ"}</dd>
+                                </section>
+                                <section>
+                                  <dt className="text-muted-foreground">Job error code</dt>
+                                  <dd className="break-all">{selectedGoalJob.errorCode ?? "ไม่มี"}</dd>
+                                </section>
+                              </>
+                            ) : null}
                             <section>
                               <dt className="text-muted-foreground">
                                 Evidence refs

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { projectBinding } from "../ProjectExecutionWorkspace";
+import { findGoalWorkerJob, projectBinding } from "../ProjectExecutionWorkspace";
 
 describe("ProjectExecutionWorkspace project binding", () => {
   it("reads the safe project binding returned by the DevelopmentRun list DTO", () => {
@@ -20,5 +20,22 @@ describe("ProjectExecutionWorkspace project binding", () => {
     expect(projectBinding({
       metadata: { spec224Workspace: { projectId: "workspace-project" } },
     })).toBe("workspace-project");
+  });
+});
+
+describe("ProjectExecutionWorkspace goal job binding", () => {
+  it("finds the linked job even when it belongs to a different project group", () => {
+    const goal = { workerJobId: "job-312" };
+    const jobs = [
+      { id: "job-other", projectId: "project-a" },
+      { id: "job-312", projectId: "project-b" },
+    ];
+
+    expect(findGoalWorkerJob(goal, jobs)).toBe(jobs[1]);
+  });
+
+  it("returns no job only when the Goal has no linked job or it is absent", () => {
+    expect(findGoalWorkerJob({ workerJobId: "job-missing" }, [])).toBeNull();
+    expect(findGoalWorkerJob({ workerJobId: null }, [{ id: "job-1" }])).toBeNull();
   });
 });

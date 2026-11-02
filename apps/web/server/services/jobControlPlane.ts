@@ -5698,13 +5698,24 @@ export function createJobControlPlane(
       approvalDelivery?: Omit<
         Spec224ApprovalDeliveryReceiptInput,
         "acknowledged"
-      >
+      >,
+      failure?: { failureKind: "timeout" | "dispatch_failed"; errorCode?: string }
     ): Promise<"failed" | "ignored"> {
       const safeReason = sanitizeJobErrorMessage(
         reason,
         2000,
-        "external_wait_timeout"
+        failure?.failureKind === "dispatch_failed"
+          ? "runner_command_dispatch_failed"
+          : "external_wait_timeout"
       );
+      const failureCode = failure?.failureKind === "dispatch_failed"
+        ? (failure.errorCode && /^[A-Z][A-Z0-9_]{1,100}$/.test(failure.errorCode)
+          ? failure.errorCode
+          : "RUNNER_COMMAND_DISPATCH_FAILED")
+        : "EXTERNAL_WAIT_TIMEOUT";
+      const failureReason = failure?.failureKind === "dispatch_failed"
+        ? "external_dispatch_failed"
+        : "external_wait_timeout";
       return repository.transaction(async repo => {
         if (operationKey)
           await repo.lockRunnerReceiptStream(jobId, operationKey);
@@ -5746,9 +5757,9 @@ export function createJobControlPlane(
           expectedAttempt: job.attempt,
           values: {
             status: "failed",
-            statusReason: "external_wait_timeout",
+            statusReason: failureReason,
             failureReason: safeReason,
-            errorCode: "EXTERNAL_WAIT_TIMEOUT",
+            errorCode: failureCode,
             errorMessage: safeReason,
             operatorReviewRequired,
             finishedAt: now,
@@ -5767,23 +5778,24 @@ export function createJobControlPlane(
           });
         await repo.cancelUnpublishedOutbox({
           jobId,
-          reason: "failed:external_wait_timeout",
+          reason: `failed:${failureReason}`,
           cancelledAt: now,
         });
-        await repo.insertEvent({
-          workerJobId: jobId,
-          eventType: "TIMEOUT",
-          attemptId: currentAttempt?.id,
-          eventIdempotencyKey: `external-timeout:${jobId}:${job.attempt}`,
-          payloadJson: { reason: safeReason.slice(0, 500) },
-        });
+        if (failure?.failureKind !== "dispatch_failed")
+          await repo.insertEvent({
+            workerJobId: jobId,
+            eventType: "TIMEOUT",
+            attemptId: currentAttempt?.id,
+            eventIdempotencyKey: `external-timeout:${jobId}:${job.attempt}`,
+            payloadJson: { reason: safeReason.slice(0, 500) },
+          });
         await repo.insertEvent({
           workerJobId: jobId,
           eventType: "FAILED",
           attemptId: currentAttempt?.id,
           eventIdempotencyKey: `external-failed:${jobId}:${job.attempt}`,
           payloadJson: {
-            code: "EXTERNAL_WAIT_TIMEOUT",
+            code: failureCode,
             operatorReviewRequired,
           },
         });

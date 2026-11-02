@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   assertRunnerExecutionEligibility,
   isRunnerCommandLeaseCurrent,
+  runnerCommandLeaseRejectionReason,
   acceptRunnerJobReceipt,
   acceptRunnerJobReceiptDurably,
   shouldDeferRunnerExecutionCompletion,
@@ -89,10 +90,15 @@ describe("Runner Job Command/Receipt contract", () => {
     };
 
     expect(isRunnerCommandLeaseCurrent(external, status)).toBe(true);
+    expect(runnerCommandLeaseRejectionReason(external, status)).toBeNull();
     expect(isRunnerCommandLeaseCurrent(external, {
       ...status,
       progress: { externalWait: { ...status.progress.externalWait, metadata: { ...status.progress.externalWait.metadata, runnerSessionId: "stale-session" } } },
     })).toBe(false);
+    expect(runnerCommandLeaseRejectionReason(external, {
+      ...status,
+      progress: { externalWait: { ...status.progress.externalWait, metadata: { ...status.progress.externalWait.metadata, runnerSessionId: "stale-session" } } },
+    })).toBe("wait_runner_session_mismatch");
   });
 
   it("validates the generic fenced browser command without accepting reusable secrets", () => {

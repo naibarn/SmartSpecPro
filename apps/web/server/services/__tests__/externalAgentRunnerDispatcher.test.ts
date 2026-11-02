@@ -235,6 +235,19 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
       output: { commandId: "command-3", status: "dispatch_failed" },
     });
     expect(state.failExternalWait).toHaveBeenCalledOnce();
+    expect(state.failExternalWait).toHaveBeenCalledWith(
+      "job-1",
+      "ack timeout",
+      true,
+      expect.any(Date),
+      "external-agent:task-runner-1:plan-1:1",
+      undefined,
+      undefined,
+      {
+        failureKind: "dispatch_failed",
+        errorCode: "RUNNER_COMMAND_DISPATCH_FAILED",
+      }
+    );
     expect(transitionSessionProjection).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: "s278_projection_3",
