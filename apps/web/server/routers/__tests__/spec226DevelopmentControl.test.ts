@@ -424,7 +424,7 @@ describe("spec226DevelopmentControlRouter", () => {
     }));
   });
 
-  it("does not retry a model-binding failure when a Runner session already exists", async () => {
+  it("does not retry a model-binding failure after the Runner consumed staged input", async () => {
     const runId = "run-model-binding-runner-session";
     const jobId = "job-model-binding-runner-session";
     mocks.developmentRunService.get.mockResolvedValueOnce({ revision: 4, run: {
@@ -441,8 +441,8 @@ describe("spec226DevelopmentControlRouter", () => {
     };
     mocks.dbSelect
       .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([{ id: "consumed-runner-input" }]))
       .mockReturnValueOnce(query([]))
-      .mockReturnValueOnce(query([{ sessionId: "s278-existing-runner-session" }]))
       .mockReturnValueOnce(query([{
         tenantId: CTX.tenantId, requestedByUserId: CTX.user.id, jobType: "external_agent_task",
         status: "failed", operatorReviewRequired: true,

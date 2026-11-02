@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 
 import {
   runnerExecutionSessions,
@@ -1840,9 +1840,18 @@ export const spec226DevelopmentControlRouter = router({
                 sql`left(${workerJobEvents.eventType}, 7) = 'RUNNER_'`
               ))
               .limit(1);
-            const [runnerInput] = await db.select({ id: spec224RunnerJobInputs.id })
+            // Input staging precedes command validation. An unconsumed staged row
+            // is not evidence that the Runner saw the command; a fetch or
+            // materialization is, and must keep this retry fail-closed.
+            const [runnerInputUse] = await db.select({ id: spec224RunnerJobInputs.id })
               .from(spec224RunnerJobInputs)
-              .where(eq(spec224RunnerJobInputs.workerJobId, workerJob.jobId))
+              .where(and(
+                eq(spec224RunnerJobInputs.workerJobId, workerJob.jobId),
+                or(
+                  isNotNull(spec224RunnerJobInputs.fetchGrantConsumedAt),
+                  isNotNull(spec224RunnerJobInputs.materializedAt)
+                )
+              ))
               .limit(1);
             const [runnerSession] = await db.select({ sessionId: runnerExecutionSessions.sessionId })
               .from(runnerExecutionSessions)
@@ -1873,7 +1882,7 @@ export const spec226DevelopmentControlRouter = router({
               ["local_runner", "cloudflare_container"].includes(String(manifest.runtime)) &&
               typeof manifest.planId === "string" && Number.isSafeInteger(manifest.planRevision) &&
               Array.isArray(manifest.skillIds) && Array.isArray(manifest.requestedCapabilities);
-            if (!runnerEvent && !runnerInput && !runnerSession && failedJob?.status === "failed" &&
+            if (!runnerEvent && !runnerInputUse && !runnerSession && failedJob?.status === "failed" &&
                 failedJob.tenantId === scope.tenantId && failedJob.requestedByUserId === scope.actorId &&
                 failedJob.jobType === "external_agent_task" && failedJob.operatorReviewRequired &&
                 failedJob.operatorReviewReason === "RUNNER_MODEL_SELECTION_BINDING_MISMATCH" && manifestReady) {
