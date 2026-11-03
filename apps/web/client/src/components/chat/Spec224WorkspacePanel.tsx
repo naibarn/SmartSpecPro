@@ -1520,6 +1520,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               {run.goalApproval?.approvalRef ? <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">Approval Authority request:</dt><dd className="break-all font-mono">{run.goalApproval.approvalRef}</dd></HStack> : null}
             </VStack>
             <p className="text-[var(--color-text-secondary)]">{run.goalApproval?.status === "pending" ? "รออนุมัติจาก Approval Authority" : run.goalApproval?.status ? `สถานะ Approval: ${run.goalApproval.status}` : "สถานะ Goal แสดงจาก DevelopmentRun จริง"} · Final Verify: {run.finalVerifyStatus ?? "ยังไม่มีผล"} · execution evidence refs {run.intermediateReceipts?.length ?? 0}{run.economicsMode === "provider_managed" ? " · ใช้โควต้า Provider ไม่มี tenant budget" : run.budgetStatus ? ` · tenant budget เดิม ${run.budgetStatus.currency} ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)} · captured ${(run.budgetStatus.capturedMinorUnits / 100).toFixed(2)} · held ${(run.budgetStatus.heldMinorUnits / 100).toFixed(2)}` : ""}</p>
+            {!['COMPLETED', 'CANCELLED', 'FAILED_TERMINAL'].includes(run.state) && run.goalApproval?.status !== "pending" ? (
+              <Button type="button" variant="outline" size="sm" aria-label="ทำงานต่อ First Run Pilot" disabled={resumeRunMutation.isPending} onClick={() => void resumeExistingRun(run.runId, run.conversationId ?? conversationId)}>
+                {resumeRunMutation.isPending ? "กำลังส่ง Run เดิมทำงานต่อ…" : "ทำงานต่อ First Run Pilot"}
+              </Button>
+            ) : null}
             {run.goalApproval?.status === "pending" ? (() => {
               const request = pilotApprovalsQuery.data?.requests?.find((item: any) => item.id === run.goalApproval?.approvalRef);
               return (

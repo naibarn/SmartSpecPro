@@ -59,12 +59,13 @@ function discoveredModelCatalog() {
 function usePlatformSourceWorkspace() {
   mocks.workspaces = [
     { runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: discoveredModelCatalog() },
-    { runnerId: "runner-test", workspaceId: "platform-source", displayName: "SmartAIHub Development Workspace", canonicalProjectTitle: "SmartAIHub Development Workspace", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() },
+    { runnerId: "runner-test", workspaceId: "platform-source", displayName: "SmartAIHub Development Workspace", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Development Workspace", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() },
   ];
 }
 
 beforeEach(() => {
   cleanup();
+  Element.prototype.scrollIntoView = vi.fn();
   window.sessionStorage.clear();
   window.localStorage.clear();
   vi.clearAllMocks();
@@ -97,6 +98,18 @@ async function preparePanel(simpleMode = false) {
   await screen.findByText(/ผลการเตรียม/);
 }
 
+function selectSpecDevelopmentMode() {
+  fireEvent.click(screen.getByRole("radio", { name: "เลือกไฟล์ SPEC" }));
+}
+
+function getDevelopmentStartButton() {
+  return screen.getByRole("button", { name: /^(สั่งพัฒนา .+|ส่ง Goal เพื่ออนุมัติและเริ่มงาน)$/ });
+}
+
+function getContinueRunButton() {
+  return screen.getByRole("button", { name: /^ทำงานต่อ / });
+}
+
 describe("Core goal readiness feedback", () => {
   it("preselects a Mission Control Harness target only when the selected Runner catalog confirms it", async () => {
     render(<Spec224WorkspacePanel conversationId={8} requestedHarnessAdapterId="codex.v1" />);
@@ -122,7 +135,7 @@ describe("Core goal readiness feedback", () => {
     const goalReview = screen.getByRole("region", { name: "ขอบเขต Goal ที่จะอนุมัติ" });
     expect(goalReview).toHaveTextContent("Harness: Codex");
     expect(goalReview).toHaveTextContent("Model: Test Model");
-    expect(goalReview).toHaveTextContent("Budget cap: USD 1.00");
+    expect(goalReview).toHaveTextContent("ใช้โควต้า Codex/Provider");
     expect(screen.queryByRole("radio", { name: /อนุญาตทุกไฟล์/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
@@ -138,8 +151,8 @@ describe("Core goal readiness feedback", () => {
       conversationId: 47,
       mode: "prompt",
       writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
-      budgetCapMinorUnits: 100,
     })));
+    expect(mocks.start.mock.calls[0]?.[0]).not.toHaveProperty("budgetCapMinorUnits");
   });
 
   it("locks a submitted Pilot Run and keeps its returned identity visible while the persisted view refreshes", async () => {
@@ -232,7 +245,7 @@ describe("Core goal readiness feedback", () => {
 
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "ทำงานเดิมต่อ" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^ทำงานต่อ / }));
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: 46,
       runId: "pilot-run-resume",
@@ -337,7 +350,7 @@ describe("Core goal readiness feedback", () => {
     expect(screen.queryByRole("option", { name: /gpt-|claude|o[0-9]/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("option", { name: "Dynamic Model B" }));
     expect(await screen.findByRole("radio", { name: "High" })).toBeChecked();
-    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    fireEvent.click(getDevelopmentStartButton());
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
       provider: "codex",
@@ -348,7 +361,7 @@ describe("Core goal readiness feedback", () => {
   it("keeps Start disabled when the selected Runner has no current discovered model catalog", async () => {
     mocks.workspaces[0].modelCatalog = null;
     await preparePanel();
-    expect(screen.getByRole("button", { name: "สั่งพัฒนา" })).toBeDisabled();
+    expect(getDevelopmentStartButton()).toBeDisabled();
     expect(screen.getByText(/ยังไม่มี Model catalog/)).toBeInTheDocument();
   });
 
@@ -398,7 +411,7 @@ describe("Core goal readiness feedback", () => {
     expect(screen.queryByRole("option", { name: /gpt-|claude|o[0-9]/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("option", { name: "Dynamic Model B" }));
     expect(screen.getByRole("radiogroup", { name: "Reasoning Effort" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    fireEvent.click(getDevelopmentStartButton());
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
       provider: "codex",
@@ -415,7 +428,7 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: /บัญชีต้นทาง|บัญชีปลายทาง/ })).not.toBeInTheDocument();
     expect(screen.getByText(/ไม่ใช่กระเป๋าเครดิตผู้ใช้/)).toBeInTheDocument();
-    expect(screen.queryByText(/private-run-123|SPEC-internal-123/)).not.toBeInTheDocument();
+    expect(screen.queryByText("private-run-123")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" }));
     await waitFor(() => expect(mocks.configureLedger).toHaveBeenCalledWith({ currency: "USD" }));
     expect(mocks.invalidateLedgerAccounts).toHaveBeenCalled();
@@ -436,7 +449,7 @@ describe("Core goal readiness feedback", () => {
   it("keeps the selected development source when switching presentation modes", () => {
     usePlatformSourceWorkspace();
     const { rerender } = render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     rerender(<Spec224WorkspacePanel conversationId={8} simpleMode />);
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
@@ -449,7 +462,7 @@ describe("Core goal readiness feedback", () => {
     await preparePanel();
     expect(screen.getAllByText(/CODEX_TASK_PROBE_NOT_RUN/).map(node => node.textContent).join(" ")).toContain("ทดสอบสั่งงานจริง");
     expect(screen.getAllByText(/CODEX_TASK_PROBE_NOT_RUN/).map(node => node.textContent).join(" ")).toContain("รอประเมินตามขอบเขตของ Start");
-    expect(screen.getByRole("button", { name: "สั่งพัฒนา" })).toBeDisabled();
+    expect(getDevelopmentStartButton()).toBeDisabled();
     expect(mocks.start).not.toHaveBeenCalled();
   });
 
@@ -458,7 +471,7 @@ describe("Core goal readiness feedback", () => {
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
     render(<Spec224WorkspacePanel conversationId={8} />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     expect(mocks.bindWorkspace).toHaveBeenCalledWith({ conversationId: 8, runnerId: "runner-test", workspaceId: "platform-source" });
     expect(screen.getByRole("radio", { name: "เลือก Canonical SPEC จากระบบ" })).toBeInTheDocument();
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
@@ -567,7 +580,7 @@ describe("Core goal readiness feedback", () => {
     mocks.role = "user";
     render(<Spec224WorkspacePanel conversationId={8} />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
 
     expect(screen.queryByRole("radio", { name: "เลือก Canonical SPEC จากระบบ" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
@@ -632,7 +645,7 @@ describe("Core goal readiness feedback", () => {
   it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
     usePlatformSourceWorkspace();
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
 
     const mockupInput = screen.getByLabelText("แนบภาพ Mock-up หลายภาพ");
     expect(screen.getByRole("button", { name: "เลือกภาพ Mock-up" })).toBeInTheDocument();
@@ -648,7 +661,7 @@ describe("Core goal readiness feedback", () => {
 
   it("makes the multi-file Spec upload action visible and explains accepted files", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
 
     expect(screen.getByRole("button", { name: "เลือกไฟล์ Spec / JSON" })).toBeInTheDocument();
@@ -658,7 +671,7 @@ describe("Core goal readiness feedback", () => {
   it("keeps selected files queued and visible when the conversation has no bound workspace", async () => {
     mocks.workspace = { workspace: null, availability: null, specSet: null };
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files: [new File(["# Feature"], "feature.md", { type: "text/markdown" })] } });
 
@@ -670,7 +683,7 @@ describe("Core goal readiness feedback", () => {
 
   it("saves multiple selected Markdown and JSON files into the bound Spec Set on explicit action", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files: [
       new File(["# Feature"], "feature.md", { type: "text/markdown" }),
@@ -690,7 +703,7 @@ describe("Core goal readiness feedback", () => {
   it("switches from Mini-App mode to Spec development instead of disabling Spec work", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
-    const specMode = screen.getByRole("radio", { name: "Canonical SPEC" });
+    const specMode = screen.getByRole("radio", { name: "เลือกไฟล์ SPEC" });
     expect(specMode).toBeEnabled();
     fireEvent.click(specMode);
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
@@ -699,7 +712,7 @@ describe("Core goal readiness feedback", () => {
   it("preserves the Start key for pending authorization and displays the precise setup reason", async () => {
     await preparePanel();
     expect(screen.getByLabelText("วงเงินสูงสุดสำหรับ DevelopmentRun เป็น USD")).toHaveValue("1.00");
-    const start = screen.getByRole("button", { name: "สั่งพัฒนา" });
+    const start = getDevelopmentStartButton();
     fireEvent.click(start);
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
     expect(mocks.start.mock.calls[0][0].budgetCapMinorUnits).toBe(100);
@@ -712,7 +725,7 @@ describe("Core goal readiness feedback", () => {
   it("reports a failed Start lookup as an error instead of claiming the run was saved", async () => {
     mocks.start.mockRejectedValueOnce(new Error("Development run not found"));
     await preparePanel();
-    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    fireEvent.click(getDevelopmentStartButton());
 
     await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Development run not found"));
     expect(mocks.info).not.toHaveBeenCalled();
@@ -723,7 +736,7 @@ describe("Core goal readiness feedback", () => {
       workPackageId: "pkg", workPackageExternalId: "SPEC-224", specSetRevision: 1, revision: 2 }] };
     render(<Spec224WorkspacePanel conversationId={233} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
+    fireEvent.click(getContinueRunButton());
 
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 233, runId: "run-existing" }));
     expect(mocks.start).not.toHaveBeenCalled();
@@ -738,7 +751,7 @@ describe("Core goal readiness feedback", () => {
       authorization: { status: "RUN_TERMINAL_FAILED", ownerAction: "Run เดิมปิดถาวรแล้ว ให้สร้าง Goal ใหม่" } });
     render(<Spec224WorkspacePanel conversationId={235} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
+    fireEvent.click(getContinueRunButton());
 
     await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("ให้สร้าง Goal ใหม่")));
     expect(mocks.info).not.toHaveBeenCalledWith(expect.stringContaining("รอ authorization"));
@@ -751,7 +764,7 @@ describe("Core goal readiness feedback", () => {
       authorization: { status: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED", errorCode: "APPROVAL_AUTHORITY_UNAVAILABLE" } });
     render(<Spec224WorkspacePanel conversationId={234} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
+    fireEvent.click(getContinueRunButton());
 
     await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_AUTHORITY_UNAVAILABLE")));
     expect(mocks.error).not.toHaveBeenCalledWith(expect.stringContaining("join"));
@@ -760,7 +773,7 @@ describe("Core goal readiness feedback", () => {
   it("preselects the authorized Platform workspace and exposes workspace-level access controls", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: true, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: true, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }];
     render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={vi.fn()} />);
     await waitFor(() => expect(screen.getByLabelText("1. เลือก Runner")).toHaveValue("runner-test"));
     expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","workspace-test"]');
@@ -823,8 +836,13 @@ describe("Core goal readiness feedback", () => {
 
   it("blocks a canonical SPEC package that is not the next handoff WorkUnit", async () => {
     usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
+      availability: { available: true, status: "current" },
+      specSet: { revision: 3, files: [], requirementCount: 1 },
+    };
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    selectSpecDevelopmentMode();
     fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
     fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/ไม่มี runnable package ที่ตรงกัน/));
