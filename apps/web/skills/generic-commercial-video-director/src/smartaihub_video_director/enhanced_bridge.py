@@ -1039,6 +1039,97 @@ def _validate_dialogue_timeline(
             )
 
 
+def _minimal_compact_dialogue_contract(
+    dialogue: list[dict[str, Any]],
+    character_positions: dict[str, str],
+    custom_identity_overrides: dict[str, str],
+    duration: float,
+) -> tuple[str, list[str]]:
+    """Bind exact dialogue once while avoiding repeated long identity anchors."""
+    speaker_map: list[str] = []
+    line_events: list[str] = []
+    for index, line in enumerate(dialogue):
+        speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
+        speaker = str(line.get("speaker") or line.get("speakerHint") or speaker_id).strip()
+        text = str(line.get("text") or line.get("lineTh") or "").strip()
+        identity = _custom_identity_for(
+            custom_identity_overrides,
+            speaker_id,
+            line.get("characterKey"),
+            speaker,
+        )
+        position = str(line.get("position") or "").strip() or (
+            character_positions.get(speaker_id.lower())
+            or character_positions.get(speaker.lower())
+            or character_positions.get(speaker_id)
+            or character_positions.get(speaker)
+        )
+        if not speaker_id or not text or (not identity and not position):
+            raise RuntimeError(
+                f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} has no compact speaker identity"
+            )
+
+        binding = (
+            f"{speaker_id} identified by {identity}"
+            if identity
+            else f"{speaker_id}@{position}"
+        )
+        speaker_map.append(f"L{index + 1}={binding}")
+        line_events.append(f'Line {index + 1} ONLY ({speaker_id}): "{text}"')
+
+    map_text = (
+        "SPEAKER MAP (authoritative; fixed line order): "
+        + "; ".join(speaker_map)
+        + ". Exact dialogue appears below; only each mapped speaker speaks, all other mouths stay closed."
+    )
+    mid_start = 1.5
+    mid_end = max(mid_start + 1.5, duration - 2.0)
+    slice_duration = (mid_end - mid_start) / max(1, len(line_events))
+    timed_events = [
+        f"{mid_start + index * slice_duration:.1f}–{mid_start + (index + 1) * slice_duration:.1f} seconds:\n{event}"
+        for index, event in enumerate(line_events)
+    ]
+    return map_text, timed_events
+
+
+def _validate_minimal_compact_dialogue_contract(
+    speaker_map: str,
+    timed_events: list[str],
+    dialogue: list[dict[str, Any]],
+    character_positions: dict[str, str],
+    custom_identity_overrides: dict[str, str],
+) -> None:
+    events_text = "\n".join(timed_events)
+    for index, line in enumerate(dialogue):
+        speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
+        speaker = str(line.get("speaker") or line.get("speakerHint") or speaker_id).strip()
+        text = str(line.get("text") or line.get("lineTh") or "").strip()
+        identity = _custom_identity_for(
+            custom_identity_overrides,
+            speaker_id,
+            line.get("characterKey"),
+            speaker,
+        )
+        position = str(line.get("position") or "").strip() or (
+            character_positions.get(speaker_id.lower())
+            or character_positions.get(speaker.lower())
+            or character_positions.get(speaker_id)
+            or character_positions.get(speaker)
+        )
+        binding = (
+            f"{speaker_id} identified by {identity}"
+            if identity
+            else f"{speaker_id}@{position}"
+        )
+        if (
+            speaker_map.count(f"L{index + 1}={binding}") != 1
+            or events_text.count(f'Line {index + 1} ONLY ({speaker_id}): "{text}"') != 1
+        ):
+            raise RuntimeError(
+                f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} lost its compact speaker binding"
+            )
+
+
 def _compact_observed_start_state_bullets(
     observed: dict[str, Any] | None,
     position_bound_by_hard_map: bool = False,
@@ -1738,9 +1829,54 @@ def _terminal_prompt(
     protected_core = "\n\n".join([compact_dialogue, compact_motion])
     protected_core_length = _prompt_char_length(protected_core)
     if protected_core_length > prompt_budget:
-        raise RuntimeError(
-            f"VIDEO_PROMPT_BUDGET_EXCEEDED: protected dialogue core requires {protected_core_length} characters but target allows {prompt_budget}"
-        )
+        if dialogue:
+            minimal_dialogue, minimal_line_events = _minimal_compact_dialogue_contract(
+                dialogue,
+                character_positions,
+                custom_identity_overrides,
+                duration_sec,
+            )
+            _validate_minimal_compact_dialogue_contract(
+                minimal_dialogue,
+                minimal_line_events,
+                dialogue,
+                character_positions,
+                custom_identity_overrides,
+            )
+            minimal_motion = "MOTION AND PERFORMANCE\n" + "\n".join(minimal_line_events)
+            minimal_protected_core = "\n\n".join([minimal_dialogue, minimal_motion])
+            minimal_protected_core_length = _prompt_char_length(minimal_protected_core)
+            if minimal_protected_core_length <= prompt_budget:
+                compact_dialogue = minimal_dialogue
+                compact_motion = minimal_motion
+                protected_core = minimal_protected_core
+                protected_core_length = minimal_protected_core_length
+
+                spoken_identifiers = {
+                    str(value).strip().casefold()
+                    for line in dialogue
+                    for value in (
+                        line.get("speakerId"),
+                        line.get("characterKey"),
+                        line.get("speaker"),
+                        line.get("speakerHint"),
+                    )
+                    if value
+                }
+                non_speaker_overrides = {
+                    key: value
+                    for key, value in custom_identity_overrides.items()
+                    if key.strip().casefold() not in spoken_identifiers
+                }
+                compact_identity_lock = _build_compact_custom_character_identity_lock(
+                    non_speaker_overrides
+                )
+            else:
+                protected_core_length = minimal_protected_core_length
+        if protected_core_length > prompt_budget:
+            raise RuntimeError(
+                f"VIDEO_PROMPT_BUDGET_EXCEEDED: protected dialogue core requires {protected_core_length} characters but target allows {prompt_budget}"
+            )
 
     compact_sections = [
         "START FRAME LOCK: Continue from the approved START_FRAME_IMAGE; preserve identity, wardrobe, geometry, lighting, layout and object state.",

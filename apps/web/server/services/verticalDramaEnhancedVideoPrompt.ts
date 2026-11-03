@@ -866,6 +866,22 @@ export function getEnhancedPromptSemanticValidationError(
         `(?:^|\\n)Line ${index + 1} ONLY \\((?:${Array.from(compactSpeakerAliases).map(escapeRegExp).join("|")})${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
         "g",
       );
+      const minimalCompactLine = new RegExp(
+        `(?:^|\\n)Line ${index + 1} ONLY \\(${escapeRegExp(compactSpeakerId)}\\): "${escapeRegExp(text)}"(?=\\n|$)`,
+      );
+      const mappedCompactAnchor = customIdentity
+        ? prompt.includes(`L${index + 1}=${compactSpeakerId} identified by ${customIdentity}`)
+        : prompt.includes(
+            compactPosition
+              ? `L${index + 1}=${compactSpeakerId}@${compactPosition}`
+              : `L${index + 1}=${compactSpeakerId}@viewer-`,
+          );
+      if (minimalCompactLine.test(prompt)) {
+        if (!mappedCompactAnchor) {
+          return `canonical dialogue line ${index + 1} is missing its minimal speaker map`;
+        }
+        continue;
+      }
       if (prompt.match(compactCanonicalLine)?.length !== 1) {
         if (customIdentity) {
           return `canonical dialogue line ${index + 1} ignores its shot-local identity override`;
