@@ -1330,6 +1330,22 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     if (!conversationId || !isAdmin || !platformWorkspaceSelected || requestKind !== "development" || preparing || startMutation.isPending) return;
     setPreparing(true);
     try {
+      const refreshedWorkspaces = await workspacesQuery.refetch();
+      const currentPlatformWorkspace = refreshedWorkspaces.data?.workspaces.find(workspace =>
+        workspace.runnerId === selectedWorkspace?.runnerId
+        && workspace.workspaceId === selectedWorkspace?.workspaceId
+        && workspace.scope === "PLATFORM_ENGINEERING"
+        && Boolean(workspace.canonicalProjectId),
+      );
+      if (!currentPlatformWorkspace) {
+        throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
+      }
+      await bindMutation.mutateAsync({
+        conversationId,
+        runnerId: currentPlatformWorkspace.runnerId,
+        workspaceId: currentPlatformWorkspace.workspaceId,
+      });
+      await workspaceQuery.refetch();
       const prepared = await prepareMutation.mutateAsync({ conversationId, mode: "spec_set" });
       setPreparation(prepared);
       const workPackage = prepared.workPackages?.find(item =>
@@ -2124,7 +2140,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                         </p>
                       ) : null}
                       {run.specSources?.length ? <p className="mt-1">แหล่ง Requirement ของ WorkPackage: {run.specSources.map(source => `${canonicalSpecIdLabel(source.specId)} · ${source.fileName}`).join(", ")}</p> : null}
-                      {run.workPackagePrerequisites !== null ? (
+                      {Array.isArray(run.workPackagePrerequisites) ? (
                         <p className="mt-1">WorkPackage ที่ต้องทำก่อน: {run.workPackagePrerequisites.length
                           ? run.workPackagePrerequisites.map(prerequisite => `${prerequisite.externalId}${prerequisite.specIds.length ? ` (${prerequisite.specIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")
                           : "ไม่มี dependency ที่ประกาศไว้"}</p>

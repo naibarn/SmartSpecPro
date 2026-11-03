@@ -44,6 +44,8 @@ const mocks = vi.hoisted(() => ({
     recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
   },
   jobControlPlane: { getStatus: vi.fn() },
+  cancelQueuedJob: vi.fn(),
+  dbTransaction: vi.fn(),
   dbSelect: vi.fn(),
   createAndBindNextPhase: vi.fn(),
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
@@ -70,9 +72,10 @@ vi.mock("../../db", async () => {
   return {
     ...actual,
     db: {
-      get instance() { return actual.db.instance; },
+      instance: { transaction: (...args: unknown[]) => mocks.dbTransaction(...args) },
       select: (...args: unknown[]) => mocks.dbSelect(...args),
     },
+    getDb: vi.fn(),
   };
 });
 
@@ -100,6 +103,7 @@ vi.mock("../../services/spec224PhaseController", () => ({
 
 vi.mock("../../services/jobControlPlane", () => ({
   createJobControlPlane: () => mocks.jobControlPlane,
+  cancelQueuedJobInTransaction: (...args: unknown[]) => mocks.cancelQueuedJob(...args),
 }));
 
 vi.mock("../../services/miniAppFactoryStageWorker", () => ({
@@ -194,8 +198,13 @@ beforeEach(() => {
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
   mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
   mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "approved", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
-  mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
-  mocks.workspaceSpecSets.availableWorkspaces.mockReset();
+  mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({
+    workspace: { workspaceId: "workspace-a", runnerId: "runner-a", snapshotRevision: "snapshot-a" },
+    availability: { status: "current", available: true },
+  });
+  mocks.workspaceSpecSets.availableWorkspaces.mockReset().mockResolvedValue([{
+    runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a", scope: "TENANT",
+  }]);
   mocks.workspaceSpecSets.getLatestRevision.mockReset().mockResolvedValue(null);
   mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
   mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n", handoff: { status: "CURRENT" } });
@@ -205,12 +214,58 @@ beforeEach(() => {
   mocks.developmentRunService.reconcile.mockReset();
   mocks.developmentRunService.command.mockReset();
   mocks.jobControlPlane.getStatus.mockReset().mockResolvedValue({ status: "running", terminal: false });
+  mocks.cancelQueuedJob.mockReset().mockResolvedValue(undefined);
+  mocks.dbTransaction.mockReset().mockImplementation(async (callback: (query: unknown) => unknown) => callback({}));
   mocks.dbSelect.mockReset();
   mocks.createAndBindNextPhase.mockReset();
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("cancels an actor-owned unclaimed legacy Platform Run when its conversation snapshot is stale", async () => {
+    const oldBinding = { workspace: { runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-old" },
+      availability: { status: "stale", available: false } };
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce(oldBinding);
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-current",
+      scope: "PLATFORM_ENGINEERING",
+    }]);
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-stale-binding", workerJobId: "job-unclaimed", state: "DISCOVERY",
+      workspaceId: "workspace-a", metadata: { spec224GoalGrantPayload: { economicsMode: "tenant_budget" } },
+    } });
+    mocks.jobControlPlane.getStatus
+      .mockResolvedValueOnce({ status: "pending", workerAssigned: false, startedAt: null,
+        lease: { active: false, runnerId: null, assignmentEvidence: null } })
+      .mockResolvedValueOnce({ status: "cancelled" });
+
+    await expect((spec226DevelopmentControlRouter.cancelUnclaimedLegacyPlatformRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 276, runId: "run-stale-binding" },
+    })).resolves.toMatchObject({ canceled: true, jobId: "job-unclaimed" });
+
+    expect(mocks.cancelQueuedJob).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: "job-unclaimed", requireUnclaimed: true,
+    }));
+  });
+
+  it("still rejects a new Run when the conversation workspace snapshot is stale", async () => {
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({
+      workspace: { runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-old" },
+      availability: { status: "stale", available: false },
+    });
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-current",
+      scope: "PLATFORM_ENGINEERING",
+    }]);
+
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
+      conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "stale-binding-new-run",
+    } })).rejects.toThrow("WORKSPACE_BINDING_STALE");
+
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+  });
+
   it("rejects a not-run Codex probe before source staging or job creation and exposes the exact owner action", async () => {
     mocks.runnerReadiness.mockResolvedValueOnce({ ready: false, code: "CODEX_TASK_PROBE_NOT_RUN", policyDecision: "pending", ownerAction: "Runner → Tools → Codex → ทดสอบสั่งงานจริง" });
     await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
@@ -274,8 +329,8 @@ describe("spec226DevelopmentControlRouter", () => {
 
   it("continues an existing owner-scoped Run by ID without creating a replacement", async () => {
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
-      runnerId: "runner-a", workspaceId: "workspace-a",
-    } });
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a",
+    }, availability: { status: "current", available: true } });
     mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
       runId: "run-existing", workerJobId: "job-existing", state: "BLOCKED_RECOVERABLE", workspaceId: "workspace-a",
     } });
@@ -521,8 +576,8 @@ describe("spec226DevelopmentControlRouter", () => {
 
   it("does not resume a Run that belongs to another conversation workspace", async () => {
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
-      runnerId: "runner-a", workspaceId: "workspace-a",
-    } });
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a",
+    }, availability: { status: "current", available: true } });
     mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
       runId: "run-other", workerJobId: "job-other", state: "DISCOVERY", workspaceId: "workspace-b",
     } });
@@ -675,10 +730,10 @@ describe("spec226DevelopmentControlRouter", () => {
       specSet: { revision: 3 },
     });
     mocks.bridge.list.mockResolvedValueOnce([
-      { runId: "run-in-scope", workspaceId: "workspace-a", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3 },
-      { runId: "run-other-workspace", workspaceId: "workspace-b", state: "COMPLETED", workPackageId: null, workPackageExternalId: null, specSetRevision: null },
+      { runId: "run-in-scope", workspaceId: "workspace-a", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3, specSources: [] },
+      { runId: "run-other-workspace", workspaceId: "workspace-b", state: "COMPLETED", workPackageId: null, workPackageExternalId: null, specSetRevision: null, specSources: [] },
     ]);
-    mocks.developmentRunService.get.mockResolvedValueOnce({ run: { workerJobId: "canonical-job-1", evidenceRefs: ["receipt-ref-1"], metadata: {
+    mocks.developmentRunService.get.mockResolvedValueOnce({ events: [], run: { workerJobId: "canonical-job-1", evidenceRefs: ["receipt-ref-1"], metadata: {
       conversationId: 71, chatThreadId: "thread-71", spec224ModelSelection: { provider: "codex", modelId: "gpt-test" },
       spec224Execution: { allowedWriteSet: ["apps/runner-app/tests/spec224-live-pilot/**"] },
       spec224GoalGrantPayload: { writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"], provider: "codex", budgetLimitMinorUnits: 100 },
@@ -1108,8 +1163,8 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("dispatches the Codex child after the explicit Goal Start grant is approved", async () => {
-    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
-      runnerId: "runner-a", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING",
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([{
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a", scope: "PLATFORM_ENGINEERING",
     }]);
     mocks.featureSpecCatalog.loadContext.mockResolvedValueOnce({
       id: "312-smartaihub-modular-saas-rebuild-master-plan",
@@ -1154,6 +1209,10 @@ describe("spec226DevelopmentControlRouter", () => {
       goalAdmissionStatus: "READY_FOR_LIVE", workPackageId: "r14-core-p1-first-slice", specSetRevision: 12,
     });
     expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId: result.runId }));
+    const createdRun = mocks.createRun.mock.calls[0]?.[0]?.run;
+    expect(createdRun?.metadata.spec224Workspace.platformScope).toBe(true);
+    expect(createdRun?.metadata.spec224Execution.platformScope).toBe(true);
+    expect(createdRun?.metadata.spec224GoalGrantPayload.economicsMode).toBe("provider_managed");
     expect(mocks.runnerInputStaging.bindSourceToWorkerJob).toHaveBeenCalledWith(expect.objectContaining({
       inputSourceRef: "spec224-source:run-1", workerJobId: "canonical-job-1",
     }));

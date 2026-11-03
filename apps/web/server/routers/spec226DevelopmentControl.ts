@@ -105,20 +105,26 @@ function requireScope(ctx: {
   return { tenantId, actorId: ctx.user.id };
 }
 
-async function resolveTrustedConversationWorkspace(scope: { tenantId: string; actorId: number }, conversationId: number) {
+async function resolveTrustedConversationWorkspace(
+  scope: { tenantId: string; actorId: number },
+  conversationId: number,
+  options: { allowStaleSnapshot?: boolean } = {},
+) {
   const [binding, workspaces] = await Promise.all([
     defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId }),
     defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope),
   ]);
   if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
-  if (binding.availability.status !== "current") throw new Error("WORKSPACE_BINDING_STALE");
+  if (binding.availability.status !== "current" && !options.allowStaleSnapshot) {
+    throw new Error("WORKSPACE_BINDING_STALE");
+  }
 
   const trustedWorkspace = workspaces.find(candidate =>
     candidate.runnerId === binding.workspace.runnerId &&
     candidate.workspaceId === binding.workspace.workspaceId
   );
   if (!trustedWorkspace) throw new Error("WORKSPACE_BINDING_FORBIDDEN");
-  if (trustedWorkspace.snapshotRevision !== binding.workspace.snapshotRevision) {
+  if (trustedWorkspace.snapshotRevision !== binding.workspace.snapshotRevision && !options.allowStaleSnapshot) {
     throw new Error("WORKSPACE_BINDING_STALE");
   }
   return { binding, trustedWorkspace };
@@ -2162,7 +2168,9 @@ export const spec226DevelopmentControlRouter = router({
       const scope = requireScope(ctx);
       const traceId = auditLogger.createTrace();
       try {
-        const { binding, trustedWorkspace } = await resolveTrustedConversationWorkspace(scope, input.conversationId);
+        const { binding, trustedWorkspace } = await resolveTrustedConversationWorkspace(
+          scope, input.conversationId, { allowStaleSnapshot: true },
+        );
         if (trustedWorkspace.scope !== "PLATFORM_ENGINEERING") {
           throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_REQUIRED" });
         }

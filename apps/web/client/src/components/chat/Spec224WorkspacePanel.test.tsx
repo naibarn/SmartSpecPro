@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), invalidateLedgerAccounts: vi.fn(), ledgerAccounts: { accounts: [] as any[], configured: null as any }, configureLedger: vi.fn(), provisionLedger: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), cancelUnclaimed: vi.fn(), cancelLegacyJob: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), invalidateLedgerAccounts: vi.fn(), refetchWorkspaceBinding: vi.fn(), ledgerAccounts: { accounts: [] as any[], configured: null as any }, configureLedger: vi.fn(), provisionLedger: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/i18n/useScopedTranslation", () => ({ useScopedTranslation: () => ({
   t: (key: string) => ({
     "taskControl.singleHarnessGoal": "เลือก Harness หนึ่งรายการสำหรับ Goal นี้จาก capability ที่ Runner ยืนยัน งานจะไม่ถูกส่งไปหลาย Harness โดยอัตโนมัติ",
@@ -25,7 +25,7 @@ vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentCont
   workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
 }, spec226DevelopmentControl: {
   availableWorkspaces: { useQuery: (_input: unknown, options: unknown) => { mocks.availableWorkspacesQueryOptions = options; return { data: { workspaces: mocks.workspaces }, isLoading: false, isFetching: false, error: null, refetch: mocks.refetchWorkspaces }; } },
-  getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
+  getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: mocks.refetchWorkspaceBinding }) },
   listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
   listPlatformWorkspaceBindingCandidates: { useQuery: () => ({ data: { workspaces: [] }, isLoading: false, error: null }) },
   getFeatureSpecContext: { useQuery: () => ({ data: mocks.featureSpecContext, isLoading: false, error: null }) },
@@ -38,7 +38,8 @@ vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentCont
   prepareWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.prepare, isPending: false }) },
   startWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.start, isPending: false }) },
   resumeWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.resume, isPending: false }) },
-} } }));
+  cancelUnclaimedLegacyPlatformRun: { useMutation: () => ({ mutateAsync: mocks.cancelUnclaimed, isPending: false }) },
+}, workerJobs: { cancelQueued: { useMutation: () => ({ mutateAsync: mocks.cancelLegacyJob, isPending: false }) } } } }));
 
 function preparation(ready: boolean) {
   return { planRevision: 1, requirementCount: 0, blockers: [], runnableWorkPackageIds: ["prompt"],
@@ -77,12 +78,15 @@ beforeEach(() => {
   mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
   mocks.featureSpecContext = { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }] }, integratedSha: "b".repeat(40) };
   mocks.refetchWorkspaces.mockResolvedValue({});
+  mocks.refetchWorkspaceBinding.mockResolvedValue({});
   mocks.prepare.mockResolvedValue(preparation(true));
   mocks.ingestSpecSet.mockResolvedValue({ revision: 2, files: [], requirementCount: 1 });
   mocks.start.mockResolvedValue({ runId: "unit-run", jobId: "unit-job", dispatchStatus: "PENDING_AUTHORIZATION",
     authorization: { reasons: ["SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED"] } });
   mocks.resume.mockResolvedValue({ runId: "run-existing", jobId: "job-existing", dispatchStatus: "PENDING_AUTHORIZATION",
     authorization: { status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_REQUIRED"] } });
+  mocks.cancelUnclaimed.mockReset().mockResolvedValue({ canceled: true, jobId: "job-old" });
+  mocks.cancelLegacyJob.mockReset().mockResolvedValue({ canceled: true });
   mocks.approve.mockResolvedValue({ status: "approved" });
 });
 
@@ -502,6 +506,47 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 8, runId: "run-spec-312" }));
     expect(screen.getByText(/ส่ง DevelopmentRun เดิมใน Project นี้เข้าคิวแล้ว/)).toBeInTheDocument();
     expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a stale conversation workspace binding after cancel and before preparing the Provider replacement Run", async () => {
+    usePlatformSourceWorkspace();
+    const order: string[] = [];
+    const platformWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
+    platformWorkspace.canonicalProjectId = "smarthub-core";
+    mocks.workspace = {
+      workspace: { runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId },
+      availability: { available: true, status: "current" }, specSet: { revision: 3, files: [], requirementCount: 1 },
+      developmentRuns: [{
+        runId: "legacy-run-312", jobId: "legacy-job-312", state: "DISCOVERY",
+        specId: "312-smartaihub-modular-saas-rebuild-master-plan", specTitle: "SPEC-312",
+        workPackageId: "pkg-r14-core-p1-first-slice", workPackageExternalId: "r14-core-p1-first-slice",
+        specSetRevision: 3, workPackagePrerequisites: [], economicsMode: "tenant_budget", workerJobStatus: "pending",
+        workerJobCanCancelAsUnclaimed: true,
+      }],
+    };
+    mocks.featureSpecs = [{ id: "312-smartaihub-modular-saas-rebuild-master-plan", title: "SPEC-312", path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md", summary: "Continue SPEC-312." }];
+    mocks.featureSpecContext = { ...mocks.featureSpecContext, id: "312-smartaihub-modular-saas-rebuild-master-plan", handoff: { ...mocks.featureSpecContext.handoff, nextReadyWorkunit: "r14-core-p1-first-slice" } };
+    mocks.refetchWorkspaces.mockReset().mockImplementation(async () => { order.push("refresh-authorized-workspaces"); return { data: { workspaces: mocks.workspaces } }; });
+    mocks.refetchWorkspaceBinding.mockReset().mockImplementation(async () => { order.push("refresh-conversation-binding"); return { data: mocks.workspace }; });
+    mocks.cancelUnclaimed.mockReset().mockImplementation(async () => { order.push("cancel"); return { canceled: true, jobId: "legacy-job-312" }; });
+    mocks.bindWorkspace.mockReset().mockImplementation(async () => { order.push("bind-latest-snapshot"); return { conversationId: 8 }; });
+    mocks.prepare.mockReset();
+    mocks.prepare.mockImplementation(async () => {
+      order.push("prepare");
+      return {
+        ...preparation(true), planRevision: 4, runnableWorkPackageIds: ["pkg-r14-core-p1-first-slice"],
+        workPackages: [{ id: "pkg-r14-core-p1-first-slice", externalId: "r14-core-p1-first-slice", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }],
+      };
+    });
+    mocks.start.mockReset().mockImplementation(async () => { order.push("start-provider-run"); return { runId: "replacement-run", jobId: "replacement-job", dispatchStatus: "ENQUEUED" }; });
+
+    render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
+    await screen.findByRole("button", { name: /เริ่ม Run ใหม่แบบ Provider quota สำหรับ/ });
+    mocks.bindWorkspace.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /เริ่ม Run ใหม่แบบ Provider quota สำหรับ/ }));
+
+    await waitFor(() => expect(order).toEqual(["cancel", "refresh-authorized-workspaces", "bind-latest-snapshot", "refresh-conversation-binding", "prepare", "start-provider-run"]));
+    expect(mocks.bindWorkspace).toHaveBeenCalledWith({ conversationId: 8, runnerId: "runner-test", workspaceId: "platform-source" });
   });
 
   it("binds an existing conversation to the authoritative SmartAIHub source workspace when selected", async () => {
