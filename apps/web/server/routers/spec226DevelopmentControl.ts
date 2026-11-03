@@ -1484,10 +1484,11 @@ export const spec226DevelopmentControlRouter = router({
         // authorized workspace binding. A requestKind discriminator does not
         // exist on this route (and referencing one throws before Goal creation).
         const platformEngineeringWorkspace = binding.workspace.scope === "PLATFORM_ENGINEERING";
-        if (platformEngineeringWorkspace && ctx.user?.role !== "admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
-        }
-        const providerManagedScope = platformEngineeringWorkspace && ctx.user?.role === "admin";
+        // Platform engineering work belongs to the trusted workspace/project,
+        // not to an end-user tenant budget or a global application-admin role.
+        // Workspace membership and the actor-bound conversation are checked
+        // by getConversationWorkspace above.
+        const providerManagedScope = platformEngineeringWorkspace;
         const budgetCapMinorUnits = providerManagedScope ? undefined : input.budgetCapMinorUnits ?? 100;
         const provider = input.provider ?? "codex";
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
@@ -1910,17 +1911,13 @@ export const spec226DevelopmentControlRouter = router({
           ...scope, conversationId: input.conversationId,
         });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
-        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && ctx.user?.role !== "admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
-        }
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
         if (record.run.workspaceId !== binding.workspace.workspaceId)
           throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
         const persistedGrant = record.run.metadata?.spec224GoalGrantPayload;
         const economicsMode = persistedGrant && typeof persistedGrant === "object"
           ? (persistedGrant as Record<string, unknown>).economicsMode : undefined;
-        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && ctx.user?.role === "admin"
-          && economicsMode !== "provider_managed") {
+        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && economicsMode !== "provider_managed") {
           const authorization = {
             status: "PLATFORM_RUN_RESTART_REQUIRED" as const,
             reasons: ["LEGACY_TENANT_BUDGET_BINDING"],
@@ -2153,8 +2150,8 @@ export const spec226DevelopmentControlRouter = router({
           ...scope, conversationId: input.conversationId,
         });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
-        if (binding.workspace.scope !== "PLATFORM_ENGINEERING" || ctx.user?.role !== "admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
+        if (binding.workspace.scope !== "PLATFORM_ENGINEERING") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_REQUIRED" });
         }
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
         if (record.run.workspaceId !== binding.workspace.workspaceId) throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
