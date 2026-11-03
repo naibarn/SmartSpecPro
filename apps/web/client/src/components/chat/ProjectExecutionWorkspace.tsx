@@ -331,6 +331,16 @@ export function ProjectExecutionWorkspace({
   const selectedRunUsesLegacyPlatformBudget = Boolean(selectedDevelopmentRun)
     && selectedGoalWorkspaceQuery.data?.workspace.scope === "PLATFORM_ENGINEERING"
     && selectedDevelopmentRun?.economicsMode !== "provider_managed";
+  const cancellableWorkerStatuses = [
+    "pending", "queued", "retry_scheduled", "leased", "running", "waiting_external",
+    "claimed", "preparing", "uploading", "publishing", "indexing",
+  ];
+  const selectedLegacyWorkerCanRequestCancellation = Boolean(selectedDevelopmentRun?.jobId)
+    && selectedRunUsesLegacyPlatformBudget
+    && !selectedDevelopmentRun?.workerJobCanCancelAsUnclaimed
+    && !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(selectedDevelopmentRun?.state ?? "")
+    && selectedDevelopmentRun?.goalApproval?.status !== "pending"
+    && cancellableWorkerStatuses.includes(selectedDevelopmentRun?.workerJobStatus ?? "");
   const selectedWorkerQueueWaitMs = selectedDevelopmentRun
     && selectedDevelopmentRun.workerJobIsInitial === false
     && selectedDevelopmentRun.workerJobStatus === "queued"
@@ -363,6 +373,7 @@ export function ProjectExecutionWorkspace({
     : null;
   const utils = trpc.useUtils();
   const cancelUnclaimedLegacyRunMutation = trpc.spec226DevelopmentControl.cancelUnclaimedLegacyPlatformRun.useMutation();
+  const cancelLegacyWorkerJobMutation = trpc.workerJobs.cancelQueued.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation({
     onSuccess: async result => {
       await Promise.all([
@@ -753,6 +764,28 @@ export function ProjectExecutionWorkspace({
                               }}
                             >
                               {cancelUnclaimedLegacyRunMutation.isPending ? "กำลังยกเลิกคิวเก่า…" : "ยกเลิกคิวที่ยังไม่มี Worker แล้วเปิด SPEC เพื่อเริ่มใหม่"}
+                            </Button>
+                          ) : selectedLegacyWorkerCanRequestCancellation && selectedDevelopmentRun?.jobId ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={cancelLegacyWorkerJobMutation.isPending}
+                              onClick={async () => {
+                                try {
+                                  await cancelLegacyWorkerJobMutation.mutateAsync({ jobId: selectedDevelopmentRun.jobId! });
+                                  toast.success("ส่งคำสั่งหยุด Worker Job เดิมแล้ว; รอให้สถานะปิดก่อนเริ่ม Provider Run ใหม่");
+                                  await Promise.all([
+                                    selectedGoalWorkspaceQuery.refetch(),
+                                    linkedGoalJobQuery.refetch(),
+                                    utils.workerJobs.observability.invalidate(),
+                                  ]);
+                                } catch (error) {
+                                  toast.error(error instanceof Error ? error.message : "ส่งคำสั่งหยุด Worker Job เดิมไม่สำเร็จ");
+                                  await selectedGoalWorkspaceQuery.refetch();
+                                }
+                              }}
+                            >
+                              {cancelLegacyWorkerJobMutation.isPending ? "กำลังส่งคำสั่งหยุด Worker…" : "ส่งคำสั่งหยุด Worker Job เดิม"}
                             </Button>
                           ) : TERMINAL.has(selectedGoalJob.status) ? (
                             <a className="inline-flex text-primary underline" href={`/chat?mode=tasks&c=${selectedGoalJob.conversationId}&newGoal=1`}>

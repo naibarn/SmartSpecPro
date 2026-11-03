@@ -670,6 +670,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const cancelUnclaimedLegacyRunMutation = trpc.spec226DevelopmentControl.cancelUnclaimedLegacyPlatformRun.useMutation();
+  const cancelLegacyWorkerJobMutation = trpc.workerJobs.cancelQueued.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
   const requiresTenantLedger = !platformWorkspaceSelected;
@@ -1383,6 +1384,23 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
+  async function requestCancelLegacyWorkerJob(run: { jobId: string | null }) {
+    if (!run.jobId || cancelLegacyWorkerJobMutation.isPending) return;
+    try {
+      await cancelLegacyWorkerJobMutation.mutateAsync({ jobId: run.jobId });
+      toast.success("ส่งคำสั่งหยุด Worker Job เดิมแล้ว; รอให้สถานะปิดก่อนเริ่ม Provider Run ใหม่");
+      if (conversationId) {
+        await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId });
+      }
+      await trpcUtils.workerJobs.observability.invalidate();
+    } catch (error) {
+      toast.error(presentCustomerError(error, "ส่งคำสั่งหยุด Worker Job เดิมไม่สำเร็จ"));
+      if (conversationId) {
+        await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId });
+      }
+    }
+  }
+
   useEffect(() => {
     if (!resumeSpecId || !conversationId || !canonicalHandoff || !workspaceQuery.data) return;
     const nextWorkUnit = canonicalHandoff.nextReadyWorkunit;
@@ -2057,6 +2075,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     && run.workerJobCanCancelAsUnclaimed
                     && run.state !== "COMPLETED"
                     && run.goalApproval?.status !== "pending";
+                  const cancellableWorkerStatuses = [
+                    "pending", "queued", "retry_scheduled", "leased", "running", "waiting_external",
+                    "claimed", "preparing", "uploading", "publishing", "indexing",
+                  ];
+                  const canRequestCancelLegacyWorker = legacyPlatformBudgetedRun
+                    && Boolean(run.jobId)
+                    && !canReplaceUnclaimedLegacyQueue
+                    && !legacyRunClosed
+                    && !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)
+                    && run.goalApproval?.status !== "pending"
+                    && cancellableWorkerStatuses.includes(run.workerJobStatus ?? "");
                   return (
                     <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
                       <p className="font-medium">คำสั่งจาก {run.specId ? specLabel : "SPEC ที่ไม่ได้บันทึกไว้"}</p>
@@ -2115,13 +2144,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                           ? " Run เดิมปิดแล้ว เริ่ม Run ใหม่จาก SPEC/WorkPackage เดิมได้ โดยใช้โควต้า Provider"
                           : canReplaceUnclaimedLegacyQueue
                             ? " Job นี้ยังไม่มี Worker claim จึงยกเลิกคิวเดิมอย่างปลอดภัยและเริ่ม Run ใหม่ด้วยโควต้า Provider ได้"
-                          : run.state === "COMPLETED"
-                            ? " งานนี้เสร็จแล้ว"
-                            : run.goalApproval?.status === "pending"
+                            : run.state === "COMPLETED"
+                              ? " งานนี้เสร็จแล้ว"
+                              : run.goalApproval?.status === "pending"
                               ? " รอผลอนุมัติเดิมก่อน เพื่อป้องกันการสร้างงานซ้ำ"
-                              : run.workerJobStatus && ["pending", "queued", "retry_scheduled"].includes(run.workerJobStatus)
-                                ? " คิวเดิมยังไม่อยู่ในสถานะที่ยืนยันได้ว่าปลอดภัยต่อการยกเลิก โปรดตรวจ Worker Jobs ก่อนเริ่มซ้ำ"
-                                : " Worker รับหรือเริ่มงานนี้แล้ว จึงต้องปิดงานเดิมก่อนเริ่ม Run ใหม่"}
+                                : canRequestCancelLegacyWorker
+                                  ? " Worker รับงานแล้ว; ส่งคำสั่งหยุด Job เดิมได้จากปุ่มด้านล่าง แล้วเริ่ม Provider Run ใหม่เมื่อ Job ปิดแล้ว"
+                                  : " Job เดิมกำลังปิดหรือไม่อยู่ในสถานะที่ยกเลิกได้; รอสถานะล่าสุดก่อนเริ่ม Run ใหม่"}
                       </p> : null}
                       {!simpleMode ? <p className="mt-1 break-all text-[var(--color-text-secondary)]">
                         Run {run.runId}{run.jobId ? ` · Worker Job ${run.jobId}` : ""}
@@ -2139,6 +2168,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                             : canReplaceUnclaimedLegacyQueue
                               ? "ยกเลิกคิวที่ยังไม่มี Worker แล้วเริ่มใหม่ · Provider quota"
                               : "เริ่ม Run ใหม่ · ใช้โควต้า Provider"}
+                        </Button>
+                      ) : null}
+                      {canRequestCancelLegacyWorker ? (
+                        <Button type="button" variant="outline" size="sm" className="mt-2"
+                          disabled={cancelLegacyWorkerJobMutation.isPending}
+                          onClick={() => void requestCancelLegacyWorkerJob(run)}>
+                          {cancelLegacyWorkerJobMutation.isPending ? "กำลังส่งคำสั่งหยุด Worker…" : "ส่งคำสั่งหยุด Worker Job เดิม"}
                         </Button>
                       ) : null}
                       {!(["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)) ? (
