@@ -232,7 +232,16 @@ function developmentWorkerJobStatusLabel(status: string | null | undefined): str
 
 function formatDevelopmentRunDate(value: string | null | undefined): string {
   if (!value || !Number.isFinite(Date.parse(value))) return "เวลาเริ่มไม่พร้อมใช้งาน";
-  return new Date(value).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  return new Date(value).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
+}
+
+function formatDevelopmentWaitDuration(milliseconds: number): string {
+  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
+  if (totalMinutes < 1) return "น้อยกว่า 1 นาที";
+  if (totalMinutes < 60) return `${totalMinutes} นาที`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours} ชม. ${minutes} นาที` : `${hours} ชม.`;
 }
 
 type WorkspaceWorkPackage = {
@@ -660,6 +669,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const runnerReadiness = workspaceReadinessQuery.data ?? readinessQuery.data ?? preparation?.runnerReadiness;
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
+  const cancelUnclaimedLegacyRunMutation = trpc.spec226DevelopmentControl.cancelUnclaimedLegacyPlatformRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
   const requiresTenantLedger = !platformWorkspaceSelected;
@@ -1350,6 +1360,29 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
+  async function cancelAndRestartUnclaimedLegacyRun(run: {
+    runId: string;
+    workPackageId: string | null;
+    workPackageExternalId: string | null;
+    specId: string | null;
+    workerJobCanCancelAsUnclaimed?: boolean;
+  }) {
+    if (!conversationId || !run.workerJobCanCancelAsUnclaimed || cancelUnclaimedLegacyRunMutation.isPending) return;
+    try {
+      const result = await cancelUnclaimedLegacyRunMutation.mutateAsync({ conversationId, runId: run.runId });
+      if (!result.canceled) {
+        toast.error(result.ownerAction ?? "คิวงานเปลี่ยนสถานะแล้ว โปรดตรวจสถานะ Worker ก่อนเริ่ม Run ใหม่");
+        await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId });
+        return;
+      }
+      await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId });
+      await restartPlatformRunWithoutTenantBudget(run);
+    } catch (error) {
+      toast.error(presentCustomerError(error, "ยกเลิกคิวเก่าหรือเริ่ม Run แบบ Provider ไม่สำเร็จ"));
+      await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId });
+    }
+  }
+
   useEffect(() => {
     if (!resumeSpecId || !conversationId || !canonicalHandoff || !workspaceQuery.data) return;
     const nextWorkUnit = canonicalHandoff.nextReadyWorkunit;
@@ -1365,7 +1398,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         || (!matchingRun.workerJobStatus && ["FAILED_TERMINAL", "CANCELLED"].includes(matchingRun.state));
       setContinuationNotice(oldRunClosed
         ? `พบ Run เก่าของ WorkUnit ${nextWorkUnit} ที่ยังผูก tenant budget รุ่นเดิม ระบบจะเก็บประวัติไว้และไม่ resume grant เก่า; เลือก “เริ่ม Run ใหม่ · ใช้โควต้า Provider” ในรายการงาน`
-        : `พบ Run เก่าของ WorkUnit ${nextWorkUnit} ที่ยังผูก tenant budget รุ่นเดิม ระบบจะไม่ resume หรือสร้างงานซ้ำจนกว่า Worker จะปิด Run เดิม`);
+        : `พบ Run เก่าของ WorkUnit ${nextWorkUnit} ที่ยังผูก tenant budget รุ่นเดิม ระบบไม่เปลี่ยน grant เก่า: ถ้า Worker ยังไม่ claim ให้ยกเลิกคิวและเริ่ม Run ใหม่แบบ Provider จากรายการด้านล่าง; ถ้ารับงานแล้ว ให้ตรวจสถานะหรือยกเลิกจาก Worker Jobs ก่อนเริ่มซ้ำ`);
       return;
     }
     if (["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(matchingRun.state)) {
@@ -1982,7 +2015,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           ) : null}
           {latestDevelopmentRuns.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
-              <p className="text-xs font-medium">รายการล่าสุดของแต่ละ SPEC/WorkPackage · เรียงตามเวลาสร้าง Worker Job</p>
+              <p className="text-xs font-medium">รายการล่าสุดของแต่ละ SPEC/WorkPackage · เรียงตาม Worker Job ของ phase ล่าสุด</p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 ประวัติ Run ก่อนหน้าดูได้ใน Task Control{hiddenDevelopmentRunCount > 0 ? ` · ซ่อนรายการซ้ำ ${hiddenDevelopmentRunCount} รายการ` : ""}
               </p>
@@ -1995,20 +2028,72 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     : run.workPackageExternalId ?? "งานพัฒนาที่ไม่ได้บันทึก Spec ID";
                   const resumeLabel = `ทำงานต่อ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`;
                   const legacyPlatformBudgetedRun = platformWorkspaceSelected && run.economicsMode !== "provider_managed";
-                  const legacyRunClosed = ["failed", "cancelled", "expired"].includes(run.workerJobStatus ?? "")
+                  const workerQueueWaitMs = run.workerJobIsInitial === false && run.workerJobStatus === "queued" && run.workerJobCanCancelAsUnclaimed && !run.workerJobStartedAt && run.workerJobCreatedAt
+                    ? Math.max(0, Date.now() - Date.parse(run.workerJobCreatedAt))
+                    : null;
+                  const workerAdmissionWaitMs = run.workerJobIsInitial === false && run.workerJobStatus === "pending" && run.workerJobCanCancelAsUnclaimed
+                    && run.goalApproval?.status !== "pending" && run.workerJobCreatedAt
+                    ? Math.max(0, Date.now() - Date.parse(run.workerJobCreatedAt))
+                    : null;
+                  const initialWorkerQueueWaitMs = run.initialWorkerJobStatus === "queued"
+                    && !run.initialWorkerJobStartedAt && run.initialWorkerJobCreatedAt
+                    ? Math.max(0, Date.now() - Date.parse(run.initialWorkerJobCreatedAt))
+                    : null;
+                  const initialWorkerAdmissionWaitMs = run.initialWorkerJobStatus === "pending"
+                    && run.goalApproval?.status !== "pending"
+                    && !run.initialWorkerJobStartedAt && run.initialWorkerJobCreatedAt
+                    ? Math.max(0, Date.now() - Date.parse(run.initialWorkerJobCreatedAt))
+                    : null;
+                  const initialWorkerCreationSkewMs = run.createdAt && run.initialWorkerJobCreatedAt
+                    ? Math.abs(Date.parse(run.createdAt) - Date.parse(run.initialWorkerJobCreatedAt))
+                    : null;
+                  const legacyRunClosed = ["failed", "cancelled", "canceled", "expired", "succeeded", "completed"].includes(run.workerJobStatus ?? "")
                     || (!run.workerJobStatus && ["FAILED_TERMINAL", "CANCELLED"].includes(run.state));
                   const canStartProviderManagedReplacement = legacyPlatformBudgetedRun
                     && legacyRunClosed
+                    && run.state !== "COMPLETED"
+                    && run.goalApproval?.status !== "pending";
+                  const canReplaceUnclaimedLegacyQueue = legacyPlatformBudgetedRun
+                    && run.workerJobCanCancelAsUnclaimed
                     && run.state !== "COMPLETED"
                     && run.goalApproval?.status !== "pending";
                   return (
                     <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
                       <p className="font-medium">คำสั่งจาก {run.specId ? specLabel : "SPEC ที่ไม่ได้บันทึกไว้"}</p>
                       <p className="mt-1 text-[var(--color-text-secondary)]">
-                        Worker Job ล่าสุดสร้างเมื่อ {run.workerJobCreatedAt ? formatDevelopmentRunDate(run.workerJobCreatedAt) : "ไม่มีข้อมูลเวลา"} · Run สร้างเมื่อ {formatDevelopmentRunDate(run.createdAt)}
+                        Worker Job แรกสร้างเมื่อ {run.initialWorkerJobCreatedAt ? formatDevelopmentRunDate(run.initialWorkerJobCreatedAt) : "ไม่มีข้อมูลเวลา"}
+                        {run.initialWorkerJobStartedAt ? ` · เริ่มทำงานเมื่อ ${formatDevelopmentRunDate(run.initialWorkerJobStartedAt)}` : " · ยังไม่มีเวลาเริ่มทำงาน"}
+                        {` · Job phase ปัจจุบันสร้างเมื่อ ${run.workerJobCreatedAt ? formatDevelopmentRunDate(run.workerJobCreatedAt) : "ไม่มีข้อมูลเวลา"}`}
+                        {run.workerJobStartedAt ? ` · เริ่มทำงานเมื่อ ${formatDevelopmentRunDate(run.workerJobStartedAt)}` : " · ยังไม่มีเวลาเริ่มทำงาน"}
+                        {` · Run สร้างเมื่อ ${formatDevelopmentRunDate(run.createdAt)}`}
                         {run.workPackageExternalId ? ` · WorkPackage ${run.workPackageExternalId}` : ""}
                         {run.specSetRevision ? ` · Spec Set r${run.specSetRevision}` : ""}
                       </p>
+                      {workerQueueWaitMs !== null && Number.isFinite(workerQueueWaitMs) && workerQueueWaitMs > 30_000 ? (
+                        <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" role="alert">
+                          Job ของ phase ปัจจุบันอยู่ในคิวมาแล้ว {formatDevelopmentWaitDuration(workerQueueWaitMs)} โดยยังไม่มีเวลาเริ่มทำงาน
+                        </p>
+                      ) : null}
+                      {workerAdmissionWaitMs !== null && Number.isFinite(workerAdmissionWaitMs) && workerAdmissionWaitMs > 30_000 ? (
+                        <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" role="alert">
+                          Worker Job ยัง pending มาแล้ว {formatDevelopmentWaitDuration(workerAdmissionWaitMs)} และยังไม่เข้า queue; ปัญหาอยู่ก่อน dispatch ไม่ใช่เวลารอ Runner รับงาน
+                        </p>
+                      ) : null}
+                      {initialWorkerQueueWaitMs !== null && Number.isFinite(initialWorkerQueueWaitMs) && initialWorkerQueueWaitMs > 30_000 ? (
+                        <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" role="alert">
+                          Worker Job แรกของ Run อยู่ในคิวมาแล้ว {formatDevelopmentWaitDuration(initialWorkerQueueWaitMs)} โดยยังไม่เริ่มทำงาน
+                        </p>
+                      ) : null}
+                      {initialWorkerAdmissionWaitMs !== null && Number.isFinite(initialWorkerAdmissionWaitMs) && initialWorkerAdmissionWaitMs > 30_000 ? (
+                        <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" role="alert">
+                          Worker Job แรกยัง pending มาแล้ว {formatDevelopmentWaitDuration(initialWorkerAdmissionWaitMs)} และยังไม่เข้า queue; เวลานี้คือช่วงก่อน Worker รับคิว
+                        </p>
+                      ) : null}
+                      {initialWorkerCreationSkewMs !== null && Number.isFinite(initialWorkerCreationSkewMs) && initialWorkerCreationSkewMs > 30_000 ? (
+                        <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" role="alert">
+                          เวลา Run กับ Worker Job แรกต่างกันเกิน 30 วินาที; ใช้เวลา Job แรกตรวจการส่งเข้าคิว ส่วน Job ของ phase ปัจจุบันอาจถูกสร้างทีหลังตามปกติ
+                        </p>
+                      ) : null}
                       {run.specSources?.length ? <p className="mt-1">แหล่ง Requirement ของ WorkPackage: {run.specSources.map(source => `${canonicalSpecIdLabel(source.specId)} · ${source.fileName}`).join(", ")}</p> : null}
                       {run.workPackagePrerequisites !== null ? (
                         <p className="mt-1">WorkPackage ที่ต้องทำก่อน: {run.workPackagePrerequisites.length
@@ -2027,23 +2112,33 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       {legacyPlatformBudgetedRun ? <p className="mt-1 text-[var(--color-text-secondary)]" role="status">
                         Run นี้สร้างก่อนเปลี่ยนนโยบาย จึงยังเก็บ tenant budget เดิมไว้ในประวัติและจะไม่แก้ grant ย้อนหลัง
                         {canStartProviderManagedReplacement
-                          ? " เริ่ม Run ใหม่จาก SPEC/WorkPackage เดิมได้ โดยใช้โควต้า Provider และไม่ใช้ budget ของ tenant"
+                          ? " Run เดิมปิดแล้ว เริ่ม Run ใหม่จาก SPEC/WorkPackage เดิมได้ โดยใช้โควต้า Provider"
+                          : canReplaceUnclaimedLegacyQueue
+                            ? " Job นี้ยังไม่มี Worker claim จึงยกเลิกคิวเดิมอย่างปลอดภัยและเริ่ม Run ใหม่ด้วยโควต้า Provider ได้"
                           : run.state === "COMPLETED"
                             ? " งานนี้เสร็จแล้ว"
                             : run.goalApproval?.status === "pending"
                               ? " รอผลอนุมัติเดิมก่อน เพื่อป้องกันการสร้างงานซ้ำ"
-                              : " กำลังรอให้ Worker ปิดงานเดิมก่อน จึงจะเริ่ม Run ใหม่ได้"}
+                              : run.workerJobStatus && ["pending", "queued", "retry_scheduled"].includes(run.workerJobStatus)
+                                ? " คิวเดิมยังไม่อยู่ในสถานะที่ยืนยันได้ว่าปลอดภัยต่อการยกเลิก โปรดตรวจ Worker Jobs ก่อนเริ่มซ้ำ"
+                                : " Worker รับหรือเริ่มงานนี้แล้ว จึงต้องปิดงานเดิมก่อนเริ่ม Run ใหม่"}
                       </p> : null}
                       {!simpleMode ? <p className="mt-1 break-all text-[var(--color-text-secondary)]">
                         Run {run.runId}{run.jobId ? ` · Worker Job ${run.jobId}` : ""}
                         {run.workerJobErrorCode ? ` · Error ${run.workerJobErrorCode}` : ""}
                       </p> : null}
-                      {legacyPlatformBudgetedRun && canStartProviderManagedReplacement ? (
+                      {legacyPlatformBudgetedRun && (canStartProviderManagedReplacement || canReplaceUnclaimedLegacyQueue) ? (
                         <Button type="button" variant="outline" size="sm" className="mt-2"
                           aria-label={`เริ่ม Run ใหม่แบบ Provider quota สำหรับ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`}
-                          disabled={preparing || startMutation.isPending || resumeRunMutation.isPending || !boundWorkspace}
-                          onClick={() => void restartPlatformRunWithoutTenantBudget(run)}>
-                          {preparing || startMutation.isPending ? "กำลังเตรียม Run ใหม่…" : "เริ่ม Run ใหม่ · ใช้โควต้า Provider"}
+                          disabled={preparing || startMutation.isPending || resumeRunMutation.isPending || cancelUnclaimedLegacyRunMutation.isPending || !boundWorkspace}
+                          onClick={() => void (canReplaceUnclaimedLegacyQueue
+                            ? cancelAndRestartUnclaimedLegacyRun(run)
+                            : restartPlatformRunWithoutTenantBudget(run))}>
+                          {preparing || startMutation.isPending || cancelUnclaimedLegacyRunMutation.isPending
+                            ? "กำลังปิดคิวเก่าและเตรียม Run ใหม่…"
+                            : canReplaceUnclaimedLegacyQueue
+                              ? "ยกเลิกคิวที่ยังไม่มี Worker แล้วเริ่มใหม่ · Provider quota"
+                              : "เริ่ม Run ใหม่ · ใช้โควต้า Provider"}
                         </Button>
                       ) : null}
                       {!(["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)) ? (

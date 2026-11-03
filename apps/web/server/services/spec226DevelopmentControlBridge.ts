@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { workerJobs } from "../../drizzle/schema";
 import { db, getDb } from "../db";
@@ -223,12 +223,13 @@ function databaseRunList(): Spec226DevelopmentRunList {
       ];
       if (workspaceId) predicates.push(sql`${workerJobs.progressJson}->'spec224'->>'workspaceId' = ${workspaceId}`);
       const rows = await db
-        .select({ progressJson: workerJobs.progressJson, createdAt: workerJobs.createdAt })
+        .select({ progressJson: workerJobs.progressJson })
         .from(workerJobs)
         .where(and(...predicates))
         .orderBy(desc(workerJobs.createdAt))
         .limit(limit);
-      return rows.flatMap((row: { progressJson: unknown; createdAt: Date | null }) => {
+      const projectedRuns = new Map<string, DevelopmentRun & { projectionVersion?: unknown }>();
+      for (const row of rows as Array<{ progressJson: unknown }>) {
         const progress = row.progressJson;
         const projection = progress && typeof progress === "object" && !Array.isArray(progress)
           ? (progress as Record<string, unknown>).spec224
@@ -238,7 +239,7 @@ function databaseRunList(): Spec226DevelopmentRunList {
           typeof projection !== "object" ||
           Array.isArray(projection)
         ) {
-          return [];
+          continue;
         }
         const run = projection as DevelopmentRun & {
           projectionVersion?: unknown;
@@ -248,10 +249,33 @@ function databaseRunList(): Spec226DevelopmentRunList {
           run.actorId !== scope.actorId ||
           run.contractVersion !== "spec-224-v1"
         ) {
-          return [];
+          continue;
         }
-        return [{ ...run, workerJobCreatedAt: row.createdAt?.toISOString() ?? null }];
-      });
+        const existing = projectedRuns.get(run.runId);
+        if (!existing || projectionRevision(run) > projectionRevision(existing)) {
+          projectedRuns.set(run.runId, run);
+        }
+      }
+
+      const runs = [...projectedRuns.values()];
+      const linkedJobIds = [...new Set(runs.flatMap(run => run.workerJobId ? [run.workerJobId] : []))];
+      const linkedJobs = linkedJobIds.length
+        ? await db.select({ id: workerJobs.id, createdAt: workerJobs.createdAt })
+            .from(workerJobs)
+            .where(and(
+              inArray(workerJobs.id, linkedJobIds),
+              eq(workerJobs.tenantId, scope.tenantId),
+              eq(workerJobs.requestedByUserId, scope.actorId),
+            ))
+        : [];
+      const createdAtByJobId = new Map(linkedJobs.map(job => [job.id, job.createdAt?.toISOString() ?? null]));
+      return runs
+        .map(run => ({ ...run, workerJobCreatedAt: run.workerJobId ? createdAtByJobId.get(run.workerJobId) ?? null : null }))
+        .sort((left, right) => {
+          const leftTime = Date.parse(left.workerJobCreatedAt ?? "") || Date.parse(left.createdAt ?? "") || 0;
+          const rightTime = Date.parse(right.workerJobCreatedAt ?? "") || Date.parse(right.createdAt ?? "") || 0;
+          return rightTime - leftTime;
+        });
     },
   };
 }
@@ -335,14 +359,13 @@ export function createSpec226DevelopmentControlBridge(input: {
           continue;
         }
         const preferred = projectionRevision(run) > projectionRevision(existing) ? run : existing;
-        const newestJobCreatedAt = [run.workerJobCreatedAt, existing.workerJobCreatedAt]
-          .filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)))
-          .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
-        latestByRunId.set(run.runId, { ...preferred, workerJobCreatedAt: newestJobCreatedAt });
+        latestByRunId.set(run.runId, preferred);
       }
-      const latestRuns = [...latestByRunId.values()].sort((left, right) =>
-        Date.parse(right.workerJobCreatedAt ?? "") - Date.parse(left.workerJobCreatedAt ?? "")
-      );
+      const latestRuns = [...latestByRunId.values()].sort((left, right) => {
+        const leftTime = Date.parse(left.workerJobCreatedAt ?? "") || Date.parse(left.createdAt ?? "") || 0;
+        const rightTime = Date.parse(right.workerJobCreatedAt ?? "") || Date.parse(right.createdAt ?? "") || 0;
+        return rightTime - leftTime;
+      });
       return Promise.all(
         latestRuns.map(async run => {
           let closure: RequirementClosureGraph | null = null;

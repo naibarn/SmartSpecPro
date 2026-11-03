@@ -70,6 +70,15 @@ function formatJobCreatedAt(value: string | Date | null | undefined): string {
   }).format(date);
 }
 
+function formatWaitDuration(milliseconds: number): string {
+  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
+  if (totalMinutes < 1) return "น้อยกว่า 1 นาที";
+  if (totalMinutes < 60) return `${totalMinutes} นาที`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours} ชม. ${minutes} นาที` : `${hours} ชม.`;
+}
+
 function goalTitle(goal: any): string {
   const value = [goal.goal, goal.title, goal.objective, goal.summary].find(
     candidate => typeof candidate === "string" && candidate.trim()
@@ -297,7 +306,63 @@ export function ProjectExecutionWorkspace({
     selectedGoal,
     [...jobs, ...(linkedGoalJobQuery.data?.items ?? [])],
   );
+  const selectedGoalWorkspaceQuery = trpc.spec226DevelopmentControl.getConversationWorkspace.useQuery({
+    conversationId: selectedGoalJob?.conversationId ?? 0,
+  }, {
+    enabled: Boolean(selectedGoalJob?.conversationId && selectedGoal?.runId),
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    retry: false,
+  });
+  const selectedDevelopmentRun = selectedGoal?.runId
+    ? selectedGoalWorkspaceQuery.data?.developmentRuns.find(run => run.runId === selectedGoal.runId)
+    : undefined;
+  const selectedRunPolicyKnown = Boolean(selectedGoal?.runId && selectedGoalJob?.conversationId)
+    && selectedGoalWorkspaceQuery.isSuccess
+    && Boolean(selectedDevelopmentRun);
+  const selectedRunPolicyUnavailable = Boolean(selectedGoal?.runId && selectedGoalJob?.conversationId)
+    && selectedGoalWorkspaceQuery.isSuccess
+    && !selectedDevelopmentRun;
+  const selectedRunPolicyLoading = Boolean(selectedGoal?.runId && selectedGoalJob?.conversationId)
+    && selectedGoalWorkspaceQuery.isLoading;
+  const selectedRunPolicyError = Boolean(selectedGoal?.runId && selectedGoalJob?.conversationId)
+    && selectedGoalWorkspaceQuery.isError;
+  const selectedRunUsesLegacyPlatformBudget = Boolean(selectedDevelopmentRun)
+    && selectedGoalWorkspaceQuery.data?.workspace.scope === "PLATFORM_ENGINEERING"
+    && selectedDevelopmentRun?.economicsMode !== "provider_managed";
+  const selectedWorkerQueueWaitMs = selectedDevelopmentRun
+    && selectedDevelopmentRun.workerJobIsInitial === false
+    && selectedDevelopmentRun.workerJobStatus === "queued"
+    && selectedDevelopmentRun.workerJobCanCancelAsUnclaimed
+    && !selectedDevelopmentRun.workerJobStartedAt
+    && selectedDevelopmentRun.workerJobCreatedAt
+      ? Math.max(0, Date.now() - Date.parse(selectedDevelopmentRun.workerJobCreatedAt))
+      : null;
+  const selectedWorkerAdmissionWaitMs = selectedDevelopmentRun
+    && selectedDevelopmentRun.workerJobIsInitial === false
+    && selectedDevelopmentRun.workerJobStatus === "pending"
+    && selectedDevelopmentRun.workerJobCanCancelAsUnclaimed
+    && selectedDevelopmentRun.goalApproval?.status !== "pending"
+    && selectedDevelopmentRun.workerJobCreatedAt
+      ? Math.max(0, Date.now() - Date.parse(selectedDevelopmentRun.workerJobCreatedAt))
+      : null;
+  const selectedInitialWorkerCreationSkewMs = selectedDevelopmentRun?.createdAt && selectedDevelopmentRun.initialWorkerJobCreatedAt
+    ? Math.abs(Date.parse(selectedDevelopmentRun.createdAt) - Date.parse(selectedDevelopmentRun.initialWorkerJobCreatedAt))
+    : null;
+  const selectedInitialWorkerQueueWaitMs = selectedDevelopmentRun?.initialWorkerJobStatus === "queued"
+    && !selectedDevelopmentRun.initialWorkerJobStartedAt
+    && selectedDevelopmentRun.initialWorkerJobCreatedAt
+    ? Math.max(0, Date.now() - Date.parse(selectedDevelopmentRun.initialWorkerJobCreatedAt))
+    : null;
+  const selectedInitialWorkerAdmissionWaitMs = selectedDevelopmentRun?.initialWorkerJobStatus === "pending"
+    && selectedDevelopmentRun.goalApproval?.status !== "pending"
+    && !selectedDevelopmentRun.initialWorkerJobStartedAt
+    && selectedDevelopmentRun.initialWorkerJobCreatedAt
+    ? Math.max(0, Date.now() - Date.parse(selectedDevelopmentRun.initialWorkerJobCreatedAt))
+    : null;
   const utils = trpc.useUtils();
+  const cancelUnclaimedLegacyRunMutation = trpc.spec226DevelopmentControl.cancelUnclaimedLegacyPlatformRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation({
     onSuccess: async result => {
       await Promise.all([
@@ -597,12 +662,108 @@ export function ProjectExecutionWorkspace({
                       </p>
                       {selectedGoalJob?.createdAt || selectedGoal.workerJobCreatedAt ? (
                         <p className="text-sm text-muted-foreground">
-                          Worker Job ล่าสุดสร้างเมื่อ: {formatJobCreatedAt(selectedGoal.workerJobCreatedAt ?? selectedGoalJob?.createdAt)} (เวลาไทย)
+                          Worker Job ของ phase ปัจจุบันสร้างเมื่อ: {formatJobCreatedAt(selectedGoalJob?.createdAt ?? selectedGoal.workerJobCreatedAt)} (เวลาไทย)
                         </p>
                       ) : selectedGoal.workerJobId ? (
                         <p className="text-sm text-muted-foreground">Worker Job สร้างเมื่อ: ไม่พบเวลาสร้างงาน</p>
                       ) : null}
-                      {selectedGoal.workerJobId && selectedGoal.runId && selectedGoalJob?.conversationId && !TERMINAL.has(selectedGoalJob.status) ? (
+                      {selectedDevelopmentRun?.createdAt ? (
+                        <p className="text-sm text-muted-foreground">Run นี้สร้างเมื่อ: {formatJobCreatedAt(selectedDevelopmentRun.createdAt)} (เวลาไทย)</p>
+                      ) : null}
+                      {selectedDevelopmentRun?.initialWorkerJobCreatedAt ? (
+                        <p className="text-sm text-muted-foreground">
+                          Worker Job แรกของ Run นี้สร้างเมื่อ: {formatJobCreatedAt(selectedDevelopmentRun.initialWorkerJobCreatedAt)}
+                          {selectedDevelopmentRun.initialWorkerJobStartedAt
+                            ? ` · เริ่มทำงานเมื่อ ${formatJobCreatedAt(selectedDevelopmentRun.initialWorkerJobStartedAt)}`
+                            : " · ยังไม่มีเวลาเริ่มทำงาน"} (เวลาไทย)
+                        </p>
+                      ) : null}
+                      {selectedDevelopmentRun?.workerJobStartedAt ? (
+                        <p className="text-sm text-muted-foreground">Worker Job นี้เริ่มทำงานเมื่อ: {formatJobCreatedAt(selectedDevelopmentRun.workerJobStartedAt)} (เวลาไทย)</p>
+                      ) : null}
+                      {selectedDevelopmentRun?.workerJobStatus ? (
+                        <p className="text-sm text-muted-foreground">สถานะ Worker Job ของ phase ปัจจุบัน: {label(selectedDevelopmentRun.workerJobStatus)}</p>
+                      ) : null}
+                      {selectedDevelopmentRun?.workerJobIsInitial === false && selectedWorkerQueueWaitMs !== null && Number.isFinite(selectedWorkerQueueWaitMs) && selectedWorkerQueueWaitMs > 30_000 ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          Worker Job phase ปัจจุบันอยู่ในคิวมาแล้ว {formatWaitDuration(selectedWorkerQueueWaitMs)} โดยยังไม่มีเวลาเริ่มทำงาน นี่คือเวลารอ Worker ของ Job นี้
+                        </p>
+                      ) : null}
+                      {selectedDevelopmentRun?.workerJobIsInitial === false && selectedWorkerAdmissionWaitMs !== null && Number.isFinite(selectedWorkerAdmissionWaitMs) && selectedWorkerAdmissionWaitMs > 30_000 ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          Worker Job ยัง pending มาแล้ว {formatWaitDuration(selectedWorkerAdmissionWaitMs)} และยังไม่เข้า queue; เวลานี้เป็นช่วงก่อน dispatch ไม่ใช่เวลาที่ Runner รับคิว
+                        </p>
+                      ) : null}
+                      {selectedInitialWorkerQueueWaitMs !== null && Number.isFinite(selectedInitialWorkerQueueWaitMs) && selectedInitialWorkerQueueWaitMs > 30_000 ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          Worker Job แรกของ Run อยู่ในคิวมาแล้ว {formatWaitDuration(selectedInitialWorkerQueueWaitMs)} โดยยังไม่เริ่มทำงาน
+                        </p>
+                      ) : null}
+                      {selectedInitialWorkerAdmissionWaitMs !== null && Number.isFinite(selectedInitialWorkerAdmissionWaitMs) && selectedInitialWorkerAdmissionWaitMs > 30_000 ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          Worker Job แรกยัง pending มาแล้ว {formatWaitDuration(selectedInitialWorkerAdmissionWaitMs)} และยังไม่เข้า queue; เวลานี้คือช่วงก่อน Worker รับคิว
+                        </p>
+                      ) : null}
+                      {selectedInitialWorkerCreationSkewMs !== null && Number.isFinite(selectedInitialWorkerCreationSkewMs) && selectedInitialWorkerCreationSkewMs > 30_000 ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          เวลา Run กับ Worker Job แรกต่างกันเกิน 30 วินาที; Job ของ phase ปัจจุบันอาจถูกสร้างทีหลังตามปกติ จึงต้องใช้เวลา Job แรกตรวจการส่งเข้าคิว
+                        </p>
+                      ) : null}
+                      {selectedRunPolicyUnavailable ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          อ่านข้อมูล Run ที่ตรงกับรายการนี้จาก workspace ไม่สำเร็จ จึงยังยืนยันเงื่อนไขทำงานต่อไม่ได้ โปรดเปิด Chat session เพื่อตรวจรายการเดียวกัน
+                        </p>
+                      ) : null}
+                      {selectedRunPolicyLoading ? (
+                        <p className="text-sm text-muted-foreground" role="status">กำลังตรวจ Run และ Worker Job ที่ผูกกัน ก่อนแสดงคำสั่งทำงานต่อ…</p>
+                      ) : null}
+                      {selectedRunPolicyError ? (
+                        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" role="alert">
+                          ตรวจ policy ของ Run ไม่สำเร็จ จึงซ่อนปุ่มทำงานต่อไว้ก่อน โปรดลองโหลดรายการใหม่
+                        </p>
+                      ) : null}
+                      {selectedRunUsesLegacyPlatformBudget && selectedGoal.runId && selectedGoalJob?.conversationId ? (
+                        <section className="mt-2 space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm" role="status">
+                          <p>Run นี้ยัง resume ตรง ๆ ไม่ได้ เพราะผูก tenant budget รุ่นเดิม; ปุ่มทำงานเดิมต่อจะไม่ส่งงานเข้าคิว</p>
+                          {selectedDevelopmentRun?.state === "COMPLETED" ? (
+                            <p>Run นี้เสร็จสมบูรณ์แล้ว ไม่มีงานเดิมให้ทำต่อ</p>
+                          ) : selectedDevelopmentRun?.goalApproval?.status === "pending" ? (
+                            <p>รอการอนุมัติเดิมก่อน เพื่อไม่สร้างงานซ้ำ</p>
+                          ) : selectedDevelopmentRun?.workerJobCanCancelAsUnclaimed && selectedDevelopmentRun.state !== "COMPLETED" ? (
+                            <Button
+                              type="button"
+                              variant="default"
+                              disabled={cancelUnclaimedLegacyRunMutation.isPending}
+                              onClick={async () => {
+                                try {
+                                  const result = await cancelUnclaimedLegacyRunMutation.mutateAsync({
+                                    conversationId: selectedGoalJob.conversationId!,
+                                    runId: selectedGoal.runId!,
+                                  });
+                                  if (!result.canceled) {
+                                    toast.error(result.ownerAction ?? "คิวงานเปลี่ยนสถานะแล้ว โปรดตรวจสอบก่อนเริ่มใหม่");
+                                    await selectedGoalWorkspaceQuery.refetch();
+                                    return;
+                                  }
+                                  toast.success("ยกเลิกคิวที่ยังไม่มี Worker แล้ว เปิด SPEC workspace เพื่อเริ่ม Run ใหม่แบบ Provider quota");
+                                  window.location.assign(`/chat?mode=tasks&c=${selectedGoalJob.conversationId}&newGoal=1`);
+                                } catch {
+                                  toast.error("ยกเลิกคิวเก่าไม่สำเร็จ โปรดรีเฟรช Task Control แล้วตรวจ Worker Jobs");
+                                }
+                              }}
+                            >
+                              {cancelUnclaimedLegacyRunMutation.isPending ? "กำลังยกเลิกคิวเก่า…" : "ยกเลิกคิวที่ยังไม่มี Worker แล้วเปิด SPEC เพื่อเริ่มใหม่"}
+                            </Button>
+                          ) : TERMINAL.has(selectedGoalJob.status) ? (
+                            <a className="inline-flex text-primary underline" href={`/chat?mode=tasks&c=${selectedGoalJob.conversationId}&newGoal=1`}>
+                              เปิด SPEC workspace เพื่อเริ่ม Run ใหม่แบบ Provider quota
+                            </a>
+                          ) : (
+                            <p>Worker รับหรือเริ่มงานแล้ว จึงยังแทนที่คิวโดยอัตโนมัติไม่ได้ ตรวจสถานะหรือยกเลิกจาก <a className="underline" href="/worker-jobs">Worker Jobs</a> ก่อน</p>
+                          )}
+                        </section>
+                      ) : null}
+                      {selectedGoal.workerJobId && selectedGoal.runId && selectedGoalJob?.conversationId && selectedRunPolicyKnown && !selectedRunUsesLegacyPlatformBudget && !TERMINAL.has(selectedGoalJob.status) ? (
                         <Button
                           type="button"
                           variant="default"
@@ -795,7 +956,7 @@ export function ProjectExecutionWorkspace({
                           </p>
                           {findGoalWorkerJob(goal, jobs)?.createdAt || goal.workerJobCreatedAt ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Worker Job ล่าสุดสร้างเมื่อ: {formatJobCreatedAt(goal.workerJobCreatedAt ?? findGoalWorkerJob(goal, jobs)?.createdAt)} (เวลาไทย)
+                              Worker Job ที่ผูกกับ Run นี้สร้างเมื่อ: {formatJobCreatedAt(findGoalWorkerJob(goal, jobs)?.createdAt ?? goal.workerJobCreatedAt)} (เวลาไทย)
                             </p>
                           ) : null}
                         </section>

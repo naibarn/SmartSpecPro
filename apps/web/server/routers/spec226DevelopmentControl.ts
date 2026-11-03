@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 import {
   runnerExecutionSessions,
@@ -29,7 +29,7 @@ import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "../services/miniAppFactoryDurableState";
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
-import { createJobControlPlane } from "../services/jobControlPlane";
+import { cancelQueuedJobInTransaction, canonicalizeStoredStatus, createJobControlPlane } from "../services/jobControlPlane";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import { importMiniAppGitRevisionCandidate, listMiniAppGitRevisionCandidates, resolvePersonalMiniAppFactoryHome, restoreMiniAppDeploymentVersion } from "../services/personalMiniAppPreview";
 import { getUserGitHubConnection } from "../services/userGithubConnectionService";
@@ -785,6 +785,26 @@ export const spec226DevelopmentControlRouter = router({
             run,
             record: await developmentRunService.get({ ...scope, runId: run.runId }).catch(() => null),
           })));
+        const initialWorkerJobIdByRunId = new Map<string, string>();
+        for (const { run, record } of inWorkspaceRuns) {
+          const createdEvent = record?.events.find(event => event.type === "RUN_CREATED");
+          const initialWorkerJobId = createdEvent?.payload.workerJobId;
+          if (typeof initialWorkerJobId === "string" && initialWorkerJobId.trim()) {
+            initialWorkerJobIdByRunId.set(run.runId, initialWorkerJobId);
+          }
+        }
+        const initialWorkerJobIds = [...new Set(initialWorkerJobIdByRunId.values())];
+        const initialWorkerJobs = initialWorkerJobIds.length
+          ? await (async () => {
+              getDb();
+              return db.instance.select({ id: workerJobs.id, status: workerJobs.status,
+                createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt })
+                .from(workerJobs)
+                .where(and(inArray(workerJobs.id, initialWorkerJobIds),
+                  eq(workerJobs.tenantId, scope.tenantId), eq(workerJobs.requestedByUserId, scope.actorId)));
+            })()
+          : [];
+        const initialWorkerJobById = new Map(initialWorkerJobs.map(job => [job.id, job] as const));
         const developmentRuns = await Promise.all(inWorkspaceRuns.map(async ({ run, record }) => {
             const metadata = record?.run.metadata ?? {};
             const admission = metadata.spec224GoalAdmission && typeof metadata.spec224GoalAdmission === "object"
@@ -808,6 +828,7 @@ export const spec226DevelopmentControlRouter = router({
                   requestedByUserId: scope.actorId,
                 }).catch(() => null)
               : null;
+            const initialWorkerJob = initialWorkerJobById.get(initialWorkerJobIdByRunId.get(run.runId) ?? "");
             const createdAt = record?.events?.find(event => event.type === "RUN_CREATED")?.occurredAt ?? null;
             let workPackagePrerequisites: Array<{ externalId: string; specIds: string[] }> | null = run.workPackagePrerequisites;
             if (workPackagePrerequisites === null && run.runnerId && run.specSetRevision && run.workPackageId) {
@@ -855,7 +876,6 @@ export const spec226DevelopmentControlRouter = router({
               specSources: run.specSources,
               specFileNames: run.specSources.map(source => source.fileName),
               createdAt,
-              workerJobCreatedAt: run.workerJobCreatedAt,
               provider: typeof grant.provider === "string" ? grant.provider : null,
               modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
               economicsMode,
@@ -863,6 +883,19 @@ export const spec226DevelopmentControlRouter = router({
               budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
               workerJobStatus: workerJob?.status ?? null,
+              workerJobCreatedAt: workerJob?.createdAt ?? null,
+              workerJobStartedAt: workerJob?.startedAt ?? null,
+              workerJobIsInitial: Boolean(workerJobId && workerJobId === initialWorkerJobIdByRunId.get(run.runId)),
+              initialWorkerJobStatus: initialWorkerJob ? canonicalizeStoredStatus(initialWorkerJob.status) : null,
+              initialWorkerJobCreatedAt: initialWorkerJob?.createdAt?.toISOString() ?? null,
+              initialWorkerJobStartedAt: initialWorkerJob?.startedAt?.toISOString() ?? null,
+              workerJobCanCancelAsUnclaimed: Boolean(workerJob
+                && ["pending", "queued", "retry_scheduled"].includes(workerJob.status)
+                && !workerJob.workerAssigned
+                && !workerJob.startedAt
+                && !workerJob.lease.active
+                && !workerJob.lease.runnerId
+                && !workerJob.lease.assignmentEvidence),
               workerJobAttempt: workerJob?.attempt ?? null,
               workerJobErrorCode: workerJob?.errorCode && /^[A-Z][A-Z0-9_]{1,100}$/.test(workerJob.errorCode)
                 ? workerJob.errorCode : null,
@@ -2104,6 +2137,104 @@ export const spec226DevelopmentControlRouter = router({
         auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
           traceId, tenantId: scope.tenantId, userId: scope.actorId,
           metadata: { runId: input.runId, action: "resume_existing_run", accepted: false,
+            errorCode: errorCode(error) },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
+  cancelUnclaimedLegacyPlatformRun: protectedProcedure
+    .input(z.object({ conversationId: z.number().int().positive(), runId: runIdSchema }).strict())
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({
+          ...scope, conversationId: input.conversationId,
+        });
+        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        if (binding.workspace.scope !== "PLATFORM_ENGINEERING" || ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_ADMIN_REQUIRED" });
+        }
+        const record = await developmentRunService.get({ ...scope, runId: input.runId });
+        if (record.run.workspaceId !== binding.workspace.workspaceId) throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
+        const grant = record.run.metadata?.spec224GoalGrantPayload;
+        const economicsMode = grant && typeof grant === "object"
+          ? (grant as Record<string, unknown>).economicsMode
+          : undefined;
+        if (economicsMode === "provider_managed") throw new Error("LEGACY_PLATFORM_RUN_REQUIRED");
+        if (record.run.state === "COMPLETED") {
+          return { canceled: false, alreadyCancelled: false, jobId: record.run.workerJobId ?? null,
+            ownerAction: "Run นี้เสร็จสมบูรณ์แล้ว ไม่มีงานเดิมให้ทำต่อ" };
+        }
+        if (record.run.goalId) {
+          const admission = record.run.metadata?.spec224GoalAdmission;
+          const approvalRef = admission && typeof admission === "object" && !Array.isArray(admission)
+            ? (admission as Record<string, unknown>).approvalRef
+            : undefined;
+          const approval = await readSpec224GoalGrantStatus({
+            ...scope,
+            goalId: record.run.goalId,
+            ...(typeof approvalRef === "string" ? { approvalRef } : {}),
+          }).catch(() => null);
+          if (approval?.status === "pending") {
+            return { canceled: false, alreadyCancelled: false, jobId: record.run.workerJobId ?? null,
+              ownerAction: "Run นี้ยังรออนุมัติ Goal อยู่ จึงยังยกเลิกหรือสร้างงานทดแทนไม่ได้" };
+          }
+        }
+        const jobId = record.run.workerJobId;
+        if (!jobId) throw new Error("RUN_JOB_STATUS_UNAVAILABLE");
+
+        const controlPlane = createJobControlPlane();
+        const current = await controlPlane.getStatus(jobId, {
+          tenantId: scope.tenantId,
+          requestedByUserId: scope.actorId,
+        });
+        if (!current) throw new Error("RUN_JOB_STATUS_UNAVAILABLE");
+        if (current.status === "cancelled") return { canceled: true, alreadyCancelled: true, jobId, ownerAction: null };
+        if (!["pending", "queued", "retry_scheduled"].includes(current.status)
+          || current.workerAssigned || current.startedAt || current.lease.active || current.lease.runnerId
+          || current.lease.assignmentEvidence) {
+          return {
+            canceled: false,
+            alreadyCancelled: false,
+            jobId,
+            workerJobStatus: current.status,
+            ownerAction: "Worker เริ่มรับงานแล้ว จึงยังยกเลิกเพื่อสร้าง Run ซ้ำอย่างปลอดภัยไม่ได้ ให้ตรวจหรือยกเลิกงานจาก Worker Jobs ก่อน",
+          };
+        }
+
+        getDb();
+        await db.instance.transaction(query => cancelQueuedJobInTransaction({
+          query,
+          jobId,
+          reason: "replaced_legacy_platform_budget_run",
+          actionId: `spec224-legacy-restart:${input.runId}:${jobId}`,
+          actorId: scope.actorId,
+          scope: { tenantId: scope.tenantId, requestedByUserId: scope.actorId, authorizationScope: "spec226-development-control" },
+          requireUnclaimed: true,
+        }));
+        const confirmed = await controlPlane.getStatus(jobId, {
+          tenantId: scope.tenantId,
+          requestedByUserId: scope.actorId,
+        });
+        const canceled = confirmed?.status === "cancelled";
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
+          traceId, tenantId: scope.tenantId, userId: scope.actorId,
+          metadata: { runId: input.runId, jobId, action: "cancel_unclaimed_legacy_platform_run", accepted: canceled },
+        });
+        return canceled
+          ? { canceled: true, alreadyCancelled: false, jobId, ownerAction: null }
+          : { canceled: false, alreadyCancelled: false, jobId, workerJobStatus: confirmed?.status ?? "unknown",
+              ownerAction: "สถานะงานเปลี่ยนระหว่างยกเลิก ให้รีเฟรชและตรวจ Worker Jobs ก่อนเริ่ม Run ใหม่" };
+      } catch (error) {
+        if (errorCode(error) === "ACTIVE_JOB_BLOCKED") {
+          return { canceled: false, alreadyCancelled: false, jobId: null,
+            ownerAction: "Worker เริ่มรับงานแล้ว จึงยังยกเลิกเพื่อสร้าง Run ซ้ำอย่างปลอดภัยไม่ได้ ให้ตรวจหรือยกเลิกงานจาก Worker Jobs ก่อน" };
+        }
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
+          traceId, tenantId: scope.tenantId, userId: scope.actorId,
+          metadata: { runId: input.runId, action: "cancel_unclaimed_legacy_platform_run", accepted: false,
             errorCode: errorCode(error) },
         });
         return asTrpcError(error);

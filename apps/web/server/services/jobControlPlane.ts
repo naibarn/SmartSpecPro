@@ -113,6 +113,9 @@ export type TxRepo = {
     id: string;
     leaseGeneration: number;
     runnerId: string | null;
+    leaseTokenHash?: string | null;
+    leaseExpiresAt?: Date | null;
+    startedAt?: Date | null;
   } | null>;
   assertRunnerAuthorizationBinding?(input: {
     tenantId: string;
@@ -894,6 +897,9 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                     id: workerJobAttempts.id,
                     leaseGeneration: workerJobAttempts.leaseGeneration,
                     runnerId: workerJobAttempts.runnerId,
+                    leaseTokenHash: workerJobAttempts.leaseTokenHash,
+                    leaseExpiresAt: workerJobAttempts.leaseExpiresAt,
+                    startedAt: workerJobAttempts.startedAt,
                   })
                   .from(workerJobAttempts)
                   .where(
@@ -1646,6 +1652,7 @@ export async function cancelQueuedJobInTransaction(input: {
   actionId: string;
   actorId?: number;
   scope?: JobMutationScope;
+  requireUnclaimed?: boolean;
 }): Promise<"cancelled" | "ignored"> {
   validateActionId(input.actionId);
   const safeReason = sanitizeJobErrorMessage(
@@ -1663,6 +1670,22 @@ export async function cancelQueuedJobInTransaction(input: {
   if (!job)
     throw new JobControlPlaneError("JOB_NOT_FOUND", "Job was not found");
   if (job.status === "cancelled") return "ignored";
+  if (input.requireUnclaimed) {
+    const [attempt] = await input.query
+      .select({ runnerId: workerJobAttempts.runnerId, leaseTokenHash: workerJobAttempts.leaseTokenHash,
+        leaseExpiresAt: workerJobAttempts.leaseExpiresAt, startedAt: workerJobAttempts.startedAt })
+      .from(workerJobAttempts)
+      .where(and(eq(workerJobAttempts.workerJobId, job.id), eq(workerJobAttempts.attempt, job.attempt)))
+      .for("update")
+      .limit(1);
+    if (job.workerId || job.leaseOwnerToken || job.leaseExpiresAt || job.startedAt
+      || attempt?.runnerId || attempt?.leaseTokenHash || attempt?.leaseExpiresAt || attempt?.startedAt) {
+      throw new JobControlPlaneError(
+        "ACTIVE_JOB_BLOCKED",
+        "Worker assignment or execution evidence prevents queued-job recovery"
+      );
+    }
+  }
   if (["succeeded", "failed", "expired"].includes(job.status)) {
     throw new JobControlPlaneError(
       "JOB_STATE_CONFLICT",
@@ -2915,10 +2938,15 @@ export function createJobControlPlane(
           compatibilityStatus: compatibilityStatus(job.status),
           attempt: job.attempt,
           maxAttempts: job.maxAttempts,
+          createdAt: job.createdAt?.toISOString() ?? null,
+          startedAt: job.startedAt?.toISOString() ?? null,
+          workerAssigned: Boolean(job.workerId),
           nextRetryAt: job.nextRetryAt?.toISOString() ?? null,
           lease: {
             active: hasLease,
             stale,
+            assignmentEvidence: Boolean(attemptDetails?.runnerId || attemptDetails?.leaseTokenHash
+              || attemptDetails?.leaseExpiresAt || attemptDetails?.startedAt),
             heartbeatAt: job.heartbeatAt?.toISOString() ?? null,
             expiresAt: job.leaseExpiresAt?.toISOString() ?? null,
             fencingVersion: job.fencingVersion,
