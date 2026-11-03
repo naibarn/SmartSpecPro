@@ -10,6 +10,7 @@ import {
   ListChecks,
   MessageSquareText,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,7 @@ const TERMINAL = new Set([
   "succeeded",
   "failed",
   "failed_terminal",
+  "expired",
   "cancelled",
   "canceled",
 ]);
@@ -55,6 +57,17 @@ const LIFECYCLE = ["PLAN", "IMPLEMENT", "REVIEW", "UAT", "BUGS", "COMPLETE"];
 
 function label(value: string | null | undefined, fallback = "ยังไม่มีข้อมูล") {
   return value ? value.replaceAll("_", " ") : fallback;
+}
+
+function formatJobCreatedAt(value: string | Date | null | undefined): string {
+  if (!value) return "ไม่พบเวลาสร้างงาน";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "ไม่พบเวลาสร้างงาน";
+  return new Intl.DateTimeFormat("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Bangkok",
+  }).format(date);
 }
 
 function goalTitle(goal: any): string {
@@ -111,10 +124,10 @@ export function projectBinding(run: any): string | null {
     : null;
 }
 
-export function findGoalWorkerJob(
+export function findGoalWorkerJob<T extends { id: string }>(
   goal: { workerJobId?: string | null } | null | undefined,
-  jobs: Array<{ id: string }>,
-) {
+  jobs: T[],
+): T | null {
   if (!goal?.workerJobId) return null;
   return jobs.find(job => job.id === goal.workerJobId) ?? null;
 }
@@ -276,6 +289,28 @@ export function ProjectExecutionWorkspace({
     selectedGoal,
     [...jobs, ...(linkedGoalJobQuery.data?.items ?? [])],
   );
+  const utils = trpc.useUtils();
+  const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.workerJobs.observability.invalidate(),
+        utils.spec226DevelopmentControl.list.invalidate(),
+      ]);
+      if (result.dispatchStatus === "ENQUEUED") {
+        toast.success("ส่ง Run เดิมเข้าคิวแล้ว");
+      } else if (result.dispatchStatus === "PENDING_AUTHORIZATION") {
+        toast.info("Run เดิมยังรอการอนุมัติสิทธิ์ก่อนเริ่มงาน");
+      } else {
+        const authorization = result.authorization && typeof result.authorization === "object"
+          ? result.authorization as Record<string, unknown>
+          : {};
+        toast.error(typeof authorization.ownerAction === "string"
+          ? authorization.ownerAction
+          : "ยังส่ง Run เดิมต่อไม่ได้ โปรดตรวจสถานะใน Mission Control");
+      }
+    },
+    onError: () => toast.error("ส่ง Run เดิมต่อไม่สำเร็จ โปรดลองตรวจสถานะใน Mission Control"),
+  });
 
   const activeCount = selectedJobs.filter(job => ACTIVE.has(job.status)).length;
   const waitingCount = selectedJobs.filter(
@@ -547,6 +582,26 @@ export function ProjectExecutionWorkspace({
                         ขั้นตอนถัดไป:{" "}
                         {nextActionLabel(selectedGoal.nextSafeAction)}
                       </p>
+                      {selectedGoalJob?.createdAt ? (
+                        <p className="text-sm text-muted-foreground">
+                          Worker Job สร้างเมื่อ: {formatJobCreatedAt(selectedGoalJob.createdAt)} (เวลาไทย)
+                        </p>
+                      ) : selectedGoal.workerJobId ? (
+                        <p className="text-sm text-muted-foreground">Worker Job สร้างเมื่อ: ไม่พบเวลาสร้างงาน</p>
+                      ) : null}
+                      {selectedGoal.workerJobId && selectedGoal.runId && selectedGoalJob?.conversationId && !TERMINAL.has(selectedGoalJob.status) ? (
+                        <Button
+                          type="button"
+                          variant="default"
+                          disabled={resumeRunMutation.isPending}
+                          onClick={() => resumeRunMutation.mutate({
+                            conversationId: selectedGoalJob.conversationId!,
+                            runId: selectedGoal.runId!,
+                          })}
+                        >
+                          {resumeRunMutation.isPending ? "กำลังตรวจสิทธิ์และส่ง Run เดิม…" : "ทำงานเดิมต่อ"}
+                        </Button>
+                      ) : null}
                       {presentationMode === "developer" ? (
                         <section
                           className="rounded-md border bg-muted/30 p-3 text-sm"
@@ -717,6 +772,11 @@ export function ProjectExecutionWorkspace({
                             Goal · {label(goal.state)} ·{" "}
                             {nextActionLabel(goal.nextSafeAction)}
                           </p>
+                          {findGoalWorkerJob(goal, jobs)?.createdAt ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Job สร้างเมื่อ: {formatJobCreatedAt(findGoalWorkerJob(goal, jobs)?.createdAt)} (เวลาไทย)
+                            </p>
+                          ) : null}
                         </section>
                         <Button
                           variant="outline"
@@ -756,6 +816,9 @@ export function ProjectExecutionWorkspace({
                               สถานะ {label(job.status)} · {group
                                 ? `${group.completedSteps}/${group.totalSteps} งานย่อยเสร็จ · ${group.progressPercent == null ? "ความคืบหน้าไม่ระบุ" : `${group.progressPercent}%`}`
                                 : "ไม่มี Task group ที่ยืนยันได้"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              สร้างเมื่อ: {formatJobCreatedAt(job.createdAt)} (เวลาไทย)
                             </p>
                             {job.operatorAttention.required ? (
                               <p className="mt-1 flex items-center gap-1 text-sm text-accent-foreground">
