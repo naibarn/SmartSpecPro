@@ -45,8 +45,18 @@ export function VerticalDramaShotSpeakerBindingEditor({
   const [draft, setDraft] = useState(bindings);
 
   useEffect(() => {
-    setDraft(bindings);
-  }, [bindings]);
+    setDraft(bindings.map(binding =>
+      binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId
+        ? {
+            ...binding,
+            visualCue: "",
+            personId: undefined,
+            boundingBox: undefined,
+            sourceMediaAssetId: undefined,
+          }
+        : binding
+    ));
+  }, [bindings, sourceMediaAssetId]);
 
   const setCue = (speakerLabel: string, visualCue: string) => {
     setDraft(current => {
@@ -175,7 +185,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
             ? "Detect people from the approved Start Frame, then select the person for each dialogue speaker. Review the boxes before saving. This does not create permanent characters or phone callers."
             : "ให้ AI เสนอกรอบคนจาก Start frame ที่อนุมัติ แล้วเลือกคนให้ตรงกับผู้พูดแต่ละคน โปรดตรวจกรอบก่อนบันทึก ข้อมูลนี้ไม่เพิ่มตัวละครถาวรและไม่ใช่ Caller โทรศัพท์"}
         </p>
-        {draft.some(binding => binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId) ? (
+        {bindings.some(binding => binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId) ? (
           <p role="status" className="text-sm text-amber-700">{isEnglish ? "The Start Frame changed. Re-run detection and map speakers to people in the current frame." : "ภาพ Start frame เปลี่ยนแล้ว ให้ตรวจจับและจับคู่คนจากภาพปัจจุบันใหม่"}</p>
         ) : null}
         {onDetectPeople ? (
