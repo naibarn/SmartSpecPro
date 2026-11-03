@@ -641,8 +641,21 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const hasUnfinishedDevelopmentRun = (workspaceQuery.data?.developmentRuns ?? []).some(run =>
     !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
   );
+  const developmentRuns = workspaceQuery.data?.developmentRuns ?? [];
+  // The workspace API orders runs newest-first; retain the first run for each SPEC/WorkPackage pair.
+  const seenDevelopmentWorkUnits = new Set<string>();
+  const latestDevelopmentRuns = developmentRuns.filter(run => {
+    const workPackageKey = run.workPackageExternalId ?? run.workPackageId;
+    const workUnitKey = run.specId && workPackageKey
+      ? JSON.stringify([run.specId, workPackageKey])
+      : `run:${run.runId}`;
+    if (seenDevelopmentWorkUnits.has(workUnitKey)) return false;
+    seenDevelopmentWorkUnits.add(workUnitKey);
+    return true;
+  });
+  const hiddenDevelopmentRunCount = developmentRuns.length - latestDevelopmentRuns.length;
   const hasLegacyBudgetedPlatformRun = platformWorkspaceSelected
-    && (workspaceQuery.data?.developmentRuns ?? []).some(run => run.economicsMode !== "provider_managed");
+    && developmentRuns.some(run => run.economicsMode !== "provider_managed");
   const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
     candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
       && candidate.deploymentTargetId === "modular-debian-dev",
@@ -1912,13 +1925,16 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               </ul>
             </section>
           ) : null}
-          {workspaceQuery.data?.developmentRuns?.length ? (
+          {latestDevelopmentRuns.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
-              <p className="text-xs font-medium">งานล่าสุดใน workspace นี้</p>
+              <p className="text-xs font-medium">Run ล่าสุดของแต่ละ SPEC/WorkPackage</p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                ประวัติ Run ก่อนหน้าดูได้ใน Task Control{hiddenDevelopmentRunCount > 0 ? ` · ซ่อนรายการซ้ำ ${hiddenDevelopmentRunCount} รายการ` : ""}
+              </p>
               {continuationNotice ? <p className="mt-1 rounded border border-[var(--color-border)] p-2 text-xs" role="status">{continuationNotice}</p> : null}
               {requestKind === "development" && requiresTenantLedger && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
               <ul className="mt-2 list-none space-y-2 p-0 text-xs">
-                {workspaceQuery.data.developmentRuns.map((run, index) => {
+                {latestDevelopmentRuns.map((run, index) => {
                   const specLabel = run.specId
                     ? `${run.specId}${run.specTitle ? ` — ${run.specTitle}` : ""}`
                     : run.workPackageExternalId ?? "งานพัฒนาที่ไม่ได้บันทึก Spec ID";
@@ -1934,7 +1950,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
                       <p className="font-medium">{specLabel}</p>
                       <p className="mt-1 text-[var(--color-text-secondary)]">
-                        {index === 0 ? "รายการล่าสุด" : `รายการก่อนหน้า #${index + 1}`} · {formatDevelopmentRunDate(run.createdAt)}
+                        Run ล่าสุด · {formatDevelopmentRunDate(run.createdAt)}
                         {run.workPackageExternalId ? ` · WorkPackage ${run.workPackageExternalId}` : ""}
                         {run.specSetRevision ? ` · Spec Set r${run.specSetRevision}` : ""}
                       </p>
