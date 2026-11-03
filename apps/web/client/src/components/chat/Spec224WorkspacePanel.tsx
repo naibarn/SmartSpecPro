@@ -641,6 +641,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const hasUnfinishedDevelopmentRun = (workspaceQuery.data?.developmentRuns ?? []).some(run =>
     !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
   );
+  const hasLegacyBudgetedPlatformRun = platformWorkspaceSelected
+    && (workspaceQuery.data?.developmentRuns ?? []).some(run => run.economicsMode !== "provider_managed");
   const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
     candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
       && candidate.deploymentTargetId === "modular-debian-dev",
