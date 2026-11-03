@@ -41,6 +41,8 @@ export type Spec226DevelopmentRunView = {
   requestedSpec: { specId: string; title: string } | null;
   specId: string | null;
   specSources: Array<{ specId: string; fileName: string }>;
+  workPackagePrerequisites: Array<{ externalId: string; specIds: string[] }> | null;
+  workerJobCreatedAt: string | null;
   workspaceId: string;
   workPackageId: string | null;
   workPackageExternalId: string | null;
@@ -69,7 +71,7 @@ export type Spec226DevelopmentRunList = {
     scope: Spec226DevelopmentRunScope;
     limit: number;
     workspaceId?: string;
-  }): Promise<Array<DevelopmentRun & { projectionVersion?: unknown }>>;
+  }): Promise<Array<DevelopmentRun & { projectionVersion?: unknown; workerJobCreatedAt?: string | null }>>;
 };
 
 export type Spec226DevelopmentControlBridge = ReturnType<
@@ -97,6 +99,7 @@ function supportsCancel(state: DevelopmentRunState): boolean {
 function toView(input: {
   run: DevelopmentRun;
   revision: number;
+  workerJobCreatedAt?: string | null;
   closure?: Spec226DevelopmentRunView["closure"];
 }): Spec226DevelopmentRunView {
   const factory = input.run.metadata?.[MINI_APP_FACTORY_STATE_KEY];
@@ -132,6 +135,17 @@ function toView(input: {
   const requestedSpec = requestedSpecId && requestedSpecTitle && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(requestedSpecId)
     ? { specId: requestedSpecId, title: requestedSpecTitle }
     : null;
+  const workPackagePrerequisites = Array.isArray(workspaceRecord?.workPackagePrerequisites)
+    ? workspaceRecord.workPackagePrerequisites.flatMap(prerequisite => {
+      if (!prerequisite || typeof prerequisite !== "object" || Array.isArray(prerequisite)) return [];
+      const record = prerequisite as Record<string, unknown>;
+      if (typeof record.externalId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/.test(record.externalId)) return [];
+      const specIds = Array.isArray(record.specIds)
+        ? record.specIds.filter((value): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(value)).slice(0, 64)
+        : [];
+      return [{ externalId: record.externalId, specIds }];
+    })
+    : null;
   const workspaceProjectId = workspaceMetadata && typeof workspaceMetadata === "object" && !Array.isArray(workspaceMetadata)
     ? (workspaceMetadata as Record<string, unknown>).projectId
     : null;
@@ -150,6 +164,8 @@ function toView(input: {
       ? metadata.specId
       : specSources.length === 1 ? specSources[0]!.specId : null,
     specSources,
+    workPackagePrerequisites,
+    workerJobCreatedAt: input.workerJobCreatedAt ?? null,
     workspaceId: input.run.workspaceId,
     workPackageId: input.run.workPackageId ?? null,
     workPackageExternalId: (() => {
@@ -186,8 +202,10 @@ function toView(input: {
   };
 }
 
+type ListedDevelopmentRun = DevelopmentRun & { projectionVersion?: unknown; workerJobCreatedAt?: string | null };
+
 function projectionRevision(
-  run: DevelopmentRun & { projectionVersion?: unknown }
+  run: ListedDevelopmentRun
 ): number {
   const revision = Number(run.projectionVersion ?? 0);
   return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
@@ -205,12 +223,12 @@ function databaseRunList(): Spec226DevelopmentRunList {
       ];
       if (workspaceId) predicates.push(sql`${workerJobs.progressJson}->'spec224'->>'workspaceId' = ${workspaceId}`);
       const rows = await db
-        .select({ progressJson: workerJobs.progressJson })
+        .select({ progressJson: workerJobs.progressJson, createdAt: workerJobs.createdAt })
         .from(workerJobs)
         .where(and(...predicates))
         .orderBy(desc(workerJobs.createdAt))
         .limit(limit);
-      return rows.flatMap((row: { progressJson: unknown }) => {
+      return rows.flatMap((row: { progressJson: unknown; createdAt: Date | null }) => {
         const progress = row.progressJson;
         const projection = progress && typeof progress === "object" && !Array.isArray(progress)
           ? (progress as Record<string, unknown>).spec224
@@ -232,7 +250,7 @@ function databaseRunList(): Spec226DevelopmentRunList {
         ) {
           return [];
         }
-        return [run];
+        return [{ ...run, workerJobCreatedAt: row.createdAt?.toISOString() ?? null }];
       });
     },
   };
@@ -309,15 +327,24 @@ export function createSpec226DevelopmentControlBridge(input: {
       // snapshots here so callers see one durable DevelopmentRun, preferring
       // the newest projection revision. The database list is newest-job-first,
       // so its first snapshot also wins when legacy projections share a revision.
-      const latestByRunId = new Map<string, (typeof ownedRuns)[number]>();
+      const latestByRunId = new Map<string, ListedDevelopmentRun>();
       for (const run of ownedRuns) {
         const existing = latestByRunId.get(run.runId);
-        if (!existing || projectionRevision(run) > projectionRevision(existing)) {
+        if (!existing) {
           latestByRunId.set(run.runId, run);
+          continue;
         }
+        const preferred = projectionRevision(run) > projectionRevision(existing) ? run : existing;
+        const newestJobCreatedAt = [run.workerJobCreatedAt, existing.workerJobCreatedAt]
+          .filter((value): value is string => typeof value === "string" && Number.isFinite(Date.parse(value)))
+          .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+        latestByRunId.set(run.runId, { ...preferred, workerJobCreatedAt: newestJobCreatedAt });
       }
+      const latestRuns = [...latestByRunId.values()].sort((left, right) =>
+        Date.parse(right.workerJobCreatedAt ?? "") - Date.parse(left.workerJobCreatedAt ?? "")
+      );
       return Promise.all(
-        [...latestByRunId.values()].map(async run => {
+        latestRuns.map(async run => {
           let closure: RequirementClosureGraph | null = null;
           try {
             closure = (
@@ -337,6 +364,7 @@ export function createSpec226DevelopmentControlBridge(input: {
           return toView({
             run,
             revision: projectionRevision(run),
+            workerJobCreatedAt: run.workerJobCreatedAt,
             closure,
           });
         })

@@ -78,10 +78,12 @@ function goalTitle(goal: any): string {
 }
 
 export function specSourceLabel(source: { specId: string; fileName: string }): string {
-  const specLabel = /^\d+(?:-|$)/.test(source.specId)
-    ? `SPEC-${source.specId.match(/^\d+/)?.[0]}`
-    : source.specId;
-  return `${specLabel} · ${source.fileName || "spec.md"}`;
+  return `${canonicalSpecIdLabel(source.specId)} · ${source.fileName || "spec.md"}`;
+}
+
+function canonicalSpecIdLabel(specId: string): string {
+  const match = /^(?:SPEC-)?(\d+)(?:-|$)/i.exec(specId);
+  return match ? `SPEC-${match[1]}` : specId;
 }
 
 export function requestedSpecDisplayLabel(requestedSpec: { specId: string; title: string }): string {
@@ -243,19 +245,25 @@ export function ProjectExecutionWorkspace({
       group.goals.push(goal);
       result.set(id, group);
     }
+    for (const group of result.values()) {
+      group.jobs.sort((left, right) => Date.parse(right.createdAt ?? "") - Date.parse(left.createdAt ?? ""));
+      group.goals.sort((left, right) => {
+        const leftCreatedAt = left.workerJobCreatedAt ?? jobs.find(job => job.id === left.workerJobId)?.createdAt ?? "";
+        const rightCreatedAt = right.workerJobCreatedAt ?? jobs.find(job => job.id === right.workerJobId)?.createdAt ?? "";
+        return Date.parse(rightCreatedAt) - Date.parse(leftCreatedAt);
+      });
+    }
     return [...result.entries()].sort((a, b) => {
       if (a[0] === "unassigned") return 1;
       if (b[0] === "unassigned") return -1;
       if (a[0] === "unmapped-goals") return 1;
       if (b[0] === "unmapped-goals") return -1;
-      const latest = (items: typeof jobs) =>
-        Math.max(
-          0,
-          ...items.map(
-            item => Date.parse(item.updatedAt ?? item.createdAt ?? "") || 0
-          )
+      const latestCreatedAt = (project: { jobs: typeof jobs; goals: typeof goals }) =>
+        Math.max(0,
+          ...project.jobs.map(item => Date.parse(item.createdAt ?? "") || 0),
+          ...project.goals.map(goal => Date.parse(goal.workerJobCreatedAt ?? jobs.find(job => job.id === goal.workerJobId)?.createdAt ?? "") || 0),
         );
-      return latest(b[1].jobs) - latest(a[1].jobs);
+      return latestCreatedAt(b[1]) - latestCreatedAt(a[1]);
     });
   }, [goals, jobs, projectNames]);
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
@@ -494,13 +502,13 @@ export function ProjectExecutionWorkspace({
                           ) : null}
                         </p>
                         {selectedGoal.requestedSpec ? (
-                          <p><span className="text-muted-foreground">ผู้ใช้เลือก SPEC:</span> {requestedSpecDisplayLabel(selectedGoal.requestedSpec)}</p>
+                          <p><span className="text-muted-foreground">คำสั่งจาก SPEC:</span> {requestedSpecDisplayLabel(selectedGoal.requestedSpec)}</p>
                         ) : hasUnrecordedRequestedSpec(selectedGoal) ? (
-                          <p className="text-muted-foreground">ไม่มีข้อมูล SPEC ที่ผู้ใช้เลือกบันทึกไว้ (รายการเดิม)</p>
+                          <p className="text-muted-foreground">ไม่พบ SPEC ของคำสั่งในประวัติเดิม</p>
                         ) : null}
                         {selectedGoal.specSources?.length ? (
                           <p>
-                            <span className="text-muted-foreground">WorkPackage อ้างอิง:</span>{" "}
+                            <span className="text-muted-foreground">แหล่ง Requirement ของ WorkPackage:</span>{" "}
                             {selectedGoal.specSources.map((source: { specId: string; fileName: string }, index: number) => (
                               <span key={`${source.specId}:${source.fileName}`}>
                                 {index ? ", " : ""}{specSourceLabel(source)}
@@ -512,6 +520,11 @@ export function ProjectExecutionWorkspace({
                         ) : (
                           <p className="text-muted-foreground">Run นี้ไม่มีข้อมูล SPEC ที่บันทึกไว้</p>
                         )}
+                        {selectedGoal.workPackagePrerequisites?.length ? (
+                          <p><span className="text-muted-foreground">WorkPackage ที่ต้องทำก่อน:</span> {selectedGoal.workPackagePrerequisites.map((item: { externalId: string; specIds: string[] }) => `${item.externalId}${item.specIds.length ? ` (${item.specIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")}</p>
+                        ) : selectedGoal.workPackagePrerequisites ? (
+                          <p><span className="text-muted-foreground">WorkPackage ที่ต้องทำก่อน:</span> ไม่มี dependency ที่ประกาศไว้</p>
+                        ) : null}
                       </section>
                       <section
                         className="grid grid-cols-2 gap-2 sm:grid-cols-3"
@@ -582,9 +595,9 @@ export function ProjectExecutionWorkspace({
                         ขั้นตอนถัดไป:{" "}
                         {nextActionLabel(selectedGoal.nextSafeAction)}
                       </p>
-                      {selectedGoalJob?.createdAt ? (
+                      {selectedGoalJob?.createdAt || selectedGoal.workerJobCreatedAt ? (
                         <p className="text-sm text-muted-foreground">
-                          Worker Job สร้างเมื่อ: {formatJobCreatedAt(selectedGoalJob.createdAt)} (เวลาไทย)
+                          Worker Job ล่าสุดสร้างเมื่อ: {formatJobCreatedAt(selectedGoal.workerJobCreatedAt ?? selectedGoalJob?.createdAt)} (เวลาไทย)
                         </p>
                       ) : selectedGoal.workerJobId ? (
                         <p className="text-sm text-muted-foreground">Worker Job สร้างเมื่อ: ไม่พบเวลาสร้างงาน</p>
@@ -743,15 +756,15 @@ export function ProjectExecutionWorkspace({
                           </p>
                           {goal.requestedSpec ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              <span className="font-medium">ผู้ใช้เลือก SPEC:</span>{" "}
+                              <span className="font-medium">คำสั่งจาก SPEC:</span>{" "}
                               {requestedSpecDisplayLabel(goal.requestedSpec)}
                             </p>
                           ) : hasUnrecordedRequestedSpec(goal) ? (
-                            <p className="mt-1 text-xs text-muted-foreground">ไม่มีข้อมูล SPEC ที่ผู้ใช้เลือกบันทึกไว้ (รายการเดิม)</p>
+                            <p className="mt-1 text-xs text-muted-foreground">ไม่พบ SPEC ของคำสั่งในประวัติเดิม</p>
                           ) : null}
                           {goal.specSources?.length ? (
                             <p className="mt-1 break-all text-xs text-muted-foreground">
-                              <span className="font-medium">WorkPackage อ้างอิง:</span>{" "}
+                              <span className="font-medium">แหล่ง Requirement ของ WorkPackage:</span>{" "}
                               {goal.specSources
                                 .map((source: { specId: string; fileName: string }) =>
                                   specSourceLabel(source)
@@ -768,13 +781,21 @@ export function ProjectExecutionWorkspace({
                               ไม่มีข้อมูล SPEC ต้นทาง
                             </p>
                           )}
+                          {goal.workPackagePrerequisites?.length ? (
+                            <p className="mt-1 break-all text-xs text-muted-foreground">
+                              <span className="font-medium">ต้องทำ WorkPackage ก่อน:</span>{" "}
+                              {goal.workPackagePrerequisites.map((item: { externalId: string; specIds: string[] }) => `${item.externalId}${item.specIds.length ? ` (${item.specIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")}
+                            </p>
+                          ) : goal.workPackagePrerequisites ? (
+                            <p className="mt-1 text-xs text-muted-foreground"><span className="font-medium">ต้องทำ WorkPackage ก่อน:</span> ไม่มี dependency ที่ประกาศไว้</p>
+                          ) : null}
                           <p className="mt-1 text-sm text-muted-foreground">
                             Goal · {label(goal.state)} ·{" "}
                             {nextActionLabel(goal.nextSafeAction)}
                           </p>
-                          {findGoalWorkerJob(goal, jobs)?.createdAt ? (
+                          {findGoalWorkerJob(goal, jobs)?.createdAt || goal.workerJobCreatedAt ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Job สร้างเมื่อ: {formatJobCreatedAt(findGoalWorkerJob(goal, jobs)?.createdAt)} (เวลาไทย)
+                              Worker Job ล่าสุดสร้างเมื่อ: {formatJobCreatedAt(goal.workerJobCreatedAt ?? findGoalWorkerJob(goal, jobs)?.createdAt)} (เวลาไทย)
                             </p>
                           ) : null}
                         </section>
@@ -909,18 +930,18 @@ export function ProjectExecutionWorkspace({
                   </section>
                   {selectedGoal.requestedSpec ? (
                     <section>
-                      <dt className="text-muted-foreground">SPEC ที่ผู้ใช้เลือก</dt>
+                      <dt className="text-muted-foreground">คำสั่งจาก SPEC</dt>
                       <dd>{requestedSpecDisplayLabel(selectedGoal.requestedSpec)}</dd>
                     </section>
                   ) : hasUnrecordedRequestedSpec(selectedGoal) ? (
                     <section>
-                      <dt className="text-muted-foreground">SPEC ที่ผู้ใช้เลือก</dt>
-                      <dd>ไม่มีข้อมูลบันทึกไว้ (รายการเดิม)</dd>
+                      <dt className="text-muted-foreground">คำสั่งจาก SPEC</dt>
+                      <dd>ไม่พบ SPEC ของคำสั่งในประวัติเดิม</dd>
                     </section>
                   ) : null}
                   {selectedGoal.specSources?.length ? (
                     <section>
-                      <dt className="text-muted-foreground">WorkPackage อ้างอิง</dt>
+                      <dt className="text-muted-foreground">แหล่ง Requirement ของ WorkPackage</dt>
                       <dd className="break-all">
                         {selectedGoal.specSources.map((source: { specId: string; fileName: string }) => specSourceLabel(source)).join(", ")}
                       </dd>
@@ -929,6 +950,14 @@ export function ProjectExecutionWorkspace({
                     <section>
                       <dt className="text-muted-foreground">SPEC ID ที่ Run บันทึกไว้</dt>
                       <dd>{selectedGoal.specId}</dd>
+                    </section>
+                  ) : null}
+                  {selectedGoal.workPackagePrerequisites ? (
+                    <section>
+                      <dt className="text-muted-foreground">WorkPackage ที่ต้องทำก่อน</dt>
+                      <dd className="break-all">{selectedGoal.workPackagePrerequisites.length
+                        ? selectedGoal.workPackagePrerequisites.map((item: { externalId: string; specIds: string[] }) => `${item.externalId}${item.specIds.length ? ` (${item.specIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")
+                        : "ไม่มี dependency ที่ประกาศไว้"}</dd>
                     </section>
                   ) : null}
                   <section>

@@ -235,6 +235,36 @@ function formatDevelopmentRunDate(value: string | null | undefined): string {
   return new Date(value).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
 }
 
+type WorkspaceWorkPackage = {
+  id: string;
+  externalId: string;
+  dependsOn?: string[];
+  sourceSpecIds?: string[];
+  prerequisitePlan?: Array<{ id: string; externalId: string; specIds: string[] }>;
+};
+
+function canonicalSpecIdLabel(specId: string): string {
+  const match = /^(?:SPEC-)?(\d+)(?:-|$)/i.exec(specId);
+  return match ? `SPEC-${match[1]}` : specId;
+}
+
+function nextPackageInRunOrder(input: {
+  target: WorkspaceWorkPackage | undefined;
+  workPackages: WorkspaceWorkPackage[];
+  completedPackageIds: Set<string>;
+}) {
+  if (!input.target) return { nextPrerequisite: null as WorkspaceWorkPackage | null, pendingPrerequisites: [] as WorkspaceWorkPackage[] };
+  const byId = new Map(input.workPackages.map(workPackage => [workPackage.id, workPackage]));
+  const pendingPrerequisites = (input.target.prerequisitePlan ?? [])
+    .filter(prerequisite => !input.completedPackageIds.has(prerequisite.id))
+    .map(prerequisite => byId.get(prerequisite.id))
+    .filter((workPackage): workPackage is WorkspaceWorkPackage => Boolean(workPackage));
+  const nextPrerequisite = pendingPrerequisites.find(workPackage =>
+    (workPackage.prerequisitePlan ?? []).every(prerequisite => input.completedPackageIds.has(prerequisite.id)),
+  ) ?? null;
+  return { nextPrerequisite, pendingPrerequisites };
+}
+
 function selectionKey(workspace: WorkspaceOption): string {
   return JSON.stringify([workspace.runnerId, workspace.workspaceId]);
 }
@@ -642,9 +672,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
   );
   const developmentRuns = workspaceQuery.data?.developmentRuns ?? [];
-  // The workspace API orders runs newest-first; retain the first run for each SPEC/WorkPackage pair.
+  const developmentRunsNewestFirst = [...developmentRuns].sort((left, right) => {
+    const leftTime = Date.parse(left.workerJobCreatedAt ?? left.createdAt ?? "");
+    const rightTime = Date.parse(right.workerJobCreatedAt ?? right.createdAt ?? "");
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
+  // Retain the newest Worker Job for each requested SPEC/WorkPackage pair.
   const seenDevelopmentWorkUnits = new Set<string>();
-  const latestDevelopmentRuns = developmentRuns.filter(run => {
+  const latestDevelopmentRuns = developmentRunsNewestFirst.filter(run => {
     const workPackageKey = run.workPackageExternalId ?? run.workPackageId;
     const workUnitKey = run.specId && workPackageKey
       ? JSON.stringify([run.specId, workPackageKey])
@@ -753,6 +788,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const canonicalHandoff = effectiveSpecSource === "catalog" ? featureSpecContextQuery.data?.handoff : undefined;
   const nextReadyWorkunit = canonicalHandoff?.status === "CURRENT" ? canonicalHandoff.nextReadyWorkunit : null;
   const isNextReadyPackage = (workPackage: { id: string; externalId: string }) => Boolean(nextReadyWorkunit && (workPackage.id === nextReadyWorkunit || workPackage.externalId === nextReadyWorkunit));
+  const preparedWorkPackages = (preparation?.workPackages ?? []) as WorkspaceWorkPackage[];
+  const completedPackageIds = new Set(developmentRuns
+    .filter(run => run.state === "COMPLETED" && run.specSetRevision === preparation?.planRevision && run.workPackageId)
+    .map(run => run.workPackageId!));
+  const selectedHandoffPackage = preparedWorkPackages.find(isNextReadyPackage);
+  const packageRunOrder = nextPackageInRunOrder({
+    target: selectedHandoffPackage,
+    workPackages: preparedWorkPackages,
+    completedPackageIds,
+  });
+  const isStartableForCurrentRequest = (workPackage: WorkspaceWorkPackage) =>
+    isNextReadyPackage(workPackage) || workPackage.id === packageRunOrder.nextPrerequisite?.id;
   const canCreateConversation = developmentInputMode === "prompt"
     ? Boolean(effectivePrompt)
     : (developmentInputMode !== "spec_prompt" || Boolean(effectivePrompt)) && (effectiveSpecSource === "catalog"
@@ -937,11 +984,19 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       }
       const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt, ...(requestKind === "development" ? { workspaceAccessMode } : {}) } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
       setPreparation(result);
-      const runnable = result.runnableWorkPackageIds.filter(id => {
-        const item = result.workPackages?.find(workPackage => workPackage.id === id);
-        return item && (effectiveSpecSource !== "catalog" || isNextReadyPackage(item));
-      });
-      const startablePackage = mode === "prompt" ? "prompt" : runnable.length === 1 ? runnable[0] : null;
+      const workPackages = (result.workPackages ?? []) as WorkspaceWorkPackage[];
+      const target = workPackages.find(isNextReadyPackage);
+      const completedForRevision = new Set(developmentRuns
+        .filter(run => run.state === "COMPLETED" && run.specSetRevision === result.planRevision && run.workPackageId)
+        .map(run => run.workPackageId!));
+      const order = nextPackageInRunOrder({ target, workPackages, completedPackageIds: completedForRevision });
+      const firstPackage = order.nextPrerequisite ?? target;
+      const startablePackage = mode === "prompt"
+        ? "prompt"
+        : firstPackage && result.runnableWorkPackageIds.includes(firstPackage.id)
+          && (effectiveSpecSource !== "catalog" || firstPackage.id === target?.id || firstPackage.id === order.nextPrerequisite?.id)
+          ? firstPackage.id
+          : null;
       if (startablePackage && (runnerReadiness?.ready ?? result.runnerReadiness.ready) && result.runnerReadiness.ready && catalogFresh && activeModel && supportedEffort && platformSourceIsSafe) {
         await startWorkPackage(startablePackage, nextConversationId, result, globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
       } else {
@@ -1927,7 +1982,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           ) : null}
           {latestDevelopmentRuns.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
-              <p className="text-xs font-medium">Run ล่าสุดของแต่ละ SPEC/WorkPackage</p>
+              <p className="text-xs font-medium">รายการล่าสุดของแต่ละ SPEC/WorkPackage · เรียงตามเวลาสร้าง Worker Job</p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 ประวัติ Run ก่อนหน้าดูได้ใน Task Control{hiddenDevelopmentRunCount > 0 ? ` · ซ่อนรายการซ้ำ ${hiddenDevelopmentRunCount} รายการ` : ""}
               </p>
@@ -1936,7 +1991,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <ul className="mt-2 list-none space-y-2 p-0 text-xs">
                 {latestDevelopmentRuns.map((run, index) => {
                   const specLabel = run.specId
-                    ? `${run.specId}${run.specTitle ? ` — ${run.specTitle}` : ""}`
+                    ? `${canonicalSpecIdLabel(run.specId)}${run.specTitle ? ` — ${run.specTitle}` : ""}`
                     : run.workPackageExternalId ?? "งานพัฒนาที่ไม่ได้บันทึก Spec ID";
                   const resumeLabel = `ทำงานต่อ ${run.specId ?? run.workPackageExternalId ?? `รายการ ${index + 1}`}`;
                   const legacyPlatformBudgetedRun = platformWorkspaceSelected && run.economicsMode !== "provider_managed";
@@ -1948,12 +2003,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     && run.goalApproval?.status !== "pending";
                   return (
                     <li key={run.runId} className="rounded-md border border-[var(--color-border)] p-3">
-                      <p className="font-medium">{specLabel}</p>
+                      <p className="font-medium">คำสั่งจาก {run.specId ? specLabel : "SPEC ที่ไม่ได้บันทึกไว้"}</p>
                       <p className="mt-1 text-[var(--color-text-secondary)]">
-                        Run ล่าสุด · {formatDevelopmentRunDate(run.createdAt)}
+                        Worker Job ล่าสุดสร้างเมื่อ {run.workerJobCreatedAt ? formatDevelopmentRunDate(run.workerJobCreatedAt) : "ไม่มีข้อมูลเวลา"} · Run สร้างเมื่อ {formatDevelopmentRunDate(run.createdAt)}
                         {run.workPackageExternalId ? ` · WorkPackage ${run.workPackageExternalId}` : ""}
                         {run.specSetRevision ? ` · Spec Set r${run.specSetRevision}` : ""}
                       </p>
+                      {run.specSources?.length ? <p className="mt-1">แหล่ง Requirement ของ WorkPackage: {run.specSources.map(source => `${canonicalSpecIdLabel(source.specId)} · ${source.fileName}`).join(", ")}</p> : null}
+                      {run.workPackagePrerequisites !== null ? (
+                        <p className="mt-1">WorkPackage ที่ต้องทำก่อน: {run.workPackagePrerequisites.length
+                          ? run.workPackagePrerequisites.map(prerequisite => `${prerequisite.externalId}${prerequisite.specIds.length ? ` (${prerequisite.specIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")
+                          : "ไม่มี dependency ที่ประกาศไว้"}</p>
+                      ) : null}
                       {run.specFileNames?.length ? <p className="mt-1">ไฟล์ Spec: {run.specFileNames.join(", ")}</p> : null}
                       <p className="mt-1">
                         Run: {developmentRunStateLabel(run.state)} · Worker: {developmentWorkerJobStatusLabel(run.workerJobStatus)}
@@ -2030,6 +2091,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {preparation ? (
             <section className="mt-3 rounded-md border border-[var(--color-border)] p-2" aria-live="polite">
               <p className="text-xs font-semibold">ผลการเตรียม{simpleMode ? "" : ` · plan r${preparation.planRevision}`}</p>
+              {effectiveSpecSource === "catalog" && selectedFeatureSpec ? <p className="mt-1 text-xs font-medium">คำสั่งจาก SPEC: {canonicalSpecIdLabel(selectedFeatureSpec)}{featureSpecs.find(spec => spec.id === selectedFeatureSpec)?.title ? ` — ${featureSpecs.find(spec => spec.id === selectedFeatureSpec)?.title}` : ""}</p> : null}
               <p className="mt-1 text-xs">ข้อกำหนด {preparation.requirementCount} · work packages ที่พร้อมเริ่ม {preparation.runnableWorkPackageIds.length}</p>
               {runnerReadiness ? (
                 <Text role="status" type="supporting">
@@ -2042,16 +2104,25 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ) : null}
               {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
               {effectiveSpecSource === "catalog" && canonicalHandoff?.status === "CURRENT" && preparation.runnableWorkPackageIds.length > 0 && !(preparation.workPackages ?? []).some(item => preparation.runnableWorkPackageIds.includes(item.id) && isNextReadyPackage(item)) ? <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" role="alert">handoff ระบุ next WorkUnit เป็น “{nextReadyWorkunit ?? "ยังไม่กำหนด"}” แต่ไม่มี runnable package ที่ตรงกัน จึงปิดการเริ่มงานเพื่อป้องกันการทำ WorkUnit เก่าซ้ำ โปรด reconcile handoff ผ่าน writer กลางหรือเตรียม package ที่ตรงกัน</p> : null}
+              {selectedHandoffPackage ? <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                {packageRunOrder.pendingPrerequisites.length
+                  ? `ลำดับที่ต้องทำ: ${packageRunOrder.pendingPrerequisites.map(item => `${item.externalId}${item.sourceSpecIds?.length ? ` (${item.sourceSpecIds.map(canonicalSpecIdLabel).join(", ")})` : ""}`).join(" → ")} → ${selectedHandoffPackage.externalId}`
+                  : selectedHandoffPackage.prerequisitePlan?.length
+                    ? `ลำดับที่ต้องทำ: ${selectedHandoffPackage.externalId} · งานที่ต้องทำก่อนครบแล้ว`
+                    : `ลำดับที่ต้องทำ: ${selectedHandoffPackage.externalId} · ไม่มี WorkPackage dependency ที่ประกาศไว้`}
+              </p> : null}
               {(preparation.workPackages ?? []).map((workPackage, index) => (
                 <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={simpleMode ? `งานส่วนที่ ${index + 1}` : `Work package ${workPackage.externalId}`}>
                   <p className="text-xs font-medium">{simpleMode ? `งานส่วนที่ ${index + 1}` : `${workPackage.externalId} · ${workPackage.readiness}`}</p>
+                  {(workPackage as WorkspaceWorkPackage).sourceSpecIds?.length ? <p className="mt-1 text-xs text-[var(--color-text-secondary)]">แหล่ง Requirement: {(workPackage as WorkspaceWorkPackage).sourceSpecIds!.map(canonicalSpecIdLabel).join(", ")}</p> : null}
+                  {(workPackage as WorkspaceWorkPackage).prerequisitePlan?.length ? <p className="mt-1 text-xs text-[var(--color-text-secondary)]">ต้องทำ WorkPackage ก่อนตามลำดับ: {(workPackage as WorkspaceWorkPackage).prerequisitePlan!.map(prerequisite => `${prerequisite.externalId}${prerequisite.specIds.length ? ` · ${prerequisite.specIds.map(canonicalSpecIdLabel).join(", ")}` : ""}`).join(" → ")}</p> : null}
                   {workPackage.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
                   {workPackage.sourceAdmission?.status === "BLOCKED" ? <p className="mt-1 text-xs text-amber-800" role="status">{simpleMode ? "ขอบเขตงานยังทับกับไฟล์ที่เปลี่ยนอยู่ หรือข้อมูล source ยังไม่ครบ" : `Source preflight: ${workPackage.sourceAdmission.code}${workPackage.sourceAdmission.conflictingPaths?.length ? ` · ชนกับ ${workPackage.sourceAdmission.conflictingPaths.join(", ")}` : ""}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_CANDIDATE_OVERLAY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "Runner จะแยกพื้นที่ทำงานของงานนี้ และตรวจไฟล์ก่อนนำผลกลับ เพื่อรักษาการเปลี่ยนแปลงเดิมที่งานไม่ได้แก้" : `Source preflight: SAFE_CANDIDATE_OVERLAY · ${workPackage.sourceAdmission.dirtyPathCount ?? 0} existing changes protected by candidate CAS and execution lease · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
-                  {(preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) || shouldOfferPromptStartAction(mode, simpleMode, workPackage.id)) ? (
-                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !economicLedgerReadyForRun || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
-                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : !preparation.runnableWorkPackageIds.includes(workPackage.id) ? "ยังเริ่มไม่ได้ · แก้เงื่อนไขด้านบนก่อน" : mode === "prompt" || simpleMode ? "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" : `สั่งพัฒนา ${workPackage.externalId}`}
+                  {((preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isStartableForCurrentRequest(workPackage as WorkspaceWorkPackage) || isNextReadyPackage(workPackage))) || shouldOfferPromptStartAction(mode, simpleMode, workPackage.id)) ? (
+                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !economicLedgerReadyForRun || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED")) || (effectiveSpecSource === "catalog" && isNextReadyPackage(workPackage) && packageRunOrder.pendingPrerequisites.length > 0) || (effectiveSpecSource === "catalog" && !isStartableForCurrentRequest(workPackage as WorkspaceWorkPackage) && !isNextReadyPackage(workPackage))} onClick={() => void startWorkPackage(workPackage.id)}>
+                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : !preparation.runnableWorkPackageIds.includes(workPackage.id) ? "ยังเริ่มไม่ได้ · แก้เงื่อนไขด้านบนก่อน" : effectiveSpecSource === "catalog" && workPackage.id === packageRunOrder.nextPrerequisite?.id ? `ทำงานที่ต้องทำก่อน · ${workPackage.externalId}` : effectiveSpecSource === "catalog" && isNextReadyPackage(workPackage) && packageRunOrder.pendingPrerequisites.length > 0 ? `รอทำงานก่อน · ${packageRunOrder.pendingPrerequisites[0]?.externalId}` : mode === "prompt" || simpleMode ? "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}
                 </section>

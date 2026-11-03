@@ -809,6 +809,17 @@ export const spec226DevelopmentControlRouter = router({
                 }).catch(() => null)
               : null;
             const createdAt = record?.events?.find(event => event.type === "RUN_CREATED")?.occurredAt ?? null;
+            let workPackagePrerequisites: Array<{ externalId: string; specIds: string[] }> | null = run.workPackagePrerequisites;
+            if (workPackagePrerequisites === null && run.runnerId && run.specSetRevision && run.workPackageId) {
+              const prerequisites = await defaultSpec224WorkspaceSpecSetService.getWorkPackagePrerequisites({
+                ...scope,
+                runnerId: run.runnerId,
+                workspaceId: run.workspaceId,
+                revision: run.specSetRevision,
+                workPackageId: run.workPackageId,
+              }).catch(() => null);
+              workPackagePrerequisites = prerequisites?.map(({ externalId, specIds }) => ({ externalId, specIds })) ?? null;
+            }
             const isFirstRunPilot = allowedWriteSet.length === 1
               && allowedWriteSet[0] === "apps/runner-app/tests/spec224-live-pilot/**"
               && grantWriteScope.length === 1
@@ -839,10 +850,12 @@ export const spec226DevelopmentControlRouter = router({
                 ? Number(metadata.conversationId) : null,
               threadId: typeof metadata.chatThreadId === "string" ? metadata.chatThreadId : null,
               runnerId: typeof runner.runnerId === "string" ? runner.runnerId : null,
-              specId: run.requestedSpec?.specId ?? run.specId ?? run.specSources[0]?.specId ?? null,
+              specId: run.requestedSpec?.specId ?? null,
               specTitle: run.requestedSpec?.title ?? null,
+              specSources: run.specSources,
               specFileNames: run.specSources.map(source => source.fileName),
               createdAt,
+              workerJobCreatedAt: run.workerJobCreatedAt,
               provider: typeof grant.provider === "string" ? grant.provider : null,
               modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
               economicsMode,
@@ -855,6 +868,7 @@ export const spec226DevelopmentControlRouter = router({
                 ? workerJob.errorCode : null,
               workPackageId: run.workPackageId,
               workPackageExternalId: run.workPackageExternalId,
+              workPackagePrerequisites,
               specSetRevision: run.specSetRevision,
               revision: run.revision,
               goalApproval: { status: approvalStatus, approvalRef: typeof admission.approvalRef === "string" ? admission.approvalRef : null },
@@ -872,8 +886,8 @@ export const spec226DevelopmentControlRouter = router({
             };
           }));
         developmentRuns.sort((left, right) => {
-          const leftTime = left.createdAt ? Date.parse(left.createdAt) : Number.NaN;
-          const rightTime = right.createdAt ? Date.parse(right.createdAt) : Number.NaN;
+          const leftTime = Date.parse(left.workerJobCreatedAt ?? left.createdAt ?? "");
+          const rightTime = Date.parse(right.workerJobCreatedAt ?? right.createdAt ?? "");
           if (!Number.isFinite(leftTime)) return Number.isFinite(rightTime) ? 1 : 0;
           if (!Number.isFinite(rightTime)) return -1;
           return rightTime - leftTime;
@@ -1527,6 +1541,25 @@ export const spec226DevelopmentControlRouter = router({
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
           adapterId: harnessAdapterId,
         });
+        const prerequisites = prepared.workPackagePrerequisites ?? [];
+        if (prerequisites.length > 0) {
+          const existingRuns = await defaultSpec226DevelopmentControlBridge.list({
+            ...scope,
+            limit: 100,
+            workspaceId: prepared.workspace.workspaceId,
+          });
+          const incomplete = prerequisites.filter(prerequisite => !existingRuns.some(existingRun =>
+            existingRun.state === "COMPLETED" &&
+            existingRun.workPackageExternalId === prerequisite.externalId &&
+            existingRun.specSetRevision === prepared.specSetRevision
+          ));
+          if (incomplete.length > 0) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: `SPEC224_WORK_PACKAGE_PREREQUISITE_INCOMPLETE:${incomplete.map(item => item.externalId).join(",")}`,
+            });
+          }
+        }
         const modelSelection = resolveSpec224ModelSelection({
           request: input.modelSelection,
           adapterId: harnessAdapterId,
@@ -1641,6 +1674,7 @@ export const spec226DevelopmentControlRouter = router({
           workPackageExternalId: prepared.workPackageExternalId ?? null,
           ...(requestedSpec ? { requestedSpec } : {}),
           specSources: prepared.specSources ?? [],
+          workPackagePrerequisites: prepared.workPackagePrerequisites ?? [],
           executionMode: prepared.workPackageId ? "work_package" : "prompt",
           allowedWriteSet: prepared.allowedWriteSet,
           workspaceAccessMode: prepared.workspaceAccessMode,
@@ -2184,28 +2218,56 @@ export const spec226DevelopmentControlRouter = router({
             }).catch(() => new Map<string, string>())
           : new Map<string, string>();
         const sourceLookups = new Map<string, Promise<Array<{ specId: string; sourcePath: string; digest: string }>>>();
+        const prerequisiteLookups = new Map<string, Promise<Array<{ id: string; externalId: string; specIds: string[] }> | null>>();
         return await Promise.all(runs.map(async run => {
           const projectName = run.projectId ? projectTitles.get(run.projectId) ?? null : null;
-          if (run.specSources.length || !run.runnerId || !run.specSetRevision || !run.workPackageId) return { ...run, projectName };
-          const lookupKey = `${run.runnerId}\0${run.workspaceId}\0${run.specSetRevision}\0${run.workPackageId}`;
-          let lookup = sourceLookups.get(lookupKey);
-          if (!lookup) {
-            lookup = defaultSpec224WorkspaceSpecSetService.getWorkPackageSpecSources({
-              ...scope,
-              runnerId: run.runnerId,
-              workspaceId: run.workspaceId,
-              revision: run.specSetRevision,
-              workPackageId: run.workPackageId,
-            }).catch(() => []);
-            sourceLookups.set(lookupKey, lookup);
-          }
-          const specSources = (await lookup).flatMap(source => {
+          const canHydrateWorkPackage = Boolean(run.runnerId && run.specSetRevision && run.workPackageId);
+          const lookupKey = canHydrateWorkPackage
+            ? `${run.runnerId}\0${run.workspaceId}\0${run.specSetRevision}\0${run.workPackageId}`
+            : null;
+          const sourceLookup = run.specSources.length || !lookupKey ? null : (() => {
+            let lookup = sourceLookups.get(lookupKey);
+            if (!lookup) {
+              lookup = defaultSpec224WorkspaceSpecSetService.getWorkPackageSpecSources({
+                ...scope,
+                runnerId: run.runnerId!,
+                workspaceId: run.workspaceId,
+                revision: run.specSetRevision!,
+                workPackageId: run.workPackageId!,
+              }).catch(() => []);
+              sourceLookups.set(lookupKey, lookup);
+            }
+            return lookup;
+          })();
+          const prerequisiteLookup = run.workPackagePrerequisites !== null || !lookupKey ? null : (() => {
+            let lookup = prerequisiteLookups.get(lookupKey);
+            if (!lookup) {
+              lookup = defaultSpec224WorkspaceSpecSetService.getWorkPackagePrerequisites({
+                ...scope,
+                runnerId: run.runnerId!,
+                workspaceId: run.workspaceId,
+                revision: run.specSetRevision!,
+                workPackageId: run.workPackageId!,
+              }).catch(() => null);
+              prerequisiteLookups.set(lookupKey, lookup);
+            }
+            return lookup;
+          })();
+          const hydratedSources = sourceLookup ? await sourceLookup : [];
+          const specSources = run.specSources.length ? run.specSources : hydratedSources.flatMap(source => {
             if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(source.specId) || source.sourcePath.length > 512 ||
                 source.sourcePath.startsWith("/") || source.sourcePath.split("/").includes("..") || !/^[a-f0-9]{64}$/i.test(source.digest)) return [];
             const fileName = source.sourcePath.split("/").at(-1);
             return fileName ? [{ specId: source.specId, fileName }] : [];
           });
-          return { ...run, projectName, specSources, specId: run.specId ?? (specSources.length === 1 ? specSources[0]!.specId : null) };
+          return {
+            ...run,
+            projectName,
+            specSources,
+            workPackagePrerequisites: run.workPackagePrerequisites ?? (prerequisiteLookup
+              ? (await prerequisiteLookup)?.map(({ externalId, specIds }) => ({ externalId, specIds })) ?? null
+              : null),
+          };
         }));
       } catch (error) {
         return asTrpcError(error);

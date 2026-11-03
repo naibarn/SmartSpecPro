@@ -210,8 +210,8 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
     render(<RenderJobsPage />);
 
     expect(screen.getAllByText("SmartAIHub Runner").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/ผู้ใช้เลือก SPEC-312/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/WorkPackage อ้างอิง SPEC-313/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/คำสั่งจาก SPEC-312/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/แหล่ง Requirement ของ WorkPackage: SPEC-313/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Goal ID goal-312/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Run ID run-312-work/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("EXTERNAL_WAIT_TIMEOUT").length).toBeGreaterThan(0);

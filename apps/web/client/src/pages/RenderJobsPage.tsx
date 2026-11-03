@@ -119,8 +119,8 @@ function formatRequestedSpec(
   spec: { specId: string; title: string } | null | undefined,
   hasWorkPackageContext = false,
 ): string | null {
-  if (spec) return `ผู้ใช้เลือก ${formatSpecId(spec.specId)} · ${spec.title}`;
-  return hasWorkPackageContext ? "SPEC ที่ผู้ใช้เลือกไม่ได้บันทึกไว้ (รายการเดิม)" : null;
+  if (spec) return `คำสั่งจาก ${formatSpecId(spec.specId)} · ${spec.title}`;
+  return hasWorkPackageContext ? "ไม่พบ SPEC ของคำสั่งในประวัติเดิม" : null;
 }
 
 function formatWorkPackageSources(job: {
@@ -130,7 +130,7 @@ function formatWorkPackageSources(job: {
   const sources = job.specSources?.map(source =>
     `${formatSpecId(source.specId)}${source.fileName ? ` · ${source.fileName}` : ""}`
   ) ?? [];
-  if (sources.length) return `WorkPackage อ้างอิง ${sources.join(", ")}`;
+  if (sources.length) return `แหล่ง Requirement ของ WorkPackage: ${sources.join(", ")}`;
   return job.workPackageExternalId ? `WorkPackage ${job.workPackageExternalId}` : null;
 }
 
@@ -366,7 +366,11 @@ export default function RenderJobsPage() {
     { refetchInterval: 10_000 },
   );
 
-  const jobs = listQuery.data?.items ?? [];
+  const jobs = useMemo(() => [...(listQuery.data?.items ?? [])].sort((left, right) => {
+    const leftCreatedAt = new Date(left.createdAt).getTime();
+    const rightCreatedAt = new Date(right.createdAt).getTime();
+    return (Number.isFinite(rightCreatedAt) ? rightCreatedAt : 0) - (Number.isFinite(leftCreatedAt) ? leftCreatedAt : 0);
+  }), [listQuery.data?.items]);
   const selectedJob = selectedJobId ?? jobs[0]?.id ?? null;
 
   const detailQuery = trpc.workerJobs.detail.useQuery(
