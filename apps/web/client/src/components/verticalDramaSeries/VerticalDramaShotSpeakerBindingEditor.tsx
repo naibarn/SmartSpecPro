@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Mic, Plus, ScanSearch, Trash2 } from "lucide-react";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
@@ -43,9 +43,14 @@ export function VerticalDramaShotSpeakerBindingEditor({
 }) {
   const isEnglish = locale === "en";
   const [draft, setDraft] = useState(bindings);
+  const draftRef = useRef(bindings);
+  const isDirtyRef = useRef(false);
+  const sourceMediaAssetIdRef = useRef(sourceMediaAssetId);
+  const bindingsSignature = JSON.stringify(bindings);
 
   useEffect(() => {
-    setDraft(bindings.map(binding =>
+    const sourceChanged = sourceMediaAssetIdRef.current !== sourceMediaAssetId;
+    const nextBindings = (JSON.parse(bindingsSignature) as VerticalDramaSpeakerVisualBinding[]).map(binding =>
       binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId
         ? {
             ...binding,
@@ -55,11 +60,32 @@ export function VerticalDramaShotSpeakerBindingEditor({
             sourceMediaAssetId: undefined,
           }
         : binding
-    ));
-  }, [bindings, sourceMediaAssetId]);
+    );
+    sourceMediaAssetIdRef.current = sourceMediaAssetId;
+
+    // Episode detail is polled while frame jobs are running. Those background
+    // refreshes must not replace selections the user has not saved yet.
+    const serverMatchesDraft = JSON.stringify(nextBindings) === JSON.stringify(draftRef.current);
+    if (sourceChanged || !isDirtyRef.current || serverMatchesDraft) {
+      draftRef.current = nextBindings;
+      isDirtyRef.current = false;
+      setDraft(nextBindings);
+    }
+  }, [bindingsSignature, sourceMediaAssetId]);
+
+  const updateDraft = (
+    updater: (current: VerticalDramaSpeakerVisualBinding[]) => VerticalDramaSpeakerVisualBinding[]
+  ) => {
+    isDirtyRef.current = true;
+    setDraft(current => {
+      const next = updater(current);
+      draftRef.current = next;
+      return next;
+    });
+  };
 
   const setCue = (speakerLabel: string, visualCue: string) => {
-    setDraft(current => {
+    updateDraft(current => {
       const existing = current.find(
         binding => binding.speakerLabel === speakerLabel
       );
@@ -85,7 +111,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
 
   const setPerson = (speakerLabel: string, personId: string) => {
     const person = detectedPeople.find(candidate => candidate.id === personId);
-    setDraft(current => {
+    updateDraft(current => {
       const existing = current.find(binding => binding.speakerLabel === speakerLabel);
       if (!person) {
         if (!existing) return current;
@@ -116,7 +142,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
   const addSpeaker = () => {
     if (draft.length >= 12) return;
     const label = `ผู้พูดเพิ่มเติม ${draft.length + 1}`;
-    setDraft(current => [
+    updateDraft(current => [
       ...current,
       {
         id: `shot-speaker-${Date.now()}-${current.length + 1}`,
@@ -127,12 +153,12 @@ export function VerticalDramaShotSpeakerBindingEditor({
   };
 
   const removeSpeaker = (speakerLabel: string) =>
-    setDraft(current =>
+    updateDraft(current =>
       current.filter(binding => binding.speakerLabel !== speakerLabel)
     );
 
   const renameSpeaker = (oldLabel: string, speakerLabel: string) =>
-    setDraft(current =>
+    updateDraft(current =>
       current.map(binding =>
         binding.speakerLabel === oldLabel
           ? { ...binding, speakerLabel }
@@ -306,7 +332,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setDraft([]);
+                updateDraft(() => []);
                 onSave([]);
               }}
               disabled={saving}
