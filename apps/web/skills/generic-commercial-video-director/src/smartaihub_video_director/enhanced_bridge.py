@@ -1789,6 +1789,7 @@ def _terminal_prompt(
 
 async def run(payload: dict[str, Any]) -> dict[str, Any]:
     _set_bridge_stage("input_validation")
+    prompt_budget = _resolved_prompt_budget(payload)
     root = Path(__file__).resolve().parents[2]
     contracts = StageContractRegistry(root)
     contracts.validate_input(_package_input(payload))
@@ -1894,7 +1895,10 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "observedStartState": observed_result.payload,
         "_visionReferences": payload.get("visionReferences") or [],
         "instructions": (
-            "Return concise provider-neutral intent that continues after observed State #0. "
+            f"Return concise provider-neutral intent for a final video prompt capped at {prompt_budget} characters. "
+            "Optimize for that hard limit: keep actions, camera, end state, and continuity locks brief and concrete; remove repeated, ornamental, or reference-locked details. "
+            "The canonical dialogue is assembled separately and must remain exact. "
+            "Continue after observed State #0. "
             "The observed state overrides conflicting storyboard prose. Do not replay completed actions, reset poses, or relocate/duplicate an existing object. "
             "Preserve canonical dialogue exactly; when dialogue is empty, use silent acting only. Do not choose a model or provider."
         ),
