@@ -4677,6 +4677,13 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  const [detectedSpeakerPeopleByShot, setDetectedSpeakerPeopleByShot] =
+    useState<Record<number, { sourceMediaAssetId: string; people: Array<{
+      id: string;
+      boundingBox: { x: number; y: number; width: number; height: number };
+      appearance: string;
+      confidence: number;
+    }> }>>({});
   const setShotSpeakerVisualBindingsMutation =
     trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
       onSuccess: (_result, variables) => {
@@ -4693,16 +4700,31 @@ function EpisodeWorkspaceShell({
           }
         );
       },
-      onError: err => toast.error(err.message),
+      onError: (err, variables) => {
+        if (err.data?.code === "PRECONDITION_FAILED") {
+          // A frame may be replaced while this page is open. The server checks
+          // against the locked, current plan; discard detections from the
+          // outdated frame and reload episode detail before another selection.
+          setDetectedSpeakerPeopleByShot(current => {
+            const next = { ...current };
+            delete next[variables.shotNumber];
+            return next;
+          });
+          void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+            seriesId,
+            episodeId,
+          });
+          toast.error(
+            lang === "en"
+              ? "The Start Frame changed while saving. Refreshing the current frame; detect people again and reselect the speaker."
+              : "ภาพ Start frame เปลี่ยนระหว่างบันทึก กำลังโหลดภาพปัจจุบัน กรุณาตรวจจับคนและเลือกผู้พูดใหม่"
+          );
+          return;
+        }
+        toast.error(err.message);
+      },
     });
 
-  const [detectedSpeakerPeopleByShot, setDetectedSpeakerPeopleByShot] =
-    useState<Record<number, { sourceMediaAssetId: string; people: Array<{
-      id: string;
-      boundingBox: { x: number; y: number; width: number; height: number };
-      appearance: string;
-      confidence: number;
-    }> }>>({});
   const detectShotSpeakerPeopleMutation =
     trpc.verticalDramaEpisodes.detectShotSpeakerPeople.useMutation({
       onSuccess: (result, variables) => {
