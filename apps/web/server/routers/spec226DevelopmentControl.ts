@@ -105,6 +105,25 @@ function requireScope(ctx: {
   return { tenantId, actorId: ctx.user.id };
 }
 
+async function resolveTrustedConversationWorkspace(scope: { tenantId: string; actorId: number }, conversationId: number) {
+  const [binding, workspaces] = await Promise.all([
+    defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId }),
+    defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope),
+  ]);
+  if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+  if (binding.availability.status !== "current") throw new Error("WORKSPACE_BINDING_STALE");
+
+  const trustedWorkspace = workspaces.find(candidate =>
+    candidate.runnerId === binding.workspace.runnerId &&
+    candidate.workspaceId === binding.workspace.workspaceId
+  );
+  if (!trustedWorkspace) throw new Error("WORKSPACE_BINDING_FORBIDDEN");
+  if (trustedWorkspace.snapshotRevision !== binding.workspace.snapshotRevision) {
+    throw new Error("WORKSPACE_BINDING_STALE");
+  }
+  return { binding, trustedWorkspace };
+}
+
 async function authorizeFeatureSpecCatalog(ctx: { tenantId: string | null; user?: { id?: number | null; role?: string | null; currentTenantId?: string | number | null } | null }, conversationId?: number) {
   const scope = requireScope(ctx);
   const authorizedWorkspaces = await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope);
@@ -125,6 +144,7 @@ function errorCode(error: unknown): string {
 }
 
 function asTrpcError(error: unknown): never {
+  if (error instanceof TRPCError) throw error;
   const code = errorCode(error);
   if (code === "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED") {
     throw new TRPCError({
@@ -1478,16 +1498,15 @@ export const spec226DevelopmentControlRouter = router({
             workPackageId: "personal-miniapp",
           };
         }
-        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId });
-        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const { binding, trustedWorkspace } = await resolveTrustedConversationWorkspace(scope, input.conversationId);
         // This endpoint only creates DevelopmentRuns; scope comes from the
-        // authorized workspace binding. A requestKind discriminator does not
-        // exist on this route (and referencing one throws before Goal creation).
-        const platformEngineeringWorkspace = binding.workspace.scope === "PLATFORM_ENGINEERING";
+        // trusted workspace record, not the conversation binding DTO (which
+        // intentionally contains identifiers but no authorization scope).
+        const platformEngineeringWorkspace = trustedWorkspace.scope === "PLATFORM_ENGINEERING";
         // Platform engineering work belongs to the trusted workspace/project,
         // not to an end-user tenant budget or a global application-admin role.
-        // Workspace membership and the actor-bound conversation are checked
-        // by getConversationWorkspace above.
+        // The resolver checks both actor-bound conversation and current trusted
+        // workspace membership before this decision.
         const providerManagedScope = platformEngineeringWorkspace;
         const budgetCapMinorUnits = providerManagedScope ? undefined : input.budgetCapMinorUnits ?? 100;
         const provider = input.provider ?? "codex";
@@ -1698,7 +1717,7 @@ export const spec226DevelopmentControlRouter = router({
           workspace: prepared.workspace.workspaceId,
           runnerId: prepared.runner.runnerId,
           runnerSnapshotRevision: prepared.runner.snapshotRevision,
-          platformScope: prepared.workspace.scope === "PLATFORM_ENGINEERING",
+          platformScope: platformEngineeringWorkspace,
           gitHead: prepared.runner.gitHead,
           gitBranch: prepared.runner.gitBranch,
           dirty: prepared.runner.dirty,
@@ -1800,7 +1819,7 @@ export const spec226DevelopmentControlRouter = router({
             },
             ...(visualBlueprintMetadata ? { spec224VisualBlueprint: visualBlueprintMetadata } : {}),
             spec224Execution: {
-              platformScope: prepared.workspace.scope === "PLATFORM_ENGINEERING",
+              platformScope: platformEngineeringWorkspace,
               sourceSnapshotRevision: prepared.runner.snapshotRevision,
               sourceSha: prepared.runner.gitHead,
               sourceFingerprint: prepared.runner.contentFingerprint,
@@ -1907,17 +1926,14 @@ export const spec226DevelopmentControlRouter = router({
       const scope = requireScope(ctx);
       const traceId = auditLogger.createTrace();
       try {
-        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({
-          ...scope, conversationId: input.conversationId,
-        });
-        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const { binding, trustedWorkspace } = await resolveTrustedConversationWorkspace(scope, input.conversationId);
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
         if (record.run.workspaceId !== binding.workspace.workspaceId)
           throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
         const persistedGrant = record.run.metadata?.spec224GoalGrantPayload;
         const economicsMode = persistedGrant && typeof persistedGrant === "object"
           ? (persistedGrant as Record<string, unknown>).economicsMode : undefined;
-        if (binding.workspace.scope === "PLATFORM_ENGINEERING" && economicsMode !== "provider_managed") {
+        if (trustedWorkspace.scope === "PLATFORM_ENGINEERING" && economicsMode !== "provider_managed") {
           const authorization = {
             status: "PLATFORM_RUN_RESTART_REQUIRED" as const,
             reasons: ["LEGACY_TENANT_BUDGET_BINDING"],
@@ -2146,11 +2162,8 @@ export const spec226DevelopmentControlRouter = router({
       const scope = requireScope(ctx);
       const traceId = auditLogger.createTrace();
       try {
-        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({
-          ...scope, conversationId: input.conversationId,
-        });
-        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
-        if (binding.workspace.scope !== "PLATFORM_ENGINEERING") {
+        const { binding, trustedWorkspace } = await resolveTrustedConversationWorkspace(scope, input.conversationId);
+        if (trustedWorkspace.scope !== "PLATFORM_ENGINEERING") {
           throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_REQUIRED" });
         }
         const record = await developmentRunService.get({ ...scope, runId: input.runId });
