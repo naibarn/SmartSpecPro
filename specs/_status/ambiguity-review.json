@@ -90067,7 +90067,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
+      "canonical_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -91376,8 +91376,7 @@
         "requirement REQ-3D193E44D0CA is OPEN",
         "requirement REQ-D094A292C89C is OPEN",
         "requirement REQ-D94C603C4313 is OPEN",
-        "requirement REQ-C581133E6AED is OPEN",
-        "required verification evidence is missing"
+        "requirement REQ-C581133E6AED is OPEN"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -91458,7 +91457,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-29T16:43:52.766793Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
+      "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
@@ -92520,7 +92519,7 @@
       "successors": [],
       "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime",
       "true_blockers": 1,
-      "verification": "PASS_PARTIAL"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",

@@ -1124,15 +1124,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+    "expected_canonical_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Hard-refresh Task Control on smartaihub.app and inspect the affected Goal. Wait for the current Runner Git SHA/content fingerprint if the source has not changed; review the refreshed plan and explicitly submit once. Inspect the exact persisted Job in Mission Control Developer mode for Harness output and lifecycle events, then continue receipt and settlement verification.",
+    "next_action": "Hard-refresh Task Control on smartaihub.app, reopen the prepared Goal and submit once. Confirm it creates a durable Run/Job, then inspect the same Job in Mission Control for Runner/Harness output and lifecycle events before continuing receipt and settlement verification.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "An authenticated owner opens the refreshed Task Control, uses the source-change recovery flow only after a current Runner source snapshot is available, reviews the new plan, and explicitly submits once; Mission Control shows the persisted Job and any Runner/Harness lifecycle output.",
-    "resume_point": "Integrated and deployed source SHA 4d3a468f44d596ca67d9b6c286fa1f31b3f131a2, legacy-debian-dev generation 364. SPEC-224 quick profile passed 7 focused files / 176 tests with 25,199 MiB available memory. Public API health/login and deployed Task Control asset passed. No authenticated post-deployment Goal, live Codex output, receipts, or settlement is claimed; resume with one reviewed Goal and inspect its exact Run/Job.",
-    "waiting_predicate": "A post-deployment authenticated Goal submission either reaches a durable admitted state or returns a source/capacity reason; inspect its persisted Run/Job in Mission Control without duplicate submission, then verify the Runner output, receipts, and settlement."
+    "reactivation_predicate": "An authenticated owner hard-refreshes Task Control and explicitly submits the prepared Goal once; Task Control shows a durable Run/Job and Mission Control shows its persisted execution state.",
+    "resume_point": "Integrated source SHA 6a9fccc246c983ad667a06fda9ba2da757a6162f; legacy-debian-dev generation 365 is DEPLOYED_VERIFIED and HEALTHY. The SPEC-224 quick profile passed 2 focused files / 57 tests on the exact SHA. Public API health, login, and Task Control route returned HTTP 200. No authenticated Goal retry, live Codex output, Runner receipt, or settlement is claimed.",
+    "waiting_predicate": "After one authenticated submission, confirm the exact Goal has a persisted Run/Job in Task Control/Mission Control; if it is pending or blocked, inspect its authorization, capacity, source, and Runner event evidence without submitting a duplicate."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1254,7 +1254,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:8d5ba768d29ba192ad44534f154c5042a1d9e6f9ab7c2303dc1b9ee07a4c7467",
+    "artifact_digest": "sha256:d1ce713e21730863a25a68927867b228a8d5ef797a250e7773ebf9c8e0132d8b",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1455,10 +1455,17 @@
         "scope": "legacy-debian-dev / smartaihub.app, generation 364, release smartspec-web-4d3a468f44d596ca67d9b6c286fa1f31b3f131a2-f2f6d5291c17, artifact sha256:8d5ba768d29ba192ad44534f154c5042a1d9e6f9ab7c2303dc1b9ee07a4c7467; frontend, web runtime, and Node worker report the exact source SHA and HEALTHY; public API health, login, and Task Control bundle returned HTTP 200.",
         "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_GOAL_START_SCOPE_CONTRACT_RELEASE_G365",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-start-scope-contract-fix-20261105.md",
+        "scope": "legacy-debian-dev / smartaihub.app, generation 365; immutable release smartspec-web-6a9fccc246c983ad667a06fda9ba2da757a6162f-bb8510de05aa, artifact sha256:d1ce713e21730863a25a68927867b228a8d5ef797a250e7773ebf9c8e0132d8b; web and Node worker report the exact source SHA and HEALTHY; public API health, login, and Task Control route returned HTTP 200.",
+        "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
     "status": "PASS"
   },
   "disposition": {
@@ -1472,7 +1479,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 295,
+  "generation": 296,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1780,11 +1787,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+    "canonical_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
     "integrated": true,
-    "integrated_at": "2026-11-05T00:32:55+07:00",
+    "integrated_at": "2026-11-05T00:53:13+07:00",
     "pull_request": null,
-    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2"
+    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4341,7 +4348,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T17:43:20.570900Z",
+  "updated_at": "2026-11-04T18:01:55.832383Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4959,14 +4966,21 @@
         "scope": "SPEC-224 quick profile; 7 focused Vitest files, 176/176 passed; serial single-worker run; 25,199 MiB available at 2026-11-04T17:41:49.403Z; completed 2026-11-04T17:42:14.031Z; exit 0.",
         "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_GOAL_START_SCOPE_CONTRACT_QUICK",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-start-scope-contract-fix-20261105.md",
+        "scope": "SPEC-224 quick profile on exact integrated SHA; spec226DevelopmentControl.test.ts and spec226DevelopmentControlBridge.test.ts; 2 files and 57/57 tests passed with one Vitest worker.",
+        "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
-    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+    "sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
     "status": "PASS",
     "task_regressions": [
       "Source-change Goal recovery UI flow: source change → refresh/rebind → prepare latest plan → explicit second click with a new idempotency key; 91 focused tests passed across the UI and router files.",
