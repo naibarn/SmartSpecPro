@@ -1351,6 +1351,54 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       }
     } catch (error) {
       await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
+      if (error instanceof Error && error.message.includes("WORKSPACE_BINDING_STALE")) {
+        try {
+          const selected = selectedWorkspace;
+          const refreshedWorkspaces = await workspacesQuery.refetch();
+          const currentWorkspace = selected && refreshedWorkspaces.data?.workspaces.find(workspace =>
+            workspace.runnerId === selected.runnerId && workspace.workspaceId === selected.workspaceId,
+          );
+          if (!currentWorkspace) {
+            setPreparation(null);
+            toast.error("Runner ไม่พบ Workspace ที่เลือกใน snapshot ล่าสุด กรุณาเลือก Workspace ที่ยังแสดงอยู่แล้วเตรียมแผนใหม่");
+            return;
+          }
+
+          await bindMutation.mutateAsync({
+            conversationId: targetConversationId,
+            runnerId: currentWorkspace.runnerId,
+            workspaceId: currentWorkspace.workspaceId,
+          });
+          const refreshedBinding = await workspaceQuery.refetch();
+          if (refreshedBinding.data?.availability?.status !== "current"
+            || refreshedBinding.data.workspace?.snapshotRevision !== currentWorkspace.snapshotRevision) {
+            throw new Error("WORKSPACE_BINDING_REFRESH_STALE");
+          }
+
+          const refreshedPreparation = await prepareMutation.mutateAsync({
+            conversationId: targetConversationId,
+            mode: startMode,
+            ...(startMode === "prompt" ? {
+              prompt: effectivePrompt,
+              ...(pilotMode ? { writeScope: FIRST_RUN_PILOT_SCOPE } : requestKind === "development" ? { workspaceAccessMode } : {}),
+            } : {}),
+            ...(developmentInputMode === "spec_prompt" && !startOptions?.skipAdditionalInstructions
+              ? { additionalInstructions: prompt }
+              : {}),
+          });
+          setPreparation(refreshedPreparation);
+          const refreshedPackage = refreshedPreparation.workPackages?.find(item => item.id === workPackageId);
+          const packageStillRunnable = refreshedPreparation.runnableWorkPackageIds.includes(workPackageId)
+            && (startMode === "prompt" || Boolean(refreshedPackage));
+          toast.info(packageStillRunnable
+            ? "Workspace เปลี่ยน snapshot แล้ว ระบบผูกและเตรียมแผนล่าสุดให้แล้ว กรุณาตรวจแผนก่อนกดส่ง Goal อีกครั้ง"
+            : "Workspace เปลี่ยน snapshot แล้ว ระบบเตรียมแผนล่าสุดให้แล้ว แต่ WorkPackage เดิมยังเริ่มไม่ได้ กรุณาตรวจ blocker และเลือกงานที่พร้อม");
+        } catch {
+          setPreparation(null);
+          toast.error("Workspace เปลี่ยนระหว่างส่ง Goal และอัปเดตแผนล่าสุดไม่สำเร็จ กรุณาโหลดรายการ Runner แล้วเตรียมแผนใหม่");
+        }
+        return;
+      }
       toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
     } finally {
       startInFlight.current = false;
