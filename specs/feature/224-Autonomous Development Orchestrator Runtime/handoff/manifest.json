@@ -1121,18 +1121,31 @@
       "owner": "Existing Debian Runner service/runtime",
       "reactivation_predicate": "The active Debian Runner session has a fresh, unexpired, applied snapshot at the current authorized source SHA, complete dirtyPaths and a passing Codex task probe; the bounded write set has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no overlapping active writer lease.",
       "root_cause": "The last observed Debian Runner snapshot was applied and Codex-ready but expired at 2026-10-28T23:32:34Z. Refresh its existing session and recompute bounded source admission after Goal approval and before dispatch; the screenshot’s stale Windows Runner is not the development Debian Runner."
+    },
+    {
+      "class": "AUTHORITY",
+      "classification": "RECOVERABLE_RUNTIME",
+      "evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md"
+      ],
+      "evidence_freshness": "FRESH",
+      "id": "R14_MODULAR_CORE_SOURCE_AUTHORITY",
+      "next_action": "Register or provision a separate trusted Runner/workspace authority for smartaihub-platform, verify its current source SHA/fingerprint/dirty paths, and bind the conversation to that workspace before one retry.",
+      "owner": "SmartAIHub Modular Core Runner/workspace configuration",
+      "reactivation_predicate": "The registered Modular Core Runner reports the exact repository source facts used by the execution authority, is trusted and online, and the conversation binding matches that Runner/workspace.",
+      "root_cause": "The current smartaihub.app execution authority resolves to the SmartSpecPro repository while the selected Modular Core Goal source is smartaihub-platform. The new preflight rejects the mismatch before staging or Goal creation; the existing legacy Runner must not be retargeted."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+    "expected_canonical_sha": "d3b047b6360c4081797d75597063e5885ff73099",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Hard-refresh Task Control on smartaihub.app, reopen the prepared Goal and submit once. Confirm it creates a durable Run/Job, then inspect the same Job in Mission Control for Runner/Harness output and lifecycle events before continuing receipt and settlement verification.",
+    "next_action": "Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "An authenticated owner hard-refreshes Task Control and explicitly submits the prepared Goal once; Task Control shows a durable Run/Job and Mission Control shows its persisted execution state.",
-    "resume_point": "Integrated source SHA 6a9fccc246c983ad667a06fda9ba2da757a6162f; legacy-debian-dev generation 365 is DEPLOYED_VERIFIED and HEALTHY. The SPEC-224 quick profile passed 2 focused files / 57 tests on the exact SHA. Public API health, login, and Task Control route returned HTTP 200. No authenticated Goal retry, live Codex output, Runner receipt, or settlement is claimed.",
-    "waiting_predicate": "After one authenticated submission, confirm the exact Goal has a persisted Run/Job in Task Control/Mission Control; if it is pending or blocked, inspect its authorization, capacity, source, and Runner event evidence without submitting a duplicate."
+    "reactivation_predicate": "A trusted Runner is registered to the Modular Core project and its smartaihub-platform workspace; the reported SHA, fingerprint, and dirty paths match that workspace authority; the conversation is bound to that workspace; then one Goal creates a durable Run/Job.",
+    "resume_point": "Integrated SHA d3b047b6360c4081797d75597063e5885ff73099; legacy-debian-dev generation 366 is DEPLOYED_VERIFIED and HEALTHY. Focused Goal/source-authority tests passed. The prior trim crash from generation 364 is fixed by the flat bridge scope contract integrated in 6a9 and present in this release. No new authenticated Goal, Codex output, Runner receipt, or settlement is claimed. Modular Core execution awaits a separately registered trusted Runner/workspace authority matching smartaihub-platform.",
+    "waiting_predicate": "Wait for the separate Core Runner/workspace authority to be registered and source-matched. After binding it, submit once and inspect the same Run/Job in Task Control and Mission Control."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1227,10 +1240,16 @@
         "observed_at": "2026-11-04T15:23:54Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
         "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
+      },
+      {
+        "kind": "AUTHORITY_BLOCKER",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md",
+        "scope": "Live preflight reproduces a source authority mismatch between the selected smartaihub-platform workspace and the current SmartSpecPro execution authority; Goal creation is now stopped before staging.",
+        "source_sha": "d3b047b6360c4081797d75597063e5885ff73099"
       }
     ],
-    "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
-    "rationale": "The prior Goal submission reached Task Control but failed because four pending provider-backed authorization holds incorrectly consumed concurrent execution capacity. Durable queue admission is fixed, focused tests passed, and generation 361 is healthy on smartaihub.app. Authenticated post-deploy Goal admission and Runner execution still need owner verification.",
+    "next_action": "Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.",
+    "rationale": "The former Goal start crash from the nested scope contract is fixed and deployed; current source-authority admission now fails closed before staging or creating another Goal when the selected smartaihub-platform source does not match the legacy SmartSpecPro execution authority. Live Modular Core execution remains blocked until a separate trusted Runner/workspace authority matching that repository is registered and bound.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1254,7 +1273,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d1ce713e21730863a25a68927867b228a8d5ef797a250e7773ebf9c8e0132d8b",
+    "artifact_digest": "sha256:9882ed97eec57e1529afd547b67b2619751c3c6a386aea9164b48634b677468b",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1462,10 +1481,17 @@
         "scope": "legacy-debian-dev / smartaihub.app, generation 365; immutable release smartspec-web-6a9fccc246c983ad667a06fda9ba2da757a6162f-bb8510de05aa, artifact sha256:d1ce713e21730863a25a68927867b228a8d5ef797a250e7773ebf9c8e0132d8b; web and Node worker report the exact source SHA and HEALTHY; public API health, login, and Task Control route returned HTTP 200.",
         "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_GOAL_SOURCE_AUTHORITY_RELEASE_G366",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md",
+        "scope": "legacy-debian-dev / smartaihub.app generation 366; immutable release smartspec-web-d3b047b6360c4081797d75597063e5885ff73099-571368321a64, artifact sha256:9882ed97eec57e1529afd547b67b2619751c3c6a386aea9164b48634b677468b; web and Node Worker report exact SHA and HEALTHY; public homepage/login/API health returned 200; API smoke 12/12 reachable with zero server errors; authenticated Goal execution was not exercised.",
+        "source_sha": "d3b047b6360c4081797d75597063e5885ff73099",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+    "source_sha": "d3b047b6360c4081797d75597063e5885ff73099",
     "status": "PASS"
   },
   "disposition": {
@@ -1479,7 +1505,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 296,
+  "generation": 298,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1510,7 +1536,8 @@
       "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
       "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
       "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
-      "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2"
+      "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+      "d3b047b6360c4081797d75597063e5885ff73099"
     ],
     "mapping": [
       {
@@ -1780,18 +1807,21 @@
       "apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts",
       "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
       "apps/web/server/services/__tests__/spec224PhaseController.test.ts",
-      "apps/web/server/services/__tests__/spec224DevelopmentRunContracts.test.ts"
+      "apps/web/server/services/__tests__/spec224DevelopmentRunContracts.test.ts",
+      "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
+      "apps/web/server/services/spec224AuthorizationService.ts",
+      "apps/web/server/services/spec224ExecutionLeaseAuthority.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+    "canonical_sha": "d3b047b6360c4081797d75597063e5885ff73099",
     "integrated": true,
-    "integrated_at": "2026-11-05T00:53:13+07:00",
+    "integrated_at": "2026-11-05T01:44:24+07:00",
     "pull_request": null,
-    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f"
+    "source_sha": "d3b047b6360c4081797d75597063e5885ff73099"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2769,10 +2799,16 @@
           "observed_at": "2026-11-04T15:23:54Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
           "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
+        },
+        {
+          "kind": "AUTHORITY_BLOCKER",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md",
+          "scope": "Live preflight reproduces a source authority mismatch between the selected smartaihub-platform workspace and the current SmartSpecPro execution authority; Goal creation is now stopped before staging.",
+          "source_sha": "d3b047b6360c4081797d75597063e5885ff73099"
         }
       ],
-      "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
-      "rationale": "The prior Goal submission reached Task Control but failed because four pending provider-backed authorization holds incorrectly consumed concurrent execution capacity. Durable queue admission is fixed, focused tests passed, and generation 361 is healthy on smartaihub.app. Authenticated post-deploy Goal admission and Runner execution still need owner verification.",
+      "next_action": "Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.",
+      "rationale": "The former Goal start crash from the nested scope contract is fixed and deployed; current source-authority admission now fails closed before staging or creating another Goal when the selected smartaihub-platform source does not match the legacy SmartSpecPro execution authority. Live Modular Core execution remains blocked until a separate trusted Runner/workspace authority matching that repository is registered and bound.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -4348,7 +4384,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T18:01:55.832383Z",
+  "updated_at": "2026-11-04T18:59:23.224846Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4973,14 +5009,21 @@
         "scope": "SPEC-224 quick profile on exact integrated SHA; spec226DevelopmentControl.test.ts and spec226DevelopmentControlBridge.test.ts; 2 files and 57/57 tests passed with one Vitest worker.",
         "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_GOAL_SOURCE_AUTHORITY_QUICK",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md",
+        "scope": "Exact integrated SHA d3b047b6; focused Goal route test 49/49 and workspace authority source preflight/lease tests 4/4; Python compilation and git diff check passed.",
+        "source_sha": "d3b047b6360c4081797d75597063e5885ff73099",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
-    "source_sha": "6a9fccc246c983ad667a06fda9ba2da757a6162f",
+    "sha": "d3b047b6360c4081797d75597063e5885ff73099",
+    "source_sha": "d3b047b6360c4081797d75597063e5885ff73099",
     "status": "PASS",
     "task_regressions": [
       "Source-change Goal recovery UI flow: source change → refresh/rebind → prepare latest plan → explicit second click with a new idempotency key; 91 focused tests passed across the UI and router files.",

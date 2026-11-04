@@ -3000,7 +3000,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
+      "next_action": "Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -5148,7 +5148,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "P1",
-      "rationale": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
+      "rationale": "Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "spec_id": "224"
     },

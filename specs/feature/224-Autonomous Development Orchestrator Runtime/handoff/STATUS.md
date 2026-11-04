@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1304 unresolved of 1305
-- Next action: Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.
-- Manifest generation: 296
+- Next action: Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.
+- Manifest generation: 298
 
 ## Source-declared status and relationship claims
 
