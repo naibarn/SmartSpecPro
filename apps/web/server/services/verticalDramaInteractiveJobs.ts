@@ -388,15 +388,19 @@ export async function enqueueVerticalDramaInteractiveJob(
   }
 
   try {
-    await createFeature186VerticalDramaJob({
-      jobId,
-      tenantId: payload.tenantId,
-      userId: payload.userId,
-      jobType: "vertical_drama.interactive",
-      executionClass: "long",
-      activeDedupeKey: activePointerKey(payload),
-      payload: record as unknown as Record<string, unknown>,
-    });
+    if (dependencies?.enqueueBullmqJob) {
+      await dependencies.enqueueBullmqJob(jobId);
+    } else {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.interactive",
+        executionClass: "long",
+        activeDedupeKey: activePointerKey(payload),
+        payload: record as unknown as Record<string, unknown>,
+      });
+    }
   } catch (error) {
     await specialForensicRecorder?.emit({
       eventType: "job_failed",

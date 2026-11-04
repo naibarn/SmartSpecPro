@@ -35,6 +35,8 @@ const mockGetSeriesQuery = vi.fn();
 const mockGetSeriesMemoryQuery = vi.fn();
 const mockPlanningModelsQuery = vi.fn();
 const mockCarryOverMutate = vi.fn();
+let mockCarryOverRetryOption:
+  ((failureCount: number, error: unknown) => boolean) | undefined;
 const mockSpecialEditionMutate = vi.fn();
 const mockUploadMutate = vi.fn();
 const mockDraftQcEstimateQuery = vi.fn();
@@ -324,34 +326,38 @@ vi.mock("@/lib/trpc", () => ({
           opts: {
             onSuccess?: (data: unknown) => void;
             onError?: (err: unknown) => void;
+            retry?: (failureCount: number, error: unknown) => boolean;
           } = {}
-        ) => ({
-          mutate: (input: unknown) => {
-            mockCarryOverMutate(input);
-            if (mockCarryOverMutationState.error) {
-              opts?.onError?.(mockCarryOverMutationState.error);
-            } else {
-              const data = {
-                draft: carryOverDraft,
-                creditsUsed: 1,
-                model: "test-model",
-                parentEpisodeCount: 30,
-              };
-              mockCarryOverMutationState.data = data;
-              opts?.onSuccess?.(data);
-            }
-          },
-          get data() {
-            return mockCarryOverMutationState.data;
-          },
-          get isPending() {
-            return mockCarryOverMutationState.isPending;
-          },
-          get error() {
-            return mockCarryOverMutationState.error;
-          },
-          reset: vi.fn(),
-        }),
+        ) => {
+          mockCarryOverRetryOption = opts.retry;
+          return {
+            mutate: (input: unknown) => {
+              mockCarryOverMutate(input);
+              if (mockCarryOverMutationState.error) {
+                opts?.onError?.(mockCarryOverMutationState.error);
+              } else {
+                const data = {
+                  draft: carryOverDraft,
+                  creditsUsed: 1,
+                  model: "test-model",
+                  parentEpisodeCount: 30,
+                };
+                mockCarryOverMutationState.data = data;
+                opts?.onSuccess?.(data);
+              }
+            },
+            get data() {
+              return mockCarryOverMutationState.data;
+            },
+            get isPending() {
+              return mockCarryOverMutationState.isPending;
+            },
+            get error() {
+              return mockCarryOverMutationState.error;
+            },
+            reset: vi.fn(),
+          };
+        },
       },
       proposeSpecialEditionBrief: {
         useMutation: (
@@ -564,6 +570,7 @@ const carryOverDraft = {
 beforeEach(() => {
   sessionStorage.clear();
   vi.clearAllMocks();
+  mockCarryOverRetryOption = undefined;
   mockUseTenantFeatureFlag.mockReturnValue(true);
   mockListGenrePresetsQuery.mockReturnValue({
     data: { presets: [] },
@@ -800,6 +807,22 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
         premise: undefined,
       })
     );
+    expect(
+      mockCarryOverRetryOption?.(
+        0,
+        new Error(
+          "The API request lost its server/proxy connection before returning JSON. The operation may still have completed. (status=502; content-type=text/html)"
+        )
+      )
+    ).toBe(true);
+    expect(
+      mockCarryOverRetryOption?.(
+        10,
+        new Error(
+          "The API request lost its server/proxy connection before returning JSON. The operation may still have completed. (status=502; content-type=text/html)"
+        )
+      )
+    ).toBe(false);
   });
 
   it("lets the creator select a season 2 direction and sends it as the sequel story spine", () => {

@@ -45,10 +45,11 @@ const payload = {
 describe("vertical drama interactive jobs", () => {
   it("reserves, deduplicates, executes, and exposes the real terminal result", async () => {
     const redis = createRedis();
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
     const dependencies = {
       redis,
       now: () => 1_700_000_000_000,
-      enqueueBullmqJob: async () => undefined,
+      enqueueBullmqJob,
     };
     const first = await enqueueVerticalDramaInteractiveJob(
       payload,
@@ -59,6 +60,8 @@ describe("vertical drama interactive jobs", () => {
       dependencies
     );
     expect(first.status).toBe("queued");
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
+    expect(enqueueBullmqJob).toHaveBeenCalledWith(first.jobId);
     expect(duplicate).toMatchObject({ jobId: first.jobId, deduped: true });
 
     await runVerticalDramaInteractiveJob(

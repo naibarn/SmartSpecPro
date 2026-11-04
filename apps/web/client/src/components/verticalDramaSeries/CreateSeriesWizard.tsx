@@ -33,6 +33,10 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import {
+  retryDelayMs,
+  shouldRetryIdempotentQueueMutation,
+} from "@/lib/requestResilience";
 import { cn } from "@/lib/utils";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { VerticalDramaPromptExpansionDialog } from "@/components/verticalDramaSeries/VerticalDramaPromptExpansionDialog";
@@ -1325,6 +1329,10 @@ export function CreateSeriesWizard({
 
   const carryOverMutation =
     trpc.verticalDramaSeries.proposeSeasonCarryOver.useMutation({
+      // This procedure enqueues with an owner-scoped idempotency key, so a
+      // gateway-generated HTML 5xx can safely retry when its response was lost.
+      retry: shouldRetryIdempotentQueueMutation,
+      retryDelay: retryDelayMs,
       onSuccess: data => {
         if (data.jobId) {
           setLineageJobId(data.jobId);

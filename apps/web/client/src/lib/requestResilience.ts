@@ -38,12 +38,17 @@
  */
 import { classifyError, isNetworkFailure } from "@/lib/systemErrorMonitor";
 import { isTransientTenantServiceError } from "@/lib/tenantServiceRecovery";
+import { isLostUpstreamApiErrorMessage } from "@/lib/apiResponseDiagnostics";
 
 /** Max number of RETRY attempts (on top of the initial call) for queries. */
 export const RETRYABLE_QUERY_MAX_ATTEMPTS = 14;
 
 /** Max number of RETRY attempts (on top of the initial call) for mutations. */
 export const RETRYABLE_MUTATION_MAX_ATTEMPTS = 10;
+
+/** Gateway retries for idempotent queued mutations with a stable request key. */
+export const IDEMPOTENT_QUEUE_MUTATION_RETRY_ATTEMPTS =
+  RETRYABLE_MUTATION_MAX_ATTEMPTS;
 
 /**
  * Ceiling for a single tRPC HTTP request before it is aborted client-side.
@@ -106,5 +111,20 @@ export function shouldRetryMutation(
   return (
     isNetworkConnectionError(error)
     && failureCount < RETRYABLE_MUTATION_MAX_ATTEMPTS
+  );
+}
+
+/**
+ * A lost gateway response is safe to retry for mutations that enqueue work
+ * behind a stable idempotency key. Keep this opt-in; ordinary mutations may
+ * already have committed side effects when a 5xx response is returned.
+ */
+export function shouldRetryIdempotentQueueMutation(
+  failureCount: number,
+  error: unknown
+): boolean {
+  return (
+    isLostUpstreamApiErrorMessage(error) &&
+    failureCount < IDEMPOTENT_QUEUE_MUTATION_RETRY_ATTEMPTS
   );
 }

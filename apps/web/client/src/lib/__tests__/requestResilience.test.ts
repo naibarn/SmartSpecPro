@@ -5,6 +5,7 @@ import {
   RETRYABLE_MUTATION_MAX_ATTEMPTS,
   RETRYABLE_QUERY_MAX_ATTEMPTS,
   retryDelayMs,
+  shouldRetryIdempotentQueueMutation,
   shouldRetryMutation,
   shouldRetryQuery,
 } from "../requestResilience";
@@ -126,6 +127,48 @@ describe("requestResilience", () => {
     it("does not retry a 4xx TRPCClientError", () => {
       const error = makeTrpcClientError({ code: "BAD_REQUEST", httpStatus: 400 });
       expect(shouldRetryMutation(0, error)).toBe(false);
+    });
+  });
+
+  describe("shouldRetryIdempotentQueueMutation", () => {
+    const gatewayHtmlError = new Error(
+      "The API request for /trpc/verticalDramaSeries.proposeSeasonCarryOver lost its server/proxy connection before returning JSON. The operation may still have completed. (status=502; content-type=text/html)"
+    );
+
+    it("waits through the configured restart window, then stops", () => {
+      for (
+        let failureCount = 0;
+        failureCount < RETRYABLE_MUTATION_MAX_ATTEMPTS;
+        failureCount++
+      ) {
+        expect(
+          shouldRetryIdempotentQueueMutation(failureCount, gatewayHtmlError)
+        ).toBe(true);
+      }
+      expect(
+        shouldRetryIdempotentQueueMutation(
+          RETRYABLE_MUTATION_MAX_ATTEMPTS,
+          gatewayHtmlError
+        )
+      ).toBe(false);
+    });
+
+    it("does not retry ordinary server or validation errors", () => {
+      expect(
+        shouldRetryIdempotentQueueMutation(
+          0,
+          makeTrpcClientError({
+            code: "INTERNAL_SERVER_ERROR",
+            httpStatus: 500,
+          })
+        )
+      ).toBe(false);
+      expect(
+        shouldRetryIdempotentQueueMutation(
+          0,
+          makeTrpcClientError({ code: "BAD_REQUEST", httpStatus: 400 })
+        )
+      ).toBe(false);
     });
   });
 
