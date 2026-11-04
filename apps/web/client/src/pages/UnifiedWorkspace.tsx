@@ -76,6 +76,7 @@ export default function UnifiedWorkspace() {
   const projectParam = params.get("projectId") ?? "";
   const threadId = params.get("t");
   const pilotRequested = params.get("pilot") === "1";
+  const requestedPilotHarness = params.get("harness");
   const [presentationMode, setPresentationMode] = useState<PresentationMode>(
     () =>
       window.localStorage.getItem("smartaihub-workspace-mode") === "developer"
@@ -87,8 +88,6 @@ export default function UnifiedWorkspace() {
   const isAdmin = user?.role === "admin";
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
-  const [pilotOpen, setPilotOpen] = useState(false);
-  const [pilotConversationId, setPilotConversationId] = useState<number | null>(null);
   const [chatCommandIntent, setChatCommandIntent] = useState<ChatCommandIntent>("chat");
   const [selectedProjectId, setSelectedProjectId] = useState(projectParam);
   const [firstMessage, setFirstMessage] = useState<{
@@ -137,13 +136,21 @@ export default function UnifiedWorkspace() {
     setLocation(`/chat-legacy${window.location.search}`);
   }, [search, params, setLocation]);
   useEffect(() => {
-    if (!isAdmin || !pilotRequested || !conversationId || mode !== "chat") return;
-    setPilotConversationId(conversationId);
-    setPilotOpen(true);
-  }, [isAdmin, conversationId, mode, pilotRequested]);
-  useEffect(() => {
-    if (mode !== "chat") setPilotOpen(false);
-  }, [mode]);
+    if (!isAdmin || !pilotRequested || !conversationId) return;
+    const draftKey = `workspace-goal-draft:${conversationId}`;
+    sessionStorage.setItem(draftKey, JSON.stringify({
+      intent: "development",
+      pilotMode: true,
+      returnToChat: false,
+      ...(requestedPilotHarness ? { requestedHarnessAdapterId: requestedPilotHarness } : {}),
+    }));
+    const next = new URLSearchParams(search);
+    next.set("mode", "tasks");
+    next.delete("pilot");
+    next.delete("harness");
+    next.set("newGoal", "1");
+    setLocation(`/chat?${next.toString()}`);
+  }, [isAdmin, conversationId, pilotRequested, requestedPilotHarness, search, setLocation]);
   const navigate = (
     nextMode: WorkspaceMode,
     id = conversationId,
@@ -292,7 +299,6 @@ export default function UnifiedWorkspace() {
         title: prompt.trim().slice(0, 80) || (intent === "mini_app" ? "New Mini App Goal" : "New Development Goal"),
         ...(selectedProjectId && authorizedProjects.some(([id]) => id === selectedProjectId) ? { projectId: selectedProjectId } : {}),
       });
-      setPilotConversationId(created.id);
       sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({ prompt: addSkillFirstGuidance(prompt, intent), intent }));
       setLocation(`/chat?mode=tasks&c=${created.id}&newGoal=1`);
     } catch {
@@ -328,14 +334,20 @@ export default function UnifiedWorkspace() {
     await createGoalConversation(intent);
   };
   const startFirstRunPilot = async () => {
-    if (!isAdmin || createConversation.isPending) return;
+    if (!isAdmin || createConversation.isPending || createInFlight.current) return;
+    createInFlight.current = true;
     try {
       const created = await createConversation.mutateAsync({ title: "Autonomous development pilot" });
-      setPilotConversationId(created.id);
-      setLocation(`/chat?c=${created.id}&pilot=1`);
-      setPilotOpen(true);
+      sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({
+        intent: "development",
+        pilotMode: true,
+        ...(requestedPilotHarness ? { requestedHarnessAdapterId: requestedPilotHarness } : {}),
+      }));
+      setLocation(`/chat?mode=tasks&c=${created.id}&newGoal=1`);
     } catch {
-      toast.error("เปิด Autonomous Dev Pilot ไม่สำเร็จ ลองอีกครั้ง");
+      toast.error("เปิด First Run Pilot ใน Task Control ไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      createInFlight.current = false;
     }
   };
   const setMode = (next: PresentationMode) => {
@@ -422,7 +434,7 @@ export default function UnifiedWorkspace() {
         <HStack gap={1}>
           {isAdmin && presentationMode === "developer" ? (
             <Button
-              label="Autonomous Dev Pilot · Admin"
+              label="First Run Pilot · Task Control"
               variant="secondary"
               disabled={createConversation.isPending}
               onClick={() => void startFirstRunPilot()}
@@ -672,7 +684,7 @@ export default function UnifiedWorkspace() {
         />
       ) : null}
       {mode === "tasks" && isAdmin && params.get("newGoal") === "1" && conversationId ? (() => {
-        let draft: { prompt?: string; intent?: GoalIntent; resumeSpecId?: string; returnToChat?: boolean; originalPrompt?: string } = {};
+        let draft: { prompt?: string; intent?: GoalIntent; resumeSpecId?: string; returnToChat?: boolean; originalPrompt?: string; pilotMode?: boolean; requestedHarnessAdapterId?: string | null } = {};
         try { draft = JSON.parse(sessionStorage.getItem(`workspace-goal-draft:${conversationId}`) ?? "{}"); } catch { /* ignore corrupt local draft */ }
         return <Dialog open={params.get("newGoal") === "1"} onOpenChange={open => {
           if (!open) {
@@ -688,14 +700,16 @@ export default function UnifiedWorkspace() {
           }
         }}>
           <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none overflow-x-hidden overflow-y-auto p-4 sm:max-h-[92dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:p-5 md:max-w-4xl md:p-6 xl:max-w-6xl">
-            <DialogHeader><DialogTitle>ตรวจสอบ Goal ก่อนส่งอนุมัติ</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{draft.pilotMode ? "ตรวจสอบ First Run Pilot ก่อนส่งอนุมัติ" : "ตรวจสอบ Goal ก่อนส่งอนุมัติ"}</DialogTitle></DialogHeader>
             <Spec224WorkspacePanel
               conversationId={conversationId}
               threadId={threadId}
               simpleMode
+              pilotMode={draft.pilotMode === true}
+              requestedHarnessAdapterId={draft.requestedHarnessAdapterId ?? null}
               initialPrompt={draft.prompt}
               initialRequestKind={draft.intent === "mini_app" ? "mini_app" : "development"}
-              resumeSpecId={draft.resumeSpecId}
+              resumeSpecId={draft.pilotMode ? undefined : draft.resumeSpecId}
               onCreateConversation={async title => {
                 const created = await createConversation.mutateAsync({ title });
                 return created.id;
@@ -704,28 +718,6 @@ export default function UnifiedWorkspace() {
           </DialogContent>
         </Dialog>;
       })() : null}
-      <Dialog open={pilotOpen} onOpenChange={open => {
-        setPilotOpen(open);
-        if (!open && pilotRequested && mode === "chat") navigate("chat", pilotConversationId ?? conversationId, null);
-      }}>
-        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none overflow-x-hidden overflow-y-auto p-4 sm:max-h-[92dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:p-5 md:max-w-4xl md:p-6 xl:max-w-6xl">
-          <DialogHeader>
-            <DialogTitle>Autonomous Dev Pilot · ทดสอบสำหรับ Admin</DialogTitle>
-          </DialogHeader>
-          {pilotConversationId ? (
-            <Spec224WorkspacePanel
-              conversationId={pilotConversationId}
-              simpleMode
-              pilotMode
-              requestedHarnessAdapterId={params.get("harness")}
-              onCreateConversation={async title => {
-                const created = await createConversation.mutateAsync({ title });
-                return created.id;
-              }}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </AppShell>
   );
 }

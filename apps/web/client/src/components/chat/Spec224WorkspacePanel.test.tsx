@@ -117,8 +117,15 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByRole("combobox", { name: "Harness" })).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("prepares and starts the bounded Pilot through the existing Goal/Run mutations", async () => {
+  it("prepares and starts the bounded Pilot through the standard Goal/Run controls", async () => {
     usePlatformSourceWorkspace();
+    window.localStorage.setItem("spec224-task-preferences:v1:tenant-test:user-test", JSON.stringify({
+      developmentInputMode: "spec", selectedFeatureSpec: "224-example-feature", requestKind: "mini_app",
+      modelPolicy: "explicit", selectedModelId: "stale-model",
+    }));
+    window.sessionStorage.setItem("spec224-task-draft:v1:tenant-test:user-test:47:main", JSON.stringify({
+      prompt: "stale non-pilot task", developmentInputMode: "spec", requestKind: "mini_app",
+    }));
     mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
     mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "platform-source" }, availability: { available: true, status: "current" }, specSet: null };
     mocks.prepare.mockResolvedValue({
@@ -127,26 +134,26 @@ describe("Core goal readiness feedback", () => {
     });
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
-    expect(await screen.findByRole("region", { name: "First Run Pilot goal review" })).toBeInTheDocument();
-    expect(screen.getByRole("list")).toHaveTextContent("Implement:");
-    expect(screen.getByRole("list")).toHaveTextContent("Review & edge cases");
-    expect(screen.getByText(/apps\/runner-app\/tests\/spec224-live-pilot/)).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Project Workspace" })).toHaveTextContent("SmartAIHub Development Workspace");
-    const goalReview = screen.getByRole("region", { name: "ขอบเขต Goal ที่จะอนุมัติ" });
-    expect(goalReview).toHaveTextContent("Harness: Codex");
-    expect(goalReview).toHaveTextContent("Model: Test Model");
-    expect(goalReview).toHaveTextContent("ใช้โควต้า Codex/Provider");
+    const pilotContext = await screen.findByRole("region", { name: "First Run Pilot scope and status" });
+    expect(pilotContext).toHaveTextContent("First Run Pilot · Development Goal");
+    expect(pilotContext).toHaveTextContent("apps/runner-app/tests/spec224-live-pilot");
+    expect(screen.getByLabelText("1. เลือก Runner")).toBeInTheDocument();
+    expect(screen.getByLabelText("2. เลือก Project Workspace")).toBeInTheDocument();
+    expect(screen.getByLabelText("Spec 224 prompt")).toHaveProperty("readOnly", true);
+    expect((screen.getByLabelText("Spec 224 prompt") as HTMLTextAreaElement).value).toContain("bounded SmartAIHub first-run");
+    expect(screen.queryByRole("radio", { name: /เลือกไฟล์ SPEC/ })).toBeNull();
     expect(screen.queryByRole("radio", { name: /อนุญาตทุกไฟล์/ })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /สร้าง Mini App/ })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
-    await screen.findByRole("region", { name: "ผลการตรวจความพร้อม Pilot" });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByText(/ผลการเตรียม/);
     expect(mocks.prepare).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: 47,
       mode: "prompt",
       writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
     }));
 
-    fireEvent.click(screen.getByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot" }));
+    fireEvent.click(screen.getByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" }));
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: 47,
       mode: "prompt",
@@ -172,12 +179,13 @@ describe("Core goal readiness feedback", () => {
     });
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
-    const start = await screen.findByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot" });
-    fireEvent.click(start);
+    fireEvent.click(await screen.findByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    fireEvent.click(await screen.findByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" }));
 
-    expect(await screen.findByRole("status", { name: "บันทึก First Run แล้ว" })).toHaveTextContent("pilot-live-run");
-    expect(screen.getByRole("status", { name: "บันทึก First Run แล้ว" })).toHaveTextContent("approval-live-1");
+    const pilotContext = screen.getByRole("region", { name: "First Run Pilot scope and status" });
+    await waitFor(() => expect(pilotContext).toHaveTextContent("pilot-live-run"));
+    expect(pilotContext).toHaveTextContent("approval-live-1");
+    const start = screen.getByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" });
     expect(start).toBeDisabled();
     fireEvent.click(start);
     expect(mocks.start).toHaveBeenCalledTimes(1);
@@ -193,6 +201,7 @@ describe("Core goal readiness feedback", () => {
       developmentRuns: [{
         runId: "pilot-run-1", jobId: "pilot-job-1", isFirstRunPilot: true, conversationId: 46, threadId: "thread-origin", state: "IMPLEMENT", finalVerifyStatus: "pending",
         goalApproval: { status: "approved", approvalRef: "approval-1" },
+        economicsMode: "tenant_budget",
         budgetStatus: { limitMinorUnits: 500, heldMinorUnits: 100, capturedMinorUnits: 25, availableMinorUnits: 375, currency: "USD" },
         intermediateReceipts: ["evidence-ref-1"],
       }],
@@ -200,16 +209,14 @@ describe("Core goal readiness feedback", () => {
 
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
-    expect(await screen.findByText(/Goal \/ Run ของ First Run Pilot ที่บันทึกไว้/)).toBeInTheDocument();
-    expect(screen.getByText("pilot-run-1")).toBeInTheDocument();
-    expect(screen.getByText("approval-1")).toBeInTheDocument();
-    expect(screen.getByText(/Final Verify: pending/)).toBeInTheDocument();
-    expect(screen.getByText(/execution evidence refs 1/)).toBeInTheDocument();
-    expect(screen.getByText(/captured 0\.25 · held 1\.00/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Chat session" })).toHaveAttribute("href", "/chat?c=46&t=thread-origin");
-    expect(screen.getByRole("link", { name: "Task Control" })).toHaveAttribute("href", "/chat?mode=tasks&c=46&t=thread-origin&jobId=pilot-job-1");
-    expect(screen.getByRole("link", { name: "Mission Control" })).toHaveAttribute("href", "/chat?mode=mission&c=46&t=thread-origin&jobId=pilot-job-1");
-    expect(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" })).toBeDisabled();
+    const status = await screen.findByRole("region", { name: "First Run Pilot execution status" });
+    expect(status).toHaveTextContent("pilot-run-1");
+    expect(status).toHaveTextContent("approval-1");
+    expect(status).toHaveTextContent("Final Verify: pending");
+    expect(status).toHaveTextContent("execution evidence refs 1");
+    expect(status).toHaveTextContent("captured 0.25 · held 1.00");
+    expect(screen.getByRole("region", { name: "First Run Pilot scope and status" })).toHaveTextContent("ปิดการสร้าง Goal ซ้ำ");
+    expect(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" })).toBeDisabled();
   });
 
   it("lets an authorized approver act on the canonical pending Goal request", async () => {
@@ -238,6 +245,7 @@ describe("Core goal readiness feedback", () => {
       availability: { available: true, status: "current" }, specSet: null,
       developmentRuns: [{
         runId: "pilot-run-resume", jobId: "pilot-job-resume", isFirstRunPilot: true, conversationId: 46, state: "IMPLEMENT",
+        economicsMode: "provider_managed",
         goalApproval: { status: "approved", approvalRef: "approval-resume" },
         finalVerifyStatus: "pending", intermediateReceipts: [],
       }],

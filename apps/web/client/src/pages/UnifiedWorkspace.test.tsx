@@ -32,6 +32,10 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      workerJobs: { observability: { invalidate: vi.fn() } },
+      spec226DevelopmentControl: { list: { invalidate: vi.fn() } },
+    }),
     workerJobs: {
       observability: {
         useQuery: () => ({
@@ -47,11 +51,21 @@ vi.mock("@/lib/trpc", () => ({
           error: null,
         }),
       },
+      cancelQueued: { useMutation: () => ({ mutateAsync: vi.fn() }) },
     },
     spec226DevelopmentControl: {
       list: {
         useQuery: () => ({ data: state.goals, isLoading: false, error: null }),
       },
+      getConversationWorkspace: {
+        useQuery: () => ({ data: { workspace: null, developmentRuns: [] }, isLoading: false, isSuccess: true, refetch: vi.fn() }),
+      },
+      cancelUnclaimedLegacyPlatformRun: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+      resumeWorkspaceRun: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+      modularSaasProjectMissionControl: { useQuery: () => ({ data: { sourceStatus: "not_ready", ingestionStatus: "not_imported", deployment: { status: "pending" }, specs: [], packages: [], linkedRuns: [] }, isLoading: false, error: null, refetch: vi.fn() }) },
+      listPlatformWorkspaceBindingCandidates: { useQuery: () => ({ data: { workspaces: [], projects: [] }, isLoading: false, error: null, refetch: vi.fn() }) },
+      bindPlatformWorkspace: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+      createAndBindModularCoreWorkspace: { useMutation: () => ({ mutateAsync: vi.fn() }) },
     },
     runnerNodes: {
       list: {
@@ -253,37 +267,42 @@ describe("UnifiedWorkspace", () => {
     expect(state.location).toHaveBeenCalledWith("/chat?c=902");
   });
 
-  it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
+  it("opens First Run Pilot in the standard Task Control Goal review", async () => {
     const view = render(<UnifiedWorkspace />);
     await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
     act(() => { state.search = "c=902"; });
     view.rerender(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "Autonomous Dev Pilot · Admin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "First Run Pilot · Task Control" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Developer" }));
-    fireEvent.click(screen.getByRole("button", { name: "Autonomous Dev Pilot · Admin" }));
-    expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "First Run Pilot · Task Control" }));
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
+    expect(JSON.parse(window.sessionStorage.getItem("workspace-goal-draft:902") ?? "{}")).toMatchObject({ intent: "development", pilotMode: true });
+    act(() => { state.search = "mode=tasks&c=902&newGoal=1"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect(await screen.findByRole("heading", { name: "ตรวจสอบ First Run Pilot ก่อนส่งอนุมัติ" })).toBeTruthy();
     expect(screen.getByText("Pilot 902 · true · auto")).toBeTruthy();
-    expect(state.location).toHaveBeenCalledWith("/chat?c=902&pilot=1");
   });
 
-  it("restores the pilot review from its durable conversation URL after remount", async () => {
+  it("migrates legacy Pilot URLs into the standard Goal review after remount", async () => {
     state.search = "c=902&pilot=1&harness=microsoft-copilot.v1";
     render(<UnifiedWorkspace />);
-    expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
-    expect(screen.getByText("Pilot 902 · true · microsoft-copilot.v1")).toBeTruthy();
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?c=902&mode=tasks&newGoal=1"));
+    expect(JSON.parse(window.sessionStorage.getItem("workspace-goal-draft:902") ?? "{}")).toMatchObject({
+      intent: "development", pilotMode: true, requestedHarnessAdapterId: "microsoft-copilot.v1",
+    });
   });
 
-  it("does not reopen the Pilot dialog while navigating to Task Control", () => {
+  it("routes a legacy Pilot query from Task Control to the normal Goal review", async () => {
     state.search = "mode=tasks&c=902&pilot=1";
     render(<UnifiedWorkspace />);
-    expect(screen.queryByRole("region", { name: "First Run Pilot panel" })).toBeNull();
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
     expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();
   });
 
   it("does not expose the first-run pilot entry point to non-admin users", () => {
     state.user = { id: "user-1", role: "user" };
     render(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "Autonomous Dev Pilot · Admin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "First Run Pilot · Task Control" })).toBeNull();
   });
 
   it("offers an obvious New Goal action in Task Control and opens the existing review route", async () => {
@@ -426,7 +445,7 @@ describe("UnifiedWorkspace", () => {
     expect(
       screen.getByRole("region", { name: "Developer execution details" })
     ).toBeTruthy();
-    expect(screen.getByText("goal-visible-123")).toBeTruthy();
+    expect(screen.getAllByText("goal-visible-123").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Simple" }));
     expect(
       screen.queryByRole("region", { name: "Developer execution details" })
