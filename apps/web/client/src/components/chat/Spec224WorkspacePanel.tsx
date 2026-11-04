@@ -653,7 +653,24 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const ingestModularSaasProjectMutation = trpc.spec226DevelopmentControl.ingestModularSaasProject.useMutation();
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
   type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
+  type SourceChangeRecoveryInput = {
+    workPackageId: string;
+    targetConversationId: number;
+    targetPreparation: Preparation;
+    startMode: "prompt" | "spec_set";
+    startKey: string;
+    idempotencyKey: string;
+  };
+  type PendingSourceChangeRecovery = {
+    input: SourceChangeRecoveryInput;
+    previousSnapshotRevision: string | null;
+    startedAt: number;
+    timedOut: boolean;
+  };
   const [preparation, setPreparation] = useState<Preparation | null>(null);
+  const [pendingSourceChangeRecovery, setPendingSourceChangeRecovery] = useState<PendingSourceChangeRecovery | null>(null);
+  const [recoveringSourceChange, setRecoveringSourceChange] = useState(false);
+  const sourceChangeRecoveryInFlight = useRef(false);
   useEffect(() => {
     if (pilotMode || !initialPrompt || !draftKey || hydratedDraftKey !== draftKey) return;
     setPrompt(initialPrompt.slice(0, 4_000));
@@ -974,6 +991,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     if (persistPreference) preferencesTouched.current = true;
     setSelected(value);
     setPreparation(null);
+    setPendingSourceChangeRecovery(null);
     if (!value) return;
     const workspace = workspaces.find(item => selectionKey(item) === value);
     if (!workspace) return;
@@ -1224,17 +1242,18 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
-  async function refreshAfterExecutionSourceChanged(input: {
-    workPackageId: string;
-    targetConversationId: number;
-    targetPreparation: Preparation;
-    startMode: "prompt" | "spec_set";
-    startKey: string;
-    idempotencyKey: string;
-  }) {
+  async function refreshAfterExecutionSourceChanged(input: SourceChangeRecoveryInput) {
+    if (sourceChangeRecoveryInFlight.current) return;
+    sourceChangeRecoveryInFlight.current = true;
+    setRecoveringSourceChange(true);
     const selected = selectedWorkspace;
     const previousSnapshotRevision = input.targetPreparation.workPackages?.find(item => item.id === input.workPackageId)?.sourceAdmission?.snapshotRevision
       ?? selected?.snapshotRevision;
+    const waitForRunnerSnapshot = () => setPendingSourceChangeRecovery(current =>
+      current?.input.startKey === input.startKey
+        ? current
+        : { input, previousSnapshotRevision: previousSnapshotRevision ?? null, startedAt: Date.now(), timedOut: false },
+    );
     try {
       if (!selected || selected.scope !== "PLATFORM_ENGINEERING") throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
       const refreshedWorkspaces = await workspacesQuery.refetch();
@@ -1243,6 +1262,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           && workspace.scope === "PLATFORM_ENGINEERING",
       );
       if (!currentWorkspace) throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
+
+      if (previousSnapshotRevision && currentWorkspace.snapshotRevision === previousSnapshotRevision) {
+        setPreparation(null);
+        waitForRunnerSnapshot();
+        toast.info("Goal ถูกบันทึกและหยุดไว้แล้ว Runner จะเผยแพร่ source snapshot ใหม่ตามรอบประมาณ 2 นาที ระบบจะตรวจและเตรียมแผนให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ");
+        return;
+      }
 
       await bindMutation.mutateAsync({
         conversationId: input.targetConversationId,
@@ -1273,9 +1299,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
 
       if (!previousSnapshotRevision || latestSnapshotRevision === previousSnapshotRevision) {
         setPreparation(null);
-        toast.error("Goal เดิมถูกบันทึกแล้ว แต่ source ยังเป็น snapshot เดิม โปรดโหลดรายการ Runner หลัง source เปลี่ยน แล้วเตรียมแผนใหม่ก่อนส่งอีกครั้ง");
+        waitForRunnerSnapshot();
+        toast.info("Goal ถูกบันทึกและหยุดไว้แล้ว Runner ยังไม่เผยแพร่ source snapshot ใหม่ ระบบจะตรวจซ้ำอัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ");
         return;
       }
+      setPendingSourceChangeRecovery(null);
       setPreparation(refreshedPreparation);
       setStartKeys(current => {
         const next = { ...current };
@@ -1289,9 +1317,40 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.info("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ เพราะ source เปลี่ยน ระบบเตรียม snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง");
     } catch {
       setPreparation(null);
-      toast.error("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ และโหลด source ล่าสุดไม่สำเร็จ โปรดโหลดรายการ Runner แล้วเตรียมแผนใหม่");
+      if (selected?.scope === "PLATFORM_ENGINEERING") {
+        waitForRunnerSnapshot();
+        toast.error("Goal ถูกบันทึกและหยุดไว้แล้ว แต่ยังโหลด source ล่าสุดไม่ได้ ระบบจะตรวจ Runner อีกครั้งโดยไม่ส่ง Goal ซ้ำ");
+      } else {
+        toast.error("Goal ถูกบันทึกและหยุดไว้แล้ว แต่โหลด source ล่าสุดไม่สำเร็จ โปรดตรวจ Runner และเตรียมแผนใหม่ก่อนส่งงานอีกครั้ง");
+      }
+    } finally {
+      sourceChangeRecoveryInFlight.current = false;
+      setRecoveringSourceChange(false);
     }
   }
+
+  useEffect(() => {
+    if (!pendingSourceChangeRecovery) return;
+    const updatedWorkspace = workspaces.find(workspace =>
+      workspace.runnerId === selectedWorkspace?.runnerId
+        && workspace.workspaceId === selectedWorkspace?.workspaceId
+        && workspace.scope === "PLATFORM_ENGINEERING",
+    );
+    if (!updatedWorkspace || updatedWorkspace.snapshotRevision === pendingSourceChangeRecovery.previousSnapshotRevision) return;
+    void refreshAfterExecutionSourceChanged(pendingSourceChangeRecovery.input);
+  }, [pendingSourceChangeRecovery, workspaces, selectedWorkspace?.runnerId, selectedWorkspace?.workspaceId]);
+
+  useEffect(() => {
+    if (!pendingSourceChangeRecovery) return;
+    const pendingStartKey = pendingSourceChangeRecovery.input.startKey;
+    const timeoutId = window.setTimeout(() => {
+      setPendingSourceChangeRecovery(current => current?.input.startKey === pendingStartKey
+        ? { ...current, timedOut: true }
+        : current,
+      );
+    }, Math.max(0, 180_000 - (Date.now() - pendingSourceChangeRecovery.startedAt)));
+    return () => window.clearTimeout(timeoutId);
+  }, [pendingSourceChangeRecovery?.input.startKey, pendingSourceChangeRecovery?.startedAt]);
 
   async function startWorkPackage(
     workPackageId: string,
@@ -1814,7 +1873,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             aria-label="1. เลือก Runner"
             className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
             value={selectedRunnerId}
-            onChange={event => { preferencesTouched.current = true; setSelectedRunnerId(event.target.value); setSelected(""); setPreparation(null); }}
+            onChange={event => { preferencesTouched.current = true; setSelectedRunnerId(event.target.value); setSelected(""); setPreparation(null); setPendingSourceChangeRecovery(null); }}
             disabled={runnersQuery.isLoading || creatingTask}
           >
             <option value="">เลือก Runner</option>
@@ -2441,13 +2500,32 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               {creatingTask ? "กำลังเตรียมและเริ่มงาน…" : "เริ่มพัฒนา"}
             </Button>
           ) : null}
+          {pendingSourceChangeRecovery ? (
+            <section className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" aria-label="รอ Runner source snapshot">
+              <p role="status">
+                {pendingSourceChangeRecovery.timedOut
+                  ? "Goal เดิมถูกบันทึกและหยุดไว้แล้ว แต่ Runner ยังไม่ส่ง source snapshot ใหม่ โปรดตรวจว่า Runner ออนไลน์ แล้วตรวจ snapshot อีกครั้งเมื่อพร้อม"
+                  : "Goal เดิมถูกบันทึกและหยุดไว้แล้ว Runner เผยแพร่ source snapshot ตามรอบประมาณ 2 นาที ระบบกำลังตรวจและจะเตรียมแผนใหม่ให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ"}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-2"
+                disabled={recoveringSourceChange}
+                onClick={() => void refreshAfterExecutionSourceChanged(pendingSourceChangeRecovery.input)}
+              >
+                {recoveringSourceChange ? "กำลังตรวจ snapshot…" : "ตรวจ snapshot และเตรียมแผนอีกครั้ง"}
+              </Button>
+            </section>
+          ) : null}
           {requestKind === "mini_app" ? (
             <Button type="button" className="mt-3 w-full" disabled={!conversationId || uploading || startMutation.isPending || !prompt.trim()} onClick={() => void startPersonalMiniApp()}>
               {startMutation.isPending ? "กำลังส่ง Mini App ไปสร้าง…" : "สร้าง Mini App จาก prompt"}
             </Button>
           ) : (
-            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || bindMutation.isPending || canonicalSpecSetMissing || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && (!platformWorkspaceSelected || featureSpecContextQuery.data?.handoff.status !== "CURRENT")) || (pilotMode && (hasExistingPilotRun || Boolean(pilotSubmission) || !isAdmin || !platformWorkspaceSelected || !pilotBindingMatchesSelection || !pilotRunnerExecutionReady || !catalogFresh || !activeModel || !supportedEffort))} onClick={() => void prepare()}>
-              {uploading ? "กำลังบันทึก Spec revision…" : preparing ? "กำลังเตรียม…" : canonicalSpecSetMissing ? "นำเข้า Spec เข้า workspace ก่อน" : "เตรียมแผนและตรวจความพร้อม"}
+            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || bindMutation.isPending || Boolean(pendingSourceChangeRecovery) || canonicalSpecSetMissing || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && (!platformWorkspaceSelected || featureSpecContextQuery.data?.handoff.status !== "CURRENT")) || (pilotMode && (hasExistingPilotRun || Boolean(pilotSubmission) || !isAdmin || !platformWorkspaceSelected || !pilotBindingMatchesSelection || !pilotRunnerExecutionReady || !catalogFresh || !activeModel || !supportedEffort))} onClick={() => void prepare()}>
+              {pendingSourceChangeRecovery ? "รอ Runner source snapshot ใหม่…" : uploading ? "กำลังบันทึก Spec revision…" : preparing ? "กำลังเตรียม…" : canonicalSpecSetMissing ? "นำเข้า Spec เข้า workspace ก่อน" : "เตรียมแผนและตรวจความพร้อม"}
             </Button>
           )}
           {requestKind === "mini_app" && miniAppPreviewUrl ? (

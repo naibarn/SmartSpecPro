@@ -905,6 +905,68 @@ describe("Core goal readiness feedback", () => {
     expect(mocks.start.mock.calls[1]?.[0].idempotencyKey).not.toBe(mocks.start.mock.calls[0]?.[0].idempotencyKey);
   });
 
+  it("keeps a source-changed Goal blocked until the Runner publishes a newer snapshot, then prepares without resubmitting", async () => {
+    usePlatformSourceWorkspace();
+    const firstWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
+    Object.assign(firstWorkspace, { snapshotRevision: "snapshot-before", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false });
+    mocks.workspace = {
+      workspace: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId, snapshotRevision: "snapshot-before" },
+      availability: { available: true, status: "current" },
+      specSet: null,
+    };
+    mocks.refetchWorkspaces.mockImplementation(async () => ({ data: { workspaces: mocks.workspaces } }));
+    mocks.prepare
+      .mockResolvedValueOnce({
+        ...preparation(true),
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-before" } }],
+      })
+      .mockResolvedValueOnce({
+        ...preparation(true),
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-after" } }],
+      });
+    mocks.start.mockResolvedValueOnce({
+      runId: "saved-source-changed-goal", jobId: "saved-source-changed-job", dispatchStatus: "BLOCKED",
+      goalAdmissionStatus: "EXECUTION_SOURCE_CHANGED",
+      authorization: { status: "EXECUTION_SOURCE_CHANGED", reasons: ["EXECUTION_SOURCE_CHANGED"] },
+    });
+    mocks.start.mockResolvedValueOnce({ runId: "fresh-source-goal", jobId: "fresh-source-job", dispatchStatus: "ENQUEUED" });
+
+    const view = render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Implement a bounded source-safe change" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByText(/ผลการเตรียม/);
+    fireEvent.click(getDevelopmentStartButton());
+
+    expect(await screen.findByRole("region", { name: "รอ Runner source snapshot" })).toHaveTextContent(/เผยแพร่ source snapshot ตามรอบประมาณ 2 นาที/);
+    expect(screen.getByRole("button", { name: "ตรวจ snapshot และเตรียมแผนอีกครั้ง" })).toBeEnabled();
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+    expect(mocks.bindWorkspace).not.toHaveBeenCalled();
+
+    const latestWorkspace = { ...firstWorkspace, snapshotRevision: "snapshot-after", contentFingerprint: "c".repeat(64) };
+    mocks.workspaces = mocks.workspaces.map(workspace => workspace.workspaceId === firstWorkspace.workspaceId ? latestWorkspace : workspace);
+    mocks.workspace = {
+      workspace: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId, snapshotRevision: "snapshot-after" },
+      availability: { available: true, status: "current" },
+      specSet: null,
+    };
+    mocks.refetchWorkspaceBinding.mockResolvedValueOnce({ data: {
+      workspace: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId, snapshotRevision: "snapshot-after" },
+      availability: { available: true, status: "current" },
+    } });
+    view.rerender(<Spec224WorkspacePanel conversationId={8} />);
+
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
+    expect(mocks.bindWorkspace).toHaveBeenCalledWith({
+      conversationId: 8, runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId,
+    });
+    await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง")));
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(getDevelopmentStartButton());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
+  });
+
   it("offers a separate action to continue the exact existing DevelopmentRun", async () => {
     mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "run-existing", state: "BLOCKED_RECOVERABLE",
       workPackageId: "pkg", workPackageExternalId: "SPEC-224", specSetRevision: 1, revision: 2 }] };
