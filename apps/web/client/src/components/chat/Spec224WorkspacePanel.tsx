@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Banner } from "@astryxdesign/core/Banner";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
@@ -345,6 +346,16 @@ export function preparationBlockerMessage(code: string): string {
     PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED: "ยังตรวจ write scope ของ prompt ไม่ผ่าน โปรดระบุขอบเขตไฟล์ที่อนุญาตก่อนเริ่ม",
   };
   return messages[code] ?? "ยังเริ่มงานไม่ได้จนกว่าเงื่อนไขความปลอดภัยและความพร้อมจะผ่าน";
+}
+
+function sourceAuthorityMessage(code?: string | null): string {
+  if (code === "WORKSPACE_SOURCE_AUTHORITY_MISMATCH") {
+    return "Runner ที่เลือกส่ง source ไม่ตรงกับ authority ของ SmartAIHub Modular Core จึงยังสร้าง Goal ไม่ได้ ต้องผูก Core workspace กับ Runner source ที่ได้รับอนุญาตก่อน แล้วเตรียมแผนใหม่";
+  }
+  if (code === "WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED") {
+    return "snapshot ของ Runner มีข้อมูล source ไม่ครบ จึงยังตรวจสิทธิ์และสร้าง Goal ไม่ได้ โหลด snapshot ล่าสุดแล้วเตรียมแผนใหม่";
+  }
+  return "ระบบยืนยัน source authority ของ Core workspace ไม่ได้ จึงปิดการส่ง Goal ไว้ ให้โหลด snapshot ล่าสุดและตรวจการผูก Runner กับ workspace ก่อนลองใหม่";
 }
 
 export function shouldOfferPromptStartAction(
@@ -1454,6 +1465,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.info("พบ First Run Pilot ที่บันทึกแล้ว ระบบไม่สร้าง Goal ซ้ำ");
       return;
     }
+    if (platformWorkspaceSelected && targetPreparation.sourceAuthority?.status !== "ready") {
+      toast.error(sourceAuthorityMessage(targetPreparation.sourceAuthority?.code));
+      return;
+    }
     const startMode = startOptions?.mode ?? mode;
     const requestedSpecId = startOptions?.requestedSpecId !== undefined
       ? startOptions.requestedSpecId
@@ -1674,6 +1689,19 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           setPreparation(null);
           toast.error("Workspace เปลี่ยนระหว่างส่ง Goal และอัปเดตแผนล่าสุดไม่สำเร็จ กรุณาโหลดรายการ Runner แล้วเตรียมแผนใหม่");
         }
+        return;
+      }
+      if (error instanceof Error && /source authority/i.test(error.message)) {
+        const code = error.message.includes("ไม่มี source authority ตรงกับ")
+          ? "WORKSPACE_SOURCE_AUTHORITY_MISMATCH"
+          : "WORKSPACE_SOURCE_AUTHORITY_UNAVAILABLE";
+        setPreparation(current => current
+          && current.planId === targetPreparation.planId
+          && current.planRevision === targetPreparation.planRevision
+          && sameWorkspaceSource(current.sourceBinding ?? null, targetPreparation.sourceBinding ?? null)
+          ? { ...current, sourceAuthority: { status: "blocked", code } }
+          : current);
+        toast.info("source authority เปลี่ยนหลังเตรียมแผน ระบบหยุดก่อนสร้าง Goal และปิดปุ่มส่งไว้พร้อมแสดงเหตุผลในผลการเตรียม");
         return;
       }
       toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
@@ -2661,6 +2689,23 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     : <>Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</>}
                 </Text>
               ) : null}
+              {platformWorkspaceSelected ? (
+                preparation.sourceAuthority?.status === "ready" ? (
+                  <Banner
+                    status="success"
+                    title="ตรวจ source authority ผ่าน"
+                    description="Runner และ snapshot ตรงกับ workspace ที่ได้รับอนุญาต ระบบจะตรวจซ้ำก่อนสร้าง Goal เพื่อจับการเปลี่ยนแปลงหลังเตรียมแผน"
+                    collapsible={false}
+                  />
+                ) : (
+                  <Banner
+                    status="error"
+                    title="ยังส่ง Goal ไม่ได้: ตรวจ source authority ไม่ผ่าน"
+                    description={sourceAuthorityMessage(preparation.sourceAuthority?.code)}
+                    collapsible={false}
+                  />
+                )
+              ) : null}
               {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
               {effectiveSpecSource === "catalog" && canonicalHandoff?.status === "CURRENT" && preparation.runnableWorkPackageIds.length > 0 && !(preparation.workPackages ?? []).some(item => preparation.runnableWorkPackageIds.includes(item.id) && isNextReadyPackage(item)) ? <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" role="alert">handoff ระบุ next WorkUnit เป็น “{nextReadyWorkunit ?? "ยังไม่กำหนด"}” แต่ไม่มี runnable package ที่ตรงกัน จึงปิดการเริ่มงานเพื่อป้องกันการทำ WorkUnit เก่าซ้ำ โปรด reconcile handoff ผ่าน writer กลางหรือเตรียม package ที่ตรงกัน</p> : null}
               {selectedHandoffPackage ? <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
@@ -2680,7 +2725,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_CANDIDATE_OVERLAY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "Runner จะแยกพื้นที่ทำงานของงานนี้ และตรวจไฟล์ก่อนนำผลกลับ เพื่อรักษาการเปลี่ยนแปลงเดิมที่งานไม่ได้แก้" : `Source preflight: SAFE_CANDIDATE_OVERLAY · ${workPackage.sourceAdmission.dirtyPathCount ?? 0} existing changes protected by candidate CAS and execution lease · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {((preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isStartableForCurrentRequest(workPackage as WorkspaceWorkPackage) || isNextReadyPackage(workPackage))) || shouldOfferPromptStartAction(mode, simpleMode, workPackage.id)) ? (
-                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !economicLedgerReadyForRun || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED")) || (effectiveSpecSource === "catalog" && isNextReadyPackage(workPackage) && packageRunOrder.pendingPrerequisites.length > 0) || (effectiveSpecSource === "catalog" && !isStartableForCurrentRequest(workPackage as WorkspaceWorkPackage) && !isNextReadyPackage(workPackage)) || (pilotMode && (hasExistingPilotRun || Boolean(pilotSubmission) || !isAdmin || !platformWorkspaceSelected || !pilotRunnerExecutionReady))} onClick={() => void startWorkPackage(workPackage.id)}>
+                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !economicLedgerReadyForRun || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || (platformWorkspaceSelected && preparation.sourceAuthority?.status !== "ready") || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED")) || (effectiveSpecSource === "catalog" && isNextReadyPackage(workPackage) && packageRunOrder.pendingPrerequisites.length > 0) || (effectiveSpecSource === "catalog" && !isStartableForCurrentRequest(workPackage as WorkspaceWorkPackage) && !isNextReadyPackage(workPackage)) || (pilotMode && (hasExistingPilotRun || Boolean(pilotSubmission) || !isAdmin || !platformWorkspaceSelected || !pilotRunnerExecutionReady))} onClick={() => void startWorkPackage(workPackage.id)}>
                       {startMutation.isPending ? "กำลังส่งคำสั่ง…" : !preparation.runnableWorkPackageIds.includes(workPackage.id) ? "ยังเริ่มไม่ได้ · แก้เงื่อนไขด้านบนก่อน" : effectiveSpecSource === "catalog" && workPackage.id === packageRunOrder.nextPrerequisite?.id ? `ทำงานที่ต้องทำก่อน · ${workPackage.externalId}` : effectiveSpecSource === "catalog" && isNextReadyPackage(workPackage) && packageRunOrder.pendingPrerequisites.length > 0 ? `รอทำงานก่อน · ${packageRunOrder.pendingPrerequisites[0]?.externalId}` : mode === "prompt" || simpleMode ? "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}

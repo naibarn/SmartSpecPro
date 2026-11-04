@@ -52,7 +52,7 @@ function preparation(ready: boolean) {
       contentFingerprint: platformWorkspace.contentFingerprint,
     }
     : null;
-  return { planRevision: 1, requirementCount: 0, blockers: [], runnableWorkPackageIds: ["prompt"],
+  return { planRevision: 1, requirementCount: 0, blockers: [], runnableWorkPackageIds: ["prompt"], sourceAuthority: { status: "ready" as const },
     workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
     sourceBinding,
     runnerReadiness: { ready, code: ready ? "RUNNER_READY" : "CODEX_TASK_PROBE_NOT_RUN", policyDecision: "pending",
@@ -127,6 +127,55 @@ function getContinueRunButton() {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("shows a source-authority failure before Goal submission and disables the action", async () => {
+    usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source", snapshotRevision: "fresh" },
+      availability: { available: true, status: "current" },
+      specSet: null,
+    };
+    mocks.prepare.mockResolvedValueOnce({
+      ...preparation(true),
+      sourceAuthority: { status: "blocked", code: "WORKSPACE_SOURCE_AUTHORITY_MISMATCH" },
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }],
+    });
+
+    render(<Spec224WorkspacePanel conversationId={48} simpleMode />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Create a small utility" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+
+    await screen.findByText(/ผลการเตรียม/);
+    expect(await screen.findByText(/Runner ที่เลือกส่ง source ไม่ตรงกับ authority/)).toBeInTheDocument();
+    expect(getDevelopmentStartButton()).toBeDisabled();
+    fireEvent.click(getDevelopmentStartButton());
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("converts a source-authority race at submit into a persistent blocker", async () => {
+    usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source", snapshotRevision: "fresh" },
+      availability: { available: true, status: "current" },
+      specSet: null,
+    };
+    mocks.prepare.mockResolvedValueOnce({
+      ...preparation(true),
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }],
+    });
+    mocks.start.mockRejectedValueOnce(new Error("Runner ที่เลือกไม่มี source authority ตรงกับ SmartAIHub Modular Core workspace นี้ ระบบจึงยังไม่สร้าง Goal"));
+
+    render(<Spec224WorkspacePanel conversationId={48} simpleMode />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Create a small utility" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByText(/ผลการเตรียม/);
+    fireEvent.click(getDevelopmentStartButton());
+
+    await waitFor(() => expect(getDevelopmentStartButton()).toBeDisabled());
+    expect(screen.getByRole("alert")).toHaveTextContent(/Runner ที่เลือกส่ง source ไม่ตรงกับ authority/);
+    expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("หยุดก่อนสร้าง Goal"));
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps new Goals actionable when saved preferences point to an unimported SPEC", async () => {
     const preferencesKey = "spec224-task-preferences:v1:tenant-test:user-test";
     const draftKey = "spec224-task-draft:v1:tenant-test:user-test:48:main";

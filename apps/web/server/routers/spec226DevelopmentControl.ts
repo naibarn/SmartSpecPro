@@ -211,8 +211,8 @@ function asTrpcError(error: unknown): never {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: code === "WORKSPACE_SOURCE_AUTHORITY_MISMATCH"
-        ? "Workspace ของ Runner ไม่ตรงกับ source authority ที่ใช้ออกสิทธิ์รัน ระบบจึงยังไม่สร้าง Goal เพื่อป้องกันงานถูกยกเลิก โปรดเลือก Runner ที่ผูกกับ workspace นี้หรือซิงก์ source แล้วลองอีกครั้ง"
-        : "ระบบยังยืนยัน source authority ของ workspace ไม่ได้ จึงยังไม่สร้าง Goal โปรดตรวจการเชื่อมต่อ Runner และลองใหม่เมื่อตรวจสอบ workspace ได้แล้ว",
+        ? "Runner ที่เลือกไม่มี source authority ตรงกับ SmartAIHub Modular Core workspace นี้ ระบบจึงยังไม่สร้าง Goal โปรดผูก workspace กับ Runner source ที่ได้รับอนุญาต แล้วเตรียมแผนใหม่"
+        : "ระบบตรวจ source authority ของ workspace ไม่ผ่านหรือข้อมูล snapshot ไม่ครบ จึงยังไม่สร้าง Goal โปรดโหลด snapshot ล่าสุดและให้ผู้ดูแลตรวจการผูก Core Runner ก่อนเริ่มใหม่",
     });
   }
   if (code === "SPEC_SET_REVISION_STALE") {
@@ -1199,6 +1199,33 @@ export const spec226DevelopmentControlRouter = router({
       try {
         const scope = requireScope(ctx);
         const prepared = await defaultSpec224WorkspaceSpecSetService.prepareWorkspaceRun({ ...scope, ...input });
+        const registeredWorkspace = (await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope))
+          .find(workspace => workspace.runnerId === prepared.workspace.runnerId
+            && workspace.workspaceId === prepared.workspace.workspaceId);
+        let sourceAuthority: { status: "ready" } | { status: "blocked"; code: string } | null = null;
+        if (!registeredWorkspace) {
+          sourceAuthority = { status: "blocked", code: "WORKSPACE_SOURCE_AUTHORITY_UNAVAILABLE" };
+        } else if (registeredWorkspace.scope === "PLATFORM_ENGINEERING") {
+          const sourceBinding = prepared.sourceBinding;
+          if (!sourceBinding || sourceBinding.runnerId !== registeredWorkspace.runnerId
+            || sourceBinding.workspaceId !== registeredWorkspace.workspaceId) {
+            sourceAuthority = { status: "blocked", code: "WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED" };
+          } else {
+            try {
+              await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+                workspaceId: sourceBinding.workspaceId,
+                gitHead: sourceBinding.gitHead,
+                contentFingerprint: sourceBinding.contentFingerprint,
+                dirtyPaths: registeredWorkspace.dirtyPaths ?? null,
+              });
+              sourceAuthority = { status: "ready" };
+            } catch (error) {
+              const code = errorCode(error);
+              if (!["WORKSPACE_SOURCE_AUTHORITY_MISMATCH", "WORKSPACE_SOURCE_AUTHORITY_UNAVAILABLE", "WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED"].includes(code)) throw error;
+              sourceAuthority = { status: "blocked", code };
+            }
+          }
+        }
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
           context: scope,
           runnerId: prepared.workspace.runnerId,
@@ -1206,6 +1233,7 @@ export const spec226DevelopmentControlRouter = router({
         });
         return {
           ...prepared,
+          sourceAuthority,
           runnerReadiness,
           blockers: [...new Set([...prepared.blockers, ...(runnerReadiness.ready ? [] : [runnerReadiness.code])])],
         };

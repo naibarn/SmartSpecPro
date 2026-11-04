@@ -811,6 +811,60 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.workspaceSpecSets.prepareWorkspaceRun).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, conversationId: 8, mode: "spec_set" }));
   });
 
+  it("returns a source-authority blocker during preparation before the Goal submit action is available", async () => {
+    const sourceBinding = {
+      runnerId: "runner-core", workspaceId: "workspace-core", snapshotRevision: "snapshot-7",
+      gitHead: "a".repeat(40), contentFingerprint: "d".repeat(64),
+    };
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      ...sourceBinding, scope: "PLATFORM_ENGINEERING", dirtyPaths: [],
+    }]);
+    mocks.workspaceSpecSets.prepareWorkspaceRun.mockResolvedValueOnce({
+      workspace: { runnerId: sourceBinding.runnerId, workspaceId: sourceBinding.workspaceId },
+      sourceBinding, planId: "plan:core", planRevision: 3, contextPackHash: "b".repeat(64),
+      workPackages: [], requirementCount: 1, runnableWorkPackageIds: ["wp-1"], blockers: [],
+    });
+    mocks.assertWorkspaceExecutionSource.mockRejectedValueOnce(new Error("WORKSPACE_SOURCE_AUTHORITY_MISMATCH"));
+
+    await expect((spec226DevelopmentControlRouter.prepareWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 8, mode: "spec_set" },
+    })).resolves.toMatchObject({
+      sourceAuthority: { status: "blocked", code: "WORKSPACE_SOURCE_AUTHORITY_MISMATCH" },
+      runnableWorkPackageIds: ["wp-1"],
+    });
+    expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      workspaceId: sourceBinding.workspaceId,
+      gitHead: sourceBinding.gitHead,
+      contentFingerprint: sourceBinding.contentFingerprint,
+      dirtyPaths: [],
+    });
+  });
+
+  it("marks the platform source authority ready only after the trusted snapshot matches", async () => {
+    const sourceBinding = {
+      runnerId: "runner-core", workspaceId: "workspace-core", snapshotRevision: "snapshot-7",
+      gitHead: "a".repeat(40), contentFingerprint: "d".repeat(64),
+    };
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      ...sourceBinding, scope: "PLATFORM_ENGINEERING", dirtyPaths: ["docs/notes.md"],
+    }]);
+    mocks.workspaceSpecSets.prepareWorkspaceRun.mockResolvedValueOnce({
+      workspace: { runnerId: sourceBinding.runnerId, workspaceId: sourceBinding.workspaceId },
+      sourceBinding, planId: "plan:core", planRevision: 3, contextPackHash: "b".repeat(64),
+      workPackages: [], requirementCount: 1, runnableWorkPackageIds: ["wp-1"], blockers: [],
+    });
+
+    await expect((spec226DevelopmentControlRouter.prepareWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 8, mode: "spec_set" },
+    })).resolves.toMatchObject({ sourceAuthority: { status: "ready" } });
+    expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      workspaceId: sourceBinding.workspaceId,
+      gitHead: sourceBinding.gitHead,
+      contentFingerprint: sourceBinding.contentFingerprint,
+      dirtyPaths: ["docs/notes.md"],
+    });
+  });
+
   it("lists Admin feature specs and ingests selected source into the existing conversation Spec Set", async () => {
     const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING" };
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([platformWorkspace]);
