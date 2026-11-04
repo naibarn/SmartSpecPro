@@ -92,6 +92,62 @@ describe("projectRunnerTimelineEvent", () => {
   });
 });
 
+describe("getTaskObservabilityDetail admission timeline", () => {
+  it("surfaces nested SPEC-224 source-admission status and safe error code", async () => {
+    const createdAt = new Date("2026-11-04T15:40:00.000Z");
+    mocks.rows = [
+      [{
+        id: "job-admission",
+        tenantId: "tenant-1",
+        requestedByUserId: 9,
+        jobType: "external_agent_task",
+        status: "pending",
+        attempt: 1,
+        maxAttempts: 3,
+        inputJson: {},
+        progressJson: {},
+        createdAt,
+        startedAt: null,
+        heartbeatAt: null,
+        finishedAt: null,
+        workerId: null,
+        operatorReviewRequired: false,
+      }],
+      [], // current attempt
+      [], // runner session
+      [], // settlements
+      [], // economic settlements
+      [], // reservations
+      [{
+        id: "event-source-admission",
+        eventType: "SPEC224_VERIFICATION_ADMISSION",
+        createdAt,
+        payloadJson: {
+          payload: {
+            status: "source_changed",
+            errorCode: "EXECUTION_SOURCE_CHANGED",
+            stage: "SPEC224_VERIFICATION_ADMISSION",
+          },
+        },
+        attempt: 1,
+      }],
+      [], // inference rows
+    ];
+    mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
+
+    const detail = await getTaskObservabilityDetail({
+      scope: { tenantId: "tenant-1", userId: 9 },
+      jobId: "job-admission",
+    });
+
+    expect(detail.timeline).toContainEqual(expect.objectContaining({
+      id: "event-source-admission",
+      phase: "SPEC224_VERIFICATION_ADMISSION",
+      reasonCode: "EXECUTION_SOURCE_CHANGED",
+    }));
+  });
+});
+
 describe("projectExecutionIdentity", () => {
   it("projects recorded run, harness, and pinned model facts", () => {
     expect(projectExecutionIdentity({

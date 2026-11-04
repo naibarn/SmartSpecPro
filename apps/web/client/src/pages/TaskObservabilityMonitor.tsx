@@ -60,8 +60,8 @@ export default function TaskObservabilityMonitor() {
   const [, setLocation] = useLocation();
   const { t: translate } = useTranslation("chat", { useSuspense: false });
   const t = (key: string, params?: Record<string, string | number>) => translate(key, { ns: "chat", defaultValue: threadOverviewFallbacks[key] ?? key, ...params }) as string;
-  const [mode, setMode] = useState("simple");
   const initialParams = new URLSearchParams(window.location.search);
+  const [mode, setMode] = useState(() => initialParams.get("view") === "developer" ? "developer" : "simple");
   const requestedJobId = initialParams.get("jobId");
   const jobId = requestedJobId && requestedJobId.length <= 36 ? requestedJobId : undefined;
   const [projectionToken, setProjectionToken] = useState(() => initialParams.get("projectionToken"));

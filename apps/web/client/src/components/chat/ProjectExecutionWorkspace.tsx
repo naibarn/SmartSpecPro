@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
+import { GoalExecutionEvidencePanel } from "./GoalExecutionEvidencePanel";
 
 type ProjectExecutionWorkspaceProps = {
   initialProjectId: string | null;
@@ -664,9 +665,18 @@ export function ProjectExecutionWorkspace({
                         <p className="text-sm text-muted-foreground">
                           {selectedGoal.workerJobId
                             ? "Goal นี้ผูกกับ Worker Job แล้ว แต่ยังโหลดรายละเอียดงานไม่พบในรายการปัจจุบัน"
-                            : "Goal นี้ยังไม่มี Worker Job ที่เชื่อมอยู่"}
+                          : "Goal นี้ยังไม่มี Worker Job ที่เชื่อมอยู่"}
                         </p>
                       )}
+                      {selectedGoalJob ? (
+                        <GoalExecutionEvidencePanel
+                          job={{ id: selectedGoalJob.id, status: selectedGoalJob.status }}
+                          approvalStatus={selectedDevelopmentRun?.goalApproval?.status}
+                          admissionStatus={selectedDevelopmentRun?.executionAdmissionStatus}
+                          admissionErrorCode={selectedDevelopmentRun?.executionAdmissionErrorCode}
+                          presentationMode={presentationMode}
+                        />
+                      ) : null}
                       <p className="text-sm">
                         ขั้นตอนถัดไป:{" "}
                         {nextActionLabel(selectedGoal.nextSafeAction)}

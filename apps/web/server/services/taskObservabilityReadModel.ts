@@ -526,6 +526,7 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
     recovery: { nextRetryAt: asIso(job.nextRetryAt), retryEligible: job.status === "retry_scheduled" && Boolean(job.nextRetryAt), runnerSessionState: runnerSession?.state ?? null },
     timeline: [...timelineRows.map((event) => {
       const payload = objectValue(event.payloadJson);
+      const nestedPayload = objectValue(payload?.payload);
       const readTokens = (value: Record<string, unknown> | null) => {
         const read = (field: string) => Number.isSafeInteger(value?.[field]) && Number(value?.[field]) >= 0 ? Number(value?.[field]) : null;
         return { inputTokens: read("inputTokens"), cachedInputTokens: read("cachedInputTokens"), outputTokens: read("outputTokens") };
@@ -535,8 +536,8 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
         type: event.eventType,
         at: event.createdAt.toISOString(),
         attempt: event.attempt,
-        phase: safeText(payload?.phase ?? payload?.stage, 80),
-        reasonCode: safeText(payload?.reasonCode ?? payload?.safeErrorCode, 100),
+        phase: safeText(payload?.phase ?? payload?.stage ?? nestedPayload?.phase ?? nestedPayload?.stage, 80),
+        reasonCode: safeText(payload?.reasonCode ?? payload?.safeErrorCode ?? nestedPayload?.errorCode ?? nestedPayload?.status ?? nestedPayload?.state, 100),
         correction: event.eventType === "CODEX_MODEL_USAGE_CORRECTED" ? {
           modelCallId: safeText(payload?.modelCallId, 160),
           previousUsage: readTokens(objectValue(payload?.previousUsage)),

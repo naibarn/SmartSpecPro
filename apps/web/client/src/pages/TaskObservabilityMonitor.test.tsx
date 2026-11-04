@@ -174,6 +174,21 @@ describe("TaskObservabilityMonitor", () => {
     expect(detailArgs.current[0]).toMatchObject({ jobId: "job-1" });
   });
 
+  it("opens an exact output deep link directly in Developer mode", () => {
+    window.history.replaceState({}, "", "/agent-monitor?jobId=job-1&view=developer");
+    harnessOutput.current = {
+      events: [{ id: "output-deep-link", sequence: 1, at: "2026-11-04T15:40:00.000Z", attempt: 1, kind: "assistant_message", text: "I inspected the task.", chunkIndex: 0, chunkCount: 1 }],
+      eventsJobId: "job-1",
+      query: { isLoading: false, error: null },
+    };
+
+    render(<TaskObservabilityMonitor />);
+
+    expect(listArgs.current[0]).toMatchObject({ jobId: "job-1" });
+    expect(screen.getByRole("heading", { name: "Live Harness Output" })).toBeTruthy();
+    expect(screen.getByText("I inspected the task.")).toBeTruthy();
+  });
+
   it("switches to developer evidence while retaining the same selected task", () => {
     renderMonitor();
     fireEvent.click(screen.getByText("Developer"));

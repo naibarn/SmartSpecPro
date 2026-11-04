@@ -936,6 +936,10 @@ export const spec226DevelopmentControlRouter = router({
               writeScope: allowedWriteSet,
               budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
+              executionAdmissionStatus: typeof admission.status === "string" ? admission.status : null,
+              executionAdmissionErrorCode: typeof admission.errorCode === "string"
+                && /^[A-Z][A-Z0-9_]{1,100}$/.test(admission.errorCode)
+                ? admission.errorCode : null,
               workerJobStatus: workerJob?.status ?? null,
               workerJobCreatedAt: workerJob?.createdAt ?? null,
               workerJobStartedAt: workerJob?.startedAt ?? null,
