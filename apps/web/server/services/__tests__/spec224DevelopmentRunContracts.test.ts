@@ -246,9 +246,11 @@ describe("Spec 224 DevelopmentRun kernel", () => {
   it("admits the harness only through the canonical worker control-plane gateway", async () => {
     const run = buildDevelopmentRun(baseRun);
     const definitions: unknown[] = [];
+    const createOptions: unknown[] = [];
     const controlPlane = {
-      create: async (definition: unknown) => {
+      create: async (definition: unknown, options: unknown) => {
         definitions.push(definition);
+        createOptions.push(options);
         return { jobId: "worker-job-224-001", created: true };
       },
     } as never;
@@ -274,6 +276,10 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     expect((definitions[0] as { jobType: string }).jobType).toBe(
       "external_agent_task"
     );
+    expect(createOptions[0]).toMatchObject({
+      runtimeType: "external_runtime",
+      admissionMode: "durable_queue",
+    });
   });
 
   it("rejects raw secrets at the run boundary", () => {

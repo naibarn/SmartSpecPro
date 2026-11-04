@@ -767,6 +767,10 @@ export async function enqueueDevelopmentHarnessJob(input: {
     definition: prepared.definition,
     controlPlane: input.controlPlane,
     executorRegistry: input.executorRegistry,
+    createOptions: {
+      runtimeType: "external_runtime",
+      admissionMode: "durable_queue",
+    },
   });
   return { ...prepared, jobRef, run: bindWorkerJob(input.run, jobRef.jobId) };
 }

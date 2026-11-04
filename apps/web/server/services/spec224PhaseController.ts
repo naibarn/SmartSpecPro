@@ -281,6 +281,7 @@ export async function createAndBindNextPhase(
         createOptions: {
           runtimeType: "external_runtime",
           canonicalJobId,
+          admissionMode: "durable_queue",
           ...(input.deferredAdmission ? { deferredAdmission: true } : {}),
         },
       });

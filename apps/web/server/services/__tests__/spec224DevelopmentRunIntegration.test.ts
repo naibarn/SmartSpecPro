@@ -6,7 +6,10 @@ import {
 } from "../jobControlPlane";
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import { resetExternalAgentTaskDispatcherForTests } from "../externalAgentTaskExecutor";
-import { buildDevelopmentRun } from "../spec224DevelopmentRunContracts";
+import {
+  buildDevelopmentHarnessJob,
+  buildDevelopmentRun,
+} from "../spec224DevelopmentRunContracts";
 import {
   createDevelopmentRunService,
   createPersistedDevelopmentRun,
@@ -318,6 +321,93 @@ afterEach(() => {
 describe.sequential(
   "Spec 224 mandatory in-memory canonical integration seam",
   () => {
+  it("accepts a deferred Goal into the durable queue when execution capacity is full", async () => {
+      const previousTenantLimit = process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_EXTERNAL;
+      const previousGlobalLimit = process.env.FEATURE_186_MAX_CONCURRENT_GLOBAL_EXTERNAL;
+      process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_EXTERNAL = "4";
+      process.env.FEATURE_186_MAX_CONCURRENT_GLOBAL_EXTERNAL = "16";
+      try {
+        const state = makeJobRepository();
+        const controlPlane = createJobControlPlane(state.repository);
+        const seedRun = buildDevelopmentRun({
+          runId: "run-224-admission-seed",
+          tenantId: "tenant-224",
+          actorId: 224,
+          goal: "Seed existing deferred provider jobs",
+          repositoryRef: "repo:smartspecpro",
+          baseRevision: "git:admission-seed",
+          contextPackHash: "a".repeat(64),
+          workspaceId: "workspace:spec224-admission-seed",
+        });
+        const seedDefinition = buildDevelopmentHarnessJob({
+          run: seedRun,
+          provider: "codex",
+          runtime: "local_runner",
+          planId: "plan-224-admission-seed",
+          planRevision: 1,
+          skillIds: [],
+          requestedCapabilities: ["agent.external_task"],
+        }).definition;
+
+        for (let index = 0; index < 4; index += 1) {
+          await controlPlane.create(
+            {
+              ...seedDefinition,
+              idempotencyKey: `admission-seed:${index}`,
+            },
+            {
+              canonicalJobId: `admission-seed-${index}`,
+              deferredAdmission: true,
+              admissionMode: "durable_queue",
+            },
+          );
+        }
+
+        const run = buildDevelopmentRun({
+          runId: "run-224-admission-new-goal",
+          tenantId: "tenant-224",
+          actorId: 224,
+          goal: "Create a new Goal while prior requests await approval",
+          repositoryRef: "repo:smartspecpro",
+          baseRevision: "git:admission-new-goal",
+          contextPackHash: "b".repeat(64),
+          workspaceId: "workspace:spec224-admission-new-goal",
+        });
+        const created = await createPersistedDevelopmentRun({
+          run,
+          provider: "codex",
+          runtime: "local_runner",
+          planId: "plan-224-admission-new-goal",
+          planRevision: 1,
+          skillIds: [],
+          requestedCapabilities: ["agent.external_task"],
+          deferredAdmission: true,
+          authorizationScope: "spec224.development.run",
+          persistence: memoryDevelopmentRunAdapter(state.jobs),
+          controlPlane,
+          executorRegistry: defaultJobExecutorRegistry,
+        });
+
+        expect(state.jobs.size).toBe(5);
+        expect(state.jobs.get(created.jobRef.jobId)).toMatchObject({
+          executionClass: "external",
+          status: "pending",
+          jobType: "external_agent_task",
+        });
+        expect(state.outbox).toHaveLength(0);
+        expect(state.attempts).toHaveLength(1);
+      } finally {
+        if (previousTenantLimit === undefined)
+          delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_EXTERNAL;
+        else
+          process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_EXTERNAL = previousTenantLimit;
+        if (previousGlobalLimit === undefined)
+          delete process.env.FEATURE_186_MAX_CONCURRENT_GLOBAL_EXTERNAL;
+        else
+          process.env.FEATURE_186_MAX_CONCURRENT_GLOBAL_EXTERNAL = previousGlobalLimit;
+      }
+    });
+
   it("continues persisted DevelopmentRun only from a canonical completed job while external dispatch remains gated", async () => {
       const state = makeJobRepository();
       const controlPlane = createJobControlPlane(state.repository);

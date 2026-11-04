@@ -123,7 +123,11 @@ describe("Spec 224 executable phase continuation", () => {
     });
     expect(result.jobRef.jobId).toBe("worker-held-phase");
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ deferredAdmission: true, runtimeType: "external_runtime" });
+    expect(calls[0]).toMatchObject({
+      deferredAdmission: true,
+      runtimeType: "external_runtime",
+      admissionMode: "durable_queue",
+    });
     await expect(createAndBindNextPhase({
       ...phaseInput(), deferredAdmission: false,
       persistence: memory.adapter,

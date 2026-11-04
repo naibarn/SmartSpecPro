@@ -1885,6 +1885,7 @@ export async function createPersistedDevelopmentRun(input: {
     createOptions: {
       runtimeType: "external_runtime",
       canonicalJobId,
+      admissionMode: "durable_queue",
       ...(input.deferredAdmission ? { deferredAdmission: true } : {}),
     },
   });

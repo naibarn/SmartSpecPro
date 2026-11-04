@@ -1330,7 +1330,10 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         create: async (definition, options) => {
           expect(definition.jobType).toBe("external_agent_task");
           expect(definition.input).toHaveProperty("spec224Run");
-          expect(options).toMatchObject({ runtimeType: "external_runtime" });
+          expect(options).toMatchObject({
+            runtimeType: "external_runtime",
+            admissionMode: "durable_queue",
+          });
           return { jobId: "worker-job-224", created: true };
         },
       } as never,
