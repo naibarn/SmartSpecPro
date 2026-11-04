@@ -44,6 +44,9 @@ vi.mock("@/lib/trpc", () => ({
           error: null,
         }),
       },
+      observabilityDetail: {
+        useQuery: () => ({ data: { timeline: [] }, isLoading: false, error: null }),
+      },
       taskGroups: {
         useQuery: () => ({
           data: { groups: [] },
@@ -99,19 +102,20 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, threadId, freshGoal, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind, resumeSpecId }: { conversationId: number; threadId?: string | null; freshGoal?: boolean; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string; resumeSpecId?: string }) => (
+  Spec224WorkspacePanel: ({ conversationId, threadId, freshGoal, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind, resumeSpecId, sourceChangedRunId }: { conversationId: number; threadId?: string | null; freshGoal?: boolean; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string; resumeSpecId?: string; sourceChangedRunId?: string }) => (
     <>
       <section aria-label="Goal review panel">Goal {conversationId} · fresh {String(Boolean(freshGoal))} · pilot {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
       {threadId ? <p data-testid="goal-review-thread">{threadId}</p> : null}
       {initialPrompt ? <p data-testid="goal-review-prompt">{initialRequestKind}: {initialPrompt}</p> : null}
       {resumeSpecId ? <p data-testid="goal-review-resume-spec">{resumeSpecId}</p> : null}
+      {sourceChangedRunId ? <p data-testid="goal-review-source-changed-run">{sourceChangedRunId}</p> : null}
     </>
   ),
 }));
 
 vi.mock("@/lib/useTaskHarnessOutputEvents", () => ({
   useTaskHarnessOutputEvents: () => ({
-    events: [{ id: "event-1", text: "Running verified tests" }],
+    events: [{ id: "event-1", kind: "assistant_message", sequence: 1, at: "2026-11-04T15:40:00.000Z", text: "Running verified tests" }],
     eventsJobId: state.jobs[0]?.id,
     query: { isLoading: false, error: null },
   }),
@@ -322,6 +326,14 @@ describe("UnifiedWorkspace", () => {
     expect(dialog.className).toContain("md:max-w-4xl");
     expect(dialog.className).toContain("xl:max-w-6xl");
     expect(dialog.className).toContain("overflow-x-hidden");
+  });
+
+  it("routes source-changed recovery to the standard Goal review with its SPEC and source Run", async () => {
+    state.search = "mode=tasks&c=901&newGoal=1&sourceChangedRunId=run-source-changed&resumeSpecId=312";
+    render(<UnifiedWorkspace />);
+
+    expect(await screen.findByTestId("goal-review-source-changed-run")).toHaveTextContent("run-source-changed");
+    expect(screen.getByTestId("goal-review-resume-spec")).toHaveTextContent("312");
   });
 
   it("does not offer the unsupported New Agent Task action in Mission Control", () => {

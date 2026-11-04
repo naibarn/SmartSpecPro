@@ -923,6 +923,23 @@ export function createSpec224AuthorizationService() {
   }
 
   const service = {
+    async assertWorkspaceSourceSnapshot(input: {
+      context: Pick<Spec224AuthorizationContext, "tenantId" | "actorId">;
+      runnerId: string;
+      workspaceId: string;
+      gitHead: string;
+      contentFingerprint: string;
+    }): Promise<void> {
+      const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
+      const snapshot = node?.currentSnapshot;
+      const workspace = snapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId);
+      // Capability report revisions can advance without a workspace source
+      // change. Pin the run to Git and the full content fingerprint instead.
+      if (!workspace || workspace.gitHead !== input.gitHead
+        || workspace.contentFingerprint !== input.contentFingerprint) {
+        throw new Spec224AuthorizationError("WORKSPACE_PREPARATION_SNAPSHOT_STALE");
+      }
+    },
     async authorizeDelegatedChild(input: {
       context: Spec224AuthorizationContext; runId: string;
     }): Promise<Spec224AuthorizationResult> {
@@ -980,6 +997,7 @@ export function createSpec224AuthorizationService() {
       const execution = asRecord(run.metadata?.spec224Execution);
       const source = /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(run.baseRevision)?.[1];
       const platformScope = workspace?.platformScope === true || execution?.platformScope === true;
+      const isChangedSourceBlock = (code: string | null) => Boolean(code && code.includes("SOURCE") && code.includes("CHANGED"));
       const actionMap: Record<string, string> = { DISCOVERY: "discover", PLANNING: "plan", PLAN_VERIFY: "verify", IMPLEMENT: "implement", BUILD: "build", TEST: "test", DEBUG_REPAIR: "repair", REVIEW: "review", FIX_REVIEW_FINDINGS: "repair", VERIFY: "verify", REGRESSION: "test", FINAL_VERIFY: "verify" };
       const action = actionMap[run.state];
       const paths = execution?.allowedWriteSet;
@@ -1000,20 +1018,6 @@ export function createSpec224AuthorizationService() {
         (providerManaged ? amount !== undefined : !Number.isSafeInteger(amount) || (amount as number) <= 0 || (amount as number) > (grant.budgetLimitMinorUnits ?? 0)) ||
         (grant.economicsMode === "provider_managed" && !platformScope))
         throw new Spec224AuthorizationError("SPEC224_DELEGATED_CONFIGURATION_INVALID");
-      // Verify readiness and authorization against this run's adapter. Never
-      // reuse capability evidence from a different provider.
-      // DevelopmentRun intentionally does not duplicate provider identity;
-      // the root and child job manifests above are the durable source of it.
-      // Since both manifests were checked against this grant, use the grant's
-      // provider for readiness rather than reading a nonexistent run.provider.
-      await createJobControlPlane(defaultJobControlPlaneRepository).resumeUnstartedAuthorizationHold({
-        jobId: run.workerJobId, runId: run.runId, tenantId: input.context.tenantId,
-        requestedByUserId: input.context.actorId,
-      });
-      await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
-      loaded = await loadRun(input.context, input.runId);
-      if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
-      const authorizedAttemptId = loaded.attemptId;
       const checkPinnedSource = (node: RunnerGatewayNode | null) => {
         if (!platformScope) return null;
         const readiness = evaluateSpec224RunnerReadiness({
@@ -1023,6 +1027,9 @@ export function createSpec224AuthorizationService() {
         });
         if (!readiness.ready) return readiness.code;
         const workspaceFact = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === run.workspaceId);
+        if (workspaceFact && source && workspaceFact.gitHead !== source) {
+          return "WORKSPACE_SOURCE_ADMISSION_SOURCE_CHANGED";
+        }
         const admission = evaluateSpec224WorkspaceSourceAdmission({
           gitHead: workspaceFact?.gitHead ?? null,
           contentFingerprint: workspaceFact?.contentFingerprint ?? null,
@@ -1037,7 +1044,20 @@ export function createSpec224AuthorizationService() {
       };
       const runnerNode = await defaultRunnerGateway.getNode(workspace.runnerId, input.context.tenantId);
       const sourceBlock = checkPinnedSource(runnerNode);
+      if (isChangedSourceBlock(sourceBlock)) throw new Spec224AuthorizationError("EXECUTION_SOURCE_CHANGED");
       if (sourceBlock) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [sourceBlock] };
+
+      // Check the pinned source before reserving an authorization attempt. A
+      // snapshot that is already stale must not create a misleading attempt or
+      // place a shared-budget hold.
+      await createJobControlPlane(defaultJobControlPlaneRepository).resumeUnstartedAuthorizationHold({
+        jobId: run.workerJobId, runId: run.runId, tenantId: input.context.tenantId,
+        requestedByUserId: input.context.actorId,
+      });
+      await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
+      loaded = await loadRun(input.context, input.runId);
+      if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
+      const authorizedAttemptId = loaded.attemptId;
       const runner = mapRunner(runnerNode);
       const scope = { goalId: run.goalId, repositoryRef: run.repositoryRef, sourceSha: source, action, changedPaths: [], allowedWriteSet: paths as string[], requiredCapabilities: capabilities as string[], economicsMode: grant.economicsMode };
       const runBinding = { ...runInput(loaded, grant.provider, grant.expiresAt), goalDelegationScope: scope };
@@ -1117,11 +1137,11 @@ export function createSpec224AuthorizationService() {
       if (currentSourceBlock) {
         await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
+        if (isChangedSourceBlock(currentSourceBlock)) throw new Spec224AuthorizationError("EXECUTION_SOURCE_CHANGED");
         return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [currentSourceBlock] };
       }
       const currentRunner = mapRunner(currentRunnerNode);
-      if (!currentRunner || currentRunner.activeSessionId !== runner?.activeSessionId ||
-          currentRunner.snapshot?.capabilitySnapshotId !== runner?.snapshot?.capabilitySnapshotId) {
+      if (!currentRunner) {
         await releaseHoldAfterAuthorizationFailure();
         await releaseLeaseAfterAuthorizationFailure();
         return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: ["RUNNER_SNAPSHOT_CHANGED"] };

@@ -124,9 +124,10 @@ async function resolveTrustedConversationWorkspace(
     candidate.workspaceId === binding.workspace.workspaceId
   );
   if (!trustedWorkspace) throw new Error("WORKSPACE_BINDING_FORBIDDEN");
-  if (trustedWorkspace.snapshotRevision !== binding.workspace.snapshotRevision && !options.allowStaleSnapshot) {
-    throw new Error("WORKSPACE_BINDING_STALE");
-  }
+  // A Runner may publish a newer capability snapshot while the same bound
+  // workspace and repository source remain current. Snapshot revision is a
+  // report sequence, not the workspace identity; source freshness is checked
+  // against the prepared Git SHA and content fingerprint at Start.
   return { binding, trustedWorkspace };
 }
 
@@ -201,6 +202,9 @@ function asTrpcError(error: unknown): never {
     });
   }
   if (code === "RUN_IDEMPOTENCY_CONFLICT") {
+    throw new TRPCError({ code: "CONFLICT", message: code });
+  }
+  if (code === "WORKSPACE_PREPARATION_SNAPSHOT_STALE") {
     throw new TRPCError({ code: "CONFLICT", message: code });
   }
   if (code === "SPEC_SET_REVISION_STALE") {
@@ -356,9 +360,54 @@ async function advanceWorkspaceStartAuthorization(input: Parameters<typeof defau
     reasons: ["START_AUTHORIZATION_RETRY_REQUIRED"] };
 }
 
+async function cancelUnclaimedSourceChangedJob(input: {
+  context: Spec224AuthorizationContext;
+  runId: string;
+  jobId: string;
+}): Promise<"cancelled" | "ignored"> {
+  getDb();
+  return db.instance.transaction(query => cancelQueuedJobInTransaction({
+    query,
+    jobId: input.jobId,
+    reason: "spec224_execution_source_changed",
+    actionId: `spec224-source-changed:${input.runId}:${input.jobId}`,
+    actorId: input.context.actorId,
+    scope: { tenantId: input.context.tenantId, requestedByUserId: input.context.actorId,
+      authorizationScope: "spec226-development-control" },
+    requireUnclaimed: true,
+  }));
+}
+
+async function reclaimUnclaimedSourceChangedJobs(input: {
+  context: Spec224AuthorizationContext;
+  workspaceId: string;
+}): Promise<void> {
+  const runs = await defaultSpec226DevelopmentControlBridge.list({
+    scope: { tenantId: input.context.tenantId, actorId: input.context.actorId },
+    limit: 100,
+    workspaceId: input.workspaceId,
+  });
+  for (const run of runs) {
+    const metadata = run.metadata;
+    const execution = metadata?.spec224Execution && typeof metadata.spec224Execution === "object"
+      && !Array.isArray(metadata.spec224Execution) ? metadata.spec224Execution as Record<string, unknown> : null;
+    const admission = metadata?.spec224GoalAdmission && typeof metadata.spec224GoalAdmission === "object"
+      && !Array.isArray(metadata.spec224GoalAdmission) ? metadata.spec224GoalAdmission as Record<string, unknown> : null;
+    if (execution?.platformScope !== true || admission?.status !== "source_changed" || !run.workerJobId) continue;
+    try {
+      await cancelUnclaimedSourceChangedJob({ context: input.context, runId: run.runId, jobId: run.workerJobId });
+    } catch {
+      // Keep work that a Runner may have claimed. The conditional cancel below
+      // is the authority; an inability to reclaim old evidence must not mutate
+      // or hide a job that is no longer safely queueable.
+    }
+  }
+}
+
 async function advanceWorkspaceGoalAdmission(input: {
   context: Spec224AuthorizationContext;
   runId: string;
+  jobId: string;
   projectId: string;
   runnerId: string;
   payload: Record<string, unknown>;
@@ -427,17 +476,31 @@ async function advanceWorkspaceGoalAdmission(input: {
     });
   } catch (error) {
     if (errorCode(error) !== "EXECUTION_SOURCE_CHANGED") throw error;
-    const ownerAction = "Goal เดิมถูกบันทึกแล้วแต่ยังเริ่มไม่ได้ เพราะ source เปลี่ยนระหว่างตรวจสิทธิ์ โปรดโหลด snapshot ล่าสุด เตรียมแผนใหม่ แล้วส่ง Goal ใหม่";
+    let jobCancelled = false;
+    let cancellationErrorCode: string | null = null;
+    try {
+      const cancelled = await cancelUnclaimedSourceChangedJob(input);
+      jobCancelled = cancelled === "cancelled" || cancelled === "ignored";
+    } catch (cancelError) {
+      const code = errorCode(cancelError);
+      cancellationErrorCode = /^[A-Z][A-Z0-9_]{1,100}$/.test(code) ? code : "CANCELLATION_RECOVERY_FAILED";
+    }
+    const ownerAction = jobCancelled
+      ? "Goal เดิมถูกบันทึกแล้วแต่ source เปลี่ยนระหว่างตรวจสิทธิ์ ระบบยกเลิกงานที่ยังไม่ถูก Runner รับเพื่อไม่ให้ค้างในคิว โหลด snapshot ล่าสุด เตรียมแผน แล้วตรวจ Goal ใหม่ก่อนส่ง"
+      : "Goal เดิมถูกบันทึกแล้วแต่ source เปลี่ยนระหว่างตรวจสิทธิ์ งานเดิมยังยกเลิกจากคิวอย่างปลอดภัยไม่ได้ โปรดตรวจสถานะใน Mission Control ก่อนส่ง Goal ใหม่";
     await developmentRunService.recordVerificationEvent({
       runId: input.runId,
       tenantId: input.context.tenantId,
       actorId: input.context.actorId,
       idempotencyKey: `spec224-goal-source-changed:${input.runId}`,
       type: "VERIFICATION_ADMISSION",
-      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" },
+      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED", jobCancelled,
+        ...(cancellationErrorCode ? { cancellationErrorCode } : {}) },
       runMetadata: { spec224GoalAdmission: {
         status: "source_changed",
         errorCode: "EXECUTION_SOURCE_CHANGED",
+        jobCancelled,
+        ...(cancellationErrorCode ? { cancellationErrorCode } : {}),
         ownerAction,
         grantPayload: input.payload,
         projectId: input.projectId,
@@ -448,6 +511,7 @@ async function advanceWorkspaceGoalAdmission(input: {
       status: "EXECUTION_SOURCE_CHANGED" as const,
       reasons: ["EXECUTION_SOURCE_CHANGED"],
       errorCode: "EXECUTION_SOURCE_CHANGED",
+      jobCancelled,
       ownerAction,
     };
   }
@@ -925,6 +989,18 @@ export const spec226DevelopmentControlRouter = router({
                 ? Number(metadata.conversationId) : null,
               threadId: typeof metadata.chatThreadId === "string" ? metadata.chatThreadId : null,
               runnerId: typeof runner.runnerId === "string" ? runner.runnerId : null,
+              workspaceId: run.workspaceId,
+              sourceBinding: typeof runner.runnerId === "string"
+                && typeof execution.sourceSnapshotRevision === "string"
+                && typeof execution.sourceSha === "string"
+                && typeof execution.sourceFingerprint === "string"
+                ? { runnerId: runner.runnerId,
+                    workspaceId: run.workspaceId,
+                    snapshotRevision: execution.sourceSnapshotRevision,
+                    gitHead: execution.sourceSha,
+                    contentFingerprint: execution.sourceFingerprint }
+                : null,
+              executionMode: execution.mode === "work_package" || execution.mode === "prompt" ? execution.mode : null,
               specId: run.requestedSpec?.specId ?? null,
               specTitle: run.requestedSpec?.title ?? null,
               specSources: run.specSources,
@@ -1335,6 +1411,13 @@ export const spec226DevelopmentControlRouter = router({
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
       requestedSpecId: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/).optional(),
+      sourceBinding: z.object({
+        runnerId: z.string().trim().min(1).max(160),
+        workspaceId: z.string().trim().min(1).max(200),
+        snapshotRevision: z.string().trim().min(1).max(160),
+        gitHead: z.string().regex(/^[a-f0-9]{40,64}$/i),
+        contentFingerprint: z.string().regex(/^[a-f0-9]{64}$/i),
+      }).strict().optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
       budgetCapMinorUnits: z.number().int().positive().max(10_000_000).optional(),
       provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
@@ -1564,6 +1647,12 @@ export const spec226DevelopmentControlRouter = router({
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           ...(input.requestedSpecId ? { requestedSpecId: input.requestedSpecId } : {}),
+          ...(input.sourceBinding ? { sourceBinding: {
+            runnerId: input.sourceBinding.runnerId,
+            workspaceId: input.sourceBinding.workspaceId,
+            gitHead: input.sourceBinding.gitHead,
+            contentFingerprint: input.sourceBinding.contentFingerprint,
+          } } : {}),
           provider, visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
           modelSelection: input.modelSelection ?? { policy: "auto" },
@@ -1580,15 +1669,15 @@ export const spec226DevelopmentControlRouter = router({
           }
           const persistedGrant = existing.run.metadata?.spec224GoalGrantPayload;
           const authorization = providerManagedScope
-            ? persistedGrant && runnerReadiness.projectId
+              ? persistedGrant && runnerReadiness.projectId
               ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
-                  runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
+                  jobId: existing.run.workerJobId!, runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
                   payload: persistedGrant as Record<string, unknown> })
               : { version: "spec-224-authorization-binding-v1" as const, status: "RUNNER_BINDING_REQUIRED" as const,
                   reasons: ["PLATFORM_PROVIDER_MANAGED_GRANT_REQUIRED"] }
             : persistedGrant && runnerReadiness.projectId
               ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
-                  runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
+                  jobId: existing.run.workerJobId!, runnerId: binding.workspace.runnerId, projectId: runnerReadiness.projectId,
                   payload: persistedGrant as Record<string, unknown> })
               : await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId,
                   runnerId: binding.workspace.runnerId, budgetCapMinorUnits: budgetCapMinorUnits ?? 100 });
@@ -1627,6 +1716,19 @@ export const spec226DevelopmentControlRouter = router({
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
           adapterId: harnessAdapterId,
         });
+        const preparedSourceBinding = {
+          runnerId: prepared.runner.runnerId,
+          workspaceId: prepared.workspace.workspaceId,
+          snapshotRevision: prepared.runner.snapshotRevision,
+          gitHead: prepared.runner.gitHead,
+          contentFingerprint: prepared.runner.contentFingerprint,
+        };
+        if (input.sourceBinding && (input.sourceBinding.runnerId !== preparedSourceBinding.runnerId
+          || input.sourceBinding.workspaceId !== preparedSourceBinding.workspaceId
+          || input.sourceBinding.gitHead !== preparedSourceBinding.gitHead
+          || input.sourceBinding.contentFingerprint !== preparedSourceBinding.contentFingerprint)) {
+          throw new Error("WORKSPACE_PREPARATION_SNAPSHOT_STALE");
+        }
         const prerequisites = prepared.workPackagePrerequisites ?? [];
         if (prerequisites.length > 0) {
           const existingRuns = await defaultSpec226DevelopmentControlBridge.list({
@@ -1800,6 +1902,12 @@ export const spec226DevelopmentControlRouter = router({
           ...(factoryStageDocument ? [{ path: "mini-app-factory-stage.json", contentBase64: Buffer.from(JSON.stringify(factoryStageDocument), "utf8").toString("base64") }] : []),
           { path: "spec224-run-context.json", contentBase64: Buffer.from(JSON.stringify(runContext), "utf8").toString("base64") },
         ];
+        if (platformEngineeringWorkspace) {
+          await defaultSpec224AuthorizationService.assertWorkspaceSourceSnapshot({
+            context: scope,
+            ...preparedSourceBinding,
+          });
+        }
         const stagedSource = await defaultSpec224RunnerInputStagingService.preStageRunnerInput({
           tenantId: scope.tenantId,
           startRef: runId,
@@ -1864,6 +1972,12 @@ export const spec226DevelopmentControlRouter = router({
             spec224ModelSelection: modelSelection,
           },
         });
+        if (platformEngineeringWorkspace) {
+          await reclaimUnclaimedSourceChangedJobs({
+            context: authorizationContext(ctx),
+            workspaceId: prepared.workspace.workspaceId,
+          });
+        }
         const created = await createPersistedDevelopmentRun({
           run,
           provider: input.provider,
@@ -1893,6 +2007,7 @@ export const spec226DevelopmentControlRouter = router({
         const authorization = await advanceWorkspaceGoalAdmission({
           context: authorizationContext(ctx),
           runId,
+          jobId: created.jobRef.jobId,
           projectId: runnerReadiness.projectId,
           runnerId: prepared.runner.runnerId,
           payload: grantPayload,
@@ -2153,7 +2268,7 @@ export const spec226DevelopmentControlRouter = router({
                 ...(runnerReadiness.ownerAction ? { ownerAction: runnerReadiness.ownerAction } : {}),
               }
             : await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId: input.runId,
-                projectId: runnerReadiness.projectId, runnerId: binding.workspace.runnerId,
+                jobId: record.run.workerJobId!, projectId: runnerReadiness.projectId, runnerId: binding.workspace.runnerId,
                 payload: grantPayload as Record<string, unknown> })
           : await advanceWorkspaceStartAuthorization({
             context: authorizationContext(ctx), runId: input.runId, runnerId: binding.workspace.runnerId,

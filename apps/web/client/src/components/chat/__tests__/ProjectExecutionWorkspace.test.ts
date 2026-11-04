@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findGoalWorkerJob, projectBinding, requestedSpecDisplayLabel, specSourceLabel } from "../ProjectExecutionWorkspace";
+import { findGoalWorkerJob, projectBinding, requestedSpecDisplayLabel, sourceChangedRecoveryHref, specSourceLabel } from "../ProjectExecutionWorkspace";
 
 describe("ProjectExecutionWorkspace project binding", () => {
   it("reads the safe project binding returned by the DevelopmentRun list DTO", () => {
@@ -56,5 +56,12 @@ describe("ProjectExecutionWorkspace Spec source display", () => {
       specId: "313-smartaihub-saas-core-identity-commerce-entitlements",
       fileName: "spec.md",
     })).toBe("SPEC-313 · spec.md");
+  });
+});
+
+describe("ProjectExecutionWorkspace source-change recovery", () => {
+  it("routes the original conversation and selected SPEC into a new Goal review", () => {
+    expect(sourceChangedRecoveryHref({ conversationId: 8, runId: "run-source-changed", specId: "312-smartaihub-modular-saas-rebuild-master-plan" }))
+      .toBe("/chat?mode=tasks&c=8&newGoal=1&sourceChangedRunId=run-source-changed&resumeSpecId=312");
   });
 });

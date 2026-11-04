@@ -42,8 +42,19 @@ vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentCont
 }, workerJobs: { cancelQueued: { useMutation: () => ({ mutateAsync: mocks.cancelLegacyJob, isPending: false }) } } } }));
 
 function preparation(ready: boolean) {
+  const platformWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING");
+  const sourceBinding = platformWorkspace?.gitHead && platformWorkspace.contentFingerprint
+    ? {
+      runnerId: platformWorkspace.runnerId,
+      workspaceId: platformWorkspace.workspaceId,
+      snapshotRevision: platformWorkspace.snapshotRevision,
+      gitHead: platformWorkspace.gitHead,
+      contentFingerprint: platformWorkspace.contentFingerprint,
+    }
+    : null;
   return { planRevision: 1, requirementCount: 0, blockers: [], runnableWorkPackageIds: ["prompt"],
     workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
+    sourceBinding,
     runnerReadiness: { ready, code: ready ? "RUNNER_READY" : "CODEX_TASK_PROBE_NOT_RUN", policyDecision: "pending",
       ownerAction: ready ? null : "Runner → Tools → Codex → ทดสอบสั่งงานจริง" } };
 }
@@ -59,7 +70,7 @@ function discoveredModelCatalog() {
 function usePlatformSourceWorkspace() {
   mocks.workspaces = [
     { runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: discoveredModelCatalog() },
-    { runnerId: "runner-test", workspaceId: "platform-source", displayName: "SmartAIHub Development Workspace", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Development Workspace", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() },
+    { runnerId: "runner-test", workspaceId: "platform-source", displayName: "SmartAIHub Development Workspace", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Development Workspace", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() },
   ];
 }
 
@@ -69,17 +80,22 @@ beforeEach(() => {
   window.sessionStorage.clear();
   window.localStorage.clear();
   vi.clearAllMocks();
+  mocks.bindWorkspace.mockReset().mockResolvedValue({ conversationId: 47 });
+  mocks.refetchWorkspaces.mockReset().mockResolvedValue({});
+  mocks.refetchWorkspaceBinding.mockReset().mockResolvedValue({});
+  mocks.prepare.mockReset();
+  mocks.start.mockReset();
+  mocks.resume.mockReset();
+  mocks.ingestFeatureSpec.mockReset();
+  mocks.ingestSpecSet.mockReset();
   mocks.readiness = undefined;
   mocks.ledgerAccounts = { accounts: [], configured: { debitAccountId: "test-debit", creditAccountId: "test-credit" } };
   mocks.pendingApprovals = { requests: [] };
-  mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };
   mocks.role = "admin";
   mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: discoveredModelCatalog() }];
   mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
   mocks.featureSpecContext = { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }] }, integratedSha: "b".repeat(40) };
-  mocks.refetchWorkspaces.mockResolvedValue({});
-  mocks.refetchWorkspaceBinding.mockResolvedValue({});
   mocks.prepare.mockResolvedValue(preparation(true));
   mocks.ingestSpecSet.mockResolvedValue({ revision: 2, files: [], requirementCount: 1 });
   mocks.start.mockResolvedValue({ runId: "unit-run", jobId: "unit-job", dispatchStatus: "PENDING_AUTHORIZATION",
@@ -846,6 +862,43 @@ describe("Core goal readiness feedback", () => {
     expect(mocks.start.mock.calls[0][0].idempotencyKey).toBe(mocks.start.mock.calls[1][0].idempotencyKey);
   });
 
+  it("keeps the same Goal idempotency key when only the Runner report revision advances", async () => {
+    usePlatformSourceWorkspace();
+    const workspace = mocks.workspaces.find(item => item.scope === "PLATFORM_ENGINEERING")!;
+    Object.assign(workspace, { snapshotRevision: "report-1", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false });
+    mocks.workspace = { workspace: { runnerId: workspace.runnerId, workspaceId: workspace.workspaceId, snapshotRevision: "report-1" },
+      availability: { available: true, status: "current" }, specSet: null };
+    mocks.prepare
+      .mockResolvedValueOnce({ ...preparation(true), sourceBinding: { runnerId: workspace.runnerId, workspaceId: workspace.workspaceId,
+        snapshotRevision: "report-1", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64) },
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] })
+      .mockResolvedValueOnce({ ...preparation(true), sourceBinding: { runnerId: workspace.runnerId, workspaceId: workspace.workspaceId,
+        snapshotRevision: "report-2", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64) },
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
+    mocks.start.mockResolvedValue({ runId: "same-goal", jobId: "same-job", dispatchStatus: "PENDING_AUTHORIZATION",
+      goalAdmissionStatus: "GOAL_APPROVAL_PENDING", authorization: { reasons: ["GOAL_APPROVAL_PENDING"] } });
+
+    const view = render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "A stable source goal" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByText(/ผลการเตรียม/);
+    fireEvent.click(getDevelopmentStartButton());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    const firstKey = mocks.start.mock.calls[0]?.[0].idempotencyKey;
+
+    Object.assign(workspace, { snapshotRevision: "report-2" });
+    mocks.workspace = { workspace: { runnerId: workspace.runnerId, workspaceId: workspace.workspaceId, snapshotRevision: "report-2" },
+      availability: { available: true, status: "current" }, specSet: null };
+    view.rerender(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
+    fireEvent.click(getDevelopmentStartButton());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
+
+    expect(mocks.start.mock.calls[1]?.[0].sourceBinding).toMatchObject({ snapshotRevision: "report-2" });
+    expect(mocks.start.mock.calls[1]?.[0].idempotencyKey).toBe(firstKey);
+  });
+
   it("reports a failed Start lookup as an error instead of claiming the run was saved", async () => {
     mocks.start.mockRejectedValueOnce(new Error("Development run not found"));
     await preparePanel();
@@ -871,6 +924,8 @@ describe("Core goal readiness feedback", () => {
       })
       .mockResolvedValueOnce({
         ...preparation(true),
+        sourceBinding: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId,
+          snapshotRevision: "snapshot-after", gitHead: "a".repeat(40), contentFingerprint: "c".repeat(64) },
         workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-after" } }],
       });
     const latestWorkspace = { ...firstWorkspace, snapshotRevision: "snapshot-after", contentFingerprint: "c".repeat(64) };
@@ -893,7 +948,7 @@ describe("Core goal readiness feedback", () => {
     fireEvent.click(getDevelopmentStartButton());
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("ตรวจแผนและกดส่ง Goal อีกครั้ง")));
+    await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง")));
     expect(mocks.bindWorkspace).toHaveBeenCalledWith({
       conversationId: 8, runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId,
     });
@@ -902,6 +957,51 @@ describe("Core goal readiness feedback", () => {
 
     fireEvent.click(getDevelopmentStartButton());
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
+    expect(mocks.start.mock.calls[1]?.[0].idempotencyKey).not.toBe(mocks.start.mock.calls[0]?.[0].idempotencyKey);
+  });
+
+  it("refreshes a stale preparation before creating any Goal and binds the retry key to the new source", async () => {
+    usePlatformSourceWorkspace();
+    const firstWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
+    Object.assign(firstWorkspace, { snapshotRevision: "snapshot-before", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false });
+    mocks.workspace = {
+      workspace: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId, snapshotRevision: "snapshot-before" },
+      availability: { available: true, status: "current" }, specSet: null,
+    };
+    mocks.prepare
+      .mockResolvedValueOnce({
+        ...preparation(true),
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-before" } }],
+      })
+      .mockResolvedValueOnce({
+        ...preparation(true),
+        sourceBinding: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId,
+          snapshotRevision: "snapshot-after", gitHead: "a".repeat(40), contentFingerprint: "c".repeat(64) },
+        workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-after" } }],
+      });
+    const latestWorkspace = { ...firstWorkspace, snapshotRevision: "snapshot-after", contentFingerprint: "c".repeat(64) };
+    mocks.refetchWorkspaces.mockResolvedValueOnce({ data: { workspaces: [latestWorkspace] } });
+    mocks.refetchWorkspaceBinding.mockResolvedValueOnce({ data: {
+      workspace: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId, snapshotRevision: "snapshot-after" },
+      availability: { available: true, status: "current" },
+    } });
+    mocks.start.mockRejectedValueOnce(new Error("WORKSPACE_PREPARATION_SNAPSHOT_STALE"));
+    mocks.start.mockResolvedValueOnce({ runId: "fresh-source-goal", jobId: "fresh-source-job", dispatchStatus: "ENQUEUED" });
+
+    render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Implement a bounded source-safe change" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await screen.findByText(/ผลการเตรียม/);
+    fireEvent.click(getDevelopmentStartButton());
+
+    await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("ยังไม่ได้สร้าง Goal")));
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.start.mock.calls[0]?.[0].sourceBinding).toMatchObject({ snapshotRevision: "snapshot-before" });
+    expect(mocks.prepare).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(getDevelopmentStartButton());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
+    expect(mocks.start.mock.calls[1]?.[0].sourceBinding).toMatchObject({ snapshotRevision: "snapshot-after" });
     expect(mocks.start.mock.calls[1]?.[0].idempotencyKey).not.toBe(mocks.start.mock.calls[0]?.[0].idempotencyKey);
   });
 
@@ -922,6 +1022,8 @@ describe("Core goal readiness feedback", () => {
       })
       .mockResolvedValueOnce({
         ...preparation(true),
+        sourceBinding: { runnerId: firstWorkspace.runnerId, workspaceId: firstWorkspace.workspaceId,
+          snapshotRevision: "snapshot-after", gitHead: "a".repeat(40), contentFingerprint: "c".repeat(64) },
         workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN", snapshotRevision: "snapshot-after" } }],
       });
     mocks.start.mockResolvedValueOnce({
@@ -937,7 +1039,7 @@ describe("Core goal readiness feedback", () => {
     await screen.findByText(/ผลการเตรียม/);
     fireEvent.click(getDevelopmentStartButton());
 
-    expect(await screen.findByRole("region", { name: "รอ Runner source snapshot" })).toHaveTextContent(/เผยแพร่ source snapshot ตามรอบประมาณ 2 นาที/);
+    expect(await screen.findByRole("region", { name: "รอ Runner source snapshot" })).toHaveTextContent(/Runner เผยแพร่ source snapshot ตามรอบ/);
     expect(screen.getByRole("button", { name: "ตรวจ snapshot และเตรียมแผนอีกครั้ง" })).toBeEnabled();
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.prepare).toHaveBeenCalledTimes(1);
@@ -1023,7 +1125,7 @@ describe("Core goal readiness feedback", () => {
   it("creates and binds SPEC plus prompt, then starts exactly once from the primary development action", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
     mocks.prepare.mockResolvedValueOnce({ ...preparation(true), runnableWorkPackageIds: ["WU-1"], workPackages: [{ id: "WU-1", externalId: "WU-1", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
     const createConversation = vi.fn().mockResolvedValue(47);
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
@@ -1048,7 +1150,7 @@ describe("Core goal readiness feedback", () => {
   it("starts Platform prompt work with the selected workspace-level permission", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectId: "platform-project", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
     mocks.prepare.mockResolvedValueOnce({ ...preparation(true), workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
     const createConversation = vi.fn().mockResolvedValue(48);
     render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);

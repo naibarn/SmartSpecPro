@@ -457,9 +457,15 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
           ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet, candidateOverlay: Boolean(workspaceAccessMode && allowedWriteSet?.length === 1 && allowedWriteSet[0] === "**") })
           : null;
         if (sourceAdmission?.status === "BLOCKED") blockers.push(sourceAdmission.code === "WRITE_SCOPE_UNBOUNDED" ? "PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED" : `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
-        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt, writeScope: allowedWriteSet, workspaceAccessMode }));
+        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode,
+          gitHead: current?.gitHead ?? null, contentFingerprint: current?.contentFingerprint ?? null,
+          prompt, writeScope: allowedWriteSet, workspaceAccessMode }));
         const workPackages = [{ id: "prompt", externalId: "prompt", readiness: blockers.length ? "BLOCKED" as const : "READY" as const, blockers, ...(sourceAdmission ? { sourceAdmission } : {}) }];
-        return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: binding.revision, contextPackHash, workPackages, requirementCount: 0, runnableWorkPackageIds: blockers.length ? [] : ["prompt"], blockers };
+        return { workspace: binding,
+          sourceBinding: current ? { runnerId: current.runnerId, workspaceId: current.workspaceId,
+            snapshotRevision: current.snapshotRevision, gitHead: current.gitHead,
+            contentFingerprint: current.contentFingerprint } : null,
+          planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: binding.revision, contextPackHash, workPackages, requirementCount: 0, runnableWorkPackageIds: blockers.length ? [] : ["prompt"], blockers };
       }
       const additionalInstructions = input.additionalInstructions?.trim() ? input.additionalInstructions : undefined;
       if (additionalInstructions && additionalInstructions.length > 4_000) fail("PREPARE_PROMPT_INVALID");
@@ -489,16 +495,39 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (current && !specTargetsMatchWorkspace(revision.files, current)) blockers.push("WORKSPACE_DEPLOYMENT_TARGET_MISMATCH");
       if (!current?.gitHead || !current.contentFingerprint) blockers.push("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
       const contextPackHash = sha(canonicalJson({ workspaceId: binding.workspaceId, runnerId: binding.runnerId, revision: revision.revision, digest: revision.digest, additionalInstructions: additionalInstructions ?? null }));
-      const workPackages = compiled.workPackages.map(workPackage => ({
-        ...workPackage,
-        sourceSpecIds: canonicalSpecSources(filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files))
-          .map(source => source.specId),
-        prerequisitePlan: workPackagePrerequisites(workPackage, compiled.workPackages, compiled.requirements, revision.files),
-        ...(current?.scope === "PLATFORM_ENGINEERING" ? {
-          sourceAdmission: evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet: workPackage.allowedWriteSet }),
-        } : {}),
-      }));
-      return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: revision.revision, contextPackHash, workPackages, requirements: compiled.requirements, runnableWorkPackageIds: compiled.runnableWorkPackageIds, findings: compiled.findings, impact: compiled.impact, requirementCount: compiled.requirements.length, blockers };
+      const workPackages = compiled.workPackages.map(workPackage => {
+        let sourceSpecIds: string[] = [];
+        let sourceUnavailable = false;
+        try {
+          sourceSpecIds = canonicalSpecSources(filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files))
+            .map(source => source.specId);
+        } catch (error) {
+          if (!(error instanceof Spec224WorkspaceSpecSetError) || error.code !== "SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE") throw error;
+          sourceUnavailable = true;
+        }
+        return {
+          ...workPackage,
+          ...(sourceUnavailable ? {
+            readiness: "BLOCKED" as const,
+            blockers: [...workPackage.blockers, "SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE"],
+          } : {}),
+          sourceSpecIds,
+          prerequisitePlan: workPackagePrerequisites(workPackage, compiled.workPackages, compiled.requirements, revision.files),
+          ...(current?.scope === "PLATFORM_ENGINEERING" ? {
+            sourceAdmission: evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet: workPackage.allowedWriteSet }),
+          } : {}),
+        };
+      });
+      const runnableWorkPackageIds = compiled.runnableWorkPackageIds.filter(id =>
+        workPackages.some(workPackage => workPackage.id === id && workPackage.readiness === "READY"),
+      );
+      if (compiled.runnableWorkPackageIds.length > 0 && runnableWorkPackageIds.length === 0
+        && !blockers.includes("NO_RUNNABLE_WORK_PACKAGES")) blockers.push("NO_RUNNABLE_WORK_PACKAGES");
+      return { workspace: binding,
+        sourceBinding: current ? { runnerId: current.runnerId, workspaceId: current.workspaceId,
+          snapshotRevision: current.snapshotRevision, gitHead: current.gitHead,
+          contentFingerprint: current.contentFingerprint } : null,
+        planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: revision.revision, contextPackHash, workPackages, requirements: compiled.requirements, runnableWorkPackageIds, findings: compiled.findings, impact: compiled.impact, requirementCount: compiled.requirements.length, blockers };
     },
     async resolveWorkspaceRunInput(input: {
       tenantId: string;
@@ -698,7 +727,7 @@ export function resolveWorkspaceDeploymentTarget(repositoryId: string | null | u
       status: target.status ?? null,
       deployable: target.deployable === true,
       applicationAvailable: target.applicationAvailable === true || target.deployable === true,
-      workspaceLabel: target.workspaceLabel ?? "SmartAIHub Platform Workspace",
+      workspaceLabel: target.workspaceLabel ?? "SmartAIHub Development Workspace",
     };
   }
   return null;
@@ -729,7 +758,7 @@ function specTargetsMatchWorkspace(files: Array<{ path: string }>, workspace: Sp
 export function presentWorkspaceDisplayName(displayName: string | null | undefined, scope?: string | null, repositoryId?: string | null): string {
   if (scope === "PLATFORM_ENGINEERING") {
     return resolveWorkspaceDeploymentTarget(repositoryId)?.workspaceLabel
-      ?? "SmartAIHub Platform Workspace";
+      ?? "SmartAIHub Development Workspace";
   }
   return displayName?.trim() || "Workspace";
 }

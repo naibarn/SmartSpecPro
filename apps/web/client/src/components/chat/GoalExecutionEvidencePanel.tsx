@@ -16,6 +16,8 @@ type GoalExecutionEvidencePanelProps = {
   approvalStatus?: string | null;
   admissionStatus?: string | null;
   admissionErrorCode?: string | null;
+  recoveryHref?: string | null;
+  recoveryLabel?: string | null;
   presentationMode: "simple" | "developer";
 };
 
@@ -96,6 +98,8 @@ export function GoalExecutionEvidencePanel({
   approvalStatus,
   admissionStatus,
   admissionErrorCode,
+  recoveryHref,
+  recoveryLabel,
   presentationMode,
 }: GoalExecutionEvidencePanelProps) {
   const developer = presentationMode === "developer";
@@ -126,6 +130,12 @@ export function GoalExecutionEvidencePanel({
           description={notice.description}
           collapsible={false}
         />
+      ) : null}
+
+      {recoveryHref && (admissionStatus === "source_changed" || admissionErrorCode === "EXECUTION_SOURCE_CHANGED") ? (
+        <Text>
+          <a href={recoveryHref}>{recoveryLabel ?? "เปิด Workspace เพื่อตรวจ source และเตรียมแผนใหม่"}</a>
+        </Text>
       ) : null}
 
       {!developer ? (
@@ -164,7 +174,7 @@ export function GoalExecutionEvidencePanel({
                 </Text>
               ) : null}
               {output.events.length > 0 ? (
-                <VStack as="ol" gap={3} isScrollable maxHeight="32rem">
+                <VStack as="ol" gap={3}>
                   {output.events.map(event => (
                     <VStack as="li" key={event.id} gap={1}>
                       <Text type="supporting">
@@ -199,7 +209,7 @@ export function GoalExecutionEvidencePanel({
                 <Text>ยังไม่มีเหตุการณ์ lifecycle ที่บันทึกไว้</Text>
               ) : null}
               {detailQuery.data?.timeline.length ? (
-                <VStack as="ol" gap={1} isScrollable maxHeight="20rem">
+                <VStack as="ol" gap={1}>
                   {detailQuery.data.timeline.map(event => (
                     <Text as="li" key={event.id}>
                       {new Date(event.at).toLocaleString()} · {event.type}

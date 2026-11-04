@@ -180,10 +180,28 @@ describe("spec224 workspace Spec Set", () => {
     await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
     const prepared = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
     expect(prepared.runnableWorkPackageIds).toEqual(["prompt"]);
+    expect(prepared.sourceBinding).toEqual({ runnerId: "runner-a", workspaceId: "workspace-a",
+      snapshotRevision: "7", gitHead: "a".repeat(40), contentFingerprint: "c".repeat(64) });
     expect(prepared.workPackages[0].sourceAdmission?.status).toBe("SAFE_CLEAN");
     const runInput = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
     expect(runInput.allowedWriteSet).toEqual(["**"]);
     expect(runInput.workspaceAccessMode).toBe("exclude_risky");
+  });
+
+  it("keeps the prompt plan identity stable across Runner report revisions for identical source", async () => {
+    const store = memoryStore();
+    let snapshotRevision = "report-1";
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online",
+      snapshotRevision, workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40),
+      gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const first = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+    snapshotRevision = "report-2";
+    const second = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+
+    expect(second.sourceBinding?.snapshotRevision).toBe("report-2");
+    expect(second.contextPackHash).toBe(first.contextPackHash);
   });
 
   it("admits known workspace dirt for candidate-isolated broad access and still rejects unknown dirty paths", async () => {
@@ -339,6 +357,8 @@ describe("spec224 workspace Spec Set", () => {
     ]));
 
     const preparation = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set" });
+    expect(preparation.sourceBinding).toEqual({ runnerId: "runner-a", workspaceId: "workspace-a",
+      snapshotRevision: "7", gitHead: "a".repeat(40), contentFingerprint: "c".repeat(64) });
     const packageId = preparation.workPackages.find(item => item.externalId === "catalog-binding")?.id;
     expect(packageId).toBeTruthy();
     const runInput = await service.resolveWorkspaceRunInput({
@@ -371,6 +391,7 @@ describe("spec224 workspace Spec Set", () => {
     await service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-missing-spec-001", project });
     const preparation = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set" });
     const packageId = preparation.workPackages.find(item => item.externalId === "catalog-binding")?.id;
+    expect(preparation).toMatchObject({ runnableWorkPackageIds: [], workPackages: [{ readiness: "BLOCKED", blockers: ["SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE"] }] });
 
     await expect(service.resolveWorkspaceRunInput({
       tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set", workPackageId: packageId,

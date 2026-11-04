@@ -51,6 +51,20 @@ describe("GoalExecutionEvidencePanel", () => {
     expect(screen.getByText("ยังไม่มี Codex output เพราะ source เปลี่ยนก่อน Job เข้า queue")).toBeTruthy();
   });
 
+  it("links a source-changed Goal to its recoverable Goal review", () => {
+    render(<GoalExecutionEvidencePanel
+      job={{ id: "job-source-changed", status: "pending" }}
+      admissionStatus="source_changed"
+      admissionErrorCode="EXECUTION_SOURCE_CHANGED"
+      recoveryHref="/chat?mode=tasks&c=8&newGoal=1&sourceChangedRunId=run-source-changed&resumeSpecId=312"
+      recoveryLabel="เปิด Workspace เพื่อตรวจ snapshot และเตรียมแผนใหม่"
+      presentationMode="developer"
+    />);
+
+    expect(screen.getByRole("link", { name: "เปิด Workspace เพื่อตรวจ snapshot และเตรียมแผนใหม่" }))
+      .toHaveAttribute("href", "/chat?mode=tasks&c=8&newGoal=1&sourceChangedRunId=run-source-changed&resumeSpecId=312");
+  });
+
   it("keeps the Developer output link available in Simple mode without exposing raw events", () => {
     outputState.current = {
       events: [{ id: "event-1", sequence: 1, at: "2026-11-04T15:40:00.000Z", kind: "tool_call", text: "private command" }],

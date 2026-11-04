@@ -117,6 +117,7 @@ vi.mock("../../services/spec224BackendRuntimeIdentity", () => ({
 vi.mock("../../services/spec224AuthorizationService", () => ({
   defaultSpec224AuthorizationService: {
     runnerReadiness: (...args: unknown[]) => mocks.runnerReadiness(...args),
+    assertWorkspaceSourceSnapshot: vi.fn().mockResolvedValue(undefined),
     advanceStart: (...args: unknown[]) => mocks.advanceStart(...args),
     authorizeDelegatedChild: (...args: unknown[]) => mocks.authorizeDelegatedChild(...args),
   },
@@ -194,6 +195,7 @@ const CTX = { tenantId: "tenant-acme", user: { id: 42, role: "admin" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.bridge.list.mockReset().mockResolvedValue([]);
   mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
   mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
@@ -264,6 +266,49 @@ describe("spec226DevelopmentControlRouter", () => {
 
     expect(mocks.createRun).not.toHaveBeenCalled();
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Goal prepared from an older source before staging input or persisting a Run", async () => {
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({
+      workspace: { runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snap-current" },
+      availability: { status: "current", available: true },
+    });
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snap-current",
+      scope: "PLATFORM_ENGINEERING",
+    }]);
+    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
+      runner: {
+        runnerId: "runner-a", snapshotRevision: "snap-current", gitHead: "a".repeat(40),
+        gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64),
+        modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test",
+          accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test",
+          observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
+          models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] },
+      },
+      goal: "Implement the staged prompt.", planId: "plan:ready", planRevision: 1,
+      contextPackHash: "b".repeat(64), repositoryRef: "runner:runner-a/workspace-a",
+      baseRevision: `git:${"a".repeat(40)}`, specSetRevision: null, workPackageId: null,
+      allowedWriteSet: ["apps/web/**"],
+      inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from("Implement the staged prompt.").toString("base64") }],
+    });
+
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8, mode: "prompt", prompt: "Implement the staged prompt.",
+        sourceBinding: {
+          runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snap-prepared-old",
+          gitHead: "c".repeat(40), contentFingerprint: "d".repeat(64),
+        },
+        idempotencyKey: "prepared-source-changed-before-goal-01",
+      },
+    })).rejects.toMatchObject({ code: "CONFLICT", message: "WORKSPACE_PREPARATION_SNAPSHOT_STALE" });
+
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.requestGoalGrantApproval).not.toHaveBeenCalled();
   });
 
   it("rejects a not-run Codex probe before source staging or job creation and exposes the exact owner action", async () => {
@@ -1167,8 +1212,17 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("dispatches the Codex child after the explicit Goal Start grant is approved", async () => {
+    mocks.bridge.list.mockResolvedValueOnce([{
+      runId: "old-source-changed-run", workerJobId: "old-source-changed-job", workspaceId: "workspace-a",
+      metadata: { spec224Execution: { platformScope: true }, spec224GoalAdmission: { status: "source_changed" } },
+    }]);
+    mocks.cancelQueuedJob.mockResolvedValueOnce("cancelled");
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-a", runnerId: "runner-a", snapshotRevision: "snapshot-before-heartbeat" },
+      availability: { status: "current", available: true },
+    });
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([{
-      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a", scope: "PLATFORM_ENGINEERING",
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-after-heartbeat", scope: "PLATFORM_ENGINEERING",
     }]);
     mocks.featureSpecCatalog.loadContext.mockResolvedValueOnce({
       id: "312-smartaihub-modular-saas-rebuild-master-plan",
@@ -1205,6 +1259,8 @@ describe("spec226DevelopmentControlRouter", () => {
     const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
       conversationId: 8, mode: "spec_set", specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
       requestedSpecId: "312-smartaihub-modular-saas-rebuild-master-plan",
+      sourceBinding: { runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-before-heartbeat",
+        gitHead: "a".repeat(40), contentFingerprint: "d".repeat(64) },
       idempotencyKey: "spec224-start-codex-work-package-0001", provider: "codex",
     } });
 
@@ -1213,6 +1269,9 @@ describe("spec226DevelopmentControlRouter", () => {
       goalAdmissionStatus: "READY_FOR_LIVE", workPackageId: "r14-core-p1-first-slice", specSetRevision: 12,
     });
     expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId: result.runId }));
+    expect(mocks.cancelQueuedJob).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: "old-source-changed-job", reason: "spec224_execution_source_changed", requireUnclaimed: true,
+    }));
     const createdRun = mocks.createRun.mock.calls[0]?.[0]?.run;
     expect(createdRun?.metadata.spec224Workspace.platformScope).toBe(true);
     expect(createdRun?.metadata.spec224Execution.platformScope).toBe(true);
@@ -1240,6 +1299,7 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("records a source change after Goal creation as recoverable without dispatching the stale Goal", async () => {
+    mocks.cancelQueuedJob.mockResolvedValueOnce("cancelled");
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
       runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a", scope: "PLATFORM_ENGINEERING",
     }]);
@@ -1275,8 +1335,12 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.developmentRunService.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
       runId: result.runId,
       idempotencyKey: `spec224-goal-source-changed:${result.runId}`,
-      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" },
-      runMetadata: { spec224GoalAdmission: expect.objectContaining({ status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" }) },
+      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED", jobCancelled: true },
+      runMetadata: { spec224GoalAdmission: expect.objectContaining({ status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED", jobCancelled: true }) },
+    }));
+    expect(mocks.cancelQueuedJob).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: "source-changed-job", reason: "spec224_execution_source_changed", requireUnclaimed: true,
+      scope: { tenantId: CTX.tenantId, requestedByUserId: 42, authorizationScope: "spec226-development-control" },
     }));
     expect(mocks.createRun).toHaveBeenCalledTimes(1);
     expect(mocks.authorizeDelegatedChild).toHaveBeenCalledTimes(1);

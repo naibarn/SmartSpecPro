@@ -94,6 +94,33 @@ describe("Spec 224 child authorization identity", () => {
   });
 });
 
+describe("Spec 224 prepared source binding", () => {
+  it("accepts a fresh Runner report when source is unchanged and rejects changed source facts", async () => {
+    const sourceBinding = {
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "revision-a",
+      gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64),
+    };
+    const service = createSpec224AuthorizationService();
+    const matchingWorkspace = { workspaceId: "workspace-a", gitHead: sourceBinding.gitHead, contentFingerprint: sourceBinding.contentFingerprint };
+
+    mocks.node.mockResolvedValueOnce({ currentSnapshot: { revision: "revision-a", workspaces: [matchingWorkspace] } });
+    await expect(service.assertWorkspaceSourceSnapshot({ context, ...sourceBinding })).resolves.toBeUndefined();
+
+    mocks.node.mockResolvedValueOnce({ currentSnapshot: { revision: "revision-b", workspaces: [matchingWorkspace] } });
+    await expect(service.assertWorkspaceSourceSnapshot({ context, ...sourceBinding })).resolves.toBeUndefined();
+
+    for (const changedSnapshot of [
+      { revision: "revision-a", workspaces: [{ ...matchingWorkspace, gitHead: "c".repeat(40) }] },
+      { revision: "revision-a", workspaces: [{ ...matchingWorkspace, contentFingerprint: "d".repeat(64) }] },
+      { revision: "revision-a", workspaces: [] },
+    ]) {
+      mocks.node.mockResolvedValueOnce({ currentSnapshot: changedSnapshot });
+      await expect(service.assertWorkspaceSourceSnapshot({ context, ...sourceBinding }))
+        .rejects.toMatchObject({ code: "WORKSPACE_PREPARATION_SNAPSHOT_STALE" });
+    }
+  });
+});
+
 function createService() {
   const service = createSpec224AuthorizationService();
   vi.spyOn(service, "runnerReadiness").mockResolvedValue({ ready: true, code: "RUNNER_READY" } as any);

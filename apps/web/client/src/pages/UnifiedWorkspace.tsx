@@ -693,7 +693,8 @@ export default function UnifiedWorkspace() {
               requestedHarnessAdapterId={draft.requestedHarnessAdapterId ?? null}
               initialPrompt={draft.prompt}
               initialRequestKind={draft.intent === "mini_app" ? "mini_app" : "development"}
-              resumeSpecId={draft.pilotMode ? undefined : draft.resumeSpecId}
+              resumeSpecId={draft.pilotMode ? undefined : params.get("resumeSpecId") ?? draft.resumeSpecId}
+              sourceChangedRunId={params.get("sourceChangedRunId") ?? undefined}
               onCreateConversation={async title => {
                 const created = await createConversation.mutateAsync({ title });
                 return created.id;

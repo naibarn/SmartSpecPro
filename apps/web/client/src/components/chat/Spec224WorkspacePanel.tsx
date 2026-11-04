@@ -66,6 +66,34 @@ type WorkspaceOption = {
   modelCatalogs?: WorkspaceModelCatalog[];
 };
 
+type WorkspaceSourceBinding = {
+  runnerId: string;
+  workspaceId: string;
+  snapshotRevision: string;
+  gitHead: string;
+  contentFingerprint: string;
+};
+
+function sameWorkspaceSource(left: WorkspaceSourceBinding | null, right: WorkspaceSourceBinding | null): boolean {
+  return Boolean(left && right
+    && left.runnerId === right.runnerId
+    && left.workspaceId === right.workspaceId
+    && left.gitHead === right.gitHead
+    && left.contentFingerprint === right.contentFingerprint);
+}
+
+function workspaceSourceBinding(workspace: Partial<WorkspaceOption> | null | undefined): WorkspaceSourceBinding | null {
+  if (!workspace?.runnerId || !workspace.workspaceId || !workspace.snapshotRevision
+    || !workspace.gitHead || !workspace.contentFingerprint) return null;
+  return {
+    runnerId: workspace.runnerId,
+    workspaceId: workspace.workspaceId,
+    snapshotRevision: workspace.snapshotRevision,
+    gitHead: workspace.gitHead,
+    contentFingerprint: workspace.contentFingerprint,
+  };
+}
+
 type RunnerOption = {
   runnerId: string;
   displayName: string;
@@ -369,7 +397,7 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, freshGoal = false, pilotMode = false, initialPrompt, initialRequestKind = "development", resumeSpecId }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, freshGoal = false, pilotMode = false, initialPrompt, initialRequestKind = "development", resumeSpecId, sourceChangedRunId }: {
   conversationId: number | null;
   threadId?: string | null;
   simpleMode?: boolean;
@@ -380,6 +408,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   initialPrompt?: string;
   initialRequestKind?: "development" | "mini_app";
   resumeSpecId?: string;
+  sourceChangedRunId?: string;
 }) {
   const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
@@ -656,14 +685,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   type SourceChangeRecoveryInput = {
     workPackageId: string;
     targetConversationId: number;
-    targetPreparation: Preparation;
     startMode: "prompt" | "spec_set";
     startKey: string;
-    idempotencyKey: string;
+    previousSourceBinding: WorkspaceSourceBinding | null;
+    goalPersisted: boolean;
   };
   type PendingSourceChangeRecovery = {
     input: SourceChangeRecoveryInput;
-    previousSnapshotRevision: string | null;
     startedAt: number;
     timedOut: boolean;
   };
@@ -671,6 +699,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [pendingSourceChangeRecovery, setPendingSourceChangeRecovery] = useState<PendingSourceChangeRecovery | null>(null);
   const [recoveringSourceChange, setRecoveringSourceChange] = useState(false);
   const sourceChangeRecoveryInFlight = useRef(false);
+  const sourceChangeRecoveryInitialized = useRef<string | null>(null);
   useEffect(() => {
     if (pilotMode || !initialPrompt || !draftKey || hydratedDraftKey !== draftKey) return;
     setPrompt(initialPrompt.slice(0, 4_000));
@@ -737,6 +766,53 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const developmentRuns = workspaceQuery.data?.developmentRuns ?? [];
   const pilotRuns = developmentRuns.filter(run => run.isFirstRunPilot);
   const hasExistingPilotRun = pilotRuns.length > 0;
+  const sourceChangedRun = sourceChangedRunId
+    ? developmentRuns.find(run => run.runId === sourceChangedRunId
+      && run.executionAdmissionErrorCode === "EXECUTION_SOURCE_CHANGED")
+    : undefined;
+  const sourceChangedWorkspace = sourceChangedRun
+    ? workspaces.find(workspace => workspace.runnerId === sourceChangedRun.runnerId
+      && workspace.workspaceId === sourceChangedRun.workspaceId
+      && workspace.scope === "PLATFORM_ENGINEERING")
+    : undefined;
+  useEffect(() => {
+    if (!sourceChangedRunId || !workspaceQuery.data?.developmentRuns
+      || sourceChangeRecoveryInitialized.current === sourceChangedRunId) return;
+    if (!sourceChangedRun) {
+      sourceChangeRecoveryInitialized.current = sourceChangedRunId;
+      setContinuationNotice("ไม่พบ Goal ที่หยุดเพราะ source เปลี่ยนใน Workspace นี้ โปรดเลือก SPEC และเตรียมแผนใหม่");
+      return;
+    }
+    if (!sourceChangedWorkspace) return;
+    sourceChangeRecoveryInitialized.current = sourceChangedRunId;
+    setRequestKind("development");
+    setSelectedRunnerId(sourceChangedWorkspace.runnerId);
+    setSelected(selectionKey(sourceChangedWorkspace));
+    if (sourceChangedRun.executionMode === "work_package") {
+      setDevelopmentInputMode("spec");
+      setSpecSource("catalog");
+      const recoveryConversationId = conversationId ?? sourceChangedRun.conversationId;
+      if (sourceChangedRun.sourceBinding && sourceChangedRun.workPackageId && recoveryConversationId) {
+        setPendingSourceChangeRecovery({
+          input: {
+            workPackageId: sourceChangedRun.workPackageId,
+            targetConversationId: recoveryConversationId,
+            startMode: "spec_set",
+            startKey: `source-recovery:${sourceChangedRunId}`,
+            previousSourceBinding: sourceChangedRun.sourceBinding,
+            goalPersisted: true,
+          },
+          startedAt: Date.now(),
+          timedOut: false,
+        });
+      } else {
+        setContinuationNotice("พบ Goal ที่ source เปลี่ยนแล้ว แต่ไม่มี snapshot เดิมให้เทียบ โปรดเลือก SPEC และเตรียมแผนใหม่ก่อนส่ง Goal");
+      }
+    } else {
+      setDevelopmentInputMode("prompt");
+      setContinuationNotice("source ของ Goal เดิมเปลี่ยนแล้ว กรุณาระบุ Prompt อีกครั้ง ระบบจะตรวจ snapshot ใหม่ก่อนบันทึก Goal");
+    }
+  }, [sourceChangedRunId, sourceChangedRun, sourceChangedWorkspace, workspaceQuery.data?.developmentRuns, conversationId]);
   const developmentRunsNewestFirst = [...developmentRuns].sort((left, right) => {
     const leftTime = Date.parse(left.workerJobCreatedAt ?? left.createdAt ?? "");
     const rightTime = Date.parse(right.workerJobCreatedAt ?? right.createdAt ?? "");
@@ -1246,14 +1322,23 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     if (sourceChangeRecoveryInFlight.current) return;
     sourceChangeRecoveryInFlight.current = true;
     setRecoveringSourceChange(true);
-    const selected = selectedWorkspace;
-    const previousSnapshotRevision = input.targetPreparation.workPackages?.find(item => item.id === input.workPackageId)?.sourceAdmission?.snapshotRevision
-      ?? selected?.snapshotRevision;
+    const previousSourceBinding = input.previousSourceBinding;
+    // A recovery URL can mount this panel before selectedRunnerId/selected have
+    // caused a re-render. Resolve the Runner from the persisted source identity
+    // so recovery never starts against the workspace that happened to be
+    // selected previously.
+    const selected = previousSourceBinding
+      ? runnerWorkspaces.find(workspace => workspace.runnerId === previousSourceBinding.runnerId
+        && workspace.workspaceId === previousSourceBinding.workspaceId)
+      : selectedWorkspace;
     const waitForRunnerSnapshot = () => setPendingSourceChangeRecovery(current =>
       current?.input.startKey === input.startKey
         ? current
-        : { input, previousSnapshotRevision: previousSnapshotRevision ?? null, startedAt: Date.now(), timedOut: false },
+        : { input, startedAt: Date.now(), timedOut: false },
     );
+    const savedMessage = input.goalPersisted
+      ? "Goal เดิมถูกบันทึกและหยุดไว้แล้ว"
+      : "ยังไม่ได้สร้าง Goal";
     try {
       if (!selected || selected.scope !== "PLATFORM_ENGINEERING") throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
       const refreshedWorkspaces = await workspacesQuery.refetch();
@@ -1262,11 +1347,12 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           && workspace.scope === "PLATFORM_ENGINEERING",
       );
       if (!currentWorkspace) throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
+      const currentSourceBinding = workspaceSourceBinding(currentWorkspace);
 
-      if (previousSnapshotRevision && currentWorkspace.snapshotRevision === previousSnapshotRevision) {
+      if (sameWorkspaceSource(previousSourceBinding, currentSourceBinding)) {
         setPreparation(null);
         waitForRunnerSnapshot();
-        toast.info("Goal ถูกบันทึกและหยุดไว้แล้ว Runner จะเผยแพร่ source snapshot ใหม่ตามรอบประมาณ 2 นาที ระบบจะตรวจและเตรียมแผนให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ");
+        toast.info(`${savedMessage} Runner จะเผยแพร่ source snapshot ใหม่ตามรอบ ระบบจะตรวจและเตรียมแผนให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ`);
         return;
       }
 
@@ -1277,7 +1363,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       });
       const refreshedBinding = await workspaceQuery.refetch();
       if (refreshedBinding.data?.availability?.status !== "current"
-        || refreshedBinding.data.workspace?.snapshotRevision !== currentWorkspace.snapshotRevision) {
+        || refreshedBinding.data.workspace?.runnerId !== currentWorkspace.runnerId
+        || refreshedBinding.data.workspace?.workspaceId !== currentWorkspace.workspaceId) {
         throw new Error("WORKSPACE_BINDING_REFRESH_STALE");
       }
 
@@ -1291,16 +1378,16 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
       });
       const refreshedPackage = refreshedPreparation.workPackages?.find(item => item.id === input.workPackageId);
-      const latestSnapshotRevision = refreshedPackage?.sourceAdmission?.snapshotRevision ?? currentWorkspace.snapshotRevision;
+      const latestSourceBinding = refreshedPreparation.sourceBinding ?? currentSourceBinding;
       const packageStillRunnable = refreshedPreparation.runnableWorkPackageIds.includes(input.workPackageId)
         && (input.startMode === "prompt" || Boolean(refreshedPackage));
       const packageSourceIsSafe = !currentWorkspace.scope || currentWorkspace.scope !== "PLATFORM_ENGINEERING"
         || ["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(refreshedPackage?.sourceAdmission?.status ?? "BLOCKED");
 
-      if (!previousSnapshotRevision || latestSnapshotRevision === previousSnapshotRevision) {
+      if (!previousSourceBinding || sameWorkspaceSource(previousSourceBinding, latestSourceBinding)) {
         setPreparation(null);
         waitForRunnerSnapshot();
-        toast.info("Goal ถูกบันทึกและหยุดไว้แล้ว Runner ยังไม่เผยแพร่ source snapshot ใหม่ ระบบจะตรวจซ้ำอัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ");
+        toast.info(`${savedMessage} Runner ยังไม่เผยแพร่ source snapshot ใหม่ ระบบจะตรวจซ้ำอัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ`);
         return;
       }
       setPendingSourceChangeRecovery(null);
@@ -1311,17 +1398,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         return next;
       });
       if (!packageStillRunnable || !packageSourceIsSafe) {
-        toast.info("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ ระบบโหลดแผนล่าสุดให้แล้ว ตรวจ blocker และ source preflight ก่อนส่ง Goal ใหม่");
+        toast.info(`${savedMessage} ระบบโหลดแผนล่าสุดให้แล้ว ตรวจ blocker และ source preflight ก่อนส่ง Goal ใหม่`);
         return;
       }
-      toast.info("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ เพราะ source เปลี่ยน ระบบเตรียม snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง");
+      toast.info(`${savedMessage} เพราะ source เปลี่ยน ระบบเตรียม snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง`);
     } catch {
       setPreparation(null);
       if (selected?.scope === "PLATFORM_ENGINEERING") {
         waitForRunnerSnapshot();
-        toast.error("Goal ถูกบันทึกและหยุดไว้แล้ว แต่ยังโหลด source ล่าสุดไม่ได้ ระบบจะตรวจ Runner อีกครั้งโดยไม่ส่ง Goal ซ้ำ");
+        toast.error(`${savedMessage} แต่ยังโหลด source ล่าสุดไม่ได้ ระบบจะตรวจ Runner อีกครั้งโดยไม่ส่ง Goal ซ้ำ`);
       } else {
-        toast.error("Goal ถูกบันทึกและหยุดไว้แล้ว แต่โหลด source ล่าสุดไม่สำเร็จ โปรดตรวจ Runner และเตรียมแผนใหม่ก่อนส่งงานอีกครั้ง");
+        toast.error(`${savedMessage} แต่โหลด source ล่าสุดไม่สำเร็จ โปรดตรวจ Runner และเตรียมแผนใหม่ก่อนส่งงานอีกครั้ง`);
       }
     } finally {
       sourceChangeRecoveryInFlight.current = false;
@@ -1336,7 +1423,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         && workspace.workspaceId === selectedWorkspace?.workspaceId
         && workspace.scope === "PLATFORM_ENGINEERING",
     );
-    if (!updatedWorkspace || updatedWorkspace.snapshotRevision === pendingSourceChangeRecovery.previousSnapshotRevision) return;
+    if (!updatedWorkspace || sameWorkspaceSource(
+      pendingSourceChangeRecovery.input.previousSourceBinding,
+      workspaceSourceBinding(updatedWorkspace),
+    )) return;
     void refreshAfterExecutionSourceChanged(pendingSourceChangeRecovery.input);
   }, [pendingSourceChangeRecovery, workspaces, selectedWorkspace?.runnerId, selectedWorkspace?.workspaceId]);
 
@@ -1396,7 +1486,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${threadId ?? "main"}:${startMode}:${targetPreparation.planRevision}:${workPackageId}:${requestedSpecId ?? ""}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const sourceBinding = targetPreparation.sourceBinding ?? workspaceSourceBinding(selectedWorkspace);
+    if (platformWorkspaceSelected && (!sourceBinding || sourceBinding.runnerId !== selectedWorkspace?.runnerId
+      || sourceBinding.workspaceId !== selectedWorkspace?.workspaceId)) {
+      toast.error("ข้อมูล source ที่ใช้เตรียมแผนไม่ครบ โปรดโหลด snapshot แล้วเตรียมแผนใหม่ก่อนส่ง Goal");
+      return;
+    }
+    // Snapshot revisions advance for fresh Runner reports even when the
+    // repository source is unchanged. Keep retries idempotent on source facts,
+    // not on the report sequence number.
+    const sourceKey = sourceBinding ? `${sourceBinding.runnerId}:${sourceBinding.workspaceId}:${sourceBinding.gitHead}:${sourceBinding.contentFingerprint}` : "unbound";
+    const key = `${targetConversationId}:${threadId ?? "main"}:${startMode}:${targetPreparation.planRevision}:${workPackageId}:${requestedSpecId ?? ""}:${sourceKey}:${designStartFingerprint}:${workspaceAccessMode}:${platformWorkspaceSelected ? "provider-managed" : budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -1417,6 +1517,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           ...(requestedSpecId ? { requestedSpecId } : {}),
           ...(developmentInputMode === "spec_prompt" && !startOptions?.skipAdditionalInstructions ? { additionalInstructions: prompt } : {}),
         }),
+        ...(requestKind === "development" && sourceBinding ? { sourceBinding } : {}),
         ...(platformWorkspaceSelected ? {} : { budgetCapMinorUnits }),
         ...(requestKind === "development" ? { provider: effectiveProvider as "codex" | "microsoft_copilot" } : {}),
         modelSelection,
@@ -1461,10 +1562,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           await refreshAfterExecutionSourceChanged({
             workPackageId,
             targetConversationId,
-            targetPreparation,
             startMode,
             startKey: key,
-            idempotencyKey,
+            previousSourceBinding: sourceBinding,
+            goalPersisted: true,
           });
         }
         return;
@@ -1508,12 +1609,23 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           await refreshAfterExecutionSourceChanged({
             workPackageId,
             targetConversationId,
-            targetPreparation,
             startMode,
             startKey: key,
-            idempotencyKey,
+            previousSourceBinding: sourceBinding,
+            goalPersisted: true,
           });
         }
+        return;
+      }
+      if (error instanceof Error && error.message.includes("WORKSPACE_PREPARATION_SNAPSHOT_STALE")) {
+        await refreshAfterExecutionSourceChanged({
+          workPackageId,
+          targetConversationId,
+          startMode,
+          startKey: key,
+          previousSourceBinding: sourceBinding,
+          goalPersisted: false,
+        });
         return;
       }
       if (error instanceof Error && error.message.includes("WORKSPACE_BINDING_STALE")) {
@@ -2477,7 +2589,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       {!(["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state)) ? (
                         <Button type="button" variant="outline" size="sm" className="mt-2"
                           aria-label={resumeLabel}
-                          hidden={legacyPlatformBudgetedRun}
+                          hidden={legacyPlatformBudgetedRun || run.executionAdmissionErrorCode === "EXECUTION_SOURCE_CHANGED"}
                           disabled={resumeRunMutation.isPending || !boundWorkspace || (run.economicsMode !== "provider_managed" && !economicLedgerReadyForRun)}
                           onClick={() => void resumeExistingRun(run.runId, run.conversationId ?? conversationId)}>
                           {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : resumeLabel}
@@ -2504,8 +2616,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <section className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" aria-label="รอ Runner source snapshot">
               <p role="status">
                 {pendingSourceChangeRecovery.timedOut
-                  ? "Goal เดิมถูกบันทึกและหยุดไว้แล้ว แต่ Runner ยังไม่ส่ง source snapshot ใหม่ โปรดตรวจว่า Runner ออนไลน์ แล้วตรวจ snapshot อีกครั้งเมื่อพร้อม"
-                  : "Goal เดิมถูกบันทึกและหยุดไว้แล้ว Runner เผยแพร่ source snapshot ตามรอบประมาณ 2 นาที ระบบกำลังตรวจและจะเตรียมแผนใหม่ให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ"}
+                  ? `${pendingSourceChangeRecovery.input.goalPersisted ? "Goal เดิมถูกบันทึกและหยุดไว้แล้ว" : "ยังไม่ได้สร้าง Goal"} แต่ Runner ยังไม่ส่ง source snapshot ใหม่ โปรดตรวจว่า Runner ออนไลน์ แล้วตรวจ snapshot อีกครั้งเมื่อพร้อม`
+                  : `${pendingSourceChangeRecovery.input.goalPersisted ? "Goal เดิมถูกบันทึกและหยุดไว้แล้ว" : "ยังไม่ได้สร้าง Goal"} Runner เผยแพร่ source snapshot ตามรอบ ระบบกำลังตรวจและจะเตรียมแผนใหม่ให้อัตโนมัติ โปรดอย่าส่ง Goal ซ้ำ`}
               </p>
               <Button
                 type="button"

@@ -103,6 +103,22 @@ export function requestedSpecDisplayLabel(requestedSpec: { specId: string; title
   return `${specLabel} · ${requestedSpec.title}`;
 }
 
+export function sourceChangedRecoveryHref(input: {
+  conversationId: number;
+  runId: string;
+  specId?: string | null;
+}): string {
+  const params = new URLSearchParams({
+    mode: "tasks",
+    c: String(input.conversationId),
+    newGoal: "1",
+    sourceChangedRunId: input.runId,
+  });
+  const specNumber = /^(\d+)(?:-|$)/.exec(input.specId ?? "")?.[1];
+  if (specNumber) params.set("resumeSpecId", specNumber);
+  return `/chat?${params.toString()}`;
+}
+
 function hasUnrecordedRequestedSpec(goal: any): boolean {
   return !goal?.requestedSpec && Boolean(goal?.workPackageExternalId || goal?.specSources?.length || goal?.specId);
 }
@@ -319,6 +335,10 @@ export function ProjectExecutionWorkspace({
   const selectedDevelopmentRun = selectedGoal?.runId
     ? selectedGoalWorkspaceQuery.data?.developmentRuns.find(run => run.runId === selectedGoal.runId)
     : undefined;
+  const sourceChangedRecoveryLink = selectedGoal?.runId && selectedGoalJob?.conversationId && selectedDevelopmentRun
+    ? sourceChangedRecoveryHref({ conversationId: selectedGoalJob.conversationId, runId: selectedGoal.runId,
+      specId: selectedDevelopmentRun.specId })
+    : null;
   const selectedRunPolicyKnown = Boolean(selectedGoal?.runId && selectedGoalJob?.conversationId)
     && selectedGoalWorkspaceQuery.isSuccess
     && Boolean(selectedDevelopmentRun);
@@ -674,6 +694,10 @@ export function ProjectExecutionWorkspace({
                           approvalStatus={selectedDevelopmentRun?.goalApproval?.status}
                           admissionStatus={selectedDevelopmentRun?.executionAdmissionStatus}
                           admissionErrorCode={selectedDevelopmentRun?.executionAdmissionErrorCode}
+                          recoveryHref={sourceChangedRecoveryLink}
+                          recoveryLabel={selectedDevelopmentRun?.executionMode === "work_package"
+                            ? "เปิด Workspace เพื่อตรวจ snapshot และเตรียมแผนใหม่"
+                            : "เปิด Goal ใหม่เพื่อตรวจ snapshot และระบุ Prompt อีกครั้ง"}
                           presentationMode={presentationMode}
                         />
                       ) : null}
@@ -806,7 +830,7 @@ export function ProjectExecutionWorkspace({
                           )}
                         </section>
                       ) : null}
-                      {selectedGoal.workerJobId && selectedGoal.runId && selectedGoalJob?.conversationId && selectedRunPolicyKnown && !selectedRunUsesLegacyPlatformBudget && !TERMINAL.has(selectedGoalJob.status) ? (
+                      {selectedGoal.workerJobId && selectedGoal.runId && selectedGoalJob?.conversationId && selectedRunPolicyKnown && !selectedRunUsesLegacyPlatformBudget && selectedDevelopmentRun?.executionAdmissionErrorCode !== "EXECUTION_SOURCE_CHANGED" && !TERMINAL.has(selectedGoalJob.status) ? (
                         <Button
                           type="button"
                           variant="default"
