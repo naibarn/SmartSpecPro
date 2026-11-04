@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1304 unresolved of 1305
 - Next action: Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.
-- Manifest generation: 291
+- Manifest generation: 292
 
 ## Source-declared status and relationship claims
 

@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
+    "expected_canonical_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Refresh Task Control and prepare the Goal. If source changes during admission, review the refreshed plan and submit explicitly after the UI confirms a newer safe Runner snapshot; if the snapshot is still old, refresh the Runner workspace snapshot. After authenticated Goal admission, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT from the exact persisted run/job/attempt identities.",
+    "next_action": "Hard refresh Task Control and reopen the Goal flow. Wait for the next Runner source snapshot, review the newly prepared plan, and explicitly submit once. If the snapshot does not advance within the displayed wait window, use the manual snapshot check and verify that the Runner is online. After authenticated Goal admission, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT using exact persisted identities.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "A fresh current Runner source snapshot is bound to the same authorized Platform workspace; the owner explicitly reviews and submits the refreshed Goal; Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; source admission is revalidated before the fenced writer lease.",
-    "resume_point": "At integrated source SHA bdf563f3d639fb80e83a0daf5a0436785d1bb1eb, Goal admission now persists EXECUTION_SOURCE_CHANGED as a blocked recoverable state; Task Control refreshes/rebinds the same authorized workspace, prepares a new plan, and requires explicit user resubmission with a new Goal key only after the source snapshot advances. Deployed healthy on legacy-debian-dev generation 359. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-change-goal-recovery-20261104.md. No authenticated Goal retry or Provider execution is claimed. Next: refresh Task Control, review the prepared Goal, and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT after authenticated admission.",
+    "reactivation_predicate": "A newer Runner source snapshot is published and observed; Task Control rebinds the same authorized workspace and prepares a fresh plan; the owner reviews and explicitly submits that Goal; Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; source admission is revalidated before the fenced writer lease.",
+    "resume_point": "At integrated source SHA 37a79dda9681a69140d0e93d499c7ea82d387dcd, source-change recovery remains blocked and never auto-resubmits the Goal. Task Control waits for the Runner capability snapshot (published on an approximately 120-second cycle), detects a newer workspace revision through the existing foreground query, rebinds the same authorized workspace, and prepares a fresh plan. The user must explicitly review and submit. Deployed to legacy-debian-dev generation 360; evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-wait-recovery-20261104.md. No authenticated Goal retry or Provider execution is claimed.",
     "waiting_predicate": "An owner-authenticated Goal submission and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities after current-source admission."
   },
   "continuation_assessment": {
@@ -1248,7 +1248,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:5572100f50950deb08fc58147f962c659bd6d285a69d6d17b45821431a0f648d",
+    "artifact_digest": "sha256:ff4f40420872f636a42b591336513e1270be37670075f49007112f57bed9beac",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1428,10 +1428,17 @@
         "scope": "Exact immutable release for smartaihub.app on legacy-debian-dev; frontend and Node Worker source SHA verified, runtime DEPLOYED_VERIFIED/HEALTHY, API health 200, anonymous diagnostics 403, public hostname 200. Authenticated Goal admission, Runner execution, receipts and settlement were not exercised.",
         "source_sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_360",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-wait-recovery-20261104.md",
+        "scope": "Exact source deployed to legacy-debian-dev / smartaihub.app, release generation 360. Web and Node Worker runtime SHA match; immutable controller status DEPLOYED_VERIFIED / HEALTHY; public homepage and served Spec224WorkspacePanel asset returned HTTP 200, and the asset contains the new manual snapshot-recovery action. Authenticated Goal execution was not performed.",
+        "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
+    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
     "status": "PASS"
   },
   "disposition": {
@@ -1445,7 +1452,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 291,
+  "generation": 292,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1732,11 +1739,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
+    "canonical_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
     "integrated": true,
-    "integrated_at": "2026-11-04T21:23:35+07:00",
+    "integrated_at": "2026-11-04T21:48:40+07:00",
     "pull_request": null,
-    "source_sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb"
+    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4287,7 +4294,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T14:32:17.145037Z",
+  "updated_at": "2026-11-04T14:57:00.746395Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4884,14 +4891,22 @@
       "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
       "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx",
       "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts",
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-change-goal-recovery-20261104.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-change-goal-recovery-20261104.md",
+      {
+        "kind": "SPEC224_RUNNER_SNAPSHOT_WAIT_RECOVERY_REGRESSION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-wait-recovery-20261104.md",
+        "scope": "Exact canonical SHA 37a79dda9681a69140d0e93d499c7ea82d387dcd: Spec224WorkspacePanel and spec226DevelopmentControl focused suites passed, 2 files / 92 tests. Covers stale snapshot wait, no duplicate Goal submission, rebind and reprepare on a newer Runner revision, and explicit user send. Mock-backed/unit evidence; no authenticated live Goal execution.",
+        "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
     "sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
-    "status": "PASS_PARTIAL",
+    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+    "status": "PASS",
     "task_regressions": [
       "Source-change Goal recovery UI flow: source change → refresh/rebind → prepare latest plan → explicit second click with a new idempotency key; 91 focused tests passed across the UI and router files.",
       "Goal admission source-change regression: persists blocked admission evidence and does not dispatch or authorize the stale Goal."
