@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
@@ -105,6 +105,9 @@ export function UnifiedWorkspaceInspector({
     job?.id ?? null,
     Boolean(job && tab !== "overview" && tab !== "activity")
   );
+  useEffect(() => {
+    if (!job && tab !== "overview") setTab("overview");
+  }, [job, tab]);
   const detail = detailQuery.data;
   const events = output.eventsJobId === job?.id ? output.events : [];
   const terminalEvents = useMemo(
@@ -127,7 +130,9 @@ export function UnifiedWorkspaceInspector({
     [events]
   );
 
-  const noRun = "No development run has started yet.";
+  const noRun = hasContext
+    ? "This chat has no development run yet. Send a message to continue chatting, or create a Development Goal in Task Control to track work. Run evidence appears after execution starts."
+    : "Select a conversation or Run to inspect its development evidence.";
   const unavailable =
     "This evidence is currently unavailable. Refresh or open Task Control for details.";
 
@@ -174,6 +179,7 @@ export function UnifiedWorkspaceInspector({
             <TabsTrigger
               key={id}
               value={id}
+              disabled={!job && id !== "overview"}
               className="flex min-w-0 flex-col gap-1 px-1 py-2 text-xs leading-tight"
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
@@ -207,10 +213,6 @@ export function UnifiedWorkspaceInspector({
               </Button>
             </VStack>
           ) : null}
-          {!query.isLoading && !query.error && !job ? (
-            <p className="mb-3 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{hasContext ? noRun : "Select a conversation or Run to inspect its activity, files, tests, and receipts."}</p>
-          ) : null}
-
           <TabsContent value="overview" className="mt-0 space-y-4">
             {job ? (
               <>
@@ -273,7 +275,9 @@ export function UnifiedWorkspaceInspector({
                 label={
                   query.error
                     ? unavailable
-                    : "Select a session or start a task to see its run, agent, harness, model, and Runner here."
+                    : hasContext
+                      ? "Send a message to continue this chat. To track development work, create a Development Goal in Task Control."
+                      : "Select a session or Run to inspect its agent, harness, model, and Runner."
                 }
               />
             )}

@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   conversationProjectId: null as string | null,
   goalPrompt: "fix login",
   create: vi.fn(async () => ({ id: 902 })),
-  user: { role: "admin" } as { role: string } | null,
+  user: { id: "user-1", role: "admin" } as { id: string; role: string } | null,
 }));
 
 vi.mock("wouter", () => ({
@@ -198,12 +198,13 @@ describe("UnifiedWorkspace", () => {
     state.recentThreads = [];
     state.conversationProjectId = null;
     state.goalPrompt = "fix login";
-    state.user = { role: "admin" };
+    state.user = { id: "user-1", role: "admin" };
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
-  it("renders a usable first-use composer and neutral empty inspector", () => {
-    render(<UnifiedWorkspace />);
+  it("opens the full Chat composer on first entry and explains the empty inspector", async () => {
+    const view = render(<UnifiedWorkspace />);
     expect(
       screen.getByRole("navigation", {
         name: "SmartAIHub workspace navigation",
@@ -222,31 +223,27 @@ describe("UnifiedWorkspace", () => {
     expect(
       screen.getByRole("navigation", { name: "Saved sessions" })
     ).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "ต้องการให้ AI ช่วยทำอะไร?" })).toBeTruthy();
-    expect(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "ส่งข้อความ" })).toBeTruthy();
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ title: "New chat" }));
+    act(() => { state.search = "c=902"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect(await screen.findByRole("region", { name: "Conversation canvas" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Browser control" })).toBeNull();
     expect(screen.queryByText("No conversation selected")).toBeNull();
     expect(
       screen.getByRole("region", { name: "Run inspector for session" })
     ).toBeTruthy();
   });
 
-  it("creates one persisted session and auto-sends the first Chat message", async () => {
-    const view = render(<UnifiedWorkspace />);
-    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), {
-      target: { value: "Summarize this project" },
-    });
-    const send = screen.getByRole("button", { name: "ส่งข้อความ" });
-    fireEvent.click(send);
-    fireEvent.click(send);
+  it("reuses the same empty starter session after reopening Chat in the same tab", async () => {
+    const firstView = render(<UnifiedWorkspace />);
     await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
-    act(() => { state.search = "c=902"; });
-    view.rerender(<UnifiedWorkspace />);
-    expect(await screen.findByText("Summarize this project")).toBeTruthy();
+    expect(window.sessionStorage.getItem("smartaihub-empty-chat:v1:personal:user-1")).toBe("902");
+    firstView.unmount();
+    state.location.mockClear();
+
+    render(<UnifiedWorkspace />);
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?c=902"));
     expect(state.create).toHaveBeenCalledTimes(1);
-    expect(state.create).toHaveBeenCalledWith({ title: "Summarize this project" });
-    expect(state.location).toHaveBeenCalledWith("/chat?c=902");
-    expect(screen.getByText("Summarize this project").getAttribute("data-auto-send")).toBe("true");
   });
 
   it("clears a stale Run when switching to another saved session", () => {
@@ -257,8 +254,13 @@ describe("UnifiedWorkspace", () => {
   });
 
   it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
-    render(<UnifiedWorkspace />);
-    fireEvent.click(screen.getByRole("button", { name: "First Run Pilot · ทดสอบระบบครั้งแรก" }));
+    const view = render(<UnifiedWorkspace />);
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+    act(() => { state.search = "c=902"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect(screen.queryByRole("button", { name: "Autonomous Dev Pilot · Admin" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Developer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Autonomous Dev Pilot · Admin" }));
     expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
     expect(screen.getByText("Pilot 902 · true · auto")).toBeTruthy();
     expect(state.location).toHaveBeenCalledWith("/chat?c=902&pilot=1");
@@ -279,9 +281,9 @@ describe("UnifiedWorkspace", () => {
   });
 
   it("does not expose the first-run pilot entry point to non-admin users", () => {
-    state.user = { role: "user" };
+    state.user = { id: "user-1", role: "user" };
     render(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "First Run Pilot · ทดสอบระบบครั้งแรก" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Autonomous Dev Pilot · Admin" })).toBeNull();
   });
 
   it("offers an obvious New Goal action in Task Control and opens the existing review route", async () => {
@@ -305,26 +307,24 @@ describe("UnifiedWorkspace", () => {
     expect(dialog.className).toContain("overflow-x-hidden");
   });
 
-  it("offers Mission Control an authorized New Agent Task action", async () => {
+  it("does not offer the unsupported New Agent Task action in Mission Control", () => {
     state.search = "mode=mission";
     render(<UnifiedWorkspace />);
-    fireEvent.click(screen.getByRole("button", { name: "New Agent Task" }));
-    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
+    expect(screen.queryByRole("button", { name: "New Agent Task" })).toBeNull();
   });
 
-  it("routes Development intent to the existing Goal review instead of Chat", async () => {
+  it("routes a Development Goal review from the active Chat without creating another chat", async () => {
     const view = render(<UnifiedWorkspace />);
-    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), {
-      target: { value: "Create a small utility" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Development" }));
-    fireEvent.click(screen.getByRole("button", { name: "ตรวจ Goal ก่อนเริ่มงาน" }));
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+    act(() => { state.search = "c=902"; });
+    view.rerender(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Development task mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review current chat as Goal" }));
     await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
-    expect(screen.queryByRole("region", { name: "Conversation canvas" })).toBeNull();
+    expect(state.create).toHaveBeenCalledTimes(1);
     act(() => { state.search = "mode=tasks&c=902&newGoal=1"; });
     view.rerender(<UnifiedWorkspace />);
-    expect((await screen.findByTestId("goal-review-prompt")).textContent).toContain("development: Create a small utility");
+    expect((await screen.findByTestId("goal-review-prompt")).textContent).toContain("development: fix login");
     expect(screen.getByTestId("goal-review-prompt").textContent).toContain("แนวทาง Skill-first");
   });
 
@@ -379,13 +379,12 @@ describe("UnifiedWorkspace", () => {
     ));
   });
 
-  it("binds a first Chat conversation to a project selected from authorized session context", async () => {
+  it("keeps an authorized project context when opening the starter Chat", async () => {
     state.recentThreads = [{ projectId: "project-1", projectTitle: "Project One" }];
-    const view = render(<UnifiedWorkspace />);
-    fireEvent.change(screen.getByRole("combobox", { name: "Project" }), { target: { value: "project-1" } });
-    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), { target: { value: "Hello" } });
-    fireEvent.click(screen.getByRole("button", { name: "ส่งข้อความ" }));
-    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ title: "Hello", projectId: "project-1" }));
+    state.search = "projectId=project-1";
+    render(<UnifiedWorkspace />);
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ title: "New chat", projectId: "project-1" }));
+    expect(state.location).toHaveBeenCalledWith("/chat?c=902&projectId=project-1");
   });
 
   it("organizes Task Control by project and reports absent lifecycle evidence honestly", () => {

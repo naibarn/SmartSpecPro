@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { TopNav, TopNavHeading } from "@astryxdesign/core/TopNav";
@@ -19,6 +19,7 @@ import {
   Plus,
   PanelLeftOpen,
   PanelRightOpen,
+  Loader2,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -35,9 +36,9 @@ import { MissionControlWorkspace } from "@/components/chat/MissionControlWorkspa
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
-import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
-type StartIntent = "chat" | "development" | "mini_app" | "agent_task";
+type GoalIntent = "development" | "mini_app";
 type ChatCommandIntent = "chat" | "development" | "mini_app";
 
 type WorkspaceMode = "chat" | "tasks" | "mission";
@@ -88,13 +89,22 @@ export default function UnifiedWorkspace() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [pilotOpen, setPilotOpen] = useState(false);
   const [pilotConversationId, setPilotConversationId] = useState<number | null>(null);
-  const [startPrompt, setStartPrompt] = useState("");
-  const [startIntent, setStartIntent] = useState<StartIntent>("chat");
   const [chatCommandIntent, setChatCommandIntent] = useState<ChatCommandIntent>("chat");
   const [selectedProjectId, setSelectedProjectId] = useState(projectParam);
-  const [firstMessage, setFirstMessage] = useState<{ id: number; text: string; autoSend: true } | null>(null);
+  const [firstMessage, setFirstMessage] = useState<{
+    id: number;
+    text: string;
+    autoSend: boolean;
+  } | null>(null);
+  const [starterChatError, setStarterChatError] = useState(false);
+  const [startingStarterChat, setStartingStarterChat] = useState(false);
   const createInFlight = useRef(false);
+  const attemptedStarterChatKey = useRef<string | null>(null);
   const createConversation = trpc.chat.createConversation.useMutation();
+  const starterChatStorageKey =
+    user?.id != null
+      ? `smartaihub-empty-chat:v1:${encodeURIComponent(String(user.currentTenantId ?? "personal"))}:${encodeURIComponent(String(user.id))}`
+      : null;
   useEffect(() => setSelectedProjectId(projectParam), [projectParam]);
   const recentThreads = trpc.chat.listRecentConversationThreads.useInfiniteQuery(
     { limit: 50 },
@@ -156,6 +166,84 @@ export default function UnifiedWorkspace() {
     if (nextMode !== "chat") next.set("mode", nextMode);
     setLocation(`/chat${next.size ? `?${next.toString()}` : ""}`);
   };
+  const startStarterChat = async () => {
+    if (!starterChatStorageKey || createInFlight.current) return;
+    createInFlight.current = true;
+    setStartingStarterChat(true);
+    setStarterChatError(false);
+    try {
+      let existingId: number | null = null;
+      try {
+        const storedId = Number(
+          window.sessionStorage.getItem(starterChatStorageKey)
+        );
+        if (Number.isSafeInteger(storedId) && storedId > 0) {
+          existingId = storedId;
+        }
+      } catch {
+        // Continue with a new conversation when browser storage is unavailable.
+      }
+      if (existingId) {
+        navigate("chat", existingId, null);
+        return;
+      }
+      const projectId =
+        selectedProjectId &&
+        (selectedProjectId === projectParam ||
+          authorizedProjects.some(([id]) => id === selectedProjectId))
+          ? selectedProjectId
+          : undefined;
+      const created = await createConversation.mutateAsync({
+        title: "New chat",
+        ...(projectId ? { projectId } : {}),
+      });
+      try {
+        window.sessionStorage.setItem(starterChatStorageKey, String(created.id));
+      } catch {
+        // The conversation remains usable when browser storage is unavailable.
+      }
+      navigate("chat", created.id, null);
+    } catch {
+      attemptedStarterChatKey.current = null;
+      setStarterChatError(true);
+    } finally {
+      createInFlight.current = false;
+      setStartingStarterChat(false);
+    }
+  };
+  useEffect(() => {
+    if (mode !== "chat" || !starterChatStorageKey) return;
+    if (conversationId) {
+      attemptedStarterChatKey.current = null;
+      return;
+    }
+    if (attemptedStarterChatKey.current === starterChatStorageKey) return;
+    attemptedStarterChatKey.current = starterChatStorageKey;
+    void startStarterChat();
+  }, [mode, conversationId, starterChatStorageKey]);
+  useEffect(() => {
+    if (
+      mode !== "chat" ||
+      !conversationId ||
+      !starterChatStorageKey ||
+      titleQuery.error?.data?.code !== "NOT_FOUND"
+    ) {
+      return;
+    }
+    try {
+      if (
+        window.sessionStorage.getItem(starterChatStorageKey) !==
+        String(conversationId)
+      ) {
+        return;
+      }
+      window.sessionStorage.removeItem(starterChatStorageKey);
+    } catch {
+      return;
+    }
+    setStarterChatError(false);
+    navigate("chat", null, null);
+  }, [mode, conversationId, starterChatStorageKey, titleQuery.error]);
   const selectExecutions = (jobIds: string[], selectedJobId: string | null) => {
     const next = new URLSearchParams();
     next.set("mode", "mission");
@@ -179,13 +267,24 @@ export default function UnifiedWorkspace() {
     setFirstMessage(null);
     createInFlight.current = true;
     try {
-    const created = await createConversation.mutateAsync({ title: "New chat" });
-    navigate("chat", created.id, null);
+      const created = await createConversation.mutateAsync({
+        title: "New chat",
+      });
+      if (starterChatStorageKey) {
+        try {
+          window.sessionStorage.setItem(starterChatStorageKey, String(created.id));
+        } catch {
+          // The conversation remains usable when browser storage is unavailable.
+        }
+      }
+      navigate("chat", created.id, null);
+    } catch {
+      toast.error("สร้างแชตใหม่ไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       createInFlight.current = false;
     }
   };
-  const createGoalConversation = async (intent: Exclude<StartIntent, "chat">, prompt = "") => {
+  const createGoalConversation = async (intent: GoalIntent, prompt = "") => {
     if (!isAdmin || createInFlight.current) return;
     createInFlight.current = true;
     try {
@@ -197,7 +296,7 @@ export default function UnifiedWorkspace() {
       sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({ prompt: addSkillFirstGuidance(prompt, intent), intent }));
       setLocation(`/chat?mode=tasks&c=${created.id}&newGoal=1`);
     } catch {
-      // Keep the current page and draft intact when persistence fails.
+      toast.error("สร้าง Goal ไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       createInFlight.current = false;
     }
@@ -225,30 +324,7 @@ export default function UnifiedWorkspace() {
     next.set("newGoal", "1");
     setLocation(`/chat?${next.toString()}`);
   };
-  const submitStartCommand = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const prompt = startPrompt.trim();
-    if (!prompt || createInFlight.current) return;
-    if (startIntent !== "chat") {
-      await createGoalConversation(startIntent, prompt);
-      return;
-    }
-    createInFlight.current = true;
-    try {
-      const created = await createConversation.mutateAsync({
-        title: prompt.slice(0, 80),
-        ...(selectedProjectId && authorizedProjects.some(([id]) => id === selectedProjectId) ? { projectId: selectedProjectId } : {}),
-      });
-      setFirstMessage({ id: Date.now(), text: prompt, autoSend: true });
-      setStartPrompt("");
-      navigate("chat", created.id, null);
-    } catch {
-      // Keep the draft visible so the user can retry without losing the prompt.
-    } finally {
-      createInFlight.current = false;
-    }
-  };
-  const openNewGoal = async (intent: Exclude<StartIntent, "chat"> = "development") => {
+  const openNewGoal = async (intent: GoalIntent = "development") => {
     await createGoalConversation(intent);
   };
   const startFirstRunPilot = async () => {
@@ -259,8 +335,7 @@ export default function UnifiedWorkspace() {
       setLocation(`/chat?c=${created.id}&pilot=1`);
       setPilotOpen(true);
     } catch {
-      // The conversation mutation surfaces its standard error state; do not open
-      // a pilot review without a durable canonical conversation to bind to.
+      toast.error("เปิด Autonomous Dev Pilot ไม่สำเร็จ ลองอีกครั้ง");
     }
   };
   const setMode = (next: PresentationMode) => {
@@ -345,9 +420,9 @@ export default function UnifiedWorkspace() {
       }
       endContent={
         <HStack gap={1}>
-          {isAdmin ? (
+          {isAdmin && presentationMode === "developer" ? (
             <Button
-              label="First Run Pilot · ทดสอบระบบครั้งแรก"
+              label="Autonomous Dev Pilot · Admin"
               variant="secondary"
               disabled={createConversation.isPending}
               onClick={() => void startFirstRunPilot()}
@@ -355,9 +430,6 @@ export default function UnifiedWorkspace() {
           ) : null}
           {mode === "tasks" && isAdmin ? (
             <Button label="สร้างงานใหม่ / New Goal" variant="primary" onClick={() => void openNewGoal("development")} />
-          ) : null}
-          {mode === "mission" && isAdmin ? (
-            <Button label="New Agent Task" variant="primary" onClick={() => void openNewGoal("agent_task")} />
           ) : null}
           <Button
             label="Simple"
@@ -433,57 +505,77 @@ export default function UnifiedWorkspace() {
                   ) : null}
                   <section className="min-h-0 flex-1">
                     {!conversationId ? (
-                      <section className="mx-auto flex h-full w-full max-w-4xl flex-col justify-center gap-5 overflow-y-auto px-4 py-8 sm:px-8" aria-labelledby="workspace-start-heading">
-                        <header className="space-y-2">
-                          <p className="text-sm font-medium text-primary">SmartAIHub Workspace</p>
-                          <h1 id="workspace-start-heading" className="text-2xl font-semibold tracking-tight sm:text-3xl">ต้องการให้ AI ช่วยทำอะไร?</h1>
-                          <p className="max-w-2xl text-sm text-muted-foreground">พิมพ์สั้น ๆ ได้ เลือก Development เพื่อให้ระบบตรวจคำสั่ง, Skill และขอบเขตก่อนเปิด Goal review; Chat ปกติจะส่งข้อความเข้าบทสนทนา</p>
-                        </header>
-                        <form onSubmit={event => void submitStartCommand(event)} className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-label="Start work">
-                          <label htmlFor="workspace-first-prompt" className="sr-only">คำสั่งเริ่มต้น</label>
-                          <Textarea id="workspace-first-prompt" value={startPrompt} onChange={event => setStartPrompt(event.target.value)} placeholder="พิมพ์คำสั่งหรือเป้าหมายที่ต้องการ…" className="min-h-32 resize-y bg-background text-base" />
-                          <div className="flex flex-wrap gap-2" role="group" aria-label="ชนิดงาน">
-                            {([ ["chat", "Chat"], ["development", "Development"], ["mini_app", "Mini App"], ["agent_task", "Agent Task"] ] as const).map(([intent, label]) => (
-                              <Button key={intent} type="button" variant={startIntent === intent ? "primary" : "secondary"} onClick={() => setStartIntent(intent)} aria-pressed={startIntent === intent}>{label}</Button>
-                            ))}
-                          </div>
-                          {authorizedProjects.length > 0 ? (
-                            <label className="block space-y-1 text-sm">
-                              <span>Project (optional)</span>
-                              <select aria-label="Project" value={selectedProjectId} onChange={event => setSelectedProjectId(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3">
-                                <option value="">No project</option>
-                                {authorizedProjects.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
-                              </select>
-                            </label>
-                          ) : null}
-                          <HStack gap={2} wrap="wrap" className="justify-between">
-                            <Button type="button" variant="secondary" onClick={() => void newChat()} disabled={createConversation.isPending}>New Chat</Button>
-                            <Button type="submit" variant="primary" disabled={!startPrompt.trim() || createConversation.isPending || (startIntent !== "chat" && !isAdmin)}>
-                              {startIntent === "chat" ? "ส่งข้อความ" : startIntent === "mini_app" ? "ตรวจ Goal สำหรับ Mini App" : "ตรวจ Goal ก่อนเริ่มงาน"}
+                      <VStack
+                        as="section"
+                        gap={3}
+                        className="mx-auto flex h-full max-w-xl items-center justify-center px-6 text-center"
+                        aria-labelledby="workspace-start-heading"
+                      >
+                        <h1
+                          id="workspace-start-heading"
+                          className="text-lg font-semibold"
+                        >
+                          {starterChatError
+                            ? "เริ่มแชตไม่สำเร็จ"
+                            : "กำลังเตรียมห้องแชต"}
+                        </h1>
+                        {starterChatError ? (
+                          <>
+                            <p role="alert" className="text-sm text-muted-foreground">
+                              ยังสร้าง session ไม่ได้ ลองอีกครั้ง หรือเลือก session เดิมจากรายการทางซ้าย
+                            </p>
+                            <Button
+                              type="button"
+                              variant="primary"
+                              onClick={() => {
+                                attemptedStarterChatKey.current = null;
+                                void startStarterChat();
+                              }}
+                            >
+                              ลองอีกครั้ง
                             </Button>
-                          </HStack>
-                          {startIntent !== "chat" && !isAdmin ? <p role="status" className="text-sm text-muted-foreground">การสร้าง Goal ต้องใช้บัญชี Admin ที่ได้รับอนุญาต</p> : null}
-                        </form>
-                        <HStack gap={2} wrap="wrap" aria-label="Quick start actions">
-                          {isAdmin ? <Button variant="secondary" onClick={() => void startFirstRunPilot()}>First Run Pilot · SmartAIHub</Button> : null}
-                          <Button variant="secondary" onClick={() => { setStartIntent("mini_app"); document.getElementById("workspace-first-prompt")?.focus(); }}>Develop an App</Button>
-                          <Button variant="secondary" onClick={() => { setStartIntent("agent_task"); document.getElementById("workspace-first-prompt")?.focus(); }}>Run Agent Task</Button>
-                        </HStack>
-                        <p className="text-sm text-muted-foreground">Resume recent work ได้จากรายการ Sessions ทางซ้าย</p>
-                      </section>
+                          </>
+                        ) : (
+                          <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            {startingStarterChat || !starterChatStorageKey
+                              ? "กำลังเปิด composer เต็มรูปแบบ…"
+                              : "กำลังตรวจสอบ session…"}
+                          </p>
+                        )}
+                      </VStack>
                     ) : (
-                    <ChatView
-                      conversationId={conversationId}
-                      threadId={threadId}
-                      density="default"
-                      showExecutionActivity
-                      showBrowserSessionEntry
-                      composerPrompt={firstMessage}
-                      workspaceCommandMode={isAdmin ? chatCommandIntent : undefined}
-                      onWorkspaceCommandModeChange={isAdmin ? setChatCommandIntent : undefined}
-                      onWorkspaceGoalSubmit={isAdmin ? openGoalReviewFromChat : undefined}
-                      onUserMessageSent={() => setFirstMessage(null)}
-                    />
+                      <ChatView
+                        conversationId={conversationId}
+                        threadId={threadId}
+                        density="default"
+                        showExecutionActivity
+                        composerPrompt={firstMessage}
+                        workspaceCommandMode={
+                          isAdmin ? chatCommandIntent : undefined
+                        }
+                        onWorkspaceCommandModeChange={
+                          isAdmin ? setChatCommandIntent : undefined
+                        }
+                        onWorkspaceGoalSubmit={
+                          isAdmin ? openGoalReviewFromChat : undefined
+                        }
+                        onUserMessageSent={() => {
+                          setFirstMessage(null);
+                          if (starterChatStorageKey && conversationId) {
+                            try {
+                              if (
+                                window.sessionStorage.getItem(starterChatStorageKey) ===
+                                String(conversationId)
+                              ) {
+                                window.sessionStorage.removeItem(starterChatStorageKey);
+                              }
+                            } catch {
+                              // Storage may be unavailable in private contexts.
+                            }
+                          }
+                        }}
+                      />
                     )}
                   </section>
                 </VStack>
@@ -580,7 +672,7 @@ export default function UnifiedWorkspace() {
         />
       ) : null}
       {mode === "tasks" && isAdmin && params.get("newGoal") === "1" && conversationId ? (() => {
-        let draft: { prompt?: string; intent?: StartIntent; resumeSpecId?: string } = {};
+        let draft: { prompt?: string; intent?: GoalIntent; resumeSpecId?: string; returnToChat?: boolean; originalPrompt?: string } = {};
         try { draft = JSON.parse(sessionStorage.getItem(`workspace-goal-draft:${conversationId}`) ?? "{}"); } catch { /* ignore corrupt local draft */ }
         return <Dialog open={params.get("newGoal") === "1"} onOpenChange={open => {
           if (!open) {
@@ -618,7 +710,7 @@ export default function UnifiedWorkspace() {
       }}>
         <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none overflow-x-hidden overflow-y-auto p-4 sm:max-h-[92dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:p-5 md:max-w-4xl md:p-6 xl:max-w-6xl">
           <DialogHeader>
-            <DialogTitle>First Run Pilot · ทดสอบระบบครั้งแรก</DialogTitle>
+            <DialogTitle>Autonomous Dev Pilot · ทดสอบสำหรับ Admin</DialogTitle>
           </DialogHeader>
           {pilotConversationId ? (
             <Spec224WorkspacePanel
