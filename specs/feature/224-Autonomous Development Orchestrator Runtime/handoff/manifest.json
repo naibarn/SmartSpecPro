@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+    "expected_canonical_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Verify the authoritative usage-receipt and canonical user-credit settlement path for Development Runs; keep the USD run budget as a separate ceiling and do not interpret internal reserve journal accounts as a wallet.",
+    "next_action": "Refresh Task Control at deployed generation 358 and retry Goal submission. If the Runner snapshot changes, review the automatically refreshed plan and submit again; after durable Goal admission, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At exact integrated source SHA 9d192c9c85c64bfc03ae62d6413afdaf39b604d9, the Modular SaaS canonical catalog digest repair remains deployed. The follow-up Task Control error EXECUTION_SOURCE_TOO_LARGE was traced to 558.25 MiB of generated apps/web/test-results/smarthub-uat output inside the 512 MiB dirty-source fingerprint limit. The root .gitignore now excludes only that generated output; artifacts are preserved. The configured workspace fingerprint passes at 19.96 MiB and generation g357 is deployed healthy. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-execution-source-limit-fix-20261104.md. No authenticated Goal retry or provider execution is claimed. After owner refreshes Task Control, retry the prepared Goal; if it succeeds, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
+    "resume_point": "At exact integrated source SHA 2dd6eeefb985b9f59bc98907dd83c1bdda731163, Task Control recovers WORKSPACE_BINDING_STALE by rebinding only the same currently authorized Runner/workspace and preparing the latest plan. It never automatically resubmits the Goal; the owner must review and submit again. The change is deployed healthy on legacy-debian-dev generation 358. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md. No authenticated Goal retry or Provider execution is claimed. Next: refresh Task Control and retry; if accepted, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1140,84 +1140,12 @@
     "evidence": [
       {
         "kind": "VERIFICATION",
-        "observed_at": "2026-10-26T07:00:00Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
-        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-      },
-      {
-        "kind": "DEPLOYMENT",
-        "observed_at": "2026-10-26T07:27:03Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
-        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-26T07:42:50Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
-        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-26T07:55:56Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
-        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-28T00:25:04Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
-        "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-28T01:58:05Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
-        "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
-      },
-      {
-        "kind": "DEPLOYMENT",
-        "observed_at": "2026-10-28T02:38:00Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
-        "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-28T12:06:04Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
-        "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-28T12:50:35Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
-        "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-28T14:39:23Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
-        "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
-      },
-      {
-        "kind": "OBSERVATION",
-        "observed_at": "2026-10-28T17:46:35Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
-        "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
-      },
-      {
-        "kind": "OBSERVATION",
-        "observed_at": "2026-10-28T23:46:02Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
-        "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
-      },
-      {
-        "kind": "VERIFICATION",
-        "observed_at": "2026-10-29T00:42:45Z",
-        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
-        "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
+        "observed_at": "2026-11-04T14:03:40Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
+        "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
       }
     ],
-    "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
+    "next_action": "Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
     "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1242,7 +1170,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:562baba107fb029561c44ca7df76e5db85d60ca78db835ec003f929b8098f72d",
+    "artifact_digest": "sha256:f50a9d22712878dd9a74f5bc6f57c361f3715d48df28bf13002bd42a5d38d7bb",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1408,10 +1336,17 @@
         "scope": "Exact integrated source deployed to legacy-debian-dev. Web and Node Worker source SHAs match; immutable release health passed; public HTTPS health and API smoke returned no server errors. Authenticated Task Control retry remains unperformed.",
         "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_STALE_WORKSPACE_GOAL_RECOVERY_DEPLOYMENT_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
+        "scope": "Exact integrated UI source deployed to smartaihub.app on legacy-debian-dev, generation 358. Web and Node Worker runtime SHA match; controller DEPLOYED_VERIFIED, health 200, public health 200, and the served Spec224WorkspacePanel asset contains the recovery flow. Authenticated Goal submission/provider execution not observed.",
+        "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+    "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
     "status": "PASS"
   },
   "disposition": {
@@ -1425,7 +1360,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 287,
+  "generation": 289,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1453,7 +1388,8 @@
       "f0978ccc4a092071654cb19a5b62b59452707611",
       "550846fba964eac652b534a75ace01ca251cd409",
       "0a981643401a6af74e29e127089f9c9794a77f35",
-      "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
+      "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+      "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
     ],
     "mapping": [
       {
@@ -1711,11 +1647,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+    "canonical_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
     "integrated": true,
-    "integrated_at": "2026-11-04T20:36:53+07:00",
+    "integrated_at": "2026-11-04T20:55:16+07:00",
     "pull_request": null,
-    "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9"
+    "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2606,84 +2542,12 @@
       "evidence": [
         {
           "kind": "VERIFICATION",
-          "observed_at": "2026-10-26T07:00:00Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
-          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-        },
-        {
-          "kind": "DEPLOYMENT",
-          "observed_at": "2026-10-26T07:27:03Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
-          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-26T07:42:50Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
-          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-26T07:55:56Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
-          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-28T00:25:04Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
-          "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-28T01:58:05Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
-          "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
-        },
-        {
-          "kind": "DEPLOYMENT",
-          "observed_at": "2026-10-28T02:38:00Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
-          "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-28T12:06:04Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
-          "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-28T12:50:35Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
-          "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-28T14:39:23Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
-          "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
-        },
-        {
-          "kind": "OBSERVATION",
-          "observed_at": "2026-10-28T17:46:35Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
-          "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
-        },
-        {
-          "kind": "OBSERVATION",
-          "observed_at": "2026-10-28T23:46:02Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
-          "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
-        },
-        {
-          "kind": "VERIFICATION",
-          "observed_at": "2026-10-29T00:42:45Z",
-          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
-          "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
+          "observed_at": "2026-11-04T14:03:40Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
+          "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
         }
       ],
-      "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
+      "next_action": "Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
       "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -4260,7 +4124,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T13:46:27.385235Z",
+  "updated_at": "2026-11-04T14:03:58.772144Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4853,13 +4717,14 @@
         "scope": "Configured workspace authority fingerprint passed after generated SmartHub UAT output was ignored; 49 dirty source paths / 20,934,640 bytes. Existing UAT artifacts remain on disk. This is not authenticated Goal dispatch evidence.",
         "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
         "status": "PASS"
-      }
+      },
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+    "sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }

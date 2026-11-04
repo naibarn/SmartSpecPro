@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1304 unresolved of 1305
-- Next action: Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.
-- Manifest generation: 287
+- Next action: Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.
+- Manifest generation: 289
 
 ## Source-declared status and relationship claims
 
