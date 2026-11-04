@@ -188,7 +188,7 @@ export function GoalExecutionEvidencePanel({
                   ))}
                 </VStack>
               ) : null}
-              {output.hasMore ? <Text type="supporting">กำลังโหลด event เก่าที่บันทึกไว้เพิ่มเติม…</Text> : null}
+              {output.hasMore ? <Text type="supporting">กำลังโหลด Harness event ที่เหลือ…</Text> : null}
             </VStack>
 
             <VStack gap={1}>
