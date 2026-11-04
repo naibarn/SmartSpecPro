@@ -57,6 +57,7 @@ type WorkspaceOption = {
     workspaceLabel: string;
   } | null;
   gitHead?: string | null;
+  contentFingerprint?: string | null;
   dirty?: boolean | null;
   dirtyPaths?: string[] | null;
   convergenceState?: string;
@@ -475,6 +476,13 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       setSelectedFeatureSpec("");
       setPreparation(null);
     } else {
+      if (freshGoal) {
+        setDevelopmentInputMode("prompt");
+        setRequestKind("development");
+        setSelectedFeatureSpec("");
+        setSpecSource("upload");
+        setPreparation(null);
+      }
       if (preferences) {
         if (preferences.selectedRunnerId !== undefined) setSelectedRunnerId(preferences.selectedRunnerId);
         if (preferences.selectedWorkspace !== undefined) {
@@ -494,10 +502,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       }
       if (draft) {
         restoringTaskDraft.current = restoreConversationSelection && draft.selectedWorkspace !== undefined;
-        if (draft.prompt !== undefined) setPrompt(draft.prompt);
+        if (!freshGoal && draft.prompt !== undefined) setPrompt(draft.prompt);
         if (draft.workspaceAccessMode) setWorkspaceAccessMode(draft.workspaceAccessMode);
-        if (!resumeSpecId && draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
-        if (!resumeSpecId && draft.requestKind) setRequestKind(draft.requestKind);
+        if (!freshGoal && !resumeSpecId && draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
+        if (!freshGoal && !resumeSpecId && draft.requestKind) setRequestKind(draft.requestKind);
         if (restoreConversationSelection && draft.selectedRunnerId !== undefined) setSelectedRunnerId(draft.selectedRunnerId);
         if (restoreConversationSelection && draft.selectedWorkspace !== undefined) {
           setSelected(draft.selectedWorkspace);
@@ -509,7 +517,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         if (restoreConversationSelection && draft.modelPolicy) setModelPolicy(draft.modelPolicy);
         if (restoreConversationSelection && draft.selectedModelId !== undefined) setSelectedModelId(draft.selectedModelId);
         if (restoreConversationSelection && draft.reasoningEffort !== undefined) setReasoningEffort(draft.reasoningEffort);
-        if (restoreConversationSelection && draft.selectedFeatureSpec !== undefined) {
+        if (!freshGoal && restoreConversationSelection && draft.selectedFeatureSpec !== undefined) {
           setSelectedFeatureSpec(draft.selectedFeatureSpec);
           if (draft.selectedFeatureSpec) setSpecSource("catalog");
         }
@@ -846,6 +854,35 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     /^canonical-projects\/[^/]+\/specs\/(?:31[2-9]|32[0-4])-[^/]+\/spec\.md$/i.test(file.path),
   ).length ?? 0;
   const modularSpecSetImported = importedModularSpecCount > 0;
+  const modularProjectImportBlocker = !isAdmin
+    ? "การนำเข้า Specs 312–324 ทำได้โดยผู้ดูแลระบบเท่านั้น"
+    : !selectedWorkspace
+      ? "เลือก Runner และ SmartAIHub Modular Core Workspace ที่ออนไลน์และมี snapshot ล่าสุดก่อน"
+      : !platformWorkspaceSelected
+        ? "Workspace นี้ยังไม่ได้รับสิทธิ์ Platform Engineering"
+        : selectedWorkspace.deploymentTarget?.id !== "modular-debian-dev"
+          ? "ต้องเลือก SmartAIHub Modular Core Workspace สำหรับ aimarkethubs.com"
+          : !workspaceQuery.data?.workspace
+            ? "ต้องผูก conversation นี้กับ SmartAIHub Modular Core Workspace ก่อน"
+            : workspaceQuery.data.availability?.status !== "current"
+              ? "Runner binding หรือ snapshot เก่าแล้ว · โหลดรายการใหม่และผูก workspace ปัจจุบันก่อน"
+              : workspaceQuery.data.workspace.runnerId !== selectedWorkspace.runnerId || workspaceQuery.data.workspace.workspaceId !== selectedWorkspace.workspaceId
+                ? "conversation นี้ผูกกับ workspace อื่น · เลือก SmartAIHub Modular Core Workspace เพื่อผูกใหม่ก่อน"
+                : workspaceQuery.data.workspace.snapshotRevision !== selectedWorkspace.snapshotRevision
+                  ? "Runner snapshot เปลี่ยนแล้ว · โหลดรายการใหม่และผูก workspace ปัจจุบันก่อน"
+                  : !selectedWorkspace.gitHead || !selectedWorkspace.contentFingerprint
+                    ? "Runner ยังไม่ส่งหลักฐาน source snapshot ล่าสุด · ตรวจสอบ Runner แล้วโหลดรายการใหม่"
+                    : null;
+  const modularProjectImportPending = workspacesQuery.isFetching || workspaceQuery.isFetching
+    || bindMutation.isPending || uploading || ingestModularSaasProjectMutation.isPending;
+  const canImportModularProject = modularProjectImportBlocker === null && !modularProjectImportPending;
+  const modularCoreBindingNeedsRefresh = Boolean(conversationId && isAdmin && platformWorkspaceSelected
+    && selectedWorkspace?.deploymentTarget?.id === "modular-debian-dev"
+    && (!workspaceQuery.data?.workspace
+      || workspaceQuery.data.availability?.status !== "current"
+      || workspaceQuery.data.workspace.runnerId !== selectedWorkspace.runnerId
+      || workspaceQuery.data.workspace.workspaceId !== selectedWorkspace.workspaceId
+      || workspaceQuery.data.workspace.snapshotRevision !== selectedWorkspace.snapshotRevision));
   const canonicalSpecSetMissing = developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && !specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
@@ -1135,7 +1172,15 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   }
 
   async function ingestSelectedModularSaasProject() {
-    if (!conversationId || !platformWorkspaceSelected || selectedWorkspace?.deploymentTarget?.id !== "modular-debian-dev" || !isAdmin) return;
+    if (!conversationId) {
+      toast.error("สร้างหรือเลือก conversation ก่อนนำเข้า Specs");
+      return;
+    }
+    if (modularProjectImportBlocker) {
+      toast.error(modularProjectImportBlocker);
+      return;
+    }
+    if (modularProjectImportPending) return;
     setUploading(true);
     setPreparation(null);
     try {
@@ -2023,13 +2068,26 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                               ? `นำเข้าแล้ว ${importedModularSpecCount}/13 Specs (312–324) · Spec Set revision ${specSet?.revision}`
                               : "ยังไม่พบ Specs 312–324 ใน Spec Set ของ workspace นี้ · ต้องนำเข้าก่อนจึงจะเตรียมและเริ่ม WorkPackage ได้"}
                           </p>
-                          <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || uploading || ingestModularSaasProjectMutation.isPending} onClick={() => void ingestSelectedModularSaasProject()}>
+                          <Button type="button" variant="outline" disabled={!canImportModularProject} onClick={() => void ingestSelectedModularSaasProject()}>
                             {uploading || ingestModularSaasProjectMutation.isPending
                               ? "กำลังซิงก์ Specs เข้า workspace…"
                               : modularSpecSetImported
                                 ? "ซิงก์ Specs 312–324 ล่าสุดเข้า workspace"
                                 : "นำเข้า Specs 312–324 เข้า workspace"}
                           </Button>
+                          {!canImportModularProject ? (
+                            <>
+                              <p className="text-xs text-amber-800" role="status">
+                                {modularProjectImportPending ? "กำลังตรวจสอบ Runner และ workspace…" : modularProjectImportBlocker}
+                              </p>
+                              {modularCoreBindingNeedsRefresh && !modularProjectImportPending ? (
+                                <Button type="button" size="sm" variant="outline" onClick={() => void bindWorkspace(selectionKey(selectedWorkspace!))}>
+                                  ผูก Core workspace ปัจจุบันอีกครั้ง
+                                </Button>
+                              ) : null}
+                              {!modularProjectImportPending ? <p className="text-xs"><AstryxLink as={RouterLink} href="/chat" isStandalone>ไปสั่งงานใน Chat ปกติ</AstryxLink></p> : null}
+                            </>
+                          ) : null}
                         </section>
                       ) : (
                         <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>

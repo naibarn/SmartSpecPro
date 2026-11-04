@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, cleanup, within } from "@testing-library/react";
 import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
 const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), cancelUnclaimed: vi.fn(), cancelLegacyJob: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), invalidateLedgerAccounts: vi.fn(), refetchWorkspaceBinding: vi.fn(), ledgerAccounts: { accounts: [] as any[], configured: null as any }, configureLedger: vi.fn(), provisionLedger: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
@@ -113,20 +113,114 @@ function getContinueRunButton() {
 describe("Core goal readiness feedback", () => {
   it("keeps new Goals actionable when saved preferences point to an unimported SPEC", async () => {
     const preferencesKey = "spec224-task-preferences:v1:tenant-test:user-test";
+    const draftKey = "spec224-task-draft:v1:tenant-test:user-test:48:main";
     const savedPreferences = {
       developmentInputMode: "spec",
       selectedFeatureSpec: "312-smartaihub-modular-saas-rebuild-master-plan",
     };
     window.localStorage.setItem(preferencesKey, JSON.stringify(savedPreferences));
+    window.sessionStorage.setItem(draftKey, JSON.stringify({
+      prompt: "Old draft that must not become a new Goal",
+      developmentInputMode: "spec",
+      requestKind: "mini_app",
+      selectedFeatureSpec: "312-smartaihub-modular-saas-rebuild-master-plan",
+    }));
 
     render(<Spec224WorkspacePanel conversationId={48} simpleMode freshGoal initialPrompt="Build a small utility" />);
 
     const promptMode = await screen.findByRole("radio", { name: "Prompt" });
     expect(promptMode).toBeChecked();
     expect(screen.getByRole("radio", { name: "เลือกไฟล์ SPEC" })).not.toBeChecked();
+    expect(screen.getByLabelText("Spec 224 prompt")).toHaveValue("Build a small utility");
+    expect(screen.getByRole("radio", { name: "สร้าง Mini App" })).not.toBeChecked();
     expect(screen.getByText(/Goal ใหม่เริ่มจาก Prompt/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" })).toBeEnabled();
     expect(JSON.parse(window.localStorage.getItem(preferencesKey) ?? "{}")).toEqual(savedPreferences);
+  });
+
+  it("imports Modular SaaS Specs from a current Core binding even while its runtime is pending", async () => {
+    usePlatformSourceWorkspace();
+    const platformWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
+    Object.assign(platformWorkspace, {
+      deploymentTarget: {
+        id: "modular-debian-dev", domain: "aimarkethubs.com", environment: "development",
+        application: "Modular SaaS Core", status: "runtime_pending", deployable: false,
+        applicationAvailable: false, workspaceLabel: "SmartAIHub Modular Core",
+      },
+      gitHead: "a".repeat(40),
+      contentFingerprint: "b".repeat(64),
+    });
+    mocks.workspace = {
+      workspace: { runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId, snapshotRevision: platformWorkspace.snapshotRevision },
+      availability: { available: true, status: "current" },
+      specSet: null,
+    };
+    mocks.featureSpecs = [{
+      id: "312-smartaihub-modular-saas-rebuild-master-plan",
+      title: "SPEC-312 · Modular SaaS Rebuild",
+      path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      summary: "Continue the modular platform.",
+    }];
+    mocks.ingestSpecSet.mockResolvedValue({ revision: 2, project: { specCount: 13 }, runnableWorkPackageCount: 1 });
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    selectSpecDevelopmentMode();
+    await screen.findByRole("option", { name: /SPEC-312/ });
+    fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), {
+      target: { value: "312-smartaihub-modular-saas-rebuild-master-plan" },
+    });
+
+    const importButton = screen.getByRole("button", { name: "นำเข้า Specs 312–324 เข้า workspace" });
+    expect(importButton).toBeEnabled();
+    fireEvent.click(importButton);
+    await waitFor(() => expect(mocks.ingestSpecSet).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 8,
+      idempotencyKey: expect.any(String),
+    })));
+  });
+
+  it("explains why Modular SaaS Specs cannot be imported into a stale Core binding", async () => {
+    usePlatformSourceWorkspace();
+    const platformWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
+    Object.assign(platformWorkspace, {
+      deploymentTarget: {
+        id: "modular-debian-dev", domain: "aimarkethubs.com", environment: "development",
+        application: "Modular SaaS Core", status: "runtime_pending", deployable: false,
+        applicationAvailable: false, workspaceLabel: "SmartAIHub Modular Core",
+      },
+      gitHead: "a".repeat(40),
+      contentFingerprint: "b".repeat(64),
+    });
+    mocks.workspace = {
+      workspace: { runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId, snapshotRevision: platformWorkspace.snapshotRevision },
+      availability: { available: false, status: "stale" },
+      specSet: null,
+    };
+    mocks.featureSpecs = [{
+      id: "312-smartaihub-modular-saas-rebuild-master-plan",
+      title: "SPEC-312 · Modular SaaS Rebuild",
+      path: "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      summary: "Continue the modular platform.",
+    }];
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    selectSpecDevelopmentMode();
+    await screen.findByRole("option", { name: /SPEC-312/ });
+    fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), {
+      target: { value: "312-smartaihub-modular-saas-rebuild-master-plan" },
+    });
+
+    const importSection = screen.getByRole("region", { name: "นำเข้า Modular SaaS project" });
+    expect(within(importSection).getByRole("button", { name: "นำเข้า Specs 312–324 เข้า workspace" })).toBeDisabled();
+    expect(within(importSection).getByText(/Runner binding หรือ snapshot เก่าแล้ว/)).toBeInTheDocument();
+    fireEvent.click(within(importSection).getByRole("button", { name: "ผูก Core workspace ปัจจุบันอีกครั้ง" }));
+    await waitFor(() => expect(mocks.bindWorkspace).toHaveBeenCalledWith({
+      conversationId: 8,
+      runnerId: platformWorkspace.runnerId,
+      workspaceId: platformWorkspace.workspaceId,
+    }));
+    expect(screen.getByRole("link", { name: "ไปสั่งงานใน Chat ปกติ" })).toHaveAttribute("href", "/chat");
+    expect(mocks.ingestSpecSet).not.toHaveBeenCalled();
   });
 
   it("preselects a Mission Control Harness target only when the selected Runner catalog confirms it", async () => {
