@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+    "expected_canonical_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Verify the authoritative usage-receipt and canonical user-credit settlement path for Development Runs; keep the USD run budget as a separate ceiling and do not interpret internal reserve journal accounts as a wallet.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "Admin First Run Pilot entry now uses the standard Task Control Goal review and is deployed at source 921b4c7c5809c7876c55569c0828747502e3e7fd; focused tests and public health/chat assets passed. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-admin-pilot-task-control-route-deployment-20261104.md. Continue with actual provider usage-receipt reconciliation and canonical credit settlement; SPEC-321 unit v2 is still not implemented.",
+    "resume_point": "At exact main SHA f0978ccc4a092071654cb19a5b62b59452707611, the Developer entry opens a fresh standard Chat and new Goal review defaults to Prompt; focused tests passed 62/62. Generation g353 is deployed and public health/chat assets pass on smartaihub.app. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-entry-actionable-20261104.md. Continue the existing usage-receipt and canonical credit-settlement WorkUnit; no authenticated Goal execution or overall SPEC-224 acceptance is claimed.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:f3d979456619030ec3c7d9390b3121e969cb5f3b33bf55f792f69d2861957114",
+    "artifact_digest": "sha256:706f388fac4cf7061e727fbd701aba905538eec61ecd04830f9fc5e521c2ee03",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1372,10 +1372,17 @@
         "scope": "Exact immutable frontend/backend release on smartaihub.app; smartspec-web and node worker revisions verified at SHA 921b4c7; public health/TLS and chat assets verified. Deployment evidence only; not overall SPEC-224 acceptance.",
         "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_353",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-entry-actionable-20261104.md",
+        "scope": "Exact immutable frontend/backend release on smartaihub.app; smartspec-web and node worker revisions verified at the integrated source SHA; public health/TLS, chat page and 9 assets verified. New Goal starts in Prompt mode and Developer entry opens standard Chat. Focused tests 62/62. Deployment evidence only; authenticated interaction, live Goal execution and overall SPEC-224 acceptance remain unverified.",
+        "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+    "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
     "status": "PASS"
   },
   "disposition": {
@@ -1389,7 +1396,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 281,
+  "generation": 283,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1413,7 +1420,8 @@
       "e0009508f94195928ffb65bfc7ed3bbf6256575d",
       "56a47c23da011b3d52a09e7be2dfc336cc882def",
       "f8da82dc2c63f0777f23c72570d2380932c80167",
-      "921b4c7c5809c7876c55569c0828747502e3e7fd"
+      "921b4c7c5809c7876c55569c0828747502e3e7fd",
+      "f0978ccc4a092071654cb19a5b62b59452707611"
     ],
     "mapping": [
       {
@@ -1638,11 +1646,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+    "canonical_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
     "integrated": true,
-    "integrated_at": "2026-11-04T09:47:32Z",
+    "integrated_at": "2026-11-04T12:05:55Z",
     "pull_request": null,
-    "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd"
+    "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4187,7 +4195,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T09:49:24.490999Z",
+  "updated_at": "2026-11-04T12:13:54.117159Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
