@@ -377,13 +377,20 @@ describe("spec224 workspace Spec Set", () => {
     })).rejects.toMatchObject({ code: "SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE" });
   });
 
-  it("rejects stale or non-platform workspace bindings for canonical project ingestion", async () => {
+  it("allows metadata-only import with a stale Runner snapshot but still rejects revoked or non-platform bindings", async () => {
     const staleStore = memoryStore();
-    staleStore.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const modularWorkspace = { runnerId: "runner-a", displayName: "Runner A", status: "offline", snapshotRevision: "7", workspaceId: "workspace-a", repositoryId: "github.com/naibarn/smartaihub-platform", scope: "PLATFORM_ENGINEERING" as const };
+    staleStore.listTrustedWorkspaces = async () => [modularWorkspace];
     const staleService = createSpec224WorkspaceSpecSetService(staleStore);
     await staleService.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
     staleStore.availability = "stale";
-    await expect(staleService.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-stale-001", project: makeCanonicalProjectInput() })).rejects.toMatchObject({ code: "WORKSPACE_BINDING_STALE" });
+    modularWorkspace.snapshotRevision = "8";
+    await expect(staleService.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-stale-001", project: makeCanonicalProjectInput() }))
+      .resolves.toMatchObject({ revision: 1, requirementCount: 1 });
+
+    staleStore.availability = "revoked";
+    await expect(staleService.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-revoked-001", project: makeCanonicalProjectInput() }))
+      .rejects.toMatchObject({ code: "WORKSPACE_BINDING_REVOKED" });
 
     const userStore = memoryStore();
     userStore.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "USER_WORKSPACE", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];

@@ -179,7 +179,7 @@ describe("Core goal readiness feedback", () => {
     })));
   });
 
-  it("explains why Modular SaaS Specs cannot be imported into a stale Core binding", async () => {
+  it("allows metadata import for a stale Core snapshot and keeps rebind available before execution", async () => {
     usePlatformSourceWorkspace();
     const platformWorkspace = mocks.workspaces.find(workspace => workspace.scope === "PLATFORM_ENGINEERING")!;
     Object.assign(platformWorkspace, {
@@ -188,8 +188,8 @@ describe("Core goal readiness feedback", () => {
         application: "Modular SaaS Core", status: "runtime_pending", deployable: false,
         applicationAvailable: false, workspaceLabel: "SmartAIHub Modular Core",
       },
-      gitHead: "a".repeat(40),
-      contentFingerprint: "b".repeat(64),
+      gitHead: undefined,
+      contentFingerprint: undefined,
     });
     mocks.workspace = {
       workspace: { runnerId: platformWorkspace.runnerId, workspaceId: platformWorkspace.workspaceId, snapshotRevision: platformWorkspace.snapshotRevision },
@@ -211,16 +211,20 @@ describe("Core goal readiness feedback", () => {
     });
 
     const importSection = screen.getByRole("region", { name: "นำเข้า Modular SaaS project" });
-    expect(within(importSection).getByRole("button", { name: "นำเข้า Specs 312–324 เข้า workspace" })).toBeDisabled();
-    expect(within(importSection).getByText(/Runner binding หรือ snapshot เก่าแล้ว/)).toBeInTheDocument();
+    const importButton = within(importSection).getByRole("button", { name: "นำเข้า Specs 312–324 เข้า workspace" });
+    expect(importButton).toBeEnabled();
+    expect(within(importSection).getByText(/นำเข้า Specs ได้โดยไม่ต้องรอ Runner/)).toBeInTheDocument();
     fireEvent.click(within(importSection).getByRole("button", { name: "ผูก Core workspace ปัจจุบันอีกครั้ง" }));
     await waitFor(() => expect(mocks.bindWorkspace).toHaveBeenCalledWith({
       conversationId: 8,
       runnerId: platformWorkspace.runnerId,
       workspaceId: platformWorkspace.workspaceId,
     }));
-    expect(screen.getByRole("link", { name: "ไปสั่งงานใน Chat ปกติ" })).toHaveAttribute("href", "/chat");
-    expect(mocks.ingestSpecSet).not.toHaveBeenCalled();
+    fireEvent.click(importButton);
+    await waitFor(() => expect(mocks.ingestSpecSet).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 8,
+      idempotencyKey: expect.any(String),
+    })));
   });
 
   it("preselects a Mission Control Harness target only when the selected Runner catalog confirms it", async () => {

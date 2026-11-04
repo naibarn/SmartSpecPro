@@ -864,15 +864,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           ? "ต้องเลือก SmartAIHub Modular Core Workspace สำหรับ aimarkethubs.com"
           : !workspaceQuery.data?.workspace
             ? "ต้องผูก conversation นี้กับ SmartAIHub Modular Core Workspace ก่อน"
-            : workspaceQuery.data.availability?.status !== "current"
-              ? "Runner binding หรือ snapshot เก่าแล้ว · โหลดรายการใหม่และผูก workspace ปัจจุบันก่อน"
+            : ["revoked", "forbidden"].includes(workspaceQuery.data.availability?.status ?? "")
+              ? "สิทธิ์ของ workspace นี้ถูกถอนแล้ว · เลือก workspace ที่ได้รับอนุญาตอีกครั้ง"
               : workspaceQuery.data.workspace.runnerId !== selectedWorkspace.runnerId || workspaceQuery.data.workspace.workspaceId !== selectedWorkspace.workspaceId
                 ? "conversation นี้ผูกกับ workspace อื่น · เลือก SmartAIHub Modular Core Workspace เพื่อผูกใหม่ก่อน"
-                : workspaceQuery.data.workspace.snapshotRevision !== selectedWorkspace.snapshotRevision
-                  ? "Runner snapshot เปลี่ยนแล้ว · โหลดรายการใหม่และผูก workspace ปัจจุบันก่อน"
-                  : !selectedWorkspace.gitHead || !selectedWorkspace.contentFingerprint
-                    ? "Runner ยังไม่ส่งหลักฐาน source snapshot ล่าสุด · ตรวจสอบ Runner แล้วโหลดรายการใหม่"
-                    : null;
+                : null;
   const modularProjectImportPending = workspacesQuery.isFetching || workspaceQuery.isFetching
     || bindMutation.isPending || uploading || ingestModularSaasProjectMutation.isPending;
   const canImportModularProject = modularProjectImportBlocker === null && !modularProjectImportPending;
@@ -2086,6 +2082,16 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                                 </Button>
                               ) : null}
                               {!modularProjectImportPending ? <p className="text-xs"><AstryxLink as={RouterLink} href="/chat" isStandalone>ไปสั่งงานใน Chat ปกติ</AstryxLink></p> : null}
+                            </>
+                          ) : null}
+                          {canImportModularProject && modularCoreBindingNeedsRefresh ? (
+                            <>
+                              <p className="text-xs text-[var(--color-text-secondary)]" role="status">
+                                นำเข้า Specs ได้โดยไม่ต้องรอ Runner; ก่อนเตรียมแผนหรือเริ่ม WorkPackage ให้ผูก snapshot ปัจจุบันอีกครั้ง
+                              </p>
+                              <Button type="button" size="sm" variant="outline" onClick={() => void bindWorkspace(selectionKey(selectedWorkspace!))}>
+                                ผูก Core workspace ปัจจุบันอีกครั้ง
+                              </Button>
                             </>
                           ) : null}
                         </section>

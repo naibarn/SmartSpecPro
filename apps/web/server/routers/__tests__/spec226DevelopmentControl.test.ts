@@ -829,7 +829,7 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.workspaceSpecSets.ingestSpecSet).not.toHaveBeenCalled();
   });
 
-  it("ingests the Modular SaaS project only from the current bound platform Runner workspace", async () => {
+  it("ingests Modular SaaS Specs from the trusted bound platform workspace even with a stale execution snapshot", async () => {
     const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING", snapshotRevision: "12", gitHead: "a".repeat(40), contentFingerprint: "b".repeat(64) };
     mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue(platformWorkspace ? [platformWorkspace] : []);
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValue({ workspace: { ...platformWorkspace }, availability: { status: "current", available: true } });
@@ -848,7 +848,11 @@ describe("spec226DevelopmentControlRouter", () => {
     mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce(staleBinding).mockResolvedValueOnce(staleBinding);
     await expect((spec226DevelopmentControlRouter.ingestModularSaasProject as unknown as Function)({
       ctx: CTX, input: { conversationId: 8, idempotencyKey: "modular-project-stale-1" },
-    })).rejects.toMatchObject({ message: "WORKSPACE_BINDING_STALE" });
+    })).resolves.toMatchObject({ revision: 1, project: { id: "smartaihub-modular-saas-r14", specCount: 1 } });
+    expect(mocks.workspaceSpecSets.ingestModularSaasProject).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 8,
+      idempotencyKey: "modular-project-stale-1",
+    }));
   });
 
   it("limits canonical SPEC catalog access to an authorized Platform workspace", async () => {

@@ -1027,17 +1027,12 @@ export const spec226DevelopmentControlRouter = router({
           defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId }),
           defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope),
         ]);
-        if (!binding || binding.availability.status !== "current") {
-          throw new TRPCError({ code: "CONFLICT", message: "WORKSPACE_BINDING_STALE" });
-        }
+        // Importing the canonical project updates only the conversation's
+        // Spec Set. It does not dispatch work or read the Runner checkout, so
+        // runtime heartbeat/source freshness is enforced later at prepare/run.
+        if (!binding) throw new TRPCError({ code: "CONFLICT", message: "WORKSPACE_BINDING_REQUIRED" });
         const workspace = workspaces.find(candidate => candidate.runnerId === binding.workspace.runnerId && candidate.workspaceId === binding.workspace.workspaceId && candidate.scope === "PLATFORM_ENGINEERING");
         if (!workspace) throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED" });
-        if (workspace.snapshotRevision !== binding.workspace.snapshotRevision) {
-          throw new TRPCError({ code: "CONFLICT", message: "WORKSPACE_BINDING_STALE" });
-        }
-        if (!workspace.gitHead || !workspace.contentFingerprint) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE" });
-        }
         const project = await loadModularSaasProject();
         const result = await defaultSpec224WorkspaceSpecSetService.ingestModularSaasProject({
           ...scope,

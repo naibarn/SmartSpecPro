@@ -395,12 +395,15 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       project: { projectId: string; sourceRevision: string; descriptorDigest: string; implementationRepository: string; files: Array<Spec224IncrementalSpecFile & { projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string; implementationRepository?: string } }> };
     }) {
       if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 160) fail("SPEC_SET_IDEMPOTENCY_KEY_INVALID");
-      const { binding } = await requireCurrentBinding(input);
+      // Import only stores canonical metadata in the Spec Set. It does not read
+      // from or dispatch to the Runner, so an old execution snapshot must not
+      // prevent an authorized workspace from receiving its project Specs.
+      // Revoked/forbidden bindings are still rejected by requirePersistedBinding,
+      // and execution continues to require a current binding separately.
+      const { binding } = await requirePersistedBinding(input);
       const workspaces = await store.listTrustedWorkspaces(input);
       const workspace = workspaces.find(candidate => candidate.runnerId === binding.runnerId && candidate.workspaceId === binding.workspaceId);
       if (!workspace || workspace.scope !== "PLATFORM_ENGINEERING") fail("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED");
-      if (workspace.snapshotRevision !== binding.snapshotRevision) fail("WORKSPACE_BINDING_STALE");
-      if (!workspace.gitHead || !workspace.contentFingerprint) fail("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
       if (workspace.repositoryId !== input.project.implementationRepository || resolveWorkspaceDeploymentTarget(workspace.repositoryId)?.id !== "modular-debian-dev") fail("MODULAR_PROJECT_WORKSPACE_TARGET_MISMATCH");
       if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.project.projectId) || !/^[a-f0-9]{40,64}$/i.test(input.project.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.project.descriptorDigest)) fail("MODULAR_PROJECT_BINDING_INVALID");
       if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(input.project.implementationRepository) || input.project.implementationRepository.includes("..") || input.project.implementationRepository.includes("//")) fail("MODULAR_PROJECT_BINDING_INVALID");
