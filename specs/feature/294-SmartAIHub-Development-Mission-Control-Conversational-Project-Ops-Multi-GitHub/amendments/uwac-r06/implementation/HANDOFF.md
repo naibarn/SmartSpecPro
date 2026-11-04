@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `12`
-- Updated (UTC): `2026-10-29T16:37:07.698402+00:00`
+- State generation: `14`
+- Updated (UTC): `2026-11-04T08:20:17.455871+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `122aeee9c0cb772c6afb78ea19d54a53fd7a1731`
+- Latest recorded merged Main SHA: `f8e60aa90a68d3adf09c8af4f4dd914d054bd056`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-unified-experience`
-- Next action: Local authenticated child-thread transcript restore and Mission Control overview UAT pass at tested source 40aca3d847b293d05a5032daf6124b8369ac3153; evidence handoff integrated at 122aeee9c0cb772c6afb78ea19d54a53fd7a1731. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 smartspec_dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.
+- Next action: Run the focused first-entry/Inspector checks and authenticated desktop/mobile Chat, Task Control, and Mission Control UAT on https://smartaihub.app. Then continue local authenticated child-thread transcript restore and Mission Control overview UAT at the tested source; resolve the cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery and correlate hosted logs/immutable serving identity for reported 500s. SPEC-224 smartspec_dev tenant-001 has no real Goal/Run/Job; continue source-side preparation, then verify genuine Child 1/2 execution, settlement, continuation, and Independent Final Verify.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-work-profiles | pending | — | — | — | — | — |
 | section-02-event-projection | pending | — | — | — | — | — |
-| section-03-unified-experience | checkpointed | — | — | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | 122aeee9c0cb772c6afb78ea19d54a53fd7a1731 | Local authenticated child-thread transcript restore and Mission Control overview UAT pass at tested source 40aca3d847b293d05a5032daf6124b8369ac3153; evidence handoff integrated at 122aeee9c0cb772c6afb78ea19d54a53fd7a1731. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 smartspec_dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution. |
+| section-03-unified-experience | checkpointed | — | — | f8e60aa90a68d3adf09c8af4f4dd914d054bd056 | f8e60aa90a68d3adf09c8af4f4dd914d054bd056 | Run the focused first-entry/Inspector checks and authenticated desktop/mobile Chat, Task Control, and Mission Control UAT on https://smartaihub.app. Then continue local authenticated child-thread transcript restore and Mission Control overview UAT at the tested source; resolve the cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery and correlate hosted logs/immutable serving identity for reported 500s. SPEC-224 smartspec_dev tenant-001 has no real Goal/Run/Job; continue source-side preparation, then verify genuine Child 1/2 execution, settlement, continuation, and Independent Final Verify. |
 | section-04-skill-invocation | pending | — | — | — | — | — |
 | section-05-skill-authoring | pending | — | — | — | — | — |
 | section-06-delegation-controls | pending | — | — | — | — | — |
