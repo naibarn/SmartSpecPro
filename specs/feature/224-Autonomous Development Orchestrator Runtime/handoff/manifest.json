@@ -1124,15 +1124,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+    "expected_canonical_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Hard-refresh Task Control, reopen the affected Goal, review the refreshed plan, and submit once. Confirm it is durably admitted as pending despite the previously full execution slots; then complete the existing Approval Authority and fresh Runner readiness checks before executing the exact persisted Goal/Run/Job identities and verifying receipts and settlement.",
+    "next_action": "Hard-refresh Task Control on smartaihub.app and inspect the affected Goal. Wait for the current Runner Git SHA/content fingerprint if the source has not changed; review the refreshed plan and explicitly submit once. Inspect the exact persisted Job in Mission Control Developer mode for Harness output and lifecycle events, then continue receipt and settlement verification.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "The owner explicitly resubmits the reviewed Goal after refresh; durable admission persists a pending Goal/DevelopmentRun despite active external execution slot saturation; Approval Authority approves it; and current Runner source/capability plus write-scope admission pass before dispatch.",
-    "resume_point": "Integrated source SHA 2f8f731fb8421e8c9a266c0857481862fdd4a6b3 is deployed to legacy-debian-dev generation 361. Provider-backed deferred Goal/phase/harness jobs now use durable_queue admission. Four existing pending authorization holds were preserved. Five focused suites passed 166/166. No authenticated post-deploy Goal retry, approval, Runner execution, receipt, or settlement is claimed; resume by hard-refreshing Task Control and explicitly submitting the reviewed Goal once.",
-    "waiting_predicate": "A post-deploy owner-authenticated Goal submission is durably persisted as pending; resume its exact persisted identity after Approval Authority approval and current Runner/write-scope readiness, without duplicate submission."
+    "reactivation_predicate": "An authenticated owner opens the refreshed Task Control, uses the source-change recovery flow only after a current Runner source snapshot is available, reviews the new plan, and explicitly submits once; Mission Control shows the persisted Job and any Runner/Harness lifecycle output.",
+    "resume_point": "Integrated and deployed source SHA 4d3a468f44d596ca67d9b6c286fa1f31b3f131a2, legacy-debian-dev generation 364. SPEC-224 quick profile passed 7 focused files / 176 tests with 25,199 MiB available memory. Public API health/login and deployed Task Control asset passed. No authenticated post-deployment Goal, live Codex output, receipts, or settlement is claimed; resume with one reviewed Goal and inspect its exact Run/Job.",
+    "waiting_predicate": "A post-deployment authenticated Goal submission either reaches a durable admitted state or returns a source/capacity reason; inspect its persisted Run/Job in Mission Control without duplicate submission, then verify the Runner output, receipts, and settlement."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1254,7 +1254,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:ff4f40420872f636a42b591336513e1270be37670075f49007112f57bed9beac",
+    "artifact_digest": "sha256:8d5ba768d29ba192ad44534f154c5042a1d9e6f9ab7c2303dc1b9ee07a4c7467",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1448,10 +1448,17 @@
         "scope": "Immutable release generation 361 on legacy-debian-dev / smartaihub.app, exact frontend/backend source revision verified, artifact digest sha256:67b09cddabbef0004bf02679b02b295938d3414234c7da55216856ab2182cd9d; web and Node worker HEALTHY; public homepage HTTP 200. Authenticated Goal retry and execution remain unverified.",
         "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_LEGACY_DEV_RELEASE_GENERATION_364",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-admission-and-output-observability-20261105.md",
+        "scope": "legacy-debian-dev / smartaihub.app, generation 364, release smartspec-web-4d3a468f44d596ca67d9b6c286fa1f31b3f131a2-f2f6d5291c17, artifact sha256:8d5ba768d29ba192ad44534f154c5042a1d9e6f9ab7c2303dc1b9ee07a4c7467; frontend, web runtime, and Node worker report the exact source SHA and HEALTHY; public API health, login, and Task Control bundle returned HTTP 200.",
+        "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
     "status": "PASS"
   },
   "disposition": {
@@ -1465,7 +1472,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 294,
+  "generation": 295,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1495,7 +1502,8 @@
       "0a981643401a6af74e29e127089f9c9794a77f35",
       "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
       "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
-      "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
+      "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+      "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2"
     ],
     "mapping": [
       {
@@ -1772,11 +1780,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+    "canonical_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
     "integrated": true,
-    "integrated_at": "2026-11-04T22:12:59+07:00",
+    "integrated_at": "2026-11-05T00:32:55+07:00",
     "pull_request": null,
-    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
+    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4333,7 +4341,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T15:26:11.695728Z",
+  "updated_at": "2026-11-04T17:43:20.570900Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4944,14 +4952,21 @@
         "scope": "Five focused suites passed (166 tests): durable Goal admission under four pending provider-backed authorization holds, phase/harness admission mode, persistence/contracts, and Job Control. No authenticated live Goal retry or Runner execution is claimed.",
         "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_SOURCE_ADMISSION_QUICK_PROFILE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-admission-and-output-observability-20261105.md",
+        "scope": "SPEC-224 quick profile; 7 focused Vitest files, 176/176 passed; serial single-worker run; 25,199 MiB available at 2026-11-04T17:41:49.403Z; completed 2026-11-04T17:42:14.031Z; exit 0.",
+        "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
-    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+    "sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
+    "source_sha": "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
     "status": "PASS",
     "task_regressions": [
       "Source-change Goal recovery UI flow: source change → refresh/rebind → prepare latest plan → explicit second click with a new idempotency key; 91 focused tests passed across the UI and router files.",
