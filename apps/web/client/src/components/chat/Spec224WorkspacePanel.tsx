@@ -645,9 +645,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const runners: RunnerOption[] = runnersQuery.data?.runners ?? [];
   const runnerWorkspaces = workspaces.filter(item => item.runnerId === selectedRunnerId);
   const boundWorkspace = workspaceQuery.data?.workspace;
-  const readinessTarget = runnerWorkspaces.find(item => item.workspaceId === boundWorkspace?.workspaceId && item.runnerId === boundWorkspace?.runnerId)
-    ?? runnerWorkspaces.find(item => selectionKey(item) === selected)
-    ?? (boundWorkspace ? { runnerId: boundWorkspace.runnerId, workspaceId: boundWorkspace.workspaceId } : null);
+  const readinessTarget = runnerWorkspaces.find(item => selectionKey(item) === selected)
+    ?? (boundWorkspace && JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId]) === selected
+      ? { runnerId: boundWorkspace.runnerId, workspaceId: boundWorkspace.workspaceId }
+      : null);
   const readinessCatalogs = readinessTarget && "modelCatalogs" in readinessTarget
     ? readinessTarget.modelCatalogs ?? (readinessTarget.modelCatalog ? [readinessTarget.modelCatalog] : [])
     : [];
@@ -782,6 +783,33 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       ? activeModel.defaultReasoningEffort
       : availableEfforts.includes("medium") ? "medium" : availableEfforts[0] ?? (effectiveHarnessAdapterId === "microsoft-copilot.v1" ? "provider_default" : "");
   const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
+  const selectedRunnerHeartbeatAt = selectedRunner?.lastSeenAt ? Date.parse(selectedRunner.lastSeenAt) : Number.NaN;
+  const selectedRunnerHeartbeatFresh = Number.isFinite(selectedRunnerHeartbeatAt)
+    && selectedRunnerHeartbeatAt <= Date.now()
+    && Date.now() - selectedRunnerHeartbeatAt < 5 * 60_000;
+  const selectedRunnerOnlineAndTrusted = selectedRunner?.readinessStatus === "online"
+    && selectedRunner.trustState === "trusted"
+    && selectedRunnerHeartbeatFresh;
+  const pilotBindingMatchesSelection = Boolean(selectedWorkspace
+    && boundWorkspace?.runnerId === selectedWorkspace.runnerId
+    && boundWorkspace.workspaceId === selectedWorkspace.workspaceId);
+  const pilotReadiness = pilotBindingMatchesSelection
+    ? workspaceReadinessQuery.data ?? preparation?.runnerReadiness
+    : undefined;
+  const pilotRunnerExecutionReady = Boolean(selectedRunnerOnlineAndTrusted && pilotBindingMatchesSelection && pilotReadiness?.ready);
+  const pilotNotReadyReason = !selectedRunner
+    ? "กำลังโหลด Runner status"
+    : selectedRunner.trustState !== "trusted"
+      ? "RUNNER_NOT_TRUSTED"
+      : selectedRunner.readinessStatus !== "online"
+        ? selectedRunner.readinessStatus
+        : !selectedRunnerHeartbeatFresh
+          ? "RUNNER_HEARTBEAT_STALE"
+          : !pilotBindingMatchesSelection
+            ? "WORKSPACE_BINDING_PENDING"
+            : pilotReadiness?.ready
+              ? null
+              : pilotReadiness?.code ?? (workspaceReadinessQuery.isLoading ? "กำลังตรวจสอบ readiness จาก Runner" : "ยังไม่มีผล readiness ล่าสุด");
   const isPlatformWorkspace = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" || selectionKey(selectedWorkspace ?? { runnerId: "", workspaceId: "" }) === lastPlatformWorkspaceKey.current;
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && Boolean(selectedWorkspace.canonicalProjectId);
   const platformSourceIsSafe = !isPlatformWorkspace || platformBindingCurrent;
@@ -1159,7 +1187,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       return;
     }
     const modelSelection = { policy: modelPolicy, ...(modelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
-    if ((pilotMode && (!isAdmin || !platformWorkspaceSelected)) || !(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || (requestKind === "development" && (!catalogFresh || !effectiveProvider || (harnessPolicy === "explicit" && !catalogHarnesses.includes(selectedHarnessAdapterId)) || !activeModel || !supportedEffort))) {
+    if ((pilotMode && (!isAdmin || !platformWorkspaceSelected || !pilotRunnerExecutionReady)) || !(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || (requestKind === "development" && (!catalogFresh || !effectiveProvider || (harnessPolicy === "explicit" && !catalogHarnesses.includes(selectedHarnessAdapterId)) || !activeModel || !supportedEffort))) {
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
@@ -1471,12 +1499,37 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {!isAdmin ? <p className="text-sm text-rose-700" role="alert">ต้องใช้บัญชี Admin เพื่อเริ่ม First Run Pilot</p> : null}
           {pilotRuns.length > 0 ? <AstryxText as="p" type="supporting" role="status">พบ Goal/Run ของ First Run Pilot ที่บันทึกไว้แล้ว ระบบปิดการสร้าง Goal ซ้ำและแสดง Run เดิมเพื่อทำงานต่อ</AstryxText> : null}
           <VStack as="section" gap={3} aria-label="เลือกเครื่องมือที่ยืนยันจาก Runner">
-            <Selector label="Runner" value={selectedRunnerId} options={pilotRunners.map(runner => ({ value: runner.runnerId, label: runner.displayName }))} onChange={value => { preferencesTouched.current = true; setSelectedRunnerId(value); setSelected(""); setPreparation(null); }} isDisabled={runnersQuery.isLoading || creatingTask || pilotRunners.length <= 1} disabledMessage="ใช้ Runner ที่ได้รับอนุญาตสำหรับ Project นี้" placeholder="เลือก Runner ที่ได้รับอนุญาต" emptyText="ไม่พบ Runner ที่ได้รับอนุญาต" width="100%" />
+            <HStack gap={2} wrap="wrap" align="center" justify="between">
+              <AstryxText as="p" type="supporting">รายการ Runner และ Workspace ที่ผูกกับ SmartAIHub Development Project</AstryxText>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={workspacesQuery.isFetching || runnersQuery.isFetching || bindMutation.isPending}
+                onClick={() => void Promise.all([
+                  workspacesQuery.refetch(),
+                  runnersQuery.refetch(),
+                  workspaceQuery.refetch(),
+                  ...(readinessTarget ? [workspaceReadinessQuery.refetch()] : []),
+                ]).catch(() => toast.error("โหลดสถานะ Runner/Workspace ไม่สำเร็จ โปรดลองอีกครั้ง"))}
+              >
+                {workspacesQuery.isFetching || runnersQuery.isFetching ? "กำลังโหลด…" : "โหลดรายการใหม่"}
+              </Button>
+            </HStack>
+            <Selector label="Runner" value={selectedRunnerId} options={pilotRunners.map(runner => ({ value: runner.runnerId, label: runner.displayName }))} onChange={value => { preferencesTouched.current = true; setSelectedRunnerId(value); setSelected(""); setPreparation(null); }} isDisabled={runnersQuery.isLoading || creatingTask || pilotRunners.length === 0} disabledMessage="ยังไม่มี Runner ที่ได้รับอนุญาตสำหรับ Project นี้" placeholder="เลือก Runner ที่ได้รับอนุญาต" emptyText="ไม่พบ Runner ที่ได้รับอนุญาต" width="100%" />
             <Selector label="Project Workspace" value={selected} options={pilotWorkspaces.map(workspace => ({ value: selectionKey(workspace), label: workspace.displayName }))} onChange={value => void bindWorkspace(value)} isDisabled={!selectedRunnerId || workspacesQuery.isLoading || bindMutation.isPending} disabledMessage="โหลดเฉพาะ Workspace ที่อนุญาตสำหรับ Runner นี้" placeholder="เลือก Workspace ที่ได้รับอนุญาต" emptyText="ไม่พบ Workspace ที่ได้รับอนุญาต" width="100%" />
             <Selector label="Harness" value={harnessPolicy === "auto" ? "auto" : selectedHarnessAdapterId} options={[{ value: "auto", label: pilotHarnesses[0] ? `Auto · ${harnessLabel(pilotHarnesses[0])}` : "Auto · รอ Runner catalog" }, ...pilotHarnesses.map(adapterId => ({ value: adapterId, label: harnessLabel(adapterId) }))]} onChange={value => { setHarnessPolicy(value === "auto" ? "auto" : "explicit"); setSelectedHarnessAdapterId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh} emptyText="Runner ยังไม่รายงาน Harness ที่รองรับ" width="100%" />
             <Selector label="Model" value={modelPolicy === "auto" ? "auto" : selectedModelId} options={[{ value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto · รอ Runner catalog" }, ...catalogModels.map(model => ({ value: model.id, label: model.displayName }))]} onChange={value => { preferencesTouched.current = true; setModelPolicy(value === "auto" ? "auto" : "explicit"); setSelectedModelId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh || catalogModels.length === 0} emptyText="Runner ยังไม่รายงาน Model" width="100%" />
           </VStack>
-          {selectedRunner ? <AstryxText as="p" type="supporting" role="status">Runner {selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" ? "ออนไลน์และ trusted" : "ยังไม่พร้อม"} · {runnerReadiness?.ready ? "execution readiness ผ่าน" : "กำลังตรวจสอบ readiness จาก Runner"}</AstryxText> : null}
+          <VStack as="section" gap={1} aria-label="สถานะ readiness ของ Pilot">
+            <AstryxText as="p" type="supporting" role="status">
+              Runner {selectedRunnerOnlineAndTrusted ? "ออนไลน์และ trusted" : "ยังไม่พร้อม"} · execution readiness {pilotRunnerExecutionReady ? "ผ่าน" : "ยังไม่ผ่าน"}
+            </AstryxText>
+            <AstryxText as="p" type="supporting">
+              Heartbeat: {selectedRunnerHeartbeatFresh ? `สด · ${new Date(selectedRunnerHeartbeatAt).toLocaleString()}` : selectedRunner?.lastSeenAt ? `เก่า · ${new Date(selectedRunnerHeartbeatAt).toLocaleString()}` : "ไม่มีข้อมูล"}
+            </AstryxText>
+            {!pilotRunnerExecutionReady && pilotNotReadyReason ? <AstryxText as="p" type="supporting">เหตุผลที่รอ: {pilotNotReadyReason}</AstryxText> : null}
+          </VStack>
           <VStack as="ol" gap={2}>
             <li><AstryxText as="p"><strong>Implement:</strong> สร้าง JavaScript utility แบบไม่เพิ่ม dependency และ unit tests ภายใน scope แล้วรันทดสอบจริง</AstryxText></li>
             <li><AstryxText as="p"><strong>Review & edge cases:</strong> ตรวจและปรับปรุงผล Implement เพิ่ม edge-case tests แล้วรันชุดทดสอบทั้งหมด</AstryxText></li>
@@ -1488,7 +1541,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <AstryxText as="p" type="supporting">คาดหวังไฟล์ utility และ tests ใน write scope, test output จาก Runner, execution timeline, receipts, usage/settlement และผล Final Verify · Goal approval ครั้งเดียวครอบคลุม phase ภายในขอบเขตที่อนุมัติ</AstryxText>
           </details>
           <AstryxText as="p" type="supporting">อนุมัติ Goal ครั้งเดียวครอบคลุม phase ภายในขอบเขตที่อนุมัติ; ระบบยังคงตรวจ scope, permission, Provider quota และความพร้อมของ Runner</AstryxText>
-          <Button type="button" className="w-full" disabled={!canReviewPilot || !workspaceQuery.data?.workspace || !runnerReadiness?.ready || !catalogFresh || !activeModel || !supportedEffort || bindMutation.isPending} onClick={() => void prepare()}>
+          <Button type="button" className="w-full" disabled={!canReviewPilot || !pilotBindingMatchesSelection || !pilotRunnerExecutionReady || !catalogFresh || !activeModel || !supportedEffort || bindMutation.isPending} onClick={() => void prepare()}>
             {preparing ? "กำลังตรวจสอบ Runner และเตรียม Goal…" : "ตรวจสอบความพร้อมและแผน Pilot"}
           </Button>
           {workspacesQuery.error || workspaceQuery.error ? <p className="text-sm text-rose-700" role="alert">อ่านสถานะ Runner/Workspace ไม่สำเร็จ โปรดลองโหลดข้อมูลใหม่</p> : null}
@@ -1500,7 +1553,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             {(preparation.workPackages ?? []).map((workPackage, index) => <section key={workPackage.id} className="border-t border-[var(--color-border)] pt-3">
               <p className="text-sm font-medium">ขั้นตอน {index + 1} · {workPackage.readiness}</p>
               {workPackage.blockers.length ? <ul className="list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((blocker, blockerIndex) => <li key={`${blocker}-${blockerIndex}`}>{blocker}</li>)}</ul> : null}
-              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !runnerReadiness?.ready || !catalogFresh || !activeModel || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
+              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !pilotRunnerExecutionReady || !catalogFresh || !activeModel || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
             </section>)}
             <AstryxText as="p" type="supporting">ระบบจะขอ Goal Grant ผ่าน Approval Authority ก่อนเริ่ม จากนั้น phase ถัดไปจะถูก dispatch ตามผลและ receipt ที่บันทึกใน DevelopmentRun</AstryxText>
           </section>
