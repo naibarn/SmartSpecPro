@@ -1124,7 +1124,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
+    "expected_canonical_sha": "550846fba964eac652b534a75ace01ca251cd409",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:706f388fac4cf7061e727fbd701aba905538eec61ecd04830f9fc5e521c2ee03",
+    "artifact_digest": "sha256:1f4a7a90e79979a54b38c6ea3875f6242ccbca8b4a0b10655f1171ec8242e3f5",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1379,10 +1379,17 @@
         "scope": "Exact immutable frontend/backend release on smartaihub.app; smartspec-web and node worker revisions verified at the integrated source SHA; public health/TLS, chat page and 9 assets verified. New Goal starts in Prompt mode and Developer entry opens standard Chat. Focused tests 62/62. Deployment evidence only; authenticated interaction, live Goal execution and overall SPEC-224 acceptance remain unverified.",
         "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_354",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-import-readiness-deployment-20261104.md",
+        "scope": "Exact immutable frontend/backend release on smartaihub.app; web and Node worker source verified at SHA 550846f. Public health/TLS, /chat, /healthz and the SPEC import UI chunk verified. Focused tests 64/64. Authenticated interaction and a live import were not performed; overall SPEC-224 acceptance remains open.",
+        "source_sha": "550846fba964eac652b534a75ace01ca251cd409",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
+    "source_sha": "550846fba964eac652b534a75ace01ca251cd409",
     "status": "PASS"
   },
   "disposition": {
@@ -1396,7 +1403,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 283,
+  "generation": 284,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1421,7 +1428,8 @@
       "56a47c23da011b3d52a09e7be2dfc336cc882def",
       "f8da82dc2c63f0777f23c72570d2380932c80167",
       "921b4c7c5809c7876c55569c0828747502e3e7fd",
-      "f0978ccc4a092071654cb19a5b62b59452707611"
+      "f0978ccc4a092071654cb19a5b62b59452707611",
+      "550846fba964eac652b534a75ace01ca251cd409"
     ],
     "mapping": [
       {
@@ -1607,6 +1615,15 @@
           "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx"
         ],
         "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd"
+      },
+      {
+        "coverage": "Focused Goal-entry and Modular SaaS SPEC import readiness fix; this does not map all SPEC-224 requirements.",
+        "scope": "Fresh Goals ignore stale same-conversation task drafts. Modular SPEC import reports exact prerequisites, can rebind a stale current Core workspace, and retains a route to normal Chat.",
+        "source_paths": [
+          "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
+          "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx"
+        ],
+        "source_sha": "550846fba964eac652b534a75ace01ca251cd409"
       }
     ],
     "source_paths": [
@@ -1646,11 +1663,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f0978ccc4a092071654cb19a5b62b59452707611",
+    "canonical_sha": "550846fba964eac652b534a75ace01ca251cd409",
     "integrated": true,
-    "integrated_at": "2026-11-04T12:05:55Z",
+    "integrated_at": "2026-11-04T12:28:32Z",
     "pull_request": null,
-    "source_sha": "f0978ccc4a092071654cb19a5b62b59452707611"
+    "source_sha": "550846fba964eac652b534a75ace01ca251cd409"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4195,7 +4212,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T12:13:54.117159Z",
+  "updated_at": "2026-11-04T12:44:19.367757Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4752,13 +4769,27 @@
         "scope": "Two focused route/panel suites (61 tests) passed; deployed /chat, /healthz, and eight referenced JavaScript assets returned HTTP 200.",
         "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
         "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_GOAL_IMPORT_READINESS_TESTS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-import-readiness-deployment-20261104.md",
+        "scope": "The UnifiedWorkspace and Spec224WorkspacePanel suites passed 64/64 tests, covering stale new-Goal drafts, import from a current Core snapshot while runtime is pending, and stale-binding recovery.",
+        "source_sha": "550846fba964eac652b534a75ace01ca251cd409",
+        "status": "PASS"
+      },
+      {
+        "kind": "PUBLIC_GOAL_IMPORT_READINESS_SMOKE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-import-readiness-deployment-20261104.md",
+        "scope": "Public /chat and /healthz plus the SPEC import panel chunk returned HTTP 200; expected rebind, Chat-route and stale-binding UI text was present in the served chunk.",
+        "source_sha": "550846fba964eac652b534a75ace01ca251cd409",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+    "sha": "550846fba964eac652b534a75ace01ca251cd409",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }
