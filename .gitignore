@@ -161,6 +161,7 @@ htmlcov/
 
 # Playwright transient output directories; committed evidence files remain tracked.
 apps/web/test-results/production-director/*/
+apps/web/test-results/smarthub-uat/
 
 # ============================================================================
 # Docker
