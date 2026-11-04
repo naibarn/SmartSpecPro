@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+    "expected_canonical_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Verify the authoritative usage-receipt and canonical user-credit settlement path for Development Runs; keep the USD run budget as a separate ceiling and do not interpret internal reserve journal accounts as a wallet.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At exact integrated source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1, the Modular SaaS canonical project descriptor now pins the current R1.5 digests for all 13 Specs, manifests, and ledgers, and both initial WorkPackages reference current requirement IDs. The focused catalog suite passed 8/8; the deployed generation g356 catalog loader returned all 13 Specs. No authenticated UI sync was performed because the local GUI provider exited before exposing a browser session, so no conversation revision change is claimed. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-spec-sync-digest-repair-20261104.md. Continue the existing canonical usage-receipt and credit-settlement WorkUnit.",
+    "resume_point": "At exact integrated source SHA 9d192c9c85c64bfc03ae62d6413afdaf39b604d9, the Modular SaaS canonical catalog digest repair remains deployed. The follow-up Task Control error EXECUTION_SOURCE_TOO_LARGE was traced to 558.25 MiB of generated apps/web/test-results/smarthub-uat output inside the 512 MiB dirty-source fingerprint limit. The root .gitignore now excludes only that generated output; artifacts are preserved. The configured workspace fingerprint passes at 19.96 MiB and generation g357 is deployed healthy. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-execution-source-limit-fix-20261104.md. No authenticated Goal retry or provider execution is claimed. After owner refreshes Task Control, retry the prepared Goal; if it succeeds, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:ab43947c9c9e5ab4cadc987037113d86a0f04b9b862d242014a3db212f1568cc",
+    "artifact_digest": "sha256:562baba107fb029561c44ca7df76e5db85d60ca78db835ec003f929b8098f72d",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1400,10 +1400,18 @@
         "scope": "Exact source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1 deployed to legacy-debian-dev generation 356; web and Node Worker revisions match, runtime status DEPLOYED_VERIFIED, health HTTP 200, public TLS valid, API smoke 12/12 reachable with zero server errors. Authenticated UI sync remains unverified.",
         "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_357",
+        "observed_at": "2026-11-04T13:46:27Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-execution-source-limit-fix-20261104.md",
+        "scope": "Exact integrated source deployed to legacy-debian-dev. Web and Node Worker source SHAs match; immutable release health passed; public HTTPS health and API smoke returned no server errors. Authenticated Task Control retry remains unperformed.",
+        "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+    "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
     "status": "PASS"
   },
   "disposition": {
@@ -1417,7 +1425,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 286,
+  "generation": 287,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1703,11 +1711,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+    "canonical_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
     "integrated": true,
-    "integrated_at": "2026-11-04T13:17:40Z",
+    "integrated_at": "2026-11-04T20:36:53+07:00",
     "pull_request": null,
-    "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
+    "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4252,7 +4260,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T13:26:24.143399Z",
+  "updated_at": "2026-11-04T13:46:27.385235Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4837,13 +4845,21 @@
         "scope": "Exact source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1: canonical project catalog suite passed 8/8; deployed release catalog loader returned 13 pinned Specs and both WorkPackages. Authenticated UI sync was not performed.",
         "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
         "status": "PASS"
+      },
+      {
+        "kind": "EXECUTION_SOURCE_SIZE_RECOVERY_FOCUSED_CHECK",
+        "observed_at": "2026-11-04T13:46:27Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-execution-source-limit-fix-20261104.md",
+        "scope": "Configured workspace authority fingerprint passed after generated SmartHub UAT output was ignored; 49 dirty source paths / 20,934,640 bytes. Existing UAT artifacts remain on disk. This is not authenticated Goal dispatch evidence.",
+        "source_sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+    "sha": "9d192c9c85c64bfc03ae62d6413afdaf39b604d9",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }
