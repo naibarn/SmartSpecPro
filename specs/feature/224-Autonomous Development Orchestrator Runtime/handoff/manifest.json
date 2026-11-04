@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
+    "expected_canonical_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Verify the authoritative usage-receipt and canonical user-credit settlement path for Development Runs; keep the USD run budget as a separate ceiling and do not interpret internal reserve journal accounts as a wallet.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "The admin-only internal budget journal setup is automated and deployed to smartaihub.app at source 56a47c23da011b3d52a09e7be2dfc336cc882def. Focused tests, immutable build, runtime revision, public HTTPS health, API smoke and static assets were verified. Continue with actual provider usage receipt reconciliation and canonical credit settlement; SPEC-321 unit v2 is still not implemented.",
+    "resume_point": "Admin First Run Pilot entry now uses the standard Task Control Goal review and is deployed at source 921b4c7c5809c7876c55569c0828747502e3e7fd; focused tests and public health/chat assets passed. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-admin-pilot-task-control-route-deployment-20261104.md. Continue with actual provider usage-receipt reconciliation and canonical credit settlement; SPEC-321 unit v2 is still not implemented.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d8da61731852446af737b989ee132474deb385609794c2fad41546e414ba4ba6",
+    "artifact_digest": "sha256:f3d979456619030ec3c7d9390b3121e969cb5f3b33bf55f792f69d2861957114",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1365,10 +1365,17 @@
         "scope": "Exact immutable generation g351 from source f8da82dc2c63f0777f23c72570d2380932c80167 served on smartaihub.app; target, web/Node worker revisions, health and lazy Pilot JS bundle were verified. Authenticated UI interaction and live Goal execution remain pending.",
         "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_352",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-admin-pilot-task-control-route-deployment-20261104.md",
+        "scope": "Exact immutable frontend/backend release on smartaihub.app; smartspec-web and node worker revisions verified at SHA 921b4c7; public health/TLS and chat assets verified. Deployment evidence only; not overall SPEC-224 acceptance.",
+        "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+        "status": "PASS"
       }
     ],
-    "required": false,
-    "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
+    "required": true,
+    "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
     "status": "PASS"
   },
   "disposition": {
@@ -1382,7 +1389,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 280,
+  "generation": 281,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1405,7 +1412,8 @@
       "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
       "e0009508f94195928ffb65bfc7ed3bbf6256575d",
       "56a47c23da011b3d52a09e7be2dfc336cc882def",
-      "f8da82dc2c63f0777f23c72570d2380932c80167"
+      "f8da82dc2c63f0777f23c72570d2380932c80167",
+      "921b4c7c5809c7876c55569c0828747502e3e7fd"
     ],
     "mapping": [
       {
@@ -1580,6 +1588,17 @@
           "apps/web/server/services/__tests__/spec224PostgresIntegration.integration.test.ts"
         ],
         "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e"
+      },
+      {
+        "coverage": "Focused implementation of the Admin Pilot entry and standard Task Control Goal review; not mapped to all SPEC-224 requirements.",
+        "scope": "Admin First Run Pilot now routes through the normal Task Control Goal review while retaining Pilot prompt, write scope, readiness, approval, and duplicate-run constraints.",
+        "source_paths": [
+          "apps/web/client/src/pages/UnifiedWorkspace.tsx",
+          "apps/web/client/src/pages/UnifiedWorkspace.test.tsx",
+          "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
+          "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx"
+        ],
+        "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd"
       }
     ],
     "source_paths": [
@@ -1609,18 +1628,21 @@
       "orchestra/tasks/smartaihub-marathon-r11-20261011/policy-proposal.md",
       "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
       "scripts/development-lifecycle/test_workspace_authority.py",
-      "scripts/development-lifecycle/workspace_authority.py"
+      "scripts/development-lifecycle/workspace_authority.py",
+      "apps/web/client/src/pages/UnifiedWorkspace.tsx",
+      "apps/web/client/src/pages/UnifiedWorkspace.test.tsx",
+      "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
+    "canonical_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
     "integrated": true,
-    "integrated_at": "2026-11-04T08:53:22Z",
+    "integrated_at": "2026-11-04T09:47:32Z",
     "pull_request": null,
-    "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167"
+    "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4165,7 +4187,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T09:04:08.271548Z",
+  "updated_at": "2026-11-04T09:49:24.490999Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4715,13 +4737,20 @@
       "apps/web/server/services/__tests__/spec224GoalDelegationGrant.test.ts (focused approval payload; included in 93/93 focused suite)",
       "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md",
       "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-resume-readiness-20261102.md",
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/pilot-readiness-consistency-20261104.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/pilot-readiness-consistency-20261104.md",
+      {
+        "kind": "FOCUSED_ADMIN_PILOT_ROUTE_TESTS_AND_PUBLIC_SMOKE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-admin-pilot-task-control-route-deployment-20261104.md",
+        "scope": "Two focused route/panel suites (61 tests) passed; deployed /chat, /healthz, and eight referenced JavaScript assets returned HTTP 200.",
+        "source_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
+    "sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }

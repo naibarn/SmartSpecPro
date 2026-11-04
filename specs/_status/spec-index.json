@@ -93351,7 +93351,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
+      "canonical_sha": "921b4c7c5809c7876c55569c0828747502e3e7fd",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
