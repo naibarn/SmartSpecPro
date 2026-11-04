@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1304 unresolved of 1305
-- Next action: Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.
-- Manifest generation: 292
+- Next action: Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.
+- Manifest generation: 294
 
 ## Source-declared status and relationship claims
 

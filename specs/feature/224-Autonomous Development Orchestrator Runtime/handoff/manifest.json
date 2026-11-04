@@ -1124,15 +1124,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+    "expected_canonical_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Hard refresh Task Control and reopen the Goal flow. Wait for the next Runner source snapshot, review the newly prepared plan, and explicitly submit once. If the snapshot does not advance within the displayed wait window, use the manual snapshot check and verify that the Runner is online. After authenticated Goal admission, continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT using exact persisted identities.",
+    "next_action": "Hard-refresh Task Control, reopen the affected Goal, review the refreshed plan, and submit once. Confirm it is durably admitted as pending despite the previously full execution slots; then complete the existing Approval Authority and fresh Runner readiness checks before executing the exact persisted Goal/Run/Job identities and verifying receipts and settlement.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "A newer Runner source snapshot is published and observed; Task Control rebinds the same authorized workspace and prepares a fresh plan; the owner reviews and explicitly submits that Goal; Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; source admission is revalidated before the fenced writer lease.",
-    "resume_point": "At integrated source SHA 37a79dda9681a69140d0e93d499c7ea82d387dcd, source-change recovery remains blocked and never auto-resubmits the Goal. Task Control waits for the Runner capability snapshot (published on an approximately 120-second cycle), detects a newer workspace revision through the existing foreground query, rebinds the same authorized workspace, and prepares a fresh plan. The user must explicitly review and submit. Deployed to legacy-debian-dev generation 360; evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-wait-recovery-20261104.md. No authenticated Goal retry or Provider execution is claimed.",
-    "waiting_predicate": "An owner-authenticated Goal submission and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities after current-source admission."
+    "reactivation_predicate": "The owner explicitly resubmits the reviewed Goal after refresh; durable admission persists a pending Goal/DevelopmentRun despite active external execution slot saturation; Approval Authority approves it; and current Runner source/capability plus write-scope admission pass before dispatch.",
+    "resume_point": "Integrated source SHA 2f8f731fb8421e8c9a266c0857481862fdd4a6b3 is deployed to legacy-debian-dev generation 361. Provider-backed deferred Goal/phase/harness jobs now use durable_queue admission. Four existing pending authorization holds were preserved. Five focused suites passed 166/166. No authenticated post-deploy Goal retry, approval, Runner execution, receipt, or settlement is claimed; resume by hard-refreshing Task Control and explicitly submitting the reviewed Goal once.",
+    "waiting_predicate": "A post-deploy owner-authenticated Goal submission is durably persisted as pending; resume its exact persisted identity after Approval Authority approval and current Runner/write-scope readiness, without duplicate submission."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1221,10 +1221,16 @@
         "observed_at": "2026-11-04T14:03:40Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
         "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-11-04T15:23:54Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
+        "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
       }
     ],
-    "next_action": "Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
-    "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
+    "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
+    "rationale": "The prior Goal submission reached Task Control but failed because four pending provider-backed authorization holds incorrectly consumed concurrent execution capacity. Durable queue admission is fixed, focused tests passed, and generation 361 is healthy on smartaihub.app. Authenticated post-deploy Goal admission and Runner execution still need owner verification.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1435,10 +1441,17 @@
         "scope": "Exact source deployed to legacy-debian-dev / smartaihub.app, release generation 360. Web and Node Worker runtime SHA match; immutable controller status DEPLOYED_VERIFIED / HEALTHY; public homepage and served Spec224WorkspacePanel asset returned HTTP 200, and the asset contains the new manual snapshot-recovery action. Authenticated Goal execution was not performed.",
         "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_361_GOAL_ADMISSION_FIX",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
+        "scope": "Immutable release generation 361 on legacy-debian-dev / smartaihub.app, exact frontend/backend source revision verified, artifact digest sha256:67b09cddabbef0004bf02679b02b295938d3414234c7da55216856ab2182cd9d; web and Node worker HEALTHY; public homepage HTTP 200. Authenticated Goal retry and execution remain unverified.",
+        "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
     "status": "PASS"
   },
   "disposition": {
@@ -1452,7 +1465,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 292,
+  "generation": 294,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1481,7 +1494,8 @@
       "550846fba964eac652b534a75ace01ca251cd409",
       "0a981643401a6af74e29e127089f9c9794a77f35",
       "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
-      "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
+      "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
+      "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
     ],
     "mapping": [
       {
@@ -1698,6 +1712,20 @@
           "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
         ],
         "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
+      },
+      {
+        "coverage": "PARTIAL; deferred provider-backed Goal admission is durable under saturated execution slots; authenticated owner retry and live execution remain unverified.",
+        "scope": "SPEC-224 provider-backed Goal, phase-continuation, and harness job admission; a saturated-tenant regression verifies pending Goal persistence without premature dispatch.",
+        "source_paths": [
+          "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+          "apps/web/server/services/spec224DevelopmentRunContracts.ts",
+          "apps/web/server/services/spec224PhaseController.ts",
+          "apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts",
+          "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
+          "apps/web/server/services/__tests__/spec224PhaseController.test.ts",
+          "apps/web/server/services/__tests__/spec224DevelopmentRunContracts.test.ts"
+        ],
+        "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
       }
     ],
     "source_paths": [
@@ -1732,18 +1760,23 @@
       "apps/web/client/src/pages/UnifiedWorkspace.test.tsx",
       "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx",
       "apps/web/server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json",
+      "apps/web/server/services/spec224DevelopmentRunContracts.ts",
+      "apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts",
+      "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
+      "apps/web/server/services/__tests__/spec224PhaseController.test.ts",
+      "apps/web/server/services/__tests__/spec224DevelopmentRunContracts.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+    "canonical_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
     "integrated": true,
-    "integrated_at": "2026-11-04T21:48:40+07:00",
+    "integrated_at": "2026-11-04T22:12:59+07:00",
     "pull_request": null,
-    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd"
+    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2715,10 +2748,16 @@
           "observed_at": "2026-11-04T14:03:40Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
           "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-11-04T15:23:54Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
+          "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3"
         }
       ],
-      "next_action": "Refresh Task Control at deployed generation 358 and retry Goal submission. Review the refreshed plan if the Runner snapshot changes; after durable Goal admission, resume the exact persisted Run and continue SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT.",
-      "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
+      "next_action": "Hard-refresh Task Control, reopen and review the affected Goal, then explicitly submit once. Confirm it persists as pending under the formerly saturated execution slots; complete Approval Authority and current Runner/write-scope checks before executing the persisted identity.",
+      "rationale": "The prior Goal submission reached Task Control but failed because four pending provider-backed authorization holds incorrectly consumed concurrent execution capacity. Durable queue admission is fixed, focused tests passed, and generation 361 is healthy on smartaihub.app. Authenticated post-deploy Goal admission and Runner execution still need owner verification.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -4294,7 +4333,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T14:57:00.746395Z",
+  "updated_at": "2026-11-04T15:26:11.695728Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4898,18 +4937,26 @@
         "scope": "Exact canonical SHA 37a79dda9681a69140d0e93d499c7ea82d387dcd: Spec224WorkspacePanel and spec226DevelopmentControl focused suites passed, 2 files / 92 tests. Covers stale snapshot wait, no duplicate Goal submission, rebind and reprepare on a newer Runner revision, and explicit user send. Mock-backed/unit evidence; no authenticated live Goal execution.",
         "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_GOAL_DURABLE_ADMISSION_REGRESSION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-durable-admission-recovery-20261104.md",
+        "scope": "Five focused suites passed (166 tests): durable Goal admission under four pending provider-backed authorization holds, phase/harness admission mode, persistence/contracts, and Job Control. No authenticated live Goal retry or Runner execution is claimed.",
+        "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "bdf563f3d639fb80e83a0daf5a0436785d1bb1eb",
-    "source_sha": "37a79dda9681a69140d0e93d499c7ea82d387dcd",
+    "sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
+    "source_sha": "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
     "status": "PASS",
     "task_regressions": [
       "Source-change Goal recovery UI flow: source change → refresh/rebind → prepare latest plan → explicit second click with a new idempotency key; 91 focused tests passed across the UI and router files.",
-      "Goal admission source-change regression: persists blocked admission evidence and does not dispatch or authorize the stale Goal."
+      "Goal admission source-change regression: persists blocked admission evidence and does not dispatch or authorize the stale Goal.",
+      "Durable admission regression: at the default tenant external-job limit, four pending authorization holds do not block persisting a new deferred Goal; it remains pending and is not dispatched before approval."
     ]
   }
 }
