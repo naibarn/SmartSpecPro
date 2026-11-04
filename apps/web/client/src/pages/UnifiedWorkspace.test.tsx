@@ -99,9 +99,9 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, threadId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind, resumeSpecId }: { conversationId: number; threadId?: string | null; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string; resumeSpecId?: string }) => (
+  Spec224WorkspacePanel: ({ conversationId, threadId, freshGoal, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind, resumeSpecId }: { conversationId: number; threadId?: string | null; freshGoal?: boolean; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string; resumeSpecId?: string }) => (
     <>
-      <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
+      <section aria-label="Goal review panel">Goal {conversationId} · fresh {String(Boolean(freshGoal))} · pilot {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
       {threadId ? <p data-testid="goal-review-thread">{threadId}</p> : null}
       {initialPrompt ? <p data-testid="goal-review-prompt">{initialRequestKind}: {initialPrompt}</p> : null}
       {resumeSpecId ? <p data-testid="goal-review-resume-spec">{resumeSpecId}</p> : null}
@@ -267,20 +267,18 @@ describe("UnifiedWorkspace", () => {
     expect(state.location).toHaveBeenCalledWith("/chat?c=902");
   });
 
-  it("opens First Run Pilot in the standard Task Control Goal review", async () => {
+  it("routes the First Run entry into a fresh standard Chat session", async () => {
     const view = render(<UnifiedWorkspace />);
     await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
     act(() => { state.search = "c=902"; });
     view.rerender(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "First Run Pilot · Task Control" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "เริ่มสั่งงานใน Chat" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Developer" }));
-    fireEvent.click(screen.getByRole("button", { name: "First Run Pilot · Task Control" }));
-    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
-    expect(JSON.parse(window.sessionStorage.getItem("workspace-goal-draft:902") ?? "{}")).toMatchObject({ intent: "development", pilotMode: true });
-    act(() => { state.search = "mode=tasks&c=902&newGoal=1"; });
-    view.rerender(<UnifiedWorkspace />);
-    expect(await screen.findByRole("heading", { name: "ตรวจสอบ First Run Pilot ก่อนส่งอนุมัติ" })).toBeTruthy();
-    expect(screen.getByText("Pilot 902 · true · auto")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มสั่งงานใน Chat" }));
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(2));
+    expect(state.create).toHaveBeenNthCalledWith(2, { title: "New chat" });
+    expect(state.location).toHaveBeenCalledWith("/chat?c=902");
+    expect(window.sessionStorage.getItem("workspace-goal-draft:902")).toBeNull();
   });
 
   it("migrates legacy Pilot URLs into the standard Goal review after remount", async () => {
@@ -302,7 +300,7 @@ describe("UnifiedWorkspace", () => {
   it("does not expose the first-run pilot entry point to non-admin users", () => {
     state.user = { id: "user-1", role: "user" };
     render(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "First Run Pilot · Task Control" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "เริ่มสั่งงานใน Chat" })).toBeNull();
   });
 
   it("offers an obvious New Goal action in Task Control and opens the existing review route", async () => {

@@ -111,6 +111,24 @@ function getContinueRunButton() {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("keeps new Goals actionable when saved preferences point to an unimported SPEC", async () => {
+    const preferencesKey = "spec224-task-preferences:v1:tenant-test:user-test";
+    const savedPreferences = {
+      developmentInputMode: "spec",
+      selectedFeatureSpec: "312-smartaihub-modular-saas-rebuild-master-plan",
+    };
+    window.localStorage.setItem(preferencesKey, JSON.stringify(savedPreferences));
+
+    render(<Spec224WorkspacePanel conversationId={48} simpleMode freshGoal initialPrompt="Build a small utility" />);
+
+    const promptMode = await screen.findByRole("radio", { name: "Prompt" });
+    expect(promptMode).toBeChecked();
+    expect(screen.getByRole("radio", { name: "เลือกไฟล์ SPEC" })).not.toBeChecked();
+    expect(screen.getByText(/Goal ใหม่เริ่มจาก Prompt/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" })).toBeEnabled();
+    expect(JSON.parse(window.localStorage.getItem(preferencesKey) ?? "{}")).toEqual(savedPreferences);
+  });
+
   it("preselects a Mission Control Harness target only when the selected Runner catalog confirms it", async () => {
     render(<Spec224WorkspacePanel conversationId={8} requestedHarnessAdapterId="codex.v1" />);
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Harness" })).toHaveTextContent("Codex"));

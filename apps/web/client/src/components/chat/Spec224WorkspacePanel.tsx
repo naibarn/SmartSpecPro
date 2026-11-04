@@ -368,12 +368,13 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, pilotMode = false, initialPrompt, initialRequestKind = "development", resumeSpecId }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, freshGoal = false, pilotMode = false, initialPrompt, initialRequestKind = "development", resumeSpecId }: {
   conversationId: number | null;
   threadId?: string | null;
   simpleMode?: boolean;
   onCreateConversation?: (title: string) => Promise<number>;
   requestedHarnessAdapterId?: string | null;
+  freshGoal?: boolean;
   pilotMode?: boolean;
   initialPrompt?: string;
   initialRequestKind?: "development" | "mini_app";
@@ -485,8 +486,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         if (preferences.modelPolicy) setModelPolicy(preferences.modelPolicy);
         if (preferences.selectedModelId !== undefined) setSelectedModelId(preferences.selectedModelId);
         if (preferences.reasoningEffort !== undefined) setReasoningEffort(preferences.reasoningEffort);
-        if (!resumeSpecId && preferences.developmentInputMode) setDevelopmentInputMode(preferences.developmentInputMode);
-        if (preferences.selectedFeatureSpec) {
+        if (!freshGoal && !resumeSpecId && preferences.developmentInputMode) setDevelopmentInputMode(preferences.developmentInputMode);
+        if (!freshGoal && preferences.selectedFeatureSpec) {
           setSelectedFeatureSpec(preferences.selectedFeatureSpec);
           setSpecSource("catalog");
         }
@@ -515,7 +516,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       }
     }
     setHydratedDraftKey(draftKey);
-  }, [draftKey, draftOwnerKey, pilotMode, preferencesKey, resumeSpecId]);
+  }, [draftKey, draftOwnerKey, freshGoal, pilotMode, preferencesKey, resumeSpecId]);
 
   useEffect(() => {
     if (!draftKey || hydratedDraftKey !== draftKey) return;
@@ -542,7 +543,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   }, [draftKey, hydratedDraftKey, prompt, workspaceAccessMode, developmentInputMode, requestKind, selectedRunnerId, selected, budgetCapUsd, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort, selectedFeatureSpec]);
 
   useEffect(() => {
-    if (!preferencesKey || !draftKey || hydratedDraftKey !== draftKey) return;
+    if (freshGoal || !preferencesKey || !draftKey || hydratedDraftKey !== draftKey) return;
     if (conversationId !== null && !preferencesTouched.current) return;
     const preferences: Spec224TaskPreferences = {
       selectedRunnerId,
@@ -560,7 +561,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     } catch {
       // Storage may be disabled or full; current selections remain usable.
     }
-  }, [preferencesKey, draftKey, hydratedDraftKey, conversationId, selectedRunnerId, selected, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort, developmentInputMode, selectedFeatureSpec]);
+  }, [freshGoal, preferencesKey, draftKey, hydratedDraftKey, conversationId, selectedRunnerId, selected, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort, developmentInputMode, selectedFeatureSpec]);
 
   function addVisualReferences(files: FileList | null) {
     if (!files?.length) return;
@@ -1839,6 +1840,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                 <label className="flex items-center gap-1"><input type="radio" name="spec224-request-kind" checked={requestKind === "development"} onChange={() => { setRequestKind("development"); setPreparation(null); }} />พัฒนาตาม prompt</label>
                 {!pilotMode ? <label className="flex items-center gap-1"><input type="radio" name="spec224-request-kind" checked={requestKind === "mini_app"} onChange={() => { setRequestKind("mini_app"); setDevelopmentInputMode("prompt"); setPreparation(null); }} />สร้าง Mini App</label> : null}
               </div>
+            ) : null}
+            {freshGoal && !pilotMode ? (
+              <p className="mt-2 text-xs text-[var(--color-text-secondary)]" role="status">
+                Goal ใหม่เริ่มจาก Prompt เพื่อพิมพ์สั่งงานได้ทันที; เลือก SPEC ได้เมื่อไฟล์นั้นอยู่ใน Workspace แล้ว
+              </p>
             ) : null}
             <>
           {mode === "prompt" ? <Textarea id="spec224-development-inputs" aria-label={requestKind === "mini_app" ? "Mini App requirements" : "Spec 224 prompt"} value={prompt} onChange={pilotMode ? undefined : event => { setPrompt(event.target.value); setPreparation(null); }} readOnly={pilotMode} placeholder={requestKind === "mini_app" ? "อธิบายหน้าจอ ข้อมูล และพฤติกรรมของ Mini App ที่ต้องการ" : "อธิบายงานพัฒนาที่ต้องการ โดยจำกัดตาม Workspace และสิทธิ์ Goal ที่ได้รับอนุมัติ"} maxLength={requestKind === "mini_app" ? 3600 : 4000} className="min-h-20 resize-y text-sm" /> : null}

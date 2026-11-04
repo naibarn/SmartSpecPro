@@ -333,23 +333,6 @@ export default function UnifiedWorkspace() {
   const openNewGoal = async (intent: GoalIntent = "development") => {
     await createGoalConversation(intent);
   };
-  const startFirstRunPilot = async () => {
-    if (!isAdmin || createConversation.isPending || createInFlight.current) return;
-    createInFlight.current = true;
-    try {
-      const created = await createConversation.mutateAsync({ title: "Autonomous development pilot" });
-      sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({
-        intent: "development",
-        pilotMode: true,
-        ...(requestedPilotHarness ? { requestedHarnessAdapterId: requestedPilotHarness } : {}),
-      }));
-      setLocation(`/chat?mode=tasks&c=${created.id}&newGoal=1`);
-    } catch {
-      toast.error("เปิด First Run Pilot ใน Task Control ไม่สำเร็จ ลองอีกครั้ง");
-    } finally {
-      createInFlight.current = false;
-    }
-  };
   const setMode = (next: PresentationMode) => {
     setPresentationMode(next);
     window.localStorage.setItem("smartaihub-workspace-mode", next);
@@ -434,10 +417,10 @@ export default function UnifiedWorkspace() {
         <HStack gap={1}>
           {isAdmin && presentationMode === "developer" ? (
             <Button
-              label="First Run Pilot · Task Control"
+              label="เริ่มสั่งงานใน Chat"
               variant="secondary"
               disabled={createConversation.isPending}
-              onClick={() => void startFirstRunPilot()}
+              onClick={() => void newChat()}
             />
           ) : null}
           {mode === "tasks" && isAdmin ? (
@@ -705,6 +688,7 @@ export default function UnifiedWorkspace() {
               conversationId={conversationId}
               threadId={threadId}
               simpleMode
+              freshGoal
               pilotMode={draft.pilotMode === true}
               requestedHarnessAdapterId={draft.requestedHarnessAdapterId ?? null}
               initialPrompt={draft.prompt}
