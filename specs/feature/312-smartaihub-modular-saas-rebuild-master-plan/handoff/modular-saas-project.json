@@ -3,7 +3,7 @@
   "projectId": "smartaihub-modular-saas-r14",
   "source": {
     "repository": "naibarn/SmartSpecPro",
-    "revision": "1f6e5432a278f05e9811e88fb7bc61fb70938d32"
+    "revision": "21b6f80c8c86bcfc67593e1c019b06c67417a690"
   },
   "implementationRepository": {
     "repository": "github.com/naibarn/smartaihub-platform",
@@ -12,81 +12,81 @@
   "specs": [
     {
       "id": "312-smartaihub-modular-saas-rebuild-master-plan",
-      "specDigest": "aa4c3dfcce643ab8c207c8caf133e399ab1d900ca17f0c01732b4a2080e0c0a4",
-      "manifestDigest": "0e02e265731bf26a560112e2d6165010b8cd9cc89f25cefad078f09ddc800aa6",
-      "ledgerDigest": "ebc06d6df0a887819c7d427326eeb80a11f3bd7a637a2f8416997a2730c75a3d"
+      "specDigest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+      "manifestDigest": "25ad6f89c0dca97db0be547584688de8c2b0f02bc5a2d9b30d079d6465f95e34",
+      "ledgerDigest": "db62b0611da887ba42be3a09c6b00a8aa0d4c9fd7945dcabd64db8c703bc3091"
     },
     {
       "id": "313-smartaihub-saas-core-identity-commerce-entitlements",
-      "specDigest": "baf63085c9757e898875a6adb2d560a1fa775e944570bf932013a1fbcb32cf98",
-      "manifestDigest": "21ae3107e19cb04b928732a8e527f322fb67b638275c34394ba05e448de7df3e",
-      "ledgerDigest": "cab0e6b334264695d5cabf09d92db7b7ca1de747ca67290bc6bc76f3e0570704"
+      "specDigest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "manifestDigest": "5a5436ac9e2ccbf7367d23bcee0dfb883fba795614fa46f67941982cf4c6d24e",
+      "ledgerDigest": "a67b7a99f5691d63f0d4378a5a7a84475b8eff564450f8c5fa06b6d72f35a554"
     },
     {
       "id": "314-smartaihub-independent-module-runtime-and-sdk",
-      "specDigest": "bddfb82e27d7cd1497bf8898e12b016e4b7ff907c568dee900021359d002b239",
-      "manifestDigest": "53547201424de4babb6743e4471a33fffdb7afa7ca725819a8810e28e37ffa32",
-      "ledgerDigest": "94c10ae906a0363f07cae4a1fdc686f3aa818b3aac062c7360af932b84968bb8"
+      "specDigest": "4baedfba6b2556fd6160b7769d33dbf6c5a8623ea619b26895b0eabf08d971a3",
+      "manifestDigest": "06a81ca877f029291215915c37de5919985768ff3a58eadf550c5c5373552d28",
+      "ledgerDigest": "da1d8352e1a39eb04619c1de55073af1ee2a6022ace7177d1402acc1eef594f6"
     },
     {
       "id": "315-smartaihub-parallel-environments-shared-postgres",
-      "specDigest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
-      "manifestDigest": "b6c91b99d7c03ecf2da8e3ea28becfebf584ad9c70564374e3fd8bfe0e450b3a",
-      "ledgerDigest": "aa8dda9d276b1e50816008dcb3a9f0bdf8f79526619fce3bb797f1200fe735be"
+      "specDigest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+      "manifestDigest": "a2ccd0b2ed8f152a39d8d031f758f881cb6f455ba982138f6be4f1787288b5a4",
+      "ledgerDigest": "536a04f7794fc6f6b6ecb69e52fe67b634ad87db7c9e1faa6931889f6c9826c9"
     },
     {
       "id": "316-smartaihub-gitops-independent-build-release",
-      "specDigest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
-      "manifestDigest": "ef50ff5a8abc8304d1156e90423ff3a649ebf3abf0addb3b7fb819674a6a98cc",
-      "ledgerDigest": "e2b34a274dfa4ed2be5213aee949653e6a819d2e1b98a2356490b4918a0f2a26"
+      "specDigest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "manifestDigest": "a76457bd0d3e35e7f7cd676aa4dedc992136b3630fc56af14afde94d89c63898",
+      "ledgerDigest": "8258f4322e2590ac6187458b5679608869484e780b686adf58573e07ef965b8d"
     },
     {
       "id": "317-smartaihub-progressive-module-migration",
-      "specDigest": "85fa6f06ff48e141832f3da52df266808b4bf9ac159c101e1540a785be009a1b",
-      "manifestDigest": "10937aadd4337e593a98f81ffa80e75dee8e6243f885426a1c4554b32100d2eb",
-      "ledgerDigest": "5589c59f5dbe86d5534aa2d7901891ca564e987d85afce47940e93b32ad128a5"
+      "specDigest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+      "manifestDigest": "0281c52a7be7cecd239e9e2d155a10b66749c047e54e6471c9d204dcc1a39a62",
+      "ledgerDigest": "909218eded23e4dcd4103d33566fbb34b12f0bf762ac817130848568569daa8c"
     },
     {
       "id": "318-smartaihub-durable-background-execution-and-rust-supervisor",
-      "specDigest": "bfacdfdd02e1ab8e2f6fd89a852bd631ddd83ea16a5a098910c78558c2fe1835",
-      "manifestDigest": "635339857fa610b344f2b79847daf4228de7eccb7441b8e1bdbc7413241c1644",
-      "ledgerDigest": "456ed5dae19071b03d58cc7cc6160c77d51979482b46c22d88336fc3ab01feac"
+      "specDigest": "e2054e852035aeb61b1cab2f8579e763e3bdaf0ab5d1cab6fd1fbf6a13722291",
+      "manifestDigest": "50006763a47c03fa2f8aa5cfaa3bc850a648cc72df16fc4e835a21e5091d9fb2",
+      "ledgerDigest": "2da507dc90412afde014b292ab51d8c9c5f14bbf001e8735adaece1f685b5509"
     },
     {
       "id": "319-smartaihub-ui-design-system-agent-ready-webmcp",
-      "specDigest": "1a328b520e4804c555f6e2a8ab4c14ef3d319fd4982ad82b21b61ca508cd8734",
-      "manifestDigest": "2910c1939c47aa42b759c8fdf679c64d52217ad22c8ae8011ce39248416a2ae8",
-      "ledgerDigest": "198095675f62784c513ed34977a1dc49c99173030bcd4c6acd398ff8f4f28dbb"
+      "specDigest": "9c4612f96f4c2f1a5957f5cfa0dd7c18df0a4b8fc4ff66678c38be632be21881",
+      "manifestDigest": "919fefe0b5f1647436e76f60412934a6dbe8a06c1a33ecd3cb6cc24f07ddaf8f",
+      "ledgerDigest": "21125cea0418a51cc2b545efe7aa1bf10c8d3a2acaafee4b9af1517b5f6994bd"
     },
     {
       "id": "320-smartaihub-public-portfolio-miniapp-service-marketplace",
-      "specDigest": "5296242e12e2d93067a40a9f706fbf6ab9844ab0cc14553c31ea4f94f65646f3",
-      "manifestDigest": "7d464e4070083e1db19673e4624995d355124711958400c5f689528a37eaf53e",
-      "ledgerDigest": "adff9f88be691a392326b5eea9277d1e2725a661d6e5b815f2d45f0d87162c7b"
+      "specDigest": "36c504c2c51cc31af4be290be7aa4907b6c65f248cf4932a2751e60533315f29",
+      "manifestDigest": "513b1770229d7b2b18e05ff87f33971e63d7eae1cd7c307e6352870201995da6",
+      "ledgerDigest": "ca252d784a67d7797144ca1dc9d24c026db28b6b4a6e5a88cb34c0ce73f8b82e"
     },
     {
       "id": "321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
-      "specDigest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
-      "manifestDigest": "737d0f5545b7e6d11df347b03be97d2b4d38de6a286e2d5e981ecd47477dfda9",
-      "ledgerDigest": "34928d03dfa6f86b280181d847eaf9e1dee9c5b2603148a1b219f09f3b7227eb"
+      "specDigest": "1ae0aea92fce73415638aa922a6caf1648588c538b07b8dcd0a777315084854d",
+      "manifestDigest": "622d0646a1e9a9a461f9542b94d874c6fe9144640560c3b2965fc0afe3b7bd1f",
+      "ledgerDigest": "3c604a2c1dc6edd0f69e8fc1736a7c5533dcf1067f43b690378d32bea9ae9764"
     },
     {
       "id": "322-smartsi-agentic-payments-platform-subscriptions-payg",
-      "specDigest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
-      "manifestDigest": "61a714d7b30a59bf3d8a51e24b1a010decf584ffccb54e3a6d16a74c3c3e9441",
-      "ledgerDigest": "a34486065c5691d3f9013cd7c521f97737fc4c027d274c76e2ebbebf318f62ff"
+      "specDigest": "ef35a4a2bb1353eef05c78787d2efb2a68bd7430671726ae8a9fc4995d246627",
+      "manifestDigest": "851045ee52c624d2124c2d83eafc684d1855f0cf2c1e4921262ade982256fe65",
+      "ledgerDigest": "8bb7e576252a1d6f75c8af7ebd34d746b28293d97574132b4c81d8974d9c1751"
     },
     {
       "id": "323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
-      "specDigest": "399fceeeed86c8f26458a648a51978cc838ec25aa46505512374c4b640d17caf",
-      "manifestDigest": "f8c42be116a490e8b75d607130cb1eeeaf2819e26863cd8924ffba85d914183a",
-      "ledgerDigest": "eca13a78287d0d812e456887386ab19c07893c64edcbc18a38a2308fc5ae1157"
+      "specDigest": "be7956a01ef13034cc7e1eedf9797d6159f03bb23396a8098dc2c5c623e6e0df",
+      "manifestDigest": "f4ab6836f76f2b8f183af93752bef3b9ae23a83371889d789e73518ae9629e9c",
+      "ledgerDigest": "5a1720a33d1a28f44e1f1229e0ff02c2cfee2a2c9854e50c1320558281c97663"
     },
     {
       "id": "324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
-      "specDigest": "6d45bd779dde4269d0cd4d5386d59c9c6e900c24507377e1c8afaf162740b5bd",
-      "manifestDigest": "1ede33d5a7e1c8cb02414c9e2749f606964b5640f268c483236f92fc7a28d341",
-      "ledgerDigest": "4dc6d583521495bf40661b8127e81c3aec55bb5dc32cd19c9e09df2bbaf30be3"
+      "specDigest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+      "manifestDigest": "d539729af90250eecd6d7c4d1717f3675285b47d442677c7dbd8cebf879fb023",
+      "ledgerDigest": "eb14bd1a7599c816215d99bd8bcf98a3e1de0bc35381fa0924b176af00c30153"
     }
   ],
   "initialPackages": [
@@ -96,7 +96,7 @@
         {
           "specId": "312-smartaihub-modular-saas-rebuild-master-plan",
           "requirementIds": [
-            "REQ-98A0B54A96F7"
+            "REQ-29B718963E5E"
           ]
         }
       ],
@@ -133,7 +133,7 @@
         {
           "specId": "313-smartaihub-saas-core-identity-commerce-entitlements",
           "requirementIds": [
-            "REQ-E77EACED5BB5"
+            "REQ-4A32FF1BCCA5"
           ]
         }
       ],

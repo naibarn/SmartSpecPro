@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -108,6 +109,16 @@ describe("repository feature spec catalog", () => {
     expect(project.sourceFiles).toHaveLength(4);
     expect(project.sourceFiles.filter(file => file.canonicalSource?.kind === "requirement-ledger")).toHaveLength(1);
     expect(project.sourceFiles.filter(file => file.projectSource)).toHaveLength(1);
+  });
+
+  it("loads all current R1.5 modular Specs from the refreshed canonical project pins", async () => {
+    const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../../");
+
+    const project = await loadModularSaasProject({ repositoryRoot });
+
+    expect(project.source.revision).toBe("21b6f80c8c86bcfc67593e1c019b06c67417a690");
+    expect(project.specs).toHaveLength(13);
+    expect(project.sourceFiles.filter(file => file.canonicalSource?.kind === "spec")).toHaveLength(13);
   });
 
   it("rejects duplicate or missing project members and stale source digests", async () => {
