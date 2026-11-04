@@ -27,3 +27,8 @@ pnpm --dir apps/web exec vitest run client/src/pages/UnifiedWorkspace.test.tsx c
 - No Cloudflare artifact or Worker was built or deployed.
 
 This records exact-SHA implementation, focused-test and development-deployment evidence only. It does not claim overall SPEC-224 completion or acceptance.
+
+## Verification profile and build resources
+
+- `quick`, source `f0978ccc4a092071654cb19a5b62b59452707611`: the focused Vitest command above passed 62/62 tests in 10.36 seconds, starting 2026-11-04 19:02:21 Asia/Bangkok.
+- `package`, source `f0978ccc4a092071654cb19a5b62b59452707611`: the exact-SHA Linux release command built the web and backend artifact and completed deployment verification at 2026-11-04T12:10:37Z. Resource preflight reported host available memory 25,433,712 KiB, memory PSI `some.avg10=0.00`, cgroup effective memory 7,650,542,352 bytes, cgroup max 21,474,836,480 bytes, and swap current/max 3,181,797,376 / 6,442,450,944 bytes. Outcome: `DEPLOYED_VERIFIED`.
