@@ -1124,7 +1124,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "22b7f33cd7b37c658bd76625286d03e56041fd13",
+    "expected_canonical_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d6c9bd72e6a8afdadddcd6b52df078c59275ae4173c76ef174e9dcb2ef668ec8",
+    "artifact_digest": "sha256:d8da61731852446af737b989ee132474deb385609794c2fad41546e414ba4ba6",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1358,10 +1358,17 @@
         "scope": "Exact integrated source 22b7f33cd7b37c658bd76625286d03e56041fd13 promoted to legacy-debian-dev; Python health and DB readiness HTTP 200. Exact replay recovers still-live pending owner-started Goal Grants; platform engineering runs use provider-managed economics. Focused tests 3/3. No authenticated user continuation or live Runner receipt is claimed.",
         "source_sha": "22b7f33cd7b37c658bd76625286d03e56041fd13",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_DEV_PILOT_READINESS_FIX_RELEASE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/pilot-readiness-consistency-20261104.md",
+        "scope": "Exact immutable generation g351 from source f8da82dc2c63f0777f23c72570d2380932c80167 served on smartaihub.app; target, web/Node worker revisions, health and lazy Pilot JS bundle were verified. Authenticated UI interaction and live Goal execution remain pending.",
+        "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
+        "status": "PASS"
       }
     ],
     "required": false,
-    "source_sha": "22b7f33cd7b37c658bd76625286d03e56041fd13",
+    "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
     "status": "PASS"
   },
   "disposition": {
@@ -1375,7 +1382,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 279,
+  "generation": 280,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1397,7 +1404,8 @@
       "2fa582001e5d409768a492960d0f3fed0ac93b7e",
       "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
       "e0009508f94195928ffb65bfc7ed3bbf6256575d",
-      "56a47c23da011b3d52a09e7be2dfc336cc882def"
+      "56a47c23da011b3d52a09e7be2dfc336cc882def",
+      "f8da82dc2c63f0777f23c72570d2380932c80167"
     ],
     "mapping": [
       {
@@ -1608,11 +1616,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "22b7f33cd7b37c658bd76625286d03e56041fd13",
+    "canonical_sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
     "integrated": true,
-    "integrated_at": "2026-11-02T03:33:52Z",
+    "integrated_at": "2026-11-04T08:53:22Z",
     "pull_request": null,
-    "source_sha": "22b7f33cd7b37c658bd76625286d03e56041fd13"
+    "source_sha": "f8da82dc2c63f0777f23c72570d2380932c80167"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4157,7 +4165,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T03:37:39.034852Z",
+  "updated_at": "2026-11-04T09:04:08.271548Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4706,13 +4714,14 @@
       "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts (focused durable Run projection; included in 93/93 focused suite)",
       "apps/web/server/services/__tests__/spec224GoalDelegationGrant.test.ts (focused approval payload; included in 93/93 focused suite)",
       "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md",
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-resume-readiness-20261102.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-resume-readiness-20261102.md",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/pilot-readiness-consistency-20261104.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
+    "sha": "f8da82dc2c63f0777f23c72570d2380932c80167",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }
