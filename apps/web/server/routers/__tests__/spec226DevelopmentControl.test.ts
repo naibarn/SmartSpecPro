@@ -1238,6 +1238,49 @@ describe("spec226DevelopmentControlRouter", () => {
       }),
     }));
   });
+
+  it("records a source change after Goal creation as recoverable without dispatching the stale Goal", async () => {
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-a", snapshotRevision: "snapshot-a", scope: "PLATFORM_ENGINEERING",
+    }]);
+    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
+      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64), modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test", accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } },
+      goal: "Implement the staged prompt.", planId: "plan:ready", planRevision: 1,
+      contextPackHash: "b".repeat(64), repositoryRef: "runner:runner-a/workspace-a",
+      baseRevision: `git:${"a".repeat(40)}`, specSetRevision: null, workPackageId: null,
+      allowedWriteSet: ["apps/web/**"],
+      inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from("Implement the staged prompt.").toString("base64") }],
+    });
+    mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({
+      inputSourceRef: "spec224-source:source-changed", inputDigest: "c".repeat(64), totalBytes: 100, files: [],
+    });
+    mocks.createRun.mockImplementationOnce(async (value: any) => ({
+      run: value.run, jobRef: { jobId: "source-changed-job", created: true },
+    }));
+    mocks.requestGoalGrantApproval.mockResolvedValueOnce({
+      approvalRef: "goal-approval-source-changed", status: "approved", expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+    mocks.authorizeDelegatedChild.mockRejectedValueOnce(new Error("EXECUTION_SOURCE_CHANGED"));
+
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: { conversationId: 8, mode: "prompt", prompt: "Implement the staged prompt.", idempotencyKey: "source-changed-goal-key-01" },
+    });
+
+    expect(result).toMatchObject({
+      jobId: "source-changed-job", dispatchStatus: "BLOCKED", goalAdmissionStatus: "EXECUTION_SOURCE_CHANGED",
+      authorization: { status: "EXECUTION_SOURCE_CHANGED", reasons: ["EXECUTION_SOURCE_CHANGED"] },
+    });
+    expect(mocks.developmentRunService.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      runId: result.runId,
+      idempotencyKey: `spec224-goal-source-changed:${result.runId}`,
+      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" },
+      runMetadata: { spec224GoalAdmission: expect.objectContaining({ status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" }) },
+    }));
+    expect(mocks.createRun).toHaveBeenCalledTimes(1);
+    expect(mocks.authorizeDelegatedChild).toHaveBeenCalledTimes(1);
+  });
   it("requires authenticated tenant scope and records full verification requests", async () => {
     mocks.requestFullVerification.mockResolvedValue({
       state: "NOT_CONFIGURED",

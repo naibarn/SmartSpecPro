@@ -1224,6 +1224,75 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
+  async function refreshAfterExecutionSourceChanged(input: {
+    workPackageId: string;
+    targetConversationId: number;
+    targetPreparation: Preparation;
+    startMode: "prompt" | "spec_set";
+    startKey: string;
+    idempotencyKey: string;
+  }) {
+    const selected = selectedWorkspace;
+    const previousSnapshotRevision = input.targetPreparation.workPackages?.find(item => item.id === input.workPackageId)?.sourceAdmission?.snapshotRevision
+      ?? selected?.snapshotRevision;
+    try {
+      if (!selected || selected.scope !== "PLATFORM_ENGINEERING") throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
+      const refreshedWorkspaces = await workspacesQuery.refetch();
+      const currentWorkspace = refreshedWorkspaces.data?.workspaces.find(workspace =>
+        workspace.runnerId === selected.runnerId && workspace.workspaceId === selected.workspaceId
+          && workspace.scope === "PLATFORM_ENGINEERING",
+      );
+      if (!currentWorkspace) throw new Error("PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED");
+
+      await bindMutation.mutateAsync({
+        conversationId: input.targetConversationId,
+        runnerId: currentWorkspace.runnerId,
+        workspaceId: currentWorkspace.workspaceId,
+      });
+      const refreshedBinding = await workspaceQuery.refetch();
+      if (refreshedBinding.data?.availability?.status !== "current"
+        || refreshedBinding.data.workspace?.snapshotRevision !== currentWorkspace.snapshotRevision) {
+        throw new Error("WORKSPACE_BINDING_REFRESH_STALE");
+      }
+
+      const refreshedPreparation = await prepareMutation.mutateAsync({
+        conversationId: input.targetConversationId,
+        mode: input.startMode,
+        ...(input.startMode === "prompt" ? {
+          prompt: effectivePrompt,
+          ...(requestKind === "development" ? { workspaceAccessMode } : {}),
+        } : {}),
+        ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
+      });
+      const refreshedPackage = refreshedPreparation.workPackages?.find(item => item.id === input.workPackageId);
+      const latestSnapshotRevision = refreshedPackage?.sourceAdmission?.snapshotRevision ?? currentWorkspace.snapshotRevision;
+      const packageStillRunnable = refreshedPreparation.runnableWorkPackageIds.includes(input.workPackageId)
+        && (input.startMode === "prompt" || Boolean(refreshedPackage));
+      const packageSourceIsSafe = !currentWorkspace.scope || currentWorkspace.scope !== "PLATFORM_ENGINEERING"
+        || ["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(refreshedPackage?.sourceAdmission?.status ?? "BLOCKED");
+
+      if (!previousSnapshotRevision || latestSnapshotRevision === previousSnapshotRevision) {
+        setPreparation(null);
+        toast.error("Goal เดิมถูกบันทึกแล้ว แต่ source ยังเป็น snapshot เดิม โปรดโหลดรายการ Runner หลัง source เปลี่ยน แล้วเตรียมแผนใหม่ก่อนส่งอีกครั้ง");
+        return;
+      }
+      setPreparation(refreshedPreparation);
+      setStartKeys(current => {
+        const next = { ...current };
+        delete next[input.startKey];
+        return next;
+      });
+      if (!packageStillRunnable || !packageSourceIsSafe) {
+        toast.info("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ ระบบโหลดแผนล่าสุดให้แล้ว ตรวจ blocker และ source preflight ก่อนส่ง Goal ใหม่");
+        return;
+      }
+      toast.info("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ เพราะ source เปลี่ยน ระบบเตรียม snapshot ล่าสุดให้แล้ว โปรดตรวจแผนและกดส่ง Goal อีกครั้ง");
+    } catch {
+      setPreparation(null);
+      toast.error("Goal เดิมถูกบันทึกแล้วแต่เริ่มไม่ได้ และโหลด source ล่าสุดไม่สำเร็จ โปรดโหลดรายการ Runner แล้วเตรียมแผนใหม่");
+    }
+  }
+
   async function startWorkPackage(
     workPackageId: string,
     targetConversationId = conversationId,
@@ -1318,6 +1387,29 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         idempotencyKey,
       });
       await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
+      const status = result.goalAdmissionStatus ?? result.dispatchStatus;
+      if (status === "EXECUTION_SOURCE_CHANGED") {
+        if (pilotMode) {
+          const approvalRef = result.authorization
+            && typeof result.authorization === "object"
+            && "approvalRef" in result.authorization
+            && typeof result.authorization.approvalRef === "string"
+            ? result.authorization.approvalRef
+            : null;
+          setPilotSubmission({ runId: result.runId, jobId: result.jobId ?? null, approvalRef, dispatchStatus: result.dispatchStatus });
+          toast.error("First Run Pilot ถูกบันทึกแล้วแต่ source เปลี่ยนก่อนเริ่มงาน ระบบไม่สร้าง Pilot ซ้ำ โปรดตรวจ Goal เดิมใน Task Control");
+        } else {
+          await refreshAfterExecutionSourceChanged({
+            workPackageId,
+            targetConversationId,
+            targetPreparation,
+            startMode,
+            startKey: key,
+            idempotencyKey,
+          });
+        }
+        return;
+      }
       if (pilotMode) {
         const approvalRef = result.authorization
           && typeof result.authorization === "object"
@@ -1338,7 +1430,6 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           ? `ส่ง Mini App Factory stage แรกแล้ว · ${result.dispatchStatus}`
           : "บันทึก DevelopmentRun และส่งเข้าคิวแล้ว");
       } else {
-        const status = result.goalAdmissionStatus ?? result.dispatchStatus;
         const authorization = "authorization" in result ? result.authorization : null;
         const reasons = authorization && typeof authorization === "object" && "reasons" in authorization && Array.isArray(authorization.reasons)
           ? authorization.reasons.join(", ") : status;
@@ -1351,6 +1442,21 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       }
     } catch (error) {
       await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
+      if (error instanceof Error && error.message.includes("EXECUTION_SOURCE_CHANGED")) {
+        if (pilotMode) {
+          toast.error("First Run Pilot ถูกบันทึกแล้วแต่ source เปลี่ยนก่อนเริ่มงาน ระบบไม่สร้าง Pilot ซ้ำ โปรดตรวจ Goal เดิมใน Task Control");
+        } else {
+          await refreshAfterExecutionSourceChanged({
+            workPackageId,
+            targetConversationId,
+            targetPreparation,
+            startMode,
+            startKey: key,
+            idempotencyKey,
+          });
+        }
+        return;
+      }
       if (error instanceof Error && error.message.includes("WORKSPACE_BINDING_STALE")) {
         try {
           const selected = selectedWorkspace;

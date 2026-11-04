@@ -419,10 +419,38 @@ async function advanceWorkspaceGoalAdmission(input: {
     return { status, reasons: [status],
       approvalRef: approval.approvalRef, expiresAt: approval.expiresAt };
   }
-  const authorization = await defaultSpec224AuthorizationService.authorizeDelegatedChild({
-    context: input.context,
-    runId: input.runId,
-  });
+  let authorization: Awaited<ReturnType<typeof defaultSpec224AuthorizationService.authorizeDelegatedChild>>;
+  try {
+    authorization = await defaultSpec224AuthorizationService.authorizeDelegatedChild({
+      context: input.context,
+      runId: input.runId,
+    });
+  } catch (error) {
+    if (errorCode(error) !== "EXECUTION_SOURCE_CHANGED") throw error;
+    const ownerAction = "Goal เดิมถูกบันทึกแล้วแต่ยังเริ่มไม่ได้ เพราะ source เปลี่ยนระหว่างตรวจสิทธิ์ โปรดโหลด snapshot ล่าสุด เตรียมแผนใหม่ แล้วส่ง Goal ใหม่";
+    await developmentRunService.recordVerificationEvent({
+      runId: input.runId,
+      tenantId: input.context.tenantId,
+      actorId: input.context.actorId,
+      idempotencyKey: `spec224-goal-source-changed:${input.runId}`,
+      type: "VERIFICATION_ADMISSION",
+      payload: { status: "source_changed", errorCode: "EXECUTION_SOURCE_CHANGED" },
+      runMetadata: { spec224GoalAdmission: {
+        status: "source_changed",
+        errorCode: "EXECUTION_SOURCE_CHANGED",
+        ownerAction,
+        grantPayload: input.payload,
+        projectId: input.projectId,
+        runnerId: input.runnerId,
+      } },
+    });
+    return {
+      status: "EXECUTION_SOURCE_CHANGED" as const,
+      reasons: ["EXECUTION_SOURCE_CHANGED"],
+      errorCode: "EXECUTION_SOURCE_CHANGED",
+      ownerAction,
+    };
+  }
   return { status: authorization.status, reasons: authorization.reasons, approvalRef: approval.approvalRef,
     expiresAt: approval.expiresAt, authorization };
 }
