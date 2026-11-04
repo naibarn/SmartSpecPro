@@ -80,6 +80,7 @@ export type Spec226DevelopmentControlBridge = ReturnType<
 
 function assertScope(scope: Spec226DevelopmentRunScope): void {
   if (
+    typeof scope?.tenantId !== "string" ||
     !scope.tenantId.trim() ||
     !Number.isSafeInteger(scope.actorId) ||
     scope.actorId <= 0

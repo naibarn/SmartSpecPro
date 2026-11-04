@@ -201,6 +201,19 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
     });
   });
 
+  it("rejects a nested scope at the public list boundary with a stable scope error", async () => {
+    const run = runAtPlanning();
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memoryAdapter({ run, revision: 0, events: [] }).adapter,
+      listRuns: async () => [run],
+    });
+
+    await expect(bridge.list({
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+      limit: 10,
+    } as never)).rejects.toThrow("RUN_SCOPE_INVALID");
+  });
+
   it("projects the owner-facing Mini App URL from the persisted Factory identity", async () => {
     const run = {
       ...runAtPlanning(),

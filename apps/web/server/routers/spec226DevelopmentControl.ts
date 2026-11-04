@@ -383,7 +383,8 @@ async function reclaimUnclaimedSourceChangedJobs(input: {
   workspaceId: string;
 }): Promise<void> {
   const runs = await defaultSpec226DevelopmentControlBridge.list({
-    scope: { tenantId: input.context.tenantId, actorId: input.context.actorId },
+    tenantId: input.context.tenantId,
+    actorId: input.context.actorId,
     limit: 100,
     workspaceId: input.workspaceId,
   });

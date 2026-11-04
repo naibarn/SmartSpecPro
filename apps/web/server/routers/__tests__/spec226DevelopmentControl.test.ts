@@ -1269,6 +1269,12 @@ describe("spec226DevelopmentControlRouter", () => {
       goalAdmissionStatus: "READY_FOR_LIVE", workPackageId: "r14-core-p1-first-slice", specSetRevision: 12,
     });
     expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId: result.runId }));
+    expect(mocks.bridge.list).toHaveBeenCalledWith({
+      tenantId: CTX.tenantId,
+      actorId: CTX.user.id,
+      limit: 100,
+      workspaceId: "workspace-a",
+    });
     expect(mocks.cancelQueuedJob).toHaveBeenCalledWith(expect.objectContaining({
       jobId: "old-source-changed-job", reason: "spec224_execution_source_changed", requireUnclaimed: true,
     }));
