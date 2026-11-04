@@ -1140,6 +1140,84 @@
     "evidence": [
       {
         "kind": "VERIFICATION",
+        "observed_at": "2026-10-26T07:00:00Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "DEPLOYMENT",
+        "observed_at": "2026-10-26T07:27:03Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-26T07:42:50Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-26T07:55:56Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T00:25:04Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
+        "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T01:58:05Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+        "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
+      },
+      {
+        "kind": "DEPLOYMENT",
+        "observed_at": "2026-10-28T02:38:00Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+        "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T12:06:04Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+        "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T12:50:35Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+        "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T14:39:23Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
+        "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+      },
+      {
+        "kind": "OBSERVATION",
+        "observed_at": "2026-10-28T17:46:35Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+        "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
+      },
+      {
+        "kind": "OBSERVATION",
+        "observed_at": "2026-10-28T23:46:02Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
+        "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-29T00:42:45Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+        "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
+      },
+      {
+        "kind": "VERIFICATION",
         "observed_at": "2026-11-04T14:03:40Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-stale-workspace-goal-recovery-20261104.md",
         "source_sha": "2dd6eeefb985b9f59bc98907dd83c1bdda731163"
@@ -1360,7 +1438,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 289,
+  "generation": 290,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -2540,6 +2618,84 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-26T07:00:00Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "DEPLOYMENT",
+          "observed_at": "2026-10-26T07:27:03Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-26T07:42:50Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-26T07:55:56Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T00:25:04Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
+          "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T01:58:05Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+          "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
+        },
+        {
+          "kind": "DEPLOYMENT",
+          "observed_at": "2026-10-28T02:38:00Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+          "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T12:06:04Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+          "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T12:50:35Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+          "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T14:39:23Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
+          "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+        },
+        {
+          "kind": "OBSERVATION",
+          "observed_at": "2026-10-28T17:46:35Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+          "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
+        },
+        {
+          "kind": "OBSERVATION",
+          "observed_at": "2026-10-28T23:46:02Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
+          "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-29T00:42:45Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+          "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
+        },
         {
           "kind": "VERIFICATION",
           "observed_at": "2026-11-04T14:03:40Z",
@@ -4124,7 +4280,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T14:03:58.772144Z",
+  "updated_at": "2026-11-04T14:04:59.750413Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
