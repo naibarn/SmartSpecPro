@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   auditLog: vi.fn(),
   createRun: vi.fn(),
   runnerReadiness: vi.fn(),
+  assertWorkspaceExecutionSource: vi.fn(),
   advanceStart: vi.fn(),
   authorizeDelegatedChild: vi.fn(),
   requestGoalGrantApproval: vi.fn(),
@@ -117,6 +118,7 @@ vi.mock("../../services/spec224BackendRuntimeIdentity", () => ({
 vi.mock("../../services/spec224AuthorizationService", () => ({
   defaultSpec224AuthorizationService: {
     runnerReadiness: (...args: unknown[]) => mocks.runnerReadiness(...args),
+    assertWorkspaceExecutionSource: (...args: unknown[]) => mocks.assertWorkspaceExecutionSource(...args),
     assertWorkspaceSourceSnapshot: vi.fn().mockResolvedValue(undefined),
     advanceStart: (...args: unknown[]) => mocks.advanceStart(...args),
     authorizeDelegatedChild: (...args: unknown[]) => mocks.authorizeDelegatedChild(...args),
@@ -197,6 +199,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.bridge.list.mockReset().mockResolvedValue([]);
   mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
+  mocks.assertWorkspaceExecutionSource.mockReset().mockResolvedValue(undefined);
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
   mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
   mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "approved", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
@@ -1302,6 +1305,41 @@ describe("spec226DevelopmentControlRouter", () => {
         }),
       }),
     }));
+  });
+
+  it("rejects a platform workspace outside the configured execution source authority before staging or creating a Goal", async () => {
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-core", runnerId: "runner-a", snapshotRevision: "snapshot-a" },
+      availability: { status: "current", available: true },
+    });
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{
+      runnerId: "runner-a", workspaceId: "workspace-core", snapshotRevision: "snapshot-a", scope: "PLATFORM_ENGINEERING",
+    }]);
+    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-core", runnerId: "runner-a" },
+      runner: { runnerId: "runner-a", snapshotRevision: "snapshot-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, dirtyPaths: [], contentFingerprint: "d".repeat(64), modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test", accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } },
+      goal: "Implement the selected work package.", planId: "plan:ready", planRevision: 1,
+      contextPackHash: "b".repeat(64), repositoryRef: "runner:runner-a/workspace-core",
+      baseRevision: `git:${"a".repeat(40)}`, specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      specSources: [], workPackagePrerequisites: [], allowedWriteSet: ["apps/saas-core/**"],
+      inputFiles: [{ path: "spec.md", contentBase64: Buffer.from("# Canonical Spec").toString("base64") }],
+    });
+    mocks.assertWorkspaceExecutionSource.mockRejectedValueOnce(new Error("WORKSPACE_SOURCE_AUTHORITY_MISMATCH"));
+
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
+      conversationId: 8, mode: "spec_set", specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      idempotencyKey: "spec224-start-source-mismatch-0001", provider: "codex",
+    } })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("จึงยังไม่สร้าง Goal"),
+    });
+
+    expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      workspaceId: "workspace-core", gitHead: "a".repeat(40), contentFingerprint: "d".repeat(64), dirtyPaths: [],
+    });
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.requestGoalGrantApproval).not.toHaveBeenCalled();
   });
 
   it("records a source change after Goal creation as recoverable without dispatching the stale Goal", async () => {

@@ -516,6 +516,53 @@ def _execution_source_facts(workspace: Path) -> tuple[str, str, list[str]]:
     return head, digest.hexdigest(), paths
 
 
+def _resolve_execution_authority_workspace(db: sqlite3.Connection, policy: dict[str, Any], workspace_id: str) -> tuple[str, str, Path]:
+    """Resolve a Runner workspace alias to this repository's write authority."""
+    runner_workspace_id = _safe_id(workspace_id, "EXECUTION_LEASE_IDENTITY_INVALID")
+    row = _workspace_by_id(db, runner_workspace_id)
+    if not row:
+        # Runner IDs belong to the trusted Runner registry, while this
+        # authority stores SPEC-293 workspace IDs. Platform execution is
+        # pinned to the one active canonical workspace for this project.
+        rows = db.execute(
+            "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
+            (policy["project_id"], policy["repository_id"]),
+        ).fetchall()
+        if len(rows) != 1:
+            raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+        cursor = db.execute(
+            "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
+            (policy["project_id"], policy["repository_id"]),
+        )
+        row = dict(zip([item[0] for item in cursor.description], rows[0]))
+    if row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"] or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
+        raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+    path = Path(row["location"]).resolve()
+    if not path.is_dir():
+        raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+    return runner_workspace_id, str(row["workspace_id"]), path
+
+
+def assert_execution_source_matches_authority(repo: Path, policy_path: Path | None, *, workspace_id: str,
+    source_sha: str, source_fingerprint: str, dirty_paths: Sequence[str]) -> dict[str, Any]:
+    """Fail before creating a Goal when Runner source is outside this authority snapshot."""
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    _safe_id(workspace_id, "EXECUTION_LEASE_IDENTITY_INVALID")
+    if not re.fullmatch(r"[a-f0-9]{40,64}", source_sha) or not re.fullmatch(r"[a-f0-9]{64}", source_fingerprint):
+        raise WorkspaceAuthorityError("EXECUTION_SOURCE_FACTS_INVALID")
+    if not isinstance(dirty_paths, Sequence) or isinstance(dirty_paths, (str, bytes)) or len(dirty_paths) > 4096 or any(
+        not isinstance(path, str) or not _valid_execution_path(path) for path in dirty_paths
+    ):
+        raise WorkspaceAuthorityError("EXECUTION_DIRTY_PATHS_UNKNOWN")
+    with _db(repo) as db:
+        _, _, path = _resolve_execution_authority_workspace(db, policy, workspace_id)
+        actual_sha, actual_fingerprint, actual_dirty = _execution_source_facts(path)
+    if actual_sha != source_sha or actual_fingerprint != source_fingerprint or actual_dirty != sorted(set(dirty_paths)):
+        raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
+    return {"status": "SOURCE_MATCHED", "dirtyPathCount": len(actual_dirty)}
+
+
 def _valid_execution_path(value: str) -> bool:
     parts = value.split("/")
     return bool(value) and len(value) <= 1024 and not value.startswith("/") and "\\" not in value and "\0" not in value and all(part not in {"", ".", ".."} for part in parts)
@@ -589,29 +636,7 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
-            runner_workspace_id = workspace_id
-            row = _workspace_by_id(db, workspace_id)
-            if not row:
-                # Runner IDs belong to the trusted Runner registry, while this authority
-                # stores SPEC-293 workspace IDs. Platform execution is pinned to the one
-                # active canonical workspace for this project; the caller has already
-                # validated the Runner's tenant/project/workspace binding.
-                rows = db.execute(
-                    "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
-                    (policy["project_id"], policy["repository_id"]),
-                ).fetchall()
-                if len(rows) == 1:
-                    cursor = db.execute(
-                        "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
-                        (policy["project_id"], policy["repository_id"]),
-                    )
-                    row = dict(zip([item[0] for item in cursor.description], rows[0]))
-                else:
-                    raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
-            if row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"] or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
-                raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
-            authority_workspace_id = row["workspace_id"]
-            path = Path(row["location"]).resolve()
+            runner_workspace_id, authority_workspace_id, path = _resolve_execution_authority_workspace(db, policy, workspace_id)
             actual_sha, actual_fingerprint, actual_dirty = _execution_source_facts(path)
             if actual_sha != source_sha or actual_fingerprint != source_fingerprint or actual_dirty != sorted(set(dirty_paths)):
                 raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
@@ -2633,7 +2658,7 @@ def collect_worktrees(
 
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("resolve", "inspect", "register", "create", "converge", "verify", "preserve", "retire", "collect", "mission-control", "execution-lease-acquire", "execution-lease-validate", "execution-lease-renew", "execution-lease-release"))
+    parser.add_argument("action", choices=("resolve", "inspect", "register", "create", "converge", "verify", "preserve", "retire", "collect", "mission-control", "execution-source-check", "execution-lease-acquire", "execution-lease-validate", "execution-lease-renew", "execution-lease-release"))
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--workspace", type=Path)
@@ -2704,13 +2729,15 @@ def _cli() -> int:
                 for remote, observation in observations.items()
             }
             result["status"] = "MISSION_CONTROL_SNAPSHOT_READY"
-        elif args.action.startswith("execution-lease-"):
+        elif args.action.startswith("execution-"):
             if not args.lease_input:
                 raise WorkspaceAuthorityError("EXECUTION_LEASE_INPUT_REQUIRED")
             request = json.loads(args.lease_input.read_text(encoding="utf-8"))
             if not isinstance(request, dict):
                 raise WorkspaceAuthorityError("EXECUTION_LEASE_INPUT_INVALID")
-            if args.action == "execution-lease-acquire":
+            if args.action == "execution-source-check":
+                result = assert_execution_source_matches_authority(repo, args.policy, **request)
+            elif args.action == "execution-lease-acquire":
                 result = acquire_execution_lease(repo, args.policy, **request)
             elif args.action == "execution-lease-validate":
                 result = validate_execution_lease(repo, args.policy, **request)
@@ -2723,7 +2750,7 @@ def _cli() -> int:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")
             result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply, include_recovery=args.include_recovery)
         print(json.dumps(result, sort_keys=True))
-        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY", "ACTIVE", "RELEASED"} else 20
+        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY", "SOURCE_MATCHED", "ACTIVE", "RELEASED"} else 20
     except WorkspaceAuthorityError as exc:
         print(str(exc), file=sys.stderr)
         return 20

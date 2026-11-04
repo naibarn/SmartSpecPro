@@ -1534,6 +1534,21 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             dirty_paths=dirty_paths, authorization_deadline=self.execution_deadline, lease_seconds=60,
         )
 
+    def test_spec224_execution_source_preflight_uses_the_same_authority_and_rejects_stale_runner_facts(self) -> None:
+        _, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        runner_workspace_id = "ws-runner-source-preflight"
+        matched = authority.assert_execution_source_matches_authority(
+            self.canonical, self.policy, workspace_id=runner_workspace_id, source_sha=source_sha,
+            source_fingerprint=fingerprint, dirty_paths=dirty_paths,
+        )
+        self.assertEqual(matched, {"status": "SOURCE_MATCHED", "dirtyPathCount": 0})
+
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_SOURCE_CHANGED"):
+            authority.assert_execution_source_matches_authority(
+                self.canonical, self.policy, workspace_id=runner_workspace_id, source_sha="a" * 40,
+                source_fingerprint=fingerprint, dirty_paths=dirty_paths,
+            )
+
     def test_spec224_execution_leases_allow_disjoint_scopes_and_replay_idempotently(self) -> None:
         workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
         first = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,

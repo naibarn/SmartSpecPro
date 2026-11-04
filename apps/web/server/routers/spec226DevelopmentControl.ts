@@ -207,6 +207,14 @@ function asTrpcError(error: unknown): never {
   if (code === "WORKSPACE_PREPARATION_SNAPSHOT_STALE") {
     throw new TRPCError({ code: "CONFLICT", message: code });
   }
+  if (["WORKSPACE_SOURCE_AUTHORITY_MISMATCH", "WORKSPACE_SOURCE_AUTHORITY_UNAVAILABLE", "WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED"].includes(code)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: code === "WORKSPACE_SOURCE_AUTHORITY_MISMATCH"
+        ? "Workspace ของ Runner ไม่ตรงกับ source authority ที่ใช้ออกสิทธิ์รัน ระบบจึงยังไม่สร้าง Goal เพื่อป้องกันงานถูกยกเลิก โปรดเลือก Runner ที่ผูกกับ workspace นี้หรือซิงก์ source แล้วลองอีกครั้ง"
+        : "ระบบยังยืนยัน source authority ของ workspace ไม่ได้ จึงยังไม่สร้าง Goal โปรดตรวจการเชื่อมต่อ Runner และลองใหม่เมื่อตรวจสอบ workspace ได้แล้ว",
+    });
+  }
   if (code === "SPEC_SET_REVISION_STALE") {
     throw new TRPCError({ code: "CONFLICT", message: "Spec Set changed; refresh and retry" });
   }
@@ -1668,6 +1676,18 @@ export const spec226DevelopmentControlRouter = router({
           if (existing.run.metadata?.spec224StartRequestDigest !== requestDigest || existing.run.workspaceId !== binding.workspace.workspaceId) {
             throw new Error("RUN_IDEMPOTENCY_CONFLICT");
           }
+          if (platformEngineeringWorkspace) {
+            const execution = asRecord(existing.run.metadata?.spec224Execution);
+            if (typeof execution?.sourceSha !== "string" || typeof execution.sourceFingerprint !== "string") {
+              throw new Error("WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED");
+            }
+            await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+              workspaceId: binding.workspace.workspaceId,
+              gitHead: execution.sourceSha,
+              contentFingerprint: execution.sourceFingerprint,
+              dirtyPaths: trustedWorkspace.dirtyPaths ?? null,
+            });
+          }
           const persistedGrant = existing.run.metadata?.spec224GoalGrantPayload;
           const authorization = providerManagedScope
               ? persistedGrant && runnerReadiness.projectId
@@ -1729,6 +1749,14 @@ export const spec226DevelopmentControlRouter = router({
           || input.sourceBinding.gitHead !== preparedSourceBinding.gitHead
           || input.sourceBinding.contentFingerprint !== preparedSourceBinding.contentFingerprint)) {
           throw new Error("WORKSPACE_PREPARATION_SNAPSHOT_STALE");
+        }
+        if (platformEngineeringWorkspace) {
+          await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+            workspaceId: preparedSourceBinding.workspaceId,
+            gitHead: preparedSourceBinding.gitHead,
+            contentFingerprint: preparedSourceBinding.contentFingerprint,
+            dirtyPaths: prepared.runner.dirtyPaths ?? null,
+          });
         }
         const prerequisites = prepared.workPackagePrerequisites ?? [];
         if (prerequisites.length > 0) {

@@ -63,6 +63,12 @@ export function acquireSpec224ExecutionLease(input: {
   return runAuthority("execution-lease-acquire", { ...input, actorId: String(input.actorId) });
 }
 
+export async function assertSpec224ExecutionSourceMatchesAuthority(input: {
+  workspaceId: string; sourceSha: string; sourceFingerprint: string; dirtyPaths: string[];
+}): Promise<void> {
+  await runAuthority("execution-source-check", input);
+}
+
 export function validateSpec224ExecutionLease(input: {
   leaseId: string; fencingGeneration: number; workspaceId: string; runId: string; jobId: string; attemptId: string;
   tenantId: string; actorId: number; sourceSha: string; sourceFingerprint: string; changedPaths?: string[];

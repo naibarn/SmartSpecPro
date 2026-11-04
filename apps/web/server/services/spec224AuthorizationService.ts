@@ -30,7 +30,7 @@ import {
 import { provisionEconomicBudget, provisionSpec224GoalBudget } from "./economicProvisioningService";
 import { readSpec224LedgerAccountPair } from "./spec224LedgerAccountConfig";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
-import { acquireSpec224ExecutionLease, releaseSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
+import { acquireSpec224ExecutionLease, assertSpec224ExecutionSourceMatchesAuthority, releaseSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
 import {
   mapSpec224GoalGrantAuthorityEvidence,
   parseSpec224GoalGrant,
@@ -923,6 +923,31 @@ export function createSpec224AuthorizationService() {
   }
 
   const service = {
+    async assertWorkspaceExecutionSource(input: {
+      workspaceId: string;
+      gitHead: string;
+      contentFingerprint: string;
+      dirtyPaths: string[] | null;
+    }): Promise<void> {
+      if (!Array.isArray(input.dirtyPaths)) throw new Spec224AuthorizationError("WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED");
+      try {
+        await assertSpec224ExecutionSourceMatchesAuthority({
+          workspaceId: input.workspaceId,
+          sourceSha: input.gitHead,
+          sourceFingerprint: input.contentFingerprint,
+          dirtyPaths: input.dirtyPaths,
+        });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "SPEC224_WORKSPACE_AUTHORITY_UNAVAILABLE";
+        if (code === "EXECUTION_SOURCE_CHANGED" || code === "WORKSPACE_NOT_REGISTERED_FOR_PROJECT") {
+          throw new Spec224AuthorizationError("WORKSPACE_SOURCE_AUTHORITY_MISMATCH");
+        }
+        if (code.startsWith("SPEC224_WORKSPACE_AUTHORITY_") || code === "WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED") {
+          throw new Spec224AuthorizationError("WORKSPACE_SOURCE_AUTHORITY_UNAVAILABLE");
+        }
+        throw new Spec224AuthorizationError(code);
+      }
+    },
     async assertWorkspaceSourceSnapshot(input: {
       context: Pick<Spec224AuthorizationContext, "tenantId" | "actorId">;
       runnerId: string;
