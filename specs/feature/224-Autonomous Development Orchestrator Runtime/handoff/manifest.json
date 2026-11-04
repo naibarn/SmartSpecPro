@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0a981643401a6af74e29e127089f9c9794a77f35",
+    "expected_canonical_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Verify the authoritative usage-receipt and canonical user-credit settlement path for Development Runs; keep the USD run budget as a separate ceiling and do not interpret internal reserve journal accounts as a wallet.",
     "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At exact main SHA 0a981643401a6af74e29e127089f9c9794a77f35, canonical SPEC import into Modular Core no longer waits for a fresh Runner execution snapshot; stale-snapshot metadata import and rebind-before-execution behavior are covered by 43/43 Task Control UI tests plus 4 selected UI/service/API regressions. Generation g355 is deployed and public health/API smoke passed on smartaihub.app. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-core-spec-import-runner-snapshot-20261104.md. Authenticated live import and overall SPEC-224 acceptance remain unverified. Continue the existing canonical usage-receipt and credit-settlement WorkUnit.",
+    "resume_point": "At exact integrated source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1, the Modular SaaS canonical project descriptor now pins the current R1.5 digests for all 13 Specs, manifests, and ledgers, and both initial WorkPackages reference current requirement IDs. The focused catalog suite passed 8/8; the deployed generation g356 catalog loader returned all 13 Specs. No authenticated UI sync was performed because the local GUI provider exited before exposing a browser session, so no conversation revision change is claimed. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-spec-sync-digest-repair-20261104.md. Continue the existing canonical usage-receipt and credit-settlement WorkUnit.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:80df9f97a8caaecdf29339fece15f1907db26fb0a58bc080b8cf7a7b0df1e920",
+    "artifact_digest": "sha256:ab43947c9c9e5ab4cadc987037113d86a0f04b9b862d242014a3db212f1568cc",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1393,10 +1393,17 @@
         "scope": "Exact source SHA 0a981643401a6af74e29e127089f9c9794a77f35 deployed by the immutable Linux controller to legacy-debian-dev. Web and Node Worker runtime SHA match; health HTTP 200, valid TLS, API smoke 12/12 reachable with zero server errors. Authenticated import UAT remains unverified.",
         "source_sha": "0a981643401a6af74e29e127089f9c9794a77f35",
         "status": "PASS"
+      },
+      {
+        "kind": "MODULAR_SPECS_SYNC_RELEASE_G356",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-spec-sync-digest-repair-20261104.md",
+        "scope": "Exact source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1 deployed to legacy-debian-dev generation 356; web and Node Worker revisions match, runtime status DEPLOYED_VERIFIED, health HTTP 200, public TLS valid, API smoke 12/12 reachable with zero server errors. Authenticated UI sync remains unverified.",
+        "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+        "status": "PASS"
       }
     ],
     "required": true,
-    "source_sha": "0a981643401a6af74e29e127089f9c9794a77f35",
+    "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
     "status": "PASS"
   },
   "disposition": {
@@ -1410,7 +1417,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 285,
+  "generation": 286,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1437,7 +1444,8 @@
       "921b4c7c5809c7876c55569c0828747502e3e7fd",
       "f0978ccc4a092071654cb19a5b62b59452707611",
       "550846fba964eac652b534a75ace01ca251cd409",
-      "0a981643401a6af74e29e127089f9c9794a77f35"
+      "0a981643401a6af74e29e127089f9c9794a77f35",
+      "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
     ],
     "mapping": [
       {
@@ -1645,6 +1653,15 @@
           "apps/web/server/services/spec224WorkspaceSpecSet.test.ts"
         ],
         "source_sha": "0a981643401a6af74e29e127089f9c9794a77f35"
+      },
+      {
+        "coverage": "Focused repair of Modular SaaS canonical project sync metadata; not mapped to all SPEC-224 requirements.",
+        "scope": "Refresh stale R1.4 Spec/manifest/ledger digest pins and stale initial WorkPackage requirement references after the canonical 312–324 Specs moved to R1.5; preserve fail-closed digest validation and prove the packaged catalog loads.",
+        "source_paths": [
+          "apps/web/server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
+        ],
+        "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
       }
     ],
     "source_paths": [
@@ -1677,18 +1694,20 @@
       "scripts/development-lifecycle/workspace_authority.py",
       "apps/web/client/src/pages/UnifiedWorkspace.tsx",
       "apps/web/client/src/pages/UnifiedWorkspace.test.tsx",
-      "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx"
+      "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx",
+      "apps/web/server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0a981643401a6af74e29e127089f9c9794a77f35",
+    "canonical_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
     "integrated": true,
-    "integrated_at": "2026-11-04T12:55:58Z",
+    "integrated_at": "2026-11-04T13:17:40Z",
     "pull_request": null,
-    "source_sha": "0a981643401a6af74e29e127089f9c9794a77f35"
+    "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4233,7 +4252,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T13:06:27.732384Z",
+  "updated_at": "2026-11-04T13:26:24.143399Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4811,13 +4830,20 @@
         "scope": "Exact source SHA 0a981643401a6af74e29e127089f9c9794a77f35: Task Control UI 43/43 passed; 4 focused UI/service/API import regressions passed. Runner snapshot age no longer blocks canonical SPEC metadata import when the bound trusted Platform Engineering workspace and modular-debian-dev target remain authorized; revoked and non-platform bindings remain rejected. Exact SHA generation g355 is deployed and health/API smoke checks pass. No authenticated live import or overall SPEC-224 acceptance is claimed.",
         "source_sha": "0a981643401a6af74e29e127089f9c9794a77f35",
         "status": "PASS"
+      },
+      {
+        "kind": "MODULAR_SPECS_SYNC_DIGEST_REGRESSION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-spec-sync-digest-repair-20261104.md",
+        "scope": "Exact source SHA 39c7ab726e4d3e6a79b40810893b23fbb867bdf1: canonical project catalog suite passed 8/8; deployed release catalog loader returned 13 pinned Specs and both WorkPackages. Authenticated UI sync was not performed.",
+        "source_sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "0a981643401a6af74e29e127089f9c9794a77f35",
+    "sha": "39c7ab726e4d3e6a79b40810893b23fbb867bdf1",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }
