@@ -45,7 +45,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Product tie-in is required in all 3 ideas: use the actual product category and at least one concrete, user-provided detail from input.product or input.direction as part of the character\'s action or problem resolution, not just in a closing summary. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; at least 2 different shots in every idea must naturally refer to the product category or a concrete supplied detail while responding to what a character sees, does, or needs. Do not make these lines interchangeable generic encouragement. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Product tie-in is required in all 3 ideas: use the actual product category and at least one concrete, user-provided detail from input.product or input.direction as part of the character\'s action or problem resolution, not just in a closing summary. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; at least one shot in every idea must naturally refer to a concrete supplied product detail while responding to what a character sees, does, or needs. Prefer a relevant exact phrase from productEvidenceAnchors. Other shots should advance the drama naturally and need not mention the product. Do not make the product line interchangeable generic encouragement. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -582,6 +582,13 @@ function getProductEvidenceAnchors(input: MarketplaceReviewIdeaInput): string[] 
   return anchors.slice(0, 24);
 }
 
+function normalizeProductEvidenceText(value: string): string {
+  return value
+    .normalize("NFC")
+    .toLocaleLowerCase()
+    .replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
 export function validateMarketplaceReviewIdeaOutput(
   value: unknown,
   options: MarketplaceReviewIdeaValidationOptions = {}
@@ -594,15 +601,15 @@ export function validateMarketplaceReviewIdeaOutput(
     throw new Error("MARKETPLACE_REVIEW_OUTPUT_INVALID: duplicate idea ids");
   const dialogueMode = options.dialogueMode ?? "character_dialogue";
   const productEvidenceAnchors = (options.productEvidenceAnchors ?? [])
-    .map(anchor => anchor.trim().toLocaleLowerCase())
+    .map(normalizeProductEvidenceText)
     .filter(anchor => anchor.length >= 3);
   if (productEvidenceAnchors.length > 0) {
     const weakTieIn = output.ideas.some(idea => {
-      const story = idea.episodeStory.toLocaleLowerCase();
+      const story = normalizeProductEvidenceText(idea.episodeStory);
       const dialogueShots = idea.shotDialogues.filter(shot =>
         shot.lines.some(line =>
           productEvidenceAnchors.some(anchor =>
-            line.line.toLocaleLowerCase().includes(anchor)
+            normalizeProductEvidenceText(line.line).includes(anchor)
           )
         )
       );
@@ -610,11 +617,11 @@ export function validateMarketplaceReviewIdeaOutput(
         story.includes(anchor)
       );
       return !storyHasEvidence ||
-        (dialogueMode === "character_dialogue" && dialogueShots.length < 2);
+        (dialogueMode === "character_dialogue" && dialogueShots.length < 1);
     });
     if (weakTieIn) {
       throw new Error(
-        "MARKETPLACE_REVIEW_OUTPUT_INVALID: weak product tie-in; each idea must use a supplied product detail in its story and in dialogue across at least two different shots"
+        "MARKETPLACE_REVIEW_OUTPUT_INVALID: weak product tie-in; each idea must use a supplied product detail in its story and in dialogue in at least one shot"
       );
     }
   }
@@ -828,7 +835,7 @@ function buildUserPrompt(
       advertisingCompliance: "ห้ามกล่าวอ้างเกินจริง ห้าม hard sell และห้ามให้เด็กพูด",
       productTieIn:
         input.dialogueMode === "character_dialogue"
-          ? "ทุกไอเดียต้องใช้ประเภทสินค้าและรายละเอียดจริงอย่างน้อย 1 จุดในเหตุการณ์ และอย่างน้อย 2 ช็อตต้องมีบทพูดที่เอ่ยถึงประเภทสินค้าหรือรายละเอียดจริงอย่างเป็นธรรมชาติ ไม่ใช้ประโยคให้กำลังใจทั่วไปแทนการพูดถึงสินค้า"
+          ? "ทุกไอเดียต้องใช้รายละเอียดจริงที่ผู้ใช้ให้มาใน episodeStory และมีบทพูดอย่างน้อย 1 ช็อตที่เอ่ยรายละเอียดนั้นอย่างเป็นธรรมชาติ ช็อตอื่นไม่จำเป็นต้องพูดถึงสินค้า หากมี productEvidenceAnchors ให้เลือกวลีที่เกี่ยวข้องและใช้ตามจริง"
           : "ทุกไอเดียต้องใช้ประเภทสินค้าและรายละเอียดจริงอย่างน้อย 1 จุดในเรื่อง ผ่านการกระทำหรือภาพที่เห็น ห้ามมีบทพูด",
     },
     productEvidenceAnchors,
@@ -1306,7 +1313,7 @@ export async function generateMarketplaceReviewIdeas(input: {
       repairFeedback =
         `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${
           error instanceof Error ? error.message : String(error)
-        }. สร้าง JSON ใหม่ทั้งชุดให้ครบ 9 ช็อตและแก้ตามกฎ ห้ามส่งผลลัพธ์บางส่วน`;
+        }. ใช้ productEvidenceAnchors ที่เกี่ยวข้องอย่างน้อย 1 วลีใน episodeStory และบทพูดอย่างน้อย 1 ช็อตของทุกไอเดีย ส่วนช็อตอื่นให้เล่าเรื่องตามธรรมชาติ สร้าง JSON ใหม่ทั้งชุดให้ครบ 9 ช็อตและแก้ตามกฎ ห้ามส่งผลลัพธ์บางส่วน`;
     }
   }
   if (!output) {
