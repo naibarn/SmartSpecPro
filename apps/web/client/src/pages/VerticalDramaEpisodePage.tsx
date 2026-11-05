@@ -3986,6 +3986,21 @@ function EpisodeWorkspaceShell({
       },
       onError: error => toast.error(error.message),
     });
+  const updateSpecialShotSummaryMutation =
+    trpc.verticalDramaEpisodes.updateSpecialTieInShotSummary.useMutation({
+      onSuccess: async (_data, variables) => {
+        await Promise.all([
+          specialTieInStatusQuery.refetch(),
+          episodeDetailQuery.refetch(),
+        ]);
+        toast.success(
+          lang === "th"
+            ? `บันทึกเรื่องย่อช็อต ${variables.shotNumber} แล้ว`
+            : `Shot ${variables.shotNumber} summary saved.`
+        );
+      },
+      onError: error => toast.error(error.message),
+    });
 
   async function handleSaveShotSummary(
     shotNumber: number,
@@ -4006,6 +4021,27 @@ function EpisodeWorkspaceShell({
       shotNumber,
       summary: summary.trim(),
       idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  async function handleSaveSpecialShotSummary(
+    shotNumber: number,
+    summary: string
+  ): Promise<void> {
+    const outputVersion = specialTieInStatusQuery.data?.outputVersion;
+    if (outputVersion === undefined) {
+      const message =
+        lang === "th"
+          ? "ไม่พบข้อมูลตอนพิเศษ กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง"
+          : "Special episode data is unavailable. Reload and try again.";
+      toast.error(message);
+      throw new Error(message);
+    }
+    await updateSpecialShotSummaryMutation.mutateAsync({
+      episodeId,
+      outputVersion,
+      shotNumber,
+      summary: summary.trim(),
     });
   }
 
@@ -10404,10 +10440,12 @@ function EpisodeWorkspaceShell({
               | undefined,
             canonicalShotDrafts: unifiedStoryboardData.canonicalShotDrafts,
             onSaveShotSummary: isSpecialTieInEpisode
-              ? undefined
+              ? handleSaveSpecialShotSummary
               : handleSaveShotSummary,
             savingShotSummaryForShot: isSpecialTieInEpisode
-              ? null
+              ? updateSpecialShotSummaryMutation.isPending
+                ? (updateSpecialShotSummaryMutation.variables?.shotNumber ?? null)
+                : null
               : updateShotSummaryMutation.isPending
                 ? (updateShotSummaryMutation.variables?.shotNumber ?? null)
                 : null,

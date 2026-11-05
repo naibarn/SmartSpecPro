@@ -157,6 +157,7 @@ import {
   materializeSpecialTieInStoryboardShots,
   retrySpecialTieInEpisode,
   updateSpecialTieInInput,
+  updateSpecialTieInShotSummary,
 } from "../services/verticalDramaSpecialEpisodes";
 import { listSpecialTieInModels } from "../services/verticalDramaSpecialModelCatalog";
 import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
@@ -12254,6 +12255,25 @@ export const verticalDramaEpisodesRouter = router({
         episodeId: parseId(input.episodeId, "episode id"),
         inputVersion: input.inputVersion,
         input: input.input,
+      })
+    ),
+
+  updateSpecialTieInShotSummary: verticalDramaSpecialTieInProcedure
+    .input(
+      z.object({
+        episodeId: z.string().min(1),
+        outputVersion: z.number().int().nonnegative(),
+        shotNumber: z.number().int().min(1).max(9),
+        summary: z.string().trim().min(1).max(600),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      updateSpecialTieInShotSummary({
+        actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        episodeId: parseId(input.episodeId, "episode id"),
+        outputVersion: input.outputVersion,
+        shotNumber: input.shotNumber,
+        summary: input.summary,
       })
     ),
 

@@ -1302,6 +1302,100 @@ export async function updateSpecialTieInInput(input: {
   };
 }
 
+export async function updateSpecialTieInShotSummary(input: {
+  actor: SpecialEpisodeActor;
+  episodeId: number;
+  outputVersion: number;
+  shotNumber: number;
+  summary: string;
+}) {
+  await assertSpecialTieInEnabled(input.actor.tenantId);
+  const summary = input.summary.trim();
+  if (!summary || summary.length > 600) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "เรื่องย่อต้องมีความยาว 1–600 ตัวอักษร",
+    });
+  }
+  if (
+    !Number.isInteger(input.shotNumber) ||
+    input.shotNumber < 1 ||
+    input.shotNumber > 9
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "หมายเลขช็อตไม่ถูกต้อง",
+    });
+  }
+
+  const current = await getSpecialTieInEpisode(input.actor, input.episodeId);
+  const data = current.specialData as SpecialEpisodeData | null;
+  if (!data?.output || data.outputVersion !== input.outputVersion) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "ข้อมูลตอนพิเศษเปลี่ยนไปแล้ว กรุณาโหลดใหม่ก่อนบันทึก",
+    });
+  }
+  const storySummaries = new Map(
+    (data.output.storySummaries ?? []).map(item => [
+      item.shotNumber,
+      item.summary,
+    ])
+  );
+  storySummaries.set(input.shotNumber, summary);
+  const nextOutputVersion = data.outputVersion + 1;
+  const nextData: SpecialEpisodeData = {
+    ...data,
+    outputVersion: nextOutputVersion,
+    output: {
+      ...data.output,
+      storySummaries: Array.from(storySummaries, ([shotNumber, value]) => ({
+        shotNumber,
+        summary: value,
+      })).sort((left, right) => left.shotNumber - right.shotNumber),
+    },
+  };
+  const startFramePlan =
+    current.startFramePlan && typeof current.startFramePlan === "object"
+      ? (current.startFramePlan as {
+          frames?: unknown[];
+          [key: string]: unknown;
+        })
+      : null;
+  const frames = (startFramePlan?.frames ?? []).map(value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const frame = value as Record<string, unknown>;
+    return Number(frame.shotNumber) === input.shotNumber
+      ? { ...frame, canonicalShotSummary: summary }
+      : frame;
+  });
+  const [updated] = await db
+    .update(verticalDramaEpisodes)
+    .set({
+      specialData: nextData,
+      ...(startFramePlan
+        ? { startFramePlan: { ...startFramePlan, frames } }
+        : {}),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, input.episodeId),
+        eq(verticalDramaEpisodes.tenantId, input.actor.tenantId),
+        eq(verticalDramaEpisodes.userId, input.actor.userId),
+        sql`${verticalDramaEpisodes.specialData}->>'outputVersion' = ${String(input.outputVersion)}`
+      )
+    )
+    .returning({ id: verticalDramaEpisodes.id });
+  if (!updated) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "ข้อมูลตอนพิเศษเปลี่ยนไปแล้ว กรุณาโหลดใหม่ก่อนบันทึก",
+    });
+  }
+  return { outputVersion: nextOutputVersion };
+}
+
 export async function retrySpecialTieInEpisode(input: {
   actor: SpecialEpisodeActor;
   episodeId: number;
