@@ -1094,6 +1094,24 @@ describe("Enhanced current-frame speaker candidates", () => {
     });
     expect(candidates).toHaveLength(3);
   });
+  it("maps a dialogue variant to the selected parent identity in the frame", () => {
+    const candidates = selectEnhancedSpeakerIdentityCandidates({
+      roster: [
+        { id: 10, characterKey: "pimchanok", name: "พิมพ์ชนก" },
+        {
+          id: 11,
+          parentCharacterId: 10,
+          characterKey: "character-variant-2",
+          name: "พิมพ์ชนก",
+        },
+      ],
+      storyboardCharacterKeys: [],
+      frameCharacterKeys: ["pimchanok"],
+    });
+    expect(
+      resolveVerticalDramaSpeakerIdentity("character-variant-2", candidates)
+    ).toEqual({ status: "resolved", characterKey: "pimchanok" });
+  });
   it("keeps explicit screen callers in the candidate set", () => {
     const candidates = selectEnhancedSpeakerIdentityCandidates({
       roster, storyboardCharacterKeys: [],

@@ -279,7 +279,50 @@ function normalizeSpeakerIdentity(value: string): string {
 export type VerticalDramaSpeakerIdentityCandidate = {
   characterKey: string;
   name?: string | null;
+  /** Exact keys of related variants that resolve to this selected frame cast member. */
+  aliases?: readonly string[];
 };
+
+export type VerticalDramaSpeakerIdentityRosterEntry = {
+  characterKey: string;
+  name?: string | null;
+  characterId: string | number;
+  parentCharacterId?: string | number | null;
+};
+
+/** Build identities for the selected frame cast and attach only direct
+ * parent/variant aliases. Exact selected keys remain authoritative. */
+export function buildVerticalDramaSpeakerIdentityCandidates(args: {
+  selectedCharacterKeys: readonly string[];
+  roster: readonly VerticalDramaSpeakerIdentityRosterEntry[];
+}): VerticalDramaSpeakerIdentityCandidate[] {
+  const selected = new Set(
+    args.selectedCharacterKeys.map(key => normalizeSpeakerIdentity(key))
+  );
+  return args.roster
+    .filter(character =>
+      selected.has(normalizeSpeakerIdentity(character.characterKey))
+    )
+    .map(character => {
+      const aliases = args.roster
+        .filter(related =>
+          (related.parentCharacterId != null &&
+            String(related.parentCharacterId) === String(character.characterId)) ||
+          (character.parentCharacterId != null &&
+            String(character.parentCharacterId) === String(related.characterId))
+        )
+        .map(related => related.characterKey)
+        .filter(alias =>
+          normalizeSpeakerIdentity(alias) !==
+          normalizeSpeakerIdentity(character.characterKey)
+        );
+      return {
+        characterKey: character.characterKey,
+        name: character.name,
+        ...(aliases.length > 0 ? { aliases: [...new Set(aliases)] } : {}),
+      };
+    });
+}
 
 export type VerticalDramaSpeakerIdentityResolution =
   | { status: "resolved"; characterKey: string }
@@ -300,6 +343,16 @@ export function resolveVerticalDramaSpeakerIdentity(
   );
   if (exactKey) {
     return { status: "resolved", characterKey: exactKey.characterKey };
+  }
+  const aliasMatches = candidates.filter(candidate =>
+    candidate.aliases?.some(
+      alias => normalizeSpeakerIdentity(alias) === normalized
+    )
+  );
+  if (aliasMatches.length > 0) {
+    return aliasMatches.length === 1
+      ? { status: "resolved", characterKey: aliasMatches[0].characterKey }
+      : { status: "ambiguous" };
   }
   const nameMatches = candidates.filter(
     candidate =>

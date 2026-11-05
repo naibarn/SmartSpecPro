@@ -556,6 +556,7 @@ import type {
   VdMotionProfile,
 } from "@shared/verticalDramaSeries";
 import {
+  buildVerticalDramaSpeakerIdentityCandidates,
   resolveVerticalDramaSpeakerIdentity,
   type VerticalDramaSpeakerIdentityCandidate,
 } from "@shared/verticalDramaSeries/castPositionLock";
@@ -6237,40 +6238,56 @@ async function resolveShotCharacterIdentitySources(
     sharesFaceWithCharacterId: number | null;
     parentCharacterId: number | null;
   }>;
+  const speakerCandidates = buildVerticalDramaSpeakerIdentityCandidates({
+    selectedCharacterKeys: [...requestedKeys],
+    roster: rows.map(row => ({
+      characterKey: row.characterKey,
+      name: row.name,
+      characterId: row.id,
+      parentCharacterId: row.parentCharacterId,
+    })),
+  });
+  const speakerAliasesByKey = new Map(
+    speakerCandidates.map(candidate => [candidate.characterKey, candidate.aliases])
+  );
   const byId = new Map(rows.map(row => [row.id, row]));
   return rows
     .filter(row => requestedKeys.has(row.characterKey))
-    .map((row: (typeof rows)[number]) => ({
-      characterKey: row.characterKey,
-      name: row.name,
-      role: row.role,
-      description:
-        typeof (row.data as Record<string, unknown> | null)?.description ===
-        "string"
-          ? ((row.data as Record<string, unknown>).description as string)
-          : undefined,
-      twinIdentityLock: (() => {
-        const pair = resolveTwinPair(
-          row.parentCharacterId != null
-            ? (byId.get(row.parentCharacterId) ?? row)
-            : row,
-          rows
-        );
-        if (!pair) return undefined;
-        const baseId = row.parentCharacterId ?? row.id;
-        const twin = byId.get(
-          pair.sourceId === baseId ? pair.targetId : pair.sourceId
-        );
-        const source = byId.get(pair.sourceId) ?? row;
-        const sourceDna = readCharacterIdentityDna(source.data);
-        const sharedFace = sourceDna
-          ? TWIN_SHARED_FACE_FIELDS.map(
-              field => sourceDna.faceIdentity[field]
-            ).join("; ")
-          : "the canonical face geometry from the linked source";
-        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; use this character's attached image as the source of truth for visible appearance and apparent age; face facts ${sharedFace}; clothing, hair, and life stage may differ`;
-      })(),
-    }));
+    .map((row: (typeof rows)[number]) => {
+      const speakerAliases = speakerAliasesByKey.get(row.characterKey) ?? [];
+      return {
+        characterKey: row.characterKey,
+        name: row.name,
+        ...(speakerAliases.length > 0 ? { speakerAliases } : {}),
+        role: row.role,
+        description:
+          typeof (row.data as Record<string, unknown> | null)?.description ===
+          "string"
+            ? ((row.data as Record<string, unknown>).description as string)
+            : undefined,
+        twinIdentityLock: (() => {
+          const pair = resolveTwinPair(
+            row.parentCharacterId != null
+              ? (byId.get(row.parentCharacterId) ?? row)
+              : row,
+            rows
+          );
+          if (!pair) return undefined;
+          const baseId = row.parentCharacterId ?? row.id;
+          const twin = byId.get(
+            pair.sourceId === baseId ? pair.targetId : pair.sourceId
+          );
+          const source = byId.get(pair.sourceId) ?? row;
+          const sourceDna = readCharacterIdentityDna(source.data);
+          const sharedFace = sourceDna
+            ? TWIN_SHARED_FACE_FIELDS.map(
+                field => sourceDna.faceIdentity[field]
+              ).join("; ")
+            : "the canonical face geometry from the linked source";
+          return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; use this character's attached image as the source of truth for visible appearance and apparent age; face facts ${sharedFace}; clothing, hair, and life stage may differ`;
+        })(),
+      };
+    });
 }
 
 /** Resolve selected identity rows and unselected display names with one
@@ -28534,6 +28551,7 @@ export const verticalDramaEpisodesRouter = router({
           ...shotVideoCharacterIdentitySources.map(source => ({
             characterKey: source.characterKey,
             name: source.name,
+            aliases: source.speakerAliases,
           })),
           ...storyboardCharacterKeys
             .filter(

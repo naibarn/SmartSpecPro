@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildVerticalDramaSpeakerIdentityCandidates,
   addVerticalDramaVariantCharacterDescriptionAliases,
   buildVerticalDramaVerifiedCastPositions,
   canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
@@ -242,6 +243,33 @@ describe("Vertical Drama cast position lock", () => {
       resolveVerticalDramaSpeakerIdentity("ไม่อยู่ในช็อต", candidates)
     ).toEqual({
       status: "missing",
+    });
+  });
+
+  it("resolves variant dialogue keys to the selected frame identity", () => {
+    const [base] = buildVerticalDramaSpeakerIdentityCandidates({
+      selectedCharacterKeys: ["pimchanok"],
+      roster: [
+        { characterKey: "pimchanok", name: "พิมพ์ชนก", characterId: 10 },
+        {
+          characterKey: "character-variant-2",
+          name: "พิมพ์ชนก",
+          characterId: 11,
+          parentCharacterId: 10,
+        },
+      ],
+    });
+    expect(
+      resolveVerticalDramaSpeakerIdentity("character-variant-2", [base])
+    ).toEqual({ status: "resolved", characterKey: "pimchanok" });
+    expect(
+      resolveVerticalDramaSpeakerIdentity("character-variant-2", [
+        base,
+        { characterKey: "character-variant-2", name: "พิมพ์ชนก" },
+      ])
+    ).toEqual({
+      status: "resolved",
+      characterKey: "character-variant-2",
     });
   });
 

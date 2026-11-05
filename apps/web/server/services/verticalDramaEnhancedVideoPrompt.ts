@@ -1,4 +1,8 @@
-import { resolveVerticalDramaSpeakerIdentity, type VerticalDramaSpeakerIdentityCandidate } from "@shared/verticalDramaSeries/castPositionLock";
+import {
+  buildVerticalDramaSpeakerIdentityCandidates,
+  resolveVerticalDramaSpeakerIdentity,
+  type VerticalDramaSpeakerIdentityCandidate,
+} from "@shared/verticalDramaSeries/castPositionLock";
 import {
   buildEnhancedOnlyVideoPromptVariantStore,
   buildVideoPromptVariantStore,
@@ -21,16 +25,27 @@ import { prepareEnhancedBridgeRuntime } from "./verticalDramaEnhancedBridgeRunti
 
 /** Frame selections replace storyboard identities that can still point at a base look. */
 export function selectEnhancedSpeakerIdentityCandidates(input: {
-  roster: readonly VerticalDramaSpeakerIdentityCandidate[];
+  roster: readonly (VerticalDramaSpeakerIdentityCandidate & {
+    id?: number | string;
+    parentCharacterId?: number | string | null;
+  })[];
   storyboardCharacterKeys: readonly string[];
   frameCharacterKeys?: readonly string[];
   screenCallerCharacterKeys?: readonly string[];
 }): VerticalDramaSpeakerIdentityCandidate[] {
-  const keys = new Set([
+  const selectedCharacterKeys = [
     ...(input.frameCharacterKeys ?? input.storyboardCharacterKeys),
     ...(input.screenCallerCharacterKeys ?? []),
-  ].map(key => key.trim().toLowerCase()));
-  return input.roster.filter(candidate => keys.has(candidate.characterKey.trim().toLowerCase()));
+  ];
+  return buildVerticalDramaSpeakerIdentityCandidates({
+    selectedCharacterKeys,
+    roster: input.roster.map(candidate => ({
+        characterKey: candidate.characterKey,
+        name: candidate.name,
+        characterId: candidate.id ?? candidate.characterKey,
+        parentCharacterId: candidate.parentCharacterId,
+      })),
+  });
 }
 
 /** Remap canonical script keys only through explicit persisted look assignments. */

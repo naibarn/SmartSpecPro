@@ -41,6 +41,8 @@ export interface VerticalDramaCharacterDescriptorSource {
   description?: string | null;
   /** Provider-bound, deterministic identity lock for linked twins. */
   twinIdentityLock?: string | null;
+  /** Dialogue keys of related looks/variants that refer to this selected cast member. */
+  speakerAliases?: readonly string[];
 }
 
 /** Compact "key = descriptor" line for one character — e.g.
