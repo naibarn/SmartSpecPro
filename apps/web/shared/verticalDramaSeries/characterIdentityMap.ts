@@ -102,8 +102,10 @@ export function buildCharacterIdentityMapBlock(
   return [
     "CHARACTER IDENTITY MAP (MANDATORY — read before writing any character description):",
     ...lines,
-    "Every required character listed above MUST be depicted true to this identity — " +
-      "including species and approximate age. NEVER render a non-human character " +
+    "Every required character listed above MUST be depicted true to this identity. " +
+      "When an attached character image is available, use it as the visual source " +
+      "of truth for appearance and apparent age; do not reject or override it " +
+      "because stored age details differ. Preserve species and identity. NEVER render a non-human character " +
       "(animal, mascot, spirit, etc.) as a generic human figure, and never omit a " +
       "required character from the image just because their identity is unusual.",
   ].join("\n");

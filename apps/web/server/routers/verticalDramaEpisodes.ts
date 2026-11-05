@@ -5224,9 +5224,6 @@ async function resolveRequiredShotCharacterAttachmentManifest(
     | "name"
     | "characterKey"
     | "parentCharacterId"
-    | "variantType"
-    | "sharesFaceWithCharacterId"
-    | "data"
   >;
   let rows = (await db
     .select({
@@ -5234,10 +5231,6 @@ async function resolveRequiredShotCharacterAttachmentManifest(
       name: verticalDramaCharacters.name,
       characterKey: verticalDramaCharacters.characterKey,
       parentCharacterId: verticalDramaCharacters.parentCharacterId,
-      variantType: verticalDramaCharacters.variantType,
-      sharesFaceWithCharacterId:
-        verticalDramaCharacters.sharesFaceWithCharacterId,
-      data: verticalDramaCharacters.data,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -5263,10 +5256,6 @@ async function resolveRequiredShotCharacterAttachmentManifest(
         name: verticalDramaCharacters.name,
         characterKey: verticalDramaCharacters.characterKey,
         parentCharacterId: verticalDramaCharacters.parentCharacterId,
-        variantType: verticalDramaCharacters.variantType,
-        sharesFaceWithCharacterId:
-          verticalDramaCharacters.sharesFaceWithCharacterId,
-        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -5373,83 +5362,9 @@ async function resolveRequiredShotCharacterAttachmentManifest(
     });
   }
 
-  // Looks belonging to a linked twin must not silently turn one sibling into
-  // an infant/teen while the other remains the canonical age (even if a legacy
-  // row was mislabeled as an outfit variant).
-  // Reject this before credit reservation/provider submission; the user can
-  // select the base twin or a same-age outfit look instead.
-  if (rows.some(row => row.parentCharacterId != null)) {
-    const allRows = (await db
-      .select({
-        id: verticalDramaCharacters.id,
-        data: verticalDramaCharacters.data,
-        parentCharacterId: verticalDramaCharacters.parentCharacterId,
-        sharesFaceWithCharacterId:
-          verticalDramaCharacters.sharesFaceWithCharacterId,
-      })
-      .from(verticalDramaCharacters)
-      .where(
-        and(
-          eq(verticalDramaCharacters.tenantId, tenantId),
-          eq(verticalDramaCharacters.userId, userId),
-          eq(verticalDramaCharacters.seriesId, seriesId)
-        )
-      )) as Array<{
-      id: number;
-      data: unknown;
-      parentCharacterId: number | null;
-      sharesFaceWithCharacterId: number | null;
-    }>;
-    const byId = new Map(allRows.map(row => [row.id, row]));
-    const ageOf = (data: unknown): string | undefined => {
-      const visualBible = (data as Record<string, unknown> | null)
-        ?.visualBible as Record<string, unknown> | undefined;
-      return typeof visualBible?.ageRange === "string" &&
-        visualBible.ageRange.trim()
-        ? visualBible.ageRange.trim().toLowerCase()
-        : undefined;
-    };
-    const clearlyIncompatibleAge = (left: string, right: string): boolean => {
-      const infant = (value: string) =>
-        /infant|newborn|baby|ทารก|เด็กอ่อน|เดือน\s*old|\bเดือน\b/i.test(value);
-      if (infant(left) !== infant(right)) return true;
-      const years = (value: string) => {
-        const match = value.match(/(\d{1,2})\s*(?:years?|ปี)/i);
-        return match ? Number(match[1]) : undefined;
-      };
-      const leftYears = years(left);
-      const rightYears = years(right);
-      return (
-        leftYears != null &&
-        rightYears != null &&
-        Math.abs(leftYears - rightYears) > 1
-      );
-    };
-    for (const row of rows) {
-      if (row.parentCharacterId == null) continue;
-      const parent = byId.get(row.parentCharacterId);
-      if (!parent) continue;
-      const twinId =
-        parent.sharesFaceWithCharacterId ??
-        allRows.find(
-          candidate => candidate.sharesFaceWithCharacterId === parent.id
-        )?.id;
-      const twin = twinId != null ? byId.get(twinId) : undefined;
-      const variantAge = ageOf(row.data);
-      const twinAge = ageOf(twin?.data);
-      if (
-        twin &&
-        variantAge &&
-        twinAge &&
-        clearlyIncompatibleAge(variantAge, twinAge)
-      ) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ลุคช่วงอายุของ ${row.name ?? row.characterKey} ไม่ตรงกับอายุแฝด (${twinAge}) — เลือกตัวละครฐานหรือลุคชุดที่อายุเดียวกัน`,
-        });
-      }
-    }
-  }
+  // The selected portrait is the visual source of truth. Stored age ranges
+  // may describe a different life-stage variant or be stale; they must not
+  // block a render when the selected character already has an approved image.
   const screenCallerNames = presence.screenCallerCharacterRefs
     .map(key => rowByKey.get(key)?.name || key)
     .filter(Boolean);
@@ -6347,13 +6262,12 @@ async function resolveShotCharacterIdentitySources(
         );
         const source = byId.get(pair.sourceId) ?? row;
         const sourceDna = readCharacterIdentityDna(source.data);
-        const ageRange = sourceDna?.ageRange ?? "same apparent age range";
         const sharedFace = sourceDna
           ? TWIN_SHARED_FACE_FIELDS.map(
               field => sourceDna.faceIdentity[field]
             ).join("; ")
           : "the canonical face geometry from the linked source";
-        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
+        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; use this character's attached image as the source of truth for visible appearance and apparent age; face facts ${sharedFace}; clothing, hair, and life stage may differ`;
       })(),
     }));
 }
@@ -6439,13 +6353,12 @@ async function resolveShotCharacterPromptRoster(
         );
         const source = byId.get(pair.sourceId) ?? row;
         const sourceDna = readCharacterIdentityDna(source.data);
-        const ageRange = sourceDna?.ageRange ?? "same apparent age range";
         const sharedFace = sourceDna
           ? TWIN_SHARED_FACE_FIELDS.map(
               field => sourceDna.faceIdentity[field]
             ).join("; ")
           : "the canonical face geometry from the linked source";
-        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
+        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; use this character's attached image as the source of truth for visible appearance and apparent age; face facts ${sharedFace}; clothing, hair, and life stage may differ`;
       })(),
     })),
     excludedVisualCharacterNames: Array.from(
