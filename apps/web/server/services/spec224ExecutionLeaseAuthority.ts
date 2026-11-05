@@ -45,7 +45,10 @@ export function resolveSpec224AuthorityRepository(input: {
       throw new Error("SPEC224_WORKSPACE_AUTHORITY_MAPPING_INVALID");
     }
   }
-  const runnerMapping = mapping[input.runnerId];
+  // Workspace identity is stable across Runner re-registration. Prefer an
+  // exact Runner binding, then a workspace-scoped binding shared by any
+  // authenticated Runner that is currently authorized for this workspace.
+  const runnerMapping = mapping[input.runnerId] ?? mapping["*"];
   if (runnerMapping !== undefined) {
     if (!runnerMapping || typeof runnerMapping !== "object" || Array.isArray(runnerMapping)) {
       throw new Error("SPEC224_WORKSPACE_AUTHORITY_MAPPING_INVALID");

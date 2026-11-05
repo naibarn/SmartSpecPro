@@ -24,6 +24,24 @@ describe("SPEC-224 workspace authority routing", () => {
     })).toBe(coreRepository);
   });
 
+  it("routes a re-registered Runner by the stable authorized workspace identity", () => {
+    expect(resolveSpec224AuthorityRepository({
+      runnerId: "runner-core-re-registered",
+      workspaceId,
+      defaultRepository: legacyRepository,
+      mappingJson: JSON.stringify({ "*": { [workspaceId]: coreRepository } }),
+    })).toBe(coreRepository);
+  });
+
+  it("does not send an unknown workspace through the workspace-scoped fallback", () => {
+    expect(() => resolveSpec224AuthorityRepository({
+      runnerId: "runner-core-re-registered",
+      workspaceId: "another-workspace",
+      defaultRepository: legacyRepository,
+      mappingJson: JSON.stringify({ "*": { [workspaceId]: coreRepository } }),
+    })).toThrow("SPEC224_WORKSPACE_AUTHORITY_WORKSPACE_UNMAPPED");
+  });
+
   it("fails closed when a mapped Runner reports another workspace", () => {
     expect(() => resolveSpec224AuthorityRepository({
       runnerId,
