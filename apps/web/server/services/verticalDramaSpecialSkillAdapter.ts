@@ -68,6 +68,28 @@ function mapCanonicalProductHandlingToTieInStage(
   }
 }
 
+function normalizeSpecialTieInStage(shot: Record<string, unknown>): SpecialTieInStage {
+  const stage = typeof shot.tie_in_stage === "string"
+    ? shot.tie_in_stage.trim().toLowerCase().replace(/[_-]+/g, " ")
+    : "";
+  if (SPECIAL_TIE_IN_STAGES.includes(stage.replace(/ /g, "_") as SpecialTieInStage)) {
+    return stage.replace(/ /g, "_") as SpecialTieInStage;
+  }
+  if (/result|outcome|finish|complete|ready to leave|visible result/.test(stage)) return "result";
+  if (/hero|pack|move out|exit|closing|close/.test(stage)) return "hero";
+  if (/retry|again|try again/.test(stage)) return "retry";
+  if (/demonstrat|demo|show|compare|check|inspect|choice|decision/.test(stage)) {
+    return "demonstration";
+  }
+  if (/hands on|use|apply|press|button|play|assemble|wear|change|try/.test(stage)) {
+    return "hands_on_use";
+  }
+  if (/prepar|open|unbox|reveal|select|setup/.test(stage)) return "preparation";
+  if (/introduc|enter|walk|browse/.test(stage)) return "introduction";
+  if (/context|trigger|situation|opening/.test(stage)) return "context_setup";
+  return mapCanonicalProductHandlingToTieInStage(shot.product_handling);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -503,6 +525,7 @@ export function buildSpecialTieInDialogueAudioPlan(input: {
 export function normalizeSpecialSkillOutput(value: unknown): unknown {
   if (!isRecord(value) || !Array.isArray(value.shots)) return value;
   const shots = value.shots.filter(isRecord);
+  if (shots.length !== value.shots.length) return value;
   const first = shots[0];
   if (
     shots.length === value.shots.length &&
@@ -557,11 +580,7 @@ export function normalizeSpecialSkillOutput(value: unknown): unknown {
             : typeof shot.continuity_out === "string"
               ? shot.continuity_out
               : "สถานะการกระทำต่อเนื่องของช็อตนี้",
-        tie_in_stage: SPECIAL_TIE_IN_STAGES.includes(
-          shot.tie_in_stage as SpecialTieInStage
-        )
-          ? (shot.tie_in_stage as SpecialTieInStage)
-          : mapCanonicalProductHandlingToTieInStage(shot.product_handling),
+        tie_in_stage: normalizeSpecialTieInStage(shot),
         tie_in_action:
           typeof shot.tie_in_action === "string"
             ? shot.tie_in_action
@@ -585,7 +604,13 @@ export function normalizeSpecialSkillOutput(value: unknown): unknown {
       })),
     };
   }
-  return value;
+  return {
+    ...value,
+    shots: shots.map(shot => ({
+      ...shot,
+      tie_in_stage: normalizeSpecialTieInStage(shot),
+    })),
+  };
 }
 
 function deriveSpecialStorySummary(
@@ -678,10 +703,9 @@ export function clearSpecialPromptDrafts(
 
 function buildFallbackDialogueTurns(
   input: SpecialSkillInput,
-  speakerReferenceIds: string[]
-): Array<{ speaker_reference_id: string; exact_dialogue: string }> {
-  const lines = extractSpecialDialogueLines(input);
-  const sourceLines = lines.length > 0 ? lines : ["เราค่อย ๆ ทำไปทีละขั้นกันนะ"];
+  speakerReferenceIds: string[],
+  bindings: SpecialEpisodeData["referenceBindings"] = []
+): Array<{ speaker_reference_id: string; exact_dialogue: string }>[] {
   if (speakerReferenceIds.length === 0) {
     throw new Error(
       "SPECIAL_FALLBACK_PRECONDITION: character dialogue has no resolved selected speaker"
@@ -694,25 +718,44 @@ function buildFallbackDialogueTurns(
     "เราอยู่ตรงนี้และทำต่อไปด้วยกัน",
     "จบช่วงนี้ด้วยการเก็บของให้เรียบร้อยนะ",
   ];
-  // Two short turns are the minimum conversational unit for a ten-second
-  // special shot. Keep the reviewed lines verbatim and add only safe,
-  // connective lines so every one of the nine shots remains speakable.
-  return Array.from({ length: 9 }, (_, shotIndex) => {
-    const firstLine = sourceLines[shotIndex % sourceLines.length]!;
-    const secondLine = connectiveLines[shotIndex % connectiveLines.length]!;
-    return [
-      {
+  const speakerByCharacterId = new Map(
+    bindings
+      .filter(binding => binding.role === "person")
+      .map(binding => [String(binding.provenance.characterId ?? ""), binding.skillReferenceId])
+  );
+  const structured = input.shotDialogues?.length === 9
+    ? input.shotDialogues.map(shot =>
+        shot.dialogueLines.map((line, lineIndex) => ({
+          speaker_reference_id:
+            speakerByCharacterId.get(line.speakerCharacterId) ??
+            speakerReferenceIds[(shot.shotNumber + lineIndex - 1) % speakerReferenceIds.length]!,
+          exact_dialogue: line.line,
+        }))
+      )
+    : undefined;
+  const lines = extractSpecialDialogueLines(input);
+  const sourceLines = lines.length > 0 ? lines : ["เราค่อย ๆ ทำไปทีละขั้นกันนะ"];
+  const grouped = structured ?? Array.from({ length: 9 }, (_, shotIndex) => {
+    const assigned = lines.length > 9
+      ? sourceLines.slice(shotIndex * 3, shotIndex * 3 + 3)
+      : [sourceLines[shotIndex % sourceLines.length]!];
+    return assigned.map((line, lineIndex) => ({
+      speaker_reference_id:
+        speakerReferenceIds[(shotIndex + lineIndex) % speakerReferenceIds.length]!,
+      exact_dialogue: line,
+    }));
+  });
+  return grouped.map((turns, shotIndex) => {
+    const padded = [...turns];
+    while (padded.length < 2) {
+      padded.push({
         speaker_reference_id:
-          speakerReferenceIds[shotIndex % speakerReferenceIds.length]!,
-        exact_dialogue: firstLine,
-      },
-      {
-        speaker_reference_id:
-          speakerReferenceIds[(shotIndex + 1) % speakerReferenceIds.length]!,
-        exact_dialogue: secondLine,
-      },
-    ];
-  }).flat();
+          speakerReferenceIds[(shotIndex + padded.length) % speakerReferenceIds.length]!,
+        exact_dialogue: connectiveLines[(shotIndex + padded.length) % connectiveLines.length]!,
+      });
+    }
+    return padded.slice(0, 3);
+  });
 }
 
 /**
@@ -747,17 +790,6 @@ export function buildDeterministicSpecialTieInFallback(input: {
   const placeRefs = bindings
     .filter(binding => binding.role === "location" || binding.role === "store")
     .map(binding => binding.skillReferenceId);
-  const tieInRefs = [
-    ...(specialInput.referenceType === "location" ||
-    specialInput.referenceType === "store"
-      ? placeRefs
-      : []),
-    ...(specialInput.referenceType === "product" ? productRefs : []),
-    ...(specialInput.referenceType === "mixed"
-      ? [...productRefs, ...placeRefs]
-      : []),
-  ];
-  const referenceIds = [...new Set([...selectedPersonRefs, ...tieInRefs])];
   const requiresProduct =
     productRefs.length > 0 &&
     (specialInput.referenceType === "product" ||
@@ -797,7 +829,7 @@ export function buildDeterministicSpecialTieInFallback(input: {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  const productActions = productEvidence.match(/ของเล่น|ปราสาท|เด็ก|เล่น/)
+  const productFocusedActions = productEvidence.match(/ของเล่น|ปราสาท|เด็ก|เล่น/)
     ? [
         "ผู้ใหญ่จัดพื้นที่เล่นและนำของเล่นที่เลือกออกจากถุง วางให้เห็นชัดในฉากเดิม",
         "ผู้ใหญ่ตรวจดูฐานและชิ้นส่วนของเล่นที่เลือก แล้วเลื่อนออกจากขอบโต๊ะอย่างปลอดภัย",
@@ -806,12 +838,12 @@ export function buildDeterministicSpecialTieInFallback(input: {
         "เด็กเล่นของเล่นที่เลือกต่อเนื่อง หมุนหรือประกอบชิ้นส่วนด้วยมือในฉากจริง",
         "เด็กลองเล่นซ้ำและสำรวจสีหรือพื้นผิวของของเล่น โดยผู้ใหญ่ไม่แย่งการควบคุม",
         "ผู้ใหญ่ปรับตำแหน่งของเล่นที่เลือกเล็กน้อย แล้วให้เด็กลองทำกิจกรรมต่อเอง",
-        "เด็กวางชิ้นส่วนของเล่นได้และหันมาสบตาผู้ใหญ่ เห็นผลลัพธ์ที่สังเกตได้ในฉาก",
+        "เด็กเล่นของเล่นต่อและหันมาสบตาผู้ใหญ่ เห็นผลลัพธ์ที่สังเกตได้ในฉาก",
         "ของเล่นที่เลือกอยู่ข้างเด็กขณะเด็กเล่นต่อ ผู้ใหญ่ดูแลใกล้ ๆ และปิดช่วงเวลาร่วมกัน",
       ]
     : reviewedProductActions.length > 0
       ? Array.from({ length: 9 }, (_, index) =>
-          `ตัวละครดำเนินกิจกรรมกับสินค้าที่เลือกตามไอเดียที่ตรวจทานแล้ว: ${reviewedProductActions[index % reviewedProductActions.length]}`
+          `ตัวละครหยิบและใช้สินค้าที่เลือกตามกิจกรรมที่ตรวจทานแล้ว: ${reviewedProductActions[index % reviewedProductActions.length]}`
         )
       : [
         "ตัวละครจัดพื้นที่ในฉากเดิมและนำสินค้าที่เลือกเข้ามาใกล้จุดใช้งาน",
@@ -824,6 +856,16 @@ export function buildDeterministicSpecialTieInFallback(input: {
         "ตัวละครแสดงผลลัพธ์ที่สังเกตได้จากการใช้สินค้าในฉากจริง",
         "ตัวละครวางหรือใช้งานสินค้าในฉากเดิม พร้อมแสดงผลลัพธ์และปิดเรื่อง",
       ];
+  const productActionShots = new Set([2, 4, 7]);
+  const productActions = productFocusedActions.map((action, index) =>
+    productActionShots.has(index)
+      ? action
+      : index < 2
+        ? "ตัวละครเริ่มกิจกรรมและพูดคุยกันในฉากเดิม โดยยังไม่แสดงสินค้า"
+        : index < 7
+          ? "ตัวละครตอบสนองต่อเหตุการณ์และดำเนินเรื่องต่อในฉากเดิม โดยยังไม่แสดงสินค้า"
+          : "ตัวละครเก็บช่วงเวลาร่วมกันและปิดเรื่องในฉากเดิม โดยไม่เพิ่มการใช้สินค้า"
+  );
   const actions = requiresProduct
     ? productActions
     : [
@@ -837,14 +879,11 @@ export function buildDeterministicSpecialTieInFallback(input: {
         "ตัวละครแสดงผลลัพธ์หรือประสบการณ์ที่สังเกตได้จากสถานที่ที่เลือก",
         "ตัวละครปิดเรื่องในสถานที่เดิมพร้อมแสดงประสบการณ์ที่ได้รับ",
       ];
-  const dialogueTurns =
+  const turnsByShot =
     specialInput.dialogueMode === "character_dialogue"
-      ? buildFallbackDialogueTurns(specialInput, selectedSpeakerRefs)
-      : [];
-  const turnsByShot = Array.from({ length: 9 }, () => [] as typeof dialogueTurns);
-  dialogueTurns.forEach((turn, index) => {
-    turnsByShot[Math.floor(index / 2)]!.push(turn);
-  });
+      ? buildFallbackDialogueTurns(specialInput, selectedSpeakerRefs, bindings)
+      : Array.from({ length: 9 }, () => [] as { speaker_reference_id: string; exact_dialogue: string }[]);
+  const dialogueTurns = turnsByShot.flat();
   const shots = Array.from({ length: 9 }, (_, index) => {
     const action = actions[index]!;
     const anchor = `สถานะต่อเนื่องช็อต ${index + 1}: ${action}`;
@@ -852,15 +891,10 @@ export function buildDeterministicSpecialTieInFallback(input: {
       index === 0
         ? `เริ่มจากไอเดียที่ตรวจทานแล้ว: ${specialInput.idea}`
         : `ต่อจาก สถานะต่อเนื่องช็อต ${index}: ${actions[index - 1]}`;
-    const shared = [
-      `Standalone special tie-in shot ${index + 1}/9, ${specialInput.durationSeconds} seconds, 9:16.`,
-      `Reviewed idea: ${specialInput.idea}`,
-      `Selected references only: ${referenceIds.join(", ") || "none"}.`,
-      "Keep the original scene and environment as the scene; references are additive props and must never replace the scene.",
-      `Visible action: ${action}`,
-      `Continuity in: ${continuityIn}`,
-      `Continuity out: ${anchor}`,
-      "Do not add people, voices, products, claims, or locations outside the reviewed input.",
+    const shotReferenceIds = [
+      ...selectedPersonRefs,
+      ...(requiresProduct && productActionShots.has(index) ? productRefs : []),
+      ...((specialInput.referenceType === "location" || specialInput.referenceType === "store" || specialInput.referenceType === "mixed") ? placeRefs : []),
     ];
     return {
       shot_number: index + 1,
@@ -875,7 +909,7 @@ export function buildDeterministicSpecialTieInFallback(input: {
       // special planning pass intentionally defers.
       image_prompt: "",
       video_prompt: "",
-      reference_ids: referenceIds,
+      reference_ids: [...new Set(shotReferenceIds)],
       dialogue_mode: specialInput.dialogueMode,
       continuity_in: continuityIn,
       continuity_out: anchor,
@@ -943,32 +977,26 @@ export function repairSpecialTieInOutput(
     .map(binding => binding.skillReferenceId);
   const requiredRefs = [
     ...selectedPersonRefs,
-    ...(input.referenceType === "product" || input.referenceType === "mixed" ? productRefs : []),
     ...(input.referenceType === "location" || input.referenceType === "store" || input.referenceType === "mixed" ? placeRefs : []),
   ];
   const knownRefs = new Set(bindings.map(binding => binding.skillReferenceId));
   const requiresProduct = productRefs.length > 0 && (input.referenceType === "product" || input.referenceType === "mixed");
   const requiresPlace = placeRefs.length > 0 && (input.referenceType === "location" || input.referenceType === "store" || input.referenceType === "mixed");
-  const requiredStages = requiresProduct
-    ? (["context_setup", "introduction", "preparation", "demonstration", "hands_on_use", "hands_on_use", "retry", "result", "hero"] as const)
-    : (["context_setup", "introduction", "preparation", "hands_on_use", "hands_on_use", "hands_on_use", "retry", "result", "hero"] as const);
+  const requiredStages = ["context_setup", "introduction", "preparation", "hands_on_use", "hands_on_use", "hands_on_use", "retry", "result", "hero"] as const;
   const currentStages = new Set(output.shots.map(shot => shot.tie_in_stage));
   const needsStageRepair =
-    (requiresProduct && ["preparation", "demonstration", "hands_on_use", "result"].some(stage => !currentStages.has(stage as SpecialTieInStage))) ||
-    (requiresPlace && ["introduction", "hands_on_use", "result"].some(stage => !currentStages.has(stage as SpecialTieInStage)));
-  const dialogueFallback =
+    requiresPlace && ["introduction", "hands_on_use", "result"].some(stage => !currentStages.has(stage as SpecialTieInStage));
+  const dialogueFallbackByShot =
     input.dialogueMode === "character_dialogue"
       ? buildFallbackDialogueTurns(
           input,
           bindings
             .filter(binding => binding.role === "person")
             .filter(binding => input.speakerCharacterIds.includes(String(binding.provenance.characterId ?? "")))
-            .map(binding => binding.skillReferenceId)
+            .map(binding => binding.skillReferenceId),
+          bindings
         )
-      : [];
-  const dialogueFallbackByShot = Array.from({ length: 9 }, (_, shotIndex) =>
-    dialogueFallback.slice(shotIndex * 2, shotIndex * 2 + 2)
-  );
+      : Array.from({ length: 9 }, () => [] as { speaker_reference_id: string; exact_dialogue: string }[]);
   const allowedSpeakerRefs = new Set(
     bindings
       .filter(binding => binding.role === "person")
@@ -995,12 +1023,10 @@ export function repairSpecialTieInOutput(
     const speakingTurns =
       input.dialogueMode === "character_dialogue"
         ? [
-            ...normalizedTurns,
             ...dialogueFallbackByShot[index]!,
+            ...normalizedTurns,
           ]
-            // Preserve the model's lines first, then fill the minimum two
-            // turns from the deterministic reviewed-input fallback. This
-            // keeps good model dialogue while repairing underfilled shots.
+            // Put reviewed lines first so the repair cap cannot discard them.
             .filter(
               (turn, turnIndex, all) =>
                 all.findIndex(
@@ -1011,7 +1037,7 @@ export function repairSpecialTieInOutput(
                       turn.exact_dialogue.trim()
                 ) === turnIndex
             )
-            .slice(0, 2)
+            .slice(0, 3)
         : [];
     return {
       ...shot,
@@ -1023,9 +1049,28 @@ export function repairSpecialTieInOutput(
       dialogue_mode: input.dialogueMode,
     };
   });
+  let repairedWithProduct = repairedShots;
+  if (requiresProduct) {
+    const productShotIndexes = repairedShots.flatMap((shot, index) =>
+      shot.reference_ids.some(referenceId => productRefs.includes(referenceId)) ? [index] : []
+    );
+    const observableProductShot = productShotIndexes.find(index =>
+      ACTIVE_TIE_IN_ACTION_PATTERN.test(repairedShots[index]!.tie_in_action)
+    );
+    if (observableProductShot === undefined) {
+      const targetIndex = productShotIndexes[0] ?? 0;
+      repairedWithProduct = repairedShots.map((shot, index) => index === targetIndex
+        ? {
+            ...shot,
+            reference_ids: [...new Set([...shot.reference_ids, productRefs[0]!])],
+            tie_in_action: "ตัวละครหยิบและถือสินค้าที่เลือกให้เห็นชัดในฉากเดิม",
+          }
+        : shot);
+    }
+  }
   return {
     ...output,
-    shots: repairedShots,
+    shots: repairedWithProduct,
     dialogue:
       input.dialogueMode === "character_dialogue"
         ? {
@@ -1033,7 +1078,7 @@ export function repairSpecialTieInOutput(
             mode: "character_dialogue",
             speaker_reference_ids: [...allowedSpeakerRefs],
             speaker_count: allowedSpeakerRefs.size,
-            speaking_turns: repairedShots.flatMap(shot => shot.speaking_turns),
+            speaking_turns: repairedWithProduct.flatMap(shot => shot.speaking_turns),
           }
         : output.dialogue,
   };
@@ -1159,7 +1204,7 @@ export function buildSpecialPrompt(
     input.dialogueBrief
   );
   const prompt = {
-    systemPrompt: `${skillText.skill}\n\nVIDEO PROMPT RULES:\n${skillText.rules}\n\nINPUT SCHEMA:\n${skillText.inputSchema}\n\nGENERIC OUTPUT SCHEMA (REFERENCE ONLY; its image/video prompt fields are NOT part of this planning pass):\n${skillText.outputSchema}\n\nUI SCHEMA:\n${skillText.uiSchema}\n\nSPECIAL TIE-IN OVERRIDE: This is a standalone special tie-in episode, not a continuation of the parent series. Return exactly 9 sequential shots numbered 1 through 9. Ignore any generic max_shots=5 limit in the supplied idea-to-video schema; this adapter's exactly-9 contract is authoritative. Use ONLY the reviewed special-episode idea, dialogue, selected character references, and selected product/location references. Do not read, infer, copy, or continue the parent series bible, episode breakdown, normal script, cliffhanger, normal cast, or any unrelated character. The nine shots must form one continuous beginning-middle-end story: every shot must declare continuity_in and continuity_out, a concise concrete continuity_anchor, and each next shot's continuity_in must repeat the prior shot's continuity_anchor exactly. In character_dialogue mode, every one of the 9 shots must carry at least one speaking_turn so the dialogue remains continuous across the full episode.\n\nSTORY-FIRST PLANNING CONTRACT: Write one concise, concrete story_summary for each shot. story_summary is the authoritative per-shot story beat derived only from the reviewed idea and selected dialogue. It must describe the visible action, the selected characters, the reviewed scene, the tie-in action, and the handoff to the next shot. This initial planning pass creates the storyboard narrative and dialogue only. Do NOT author image_prompt or video_prompt now: omit both fields or return them as empty strings. The application will pass each stored story_summary, dialogue, selected characters, generated scene, and product references through the existing normal per-shot prompt/image/video flow only when the user requests that action. Never invent a separate story or copy the parent series into any later prompt.\n\nTie-in presentation is the story engine, not a passive product placement. Every shot must include tie_in_stage and a concrete, observable tie_in_action describing what hands, body, product, or environment visibly does; never write only \"product is present\", \"holds the product\", or \"product on table\". For a product, the nine-shot sequence must cover preparation/opening, demonstration, hands_on_use, and a visible result; use the real action appropriate to the product: shampoo = open/pump/pour onto hand, apply and lather hair, rinse, then show the result; cream = open/scoop/apply to face, then show the result; toy = child picks up/assembles/plays/retries; bed = character approaches/sits/lies down/uses it; store or location = enter, browse/inspect, interact with and use the space, then show the resulting experience. Do not invent a function or claim not supported by the reviewed input/evidence. For a store/location tie-in, make the selected place visibly drive the action rather than serving as a background.\n\nCharacter isolation is mandatory: allow_additional_characters is always false. Only selected person reference IDs may appear; do not invent background people, reflections, silhouettes, or unnamed speakers. Product references are additive props, never replacement scenes: keep the reviewed location and action as the scene, place the selected product naturally inside it, and never turn a product image into the background or full scene. For a product tie-in, include at least one selected product reference ID in every shot and make the product's use/benefit materially visible in the story.\n\nReturn JSON only matching the supplied special output contract. This planning pass owns story and dialogue wording only; prompt engineering is deferred to the existing normal per-shot flow. Put every spoken line in that shot's speaking_turns in delivery order. If exact_dialogue_lines is non-empty, preserve every line verbatim in shots[].speaking_turns[].exact_dialogue.\n\nHIGHEST PRIORITY: Do not spend this planning pass generating image or video prompts. Empty image_prompt and video_prompt values are correct and expected.`,
+    systemPrompt: `${skillText.skill}\n\nVIDEO PROMPT RULES:\n${skillText.rules}\n\nINPUT SCHEMA:\n${skillText.inputSchema}\n\nGENERIC OUTPUT SCHEMA (REFERENCE ONLY; its image/video prompt fields are NOT part of this planning pass):\n${skillText.outputSchema}\n\nUI SCHEMA:\n${skillText.uiSchema}\n\nSPECIAL TIE-IN OVERRIDE: This is a standalone special tie-in episode, not a continuation of the parent series. Return exactly 9 sequential shots numbered 1 through 9. Ignore any generic max_shots=5 limit in the supplied idea-to-video schema; this adapter's exactly-9 contract is authoritative. Use ONLY the reviewed special-episode idea, dialogue, selected character references, and selected product/location references. Do not read, infer, copy, or continue the parent series bible, episode breakdown, normal script, cliffhanger, normal cast, or any unrelated character. The nine shots must form one continuous beginning-middle-end story: every shot must declare continuity_in and continuity_out, a concise concrete continuity_anchor, and each next shot's continuity_in must repeat the prior shot's continuity_anchor exactly. In character_dialogue mode, every one of the 9 shots must carry at least one speaking_turn so the dialogue remains continuous across the full episode.\n\nSTORY-FIRST PLANNING CONTRACT: Write one concise, concrete story_summary for each shot. story_summary is the authoritative per-shot story beat derived only from the reviewed idea and selected dialogue. It must describe the visible action, selected characters, reviewed scene, and handoff to the next shot; include product details only when the product is part of that shot. This initial planning pass creates the storyboard narrative and dialogue only. Do NOT author image_prompt or video_prompt now: omit both fields or return them as empty strings. The application will pass each stored story_summary, dialogue, selected characters, generated scene, and product references through the existing normal per-shot prompt/image/video flow only when the user requests that action. Never invent a separate story or copy the parent series into any later prompt.\n\nTie-in presentation is the story engine, not a passive product placement. Every shot must include tie_in_stage and a concrete, observable tie_in_action describing what hands, body, product, or environment visibly does; never write only \"product is present\", \"holds the product\", or \"product on table\". For a product, include it only in the shots where it naturally supports the reviewed story; one or a few product-focused shots are sufficient. Show a concrete, observable product action in those shots, using the real action appropriate to the product: shampoo = open/pump/pour onto hand, apply and lather hair, rinse, then show the result; cream = open/scoop/apply to face, then show the result; toy = child picks up/assembles/plays/retries; bed = character approaches/sits/lies down/uses it; store or location = enter, browse/inspect, interact with and use the space, then show the resulting experience. Do not invent a function or claim not supported by the reviewed input/evidence. For a store/location tie-in, make the selected place visibly drive the action rather than serving as a background.\n\nCharacter isolation is mandatory: allow_additional_characters is always false. Only selected person reference IDs may appear; do not invent background people, reflections, silhouettes, or unnamed speakers. Product references are additive props, never replacement scenes: keep the reviewed location and action as the scene, place the selected product naturally inside it, and never turn a product image into the background or full scene. For a product tie-in, include a selected product reference ID only in relevant product-focused shots. Other shots may advance the story without showing the product.\n\nReturn JSON only matching the supplied special output contract. This planning pass owns story and dialogue wording only; prompt engineering is deferred to the existing normal per-shot flow. Put every spoken line in that shot's speaking_turns in delivery order. If exact_dialogue_lines is non-empty, preserve every line verbatim in shots[].speaking_turns[].exact_dialogue.\n\nHIGHEST PRIORITY: Do not spend this planning pass generating image or video prompts. Empty image_prompt and video_prompt values are correct and expected.`,
     userPrompt: JSON.stringify({
       idea: input.idea,
       reference_type: input.referenceType,
@@ -1211,13 +1256,17 @@ export function buildSpecialPrompt(
     }),
   };
   prompt.systemPrompt +=
-    "\n\nDIALOGUE DENSITY OVERRIDE: In character_dialogue mode, return exactly 2 short speaking_turns for every shot (18 total). Use only the selected speaker_reference_ids whose binding provenance.dialogueSpeakerEligible is true. Preserve every reviewed line verbatim and add a natural response or bridge; never leave shots 5-9 silent or with only one sentence. This is an advertising video: never use overclaim, medical/cure/guarantee/absolute/hard-sell language, and never let a child or age-unknown character speak. In none mode, every shot must be silent.";
+    "\n\nDIALOGUE OVERRIDE: In character_dialogue mode, follow dialogue_shot_plan shot by shot and preserve every reviewed line verbatim in its assigned shot. Use one to three speaking_turns per shot as the reviewed dialogue requires; add only a short natural bridge when a shot has fewer than two reviewed lines. Use only selected eligible speakers. This is an advertising video: never use overclaim, medical/cure/guarantee/absolute/hard-sell language, and never let a child or age-unknown character speak. In none mode, every shot must be silent.";
   return prompt;
 }
 
 type SpecialSkillInput = ReturnType<typeof specialTieInInputSchema.parse>;
 
 function extractSpecialDialogueLines(input: SpecialSkillInput): string[] {
+  const plannedLines = input.shotDialogues?.flatMap(shot =>
+    shot.dialogueLines.map(line => line.line.trim())
+  ).filter(Boolean) ?? [];
+  if (plannedLines.length > 0) return plannedLines;
   const source = input.dialogueBrief?.trim()
     ? input.dialogueBrief
     : input.marketplaceReviewIdea?.dialogueScript ?? "";
@@ -1233,8 +1282,8 @@ function extractSpecialDialogueLines(input: SpecialSkillInput): string[] {
 
 /**
  * Validate the semantic boundaries that Zod cannot express: the model output
- * must stay inside the selected cast, carry the selected product through the
- * whole special episode, and preserve the complete reviewed dialogue across
+ * must stay inside the selected cast, include the selected product where it
+ * is used, and preserve the complete reviewed dialogue across
  * the nine shot-local turns. This is deliberately pure so it can be tested
  * without a provider or database.
  */
@@ -1315,10 +1364,10 @@ export function validateSpecialTieInStoryOutput(input: {
     }
     if (
       input.specialInput.dialogueMode === "character_dialogue" &&
-      (shot.speaking_turns.length < 2 || shot.speaking_turns.length > 3)
+      (shot.speaking_turns.length < 1 || shot.speaking_turns.length > 3)
     ) {
       throw new Error(
-        `SPECIAL_OUTPUT_INVALID: shot ${shot.shot_number} must contain 2-3 dialogue turns`
+        `SPECIAL_OUTPUT_INVALID: shot ${shot.shot_number} must contain 1-3 dialogue turns`
       );
     }
     for (const referenceId of shot.reference_ids) {
@@ -1337,30 +1386,11 @@ export function validateSpecialTieInStoryOutput(input: {
       }
     }
     if (
-      requiresProductReference &&
-      !shot.reference_ids.some(referenceId => productReferenceIds.has(referenceId))
-    ) {
-      throw new Error(
-        "SPECIAL_OUTPUT_INVALID: every product tie-in shot must carry a selected product reference"
-      );
-    }
-    if (
       requiresPlaceReference &&
       !shot.reference_ids.some(referenceId => placeReferenceIds.has(referenceId))
     ) {
       throw new Error(
         "SPECIAL_OUTPUT_INVALID: every location/store tie-in shot must carry the selected place reference"
-      );
-    }
-    if (
-      requiresProductReference &&
-      ["preparation", "demonstration", "hands_on_use", "retry"].includes(
-        shot.tie_in_stage
-      ) &&
-      !ACTIVE_TIE_IN_ACTION_PATTERN.test(shot.tie_in_action)
-    ) {
-      throw new Error(
-        `SPECIAL_OUTPUT_INVALID: shot ${shot.shot_number} tie-in action is not an observable product action`
       );
     }
     for (const turn of shot.speaking_turns) {
@@ -1373,18 +1403,18 @@ export function validateSpecialTieInStoryOutput(input: {
   }
 
   if (requiresProductReference) {
-    const stages = new Set(input.output.shots.map(shot => shot.tie_in_stage));
-    for (const requiredStage of [
-      "preparation",
-      "demonstration",
-      "hands_on_use",
-      "result",
-    ] as const) {
-      if (!stages.has(requiredStage)) {
-        throw new Error(
-          `SPECIAL_OUTPUT_INVALID: product tie-in is missing the ${requiredStage} presentation stage`
-        );
-      }
+    const productShots = input.output.shots.filter(shot =>
+      shot.reference_ids.some(referenceId => productReferenceIds.has(referenceId))
+    );
+    if (productShots.length === 0) {
+      throw new Error(
+        "SPECIAL_OUTPUT_INVALID: product tie-in must include a selected product in at least one shot"
+      );
+    }
+    if (!productShots.some(shot => ACTIVE_TIE_IN_ACTION_PATTERN.test(shot.tie_in_action))) {
+      throw new Error(
+        "SPECIAL_OUTPUT_INVALID: at least one product shot must show an observable action"
+      );
     }
   }
   if (requiresPlaceReference) {
@@ -1609,7 +1639,7 @@ export async function generateSpecialSkillOutput(input: {
             ? async event => { await input.forensics?.retryDecisionObserver?.(event); }
             : undefined,
           schemaRetryContract:
-            "SPECIAL TIE-IN OUTPUT REQUIREMENT: return exactly 9 story-only shots, with shot_count=9 and shot_number values 1 through 9 in order. Also return one concise episode_summary describing the complete beginning-middle-end story; it must be derived only from these nine shots and the reviewed special-episode input. Every shot must include story_summary, continuity_in, continuity_out, continuity_anchor, tie_in_stage, and tie_in_action. Every shot must include its required dialogue turns. Do not generate image_prompt or video_prompt in this planning pass; omit them or return empty strings. Never return 5 shots or pad a shorter result. For product references, include preparation, demonstration, hands_on_use, and result stages, with concrete observable actions rather than passive placement.",
+            "SPECIAL TIE-IN OUTPUT REQUIREMENT: return exactly 9 story-only shots, with shot_count=9 and shot_number values 1 through 9 in order. Also return one concise episode_summary describing the complete beginning-middle-end story; it must be derived only from these nine shots and the reviewed special-episode input. Every shot must include story_summary, continuity_in, continuity_out, continuity_anchor, tie_in_stage, and tie_in_action. Every shot must include its required dialogue turns. Do not generate image_prompt or video_prompt in this planning pass; omit them or return empty strings. Never return 5 shots or pad a shorter result. For product references, include the product in one or more relevant shots and show an observable action in at least one of them; do not force product placement into every shot or require a fixed sequence of presentation stages.",
         });
         candidate = planning.data;
         effectiveModel = planning.model;
