@@ -112,8 +112,12 @@ describe("Spec 224 local source attestation environment boundary", () => {
     "fails closed when NODE_ENV is %s",
     async value => {
       const previous = process.env.NODE_ENV;
+      const previousEnvironment = process.env.SMARTSPEC_ENVIRONMENT;
+      const previousTarget = process.env.SMARTSPEC_DEPLOYMENT_TARGET;
       if (value === undefined) delete process.env.NODE_ENV;
       else process.env.NODE_ENV = value;
+      delete process.env.SMARTSPEC_ENVIRONMENT;
+      delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
       try {
         const expectedError = new Spec224AttestationError(
           "LOCAL_ATTESTATION_NONPRODUCTION_ENV_REQUIRED"
@@ -144,16 +148,85 @@ describe("Spec 224 local source attestation environment boundary", () => {
       } finally {
         if (previous === undefined) delete process.env.NODE_ENV;
         else process.env.NODE_ENV = previous;
+        if (previousEnvironment === undefined)
+          delete process.env.SMARTSPEC_ENVIRONMENT;
+        else process.env.SMARTSPEC_ENVIRONMENT = previousEnvironment;
+        if (previousTarget === undefined)
+          delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+        else process.env.SMARTSPEC_DEPLOYMENT_TARGET = previousTarget;
       }
     }
   );
 
+  it("allows the registered development target even with a production build mode", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousEnvironment = process.env.SMARTSPEC_ENVIRONMENT;
+    const previousTarget = process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+    const previousBundleRoot = process.env.SPEC224_NONPROD_BUNDLE_ROOT;
+    process.env.NODE_ENV = "production";
+    process.env.SMARTSPEC_DEPLOYMENT_TARGET = "legacy-debian-dev";
+    delete process.env.SMARTSPEC_ENVIRONMENT;
+    delete process.env.SPEC224_NONPROD_BUNDLE_ROOT;
+    try {
+      await expect(
+        verifyLocalSpec224SourceBundle("/does/not/matter")
+      ).rejects.toThrowError(
+        new Spec224AttestationError("BUNDLE_ROOT_NOT_CONFIGURED")
+      );
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      if (previousEnvironment === undefined)
+        delete process.env.SMARTSPEC_ENVIRONMENT;
+      else process.env.SMARTSPEC_ENVIRONMENT = previousEnvironment;
+      if (previousTarget === undefined)
+        delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+      else process.env.SMARTSPEC_DEPLOYMENT_TARGET = previousTarget;
+      if (previousBundleRoot === undefined)
+        delete process.env.SPEC224_NONPROD_BUNDLE_ROOT;
+      else process.env.SPEC224_NONPROD_BUNDLE_ROOT = previousBundleRoot;
+    }
+  });
+
+  it("rejects a non-deployable development target even with a development build mode", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousEnvironment = process.env.SMARTSPEC_ENVIRONMENT;
+    const previousTarget = process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+    process.env.NODE_ENV = "development";
+    process.env.SMARTSPEC_ENVIRONMENT = "development";
+    process.env.SMARTSPEC_DEPLOYMENT_TARGET = "modular-debian-dev";
+    try {
+      await expect(
+        verifyLocalSpec224SourceBundle("/does/not/matter")
+      ).rejects.toThrowError(
+        new Spec224AttestationError(
+          "LOCAL_ATTESTATION_NONPRODUCTION_ENV_REQUIRED"
+        )
+      );
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      if (previousEnvironment === undefined)
+        delete process.env.SMARTSPEC_ENVIRONMENT;
+      else process.env.SMARTSPEC_ENVIRONMENT = previousEnvironment;
+      if (previousTarget === undefined)
+        delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+      else process.env.SMARTSPEC_DEPLOYMENT_TARGET = previousTarget;
+    }
+  });
+
   it.each(["test", "development"])(
-    "allows only an explicitly local %s environment to continue to bundle checks",
+    "allows an explicit %s environment to continue to bundle checks",
     async value => {
       const previousNodeEnv = process.env.NODE_ENV;
+      const previousEnvironment = process.env.SMARTSPEC_ENVIRONMENT;
+      const previousTarget = process.env.SMARTSPEC_DEPLOYMENT_TARGET;
       const previousBundleRoot = process.env.SPEC224_NONPROD_BUNDLE_ROOT;
       process.env.NODE_ENV = value;
+      if (value === "development")
+        process.env.SMARTSPEC_ENVIRONMENT = "development";
+      else delete process.env.SMARTSPEC_ENVIRONMENT;
+      delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
       delete process.env.SPEC224_NONPROD_BUNDLE_ROOT;
       try {
         await expect(
@@ -164,6 +237,12 @@ describe("Spec 224 local source attestation environment boundary", () => {
       } finally {
         if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
         else process.env.NODE_ENV = previousNodeEnv;
+        if (previousEnvironment === undefined)
+          delete process.env.SMARTSPEC_ENVIRONMENT;
+        else process.env.SMARTSPEC_ENVIRONMENT = previousEnvironment;
+        if (previousTarget === undefined)
+          delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+        else process.env.SMARTSPEC_DEPLOYMENT_TARGET = previousTarget;
         if (previousBundleRoot === undefined)
           delete process.env.SPEC224_NONPROD_BUNDLE_ROOT;
         else process.env.SPEC224_NONPROD_BUNDLE_ROOT = previousBundleRoot;

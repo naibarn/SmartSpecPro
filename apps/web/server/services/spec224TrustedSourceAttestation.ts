@@ -20,6 +20,7 @@ import {
   bindSpec224ExecutionProfileToSource,
   getSpec224ExecutionProfileTemplate,
 } from "./spec224ExecutionProfile";
+import { isSpec224LocalNonProductionRuntime } from "./spec224RuntimeAdmission";
 import {
   validateRequirementClosureGraph,
   type RequirementClosureGraph,
@@ -313,10 +314,7 @@ function sha256(value: string | Buffer): string {
 }
 
 function assertLocalAttestationEnvironment(): void {
-  if (
-    process.env.NODE_ENV !== "test" &&
-    process.env.NODE_ENV !== "development"
-  ) {
+  if (!isSpec224LocalNonProductionRuntime()) {
     throw new Spec224AttestationError(
       "LOCAL_ATTESTATION_NONPRODUCTION_ENV_REQUIRED"
     );

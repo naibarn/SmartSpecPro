@@ -123,6 +123,25 @@ def test_protected_grant_normalizes_complete_profile_bundle_and_attestation_bind
     assert normalized["admissionBinding"] == input_scope["admissionBinding"]
 
 
+def test_recovery_grant_accepts_canonical_spec224_workpackage_id():
+    workpackage_id = "wp:" + "a" * 40
+    binding = {**_admission_binding(), "workPackageId": workpackage_id}
+    input_scope = _scope(binding)
+    input_scope["workpackageId"] = workpackage_id
+
+    normalized = ApprovalDBService._recovery_grant_scope(input_scope)
+
+    assert normalized["workpackageId"] == workpackage_id
+    assert normalized["admissionBinding"]["workPackageId"] == workpackage_id
+
+
+def test_recovery_grant_rejects_malformed_canonical_workpackage_ids():
+    with pytest.raises(ValueError, match="WORKPACKAGE_INVALID"):
+        ApprovalDBService._recovery_grant_scope(
+            {**_scope(), "workpackageId": "wp:../outside"}
+        )
+
+
 @pytest.mark.parametrize(
     "change",
     [

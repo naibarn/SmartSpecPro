@@ -1781,7 +1781,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
             raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_COMMIT_INVALID")
         if not isinstance(source_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", source_digest):
             raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_DIGEST_INVALID")
-        if not isinstance(workpackage, str) or not re.fullmatch(r"WP-[A-Z0-9-]{3,80}", workpackage):
+        if not isinstance(workpackage, str) or not re.fullmatch(
+            r"(?:WP-[A-Z0-9-]{3,80}|wp:[a-f0-9]{40})", workpackage
+        ):
             raise ValueError("SPEC224_RECOVERY_GRANT_WORKPACKAGE_INVALID")
         if runtime not in {"python-approval", "node-control-plane", "local-test-runner"}:
             raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_INVALID")

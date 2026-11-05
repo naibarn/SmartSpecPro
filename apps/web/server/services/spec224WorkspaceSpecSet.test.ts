@@ -6,12 +6,50 @@ import {
   canActorUseRunner,
   Spec224WorkspaceSpecSetError,
   createSpec224WorkspaceSpecSetService,
+  evaluateWorkspaceExecutionTarget,
   parseSpec224WorkspaceArtifacts,
   presentWorkspaceDisplayName,
   workspaceFactsFromSnapshot,
   type Spec224WorkspaceSpecSetStore,
 } from "./spec224WorkspaceSpecSet";
 import { validateRunnerCapabilitySnapshot } from "./runnerContracts";
+
+describe("workspace execution target admission", () => {
+  const modularRepository = "github.com/naibarn/smartaihub-platform";
+
+  it("rejects a Modular Core workspace from the legacy SmartAIHub control plane", () => {
+    expect(evaluateWorkspaceExecutionTarget({
+      repositoryId: modularRepository,
+      controlPlaneTargetId: "legacy-debian-dev",
+    })).toEqual({
+      allowed: false,
+      code: "WORKSPACE_CONTROL_PLANE_TARGET_MISMATCH",
+      targetId: "modular-debian-dev",
+    });
+  });
+
+  it("keeps the Modular Core target blocked until its runtime is provisioned", () => {
+    expect(evaluateWorkspaceExecutionTarget({
+      repositoryId: modularRepository,
+      controlPlaneTargetId: "modular-debian-dev",
+    })).toEqual({
+      allowed: false,
+      code: "WORKSPACE_DEPLOYMENT_TARGET_UNAVAILABLE",
+      targetId: "modular-debian-dev",
+    });
+  });
+
+  it("allows a workspace only on its registered deployable application target", () => {
+    expect(evaluateWorkspaceExecutionTarget({
+      repositoryId: "smartspecpro",
+      controlPlaneTargetId: "legacy-debian-dev",
+    })).toEqual({ allowed: true, targetId: "legacy-debian-dev" });
+    expect(evaluateWorkspaceExecutionTarget({
+      repositoryId: "github.com/customer/private-project",
+      controlPlaneTargetId: "legacy-debian-dev",
+    })).toEqual({ allowed: true, targetId: null });
+  });
+});
 
 function makeCanonicalProjectInput(description = "Project catalog source binding.") {
   const projectId = "smartaihub-modular-saas-r14";

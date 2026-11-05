@@ -121,6 +121,78 @@ describe("Spec 224 prepared source binding", () => {
   });
 });
 
+describe("Runner workspace deployment target binding", () => {
+  it("blocks a Modular Core repository from the legacy SmartAIHub Runner endpoint", async () => {
+    const previousTarget = process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+    process.env.SMARTSPEC_DEPLOYMENT_TARGET = "legacy-debian-dev";
+    const now = Date.now();
+    const timestamp = new Date(now).toISOString();
+    mocks.node.mockResolvedValueOnce({
+      runnerId: "runner-a",
+      tenantId: context.tenantId,
+      ownerUserId: context.actorId,
+      trustState: "trusted",
+      status: "online",
+      activeSessionId: "session-a",
+      currentSnapshot: {
+        runnerId: "runner-a",
+        tenantId: context.tenantId,
+        runnerSessionId: "session-a",
+        capabilitySnapshotId: "snapshot-a",
+        revision: "revision-a",
+        observedAt: timestamp,
+        expiresAt: new Date(now + 60_000).toISOString(),
+        capabilities: ["agent.external_task"],
+        workspaceIds: ["workspace-a"],
+        platform: { os: "linux" },
+        workspaces: [{
+          workspaceId: "workspace-a",
+          projectId: "project-a",
+          repositoryId: "github.com/naibarn/smartaihub-platform",
+          gitHead: "a".repeat(40),
+          contentFingerprint: "b".repeat(64),
+        }],
+        toolInventory: [{
+          adapterId: "codex.v1",
+          toolId: "codex",
+          installState: "installed",
+          authState: "authenticated",
+          taskProbeState: "passed",
+          taskProbeObservedAtMs: now - 1_000,
+          taskProbeExpiresAtMs: now + 60_000,
+          taskProbeEvidenceRef: "probe:codex",
+          authorizationEvidenceRef: "auth:codex",
+          versionProbeState: "passed",
+          configurationState: "configured",
+          healthState: "healthy",
+          trustState: "ready",
+          availabilityState: "available",
+          observedAt: timestamp,
+          expiresAt: new Date(now + 60_000).toISOString(),
+        }],
+      },
+    });
+    try {
+      const readiness = await createSpec224AuthorizationService().runnerReadiness({
+        context,
+        runnerId: "runner-a",
+        workspaceId: "workspace-a",
+        provider: "codex",
+      });
+
+      expect(readiness).toMatchObject({
+        ready: false,
+        code: "WORKSPACE_CONTROL_PLANE_TARGET_MISMATCH",
+        projectId: "project-a",
+      });
+    } finally {
+      if (previousTarget === undefined)
+        delete process.env.SMARTSPEC_DEPLOYMENT_TARGET;
+      else process.env.SMARTSPEC_DEPLOYMENT_TARGET = previousTarget;
+    }
+  });
+});
+
 function createService() {
   const service = createSpec224AuthorizationService();
   vi.spyOn(service, "runnerReadiness").mockResolvedValue({ ready: true, code: "RUNNER_READY" } as any);

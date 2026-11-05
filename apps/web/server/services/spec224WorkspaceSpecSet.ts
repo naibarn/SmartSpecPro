@@ -733,6 +733,40 @@ export function resolveWorkspaceDeploymentTarget(repositoryId: string | null | u
   return null;
 }
 
+export type WorkspaceExecutionTargetAdmission =
+  | { allowed: true; targetId: string | null }
+  | {
+      allowed: false;
+      code:
+        | "WORKSPACE_CONTROL_PLANE_TARGET_MISMATCH"
+        | "WORKSPACE_DEPLOYMENT_TARGET_UNAVAILABLE";
+      targetId: string;
+    };
+
+/** Keep a Runner connected to the same application target as its workspace. */
+export function evaluateWorkspaceExecutionTarget(input: {
+  repositoryId: string | null | undefined;
+  controlPlaneTargetId: string | null | undefined;
+}): WorkspaceExecutionTargetAdmission {
+  const target = resolveWorkspaceDeploymentTarget(input.repositoryId);
+  if (!target) return { allowed: true, targetId: null };
+  if (input.controlPlaneTargetId !== target.id) {
+    return {
+      allowed: false,
+      code: "WORKSPACE_CONTROL_PLANE_TARGET_MISMATCH",
+      targetId: target.id,
+    };
+  }
+  if (!target.deployable || !target.applicationAvailable) {
+    return {
+      allowed: false,
+      code: "WORKSPACE_DEPLOYMENT_TARGET_UNAVAILABLE",
+      targetId: target.id,
+    };
+  }
+  return { allowed: true, targetId: target.id };
+}
+
 export function resolveFeatureSpecDeploymentTarget(specId: string): string | null {
   const number = Number(/^(\d+)-/.exec(specId.trim())?.[1]);
   if (!Number.isSafeInteger(number)) return null;

@@ -47,6 +47,10 @@ import {
 } from "./spec224ModelSelection";
 import { defaultRunnerGateway, type RunnerGatewayNode } from "./runnerGateway";
 import {
+  evaluateWorkspaceExecutionTarget,
+  workspaceFactsFromSnapshot,
+} from "./spec224WorkspaceSpecSet";
+import {
   canPersistSpec224PolicyBinding,
   evaluateSpec224Authorization,
   evaluateSpec224RunnerReadiness,
@@ -1231,6 +1235,9 @@ export function createSpec224AuthorizationService() {
       allowedWriteSet?: string[];
     }) {
       const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
+      const workspace = workspaceFactsFromSnapshot(node?.currentSnapshot).find(
+        item => item.workspaceId === input.workspaceId
+      );
       const readiness = evaluateSpec224RunnerReadiness({
         ...input.context,
         runner: mapRunner(node),
@@ -1239,6 +1246,21 @@ export function createSpec224AuthorizationService() {
         sourceCommit: input.sourceCommit,
         sourceFingerprint: input.sourceFingerprint,
       });
+      const targetAdmission = evaluateWorkspaceExecutionTarget({
+        repositoryId: workspace?.repositoryId,
+        controlPlaneTargetId: process.env.SMARTSPEC_DEPLOYMENT_TARGET,
+      });
+      if (readiness.ready && !targetAdmission.allowed) {
+        return {
+          ...readiness,
+          ready: false,
+          code: targetAdmission.code,
+          projectId: workspace?.projectId ?? null,
+          profileId: node?.currentSnapshot?.platform?.os === "windows"
+            ? "spec224-recovery-windows-x64-codex-nonprod"
+            : "spec224-recovery-registered-runner-nonprod",
+        };
+      }
       if (readiness.ready && input.allowedWriteSet) {
         const workspace = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId);
         const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({
@@ -1253,7 +1275,7 @@ export function createSpec224AuthorizationService() {
         if (sourceAdmission.status === "BLOCKED") return { ...readiness, ready: false, code: `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}` };
       }
       return { ...readiness,
-        projectId: node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId)?.projectId ?? null,
+        projectId: workspace?.projectId ?? null,
         profileId: node?.currentSnapshot?.platform?.os === "windows"
           ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod",
       };

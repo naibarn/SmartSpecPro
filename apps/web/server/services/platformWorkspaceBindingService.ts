@@ -8,6 +8,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
+  evaluateWorkspaceExecutionTarget,
   resolveWorkspaceDeploymentTarget,
   workspaceFactsFromSnapshot,
 } from "./spec224WorkspaceSpecSet";
@@ -202,6 +203,12 @@ export async function createAndBindModularCoreWorkspace(input: {
   const target = resolveWorkspaceDeploymentTarget(workspace.repositoryId);
   if (target?.id !== "modular-debian-dev")
     throw new PlatformWorkspaceBindingError("MODULAR_CORE_REPOSITORY_REQUIRED");
+  const targetAdmission = evaluateWorkspaceExecutionTarget({
+    repositoryId: workspace.repositoryId,
+    controlPlaneTargetId: process.env.SMARTSPEC_DEPLOYMENT_TARGET,
+  });
+  if (!targetAdmission.allowed)
+    throw new PlatformWorkspaceBindingError(targetAdmission.code);
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       workspace.runnerProjectId
@@ -382,6 +389,12 @@ export async function createPlatformWorkspaceBinding(input: {
     throw new PlatformWorkspaceBindingError(
       "PLATFORM_RUNNER_PROJECT_ID_MISMATCH"
     );
+  const targetAdmission = evaluateWorkspaceExecutionTarget({
+    repositoryId: workspace.repositoryId,
+    controlPlaneTargetId: process.env.SMARTSPEC_DEPLOYMENT_TARGET,
+  });
+  if (!targetAdmission.allowed)
+    throw new PlatformWorkspaceBindingError(targetAdmission.code);
 
   const db = getDb();
   const result = await db.transaction(async tx => {
