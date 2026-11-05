@@ -28571,7 +28571,13 @@ export const verticalDramaEpisodesRouter = router({
             shotVideoCharacterNameByKey.get(line.characterKey)
           );
           if (localBinding) {
-            const characterKey = `shot-local-speaker-${localBinding.id}`;
+            // Dialogue lines can already contain the stable shot-local key
+            // from an earlier prompt generation. Keep normalization
+            // idempotent instead of wrapping that key in another prefix.
+            const canonicalLocalKey = `shot-local-speaker-${localBinding.id}`;
+            const characterKey = line.characterKey === canonicalLocalKey
+              ? line.characterKey
+              : canonicalLocalKey;
             shotVideoCharacterNameByKey.set(
               characterKey,
               localBinding.speakerLabel

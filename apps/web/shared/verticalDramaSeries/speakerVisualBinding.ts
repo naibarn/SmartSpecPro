@@ -111,11 +111,19 @@ export function findVerticalDramaSpeakerVisualBinding(
       .filter((value): value is string => Boolean(value))
   );
   if (keys.size === 0) return undefined;
-  return bindings?.find(binding =>
-    keys.has(
-      binding.speakerLabel.trim().toLocaleLowerCase().replace(/\s+/g, " ")
-    )
-  );
+  return bindings?.find(binding => {
+    const normalizedId = binding.id
+      .trim()
+      .toLocaleLowerCase()
+      .replace(/\s+/g, " ");
+    return (
+      keys.has(
+        binding.speakerLabel.trim().toLocaleLowerCase().replace(/\s+/g, " ")
+      ) ||
+      keys.has(normalizedId) ||
+      keys.has(`shot-local-speaker-${normalizedId}`)
+    );
+  });
 }
 
 /**
