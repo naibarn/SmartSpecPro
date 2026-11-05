@@ -2045,11 +2045,19 @@ export function SpecialTieInEpisodeDialog({
   };
 
   const submit = async () => {
+    if (resolveSceneMutation.isPending) {
+      toast.info(
+        lang === "th"
+          ? "กำลังบันทึกฉากที่เลือก กรุณารอสักครู่"
+          : "Saving the selected scene. Please wait."
+      );
+      return;
+    }
     if (sceneSuggestions.length > 0) {
       toast.error(
         lang === "th"
-          ? "กรุณาตรวจสอบฉากที่อาจซ้ำให้ครบก่อนสร้างตอน"
-          : "Review all possible duplicate scenes before creating the episode"
+          ? "กรุณาเลือกหรือสร้างฉากให้ครบก่อนสร้างตอน"
+          : "Choose an existing scene or add a scene before creating the episode"
       );
       return;
     }
@@ -2290,11 +2298,19 @@ export function SpecialTieInEpisodeDialog({
   };
 
   const requestSubmitConfirmation = () => {
+    if (resolveSceneMutation.isPending) {
+      toast.info(
+        lang === "th"
+          ? "กำลังบันทึกฉากที่เลือก กรุณารอสักครู่"
+          : "Saving the selected scene. Please wait."
+      );
+      return;
+    }
     if (sceneSuggestions.length > 0) {
       toast.error(
         lang === "th"
-          ? "กรุณาตรวจสอบฉากที่อาจซ้ำให้ครบก่อนสร้างตอน"
-          : "Review all possible duplicate scenes before creating the episode"
+          ? "กรุณาเลือกหรือสร้างฉากให้ครบก่อนสร้างตอน"
+          : "Choose an existing scene or add a scene before creating the episode"
       );
       return;
     }
@@ -3418,12 +3434,18 @@ export function SpecialTieInEpisodeDialog({
                       <div className="flex flex-wrap items-center gap-2">
                         <Select
                           value={sceneChoiceByLabel[suggestion.sceneLabel] ?? ""}
-                          onValueChange={value =>
+                          disabled={resolveSceneMutation.isPending}
+                          onValueChange={value => {
                             setSceneChoiceByLabel(current => ({
                               ...current,
                               [suggestion.sceneLabel]: value,
-                            }))
-                          }
+                            }));
+                            void resolveSceneSuggestion(
+                              suggestion,
+                              "reuse",
+                              value
+                            );
+                          }}
                         >
                           <SelectTrigger className="min-w-64 flex-1">
                             <SelectValue
@@ -3445,24 +3467,6 @@ export function SpecialTieInEpisodeDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            resolveSceneMutation.isPending ||
-                            !sceneChoiceByLabel[suggestion.sceneLabel]
-                          }
-                          onClick={() =>
-                            void resolveSceneSuggestion(
-                              suggestion,
-                              "reuse",
-                              sceneChoiceByLabel[suggestion.sceneLabel]
-                            )
-                          }
-                        >
-                          {lang === "th" ? "ใช้ฉากนี้" : "Use scene"}
-                        </Button>
                       </div>
                       {!locationsQuery.isLoading && locations.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
