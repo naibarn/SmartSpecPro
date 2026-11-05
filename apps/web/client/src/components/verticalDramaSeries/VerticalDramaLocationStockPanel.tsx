@@ -552,6 +552,16 @@ export function VerticalDramaLocationStockPanel({
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null
   );
+  useEffect(() => {
+    const requestedLocationKey = new URLSearchParams(
+      window.location.search
+    ).get("locationKey");
+    if (!requestedLocationKey) return;
+    const requestedLocation = locations.find(
+      location => location.locationKey === requestedLocationKey
+    );
+    if (requestedLocation) setSelectedLocationId(requestedLocation.locationId);
+  }, [locations]);
   const [lightboxImage, setLightboxImage] = useState<{
     src: string;
     alt?: string;

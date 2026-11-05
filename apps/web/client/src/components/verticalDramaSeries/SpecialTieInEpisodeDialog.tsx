@@ -548,6 +548,9 @@ export function SpecialTieInEpisodeDialog({
   const [sceneSuggestions, setSceneSuggestions] = useState<SceneSuggestion[]>(
     []
   );
+  const [sceneChoiceByLabel, setSceneChoiceByLabel] = useState<
+    Record<string, string>
+  >({});
   const [selectedSceneLocationKey, setSelectedSceneLocationKey] = useState<
     string | null
   >(null);
@@ -1889,6 +1892,7 @@ export function SpecialTieInEpisodeDialog({
           scene.label.trim().toLocaleLowerCase() === normalizedPrimaryLabel
       );
       setSceneSuggestions(suggestions);
+      setSceneChoiceByLabel({});
       setSelectedSceneLocationKey(primaryScene?.locationKey ?? null);
       setSelectedIdeaId(candidate.ideaId);
       setSelectedMarketplaceIdea(candidate);
@@ -1931,12 +1935,8 @@ export function SpecialTieInEpisodeDialog({
       );
       toast.success(
         lang === "th"
-          ? suggestions.length > 0
-            ? `เลือกไอเดียแล้ว พบฉากที่อาจซ้ำ ${suggestions.length} รายการ กรุณาตรวจสอบก่อนสร้างตอน`
-            : `เลือกไอเดียแล้ว เพิ่ม slot ลุค ${result.slotRequests.looks.length} และฉาก ${result.slotRequests.scenes.length} รายการ`
-          : suggestions.length > 0
-            ? `${suggestions.length} possible duplicate scene(s) need review before creating the episode`
-            : "Idea selected and missing look/scene slots were added"
+          ? `เลือกไอเดียแล้ว กรุณาเลือกฉากเดิมหรือสร้างฉากใหม่ ${suggestions.length} รายการก่อนสร้างตอน`
+          : `Idea selected. Choose an existing scene or add ${suggestions.length} scene(s) before creating the episode.`
       );
     } catch (error) {
       toast.error(
@@ -1962,6 +1962,7 @@ export function SpecialTieInEpisodeDialog({
         sceneLabel: suggestion.sceneLabel,
         description: suggestion.description,
       });
+      await utils.verticalDramaLocations.list.invalidate({ seriesId });
       const normalizedLabel = suggestion.sceneLabel.trim().toLocaleLowerCase();
       if (
         selectedMarketplaceIdea?.scene.location.trim().toLocaleLowerCase() ===
@@ -3390,21 +3391,19 @@ export function SpecialTieInEpisodeDialog({
             {sceneSuggestions.length > 0 ? (
               <section
                 className="space-y-3 rounded-md border border-amber-300/70 bg-amber-50/50 p-3 dark:bg-amber-950/10"
-                aria-labelledby="special-scene-similar-heading"
+                aria-labelledby="special-scene-choice-heading"
               >
                 <div className="space-y-1">
                   <h3
-                    id="special-scene-similar-heading"
+                    id="special-scene-choice-heading"
                     className="font-medium text-amber-950 dark:text-amber-100"
                   >
-                    {lang === "th"
-                      ? "พบชื่อฉากที่อาจซ้ำ"
-                      : "Possible duplicate scenes found"}
+                    {lang === "th" ? "เลือกหรือสร้างฉาก" : "Choose or add a scene"}
                   </h3>
                   <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
                     {lang === "th"
-                      ? "ระบบจะไม่รวมฉากให้อัตโนมัติ กรุณาเลือกใช้ฉากเดิมหรือสร้างฉากใหม่ก่อนสร้างตอน"
-                      : "Scenes are never fuzzy-merged automatically. Reuse an existing scene or create a new one before continuing."}
+                      ? "เลือกฉากจากคลังเดิมก่อน หรือสร้างฉากเพิ่มได้ ระบบจะไม่สร้างฉากให้อัตโนมัติ"
+                      : "Choose a scene from the existing library, or add one. Scenes are not created automatically."}
                   </p>
                 </div>
                 {sceneSuggestions.map(suggestion => (
@@ -3416,6 +3415,62 @@ export function SpecialTieInEpisodeDialog({
                       {suggestion.sceneLabel}
                     </p>
                     <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                          value={sceneChoiceByLabel[suggestion.sceneLabel] ?? ""}
+                          onValueChange={value =>
+                            setSceneChoiceByLabel(current => ({
+                              ...current,
+                              [suggestion.sceneLabel]: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="min-w-64 flex-1">
+                            <SelectValue
+                              placeholder={
+                                lang === "th"
+                                  ? "เลือกฉากที่มีอยู่ในซีรีย์"
+                                  : "Select an existing series scene"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {locations.map(location => (
+                              <SelectItem
+                                key={String(location.locationId)}
+                                value={String(location.locationId)}
+                              >
+                                {location.name ?? location.locationKey}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            resolveSceneMutation.isPending ||
+                            !sceneChoiceByLabel[suggestion.sceneLabel]
+                          }
+                          onClick={() =>
+                            void resolveSceneSuggestion(
+                              suggestion,
+                              "reuse",
+                              sceneChoiceByLabel[suggestion.sceneLabel]
+                            )
+                          }
+                        >
+                          {lang === "th" ? "ใช้ฉากนี้" : "Use scene"}
+                        </Button>
+                      </div>
+                      {!locationsQuery.isLoading && locations.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          {lang === "th"
+                            ? "ซีรีย์นี้ยังไม่มีฉากในคลัง กดสร้างฉากใหม่เพื่อเพิ่มฉากนี้"
+                            : "This series has no saved scenes yet. Add this scene to continue."}
+                        </p>
+                      ) : null}
                       {suggestion.candidates.map(candidate => (
                         <div
                           key={candidate.locationKey}
@@ -3459,6 +3514,30 @@ export function SpecialTieInEpisodeDialog({
                   </div>
                 ))}
               </section>
+            ) : null}
+
+            {selectedMarketplaceIdea && selectedSceneLocationKey ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground">
+                  {lang === "th"
+                    ? "ผูกฉากกับตอนแล้ว สามารถสร้างภาพฉากต่อได้จากแท็บฉากของซีรีย์"
+                    : "The scene is linked to this episode. Generate its image from the series Scenes tab."}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false);
+                    window.location.assign(
+                      `/drama-series/${seriesId}?tab=scenes&locationKey=${encodeURIComponent(selectedSceneLocationKey)}`
+                    );
+                  }}
+                >
+                  {lang === "th"
+                    ? "เปิดหน้าฉากเพื่อสร้างภาพ"
+                    : "Open Scenes to generate image"}
+                </Button>
+              </div>
             ) : null}
 
             {referenceType === "location" ||

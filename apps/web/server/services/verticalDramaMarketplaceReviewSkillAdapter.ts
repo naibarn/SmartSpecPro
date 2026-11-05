@@ -27,7 +27,6 @@ import {
 } from "../../shared/verticalDramaSeries/advertisingDialoguePolicy";
 import {
   findSpecialStorySceneMatches,
-  reconcileSpecialStorySceneSlot,
   resolveSpecialStorySceneSlotDecision,
 } from "./verticalDramaSpecialReferences";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
@@ -1615,44 +1614,29 @@ export async function selectMarketplaceReviewIdea(input: {
       seriesId: input.seriesId,
       label: request.sceneLabel,
     });
-    if (matches.exact) {
-      slotResults.scenes.push({
-        locationId: String(matches.exact.id),
-        locationKey: matches.exact.locationKey,
-        label: request.sceneLabel,
-        status: "pending",
-        reused: true,
-      });
-      continue;
-    }
-    if (matches.similar.length > 0) {
-      slotResults.sceneSuggestions.push({
-        sceneLabel: request.sceneLabel,
-        description: request.description,
-        candidates: matches.similar.map(candidate => ({
-          locationId: String(candidate.locationId),
-          locationKey: candidate.locationKey,
-          name: candidate.name,
-          score: candidate.score,
-        })),
-      });
-      continue;
-    }
-    const location = await reconcileSpecialStorySceneSlot({
-      actor: input.actor,
-      seriesId: input.seriesId,
-      label: request.sceneLabel,
+    // Scene creation is an explicit user decision. Eagerly provisioning here
+    // made a just-created scene look like a duplicate in the following step.
+    // Always return a review choice so the creator can reuse a scene or add a
+    // new one deliberately, including when there are no close matches.
+    slotResults.sceneSuggestions.push({
+      sceneLabel: request.sceneLabel,
       description: request.description,
-      metadata: {
-        source: "marketplace_review_idea",
-        slotReason: request.reason,
-      },
-    });
-    slotResults.scenes.push({
-      locationId: String(location.locationId),
-      locationKey: location.locationKey,
-      label: request.sceneLabel,
-      status: "pending",
+      candidates: [
+        ...(matches.exact
+          ? [{
+              locationId: matches.exact.id,
+              locationKey: matches.exact.locationKey,
+              name: matches.exact.name,
+              score: 1,
+            }]
+          : []),
+        ...matches.similar,
+      ].map(candidate => ({
+        locationId: String(candidate.locationId),
+        locationKey: candidate.locationKey,
+        name: candidate.name,
+        score: candidate.score,
+      })),
     });
   }
   return { idea, runId: String(row.id), slotRequests: slotResults };

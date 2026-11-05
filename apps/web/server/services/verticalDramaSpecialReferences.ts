@@ -119,14 +119,62 @@ export async function resolveSpecialStorySceneSlotDecision(input: {
     }
     return { locationId: Number(location.id), locationKey: location.locationKey };
   }
-  return reconcileSpecialStorySceneSlot(input);
+  // An explicit "create new" choice must not be silently converted into a
+  // reuse by the fuzzy/exact reconciliation path. Give this requested scene a
+  // deterministic, separate key so retries are idempotent and the ordinary
+  // Scenes tab can generate its image for the new slot.
+  const label = input.label.trim().slice(0, 255) || "ฉากตอนพิเศษ";
+  const description = input.description.trim().slice(0, 4_000) || label;
+  const locationKey = buildSpecialSceneLocationKey(
+    input.seriesId,
+    `${label}:explicit-new-scene`
+  );
+  const db = getDb();
+  const [inserted] = await db
+    .insert(verticalDramaLocations)
+    .values({
+      tenantId: input.actor.tenantId,
+      userId: input.actor.userId,
+      seriesId: input.seriesId,
+      locationKey,
+      name: label,
+      data: {
+        description,
+        slotStatus: "pending",
+        slotReason: "ฉากพื้นหลังของตอนพิเศษ Tie-in",
+        source: "special_tie_in",
+        sceneKind: "product_tie_in_background",
+        explicitNewScene: true,
+      },
+    })
+    .onConflictDoNothing({
+      target: [verticalDramaLocations.seriesId, verticalDramaLocations.locationKey],
+    })
+    .returning({ id: verticalDramaLocations.id, locationKey: verticalDramaLocations.locationKey });
+  if (inserted) {
+    return { locationId: Number(inserted.id), locationKey: inserted.locationKey };
+  }
+  const [existing] = await db
+    .select({ id: verticalDramaLocations.id, locationKey: verticalDramaLocations.locationKey })
+    .from(verticalDramaLocations)
+    .where(
+      and(
+        eq(verticalDramaLocations.seriesId, input.seriesId),
+        eq(verticalDramaLocations.locationKey, locationKey),
+        eq(verticalDramaLocations.tenantId, input.actor.tenantId),
+        eq(verticalDramaLocations.userId, input.actor.userId)
+      )
+    )
+    .limit(1);
+  if (!existing) {
+    throw new TRPCError({ code: "CONFLICT", message: "Could not add a new scene slot" });
+  }
+  return { locationId: Number(existing.id), locationKey: existing.locationKey };
 }
 
 /**
- * Stable key shared by the marketplace idea selector and the special-episode
- * worker. Keeping one key derivation means selecting an idea can provision a
- * normal Scenes slot, while the later worker can safely find/reuse that same
- * slot without creating a second background scene.
+ * Stable key for a tie-in scene slot. The worker and explicit scene creation
+ * use this derivation so retrying a request resolves to the same durable slot.
  */
 export function buildSpecialSceneLocationKey(
   seriesId: number,
