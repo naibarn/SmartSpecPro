@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildStoryboardReviewClipView } from "./marketplaceCapture";
+import { buildProductionDirectorReferenceImages, buildStoryboardReviewClipView } from "./marketplaceCapture";
 
 describe("Storyboard Review extension projection", () => {
   it("exposes independent image and video prompts when both are present", () => {
@@ -64,5 +64,41 @@ describe("Storyboard Review extension projection", () => {
     }, 0);
 
     expect(clip.imageUrl).toBeUndefined();
+  });
+});
+
+describe("Production Director extension reference projection", () => {
+  it("includes product evidence images alongside existing context references", () => {
+    const references = buildProductionDirectorReferenceImages({
+      productEvidenceManifest: {
+        manifestId: "manifest-1",
+        status: "ready",
+        requiredClaimIds: [],
+        warnings: [],
+        products: [{ id: "product-1", productId: "catalog-1", title: "Reference product", imageUrl: "/product.png", role: "hero", claimEvidence: [] }],
+      },
+      contextAssets: [{ id: "scene-1", title: "Scene reference", url: "/scene.png", kind: "reference_image" }],
+    } as any);
+
+    expect(references).toEqual([
+      expect.objectContaining({ id: "scene-1", title: "Scene reference", url: "/scene.png", kind: "reference_image" }),
+      expect.objectContaining({ id: "product-1", title: "Reference product", url: "/product.png", kind: "product_image", role: "hero" }),
+    ]);
+  });
+
+  it("keeps the product reference as the display and drag source when URLs overlap", () => {
+    const references = buildProductionDirectorReferenceImages({
+      productEvidenceManifest: {
+        manifestId: "manifest-1",
+        status: "ready",
+        requiredClaimIds: [],
+        warnings: [],
+        products: [{ id: "product-1", productId: "catalog-1", title: "Reference product", imageUrl: "/shared.png", claimEvidence: [] }],
+      },
+      contextAssets: [{ id: "context-1", title: "Other reference", url: "/shared.png", kind: "reference_image" }],
+    } as any);
+
+    expect(references).toHaveLength(1);
+    expect(references[0]).toEqual(expect.objectContaining({ id: "product-1", kind: "product_image", url: "/shared.png" }));
   });
 });

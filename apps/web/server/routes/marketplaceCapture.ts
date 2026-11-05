@@ -133,6 +133,22 @@ function productionReferenceImagesFromRefs(refs: ProductionReferenceInput[] | un
     .filter((ref) => ref.url);
 }
 
+export function buildProductionDirectorReferenceImages(space: ProductionSpace) {
+  const productReferences = (space.productEvidenceManifest?.products ?? [])
+    .filter((product) => Boolean(product.imageUrl?.trim()))
+    .map((product) => ({
+      id: product.id,
+      title: product.title,
+      url: product.imageUrl?.trim() ?? "",
+      thumbnailUrl: product.imageUrl?.trim() ?? "",
+      kind: "product_image",
+      role: product.role ?? "product",
+      source: "production_product_evidence",
+    }));
+  const references = [...productionReferenceImagesFromRefs(space.contextAssets), ...productReferences];
+  return Array.from(new Map(references.map((reference) => [reference.url, reference])).values()).slice(0, 30);
+}
+
 function asProductionRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
@@ -354,14 +370,16 @@ async function listProductionDirectorProjectsForExtension(auth: { userId: number
     const brief = space?.brief ?? (goal.productionSpaceBrief && typeof goal.productionSpaceBrief === "object" ? goal.productionSpaceBrief as Record<string, any> : {});
     const title = compactProductionText(brief.title ?? goal.title ?? goal.projectTitle ?? brief.summary ?? goal.summary ?? row.productionRunId, 256);
     const summary = compactProductionText(brief.summary ?? goal.summary ?? goal.goalSummary ?? "", 600);
-    const previewImage = space?.contextAssets?.find((asset) => asset.thumbnailUrl || asset.url);
+    const previewImage = space
+      ? buildProductionDirectorReferenceImages(space).find((asset) => asset.thumbnailUrl || asset.url)
+      : undefined;
     return {
       productionRunId: row.productionRunId,
       title,
       summary,
       status: space?.status ?? row.status,
       shotCount: space?.shots?.length ?? 0,
-      referenceImageCount: space?.contextAssets?.filter((asset) => asset.url || asset.thumbnailUrl).length ?? 0,
+      referenceImageCount: space ? buildProductionDirectorReferenceImages(space).length : 0,
       platform: compactProductionText(brief.platform ?? goal.platform ?? "", 80) || null,
       audience: compactProductionText(brief.audience ?? goal.audience ?? "", 120) || null,
       thumbnailUrl: previewImage?.thumbnailUrl ?? previewImage?.url ?? null,
@@ -403,7 +421,7 @@ async function getProductionDirectorProjectForExtension(auth: { userId: number; 
       updatedAt: space.updatedAt ?? null,
       platform: compactProductionText(space.brief?.platform ?? "", 80) || null,
       audience: compactProductionText(space.brief?.audience ?? "", 120) || null,
-      referenceImages: productionReferenceImagesFromRefs(space.contextAssets).slice(0, 30),
+      referenceImages: buildProductionDirectorReferenceImages(space),
       shots: space.shots
         .slice()
         .sort((left, right) => left.order - right.order)
