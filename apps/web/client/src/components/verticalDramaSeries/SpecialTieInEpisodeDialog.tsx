@@ -3308,15 +3308,36 @@ export function SpecialTieInEpisodeDialog({
                                     ? "บทพูดและท่าทาง"
                                     : "Dialogue and actions"}
                               </span>
-                              <span className="mt-1 block max-h-20 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-muted-foreground">
+                              <span className="mt-1 block max-h-80 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-muted-foreground">
                                 {dialogueMode === "none"
                                   ? candidate.actions.join("\n")
-                                  : candidate.dialogueScript ||
-                                    candidate.dialogue
-                                      .map(
-                                        line => `${line.speaker}: ${line.line}`
-                                      )
-                                      .join("\n")}
+                                  : candidate.shotDialogues.length > 0
+                                    ? candidate.shotDialogues.map(shot => (
+                                        <span
+                                          key={shot.shotNumber}
+                                          className="mt-2 block first:mt-0"
+                                        >
+                                          <span className="block font-medium text-foreground">
+                                            {lang === "th"
+                                              ? `ช็อต ${shot.shotNumber}`
+                                              : `Shot ${shot.shotNumber}`}
+                                          </span>
+                                          {shot.lines.map((line, lineIndex) => (
+                                            <span
+                                              key={`${shot.shotNumber}-${lineIndex}`}
+                                              className="block"
+                                            >
+                                              {line.speaker}: {line.line}
+                                            </span>
+                                          ))}
+                                        </span>
+                                      ))
+                                    : candidate.dialogueScript ||
+                                      candidate.dialogue
+                                        .map(
+                                          line => `${line.speaker}: ${line.line}`
+                                        )
+                                        .join("\n")}
                               </span>
                               {candidate.shotDialogues.length === 9 &&
                               candidate.shotDialogues.every(
