@@ -5,6 +5,7 @@ import {
   Expand,
   ImagePlus,
   Loader2,
+  MapPin,
   Search,
   Upload,
 } from "lucide-react";
@@ -980,6 +981,9 @@ export function SpecialTieInEpisodeDialog({
   const locations = locationsQuery.data?.locations ?? [];
   const selectedLocation = locations.find(
     location => String(location.locationId) === selectedLocationId
+  );
+  const selectedSceneLocation = locations.find(
+    location => location.locationKey === selectedSceneLocationKey
   );
   const approvedLocationAssets = (
     locationAssetsQuery.data?.assets ?? []
@@ -3457,14 +3461,52 @@ export function SpecialTieInEpisodeDialog({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            {locations.map(location => (
-                              <SelectItem
-                                key={String(location.locationId)}
-                                value={String(location.locationId)}
-                              >
-                                {location.name ?? location.locationKey}
-                              </SelectItem>
-                            ))}
+                            {locations.map(location => {
+                              const imageUrl = location.primaryReferenceUrl;
+                              return (
+                                <SelectItem
+                                  key={String(location.locationId)}
+                                  value={String(location.locationId)}
+                                  className="py-2"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    {imageUrl ? (
+                                      <AuthenticatedMediaImage
+                                        src={imageUrl}
+                                        alt={location.name}
+                                        className="h-12 w-16 shrink-0 rounded object-cover"
+                                        loadingLabel={
+                                          lang === "th"
+                                            ? "กำลังโหลดภาพฉาก..."
+                                            : "Loading scene image..."
+                                        }
+                                        errorLabel={
+                                          lang === "th"
+                                            ? "โหลดภาพฉากไม่สำเร็จ"
+                                            : "Scene image unavailable"
+                                        }
+                                      />
+                                    ) : (
+                                      <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                                        <MapPin className="h-5 w-5" aria-hidden="true" />
+                                      </span>
+                                    )}
+                                    <span className="min-w-0">
+                                      <span className="block truncate">
+                                        {location.name ?? location.locationKey}
+                                      </span>
+                                      {!imageUrl ? (
+                                        <span className="block text-xs text-muted-foreground">
+                                          {lang === "th"
+                                            ? "ยังไม่มีภาพฉาก"
+                                            : "No scene image yet"}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
@@ -3522,11 +3564,42 @@ export function SpecialTieInEpisodeDialog({
 
             {selectedMarketplaceIdea && selectedSceneLocationKey ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
-                <p className="text-sm text-muted-foreground">
-                  {lang === "th"
-                    ? "ผูกฉากกับตอนแล้ว สามารถสร้างภาพฉากต่อได้จากแท็บฉากของซีรีย์"
-                    : "The scene is linked to this episode. Generate its image from the series Scenes tab."}
-                </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  {selectedSceneLocation?.primaryReferenceUrl ? (
+                    <AuthenticatedMediaImage
+                      src={selectedSceneLocation.primaryReferenceUrl}
+                      alt={selectedSceneLocation.name}
+                      className="h-16 w-24 shrink-0 rounded object-cover"
+                      loadingLabel={
+                        lang === "th"
+                          ? "กำลังโหลดภาพฉาก..."
+                          : "Loading scene image..."
+                      }
+                      errorLabel={
+                        lang === "th"
+                          ? "โหลดภาพฉากไม่สำเร็จ"
+                          : "Scene image unavailable"
+                      }
+                    />
+                  ) : (
+                    <span className="flex h-16 w-24 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                      <MapPin className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                  )}
+                  <p className="min-w-0 text-sm text-muted-foreground">
+                    <span className="block font-medium text-foreground">
+                      {selectedSceneLocation?.name ??
+                        selectedMarketplaceIdea.scene.location}
+                    </span>
+                    {selectedSceneLocation?.primaryReferenceUrl
+                      ? lang === "th"
+                        ? "ผูกฉากนี้กับตอนแล้ว"
+                        : "This scene is linked to the episode."
+                      : lang === "th"
+                        ? "ฉากนี้ยังไม่มีภาพ คุณสามารถสร้างภาพต่อในแท็บฉาก"
+                        : "This scene has no image yet. Generate one in the Scenes tab."}
+                  </p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
