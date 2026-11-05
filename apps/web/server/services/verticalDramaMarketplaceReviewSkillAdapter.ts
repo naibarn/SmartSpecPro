@@ -45,7 +45,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; when it is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Product tie-in is required in all 3 ideas: use the actual product category and at least one concrete, user-provided detail from input.product or input.direction as part of the character\'s action or problem resolution, not just in a closing summary. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; at least 2 different shots in every idea must naturally refer to the product category or a concrete supplied detail while responding to what a character sees, does, or needs. Do not make these lines interchangeable generic encouragement. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -498,7 +498,54 @@ export type MarketplaceReviewIdeaValidationOptions = {
   dialogueSpeakerCharacterNames?: readonly string[];
   dialogueProhibitedCharacterNames?: readonly string[];
   dialogueMode?: "none" | "character_dialogue";
+  productEvidenceAnchors?: readonly string[];
 };
+
+const PRODUCT_EVIDENCE_STOP_WORDS = new Set([
+  "และ", "หรือ", "แต่", "ที่", "ซึ่ง", "จาก", "ใน", "ของ", "เป็น", "ให้", "ได้",
+  "แล้ว", "ยัง", "อยู่", "มี", "ว่า", "เมื่อ", "เพราะ", "เพื่อ", "แบบ", "อย่าง",
+  "กับ", "โดย", "ก่อน", "หลัง", "ระหว่าง", "ค่อย", "ลอง", "ทำให้", "ช่วยให้",
+  "ตัวละคร", "สินค้า", "ผลิตภัณฑ์", "ภาพ", "ฉาก", "เรื่อง", "ตอน", "ไอเดีย",
+]);
+
+function getProductEvidenceAnchors(input: MarketplaceReviewIdeaInput): string[] {
+  const sourceTexts = [
+    input.product.name,
+    input.product.brand,
+    input.product.category,
+    input.product.description,
+    input.direction,
+    ...Object.values(input.product.specs ?? {}).flatMap(value =>
+      typeof value === "string" ? [value] : []
+    ),
+    ...input.product.sourceClaims,
+  ].filter((value): value is string => Boolean(value?.trim()));
+  const anchors: string[] = [];
+  const seen = new Set<string>();
+  const segmenter = new Intl.Segmenter("th", { granularity: "word" });
+  for (const sourceText of sourceTexts) {
+    const words = Array.from(segmenter.segment(sourceText))
+      .filter(part => part.isWordLike)
+      .map(part => part.segment.trim())
+      .filter(word => word.length >= 2);
+    for (let index = 0; index < words.length - 1; index += 1) {
+      if (
+        PRODUCT_EVIDENCE_STOP_WORDS.has(words[index]) ||
+        PRODUCT_EVIDENCE_STOP_WORDS.has(words[index + 1])
+      ) {
+        continue;
+      }
+      const phrase = `${words[index]}${words[index + 1]}`;
+      const normalized = phrase.toLocaleLowerCase();
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        anchors.push(phrase);
+      }
+    }
+    if (anchors.length >= 24) break;
+  }
+  return anchors.slice(0, 24);
+}
 
 export function validateMarketplaceReviewIdeaOutput(
   value: unknown,
@@ -509,6 +556,31 @@ export function validateMarketplaceReviewIdeaOutput(
   if (ids.size !== 3)
     throw new Error("MARKETPLACE_REVIEW_OUTPUT_INVALID: duplicate idea ids");
   const dialogueMode = options.dialogueMode ?? "character_dialogue";
+  const productEvidenceAnchors = (options.productEvidenceAnchors ?? [])
+    .map(anchor => anchor.trim().toLocaleLowerCase())
+    .filter(anchor => anchor.length >= 3);
+  if (productEvidenceAnchors.length > 0) {
+    const weakTieIn = output.ideas.some(idea => {
+      const story = idea.episodeStory.toLocaleLowerCase();
+      const dialogueShots = idea.shotDialogues.filter(shot =>
+        shot.lines.some(line =>
+          productEvidenceAnchors.some(anchor =>
+            line.line.toLocaleLowerCase().includes(anchor)
+          )
+        )
+      );
+      const storyHasEvidence = productEvidenceAnchors.some(anchor =>
+        story.includes(anchor)
+      );
+      return !storyHasEvidence ||
+        (dialogueMode === "character_dialogue" && dialogueShots.length < 2);
+    });
+    if (weakTieIn) {
+      throw new Error(
+        "MARKETPLACE_REVIEW_OUTPUT_INVALID: weak product tie-in; each idea must use a supplied product detail in its story and in dialogue across at least two different shots"
+      );
+    }
+  }
   if (
     dialogueMode === "none" &&
     output.ideas.some(
@@ -659,6 +731,7 @@ function buildUserPrompt(
   input: MarketplaceReviewIdeaInput,
   repairFeedback?: string,
 ): string {
+  const productEvidenceAnchors = getProductEvidenceAnchors(input);
   return JSON.stringify({
     task: "สร้างไอเดีย 3 ใบสำหรับตอนซีรีย์ tie-in สินค้าแบบเนียนเป็นละคร ไม่ใช่รีวิวตรง ๆ",
     outputContract: MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT,
@@ -716,7 +789,12 @@ function buildUserPrompt(
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
       advertisingCompliance: "ห้ามกล่าวอ้างเกินจริง ห้าม hard sell และห้ามให้เด็กพูด",
+      productTieIn:
+        input.dialogueMode === "character_dialogue"
+          ? "ทุกไอเดียต้องใช้ประเภทสินค้าและรายละเอียดจริงอย่างน้อย 1 จุดในเหตุการณ์ และอย่างน้อย 2 ช็อตต้องมีบทพูดที่เอ่ยถึงประเภทสินค้าหรือรายละเอียดจริงอย่างเป็นธรรมชาติ ไม่ใช้ประโยคให้กำลังใจทั่วไปแทนการพูดถึงสินค้า"
+          : "ทุกไอเดียต้องใช้ประเภทสินค้าและรายละเอียดจริงอย่างน้อย 1 จุดในเรื่อง ผ่านการกระทำหรือภาพที่เห็น ห้ามมีบทพูด",
     },
+    productEvidenceAnchors,
     repairFeedback: repairFeedback || undefined,
     input,
   });
@@ -1184,6 +1262,7 @@ export async function generateMarketplaceReviewIdeas(input: {
         dialogueSpeakerCharacterNames: parsed.dialogueSpeakerCharacterNames,
         dialogueProhibitedCharacterNames: parsed.dialogueProhibitedCharacterNames,
         dialogueMode: parsed.dialogueMode,
+        productEvidenceAnchors: getProductEvidenceAnchors(parsed),
       });
     } catch (error) {
       lastValidationError = error;
