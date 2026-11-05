@@ -3823,6 +3823,22 @@ export function SpecialTieInEpisodeDialog({
           </div>
         </div>
 
+        {!canSubmit && !actionState.finalSubmitPending ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {dialogueMode === "character_dialogue" && !selectedMarketplaceIdea
+              ? lang === "th"
+                ? "ขั้นตอนถัดไป: กด “สร้างไอเดีย 3 ใบ” แล้วเลือกไอเดียหนึ่งใบก่อนสร้างตอนพิเศษ หรือเลือกโหมด “ไม่มีบทพูด” หากต้องการสร้างจากโจทย์โดยตรง"
+                : 'Next: choose “Generate 3 ideas” and select one before creating the episode, or switch to “No dialogue” to create directly from your brief.'
+              : dialogueMode === "character_dialogue" &&
+                  !hasCompleteShotDialogueDrafts(shotDialogueDrafts)
+                ? lang === "th"
+                  ? "ตรวจบทพูดให้ครบทั้ง 9 ช็อต (ช็อตละอย่างน้อย 2 บรรทัด) ก่อนสร้างตอนพิเศษ"
+                  : "Complete the dialogue for all 9 shots (at least 2 lines per shot) before creating the episode."
+                : lang === "th"
+                  ? "กรุณาตรวจข้อมูลที่จำเป็นก่อนสร้างตอนพิเศษ เช่น ภาพอ้างอิง ตัวละคร และโมเดลที่เลือก"
+                  : "Check the required references, characters, and model selections before creating the episode."}
+          </p>
+        ) : null}
         <DialogFooter>
           <Button
             type="button"
