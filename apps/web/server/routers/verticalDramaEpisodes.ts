@@ -11969,6 +11969,8 @@ export const verticalDramaEpisodesRouter = router({
         actor,
         seriesId,
       });
+      const requestJson = JSON.stringify(request);
+      const requestChunks = requestJson.match(/[\s\S]{1,8000}/g) ?? ["{}"];
       const sourceKey =
         input.productSource === "marketplace_capture"
           ? input.productId!
@@ -11981,7 +11983,10 @@ export const verticalDramaEpisodesRouter = router({
         skillSlug: "vertical-drama-marketplace-review-story-planner",
         modelId: request.llmModelId,
         idempotencyKey: `marketplace-review-ideas:${seriesId}:${sourceKey}:${request.variationSeed}`,
-        input: { seriesId, request },
+        // Keep the canonical worker_jobs definition shallow. User-controlled
+        // product/character/footage evidence can be deeply nested, while the
+        // worker contract intentionally limits object depth.
+        input: { seriesId, requestChunks },
       });
       return {
         ...job,

@@ -1416,7 +1416,23 @@ export async function runMarketplaceReviewIdeasJob(
   if (!Number.isInteger(seriesId) || seriesId <= 0) {
     throw new Error("Marketplace review idea job has an invalid series id");
   }
-  const request = marketplaceReviewIdeaInputSchema.parse(payload.input.request);
+  let rawRequest = payload.input.request;
+  if (Array.isArray(payload.input.requestChunks)) {
+    const chunks = payload.input.requestChunks;
+    if (
+      chunks.length === 0 ||
+      chunks.length > 128 ||
+      chunks.some(chunk => typeof chunk !== "string" || chunk.length > 8_000)
+    ) {
+      throw new Error("Marketplace review idea job has invalid request chunks");
+    }
+    try {
+      rawRequest = JSON.parse(chunks.join("")) as unknown;
+    } catch {
+      throw new Error("Marketplace review idea job request is not valid JSON");
+    }
+  }
+  const request = marketplaceReviewIdeaInputSchema.parse(rawRequest);
   return generateMarketplaceReviewIdeas({
     actor: { tenantId: payload.tenantId, userId: payload.userId },
     seriesId,
