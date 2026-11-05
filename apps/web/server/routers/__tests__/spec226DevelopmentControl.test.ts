@@ -833,6 +833,7 @@ describe("spec226DevelopmentControlRouter", () => {
       runnableWorkPackageIds: ["wp-1"],
     });
     expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      runnerId: sourceBinding.runnerId,
       workspaceId: sourceBinding.workspaceId,
       gitHead: sourceBinding.gitHead,
       contentFingerprint: sourceBinding.contentFingerprint,
@@ -858,6 +859,7 @@ describe("spec226DevelopmentControlRouter", () => {
       ctx: CTX, input: { conversationId: 8, mode: "spec_set" },
     })).resolves.toMatchObject({ sourceAuthority: { status: "ready" } });
     expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      runnerId: sourceBinding.runnerId,
       workspaceId: sourceBinding.workspaceId,
       gitHead: sourceBinding.gitHead,
       contentFingerprint: sourceBinding.contentFingerprint,
@@ -1389,6 +1391,7 @@ describe("spec226DevelopmentControlRouter", () => {
     });
 
     expect(mocks.assertWorkspaceExecutionSource).toHaveBeenCalledWith({
+      runnerId: "runner-a",
       workspaceId: "workspace-core", gitHead: "a".repeat(40), contentFingerprint: "d".repeat(64), dirtyPaths: [],
     });
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();

@@ -924,6 +924,7 @@ export function createSpec224AuthorizationService() {
 
   const service = {
     async assertWorkspaceExecutionSource(input: {
+      runnerId: string;
       workspaceId: string;
       gitHead: string;
       contentFingerprint: string;
@@ -932,6 +933,7 @@ export function createSpec224AuthorizationService() {
       if (!Array.isArray(input.dirtyPaths)) throw new Spec224AuthorizationError("WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED");
       try {
         await assertSpec224ExecutionSourceMatchesAuthority({
+          runnerId: input.runnerId,
           workspaceId: input.workspaceId,
           sourceSha: input.gitHead,
           sourceFingerprint: input.contentFingerprint,
@@ -1099,6 +1101,7 @@ export function createSpec224AuthorizationService() {
         const authorizationDeadlines = [Date.parse(run.deadline), Date.parse(grant.expiresAt)].filter(Number.isFinite);
         if (!authorizationDeadlines.length) throw new Spec224AuthorizationError("SPEC224_AUTHORIZATION_DEADLINE_REQUIRED");
         executionLease = await acquireSpec224ExecutionLease({
+          runnerId: runner.runnerId,
           workspaceId: run.workspaceId, runId: run.runId, jobId: run.workerJobId,
           attemptId: loaded.attemptId, tenantId: input.context.tenantId, actorId: input.context.actorId,
           sourceSha: source, sourceFingerprint, allowedWriteSet: paths as string[],
@@ -1112,6 +1115,7 @@ export function createSpec224AuthorizationService() {
         if (!executionLease) return;
         await releaseSpec224ExecutionLease({
           leaseId: executionLease.leaseId, fencingGeneration: executionLease.fencingGeneration,
+          runnerId: runner.runnerId,
           terminalRef: `authorization-failed-${authorizedAttemptId}`, workspaceId: run.workspaceId,
           runId: run.runId, jobId: run.workerJobId!, attemptId: authorizedAttemptId,
           tenantId: input.context.tenantId, actorId: input.context.actorId,

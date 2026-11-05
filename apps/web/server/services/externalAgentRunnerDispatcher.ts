@@ -307,6 +307,7 @@ export function createExternalAgentTaskDispatcher(
           void renewSpec224ExecutionLease({
             leaseId: spec224ExecutionLease.leaseId,
             fencingGeneration: spec224ExecutionLease.fencingGeneration,
+            runnerId: command.runnerId,
             workspaceId: spec224ExecutionLease.workspaceId,
             runId: spec224ExecutionLease.runId,
             jobId: spec224ExecutionLease.jobId,

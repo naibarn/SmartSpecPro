@@ -2720,11 +2720,12 @@ export function createJobControlPlane(
           : undefined;
         const platformExecution = execution?.platformScope === true || specRun.metadata?.spec224Workspace?.platformScope === true;
         if (goal && platformExecution) {
-          if (!attempt || typeof binding.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
+          if (!attempt || typeof binding.runnerId !== "string" || typeof binding.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
             binding.executionLeaseSourceSha !== goal.sourceSha || typeof binding.executionLeaseSourceFingerprint !== "string") return false;
           try {
             await validateSpec224ExecutionLease({
               leaseId: binding.executionLeaseId, fencingGeneration: binding.executionLeaseGeneration as number,
+              runnerId: String(binding.runnerId),
               workspaceId: goal.workspaceId, runId: String(specRun.runId), jobId: job.id, attemptId: attempt.id,
               tenantId: input.tenantId, actorId: input.requestedByUserId, sourceSha: goal.sourceSha,
               sourceFingerprint: binding.executionLeaseSourceFingerprint, changedPaths: [],

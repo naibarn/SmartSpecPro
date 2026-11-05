@@ -147,11 +147,12 @@ async function releaseTerminalExecutionLease(intent: ContinuationIntent, job: {
     !["RUNNER_EXECUTION_COMPLETED", "RUNNER_EXECUTION_FAILED", "RUNNER_COMMAND_REJECTED"].includes(intent.receiptEventType)) return;
   const authorization = job.progressJson?.spec224Authorization as Record<string, unknown> | undefined;
   const binding = authorization?.binding as Record<string, unknown> | undefined;
-  if (typeof binding?.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
+  if (typeof binding?.runnerId !== "string" || typeof binding.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
     typeof binding.executionLeaseAttemptId !== "string" || typeof binding.executionLeaseRunId !== "string" ||
     typeof binding.executionLeaseJobId !== "string") throw new Error("SPEC224_EXECUTION_LEASE_BINDING_MISSING");
   await releaseSpec224ExecutionLease({
     leaseId: binding.executionLeaseId, fencingGeneration: binding.executionLeaseGeneration as number,
+    runnerId: binding.runnerId,
     terminalRef: intent.receiptEventId, workspaceId: String(binding.workspaceRef),
     runId: binding.executionLeaseRunId, jobId: binding.executionLeaseJobId,
     attemptId: binding.executionLeaseAttemptId, tenantId: intent.tenantId, actorId: intent.actorId,

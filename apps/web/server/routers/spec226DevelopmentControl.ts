@@ -1213,6 +1213,7 @@ export const spec226DevelopmentControlRouter = router({
           } else {
             try {
               await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+                runnerId: sourceBinding.runnerId,
                 workspaceId: sourceBinding.workspaceId,
                 gitHead: sourceBinding.gitHead,
                 contentFingerprint: sourceBinding.contentFingerprint,
@@ -1710,6 +1711,7 @@ export const spec226DevelopmentControlRouter = router({
               throw new Error("WORKSPACE_SOURCE_AUTHORITY_FACTS_REQUIRED");
             }
             await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+              runnerId: binding.workspace.runnerId,
               workspaceId: binding.workspace.workspaceId,
               gitHead: execution.sourceSha,
               contentFingerprint: execution.sourceFingerprint,
@@ -1780,6 +1782,7 @@ export const spec226DevelopmentControlRouter = router({
         }
         if (platformEngineeringWorkspace) {
           await defaultSpec224AuthorizationService.assertWorkspaceExecutionSource({
+            runnerId: preparedSourceBinding.runnerId,
             workspaceId: preparedSourceBinding.workspaceId,
             gitHead: preparedSourceBinding.gitHead,
             contentFingerprint: preparedSourceBinding.contentFingerprint,
