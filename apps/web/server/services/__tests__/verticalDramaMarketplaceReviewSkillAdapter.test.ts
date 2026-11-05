@@ -69,6 +69,29 @@ describe("Marketplace review idea output gate", () => {
     expect(validateMarketplaceReviewIdeaOutput(output).ideas).toHaveLength(3);
   });
 
+  it("normalizes missing and oversized dialogue summaries from the authoritative shot script", () => {
+    const output = {
+      schemaVersion: 1,
+      ideas: [
+        idea("idea-1", paragraphs, "แม่: ลองชิ้นนี้กันไหม เราค่อย ๆ สังเกตวิธีเล่นและดูว่าภูมิรู้สึกอย่างไร\nลุง: ได้เลย เราจะคุยกันระหว่างลองและช่วยกันคิดต่ออย่างใจเย็น"),
+        idea("idea-2", paragraphs, "แม่: ลองชิ้นนี้กันไหม เราค่อย ๆ สังเกตวิธีเล่นและดูว่าภูมิรู้สึกอย่างไร\nลุง: ได้เลย เราจะคุยกันระหว่างลองและช่วยกันคิดต่ออย่างใจเย็น"),
+        idea("idea-3", paragraphs, "แม่: ลองชิ้นนี้กันไหม เราค่อย ๆ สังเกตวิธีเล่นและดูว่าภูมิรู้สึกอย่างไร\nลุง: ได้เลย เราจะคุยกันระหว่างลองและช่วยกันคิดต่ออย่างใจเย็น"),
+      ],
+    };
+    output.ideas[0]!.dialogue = undefined;
+    output.ideas[1]!.dialogue = Array.from({ length: 18 }, (_, index) => ({
+      speaker: index % 2 === 0 ? "แม่" : "ลุง",
+      line: `บทพูด ${index + 1}`,
+    }));
+
+    const validated = validateMarketplaceReviewIdeaOutput(output);
+    expect(validated.ideas[0]!.dialogue).toHaveLength(12);
+    expect(validated.ideas[0]!.dialogue[0]).toEqual(
+      output.ideas[0]!.shotDialogues[0]!.lines[0],
+    );
+    expect(validated.ideas[1]!.dialogue).toHaveLength(12);
+  });
+
   it("uses actions instead of dialogue when the selected mode is no-dialogue", () => {
     const output = {
       schemaVersion: 1,

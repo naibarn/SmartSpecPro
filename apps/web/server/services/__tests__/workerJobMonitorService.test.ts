@@ -582,6 +582,49 @@ describe("workerJobMonitorService", () => {
     });
   });
 
+  it("does not project a prior retry error as the current error of a completed job", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([{
+        id: "job-recovered",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "vertical_drama.interactive",
+        status: "succeeded",
+        statusReason: "claimed:postgres-pull",
+        resourceProfile: "long_running",
+        outputJson: {},
+        instructionsJson: {},
+        failureReason: "old lease warning",
+        errorCode: "LEASE_EXPIRED_RETRYING",
+        errorMessage: "old lease warning",
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        inputJson: {},
+        progressJson: {},
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await listUserWorkerJobs(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(result.items[0]).toMatchObject({
+      status: "succeeded",
+      errorCode: null,
+      failureReason: null,
+    });
+  });
+
   it("shows the persisted development goal beside its worker job", async () => {
     const repo = createRepo({
       listUserJobs: vi.fn().mockResolvedValue([{

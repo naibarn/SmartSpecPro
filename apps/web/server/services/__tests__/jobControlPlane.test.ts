@@ -1500,12 +1500,21 @@ describe("job control plane", () => {
       adapter: "test",
     });
     await controlPlane.start(lease!);
+    const job = state.jobs.get(created.jobId);
+    job.errorCode = "LEASE_EXPIRED_RETRYING";
+    job.errorMessage = "old lease warning";
+    job.failureReason = "old lease warning";
     await controlPlane.complete(lease!, {
       resultRef: "artifact:1",
       output: { apiKey: "do-not-persist", value: "safe" },
     });
     expect(state.settlements).toHaveLength(1);
     expect(state.jobs.get(created.jobId).status).toBe("succeeded");
+    expect(state.jobs.get(created.jobId)).toMatchObject({
+      errorCode: null,
+      errorMessage: null,
+      failureReason: null,
+    });
     expect(state.jobs.get(created.jobId).outputJson).toEqual({
       apiKey: "[REDACTED]",
       value: "safe",
@@ -1842,6 +1851,9 @@ describe("job control plane", () => {
       )
     ).toBe(true);
     expect(job.status).toBe("queued");
+    expect(job.errorCode).toBeNull();
+    expect(job.errorMessage).toBeNull();
+    expect(job.failureReason).toBeNull();
     expect(job.operatorReviewRequired).toBe(false);
     expect(job.operatorReviewReason).toBeNull();
     expect(state.outbox).toHaveLength(2);

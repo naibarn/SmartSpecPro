@@ -901,6 +901,7 @@ function projectJob(
       row.jobType === "remotion_render_video"
       && (artifactsByJobId.get(row.id) ?? []).some(isPublishableRemotionArtifact),
   });
+  const isSuccessful = ["succeeded", "completed"].includes(status);
   const input = asRecord(row.inputJson);
   const spec224Run = asRecord(input.spec224Run);
   const contextLabel = safeBoundedString(spec224Run.goal, 180) ?? null;
@@ -942,13 +943,15 @@ function projectJob(
     status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
     errorCode: (() => {
+      if (isSuccessful) return null;
       const code = safeBoundedString(row.errorCode, 160);
       return code && /^[A-Z][A-Z0-9_]{1,159}$/.test(code) ? code : null;
     })(),
     operatorReviewRequired: row.operatorReviewRequired,
     operatorReviewReason: row.operatorReviewReason,
-    failureReason:
-      status === "failed" && !row.failureReason
+    failureReason: isSuccessful
+      ? null
+      : status === "failed" && !row.failureReason
         ? "HyperFrames final video verification failed."
         : row.failureReason,
     runtimeType: row.runtimeType,

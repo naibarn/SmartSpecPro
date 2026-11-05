@@ -45,7 +45,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Product tie-in is required in all 3 ideas: use the actual product category and at least one concrete, user-provided detail from input.product or input.direction as part of the character\'s action or problem resolution, not just in a closing summary. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; at least 2 different shots in every idea must naturally refer to the product category or a concrete supplied detail while responding to what a character sees, does, or needs. Do not make these lines interchangeable generic encouragement. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Product tie-in is required in all 3 ideas: use the actual product category and at least one concrete, user-provided detail from input.product or input.direction as part of the character\'s action or problem resolution, not just in a closing summary. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; at least 2 different shots in every idea must naturally refer to the product category or a concrete supplied detail while responding to what a character sees, does, or needs. Do not make these lines interchangeable generic encouragement. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -247,6 +247,41 @@ const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
 // Normalize that harmless representation before applying the strict business
 // contract; all other missing or malformed fields must still be repaired by
 // the schema retry loop rather than fabricated here.
+function normalizeGeneratedDialogueSummary(
+  value: unknown,
+  dialogueMode: "none" | "character_dialogue",
+) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if (!Array.isArray(record.ideas)) return value;
+  return {
+    ...record,
+    ideas: record.ideas.map(candidate => {
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+        return candidate;
+      }
+      const idea = candidate as Record<string, unknown>;
+      if (dialogueMode === "none" && idea.dialogue === undefined) {
+        return { ...idea, dialogue: [] };
+      }
+      if (dialogueMode !== "character_dialogue") return idea;
+      const supplied = Array.isArray(idea.dialogue) ? idea.dialogue : [];
+      if (supplied.length > 0 && supplied.length <= 12) return idea;
+      const shotLines = Array.isArray(idea.shotDialogues)
+        ? idea.shotDialogues.flatMap(shot => {
+            if (!shot || typeof shot !== "object" || Array.isArray(shot)) return [];
+            const lines = (shot as Record<string, unknown>).lines;
+            return Array.isArray(lines) ? lines : [];
+          })
+        : [];
+      return {
+        ...idea,
+        dialogue: (supplied.length > 12 ? supplied : shotLines).slice(0, 12),
+      };
+    }),
+  };
+}
+
 function marketplaceReviewIdeaLlmOutputSchema(
   dialogueMode: "none" | "character_dialogue"
 ) {
@@ -254,10 +289,10 @@ function marketplaceReviewIdeaLlmOutputSchema(
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return value;
     }
-    const record = value as Record<string, unknown>;
+    const record = normalizeGeneratedDialogueSummary(value, dialogueMode) as Record<string, unknown>;
     return record.schemaVersion === "1.0"
       ? { ...record, schemaVersion: 1 }
-      : value;
+      : record;
   }, marketplaceReviewIdeaOutputSchema.superRefine((output, ctx) => {
     output.ideas.forEach((idea, index) => {
       if (idea.episodeStory.trim().length < 280) {
@@ -551,7 +586,9 @@ export function validateMarketplaceReviewIdeaOutput(
   value: unknown,
   options: MarketplaceReviewIdeaValidationOptions = {}
 ): MarketplaceReviewIdeaOutput {
-  const output = marketplaceReviewIdeaOutputSchema.parse(value);
+  const output = marketplaceReviewIdeaOutputSchema.parse(
+    normalizeGeneratedDialogueSummary(value, options.dialogueMode ?? "character_dialogue")
+  );
   const ids = new Set(output.ideas.map(idea => idea.ideaId));
   if (ids.size !== 3)
     throw new Error("MARKETPLACE_REVIEW_OUTPUT_INVALID: duplicate idea ids");

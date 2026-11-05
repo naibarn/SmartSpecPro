@@ -4,6 +4,18 @@ export const NODE_WORKER_DISPATCH_BACKLOG_STALE_MS = 120_000;
 export const NODE_WORKER_RESTART_WINDOW_MS = 10 * 60_000;
 export const NODE_WORKER_MAX_RESTARTS_IN_WINDOW = 3;
 
+export function appendNodeWorkerRecoveryRestart(
+  restartTimestamps: readonly number[],
+  now = Date.now(),
+): number[] {
+  return [
+    ...restartTimestamps.filter(
+      timestamp => Number.isFinite(timestamp) && timestamp > now - NODE_WORKER_RESTART_WINDOW_MS,
+    ),
+    now,
+  ];
+}
+
 export type NodeWorkerHealthSnapshot = {
   serviceActive: boolean;
   serviceAgeMs?: number | null;

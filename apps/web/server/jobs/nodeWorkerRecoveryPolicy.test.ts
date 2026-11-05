@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  appendNodeWorkerRecoveryRestart,
   decideNodeWorkerRecovery,
+  NODE_WORKER_RESTART_WINDOW_MS,
   type NodeWorkerHealthSnapshot,
 } from "./nodeWorkerRecoveryPolicy";
 
@@ -102,5 +104,14 @@ describe("node worker recovery policy", () => {
       action: "alert",
       reason: "restart_circuit_open",
     });
+  });
+
+  it("keeps only recent restart timestamps when recording a restart", () => {
+    const now = 1_000_000;
+    expect(appendNodeWorkerRecoveryRestart([
+      now - NODE_WORKER_RESTART_WINDOW_MS - 1,
+      now - 5_000,
+      Number.NaN,
+    ], now)).toEqual([now - 5_000, now]);
   });
 });

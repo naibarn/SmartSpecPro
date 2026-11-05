@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { asc, desc, eq, sql } from "drizzle-orm";
 
@@ -14,7 +14,9 @@ import {
 } from "../services/externalAgentTaskExecutor";
 import { createExternalAgentTaskDispatcher } from "../services/externalAgentRunnerDispatcher";
 import {
+  appendNodeWorkerRecoveryRestart,
   decideNodeWorkerRecovery,
+  NODE_WORKER_RESTART_WINDOW_MS,
   type NodeWorkerHealthSnapshot,
 } from "./nodeWorkerRecoveryPolicy";
 import {
@@ -56,6 +58,35 @@ async function writeNodeWorkerHeartbeat(phase: string): Promise<void> {
   const path = heartbeatFilePath();
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${Date.now()}\t${phase}\t${process.pid}\n`, "utf8");
+}
+
+function recoveryRestartHistoryPath(): string {
+  return `${heartbeatFilePath()}.restarts.json`;
+}
+
+async function readRecoveryRestartHistory(now = Date.now()): Promise<number[]> {
+  const path = recoveryRestartHistoryPath();
+  try {
+    const parsed: unknown = JSON.parse(await readFile(path, "utf8"));
+    if (!Array.isArray(parsed)) throw new Error("NODE_WORKER_RESTART_HISTORY_INVALID");
+    return parsed.filter(
+      (timestamp): timestamp is number =>
+        typeof timestamp === "number" &&
+        Number.isFinite(timestamp) &&
+        timestamp > now - NODE_WORKER_RESTART_WINDOW_MS,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function writeRecoveryRestartHistory(timestamps: number[]): Promise<void> {
+  const path = recoveryRestartHistoryPath();
+  const tempPath = `${path}.${process.pid}.tmp`;
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(tempPath, JSON.stringify(timestamps), "utf8");
+  await rename(tempPath, path);
 }
 
 function startNodeWorkerHeartbeat(): () => void {
@@ -130,23 +161,36 @@ async function readNodeWorkerQueueHealth(): Promise<Pick<NodeWorkerHealthSnapsho
 
 function startNodeWorkerQueueRecovery(): () => void {
   let inFlight = false;
+  let circuitOpenLogged = false;
   const check = async () => {
     if (inFlight) return;
     inFlight = true;
     try {
       const queueHealth = await readNodeWorkerQueueHealth();
+      const restartHistory = await readRecoveryRestartHistory();
       const decision = decideNodeWorkerRecovery({
         serviceActive: true,
         heartbeatAgeMs: 0,
-        restartsInWindow: 0,
+        restartsInWindow: restartHistory.length,
         ...queueHealth,
       });
       if (decision.action === "restart") {
+        const nextRestartHistory = appendNodeWorkerRecoveryRestart(restartHistory);
+        await writeRecoveryRestartHistory(nextRestartHistory);
         console.error("[Feature186] node worker self-recovery restarting process", {
           reason: decision.reason,
+          restartsInWindow: nextRestartHistory.length,
           ...queueHealth,
         });
         process.exit(1);
+      }
+      if (decision.action === "alert" && !circuitOpenLogged) {
+        circuitOpenLogged = true;
+        console.error("[Feature186] node worker self-recovery circuit open; leaving process up for operator inspection", {
+          reason: decision.reason,
+          restartsInWindow: restartHistory.length,
+          ...queueHealth,
+        });
       }
     } catch (error) {
       console.error("[Feature186] node worker self-recovery probe failed", {

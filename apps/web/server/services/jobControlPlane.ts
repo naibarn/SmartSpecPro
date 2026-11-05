@@ -4195,6 +4195,9 @@ export function createJobControlPlane(
         {
           resultRef,
           outputJson: safeResult.output,
+          errorCode: null,
+          errorMessage: null,
+          failureReason: null,
           leaseOwnerToken: null,
           leaseExpiresAt: null,
           finishedAt: new Date(),
@@ -4917,6 +4920,9 @@ export function createJobControlPlane(
               ? { runtimeType: CONTENT_PROTECTION_RUNTIME_TYPE }
               : {}),
             nextRetryAt: null,
+            errorCode: null,
+            errorMessage: null,
+            failureReason: null,
             operatorReviewRequired: false,
             operatorReviewReason: null,
           },
