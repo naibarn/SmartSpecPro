@@ -520,6 +520,67 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
     expect(images[0]?.url).toBe("/api/storage/files/hero-thumb.png");
     expect(images[0]?.mediaType).toBe("image");
   });
+
+  it("includes selected product images and omits a linked start-frame duplicate", () => {
+    const images = projectDramaShotReferenceImagesForExtension({
+      productReferenceAssetIds: ["301"],
+      productAssetsById: new Map([
+        [301, { originalUrl: "/api/storage/files/tricycle.png", thumbnailUrl: "/api/storage/files/tricycle-thumb.png" }],
+      ]),
+      startFrameUrl: "/api/storage/files/start-frame.png",
+      shotReferenceRows: [
+        {
+          id: 10,
+          mediaAssetId: 300,
+          role: "reference",
+          source: "reference_frame",
+          assetMimeType: "image/png",
+          assetOriginalUrl: "/api/storage/files/start-frame.png",
+          assetThumbnailUrl: null,
+        },
+        {
+          id: 11,
+          mediaAssetId: 301,
+          role: "reference",
+          source: "product_reference",
+          assetMimeType: "image/png",
+          assetOriginalUrl: "/api/storage/files/tricycle.png",
+          assetThumbnailUrl: "/api/storage/files/tricycle-thumb.png",
+        },
+      ],
+      requiredCharacterRefs: [],
+      characterAssetsByCharacterKey: new Map(),
+      assetById: new Map(),
+    });
+
+    expect(images).toEqual([
+      expect.objectContaining({
+        id: "product-301",
+        url: "/api/storage/files/tricycle.png",
+        thumbnailUrl: "/api/storage/files/tricycle-thumb.png",
+        mediaType: "image",
+        role: "product_reference",
+        source: "product",
+        title: "Product reference",
+      }),
+    ]);
+  });
+
+  it("supports a direct product reference URL for legacy frame plans", () => {
+    const images = projectDramaShotReferenceImagesForExtension({
+      productReferenceAssetIds: ["https://cdn.example.test/tricycle.jpg"],
+      shotReferenceRows: [],
+      requiredCharacterRefs: [],
+      characterAssetsByCharacterKey: new Map(),
+      assetById: new Map(),
+    });
+
+    expect(images[0]).toMatchObject({
+      url: "https://cdn.example.test/tricycle.jpg",
+      role: "product_reference",
+      source: "product",
+    });
+  });
 });
 
 describe("resolveDramaShotCharacterRefsForExtension", () => {

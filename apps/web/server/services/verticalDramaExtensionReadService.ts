@@ -485,16 +485,45 @@ interface ExtensionCharacterAsset {
  */
 export function projectDramaShotReferenceImagesForExtension(input: {
   shotReferenceRows: ExtensionShotReferenceRow[];
+  productReferenceAssetIds?: string[];
+  productAssetsById?: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
+  startFrameUrl?: string | null;
   requiredCharacterRefs: string[];
   characterAssetsByCharacterKey: ReadonlyMap<string, ExtensionCharacterAsset[]>;
   assetById: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
 }): DramaShotReferenceImage[] {
   const images: DramaShotReferenceImage[] = [];
   const includedMediaAssetIds = new Set<number>();
+  const includedUrls = new Set<string>();
+  const startFrameUrl = input.startFrameUrl ?? null;
+
+  // Product references live on the frame plan's dedicated product track. Add
+  // them first so an asset also linked as a generic shot reference keeps its
+  // product identity and label in the extension.
+  for (const [index, rawId] of (input.productReferenceAssetIds ?? []).entries()) {
+    const value = rawId.trim();
+    if (!value) continue;
+    const assetId = /^\d+$/.test(value) ? Number(value) : null;
+    const asset = assetId === null ? null : input.productAssetsById?.get(assetId) ?? null;
+    const directUrl = /^(?:https?:\/\/|\/api\/storage\/files\/)/i.test(value) ? value : null;
+    const url = directUrl ?? asset?.originalUrl ?? asset?.thumbnailUrl ?? null;
+    if (!url || includedUrls.has(url)) continue;
+    images.push({
+      id: assetId === null ? `product-${index + 1}` : `product-${assetId}`,
+      url,
+      thumbnailUrl: asset?.thumbnailUrl ?? null,
+      mediaType: "image",
+      role: "product_reference",
+      source: "product",
+      title: "Product reference",
+    });
+    includedUrls.add(url);
+    if (assetId !== null) includedMediaAssetIds.add(assetId);
+  }
 
   for (const row of input.shotReferenceRows) {
     const url = row.assetOriginalUrl ?? row.assetThumbnailUrl;
-    if (!url || includedMediaAssetIds.has(row.mediaAssetId)) continue;
+    if (!url || url === startFrameUrl || includedUrls.has(url) || includedMediaAssetIds.has(row.mediaAssetId)) continue;
     const mediaType = mediaTypeFromMimeType(row.assetMimeType);
     if (!mediaType) continue;
     images.push({
@@ -506,6 +535,7 @@ export function projectDramaShotReferenceImagesForExtension(input: {
       source: row.source,
     });
     includedMediaAssetIds.add(row.mediaAssetId);
+    includedUrls.add(url);
   }
 
   for (const rawCharacterKey of input.requiredCharacterRefs) {
@@ -517,7 +547,8 @@ export function projectDramaShotReferenceImagesForExtension(input: {
     const characterAsset = characterAssets.find((candidate) => {
       if (includedMediaAssetIds.has(candidate.mediaAssetId)) return false;
       const asset = input.assetById.get(candidate.mediaAssetId);
-      return Boolean(asset?.originalUrl ?? asset?.thumbnailUrl);
+      const url = asset?.originalUrl ?? asset?.thumbnailUrl;
+      return Boolean(url && url !== startFrameUrl && !includedUrls.has(url));
     });
     if (!characterAsset) continue;
     const asset = input.assetById.get(characterAsset.mediaAssetId)!;
@@ -533,6 +564,7 @@ export function projectDramaShotReferenceImagesForExtension(input: {
       title: characterAsset.characterName,
     });
     includedMediaAssetIds.add(characterAsset.mediaAssetId);
+    includedUrls.add(url);
   }
 
   return images;
@@ -964,11 +996,15 @@ export async function getDramaSeriesEpisodeDetailForExtension(
     .map((row) => row.mediaAssetId)
     .filter((id): id is number => id !== null);
 
+  const productMediaAssetIds = frames.flatMap((frame) => frame.productReferenceAssetIds ?? [])
+    .map((raw) => typeof raw === "string" && /^\d+$/.test(raw.trim()) ? Number(raw) : null)
+    .filter((id): id is number => id !== null && Number.isSafeInteger(id) && id > 0);
+
   const referenceAssetById = await loadMediaAssetUrlsById(
     db,
     tenantId,
     auth.userId,
-    characterMediaAssetIds,
+    [...characterMediaAssetIds, ...productMediaAssetIds],
   );
 
   const shots: DramaShot[] = Array.from(shotNumbers)
@@ -996,6 +1032,9 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       const shotReferenceRows = referencesByShot.get(shotNumber) ?? [];
       const referenceImages = projectDramaShotReferenceImagesForExtension({
         shotReferenceRows,
+        productReferenceAssetIds: frame?.productReferenceAssetIds,
+        productAssetsById: referenceAssetById,
+        startFrameUrl: frameUrls.mainImageUrl,
         requiredCharacterRefs: requiredCharacterRefsByShot.get(shotNumber) ?? [],
         characterAssetsByCharacterKey,
         assetById: referenceAssetById,
