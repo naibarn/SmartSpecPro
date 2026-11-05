@@ -342,6 +342,41 @@ describe("projectDramaShotDialogueLinesForExtension", () => {
     expect(lines.map(line => line.speaker)).toEqual(["ภาคิน", "ไอริน"]);
   });
 
+  it("resolves shot-local speaker IDs to their confirmed display labels", () => {
+    const shotLocalSpeakerId = "shot-speaker-1793882343671-1";
+    const opaqueSpeakerKey = `shot-local-speaker-${shotLocalSpeakerId}`;
+    const lines = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 1,
+      dialogueAudioPlan: {
+        dialogueLines: [
+          {
+            shotNumber: 1,
+            speakerName: opaqueSpeakerKey,
+            speakerCharacterId: opaqueSpeakerKey,
+            text: "วันนี้เราไม่ต้องไปไกล",
+            targetDurationSeconds: 1.2,
+          },
+        ],
+      },
+      clipDialogue: [],
+      shotLocalSpeakerBindings: [
+        {
+          id: shotLocalSpeakerId,
+          speakerLabel: "พิมพ์ชนก",
+          visualCue: "ผู้หญิงนั่งข้างรถสามล้อ",
+        },
+      ],
+    });
+
+    expect(lines).toEqual([{
+      speaker: "พิมพ์ชนก",
+      emotion: null,
+      text: "วันนี้เราไม่ต้องไปไกล",
+      durationSeconds: 1.2,
+    }]);
+    expect(JSON.stringify(lines)).not.toContain("shot-local-speaker-");
+  });
+
   it("resolves clip-only speaker keys and never exposes unresolved opaque identifiers", () => {
     const resolved = projectDramaShotDialogueLinesForExtension({
       shotNumber: 1,

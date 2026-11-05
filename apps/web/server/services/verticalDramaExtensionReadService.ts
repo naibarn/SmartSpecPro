@@ -648,6 +648,25 @@ function resolveDramaSpeakerNameForExtension(input: {
   return "ไม่ระบุผู้พูด";
 }
 
+function characterNameMapWithShotLocalSpeakers(
+  characterNameByKey: ReadonlyMap<string, string> | undefined,
+  rawBindings: unknown,
+): ReadonlyMap<string, string> | undefined {
+  if (!Array.isArray(rawBindings) || rawBindings.length === 0) return characterNameByKey;
+  const names = new Map(characterNameByKey ?? []);
+  for (const value of rawBindings) {
+    const binding = asRecord(value);
+    const id = asTrimmedString(binding?.id);
+    const speakerLabel = asTrimmedString(binding?.speakerLabel);
+    if (!id || !speakerLabel) continue;
+    for (const key of [id, `shot-local-speaker-${id}`]) {
+      names.set(key, speakerLabel);
+      names.set(normalizeStoryCharacterName(key), speakerLabel);
+    }
+  }
+  return names;
+}
+
 /**
  * Projects the minimal dialogue data required by the extension. When an authored
  * audio plan exists its real per-line durations win; otherwise (clip-only
@@ -662,7 +681,12 @@ export function projectDramaShotDialogueLinesForExtension(input: {
   canonicalShot?: unknown;
   shotNumber: number;
   characterNameByKey?: ReadonlyMap<string, string>;
+  shotLocalSpeakerBindings?: unknown;
 }): DramaShotDialogueLine[] {
+  const characterNameByKey = characterNameMapWithShotLocalSpeakers(
+    input.characterNameByKey,
+    input.shotLocalSpeakerBindings,
+  );
   const clipLines = Array.isArray(input.clipDialogue)
     ? input.clipDialogue
       .map((value) => asRecord(value))
@@ -705,7 +729,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
       speaker: resolveDramaSpeakerNameForExtension({
         line: speakerLine,
         clipLine,
-        characterNameByKey: input.characterNameByKey,
+        characterNameByKey,
       }),
       emotion: typeof line.emotion === "string" && line.emotion.trim()
         ? line.emotion.trim()
@@ -727,7 +751,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
       speaker: resolveDramaSpeakerNameForExtension({
         line,
         clipLine,
-        characterNameByKey: input.characterNameByKey,
+        characterNameByKey,
       }),
       emotion: typeof line.emotion === "string" && line.emotion.trim()
         ? line.emotion.trim()
@@ -746,7 +770,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
     return [{
       speaker: resolveDramaSpeakerNameForExtension({
         clipLine: line,
-        characterNameByKey: input.characterNameByKey,
+        characterNameByKey,
       }),
       emotion: typeof line.emotion === "string" && line.emotion.trim() ? line.emotion.trim() : null,
       text,
@@ -1020,6 +1044,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         canonicalShot: canonicalShotByNumber.get(shotNumber),
         shotNumber,
         characterNameByKey,
+        shotLocalSpeakerBindings: frame?.speakerVisualBindings,
       });
       const dialogue = dialogueLines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
 
