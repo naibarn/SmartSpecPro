@@ -1091,6 +1091,99 @@ export function SpecialTieInEpisodeDialog({
     (dialogueMode === "none" ||
       (hasCompleteShotDialogueDrafts(shotDialogueDrafts) &&
         shotDialogueSpeakersAreSelected));
+  const submitBlockers = [
+    idea.trim().length === 0
+      ? lang === "th"
+        ? "ใส่ไอเดียหรือเลือกไอเดียที่สร้างไว้"
+        : "Enter an idea or select a generated idea"
+      : null,
+    references.length === 0
+      ? lang === "th"
+        ? "เพิ่มภาพสินค้า/สถานที่อย่างน้อย 1 ภาพ"
+        : "Add at least one product or location image"
+      : references.length > 3
+        ? lang === "th"
+          ? "ลดภาพอ้างอิงให้เหลือไม่เกิน 3 ภาพ"
+          : "Reduce references to no more than 3 images"
+        : null,
+    characterIds.length === 0
+      ? lang === "th"
+        ? "เลือกตัวละครอย่างน้อย 1 คน"
+        : "Select at least one character"
+      : null,
+    selectedCharacterIdsWithoutUsablePortrait.length > 0
+      ? lang === "th"
+        ? "เพิ่มภาพตัวละครที่พร้อมใช้งานให้ตัวละครที่เลือก"
+        : "Add a usable portrait for each selected character"
+      : null,
+    !selectedImageModelIsValid
+      ? lang === "th"
+        ? "เลือกรุ่นสร้างภาพที่รองรับ"
+        : "Choose a compatible image model"
+      : null,
+    !selectedVideoModelIsValid
+      ? lang === "th"
+        ? "เลือกรุ่นสร้างวิดีโอที่รองรับ"
+        : "Choose a compatible video model"
+      : null,
+    footageAssetId &&
+    !["completed", "published"].includes(
+      footagePrepareJobQuery.data?.status ?? ""
+    )
+      ? lang === "th"
+        ? "รอเตรียม Footage ให้เสร็จ หรือเอา Footage ออก"
+        : "Finish preparing the footage or remove it"
+      : null,
+    dialogueMode === "character_dialogue" && speakerCharacterIds.length === 0
+      ? lang === "th"
+        ? "เลือกผู้พูดอย่างน้อย 1 คน"
+        : "Select at least one speaker"
+      : null,
+    dialogueMode === "character_dialogue" && !selectedMarketplaceIdea
+      ? lang === "th"
+        ? "สร้างไอเดีย 3 ใบ แล้วเลือก 1 ใบ เพื่อสร้างบทพูดครบ 9 ช็อต"
+        : "Generate 3 ideas and select one to create the required 9-shot dialogue"
+      : null,
+    dialogueMode === "character_dialogue" &&
+    selectedMarketplaceIdea &&
+    !hasCompleteShotDialogueDrafts(shotDialogueDrafts)
+      ? lang === "th"
+        ? "ตรวจบทพูดให้ครบทั้ง 9 ช็อต (อย่างน้อย 2 บรรทัดต่อช็อต)"
+        : "Complete dialogue for all 9 shots (at least 2 lines per shot)"
+      : null,
+    dialogueMode === "character_dialogue" &&
+    !shotDialogueSpeakersAreSelected &&
+    hasCompleteShotDialogueDrafts(shotDialogueDrafts)
+      ? lang === "th"
+        ? "เลือกตัวละครที่ตรงกับผู้พูดในบทพูด"
+        : "Select the characters used as dialogue speakers"
+      : null,
+  ].filter((blocker): blocker is string => Boolean(blocker));
+  const ideaGenerationBlockers = [
+    references.length === 0
+      ? lang === "th"
+        ? "เลือกภาพสินค้าอย่างน้อย 1 ภาพจากเครื่องหรือ Marketplace Capture"
+        : "Choose at least one product image from your device or Marketplace Capture"
+      : null,
+    requiresUploadedProductBrief && !idea.trim()
+      ? lang === "th"
+        ? "ระบุชื่อ/ประเภทสินค้าและรายละเอียดที่ยืนยันได้"
+        : "Describe the product and its verifiable details"
+      : null,
+    characterIds.length === 0
+      ? lang === "th"
+        ? "เลือกตัวละครอย่างน้อย 1 คน"
+        : "Select at least one character"
+      : null,
+    footageAssetId &&
+    !["completed", "published"].includes(
+      footagePrepareJobQuery.data?.status ?? ""
+    )
+      ? lang === "th"
+        ? "เตรียม Footage ให้เสร็จก่อนสร้างไอเดีย"
+        : "Finish preparing the footage before generating ideas"
+      : null,
+  ].filter((blocker): blocker is string => Boolean(blocker));
   const actionState = resolveSpecialTieInActionState({
     createMutationPending: createMutation.isPending,
     finalSubmitPending: isSubmitting,
@@ -3110,6 +3203,16 @@ export function SpecialTieInEpisodeDialog({
                   {lang === "th" ? "สร้างไอเดีย 3 ใบ" : "Generate 3 ideas"}
                 </Button>
               </div>
+              {ideaGenerationBlockers.length > 0 ? (
+                <p
+                  className="text-xs text-amber-800 dark:text-amber-300"
+                  role="status"
+                >
+                  {lang === "th"
+                    ? `ยังสร้างไอเดียไม่ได้: ${ideaGenerationBlockers.join(" · ")}`
+                    : `Ideas cannot be generated yet: ${ideaGenerationBlockers.join(" · ")}`}
+                </p>
+              ) : null}
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] sm:items-end">
                 <p className="text-xs text-muted-foreground">
                   {lang === "th"
@@ -3458,7 +3561,7 @@ export function SpecialTieInEpisodeDialog({
                 </div>
               ) : null}
               <div className="grid gap-2 sm:grid-cols-2">
-                {characters.map(character => {
+                {characters.map((character, characterIndex) => {
                   const id = resolveSpecialTieInCharacterId(character);
                   if (!id) return null;
                   const portraitUrl =
@@ -3522,6 +3625,7 @@ export function SpecialTieInEpisodeDialog({
                             src={portraitUrl}
                             alt=""
                             className="h-14 w-12 rounded-md object-cover"
+                            loading={characterIndex < 12 ? "eager" : "lazy"}
                             loadingLabel={
                               lang === "th"
                                 ? "กำลังโหลดภาพคน..."
@@ -3529,9 +3633,10 @@ export function SpecialTieInEpisodeDialog({
                             }
                             errorLabel={
                               lang === "th"
-                                ? "ไม่พบภาพคน"
-                                : "Portrait unavailable"
+                                ? "โหลดภาพไม่สำเร็จ"
+                                : "Could not load image"
                             }
+                            retryLabel={lang === "th" ? "ลองใหม่" : "Retry"}
                           />
                         </button>
                       ) : (
@@ -3823,21 +3928,23 @@ export function SpecialTieInEpisodeDialog({
           </div>
         </div>
 
-        {!canSubmit && !actionState.finalSubmitPending ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {dialogueMode === "character_dialogue" && !selectedMarketplaceIdea
-              ? lang === "th"
-                ? "ขั้นตอนถัดไป: กด “สร้างไอเดีย 3 ใบ” แล้วเลือกไอเดียหนึ่งใบก่อนสร้างตอนพิเศษ หรือเลือกโหมด “ไม่มีบทพูด” หากต้องการสร้างจากโจทย์โดยตรง"
-                : 'Next: choose “Generate 3 ideas” and select one before creating the episode, or switch to “No dialogue” to create directly from your brief.'
-              : dialogueMode === "character_dialogue" &&
-                  !hasCompleteShotDialogueDrafts(shotDialogueDrafts)
-                ? lang === "th"
-                  ? "ตรวจบทพูดให้ครบทั้ง 9 ช็อต (ช็อตละอย่างน้อย 2 บรรทัด) ก่อนสร้างตอนพิเศษ"
-                  : "Complete the dialogue for all 9 shots (at least 2 lines per shot) before creating the episode."
-                : lang === "th"
-                  ? "กรุณาตรวจข้อมูลที่จำเป็นก่อนสร้างตอนพิเศษ เช่น ภาพอ้างอิง ตัวละคร และโมเดลที่เลือก"
-                  : "Check the required references, characters, and model selections before creating the episode."}
-          </p>
+        {!canSubmit && !actionState.finalSubmitPending && submitBlockers.length > 0 ? (
+          <div
+            className="space-y-1 text-xs text-destructive"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="font-medium">
+              {lang === "th"
+                ? "ยังสร้างตอนพิเศษไม่ได้ ต้องทำรายการต่อไปนี้ให้ครบ:"
+                : "The special episode is not ready. Complete these items:"}
+            </p>
+            <ul className="list-inside list-disc">
+              {submitBlockers.map(blocker => (
+                <li key={blocker}>{blocker}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         <DialogFooter>
           <Button
