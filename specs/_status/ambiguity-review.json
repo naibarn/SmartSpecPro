@@ -133692,7 +133692,7 @@
     {
       "acceptance": "VALIDATION_PENDING",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "47214ad841c599abfe0993272a6fe2711bcdc521",
+      "canonical_sha": "c16177865f91641170346051c23d99fb53c37c81",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
