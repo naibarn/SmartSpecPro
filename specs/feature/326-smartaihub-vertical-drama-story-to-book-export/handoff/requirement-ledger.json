@@ -1,5 +1,5 @@
 {
-  "generation": 14,
+  "generation": 22,
   "historical_requirements": [
     {
       "applicability": "UNASSESSED",
@@ -497,10 +497,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -510,7 +511,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1162,10 +1164,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1175,7 +1178,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1188,10 +1192,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1201,7 +1206,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1214,10 +1220,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1227,7 +1234,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1240,10 +1248,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1253,7 +1262,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1288,10 +1298,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1301,7 +1312,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1314,10 +1326,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1327,7 +1340,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
@@ -1428,10 +1442,11 @@
       "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "evidence_sha": "746509021b72c5959096122eb07bb5fac91fd659",
       "final_state": "VALIDATION_PENDING",
       "implementation_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed.",
+        "746509021b72c5959096122eb07bb5fac91fd659: episode quality rubric implementation integrated; focused syntax compilation passed."
       ],
       "implementation_status": "IMPLEMENTED",
       "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
@@ -1441,7 +1456,8 @@
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
       "verification_evidence": [
-        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run.",
+        "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation and git diff --check passed; no tests were run."
       ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },

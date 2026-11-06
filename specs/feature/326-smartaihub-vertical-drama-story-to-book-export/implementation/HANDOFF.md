@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `28`
-- Updated (UTC): `2026-11-06T17:32:46.026987+00:00`
+- State generation: `29`
+- Updated (UTC): `2026-11-06T17:33:53.736560+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `7ef792294aec887395d44b97ddac6f67a4e1fb0f`
+- Latest recorded merged Main SHA: `746509021b72c5959096122eb07bb5fac91fd659`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-06-episode-novelization-skill-and-review`
-- Next action: Quality rubric output, persistence, reader display and application skill prompt are implemented. Syntax and Spec handoff validation pass; stage the scoped follow-up, commit, and integrate.
+- Next action: Novelization includes stored per-episode quality scores and findings. Remaining: authenticated UI/source/job acceptance and isolated database verification.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-epub-pdf-export | checkpointed | — | — | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | Local EPUBCheck and Thai A5 PDF runtime acceptance passed; remaining evidence is authenticated product-flow export with storage readback in the isolated _dev integration environment. |
 | section-04-book-studio-ui-and-acceptance | checkpointed | — | — | 994faa07c51af9822a2e1d01ca8375f42138f419 | 994faa07c51af9822a2e1d01ca8375f42138f419 | Complete authenticated Book Studio browser acceptance, representative all-shot export/storage readback, and cross-tenant/concurrency acceptance in an isolated _dev test database. |
 | section-05-dedicated-book-cover-generation | checkpointed | — | — | a6f18920b0a45a6e449b86934f9808ca4e572b43 | 7ef792294aec887395d44b97ddac6f67a4e1fb0f | Code implementation is integrated. Remaining: authenticated cover workflow and isolated storage/authorization acceptance. |
-| section-06-episode-novelization-skill-and-review | checkpointed | — | — | a6f18920b0a45a6e449b86934f9808ca4e572b43 | 7ef792294aec887395d44b97ddac6f67a4e1fb0f | Quality rubric output, persistence, reader display and application skill prompt are implemented. Syntax and Spec handoff validation pass; stage the scoped follow-up, commit, and integrate. |
+| section-06-episode-novelization-skill-and-review | checkpointed | — | — | 746509021b72c5959096122eb07bb5fac91fd659 | 746509021b72c5959096122eb07bb5fac91fd659 | Novelization includes stored per-episode quality scores and findings. Remaining: authenticated UI/source/job acceptance and isolated database verification. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

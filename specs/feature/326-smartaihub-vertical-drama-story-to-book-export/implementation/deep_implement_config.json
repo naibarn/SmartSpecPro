@@ -47,9 +47,9 @@
     },
     "section-06-episode-novelization-skill-and-review": {
       "status": "checkpointed",
-      "next_action": "Quality rubric output, persistence, reader display and application skill prompt are implemented. Syntax and Spec handoff validation pass; stage the scoped follow-up, commit, and integrate.",
-      "checkpoint_sha": "a6f18920b0a45a6e449b86934f9808ca4e572b43",
-      "merged_main_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f"
+      "next_action": "Novelization includes stored per-episode quality scores and findings. Remaining: authenticated UI/source/job acceptance and isolated database verification.",
+      "checkpoint_sha": "746509021b72c5959096122eb07bb5fac91fd659",
+      "merged_main_sha": "746509021b72c5959096122eb07bb5fac91fd659"
     }
   },
   "pre_commit": {
@@ -61,12 +61,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-06T09:43:56.878964+00:00",
-  "generation": 28,
-  "updated_at": "2026-11-06T17:32:46.026987+00:00",
+  "generation": 29,
+  "updated_at": "2026-11-06T17:33:53.736560+00:00",
   "progress": {
     "active_section": "section-06-episode-novelization-skill-and-review",
-    "next_action": "Quality rubric output, persistence, reader display and application skill prompt are implemented. Syntax and Spec handoff validation pass; stage the scoped follow-up, commit, and integrate.",
-    "merged_main_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+    "next_action": "Novelization includes stored per-episode quality scores and findings. Remaining: authenticated UI/source/job acceptance and isolated database verification.",
+    "merged_main_sha": "746509021b72c5959096122eb07bb5fac91fd659",
     "gaps": [
       "Authenticated UI, representative-series export/storage, and DB-backed cross-tenant/concurrency acceptance remain unverified; UAT isolation rejects the configured shared smartspec database.",
       "A provider invocation replayed after worker crash before chapter persistence is a new billable invocation; exact-once external execution is not guaranteed.",
