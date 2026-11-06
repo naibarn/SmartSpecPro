@@ -5,5 +5,5 @@
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 37 unresolved of 37
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 1
+- Next action: Await user review of the proposed spec; after approval, create the implementation plan.
+- Manifest generation: 2

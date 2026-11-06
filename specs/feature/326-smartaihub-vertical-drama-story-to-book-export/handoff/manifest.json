@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
     "expected_spec_digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8"
   },
   "continuation": {
@@ -41,8 +41,8 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
+    "rationale": "The proposed direction is documented and integrated. User review remains before implementation planning.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 1,
+  "generation": 2,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
@@ -95,16 +95,32 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "origin/main",
+    "canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
+    "integrated": true,
+    "integrated_at": "2026-11-06T09:12:27Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-11-06T09:07:11.426611Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
+        }
+      ],
+      "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
+      "rationale": "The proposed direction is documented and integrated. User review remains before implementation planning.",
+      "residual_requirements": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -160,7 +176,7 @@
     "unresolved": 37
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T09:07:11.426611Z",
+  "updated_at": "2026-11-06T09:12:41.766175Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

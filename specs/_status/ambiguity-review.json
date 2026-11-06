@@ -133692,7 +133692,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -133736,8 +133736,7 @@
         "requirement REQ-B740C816BFB0 is OPEN",
         "requirement REQ-A162153CE864 is OPEN",
         "requirement REQ-C5788E597904 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -133757,7 +133756,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-11-06T09:07:11.426611Z",
       "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
       "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "primary_blocker": null,
       "problem": null,

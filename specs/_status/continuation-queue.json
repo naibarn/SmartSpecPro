@@ -5052,7 +5052,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
       "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
