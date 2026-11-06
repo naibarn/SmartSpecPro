@@ -8,6 +8,7 @@ section-01-domain-foundation
 section-02-authoring-and-jobs
 section-03-epub-pdf-export
 section-04-book-studio-ui-and-acceptance
+section-05-dedicated-book-cover-generation
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -20,6 +21,7 @@ END_MANIFEST -->
 | section-02-authoring-and-jobs | 01 | 03, 04 | No |
 | section-03-epub-pdf-export | 01, 02 | 04 | No |
 | section-04-book-studio-ui-and-acceptance | 01, 02, 03 | - | No |
+| section-05-dedicated-book-cover-generation | 01, 04 | - | No |
 
 ## Execution Order
 
@@ -27,6 +29,7 @@ END_MANIFEST -->
 2. section-02-authoring-and-jobs
 3. section-03-epub-pdf-export
 4. section-04-book-studio-ui-and-acceptance
+5. section-05-dedicated-book-cover-generation
 
 ## Section Summaries
 
@@ -41,3 +44,6 @@ Implement validated private artifact generation with independent canonical jobs 
 
 ### section-04-book-studio-ui-and-acceptance
 Integrate Book Studio into series detail and close requirement evidence, responsive/accessibility behavior, migration freshness and ten requested gap-review rounds.
+
+### section-05-dedicated-book-cover-generation
+Add the author-triggered cover creator with model capability checks, randomized authorized shot references, three reviewable candidates, exact Unicode text composition, private media assets, credit estimate, and durable canonical job lifecycle.

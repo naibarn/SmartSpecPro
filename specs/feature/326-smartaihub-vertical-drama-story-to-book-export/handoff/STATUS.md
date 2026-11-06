@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (MEDIUM)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
-- Requirements: 0 pass / 40 unresolved of 40
+- Requirements: 0 pass / 45 unresolved of 45
 - Next action: Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.
-- Manifest generation: 9
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 

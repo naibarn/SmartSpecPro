@@ -73,6 +73,34 @@ web request process.
 Do not convert PDF into EPUB or EPUB into PDF. Do not make fixed-layout EPUB the
 default; preserve that option for a future image-led book profile.
 
+### 2.3 Book-specific cover generation
+
+Book Studio includes a dedicated cover creator, separate from episode covers
+and series key visuals. The author chooses an enabled image model that supports
+reference images. For each generation round, the server randomly samples a
+bounded set of authorized storyboard-shot images from the selected episodes,
+then submits the references together with the book title, author display name,
+blurb, series theme, and cover-art prompt. The service returns three distinct
+artwork candidates. The user can inspect all three, select one as the book
+cover, or generate another round. A new round samples a different combination
+of shots when enough source images are available; reuse is allowed only when
+the available pool cannot provide a new combination.
+
+The image model creates artwork with clear text-safe space. A cover renderer
+places the exact title, author, and optional blurb over the artwork using real
+book metadata rather than relying on generated lettering. This keeps Thai and
+other Unicode text legible and accurate. Each candidate is retained as a
+tenant/user-authorized media asset; selecting a candidate binds its asset ID,
+checksum, and alternative text to the Book Document revision. Unselected
+candidates remain available in the current editing session.
+
+Generation uses the canonical `worker_jobs` plus outbox control plane, validates
+the selected model and reference-image capability server-side, and reports the
+three-image credit estimate before submission. Failed or cancelled work must
+not replace the current cover or lose earlier candidates. Provider failures
+appear as sanitized status text; a candidate is not approved until the author
+selects it.
+
 ## 3. Existing system fit and source mapping
 
 The current source is the vertical-drama series and its ordered rows in
@@ -119,9 +147,10 @@ revision into a reviewed book or replace prior user edits.
    series locale.
 4. Choose the Illustrated Novel profile and image density: none, chapter
    openers, occasional illustrations, or every storyboard-shot image (all-shot
-   mode requires a usable image for every selected shot).
-   Choose a book cover independently from existing authorized cover/key visual
-   artwork. v1 does not generate new images.
+   mode requires a usable image for every selected shot). Choose an existing
+   authorized cover/key visual or open the book-cover creator. Choose an image
+   model, generate three candidates, and select one; generate another set at
+   any time until satisfied.
 5. Review the model-based conservative AI credit estimate, selected episode
    count, image count/size, shot-image coverage, and source freshness before
    starting prose composition. Before each physical chapter-composition call,
@@ -384,8 +413,9 @@ successfully validated artifact for the other.
 
 ## 9. Out of scope for v1
 
-- New image generation, automatic image regeneration, video-to-text
-  transcription, TTS/audio narration, translation, or automatic publication.
+- In-book illustration generation/regeneration, video-to-text transcription,
+  TTS/audio narration, translation, or automatic publication. Generated imagery
+  is limited to the dedicated book cover creator.
 - Poster-led/photo storybook page design and fixed-layout EPUB.
 - MEB or other retailer-specific ingestion, DRM, pricing, sales copy, ISBN
   purchasing, author storefront, or external account integration.
@@ -412,32 +442,47 @@ successfully validated artifact for the other.
    or all selected storyboard-shot images from authorized existing assets.
    All-shots mode preserves source shot order and pairs every image with its
    related editable prose; missing-shot coverage is reported before
-   composition. A book cover can be chosen independently. No image-generation
-   job is called in v1.
-6. EPUB output opens as a valid reflowable EPUB 3.3 publication with a cover,
+   composition. A book cover can be chosen independently from existing artwork
+   or generated with the book-cover creator.
+6. The cover creator offers only enabled, authorized image models that support
+   reference images; it submits a bounded random sample of authorized images
+   from selected episodes and title, author, blurb, and theme context. Each
+   round yields three candidates. A later round uses a different image
+   combination when the authorized image pool allows it. The user may select
+   any candidate and generate more without replacing the current cover until a
+   replacement is explicitly selected.
+7. Generated cover artwork is combined with exact title, author, and optional
+   blurb text by a deterministic Unicode-safe renderer. Candidates are private
+   tenant/user-owned media assets with checksums; selected asset identity and
+   alternative text are bound to the saved Book Document revision. Cover jobs
+   use canonical worker jobs/outbox, report the three-image credit estimate
+   before submission, and expose sanitized progress/failure states. Failed or
+   cancelled jobs preserve the existing cover and completed candidates.
+8. EPUB output opens as a valid reflowable EPUB 3.3 publication with a cover,
    metadata, navigation, chapter order, Unicode text, and local images. When
    all-shots mode is selected, each selected shot image appears once next to its
    related prose in source order. EPUBCheck passes before download.
-7. PDF output has the configured fixed page size, readable/extractable Thai
+9. PDF output has the configured fixed page size, readable/extractable Thai
    text, intact image aspect ratios, sensible chapter breaks, and a contents
    page with working links. When all-shots mode is selected, each selected shot
    image appears once next to its related prose in source order. Bookmarks are
    produced where the selected renderer supports them. Pages do not contain
    full-page rasterized text, and PDF structural and text checks pass before
    download.
-8. A request for both formats creates independent jobs; one format may be
+10. A request for both formats creates independent jobs; one format may be
    retried without losing the other format's available artifact.
-9. Tenant isolation covers book records, progress, source assets, and artifact
+11. Tenant isolation covers book records, progress, source assets, generated
+   cover candidates, and artifact
    downloads. Export packages contain no remote resources or arbitrary active
    content.
-10. Composition and rendering are durable, idempotent, resumable/cancellable,
+12. Composition, cover generation, and rendering are durable, idempotent, resumable/cancellable,
     cost-gated for AI calls, and visible through the canonical job status
     surface. Cost estimates use the pinned model and bounded token envelope;
     actual provider attempts settle through a reservation with unique stable
     settlement keys. A request timeout does not lose persisted chapter progress
     or create a duplicate artifact; ambiguous provider usage remains a
     reconciliation case rather than being silently treated as free.
-11. Thai EPUB layout is checked with reader-controlled font scaling; Thai PDF
+13. Thai EPUB layout is checked with reader-controlled font scaling; Thai PDF
     text and pagination are checked in representative page-render samples.
     Informative image alternatives and missing-alt warnings are covered.
 
@@ -450,9 +495,12 @@ successfully validated artifact for the other.
 3. Implement EPUB 3.3 serialization and EPUBCheck validation.
 4. Implement PDF profile/rendering, first proving browser/font availability and
    Thai text extraction in the canonical job runtime.
-5. Add independent dual-export actions, progress/retry/cancel UX, artifact
+5. Add the dedicated cover creator with model capability validation, random
+   authorized shot sampling, three-candidate generation, Unicode-safe text
+   composition, asset selection, and canonical worker job status.
+6. Add independent dual-export actions, progress/retry/cancel UX, artifact
    downloads, and accessibility/layout regression coverage.
-6. Pilot with one short series, a multi-chapter volume, a text-only book, a
+7. Pilot with one short series, a multi-chapter volume, a text-only book, a
    portrait-heavy book, and a source-stale edit before broad rollout.
 
 ## 12. Research references

@@ -16,12 +16,12 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
+        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "OWNER_DIRECTED_IMPLEMENTATION",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -44,7 +44,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
-    "expected_spec_digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83"
+    "expected_spec_digest": "438e453abba3b85079f2e1df0a07ef0f3abd6ae44877c2da1a749aa5b8b4dc12"
   },
   "continuation": {
     "next_action": null,
@@ -67,12 +67,13 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       }
     ],
-    "next_action": "Run authenticated responsive Book Studio, representative series/storage, and cross-tenant/concurrency acceptance with an isolated _dev UAT database.",
-    "rationale": "Code-level cost reservation, content-addressed legacy source identity, EPUB conformance, and Thai PDF renderer acceptance are closed. Product-flow and database integration evidence remains pending because the configured shared database does not meet the UAT isolation contract.",
+    "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
+    "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
     "residual_requirements": [
-      "Authenticated responsive and keyboard Book Studio acceptance.",
-      "Representative all-shot series export with private storage readback and authorized download.",
-      "Database-backed cross-tenant, save/approval concurrency, retry/cancel, and worker-crash recovery acceptance in isolated _dev environment."
+      "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
+      "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
+      "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
+      "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
     ]
   },
   "dependencies": {
@@ -109,12 +110,12 @@
     "confidence": "MEDIUM",
     "evidence": [
       {
-        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
+        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "IMPLEMENTATION_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -122,13 +123,13 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
-    "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+    "digest": "438e453abba3b85079f2e1df0a07ef0f3abd6ae44877c2da1a749aa5b8b4dc12",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-06T10:52:59.386399Z",
+      "last_evidence_at": "2026-11-06T15:01:13.274492Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-06T16:03:04+07:00",
       "spec_last_changed_at": "2026-11-06T16:03:04+07:00"
@@ -258,94 +259,17 @@
     }
   },
   "reconciliation": {
-    "confidence": "MEDIUM",
-    "inferred_fields": [],
-    "mode": "OWNER_DIRECTED_IMPLEMENTATION",
-    "reconciled_at": "2026-11-06T10:55:00Z",
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-06T15:01:13.274492Z",
     "sources": [
       {
-        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
-      },
-      {
-        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
-        "kind": "IMPLEMENTATION_EVIDENCE",
-        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
-      }
-    ],
-    "stale_fields": [],
-    "unproven_fields": [
-      "authenticated browser acceptance",
-      "representative real-series and private storage export/download",
-      "database-backed cross-tenant authorization and concurrency",
-      "worker-crash recovery across external provider invocation and chapter persistence"
-    ]
-  },
-  "relevance_assessment": {
-    "active_references": [],
-    "conflict_duplication_risk": "UNASSESSED",
-    "current_architecture_fit": "UNASSESSED",
-    "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
-    "declared_claims": [
-      {
-        "authority": "AUTHOR_ASSERTION_CANDIDATE",
-        "claim_kind": "SECTION_STATUS_ASSERTION",
-        "commit_hash": null,
-        "commit_hash_length": 0,
-        "confidence": "LOW",
-        "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
-        "line": null,
-        "section": "section-01-domain-foundation",
-        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
-        "value": "checkpointed"
-      },
-      {
-        "authority": "AUTHOR_ASSERTION_CANDIDATE",
-        "claim_kind": "SECTION_STATUS_ASSERTION",
-        "commit_hash": null,
-        "commit_hash_length": 0,
-        "confidence": "LOW",
-        "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
-        "line": null,
-        "section": "section-02-authoring-and-jobs",
-        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
-        "value": "checkpointed"
-      },
-      {
-        "authority": "AUTHOR_ASSERTION_CANDIDATE",
-        "claim_kind": "SECTION_STATUS_ASSERTION",
-        "commit_hash": null,
-        "commit_hash_length": 0,
-        "confidence": "LOW",
-        "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
-        "line": null,
-        "section": "section-03-epub-pdf-export",
-        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
-        "value": "checkpointed"
-      },
-      {
-        "authority": "AUTHOR_ASSERTION_CANDIDATE",
-        "claim_kind": "SECTION_STATUS_ASSERTION",
-        "commit_hash": null,
-        "commit_hash_length": 0,
-        "confidence": "LOW",
-        "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
-        "line": null,
-        "section": "section-04-book-studio-ui-and-acceptance",
-        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
-        "value": "checkpointed"
-      }
-    ],
-    "deployment_reality": "UNVERIFIED",
-    "evidence": [
-      {
-        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+        "digest": "438e453abba3b85079f2e1df0a07ef0f3abd6ae44877c2da1a749aa5b8b4dc12",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
@@ -365,22 +289,22 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "97fa72dcc1be9a1eaf05f1d63abcc0747fb3a8b3f4ccf2cc913f4aed9d30b6cf",
+        "digest": "43afb2a6f56ea79742bbc5b46134fb15ef695b230a1b17dd7fcfd79cb535ea1d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       },
       {
-        "digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+        "digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json"
       },
       {
-        "digest": "4c6f2c704270f0b1e02e2753cb48846b2445a401b4fa28ce024355dde4d87a40",
+        "digest": "363391b1efafee739079b301d1d948fbab7011047ec7d8073e6584d4690a93ef",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "862c18f63a0b52c6397017136f5d5d4e22bb3310231006ebf525793506303491",
+        "digest": "53605134bc305a04a4f9d1fe98f48378d1b9e5c12e1c543af0846065e37e5670",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/index.md"
       },
@@ -403,6 +327,208 @@
         "digest": "2cab1cf11e4f2a05f09dadc405d9c6d2fd4ed85d0344332a3ce48b603e97ee38",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-04-book-studio-ui-and-acceptance.md"
+      },
+      {
+        "digest": "09e75c7d5a8dd01fc2a07bdbadae0817632517a385ba3747352afd04f9ebd79b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-05-dedicated-book-cover-generation.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-domain-foundation",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-authoring-and-jobs",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-epub-pdf-export",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-book-studio-ui-and-acceptance",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-domain-foundation",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-authoring-and-jobs",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-epub-pdf-export",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-04-book-studio-ui-and-acceptance",
+        "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+        "source_digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "value": "checkpointed"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "438e453abba3b85079f2e1df0a07ef0f3abd6ae44877c2da1a749aa5b8b4dc12",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
+      },
+      {
+        "digest": "88f3d0057081bc4e7224f53bdcb98a32c924f74bb357db5ac7d2cb6f38dba8ff",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/claude-plan.md"
+      },
+      {
+        "digest": "80407b58f4927620044d2c67cfc8e5dc5510e05755318031c1df43bbe7e40722",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "43afb2a6f56ea79742bbc5b46134fb15ef695b230a1b17dd7fcfd79cb535ea1d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "cf536397113a8283539509e75fcc867edc6a3091feef2823a754305ca56815e9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "363391b1efafee739079b301d1d948fbab7011047ec7d8073e6584d4690a93ef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "53605134bc305a04a4f9d1fe98f48378d1b9e5c12e1c543af0846065e37e5670",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/index.md"
+      },
+      {
+        "digest": "41820ab16cdb0a9bf207056d59edb389c3f4fcf3a78984c20084695a5b35dd1c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-01-domain-foundation.md"
+      },
+      {
+        "digest": "92a8ac57c3c3897d4d0d068a431017194b94b636358467d3d5ec79b21ec9212a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-02-authoring-and-jobs.md"
+      },
+      {
+        "digest": "6c0a167895a7b4bddb5fe31abb0a7c68743966b31f2944e2121c01e90935b5b6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-03-epub-pdf-export.md"
+      },
+      {
+        "digest": "2cab1cf11e4f2a05f09dadc405d9c6d2fd4ed85d0344332a3ce48b603e97ee38",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-04-book-studio-ui-and-acceptance.md"
+      },
+      {
+        "digest": "09e75c7d5a8dd01fc2a07bdbadae0817632517a385ba3747352afd04f9ebd79b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-05-dedicated-book-cover-generation.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -416,11 +542,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 40,
-    "unresolved": 40
+    "total": 45,
+    "unresolved": 45
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T14:12:51Z",
+  "updated_at": "2026-11-06T15:01:13.274492Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
