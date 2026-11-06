@@ -33,7 +33,7 @@
     },
     "section-04-book-studio-ui-and-acceptance": {
       "status": "checkpointed",
-      "next_action": "Safely apply Feature 326 migration after authorized dev database profile and ledger reconciliation; then complete EPUBCheck and Thai PDF/browser acceptance in an equipped runtime.",
+      "next_action": "Run EPUBCheck and representative Thai PDF in a runtime with Chromium, Thai fonts, and Poppler; then collect authenticated browser, cross-tenant, concurrency, and real-series export evidence. Development migration 0417 is applied and catalog is READY.",
       "checkpoint_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
       "merged_main_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
     }
@@ -47,11 +47,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-06T09:43:56.878964+00:00",
-  "generation": 12,
-  "updated_at": "2026-11-06T10:58:50.017794+00:00",
+  "generation": 13,
+  "updated_at": "2026-11-06T12:28:01.342796+00:00",
   "progress": {
     "active_section": "section-04-book-studio-ui-and-acceptance",
-    "next_action": "Safely apply Feature 326 migration after authorized dev database profile and ledger reconciliation; then complete EPUBCheck and Thai PDF/browser acceptance in an equipped runtime.",
+    "next_action": "Run EPUBCheck and representative Thai PDF in a runtime with Chromium, Thai fonts, and Poppler; then collect authenticated browser, cross-tenant, concurrency, and real-series export evidence. Development migration 0417 is applied and catalog is READY.",
     "merged_main_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
   }
 }

@@ -1,7 +1,8 @@
 {
   "acceptance": {
     "evidence": [
-      "gap-review-10-rounds.md"
+      "gap-review-10-rounds.md",
+      "Feature 326 development migration receipt and post-migration ledger/catalog audits (0417 applied; catalog READY)"
     ],
     "required": true,
     "status": "VALIDATION_PENDING"
@@ -17,7 +18,7 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "OWNER_DIRECTED_IMPLEMENTATION",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -28,23 +29,23 @@
   },
   "blockers": [
     {
-      "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo in canonical worker",
+      "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo are unavailable on the current host",
       "classification": "WAITING_CAPABILITY",
-      "next_action": "Run renderer acceptance in canonical worker and record tool/font versions and output evidence."
+      "next_action": "Run EPUB conformance and representative Thai PDF extraction/pagination checks in an equipped canonical worker."
     },
     {
-      "capability": "Feature 326 dev migration not yet applied; canonical ledger has unrelated pending history and the scoped runner is production-only",
-      "classification": "WAITING_DEPENDENCY",
-      "next_action": "Resolve exact development database target/profile and safe migration path; do not replay unrelated or retired-system migrations."
+      "capability": "Authenticated browser, representative real-series export, and storage-provider readback evidence are unavailable",
+      "classification": "WAITING_CAPABILITY",
+      "next_action": "Run authenticated mobile/tablet/desktop and keyboard flows, then export a representative series and verify private storage readback/download."
     },
     {
-      "capability": "Authenticated browser preview unavailable on this host",
-      "classification": "WAITING_CAPABILITY",
-      "next_action": "Run responsive, keyboard, and image-preview checks in authenticated app runtime."
+      "capability": "Database-backed cross-tenant authorization and revision/job concurrency acceptance has not run",
+      "classification": "WAITING_VERIFICATION",
+      "next_action": "Run the focused integration acceptance for owner isolation, concurrent saves/approvals, idempotent retries, and cancellation races."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
+    "expected_canonical_sha": "03fba26045939ce7328031927d56547d5982e410",
     "expected_spec_digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92"
   },
   "continuation": {
@@ -59,7 +60,7 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "SPECIFIC_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       },
@@ -68,12 +69,13 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       }
     ],
-    "next_action": "Verify EPUBCheck, Chromium, Thai fonts, and Poppler in the canonical worker; resolve the exact dev migration target/profile and pending ledger before applying Feature 326 migrations.",
-    "rationale": "Implementation checkpoints and ten gap-review passes are integrated. Runtime conformance and safe dev migration evidence remain open.",
+    "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
+    "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
     "residual_requirements": [
-      "Run EPUBCheck and Thai PDF validation in the canonical worker.",
-      "Resolve the exact development database target/profile and apply only the Feature 326 migration safely.",
-      "Run authenticated responsive and keyboard UI acceptance."
+      "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
+      "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
+      "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
+      "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
     ]
   },
   "dependencies": {
@@ -112,7 +114,7 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "IMPLEMENTATION_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -120,7 +122,7 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
@@ -141,7 +143,8 @@
       "d7056382abeceacf16374a8f37bcd12aaa709396",
       "fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8",
       "7934c2119d432712bb5d05a071285db4cfeb4ce5",
-      "e3f822cf40b23431bc54bf2e3378970dd2cc482b"
+      "e3f822cf40b23431bc54bf2e3378970dd2cc482b",
+      "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
     ],
     "mapping": [],
     "source_paths": [
@@ -158,16 +161,17 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
+    "canonical_sha": "03fba26045939ce7328031927d56547d5982e410",
     "integrated": true,
-    "integrated_at": "2026-11-06T10:55:00Z"
+    "integrated_at": "2026-11-06T12:28:20Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
     "previous_state": "PARTIAL_INTEGRATED",
     "state_evidence": [
-      "origin/main:e3f822cf40b23431bc54bf2e3378970dd2cc482b",
-      "gap-review-10-rounds.md"
+      "origin/main:03fba26045939ce7328031927d56547d5982e410",
+      "gap-review-10-rounds.md",
+      "development migration receipt and post-migration ledger/catalog audits"
     ],
     "updated_at": "2026-11-06T10:52:59.386399Z"
   },
@@ -183,7 +187,7 @@
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
         },
         {
-          "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+          "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
           "kind": "OWNER_DIRECTED_IMPLEMENTATION",
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
         }
@@ -197,7 +201,7 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         {
-          "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+          "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
           "kind": "SPECIFIC_EVIDENCE",
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
         },
@@ -206,12 +210,13 @@
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
         }
       ],
-      "next_action": "Verify EPUBCheck, Chromium, Thai fonts, and Poppler in the canonical worker; resolve the exact dev migration target/profile and pending ledger before applying Feature 326 migrations.",
-      "rationale": "Implementation checkpoints and ten gap-review passes are integrated. Runtime conformance and safe dev migration evidence remain open.",
+      "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
+      "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
       "residual_requirements": [
-        "Run EPUBCheck and Thai PDF validation in the canonical worker.",
-        "Resolve the exact development database target/profile and apply only the Feature 326 migration safely.",
-        "Run authenticated responsive and keyboard UI acceptance."
+        "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
+        "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
+        "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
+        "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
       ]
     },
     "disposition": {
@@ -223,7 +228,7 @@
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
         },
         {
-          "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+          "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
           "kind": "IMPLEMENTATION_EVIDENCE",
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
         }
@@ -235,8 +240,9 @@
       "current_state": "VALIDATION_PENDING",
       "previous_state": "PARTIAL_INTEGRATED",
       "state_evidence": [
-        "origin/main:e3f822cf40b23431bc54bf2e3378970dd2cc482b",
-        "gap-review-10-rounds.md"
+        "origin/main:03fba26045939ce7328031927d56547d5982e410",
+        "gap-review-10-rounds.md",
+        "development migration receipt and post-migration ledger/catalog audits"
       ],
       "updated_at": "2026-11-06T10:52:59.386399Z"
     },
@@ -257,7 +263,7 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "753e6b4578883c0e6e65b4c38de23dcfb89cfa6b0fab9af565fda3e5f519e638",
+        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
         "kind": "IMPLEMENTATION_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -265,9 +271,11 @@
     "stale_fields": [],
     "unproven_fields": [
       "canonical worker renderer behavior",
-      "development schema migration state",
       "authenticated browser acceptance",
-      "active episode revision identity"
+      "representative real-series export",
+      "database-backed authorization and concurrency",
+      "active episode revision identity",
+      "provider-specific cost reservation/quote"
     ]
   },
   "relevance_assessment": {
@@ -408,20 +416,23 @@
     "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T10:58:57.296935Z",
+  "updated_at": "2026-11-06T12:28:53.536696Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "gap-review-10-rounds.md",
       "pnpm --dir apps/web exec vitest run shared/verticalDramaSeries/bookDocument.test.ts server/services/verticalDramaBookSnapshot.test.ts server/services/verticalDramaBookRenderers.test.ts (11 passed)",
       "pnpm --dir apps/web exec drizzle-kit check (passed)",
-      "focused esbuild checks for Book Studio, series detail, Book router, root router, export service, and job registry (passed)"
+      "focused esbuild checks for Book Studio, series detail, Book router, root router, export service, and job registry (passed)",
+      "node --import dotenv/config --import tsx scripts/db-migrate-with-receipt.ts migrate: succeeded; canonical profile; applied 0417_vertical_drama_book_studio; target database:ecf9dc471c705d645d3e",
+      "pnpm run db:audit-ledger after migration: 0417 matched_timestamp_and_hash, ledger row 396, total 378",
+      "pnpm run db:audit-catalog after migration: READY, requiredDrift=0, no missing Feature 326 tables or constraints"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e3f822cf40b23431bc54bf2e3378970dd2cc482b",
+    "sha": "03fba26045939ce7328031927d56547d5982e410",
     "status": "VALIDATION_PENDING",
     "task_regressions": []
   }

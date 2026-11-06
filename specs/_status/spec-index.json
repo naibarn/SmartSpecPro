@@ -136109,7 +136109,7 @@
     {
       "acceptance": "VALIDATION_PENDING",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
+      "canonical_sha": "03fba26045939ce7328031927d56547d5982e410",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -136227,12 +136227,12 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-11-06T10:55:00Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Verify EPUBCheck, Chromium, Thai fonts, and Poppler in the canonical worker; resolve the exact dev migration target/profile and pending ledger before applying Feature 326 migrations.",
+      "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
       "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "primary_blocker": {
-        "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo in canonical worker",
+        "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo are unavailable on the current host",
         "classification": "WAITING_CAPABILITY",
-        "next_action": "Run renderer acceptance in canonical worker and record tool/font versions and output evidence."
+        "next_action": "Run EPUB conformance and representative Thai PDF extraction/pagination checks in an equipped canonical worker."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",

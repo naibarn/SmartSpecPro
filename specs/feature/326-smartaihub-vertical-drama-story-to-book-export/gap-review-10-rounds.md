@@ -163,8 +163,15 @@ runtime acceptance evidence.
 ## Closeout
 
 All ten review passes were completed and code-level findings above were fixed.
-Feature 326 is integrated as a development checkpoint, but full acceptance is
-still **validation-pending**: canonical worker renderer capabilities,
-development database migration, database-backed authorization/concurrency
-tests, and authenticated browser evidence remain required. This document does
-not mark those requirements passed.
+The Feature 326 schema migration was then applied to the configured development
+database with the migration receipt runner. Read-only post-migration audits
+confirmed journal tag `0417_vertical_drama_book_studio` matched its timestamp
+and SQL hash, and the catalog audit returned `READY` with no missing tables or
+constraints.
+
+Full acceptance remains **validation-pending** because this host lacks
+EPUBCheck, Chromium, Thai fonts, `pdftotext`, and `pdfinfo`; authenticated
+browser, real-series export, storage-provider, database concurrency, and
+cross-tenant authorization evidence is also outstanding. Cost reservation and
+exact provider quoting remain open design/verification gaps. This document
+does not mark those requirements passed.
