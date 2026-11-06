@@ -672,7 +672,6 @@ export default function VerticalDramaSeriesDetailPage() {
                   seriesId={seriesId}
                   episodes={detailQuery.data?.episodes ?? []}
                   lang={lang}
-                  readOnly={isArchived}
                 />
               </TabsContent>
 

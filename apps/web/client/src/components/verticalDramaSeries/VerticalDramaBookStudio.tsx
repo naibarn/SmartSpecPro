@@ -126,6 +126,18 @@ export function VerticalDramaBookStudio({
       void booksQuery.refetch();
     },
   });
+  const deleteMutation = trpc.verticalDramaBooks.delete.useMutation({
+    onSuccess: result => {
+      if (selectedBookId === result.bookId) {
+        setSelectedBookId(null);
+        setDocument(null);
+        setSelectedChapterId("");
+        setCompositionJobId(null);
+        setCoverJobId(null);
+      }
+      void booksQuery.refetch();
+    },
+  });
   const composeMutation = trpc.verticalDramaBooks.compose.useMutation({
     onSuccess: result => {
       setCompositionJobId(result.jobId);
@@ -302,14 +314,21 @@ export function VerticalDramaBookStudio({
         <HStack gap={2} wrap="wrap" aria-label={lang === "th" ? "รายการหนังสือ" : "Book list"}>
           {currentBooks.map(book => {
             const metadata = book.metadata as { author?: unknown };
-            return <Button key={book.id} type="button" variant={selectedBookId === book.id ? "default" : "outline"} className="h-auto min-w-48 justify-start px-4 py-3 text-left" onClick={() => { setCompositionJobId(null); setCoverJobId(null); setDocument(null); setCreateFormOpen(false); setSelectedBookId(book.id); }}>
-              <VStack gap={1} align="start">
-                <p className="font-medium">{book.title}</p>
-                <p className="text-xs opacity-80">{typeof metadata?.author === "string" ? metadata.author : (lang === "th" ? `ฉบับ ${book.currentRevisionNumber}` : `Revision ${book.currentRevisionNumber}`)} · {book.stale ? (lang === "th" ? "ต้นฉบับเปลี่ยนแล้ว" : "Source changed") : new Date(book.updatedAt).toLocaleDateString(lang === "th" ? "th-TH" : "en-US")}</p>
-              </VStack>
-            </Button>;
+            return <HStack key={book.id} gap={1} align="stretch" className="rounded-lg border p-1">
+              <Button type="button" variant={selectedBookId === book.id ? "default" : "outline"} className="h-auto min-w-48 justify-start px-4 py-3 text-left" aria-pressed={selectedBookId === book.id} onClick={() => { setCompositionJobId(null); setCoverJobId(null); setDocument(null); setCreateFormOpen(false); setSelectedBookId(book.id); }}>
+                <VStack gap={1} align="start">
+                  <p className="font-medium">{book.title}</p>
+                  <p className="text-xs opacity-80">{typeof metadata?.author === "string" ? metadata.author : (lang === "th" ? `ฉบับ ${book.currentRevisionNumber}` : `Revision ${book.currentRevisionNumber}`)} · {book.stale ? (lang === "th" ? "ต้นฉบับเปลี่ยนแล้ว" : "Source changed") : new Date(book.updatedAt).toLocaleDateString(lang === "th" ? "th-TH" : "en-US")}</p>
+                </VStack>
+              </Button>
+              {!readOnly ? <Button type="button" variant="outline" size="sm" aria-label={lang === "th" ? `ลบหนังสือ ${book.title}` : `Delete ${book.title}`} disabled={deleteMutation.isPending} onClick={() => {
+                const confirmed = window.confirm(lang === "th" ? `ลบหนังสือ “${book.title}” พร้อมฉบับแก้ไขและไฟล์ส่งออกทั้งหมดหรือไม่ การลบนี้ย้อนกลับไม่ได้` : `Delete “${book.title}”, its revisions, and exported files? This cannot be undone.`);
+                if (confirmed) deleteMutation.mutate({ bookId: book.id });
+              }}>{lang === "th" ? "ลบ" : "Delete"}</Button> : null}
+            </HStack>;
           })}
         </HStack>
+        {deleteMutation.error ? <p role="alert" className="text-sm text-destructive">{deleteMutation.error.message}</p> : null}
       </VStack>
 
         {!readOnly && (!selectedBookId || createFormOpen) && (

@@ -12,7 +12,7 @@ import { captureOwnedVerticalDramaBookSource } from "../services/verticalDramaBo
 import { assertAllShotImageCoverage } from "../services/verticalDramaBookSnapshot";
 import { fingerprintBookSource } from "../services/verticalDramaBookSnapshot";
 import { createFeature186VerticalDramaJobRef } from "../services/feature186VerticalDramaJobAdapter";
-import { storageGet } from "../storage";
+import { storageDelete, storageGet } from "../storage";
 import { cancelQueuedUserWorkerJob } from "../services/workerJobMonitorService";
 import { getCreditBalance } from "../services/creditService";
 import { estimateVerticalDramaBookCompositionCredits, listVerticalDramaBookNovelizerModels, resolveVerticalDramaBookNovelizerModel } from "../services/verticalDramaBookComposition";
@@ -202,6 +202,38 @@ export const verticalDramaBooksRouter = router({
       eq(verticalDramaBooks.seriesId, input.seriesId),
     )).orderBy(desc(verticalDramaBooks.updatedAt));
     return books.map(book => ({ id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, currentRevisionNumber: book.currentRevisionNumber, stale: Boolean(book.staleAt), updatedAt: book.updatedAt }));
+  }),
+
+  delete: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(
+      eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+    )).limit(1);
+    if (!book) notFound();
+
+    const sourceSelection = book.sourceSelection as { compositionJobId?: unknown; coverJobId?: unknown };
+    const exports = await db.select({ jobId: verticalDramaBookExportArtifacts.jobId, storageKey: verticalDramaBookExportArtifacts.storageKey }).from(verticalDramaBookExportArtifacts).where(and(
+      eq(verticalDramaBookExportArtifacts.bookId, book.id), eq(verticalDramaBookExportArtifacts.tenantId, actor.tenantId), eq(verticalDramaBookExportArtifacts.userId, actor.userId),
+    ));
+    const jobIds = [...new Set([
+      sourceSelection.compositionJobId,
+      sourceSelection.coverJobId,
+      ...exports.map(item => item.jobId),
+    ].filter((value): value is string => typeof value === "string" && value.length > 0))];
+    if (jobIds.length) {
+      const activeJobs = await db.select({ id: workerJobs.id }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, actor.tenantId),
+        inArray(workerJobs.id, jobIds),
+        inArray(workerJobs.status, ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased", "waiting_external", "retry_scheduled"]),
+      ));
+      if (activeJobs.length) throw new TRPCError({ code: "CONFLICT", message: "Wait for or cancel the book's active generation/export before deleting it." });
+    }
+
+    await db.delete(verticalDramaBooks).where(and(
+      eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+    ));
+    await Promise.all(exports.map(item => item.storageKey ? storageDelete(item.storageKey).catch(() => false) : Promise.resolve(false)));
+    return { deleted: true, bookId: book.id };
   }),
 
   get: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).query(async ({ ctx, input }) => {
