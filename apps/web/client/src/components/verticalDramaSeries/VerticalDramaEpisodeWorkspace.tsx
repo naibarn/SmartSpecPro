@@ -354,6 +354,10 @@ export interface VerticalDramaFinalRenderOptionsView {
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: VdFinalRenderSubtitlePresetValue;
+  /** Include the series-configured image watermark in this compiled video.
+   *  Optional for backward compatibility; the render-options section resolves
+   *  an absent value to true, matching the server's default. */
+  includeWatermark?: boolean;
   /** Render-options extension (2026-07-13). Optional (unlike the 3 fields
    *  above) purely for backward compatibility with existing callers/tests
    *  that construct this view without it — `VerticalDramaFinalRenderOptionsSection`
@@ -4171,6 +4175,7 @@ function VerticalDramaFinalRenderOptionsSection({
   const includeDialogueAudio = value?.includeDialogueAudio ?? false;
   const loudnessNormalize = value?.loudnessNormalize ?? false;
   const subtitlePreset = value?.subtitlePreset ?? "classic_box";
+  const includeWatermark = value?.includeWatermark ?? true;
   const subtitleFontSize = value?.subtitleFontSize ?? "medium";
   const showAgeBadge = value?.showAgeBadge ?? false;
   const renderEngine = value?.renderEngine ?? "ffmpeg";
@@ -4186,6 +4191,7 @@ function VerticalDramaFinalRenderOptionsSection({
       includeDialogueAudio,
       loudnessNormalize,
       subtitlePreset,
+      includeWatermark,
       subtitleFontSize,
       showAgeBadge,
       renderEngine,
@@ -4211,6 +4217,32 @@ function VerticalDramaFinalRenderOptionsSection({
       data-testid="vd-final-render-options-section"
     >
       <h3 className="text-sm font-medium">{t.finalRenderOptionsTitle}</h3>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vd-final-render-include-image-watermark"
+            checked={includeWatermark}
+            onCheckedChange={checked =>
+              emit({ includeWatermark: Boolean(checked) })
+            }
+            data-testid="vd-final-render-include-image-watermark"
+          />
+          <label
+            htmlFor="vd-final-render-include-image-watermark"
+            className="text-sm"
+          >
+            {locale === "th"
+              ? "ใส่ภาพลายน้ำที่ตั้งค่าไว้ในซีรีส์"
+              : "Include the series-configured image watermark"}
+          </label>
+        </div>
+        <p className="pl-6 text-[11px] text-muted-foreground">
+          {locale === "th"
+            ? "ค่าเริ่มต้นเปิด ปิดได้เฉพาะการรวมวิดีโอครั้งนี้ โดยไม่เปลี่ยนการตั้งค่าลายน้ำของซีรีส์"
+            : "On by default. Turn it off for this video only; series watermark settings are unchanged."}
+        </p>
+      </div>
 
       {contentProtectionEnabled ? (
         <div

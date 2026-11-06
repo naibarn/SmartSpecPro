@@ -8294,6 +8294,7 @@ function EpisodeWorkspaceShell({
         includeDialogueAudio: false,
         loudnessNormalize: false,
         subtitlePreset: "classic_box",
+        includeWatermark: true,
         // Render-options extension (2026-07-13) — mirrors the 3 fields above;
         // matches `assembleEpisodeVideo`'s own server-side defaults.
         subtitleFontSize: "medium",
@@ -8440,6 +8441,9 @@ function EpisodeWorkspaceShell({
         voiceChainFlagEnabled && finalRenderOptions.includeDialogueAudio,
       loudnessNormalize: finalRenderOptions.loudnessNormalize,
       subtitlePreset: finalRenderOptions.subtitlePreset,
+      // The series-configured image watermark is included by default, but can
+      // be omitted for this assembled video without changing series settings.
+      includeWatermark: finalRenderOptions.includeWatermark ?? true,
       // Render-options extension (2026-07-13) — optional on the mutation;
       // sent explicitly here since the section always resolves a concrete
       // value (defaults "medium"/false match the server's own defaults).

@@ -163,6 +163,43 @@ describe("VerticalDramaEpisodeWorkspace — Final Render Suite options (task #21
     expect(screen.getByTestId("vd-final-render-subtitle-preset")).toHaveValue("classic_box");
   });
 
+  it("includes the configured image watermark by default", () => {
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={baseEpisode}
+        storyboardPanel={storyboardPanelWithOneShot}
+      />
+    );
+    expect(
+      screen.getByTestId("vd-final-render-include-image-watermark")
+    ).toBeChecked();
+  });
+
+  it("allows omitting the image watermark for this render", () => {
+    const onChange = vi.fn();
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={baseEpisode}
+        storyboardPanel={storyboardPanelWithOneShot}
+        finalRenderOptionsPanel={{
+          value: {
+            includeDialogueAudio: false,
+            loudnessNormalize: false,
+            subtitlePreset: "classic_box",
+            includeWatermark: true,
+          },
+          onChange,
+        }}
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId("vd-final-render-include-image-watermark")
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ includeWatermark: false })
+    );
+  });
+
   describe("onChange payload shape (all 3 fields)", () => {
     it("checking the dialogue-audio checkbox calls onChange with includeDialogueAudio: true and the other 2 fields unchanged", () => {
       const onChange = vi.fn();
@@ -315,6 +352,7 @@ describe("VerticalDramaEpisodeWorkspace — Final Render Suite options (task #21
         includeDialogueAudio: false,
         loudnessNormalize: false,
         subtitlePreset: "classic_box",
+        includeWatermark: true,
         subtitleFontSize: "medium",
         showAgeBadge: false,
         renderEngine: "remotion_queue",
