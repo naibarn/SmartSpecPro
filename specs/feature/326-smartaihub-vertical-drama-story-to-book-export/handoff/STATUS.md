@@ -6,10 +6,10 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 45 unresolved of 45
 - Next action: Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.
-- Manifest generation: 10
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Deep-implement section claims (4): CHECKPOINTED: 4
+- Deep-implement section claims (5): CHECKPOINTED: 4, IN_PROGRESS: 1
