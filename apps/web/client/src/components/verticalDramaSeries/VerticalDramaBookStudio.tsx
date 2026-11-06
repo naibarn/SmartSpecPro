@@ -84,6 +84,8 @@ export function VerticalDramaBookStudio({
   const [novelizerModelId, setNovelizerModelId] = useState("");
   const [coverModelId, setCoverModelId] = useState("");
   const [document, setDocument] = useState<BookDocument | null>(null);
+  const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [createFormOpen, setCreateFormOpen] = useState(false);
   const novelizerModelsQuery = trpc.verticalDramaBooks.novelizerModels.useQuery(undefined, { staleTime: 60_000 });
   const coverModelsQuery = trpc.verticalDramaBooks.coverModels.useQuery(undefined, { staleTime: 60_000 });
   const availableAssetsQuery = trpc.verticalDramaBooks.availableAssets.useQuery(
@@ -97,22 +99,30 @@ export function VerticalDramaBookStudio({
     if (activeRevision?.document) {
       const nextDocument = activeRevision.document as BookDocument;
       setDocument(nextDocument);
+      setSelectedChapterId(current => nextDocument.chapters.some(chapter => chapter.id === current) ? current : nextDocument.chapters[0]?.id ?? "");
       setCoverAssetId(nextDocument.metadata.coverMediaAssetId ? String(nextDocument.metadata.coverMediaAssetId) : "");
     }
-    const jobId = (bookQuery.data?.book.sourceSelection as { compositionJobId?: string } | undefined)?.compositionJobId;
+  }, [activeRevision?.id]);
+
+  useEffect(() => {
+    const sourceSelection = bookQuery.data?.book.sourceSelection as { compositionJobId?: string; episodeIds?: unknown; coverModelId?: unknown; coverJobId?: unknown } | undefined;
+    if (!sourceSelection) return;
+    const jobId = sourceSelection.compositionJobId;
     if (jobId) setCompositionJobId(jobId);
-    const episodeIds = (bookQuery.data?.book.sourceSelection as { episodeIds?: unknown } | undefined)?.episodeIds;
+    const episodeIds = sourceSelection.episodeIds;
     if (Array.isArray(episodeIds)) setSelectedEpisodeIds(episodeIds.map(Number));
-    const coverModel = (bookQuery.data?.book.sourceSelection as { coverModelId?: unknown } | undefined)?.coverModelId;
+    const coverModel = sourceSelection.coverModelId;
     if (typeof coverModel === "string") setCoverModelId(coverModel);
-    const coverJob = (bookQuery.data?.book.sourceSelection as { coverJobId?: unknown } | undefined)?.coverJobId;
+    const coverJob = sourceSelection.coverJobId;
     if (typeof coverJob === "string") setCoverJobId(coverJob);
-  }, [activeRevision?.id, bookQuery.data?.book.sourceSelection]);
+  }, [bookQuery.data?.book.sourceSelection]);
 
   const createMutation = trpc.verticalDramaBooks.create.useMutation({
     onSuccess: result => {
       setSelectedBookId(result.book.id);
+      setCreateFormOpen(false);
       setDocument(result.revision.document as BookDocument);
+      setSelectedChapterId((result.revision.document as BookDocument).chapters[0]?.id ?? "");
       void booksQuery.refetch();
     },
   });
@@ -141,6 +151,12 @@ export function VerticalDramaBookStudio({
 
   const currentBooks = booksQuery.data ?? [];
   const currentDocument = document;
+  const selectedChapter = currentDocument?.chapters.find(chapter => chapter.id === selectedChapterId) ?? currentDocument?.chapters[0];
+  const selectedChapterIndex = selectedChapter ? currentDocument?.chapters.findIndex(chapter => chapter.id === selectedChapter.id) ?? -1 : -1;
+  const selectedCoverId = Number(currentDocument?.metadata.coverMediaAssetId ?? 0);
+  const selectedCoverCandidate = (bookQuery.data?.coverCandidates ?? []).find((candidate: any) => Number(candidate.mediaAssetId) === selectedCoverId);
+  const selectedCoverAsset = availableAssetsQuery.data?.assets.find(asset => asset.mediaAssetId === selectedCoverId);
+  const selectedCoverUrl = typeof selectedCoverCandidate?.url === "string" ? selectedCoverCandidate.url : selectedCoverAsset?.url;
   const isReviewCandidate = activeRevision?.status === "candidate";
   const previousRevisionDocument = isReviewCandidate ? bookQuery.data?.revisions?.[1]?.document as BookDocument | undefined : undefined;
   const persistedCoverDocument = activeRevision?.document as BookDocument | undefined;
@@ -273,34 +289,52 @@ export function VerticalDramaBookStudio({
 
       <VStack as="section" gap={3} aria-label={lang === "th" ? "หนังสือในซีรีย์นี้" : "Books in this series"}>
         {statusText ? <p role={booksQuery.error ? "alert" : undefined}>{statusText}</p> : null}
+        <HStack gap={3} wrap="wrap" align="center" justify="between">
+          <VStack gap={1}>
+            <h3 className="font-semibold">{lang === "th" ? "เลือกหนังสือเพื่อทำงานต่อ" : "Choose a book to continue"}</h3>
+            <p className="text-sm text-muted-foreground">{lang === "th" ? "เลือกฉบับเดิมเพื่อเขียน ตรวจเนื้อหา เลือกปก และส่งออกต่อได้" : "Open an existing draft to write, review, choose a cover, or export."}</p>
+          </VStack>
+          {!readOnly ? <Button type="button" variant={createFormOpen ? "outline" : "default"} onClick={() => setCreateFormOpen(current => !current)}>
+            {createFormOpen ? (lang === "th" ? "ปิดฟอร์มสร้างหนังสือ" : "Close new book form") : (lang === "th" ? "สร้างหนังสือใหม่" : "Create a new book")}
+          </Button> : null}
+        </HStack>
+        {currentBooks.length === 0 && !booksQuery.isLoading ? <p role="status" className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{lang === "th" ? "ยังไม่มีหนังสือในซีรีย์นี้ เริ่มจากสร้างหนังสือใหม่และเลือกตอนที่ต้องการ" : "This series has no books yet. Create one and select the episodes to include."}</p> : null}
         <HStack gap={2} wrap="wrap" aria-label={lang === "th" ? "รายการหนังสือ" : "Book list"}>
-          {currentBooks.map(book => (
-            <Button key={book.id} variant={selectedBookId === book.id ? "default" : "outline"} onClick={() => { setCompositionJobId(null); setCoverJobId(null); setDocument(null); setSelectedBookId(book.id); }}>
-              {book.title}
-            </Button>
-          ))}
+          {currentBooks.map(book => {
+            const metadata = book.metadata as { author?: unknown };
+            return <Button key={book.id} type="button" variant={selectedBookId === book.id ? "default" : "outline"} className="h-auto min-w-48 justify-start px-4 py-3 text-left" onClick={() => { setCompositionJobId(null); setCoverJobId(null); setDocument(null); setCreateFormOpen(false); setSelectedBookId(book.id); }}>
+              <VStack gap={1} align="start">
+                <p className="font-medium">{book.title}</p>
+                <p className="text-xs opacity-80">{typeof metadata?.author === "string" ? metadata.author : (lang === "th" ? `ฉบับ ${book.currentRevisionNumber}` : `Revision ${book.currentRevisionNumber}`)} · {book.stale ? (lang === "th" ? "ต้นฉบับเปลี่ยนแล้ว" : "Source changed") : new Date(book.updatedAt).toLocaleDateString(lang === "th" ? "th-TH" : "en-US")}</p>
+              </VStack>
+            </Button>;
+          })}
         </HStack>
       </VStack>
 
-      {!readOnly && (
-        <VStack as="form" gap={3} onSubmit={event => {
+        {!readOnly && (!selectedBookId || createFormOpen) && (
+        <VStack as="form" gap={4} className="rounded-xl border bg-card p-4 shadow-sm sm:p-5" onSubmit={event => {
           event.preventDefault();
           createMutation.mutate({ seriesId: numericSeriesId, episodeIds: selectedEpisodeIds, title: title.trim(), subtitle: subtitle.trim() || null, author: author.trim(), description: description.trim() || null, copyrightText: copyrightText.trim() || null, coverMediaAssetId: coverAssetId ? Number(coverAssetId) : null, coverAltText: coverAssetId ? coverAltText.trim() || (lang === "th" ? "ภาพปกหนังสือ" : "Book cover") : null, imageDensity: density });
         }} aria-label={lang === "th" ? "สร้างหนังสือ" : "Create a book"}>
+          <VStack gap={1}>
+            <h3 className="text-base font-semibold">{lang === "th" ? "ตั้งค่าหนังสือและเลือกตอน" : "Set up the book and choose episodes"}</h3>
+            <p className="text-sm text-muted-foreground">{lang === "th" ? "หลังสร้างเล่มแล้ว คุณจะเลือกโมเดลเพื่อเรียบเรียงนิยาย อ่านตรวจทีละตอน และเลือกภาพปกก่อนอนุมัติได้" : "After creating the book, choose a writing model, review each episode, select a cover, and approve it."}</p>
+          </VStack>
           <HStack gap={3} wrap="wrap">
-            <VStack gap={1}>
+            <VStack gap={1} className="min-w-44 flex-1">
               <Label htmlFor="book-title">{lang === "th" ? "ชื่อหนังสือ" : "Book title"}</Label>
               <Input id="book-title" value={title} onChange={event => setTitle(event.target.value)} maxLength={255} required />
             </VStack>
-            <VStack gap={1}>
+            <VStack gap={1} className="min-w-44 flex-1">
               <Label htmlFor="book-author">{lang === "th" ? "ชื่อผู้เขียน" : "Author name"}</Label>
               <Input id="book-author" value={author} onChange={event => setAuthor(event.target.value)} maxLength={255} required />
             </VStack>
-            <VStack gap={1}>
+            <VStack gap={1} className="min-w-44 flex-1">
               <Label htmlFor="book-subtitle">{lang === "th" ? "คำโปรยรอง" : "Subtitle"}</Label>
               <Input id="book-subtitle" value={subtitle} onChange={event => setSubtitle(event.target.value)} maxLength={255} />
             </VStack>
-            <VStack gap={1}>
+            <VStack gap={1} className="min-w-44 flex-1">
               <Label htmlFor="book-image-density">{lang === "th" ? "ภาพประกอบ" : "Illustration density"}</Label>
               <Select value={density} onValueChange={value => setDensity(value as typeof density)}>
                 <SelectTrigger id="book-image-density" aria-label={lang === "th" ? "ความหนาแน่นภาพประกอบ" : "Illustration density"}><SelectValue /></SelectTrigger>
@@ -312,7 +346,7 @@ export function VerticalDramaBookStudio({
                 </SelectContent>
               </Select>
             </VStack>
-            <VStack gap={1}>
+            <VStack gap={1} className="min-w-44 flex-1">
               <Label htmlFor="book-cover-asset">{lang === "th" ? "ภาพปก" : "Book cover"}</Label>
               <Select value={coverAssetId || "none"} onValueChange={value => setCoverAssetId(value === "none" ? "" : value)}>
                 <SelectTrigger id="book-cover-asset" aria-label={lang === "th" ? "เลือกภาพปก" : "Choose a cover image"}><SelectValue /></SelectTrigger>
@@ -398,12 +432,121 @@ export function VerticalDramaBookStudio({
             </> : null}
             {!readOnly && isReviewCandidate && ["failed", "cancelled", "expired"].includes(jobStatus ?? "") ? <Button type="button" variant="outline" onClick={() => discardCandidateMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id })} disabled={discardCandidateMutation.isPending}>{lang === "th" ? "กลับไปฉบับเดิม" : "Return to previous version"}</Button> : null}
           </HStack>
+          {!readOnly && activeRevision?.status === "draft" ? (
+            <VStack as="section" gap={2} className="rounded-lg border bg-muted/30 p-4" aria-label={lang === "th" ? "เรียบเรียงเนื้อหาเป็นนิยาย" : "Compose the novel draft"}>
+              <h4 className="font-semibold">{lang === "th" ? "ขั้นตอนถัดไป: สร้างเนื้อหานิยาย" : "Next step: create the novel text"}</h4>
+              <p className="text-sm text-muted-foreground">
+                {lang === "th" ? `ส่งเรื่องย่อ บทพูด และภาพประกอบจาก ${currentDocument.chapters.length} ตอนให้ AI เรียบเรียงเป็นต้นฉบับนิยาย จากนั้นอ่านและตรวจแก้ทีละตอนด้านล่าง ก่อนอนุมัติหนังสือ` : `Use the selected episodes' synopses, dialogue, and images to write a novel draft. Then read and edit each episode below before approving the book.`}
+              </p>
+              <HStack gap={3} wrap="wrap" align="end">
+                <VStack gap={1}>
+                  <Label htmlFor="book-novelizer-model">{lang === "th" ? "เลือกโมเดลสำหรับเขียนนิยาย" : "Novel-writing model"}</Label>
+                  <Select value={novelizerModelId} onValueChange={setNovelizerModelId} disabled={isComposing || novelizerModelsQuery.isLoading}>
+                    <SelectTrigger id="book-novelizer-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลที่รองรับภาพ" : "Choose a vision model"} /></SelectTrigger>
+                    <SelectContent>{(novelizerModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </VStack>
+                <p className="text-sm text-muted-foreground">
+                  {Number.isFinite(Number(novelizationQuoteQuery.data?.estimatedCredits))
+                    ? (lang === "th"
+                      ? `ประมาณไม่เกิน ${Number(novelizationQuoteQuery.data?.estimatedCredits)} เครดิต สำหรับ ${currentDocument.chapters.length} ตอน · แปลงซ้ำตอนที่เลือกประมาณ ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} เครดิต`
+                      : `Up to ${Number(novelizationQuoteQuery.data?.estimatedCredits)} credits for ${currentDocument.chapters.length} episodes · re-novelizing the selected episode about ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} credits`)
+                    : (lang === "th" ? "เลือกโมเดลเพื่อดูเครดิตก่อนเริ่มงาน" : "Choose a model to see the estimate before starting")}
+                </p>
+                <Button type="button" onClick={() => composeMutation.mutate({ bookId: selectedBookId, modelId: novelizerModelId })} disabled={isComposing || composeMutation.isPending || bookQuery.data.book.stale || !novelizerModelId}>
+                  {isComposing ? (lang === "th" ? "กำลังเขียนนิยาย…" : "Writing novel…") : (lang === "th" ? "เขียนนิยายครบทุกตอน" : "Write all episodes as a novel")}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => saveMutation.mutate({ bookId: selectedBookId, document: currentDocument })} disabled={saveMutation.isPending || isComposing || isGeneratingCover || bookQuery.data.book.stale}>
+                  {lang === "th" ? "บันทึกฉบับแก้ไข" : "Save edits"}
+                </Button>
+                {isComposing ? <Button type="button" variant="outline" onClick={() => cancelCompositionMutation.mutate({ bookId: selectedBookId })} disabled={cancelCompositionMutation.isPending}>{lang === "th" ? "ยกเลิก" : "Cancel"}</Button> : null}
+              </HStack>
+              {novelizerModelsQuery.error || novelizationQuoteQuery.error || composeMutation.error || saveMutation.error || cancelCompositionMutation.error ? <p role="alert" className="text-sm text-destructive">{novelizerModelsQuery.error?.message ?? novelizationQuoteQuery.error?.message ?? composeMutation.error?.message ?? saveMutation.error?.message ?? cancelCompositionMutation.error?.message}</p> : null}
+              {!novelizerModelsQuery.isLoading && novelizerModelsQuery.data?.models.length === 0 ? <p role="alert" className="text-sm text-destructive">{lang === "th" ? "ยังไม่มีโมเดลที่รองรับการอ่านภาพสำหรับเรียบเรียงนิยาย กรุณาเปิดใช้งานโมเดลภาพก่อน" : "No vision model is enabled for novelization. Enable a vision-capable model first."}</p> : null}
+            </VStack>
+          ) : null}
+          {!readOnly && activeRevision?.status === "draft" ? (
+            <VStack as="section" gap={3} className="rounded-lg border p-4" aria-label={lang === "th" ? "สร้างและตรวจปกหนังสือ" : "Generate and review book covers"}>
+              <VStack gap={1}>
+                <h4 className="font-semibold">{lang === "th" ? "สร้างภาพปกหนังสือ" : "Create the book cover"}</h4>
+                <p className="text-sm text-muted-foreground">{lang === "th" ? "เลือกโมเดล ระบบจะสุ่มภาพจากหลายช็อตมาสร้างปก 3 แบบให้เปรียบเทียบ เลือกแบบที่ชอบหรือสร้างชุดใหม่ได้" : "Choose a model. The system samples shot images and creates 3 cover options to compare. Choose one or generate another set."}</p>
+              </VStack>
+              <HStack gap={4} wrap="wrap" align="start">
+                <VStack as="figure" gap={2} aria-label={lang === "th" ? "ภาพปกที่เลือก" : "Selected book cover"}>
+                  <p className="text-sm font-medium">{lang === "th" ? "ตัวอย่างปกที่เลือก" : "Selected cover preview"}</p>
+                  {selectedCoverUrl ? <img src={selectedCoverUrl} alt={String(currentDocument.metadata.coverAltText ?? `${currentDocument.metadata.title} · ${lang === "th" ? "ภาพปกที่เลือก" : "Selected book cover"}`)} loading="lazy" className="max-h-72 max-w-52 rounded-md border object-contain" /> : <p role="status" className="flex min-h-56 w-44 items-center justify-center rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">{lang === "th" ? "ยังไม่ได้เลือกภาพปก เลือกภาพจากตัวเลือกด้านล่าง" : "No cover selected. Choose an option below."}</p>}
+                </VStack>
+                <VStack gap={2} className="min-w-64 flex-1">
+                  <Label htmlFor="book-cover-model">{lang === "th" ? "โมเดลสร้างภาพ" : "Image generation model"}</Label>
+                  <Select value={coverModelId} onValueChange={setCoverModelId} disabled={isGeneratingCover || coverModelsQuery.isLoading}>
+                    <SelectTrigger id="book-cover-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลสร้างภาพ" : "Choose an image model"} /></SelectTrigger>
+                    <SelectContent>{(coverModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">{coverQuoteQuery.data ? (lang === "th" ? `สร้าง 3 แบบ · ใช้ภาพอ้างอิง ${coverQuoteQuery.data.referenceImageCount} ภาพ · ประมาณ ${coverQuoteQuery.data.estimatedCredits} เครดิต` : `3 options · ${coverQuoteQuery.data.referenceImageCount} shot references · about ${coverQuoteQuery.data.estimatedCredits} credits`) : (lang === "th" ? "เลือกโมเดลเพื่อดูจำนวนภาพอ้างอิงและเครดิต" : "Choose a model to see reference coverage and credits")}</p>
+                  {coverQuoteQuery.data?.mayReuseReferences ? <p role="status" className="text-sm text-muted-foreground">{lang === "th" ? "ภาพต้นฉบับมีจำนวนจำกัด รอบถัดไปอาจสุ่มได้ภาพซ้ำ" : "The source image pool is small, so a later round may reuse some references."}</p> : null}
+                  {coverTextUnsaved ? <p role="status" className="text-sm text-muted-foreground">{lang === "th" ? "บันทึกชื่อเรื่อง ผู้เขียน และคำโปรยก่อนสร้างปก เพื่อให้ตัวอักษรบนปกตรงกับหนังสือ" : "Save title, author, and blurb edits before generating so the cover text matches."}</p> : null}
+                  <Label htmlFor="book-cover-editor">{lang === "th" ? "เลือกภาพปกที่มีอยู่" : "Choose an existing cover"}</Label>
+                  <Select value={currentDocument.metadata.coverMediaAssetId ? String(currentDocument.metadata.coverMediaAssetId) : "none"} disabled={isGeneratingCover} onValueChange={value => {
+                    const asset = availableAssetsQuery.data?.assets.find(item => String(item.mediaAssetId) === value);
+                    const candidate = bookQuery.data.coverCandidates?.find((item: any) => String(item.mediaAssetId) === value);
+                    const mediaAssetId = asset?.mediaAssetId ?? (candidate ? Number(candidate.mediaAssetId) : null);
+                    const checksum = asset?.checksum ?? (candidate ? String(candidate.checksum) : null);
+                    setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: mediaAssetId, coverChecksum: checksum, coverAltText: mediaAssetId ? current.metadata.coverAltText || `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "Book cover"}` : null } } : current);
+                  }}>
+                    <SelectTrigger id="book-cover-editor"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="none">{lang === "th" ? "ยังไม่เลือกภาพปก" : "No cover selected"}</SelectItem>{(availableAssetsQuery.data?.assets ?? []).map(asset => <SelectItem key={asset.mediaAssetId} value={String(asset.mediaAssetId)}>{asset.purpose === "cover" ? (lang === "th" ? "ภาพปกตอน" : "Episode cover") : (lang === "th" ? "ภาพช็อต" : "Shot image")} #{asset.mediaAssetId}</SelectItem>)}{(bookQuery.data.coverCandidates ?? []).map((candidate: any, index: number) => <SelectItem key={`generated-cover-${candidate.mediaAssetId}`} value={String(candidate.mediaAssetId)}>{lang === "th" ? `ปกที่สร้าง แบบ ${Number(candidate.outputIndex ?? index) + 1}` : `Generated cover ${Number(candidate.outputIndex ?? index) + 1}`}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {currentDocument.metadata.coverMediaAssetId ? <VStack gap={1}>
+                    <Label htmlFor="book-cover-alt">{lang === "th" ? "คำอธิบายภาพปก" : "Cover alternative text"}</Label>
+                    <Input id="book-cover-alt" value={String(currentDocument.metadata.coverAltText ?? "")} disabled={isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverAltText: event.target.value } } : current)} />
+                  </VStack> : null}
+                  <HStack gap={2} wrap="wrap">
+                    <Button type="button" onClick={() => selectedBookId && activeRevision && coverMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id, modelId: coverModelId })} disabled={!selectedBookId || !coverModelId || !coverQuoteQuery.data?.referenceImageCount || isGeneratingCover || coverMutation.isPending || coverTextUnsaved || bookQuery.data.book.stale}>
+                      {isGeneratingCover ? (lang === "th" ? `กำลังสร้างปก ${String((coverJobQuery.data as any)?.progress ?? "")}%` : `Generating covers ${String((coverJobQuery.data as any)?.progress ?? "")}%`) : (lang === "th" ? "สุ่มสร้างปก 3 แบบ" : "Generate 3 random covers")}
+                    </Button>
+                    {isGeneratingCover ? <Button type="button" variant="outline" onClick={() => selectedBookId && cancelCoverMutation.mutate({ bookId: selectedBookId })} disabled={cancelCoverMutation.isPending}>{lang === "th" ? "ยกเลิก" : "Cancel"}</Button> : null}
+                  </HStack>
+                  {coverMutation.error || coverModelsQuery.error || coverQuoteQuery.error ? <p role="alert" className="text-sm text-destructive">{coverMutation.error?.message ?? coverModelsQuery.error?.message ?? coverQuoteQuery.error?.message}</p> : null}
+                  {!coverModelsQuery.isLoading && coverModelsQuery.data?.models.length === 0 ? <p role="alert" className="text-sm text-destructive">{lang === "th" ? "ยังไม่มีโมเดลสร้างภาพที่เปิดใช้งาน กรุณาเปิดใช้งานโมเดลภาพก่อน" : "No image generation model is enabled. Enable an image model first."}</p> : null}
+                  {!isGeneratingCover && coverJobStatus === "failed" ? <p role="status" className="text-sm text-destructive">{lang === "th" ? "สร้างปกไม่สำเร็จ กรุณาตรวจสอบโมเดลและเครดิต แล้วลองสร้างชุดใหม่" : "Cover generation failed. Check the model and credits, then try a new set."}</p> : null}
+                </VStack>
+              </HStack>
+              {bookQuery.data.coverCandidates?.length ? <VStack gap={2}>
+                <p className="text-sm font-medium">{lang === "th" ? `ตัวเลือกปก ${bookQuery.data.coverCandidates.length} แบบ` : `${bookQuery.data.coverCandidates.length} cover options`}</p>
+                <HStack as="ul" gap={3} wrap="wrap" aria-label={lang === "th" ? "ตัวเลือกภาพปก" : "Cover candidates"}>
+                  {bookQuery.data.coverCandidates.map((candidate: any) => {
+                    const overlayMatches = candidate.overlayText?.title === currentDocument.metadata.title && candidate.overlayText?.author === currentDocument.metadata.author && candidate.overlayText?.blurb === String(currentDocument.metadata.subtitle ?? "");
+                    const isSelected = Number(candidate.mediaAssetId) === selectedCoverId;
+                    return <VStack as="li" key={`${candidate.roundId}-${candidate.outputIndex}`} gap={2} className="w-44 rounded-lg border p-3">
+                      {typeof candidate.url === "string" ? <img src={candidate.url} alt={`${currentDocument.metadata.title} · ${lang === "th" ? "ตัวเลือกปก" : "Cover option"} ${Number(candidate.outputIndex) + 1}`} loading="lazy" className="h-56 w-full rounded-md object-contain" /> : <p role="status" className="flex h-56 items-center justify-center text-sm text-muted-foreground">{lang === "th" ? "โหลดภาพตัวอย่างไม่สำเร็จ" : "Preview unavailable"}</p>}
+                      <p className="text-xs text-muted-foreground">{lang === "th" ? `แบบ ${Number(candidate.outputIndex) + 1} · ภาพอ้างอิง ${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} ภาพ` : `Option ${Number(candidate.outputIndex) + 1} · ${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} shot references`}</p>
+                      {!overlayMatches ? <p role="alert" className="text-xs text-destructive">{lang === "th" ? "ชื่อหรือคำโปรยเปลี่ยนแล้ว สร้างปกใหม่เพื่อให้ข้อความตรงกัน" : "Book text changed. Generate a new cover to match it."}</p> : null}
+                      <Button type="button" variant={isSelected ? "default" : "outline"} size="sm" disabled={!overlayMatches} onClick={() => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: Number(candidate.mediaAssetId), coverChecksum: String(candidate.checksum), coverAltText: `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "Book cover"}` } } : current)}>{isSelected ? (lang === "th" ? "เลือกปกนี้แล้ว" : "Selected") : (lang === "th" ? "เลือกภาพปกนี้" : "Choose this cover")}</Button>
+                    </VStack>;
+                  })}
+                </HStack>
+              </VStack> : <p role="status" className="text-sm text-muted-foreground">{lang === "th" ? "ยังไม่มีภาพตัวเลือกปก กด “สุ่มสร้างปก 3 แบบ” เพื่อเริ่ม" : "No generated covers yet. Choose a model and generate 3 options."}</p>}
+              {currentDocument.metadata.coverMediaAssetId ? <p role="status" className="text-sm text-muted-foreground">{lang === "th" ? `เลือกภาพปก #${currentDocument.metadata.coverMediaAssetId} แล้ว · กดบันทึกฉบับแก้ไขเพื่อเก็บภาพนี้` : `Cover #${currentDocument.metadata.coverMediaAssetId} selected · save edits to keep it`}</p> : null}
+            </VStack>
+          ) : null}
           {retryCompositionMutation.error || reNovelizeMutation.error || applyCandidateMutation.error || discardCandidateMutation.error ? <p role="alert" className="text-sm text-destructive">{retryCompositionMutation.error?.message ?? reNovelizeMutation.error?.message ?? applyCandidateMutation.error?.message ?? discardCandidateMutation.error?.message}</p> : null}
-          {currentDocument.chapters.map(chapter => (
+          {currentDocument.chapters.length > 0 ? <HStack gap={2} wrap="wrap" align="end" aria-label={lang === "th" ? "เลือกบทเพื่อตรวจอ่าน" : "Choose a chapter to review"}>
+            <VStack gap={1}>
+              <Label htmlFor="book-review-chapter">{lang === "th" ? `อ่านและตรวจทีละตอน (${currentDocument.chapters.length} ตอน)` : `Read and review an episode (${currentDocument.chapters.length} total)`}</Label>
+              <Select value={selectedChapter?.id ?? ""} onValueChange={setSelectedChapterId}>
+                <SelectTrigger id="book-review-chapter"><SelectValue /></SelectTrigger>
+                <SelectContent>{currentDocument.chapters.map((chapter, index) => <SelectItem key={chapter.id} value={chapter.id}>{index + 1}. {chapter.title}</SelectItem>)}</SelectContent>
+              </Select>
+            </VStack>
+            <Button type="button" variant="outline" disabled={selectedChapterIndex <= 0} onClick={() => setSelectedChapterId(currentDocument.chapters[selectedChapterIndex - 1]?.id ?? "")}>{lang === "th" ? "ตอนก่อนหน้า" : "Previous episode"}</Button>
+            <Button type="button" variant="outline" disabled={selectedChapterIndex < 0 || selectedChapterIndex >= currentDocument.chapters.length - 1} onClick={() => setSelectedChapterId(currentDocument.chapters[selectedChapterIndex + 1]?.id ?? "")}>{lang === "th" ? "ตอนถัดไป" : "Next episode"}</Button>
+          </HStack> : null}
+          {selectedChapter ? [selectedChapter].map(chapter => (
             <VStack key={chapter.id} as="section" gap={3} aria-label={chapter.title}>
               {isReviewCandidate && previousRevisionDocument ? <details><summary>{lang === "th" ? "เปรียบเทียบกับฉบับก่อนหน้า" : "Compare with previous version"}</summary><VStack gap={2}>{(previousRevisionDocument.chapters.find(item => item.id === chapter.id)?.blocks ?? []).filter((block: any) => block.type === "paragraph" || block.type === "dialogue").map((block: any) => <p key={block.id}>{block.type === "dialogue" && block.speaker ? <strong>{block.speaker}: </strong> : null}{block.text}</p>)}</VStack></details> : null}
               <VStack as="article" gap={2} aria-label={lang === "th" ? `ตัวอย่างการอ่าน ${chapter.title}` : `Reading preview: ${chapter.title}`}>
                 <h4 className="font-semibold">{chapter.title}</h4>
+                {!chapter.blocks.some((block: any) => (block.type === "paragraph" || block.type === "dialogue") && String(block.text ?? "").trim()) ? <p role="status" className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">{lang === "th" ? "ตอนนี้ยังไม่มีเนื้อหานิยาย กด “เขียนนิยายครบทุกตอน” ด้านบน หรือเขียนเฉพาะตอนนี้จากปุ่มด้านล่าง" : "This episode has no novel text yet. Use “Write all episodes as a novel” above or write this episode below."}</p> : null}
                 {chapter.blocks.map((block: any) => block.type === "paragraph" ? <p key={block.id}>{block.text}</p> : block.type === "dialogue" ? <p key={block.id}>{block.speaker ? <strong>{block.speaker}: </strong> : null}{block.text}</p> : block.type === "scene_break" ? <p aria-label={lang === "th" ? "จุดเปลี่ยนฉาก" : "Scene break"} key={block.id}>＊ ＊ ＊</p> : block.type === "illustration" ? <img key={block.id} src={availableAssetsQuery.data?.assets.find(asset => asset.mediaAssetId === block.mediaAssetId)?.url ?? ""} alt={block.decorative ? "" : block.altText} loading="lazy" /> : null)}
               </VStack>
               {chapter.qualityReview ? <details>
@@ -415,7 +558,7 @@ export function VerticalDramaBookStudio({
                 </VStack>
               </details> : null}
               {!readOnly && activeRevision?.status === "draft" ? <HStack gap={2} wrap="wrap">
-                <Button type="button" variant="outline" size="sm" onClick={() => reNovelizeMutation.mutate({ bookId: selectedBookId, chapterId: chapter.id, modelId: novelizerModelId })} disabled={isComposing || !novelizerModelId || bookQuery.data.book.stale || reNovelizeMutation.isPending}>{lang === "th" ? "แปลงตอนนี้ใหม่" : "Re-novelize this episode"}</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => reNovelizeMutation.mutate({ bookId: selectedBookId, chapterId: chapter.id, modelId: novelizerModelId })} disabled={isComposing || !novelizerModelId || bookQuery.data.book.stale || reNovelizeMutation.isPending}>{chapter.qualityReview ? (lang === "th" ? "เขียนตอนนี้ใหม่" : "Rewrite this episode") : (lang === "th" ? "เขียนนิยายตอนนี้" : "Write this episode")}</Button>
               </HStack> : null}
               {!readOnly && activeRevision?.status === "draft" ? <HStack gap={2} wrap="wrap">
                 <Button type="button" variant="outline" size="sm" aria-label={lang === "th" ? "เลื่อนบทขึ้น" : "Move chapter up"} disabled={currentDocument.chapters[0].id === chapter.id} onClick={() => reorderChapter(chapter.id, -1)}>↑</Button>
@@ -457,85 +600,8 @@ export function VerticalDramaBookStudio({
                 </VStack>
               ) : null) : null}
             </VStack>
-          ))}
-          {!readOnly && activeRevision?.status === "draft" ? (
-            <HStack gap={3} wrap="wrap">
-              <VStack as="section" gap={2} aria-label={lang === "th" ? "สร้างภาพปกหนังสือ" : "Generate book cover artwork"}>
-                <h4 className="font-semibold">{lang === "th" ? "สร้างภาพปกหนังสือโดยเฉพาะ" : "Create a dedicated book cover"}</h4>
-                <Label htmlFor="book-cover-model">{lang === "th" ? "โมเดลสร้างภาพ" : "Image model"}</Label>
-                <Select value={coverModelId} onValueChange={setCoverModelId} disabled={isGeneratingCover || coverModelsQuery.isLoading}>
-                  <SelectTrigger id="book-cover-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลที่รองรับภาพอ้างอิง" : "Choose a reference image model"} /></SelectTrigger>
-                  <SelectContent>{(coverModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">{coverQuoteQuery.data ? (lang === "th" ? `สร้าง 3 แบบ · ใช้ภาพอ้างอิง ${coverQuoteQuery.data.referenceImageCount} ภาพ · ประมาณ ${coverQuoteQuery.data.estimatedCredits} เครดิต` : `3 options · ${coverQuoteQuery.data.referenceImageCount} shot references · about ${coverQuoteQuery.data.estimatedCredits} credits`) : (lang === "th" ? "เลือกโมเดลภาพอ้างอิงเพื่อดูราคาและจำนวนภาพ" : "Choose a reference image model to see cost and source coverage")}</p>
-                {coverQuoteQuery.data?.mayReuseReferences ? <p role="status">{lang === "th" ? "จำนวนภาพต้นฉบับมีจำกัด รอบถัดไปอาจต้องใช้ชุดภาพอ้างอิงเดิม" : "The source image pool is small, so a later round may reuse the same shot references."}</p> : null}
-                {coverTextUnsaved ? <p role="status">{lang === "th" ? "บันทึกชื่อเรื่อง ผู้เขียน และคำโปรยก่อนสร้างปก เพื่อให้ข้อความบนปกตรงกับหนังสือ" : "Save title, author, and blurb edits before generating the cover so its text matches the book."}</p> : null}
-                <HStack gap={2} wrap="wrap">
-                  <Button type="button" onClick={() => selectedBookId && activeRevision && coverMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id, modelId: coverModelId })} disabled={!selectedBookId || !coverModelId || !coverQuoteQuery.data?.referenceImageCount || isGeneratingCover || coverMutation.isPending || coverTextUnsaved || bookQuery.data.book.stale}>
-                    {isGeneratingCover ? (lang === "th" ? `กำลังสร้างปก ${String((coverJobQuery.data as any)?.progress ?? "")}%` : `Generating covers ${String((coverJobQuery.data as any)?.progress ?? "")}%`) : (lang === "th" ? "สร้างตัวเลือกปก 3 แบบ" : "Generate 3 cover options")}
-                  </Button>
-                  {isGeneratingCover ? <Button type="button" variant="outline" onClick={() => selectedBookId && cancelCoverMutation.mutate({ bookId: selectedBookId })} disabled={cancelCoverMutation.isPending}>{lang === "th" ? "ยกเลิก" : "Cancel"}</Button> : null}
-                </HStack>
-                {coverMutation.error || coverModelsQuery.error || coverQuoteQuery.error ? <p role="alert" className="text-sm text-destructive">{coverMutation.error?.message ?? coverModelsQuery.error?.message ?? coverQuoteQuery.error?.message}</p> : null}
-                {!isGeneratingCover && coverJobStatus === "failed" && bookQuery.data.coverCandidates?.length ? <p role="status">{lang === "th" ? "งานรอบล่าสุดไม่สำเร็จทั้งหมด แต่ภาพที่สร้างสำเร็จยังเลือกใช้ได้" : "The latest round did not finish, but completed cover options remain available."}</p> : null}
-                {bookQuery.data.coverCandidates?.length ? <HStack as="ul" gap={3} wrap="wrap" aria-label={lang === "th" ? "ตัวเลือกภาพปก" : "Cover candidates"}>
-                  {bookQuery.data.coverCandidates.map((candidate: any) => {
-                    const overlayMatches = candidate.overlayText?.title === currentDocument.metadata.title && candidate.overlayText?.author === currentDocument.metadata.author && candidate.overlayText?.blurb === String(currentDocument.metadata.subtitle ?? "");
-                    return <VStack as="li" key={`${candidate.roundId}-${candidate.outputIndex}`} gap={2}>
-                    {typeof candidate.url === "string" ? <img src={candidate.url} alt={`${currentDocument.metadata.title} · ${lang === "th" ? "ตัวเลือกปก" : "Cover option"} ${Number(candidate.outputIndex) + 1}`} loading="lazy" /> : null}
-                    <p className="text-xs text-muted-foreground">{String(candidate.modelId)} · {lang === "th" ? `ภาพอ้างอิง ${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} ภาพ` : `${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} shot references`}</p>
-                    {!overlayMatches ? <p role="alert">{lang === "th" ? "ปกนี้สร้างจากชื่อหรือคำโปรยฉบับเดิม กรุณาสร้างใหม่เพื่อให้ข้อความตรงกัน" : "This cover uses older title or blurb text. Generate a fresh option to match the current book."}</p> : null}
-                    <Button type="button" variant="outline" size="sm" disabled={!overlayMatches} onClick={() => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: Number(candidate.mediaAssetId), coverChecksum: String(candidate.checksum), coverAltText: `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "book cover"}` } } : current)}>{lang === "th" ? "เลือกภาพปกนี้" : "Choose this cover"}</Button>
-                  </VStack>;
-                  })}
-                </HStack> : null}
-                {currentDocument.metadata.coverMediaAssetId ? <p role="status">{lang === "th" ? `เลือกภาพปก #${currentDocument.metadata.coverMediaAssetId} แล้ว · บันทึกฉบับเพื่อใช้ภาพนี้` : `Cover #${currentDocument.metadata.coverMediaAssetId} selected · save the revision to keep it`}</p> : null}
-              </VStack>
-              <VStack gap={1}>
-                <Label htmlFor="book-cover-editor">{lang === "th" ? "ภาพปก" : "Book cover"}</Label>
-                <Select value={currentDocument.metadata.coverMediaAssetId ? String(currentDocument.metadata.coverMediaAssetId) : "none"} disabled={readOnly || activeRevision?.status === "approved" || isGeneratingCover} onValueChange={value => {
-                  const asset = availableAssetsQuery.data?.assets.find(item => String(item.mediaAssetId) === value);
-                  const candidate = bookQuery.data.coverCandidates?.find((item: any) => String(item.mediaAssetId) === value);
-                  const mediaAssetId = asset?.mediaAssetId ?? (candidate ? Number(candidate.mediaAssetId) : null);
-                  const checksum = asset?.checksum ?? (candidate ? String(candidate.checksum) : null);
-                  setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: mediaAssetId, coverChecksum: checksum, coverAltText: mediaAssetId ? current.metadata.coverAltText || `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "book cover"}` : null } } : current);
-                }}>
-                  <SelectTrigger id="book-cover-editor"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">{lang === "th" ? "ไม่ใช้ภาพปก" : "No cover image"}</SelectItem>{(availableAssetsQuery.data?.assets ?? []).map(asset => <SelectItem key={asset.mediaAssetId} value={String(asset.mediaAssetId)}>{asset.purpose === "cover" ? "Episode cover" : "Shot image"} #{asset.mediaAssetId}</SelectItem>)}{(bookQuery.data.coverCandidates ?? []).map((candidate: any) => <SelectItem key={`generated-cover-${candidate.mediaAssetId}`} value={String(candidate.mediaAssetId)}>{lang === "th" ? "ภาพปกที่สร้าง" : "Generated cover"} #{Number(candidate.outputIndex) + 1}</SelectItem>)}</SelectContent>
-                </Select>
-              </VStack>
-              {currentDocument.metadata.coverMediaAssetId ? <VStack gap={1}>
-                <Label htmlFor="book-cover-alt">{lang === "th" ? "คำอธิบายภาพปก" : "Cover alternative text"}</Label>
-                <Input id="book-cover-alt" value={String(currentDocument.metadata.coverAltText ?? "")} disabled={readOnly || activeRevision?.status === "approved" || isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverAltText: event.target.value } } : current)} />
-              </VStack> : null}
-            </HStack>
-          ) : null}
-          {!readOnly && activeRevision?.status === "draft" ? (
-            <HStack gap={2} wrap="wrap">
-              <VStack gap={1}>
-                <Label htmlFor="book-novelizer-model">{lang === "th" ? "โมเดล AI สำหรับเรียบเรียงนิยาย" : "Novelization vision model"}</Label>
-                <Select value={novelizerModelId} onValueChange={setNovelizerModelId} disabled={isComposing || novelizerModelsQuery.isLoading}>
-                  <SelectTrigger id="book-novelizer-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลที่รองรับภาพ" : "Choose a vision model"} /></SelectTrigger>
-                  <SelectContent>{(novelizerModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </VStack>
-              <p className="text-sm text-muted-foreground">
-                {Number.isFinite(Number(novelizationQuoteQuery.data?.estimatedCredits))
-                  ? (lang === "th"
-                    ? `ประมาณไม่เกิน ${Number(novelizationQuoteQuery.data?.estimatedCredits)} เครดิต สำหรับ ${currentDocument.chapters.length} ตอน · แปลงซ้ำรายตอนประมาณ ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} เครดิต`
-                    : `Estimated up to ${Number(novelizationQuoteQuery.data?.estimatedCredits)} credits for ${currentDocument.chapters.length} episodes · one-episode re-novelization about ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} credits`)
-                  : (lang === "th" ? "จะแสดงราคาประเมินก่อนเริ่มเรียบเรียง" : "A credit estimate will be checked before composition starts")}
-              </p>
-              <Button onClick={() => composeMutation.mutate({ bookId: selectedBookId, modelId: novelizerModelId })} disabled={isComposing || composeMutation.isPending || bookQuery.data.book.stale || !novelizerModelId}>
-                {lang === "th" ? "เรียบเรียงต้นฉบับ" : "Compose draft"}
-              </Button>
-              <Button variant="outline" onClick={() => saveMutation.mutate({ bookId: selectedBookId, document: currentDocument })} disabled={saveMutation.isPending || isComposing || isGeneratingCover || bookQuery.data.book.stale}>
-                {lang === "th" ? "บันทึกฉบับแก้ไข" : "Save revision"}
-              </Button>
-              {saveMutation.isSuccess ? <p role="status">{lang === "th" ? "บันทึกแล้ว" : "Saved"}</p> : null}
-              {composeMutation.error || saveMutation.error || cancelCompositionMutation.error ? <p role="alert" className="text-sm text-destructive">{composeMutation.error?.message ?? saveMutation.error?.message ?? cancelCompositionMutation.error?.message}</p> : null}
-            </HStack>
-          ) : null}
+          )) : null}
+          {saveMutation.isSuccess ? <p role="status">{lang === "th" ? "บันทึกแล้ว" : "Saved"}</p> : null}
           {!readOnly && activeRevision?.status === "draft" ? (
             <Button variant="secondary" onClick={() => approveMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id })} disabled={approveMutation.isPending || isComposing || bookQuery.data.book.stale}>
               {lang === "th" ? "อนุมัติฉบับนี้" : "Approve this revision"}
