@@ -60,7 +60,10 @@ import {
   type SpecialModelSnapshot,
   type SpecialTieInInput,
 } from "@shared/verticalDramaSeries/specialTieInContracts";
-import type { MarketplaceReviewIdea } from "@shared/marketplaceReviewIdeas/contracts";
+import type {
+  MarketplaceReviewIdea,
+  MarketplaceReviewIdeaInput,
+} from "@shared/marketplaceReviewIdeas/contracts";
 import {
   footageBrollPlacementSchema,
   footageGuideSchema,
@@ -146,6 +149,8 @@ type SceneSuggestion = {
 
 type IdeaHistoryResumeSnapshot = {
   productSource: "marketplace_capture" | "upload";
+  presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
+  storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   productBrief?: string;
   direction?: string;
   referenceImages: Array<{
@@ -168,6 +173,45 @@ type IdeaHistoryRun = {
 
 export const DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE =
   "character_dialogue" as const;
+
+function getPresentationStyleLabel(
+  value: MarketplaceReviewIdea["presentationStyle"],
+  lang: "th" | "en"
+) {
+  if (!value) return null;
+  const labels: Record<
+    NonNullable<MarketplaceReviewIdea["presentationStyle"]>,
+    string
+  > = {
+    story_tie_in: lang === "th" ? "เล่า Tie-in ในเรื่อง" : "Story tie-in",
+    direct_product_pitch:
+      lang === "th" ? "แนะนำสินค้าตรง ๆ" : "Direct product pitch",
+    unboxing: lang === "th" ? "เปิดกล่อง/ทดลองใช้" : "Unboxing",
+    feature_explainer:
+      lang === "th" ? "สาธิตคุณสมบัติ" : "Feature demonstration",
+    problem_solution: lang === "th" ? "ปัญหาและทางออก" : "Problem to solution",
+  };
+  return labels[value];
+}
+
+function getStoryStructureLabel(
+  value: MarketplaceReviewIdea["storyStructure"],
+  lang: "th" | "en"
+) {
+  if (!value) return null;
+  const labels: Record<
+    NonNullable<MarketplaceReviewIdea["storyStructure"]>,
+    string
+  > = {
+    three_act: lang === "th" ? "3 องก์" : "Three act",
+    problem_solution: lang === "th" ? "ปัญหา → วิธีแก้" : "Problem–solution",
+    aida: "AIDA",
+    before_after_bridge:
+      lang === "th" ? "ก่อน → หลัง → สะพานเชื่อม" : "Before–after–bridge",
+    hero_journey: lang === "th" ? "เส้นทางตัวละคร" : "Hero’s journey",
+  };
+  return labels[value];
+}
 
 export function resolveSpecialTieInDialogueMode(
   initialInput?: Pick<SpecialTieInInput, "dialogueMode"> | null
@@ -519,6 +563,10 @@ export function SpecialTieInEpisodeDialog({
 }) {
   const utils = trpc.useUtils();
   const [idea, setIdea] = useState("");
+  const [presentationStyle, setPresentationStyle] =
+    useState<MarketplaceReviewIdeaInput["presentationStyle"]>("varied");
+  const [storyStructure, setStoryStructure] =
+    useState<MarketplaceReviewIdeaInput["storyStructure"]>("varied");
   const [referenceType, setReferenceType] = useState<ReferenceType>("product");
   const [references, setReferences] = useState<Reference[]>([]);
   const [characterIds, setCharacterIds] = useState<string[]>([]);
@@ -1280,6 +1328,8 @@ export function SpecialTieInEpisodeDialog({
       setCharacterIds(restoredCharacterIds);
       setSpeakerCharacterIds([]);
       setDialogueMode(resume.dialogueMode);
+      setPresentationStyle(resume.presentationStyle ?? "varied");
+      setStoryStructure(resume.storyStructure ?? "varied");
       setReferences(
         resume.referenceImages.slice(0, 3).map(reference => ({
           mediaAssetId: reference.mediaAssetId,
@@ -1839,6 +1889,8 @@ export function SpecialTieInEpisodeDialog({
           ? marketplaceReferenceImages
           : uploadedReferenceImages,
         dialogueMode,
+        presentationStyle,
+        storyStructure,
         selectedCharacterIds: characterIds.slice(0, 4),
         customerJourney: usingMarketplaceProduct
           ? selectedProduct?.supportingInsights ?? undefined
@@ -3203,8 +3255,8 @@ export function SpecialTieInEpisodeDialog({
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     {lang === "th"
-                      ? "ใช้สินค้าเป็นส่วนหนึ่งของเหตุการณ์ ไม่ยืนขายตรง ๆ ระบบจะสร้าง 3 ใบใหม่ทุกครั้ง"
-                      : "The product belongs inside the story, not a direct sales review. Each run creates 3 new cards."}
+                      ? "เลือกรูปแบบการนำเสนอสินค้าและโครงสร้างเรื่องได้ ระบบจะสร้าง 3 ไอเดียตามแนวที่เลือก"
+                      : "Choose how the product is presented and how each story is structured."}
                   </p>
                 </div>
                 <Button
@@ -3224,6 +3276,118 @@ export function SpecialTieInEpisodeDialog({
                   {lang === "th" ? "สร้างไอเดีย 3 ใบ" : "Generate 3 ideas"}
                 </Button>
               </div>
+              <fieldset className="grid gap-2 sm:grid-cols-2">
+                <fieldset className="min-w-0 space-y-1">
+                  <Label htmlFor="special-tie-in-presentation-style">
+                    {lang === "th"
+                      ? "แนวการนำเสนอสินค้า"
+                      : "Product presentation style"}
+                  </Label>
+                  <Select
+                    value={presentationStyle}
+                    onValueChange={value =>
+                      setPresentationStyle(
+                        value as MarketplaceReviewIdeaInput["presentationStyle"]
+                      )
+                    }
+                  >
+                    <SelectTrigger id="special-tie-in-presentation-style">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="varied">
+                        {lang === "th"
+                          ? "คละรูปแบบใน 3 ไอเดีย (แนะนำ)"
+                          : "Mix styles across 3 ideas (recommended)"}
+                      </SelectItem>
+                      <SelectItem value="story_tie_in">
+                        {lang === "th"
+                          ? "เล่า Tie-in ให้สินค้าเป็นส่วนหนึ่งของเรื่อง"
+                          : "Natural story tie-in"}
+                      </SelectItem>
+                      <SelectItem value="direct_product_pitch">
+                        {lang === "th"
+                          ? "พูดแนะนำ/ขายสินค้าตรง ๆ แบบมีข้อมูลรองรับ"
+                          : "Direct, evidence-based product pitch"}
+                      </SelectItem>
+                      <SelectItem value="unboxing">
+                        {lang === "th"
+                          ? "เปิดกล่องและทดลองใช้สินค้า"
+                          : "Unbox and try the product"}
+                      </SelectItem>
+                      <SelectItem value="feature_explainer">
+                        {lang === "th"
+                          ? "สาธิตหรืออธิบายคุณสมบัติสินค้า"
+                          : "Demonstrate product features"}
+                      </SelectItem>
+                      <SelectItem value="problem_solution">
+                        {lang === "th"
+                          ? "เปิดด้วยปัญหา แล้วเล่าว่าสินค้าช่วยอย่างไร"
+                          : "Start with a problem, then show how the product helps"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "th"
+                      ? "เลือกรูปแบบเดียวให้ทั้งชุด หรือให้ 3 ไอเดียใช้คนละรูปแบบ"
+                      : "Choose one style for all ideas, or mix styles across the three."}
+                  </p>
+                </fieldset>
+                <fieldset className="min-w-0 space-y-1">
+                  <Label htmlFor="special-tie-in-story-structure">
+                    {lang === "th" ? "โครงสร้างการเล่าเรื่อง" : "Story structure"}
+                  </Label>
+                  <Select
+                    value={storyStructure}
+                    onValueChange={value =>
+                      setStoryStructure(
+                        value as MarketplaceReviewIdeaInput["storyStructure"]
+                      )
+                    }
+                  >
+                    <SelectTrigger id="special-tie-in-story-structure">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="varied">
+                        {lang === "th"
+                          ? "คละโครงสร้างใน 3 ไอเดีย (แนะนำ)"
+                          : "Mix structures across 3 ideas (recommended)"}
+                      </SelectItem>
+                      <SelectItem value="three_act">
+                        {lang === "th"
+                          ? "3 องก์: เปิดเรื่อง → อุปสรรค → คลี่คลาย"
+                          : "Three act: setup → obstacle → resolution"}
+                      </SelectItem>
+                      <SelectItem value="problem_solution">
+                        {lang === "th"
+                          ? "ปัญหา → วิธีแก้ → ผลลัพธ์"
+                          : "Problem → solution → outcome"}
+                      </SelectItem>
+                      <SelectItem value="aida">
+                        {lang === "th"
+                          ? "AIDA: ดึงดูด → สนใจ → เห็นประโยชน์ → ชวนพิจารณา"
+                          : "AIDA: attention → interest → desire → gentle action"}
+                      </SelectItem>
+                      <SelectItem value="before_after_bridge">
+                        {lang === "th"
+                          ? "ก่อน → หลัง → จุดเชื่อมการเปลี่ยนแปลง"
+                          : "Before → after → bridge"}
+                      </SelectItem>
+                      <SelectItem value="hero_journey">
+                        {lang === "th"
+                          ? "เส้นทางตัวละคร: เป้าหมาย → อุปสรรค → เปลี่ยนแปลง"
+                          : "Hero’s journey: goal → obstacle → change"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "th"
+                      ? "ระบบจะแสดงป้ายกำกับแนวที่ใช้จริงบนการ์ดไอเดีย"
+                      : "Each idea card will show the structure used."}
+                  </p>
+                </fieldset>
+              </fieldset>
               {ideaGenerationBlockers.length > 0 ? (
                 <p
                   className="text-xs text-amber-800 dark:text-amber-300"
@@ -3311,6 +3475,27 @@ export function SpecialTieInEpisodeDialog({
                               <span className="block font-medium">
                                 {candidate.title}
                               </span>
+                              {candidate.presentationStyle ||
+                              candidate.storyStructure ? (
+                                <span className="mt-2 flex flex-wrap gap-1">
+                                  {candidate.presentationStyle ? (
+                                    <Badge variant="secondary">
+                                      {getPresentationStyleLabel(
+                                        candidate.presentationStyle,
+                                        lang
+                                      )}
+                                    </Badge>
+                                  ) : null}
+                                  {candidate.storyStructure ? (
+                                    <Badge variant="outline">
+                                      {getStoryStructureLabel(
+                                        candidate.storyStructure,
+                                        lang
+                                      )}
+                                    </Badge>
+                                  ) : null}
+                                </span>
+                              ) : null}
                               <span className="mt-1 block text-xs text-muted-foreground">
                                 {candidate.logline}
                               </span>

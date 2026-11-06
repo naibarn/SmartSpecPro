@@ -3,6 +3,40 @@ import { footageGuideSchema } from "../verticalDramaMedia/contracts";
 
 const boundedText = (max: number) => z.string().trim().min(1).max(max);
 
+export const marketplaceReviewPresentationStylePreferenceSchema = z.enum([
+  "varied",
+  "story_tie_in",
+  "direct_product_pitch",
+  "unboxing",
+  "feature_explainer",
+  "problem_solution",
+]);
+
+export const marketplaceReviewStoryStructurePreferenceSchema = z.enum([
+  "varied",
+  "three_act",
+  "problem_solution",
+  "aida",
+  "before_after_bridge",
+  "hero_journey",
+]);
+
+const marketplaceReviewPresentationStyleSchema = z.enum([
+  "story_tie_in",
+  "direct_product_pitch",
+  "unboxing",
+  "feature_explainer",
+  "problem_solution",
+]);
+
+const marketplaceReviewStoryStructureSchema = z.enum([
+  "three_act",
+  "problem_solution",
+  "aida",
+  "before_after_bridge",
+  "hero_journey",
+]);
+
 export const marketplaceReviewIdeaInputSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   productSource: z
@@ -40,6 +74,12 @@ export const marketplaceReviewIdeaInputSchema = z.object({
     continuity: z.string().trim().max(6000).optional(),
   }),
   dialogueMode: z.enum(["none", "character_dialogue"]),
+  presentationStyle: marketplaceReviewPresentationStylePreferenceSchema.default(
+    "varied"
+  ),
+  storyStructure: marketplaceReviewStoryStructurePreferenceSchema.default(
+    "varied"
+  ),
   /** Character IDs explicitly selected by the user for this idea run. */
   selectedCharacterIds: z.array(boundedText(128)).min(1).max(4),
   /** Names that must not be introduced as characters in the generated story. */
@@ -88,6 +128,8 @@ export const marketplaceReviewIdeaInputSchema = z.object({
 export const marketplaceReviewIdeaSchema = z.object({
   ideaId: boundedText(128),
   title: boundedText(255),
+  presentationStyle: marketplaceReviewPresentationStyleSchema.optional(),
+  storyStructure: marketplaceReviewStoryStructureSchema.optional(),
   logline: boundedText(2000),
   episodeStory: boundedText(12000),
   dialogueScript: z.string().trim().max(12000),

@@ -44,7 +44,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, natural product appearance, believable use, and scene resolution; do not write bullets or a product review. Use the product category, description, specifications, claims, and direction supplied in input.product and input.direction as source context when thinking up all 3 ideas; let relevant details shape the situation and character actions naturally without forcing exact wording or repeated mentions. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant product details when they fit what a character sees, does, or needs; other shots should advance the drama naturally and need not mention the product. Do not force exact product wording or repeat product mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, 100%, or hard-sell purchase claims. Keep product references modest, evidence-based, and natural inside the story. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, product appearance that follows the selected presentation style, believable use, and scene resolution; do not write bullets or a product review. Use the product category, description, specifications, claims, and direction supplied in input.product and input.direction as source context when thinking up all 3 ideas; let relevant details shape the situation and character actions naturally without forcing exact wording or repeated mentions. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant product details when they fit what a character sees, does, or needs; other shots should advance the drama naturally and need not mention the product. Do not force exact product wording or repeat product mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the product clearly but must stay factual, modest, and non-pressuring. Keep product references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear product-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -64,6 +64,26 @@ const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
             properties: {
               ideaId: { type: "string", minLength: 1 },
               title: { type: "string", minLength: 1 },
+              presentationStyle: {
+                type: "string",
+                enum: [
+                  "story_tie_in",
+                  "direct_product_pitch",
+                  "unboxing",
+                  "feature_explainer",
+                  "problem_solution",
+                ],
+              },
+              storyStructure: {
+                type: "string",
+                enum: [
+                  "three_act",
+                  "problem_solution",
+                  "aida",
+                  "before_after_bridge",
+                  "hero_journey",
+                ],
+              },
               logline: { type: "string", minLength: 1 },
               episodeStory: { type: "string", minLength: 1 },
               dialogueScript: { type: "string" },
@@ -217,6 +237,8 @@ const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
             required: [
               "ideaId",
               "title",
+              "presentationStyle",
+              "storyStructure",
               "logline",
               "episodeStory",
               "dialogueScript",
@@ -472,6 +494,8 @@ function normalizePersistedOutput(value: unknown): MarketplaceReviewIdeaOutput {
 
 export type MarketplaceReviewIdeaResumeSnapshot = {
   productSource: "marketplace_capture" | "upload";
+  presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
+  storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   productBrief?: string;
   direction?: string;
   referenceImages: Array<{
@@ -506,8 +530,15 @@ export function buildMarketplaceReviewIdeaResumeSnapshot(
   if (referenceImages.length === 0 || input.selectedCharacterIds.length === 0) {
     return null;
   }
+  const rawInput = asRecord(value);
   return {
     productSource: input.productSource,
+    ...(typeof rawInput.presentationStyle === "string"
+      ? { presentationStyle: input.presentationStyle }
+      : {}),
+    ...(typeof rawInput.storyStructure === "string"
+      ? { storyStructure: input.storyStructure }
+      : {}),
     ...(input.productSource === "upload" && input.product.description
       ? { productBrief: input.product.description }
       : {}),
@@ -696,7 +727,39 @@ function buildUserPrompt(
   repairFeedback?: string,
 ): string {
   return JSON.stringify({
-    task: "สร้างไอเดีย 3 ใบสำหรับตอนซีรีย์ tie-in สินค้าแบบเนียนเป็นละคร ไม่ใช่รีวิวตรง ๆ",
+    task: "สร้างไอเดียตอนซีรีย์สินค้า 3 ใบ โดยแต่ละใบต้องระบุรูปแบบการนำเสนอสินค้าและโครงสร้างเรื่องให้ตรงกับสิ่งที่เขียนจริง",
+    creativeDirection: {
+      presentationStylePreference: input.presentationStyle,
+      presentationStyleGuidance: {
+        story_tie_in:
+          "สินค้าเป็นส่วนหนึ่งของเหตุการณ์และความสัมพันธ์ในละคร ไม่หยุดเรื่องเพื่อขาย",
+        direct_product_pitch:
+          "ตัวละครพูดแนะนำสินค้าอย่างตรงไปตรงมา บอกเฉพาะข้อมูลหรือประโยชน์ที่มีหลักฐาน และชวนพิจารณาอย่างสุภาพโดยไม่กดดัน",
+        unboxing:
+          "เปิดกล่องหรือสำรวจสินค้า เห็นรายละเอียดและทดลองใช้ตามที่ข้อมูลรองรับ ห้ามแต่งรายละเอียดบรรจุภัณฑ์ที่ไม่มีในข้อมูล",
+        feature_explainer:
+          "สาธิตหรืออธิบายคุณสมบัติที่ระบุไว้ โดยผูกกับการใช้งานจริง ห้ามสร้างสเปกหรือผลลัพธ์เพิ่ม",
+        problem_solution:
+          "เริ่มจากปัญหาที่ตัวละครพบ แล้วแสดงว่าสินค้ามีส่วนช่วยอย่างไรโดยไม่อ้างผลเกินข้อมูล",
+      },
+      storyStructurePreference: input.storyStructure,
+      storyStructureGuidance: {
+        three_act:
+          "3 องก์: เปิดสถานการณ์และเป้าหมาย → เกิดอุปสรรคหรือการตัดสินใจ → คลี่คลายและจบด้วยผลทางอารมณ์",
+        problem_solution:
+          "ปัญหา → สำรวจทางเลือกหรือทดลอง → วิธีที่ช่วยได้และข้อสรุปตามจริง",
+        aida:
+          "ดึงความสนใจ → ทำให้เข้าใจหรือสนใจ → แสดงความเหมาะสม → ปิดด้วยการตัดสินใจหรือคำชวนอย่างนุ่มนวล ไม่บังคับซื้อ",
+        before_after_bridge:
+          "สภาพก่อน → จุดเปลี่ยนจากการลองหรือเรียนรู้ → สภาพหลังและสิ่งที่เชื่อมสองช่วง โดยไม่กล่าวอ้างเกินหลักฐาน",
+        hero_journey:
+          "ตัวละครมีเป้าหมาย → เจออุปสรรค → ลองวิธีหรือได้รับความช่วยเหลือ → เปลี่ยนแปลงและกลับมาพร้อมข้อเรียนรู้",
+      },
+      variedSelection:
+        "เมื่อ preference เป็น varied ให้เลือกแนวที่ต่างกันในไอเดียทั้ง 3 ใบ และใส่รหัสแนวที่ใช้จริงในแต่ละใบ",
+      fixedSelection:
+        "เมื่อ preference ระบุแนวใดแนวหนึ่ง ให้ใช้แนวนั้นกับไอเดียทั้ง 3 ใบ และใส่รหัสแนวที่ใช้จริงในแต่ละใบ",
+    },
     outputContract: MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT,
     outputShape: {
       schemaVersion: 1,
@@ -704,6 +767,10 @@ function buildUserPrompt(
         {
           ideaId: "unique-card-id",
           title: "ชื่อไอเดีย",
+          presentationStyle:
+            "story_tie_in | direct_product_pitch | unboxing | feature_explainer | problem_solution",
+          storyStructure:
+            "three_act | problem_solution | aida | before_after_bridge | hero_journey",
           logline: "ประโยคสรุปเหตุการณ์",
           episodeStory: "เรื่องละครภาษาไทยแบบร้อยแก้วต่อเนื่องอย่างน้อย 3 ย่อหน้า ตั้งแต่เริ่มปัญหาจนจบฉาก",
           dialogueScript: "พิมพ์ชนก: (ก้มเก็บของเล่น) เราต้องค่อย ๆ ดูกันว่าชิ้นไหนเหมาะกับภูมิ\nลุงชาญ: ลองชิ้นนี้ดูไหม",
@@ -738,6 +805,10 @@ function buildUserPrompt(
     contract: {
       outputCount: 3,
       eachIdeaMustBeDifferent: true,
+      eachIdeaMustIncludeItsActualPresentationStyleAndStoryStructure: true,
+      whenPresentationStyleIsVariedUseDifferentStylesAcrossTheThreeIdeas: true,
+      whenStoryStructureIsVariedUseDifferentStructuresAcrossTheThreeIdeas: true,
+      whenPreferenceIsSpecificApplyItToAllThreeIdeas: true,
       preserveDna: true,
       addOnlyMissingLookOrSceneSlots: true,
       noUnsupportedClaims: true,
@@ -751,11 +822,16 @@ function buildUserPrompt(
       prohibitedSpeakerNames: input.dialogueProhibitedCharacterNames,
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
-      advertisingCompliance: "ห้ามกล่าวอ้างเกินจริง ห้าม hard sell และห้ามให้เด็กพูด",
+      advertisingCompliance:
+        "ห้ามกล่าวอ้างเกินจริงและห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำสินค้าอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ห้ามกดดันหรือชวนซื้อเกินควร",
       productTieIn:
-        input.dialogueMode === "character_dialogue"
-          ? "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์อย่างเป็นธรรมชาติ บทพูดจะกล่าวถึงสินค้าเมื่อเหมาะกับฉาก ไม่จำเป็นต้องเอ่ยถึงสินค้าในทุกช็อต"
-          : "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์หรือการกระทำอย่างเป็นธรรมชาติ ห้ามมีบทพูด",
+        input.presentationStyle === "direct_product_pitch"
+          ? input.dialogueMode === "character_dialogue"
+            ? "แนวนี้ต้องแนะนำสินค้าอย่างชัดเจนในบทพูดของผู้ใหญ่ โดยใช้เฉพาะรายละเอียดหรือประโยชน์ที่มีในข้อมูล และพูดอย่างสุภาพไม่กดดัน ช็อตอื่นยังเล่าเรื่องต่อได้ ไม่ต้องพูดถึงสินค้าในทุกช็อต"
+            : "แนวนี้ให้ตัวละครสาธิตหรือจัดวางสินค้าอย่างชัดเจนและเล่าประโยชน์ผ่านการกระทำ ใช้เฉพาะข้อมูลที่มี ห้ามมีบทพูด"
+          : input.dialogueMode === "character_dialogue"
+            ? "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์อย่างเป็นธรรมชาติ บทพูดจะกล่าวถึงสินค้าเมื่อเหมาะกับฉาก ไม่จำเป็นต้องเอ่ยถึงสินค้าในทุกช็อต"
+            : "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์หรือการกระทำอย่างเป็นธรรมชาติ ห้ามมีบทพูด",
     },
     repairFeedback: repairFeedback || undefined,
     input,
@@ -842,6 +918,8 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   seriesId: number;
   productId?: string;
   productSource: "marketplace_capture" | "upload";
+  presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
+  storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   referenceImages: Array<{
     mediaAssetId: string;
     imageId?: string;
@@ -1126,6 +1204,8 @@ export async function buildMarketplaceReviewIdeaInput(input: {
           : JSON.stringify(seriesContinuity),
     },
     dialogueMode: input.dialogueMode,
+    presentationStyle: input.presentationStyle ?? "varied",
+    storyStructure: input.storyStructure ?? "varied",
     selectedCharacterIds,
     excludedCharacterNames,
     dialogueSpeakerCharacterNames,

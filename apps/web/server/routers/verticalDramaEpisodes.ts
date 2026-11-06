@@ -167,6 +167,10 @@ import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
 import { materializeMarketplaceImageReference } from "../services/verticalDramaSpecialReferences";
 import { specialTieInInputSchema } from "../../shared/verticalDramaSeries/specialTieInContracts";
 import {
+  marketplaceReviewPresentationStylePreferenceSchema,
+  marketplaceReviewStoryStructurePreferenceSchema,
+} from "../../shared/marketplaceReviewIdeas/contracts";
+import {
   buildMarketplaceReviewIdeaInput,
   listMarketplaceReviewIdeaModels,
   listMarketplaceReviewIdeaRuns,
@@ -12376,6 +12380,10 @@ export const verticalDramaEpisodesRouter = router({
           .min(1)
           .max(5),
         dialogueMode: z.enum(["none", "character_dialogue"]),
+        presentationStyle:
+          marketplaceReviewPresentationStylePreferenceSchema.default("varied"),
+        storyStructure:
+          marketplaceReviewStoryStructurePreferenceSchema.default("varied"),
         selectedCharacterIds: z
           .array(z.string().trim().min(1).max(128))
           .min(1)
