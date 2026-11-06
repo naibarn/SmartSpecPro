@@ -21,6 +21,7 @@ import {
   tenants,
   userGroups,
   verticalDramaSeries,
+  verticalDramaBookExportArtifacts,
 } from "../../drizzle/schema";
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
 import { normalizeManagedMediaKey, parseManagedMediaUrl } from "./managedMediaAccessService";
@@ -64,6 +65,20 @@ export async function canReadManagedStorageKey(
     viewer.userId <= 0
   ) {
     return false;
+  }
+
+  if (normalizedKey.startsWith("vertical-drama-books/")) {
+    const [ownedBookExport] = await db
+      .select({ id: verticalDramaBookExportArtifacts.id })
+      .from(verticalDramaBookExportArtifacts)
+      .where(and(
+        eq(verticalDramaBookExportArtifacts.storageKey, normalizedKey),
+        eq(verticalDramaBookExportArtifacts.tenantId, viewer.tenantId),
+        eq(verticalDramaBookExportArtifacts.userId, viewer.userId),
+        eq(verticalDramaBookExportArtifacts.status, "available"),
+      ))
+      .limit(1);
+    return Boolean(ownedBookExport);
   }
 
   // Tenant uploads persist their URL on the tenant, rather than in media_assets.
