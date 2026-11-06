@@ -2939,6 +2939,7 @@ export interface GenerateStartFrameShotPromptParams {
     active: boolean;
     productName?: string | null;
     productDescription?: string | null;
+    productDimensions?: string | null;
   } | null;
   /**
    * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
@@ -3078,6 +3079,7 @@ export interface GenerateStartFrameShotPromptParams {
     active: boolean;
     productName?: string | null;
     productDescription?: string | null;
+    productDimensions?: string | null;
   } | null;
   /** Effective prompt budget for the selected image model; omitted keeps the legacy 3800 fallback. */
   imagePromptMaxChars?: number;
@@ -3276,7 +3278,7 @@ export function buildStartFrameShotPromptUserPrompt(
     params.productLock
       ? `product_lock: active=${params.productLock.active}${
           params.productLock.active
-            ? ` product_name="${params.productLock.productName ?? ""}" product_description="${params.productLock.productDescription ?? ""}"`
+            ? ` product_name="${params.productLock.productName ?? ""}" product_description="${params.productLock.productDescription ?? ""}" product_dimensions="${params.productLock.productDimensions ?? ""}"`
             : ""
         }`
       : `product_lock: active=false`,
@@ -3294,7 +3296,7 @@ export function buildStartFrameShotPromptUserPrompt(
     // legacy skill (which already has everything it needs from
     // `product_lock` alone).
     isNewImagePromptMode && params.productTieIn?.active
-      ? `PRODUCT TIE-IN: product_name="${params.productTieIn.productName ?? ""}" product_description="${params.productTieIn.productDescription ?? ""}"`
+      ? `PRODUCT TIE-IN: product_name="${params.productTieIn.productName ?? ""}" product_description="${params.productTieIn.productDescription ?? ""}" product_dimensions="${params.productTieIn.productDimensions ?? ""}"`
       : null,
     // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
     // bible) — additive; `null` (filtered out entirely, same convention as
@@ -3373,7 +3375,7 @@ export function buildStartFrameShotPromptUserPrompt(
       ? `two_shot_face_visibility_rule: MANDATORY OPEN TWO-SHOT — both characters must be angled three-quarter toward camera and each other with BOTH faces clearly visible, readable, and well-lit. NEVER place either character with their back to camera, back of head to lens, full profile, or face hidden in deep shadow or behind hair. Both faces must remain readable for video face-matching and lip-sync.`
       : null,
     params.productReferenceImages?.length
-      ? `product_reference_inputs: ${params.productReferenceImages.length} attached product reference image(s) are the visual source of truth for the product's exact visible identity and details. Inspect each image and preserve its shape, proportions, colors, materials, components, branding, labels, and distinctive details. Preserve and state in the final prompt every dimension/size explicitly supplied in product_lock.product_description, product_tie_in.product_description, canonical_shot_summary, or repair_instruction; never invent measurements. Scale the product consistently with those stated dimensions and the shot perspective. The product reference is an additive physical prop reference only: the shot's story, location, and scene continuity remain the background authority; never transfer the reference image's background or composition into the shot.`
+      ? `product_reference_inputs: ${params.productReferenceImages.length} attached product reference image(s) are the visual source of truth for the product's exact visible identity and details. Inspect each image and preserve its shape, proportions, colors, materials, components, branding, labels, and distinctive details. Preserve and state in the final prompt every explicitly supplied measurement in product_lock.product_dimensions, product_lock.product_description, product_tie_in.product_dimensions, product_tie_in.product_description, canonical_shot_summary, or repair_instruction; never invent measurements. Use the supplied dimensions to keep the product's scale realistic relative to people and scene objects, consistent with the shot perspective. The product reference is an additive physical prop reference only: the shot's story, location, and scene continuity remain the background authority; never transfer the reference image's background or composition into the shot.`
       : null,
     params.propObjectReferenceImages?.length
       ? "prop_object_reference_inputs: the attached prop/object reference image(s) are the visual source of truth for the physical object; the final prompt must reference the attached image(s) and preserve their visible shape, materials, colors, and distinctive details when the prop is visible, while the image model chooses natural placement and action"

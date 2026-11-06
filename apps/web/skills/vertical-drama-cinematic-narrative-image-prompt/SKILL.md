@@ -322,6 +322,9 @@ ONLY place the product direction enters the prompt:
 - Follow the caller's stated placement style (held/used/on a surface/in the
   background) and keep it natural to the beat — the product never hijacks the
   decisive moment or blocks a face.
+- When the supplied product facts include physical dimensions, use them to keep
+  the product's apparent scale realistic relative to people and scene objects;
+  do not invent measurements or resize the product to fit the composition.
 - Refer to the product with a GENERIC descriptor ("a slim white skincare
   bottle"), never a brand name, logo text, or trademarked wording. Any
   branding that appears must come only from the attached reference image.

@@ -1845,7 +1845,7 @@ interface VerticalDramaStoryboardPanelProps {
       source: VerticalDramaShotReferenceView["source"];
       mediaType?: DroppedShotMediaType;
     }
-  ) => void;
+  ) => void | Promise<void>;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
   /** Promotes a reference-strip image to be the shot's main (approved
@@ -14249,6 +14249,7 @@ function ShotReferenceStrip({
   title,
   dropHint,
   imageOnly = false,
+  thumbnailSize = "compact",
   testIdPrefix = "reference",
 }: {
   locale: Lang;
@@ -14264,16 +14265,18 @@ function ShotReferenceStrip({
     url: string;
     source: VerticalDramaShotReferenceView["source"];
     mediaType?: DroppedShotMediaType;
-  }) => void;
+  }) => void | Promise<void>;
   onRequestRemove: (referenceId: string) => void;
   onUseAsMain?: (mediaAssetId: string) => void;
   usingAsMain?: boolean;
   title?: string;
   dropHint?: string;
   imageOnly?: boolean;
+  thumbnailSize?: "compact" | "large";
   testIdPrefix?: string;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [readingUploads, setReadingUploads] = useState(false);
   const [failedReferenceIds, setFailedReferenceIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -14302,8 +14305,31 @@ function ShotReferenceStrip({
         modalityCounts.audio >= referenceLimits.audio)
     : maxReferenceImages != null && references.length >= maxReferenceImages;
   const displayReferenceLimit = referenceLimits?.total ?? maxReferenceImages;
+  const thumbnailClassName =
+    thumbnailSize === "large" ? "h-16 w-16" : "h-9 w-9";
   const formatLimit = (value: number | null | undefined) =>
     value == null ? "∞" : String(value);
+
+  const addUploadedFile = async (
+    file: File,
+    mediaType: DroppedShotMediaType,
+    manageLoadingState = true
+  ) => {
+    if (manageLoadingState) setReadingUploads(true);
+    try {
+      const url = await readFileAsDataUrl(file);
+      await onAdd({ url, source: "upload", mediaType });
+    } catch (error) {
+      console.error("Failed to read or upload shot reference", error);
+      toast.error(
+        locale === "th"
+          ? "อ่านหรืออัปโหลดภาพไม่สำเร็จ โปรดลองเลือกภาพอีกครั้ง"
+          : "Could not read or upload the image. Please try again."
+      );
+    } finally {
+      if (manageLoadingState) setReadingUploads(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-1">
@@ -14343,15 +14369,13 @@ function ShotReferenceStrip({
               return;
             }
             if (input.kind === "url" && input.url) {
-              onAdd({
+              void onAdd({
                 url: input.url,
                 source: "library",
                 mediaType: input.mediaType,
               });
             } else if (input.kind === "file" && input.file) {
-              void readFileAsDataUrl(input.file).then(url =>
-                onAdd({ url, source: "upload", mediaType: input.mediaType })
-              );
+              void addUploadedFile(input.file, input.mediaType);
             }
           };
           if (e.dataTransfer.files?.length) {
@@ -14407,11 +14431,14 @@ function ShotReferenceStrip({
         {references.map(ref => (
           <div
             key={ref.referenceId}
-            className="group relative h-9 w-9 shrink-0 overflow-hidden rounded border border-border"
+            className={cn(
+              "group relative shrink-0 overflow-hidden rounded border border-border",
+              thumbnailClassName
+            )}
           >
             <button
               type="button"
-              className="block h-full w-full"
+              className="block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => {
                 const imageIndex = visibleReferenceImages.findIndex(
                   image => image.referenceId === ref.referenceId
@@ -14421,6 +14448,11 @@ function ShotReferenceStrip({
               disabled={
                 !ref.thumbnailUrl || failedReferenceIds.has(ref.referenceId)
               }
+              aria-label={t(
+                locale,
+                `ขยายภาพอ้างอิง ${idx + 1}`,
+                `Enlarge reference image ${idx + 1}`
+              )}
               data-testid={`vd-storyboard-reference-${shotNumber}-${ref.referenceId}`}
             >
               {ref.thumbnailUrl &&
@@ -14507,13 +14539,23 @@ function ShotReferenceStrip({
             ) : null}
           </div>
         ))}
-        {adding ? (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-dashed border-border">
+        {adding || readingUploads ? (
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded border border-dashed border-border",
+              thumbnailClassName
+            )}
+            role="status"
+            aria-label={locale === "th" ? "กำลังอัปโหลดภาพ" : "Uploading image"}
+          >
             <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
           </div>
         ) : (
           <label
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
+            className={cn(
+              "flex shrink-0 cursor-pointer items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary",
+              thumbnailClassName
+            )}
             title={
               locale === "th"
                 ? "เพิ่มภาพ วิดีโอ หรือเสียงอ้างอิง"
@@ -14530,24 +14572,28 @@ function ShotReferenceStrip({
               accept={imageOnly ? "image/*" : "image/*,video/*,audio/*"}
               multiple
               className="hidden"
-              onChange={e => {
-                const files = e.target.files;
-                e.target.value = "";
+              onChange={async e => {
+                const input = e.currentTarget;
+                const files = Array.from(input.files ?? []);
+                input.value = "";
                 if (!files?.length) return;
                 const { inputs, error } = readDroppedMediaFiles(files);
-                for (const input of inputs) {
-                  if (input.kind !== "file") continue;
-                  if (imageOnly && input.mediaType !== "image") {
-                    toast.error(
-                      locale === "th"
-                        ? "ส่วนนี้รองรับเฉพาะภาพเท่านั้น"
-                        : "Only images are supported in this section"
-                    );
-                    continue;
+                setReadingUploads(inputs.length > 0);
+                try {
+                  for (const input of inputs) {
+                    if (input.kind !== "file") continue;
+                    if (imageOnly && input.mediaType !== "image") {
+                      toast.error(
+                        locale === "th"
+                          ? "ส่วนนี้รองรับเฉพาะภาพเท่านั้น"
+                          : "Only images are supported in this section"
+                      );
+                      continue;
+                    }
+                    await addUploadedFile(input.file, input.mediaType, false);
                   }
-                  void readFileAsDataUrl(input.file).then(url =>
-                    onAdd({ url, source: "upload", mediaType: input.mediaType })
-                  );
+                } finally {
+                  setReadingUploads(false);
                 }
                 if (error) {
                   toast.error(
@@ -14667,7 +14713,7 @@ function ShotObjectReferenceCard({
     url: string;
     source: VerticalDramaShotReferenceView["source"];
     mediaType?: DroppedShotMediaType;
-  }) => void;
+  }) => void | Promise<void>;
   onRequestRemove: (referenceId: string) => void;
 }) {
   const [dropKind, setDropKind] = useState<"object" | "product">("object");
@@ -14892,6 +14938,7 @@ function ShotObjectReferenceCard({
               `Drop an image to add it as a ${dropKind}`
             )}
             imageOnly
+            thumbnailSize="large"
             testIdPrefix="prop-object"
           />
 

@@ -3765,6 +3765,7 @@ async function loadSeriesProductTieInFacts(
 ): Promise<{
   productName: string | null;
   productDescription: string | null;
+  productDimensions: string | null;
 } | null> {
   if (!hasProductReference) return null;
   const [row] = await db
@@ -3780,9 +3781,17 @@ async function loadSeriesProductTieInFacts(
     .limit(1);
   const config = row?.productTieIn as VerticalDramaProductTieInConfig | null;
   if (!config) return null;
+  const productDimensions =
+    typeof config.productDimensions === "string"
+      ? config.productDimensions
+          .replace(/[\u0000-\u001f\u007f]+/g, " ")
+          .trim()
+          .slice(0, 240)
+      : null;
   return {
     productName: config.productName ?? null,
     productDescription: config.productDescription ?? null,
+    productDimensions: productDimensions || null,
   };
 }
 
@@ -21288,6 +21297,12 @@ export const verticalDramaEpisodesRouter = router({
       // level-0 branch no longer formats a prompt from it — see that doc
       // comment.
       const keptCharEntries = characterAttachmentManifest.primaryEntries;
+      const renderProductLockFacts = await loadSeriesProductTieInFacts(
+        tenantId,
+        userId,
+        seriesId,
+        productRefUrls.length > 0
+      );
 
       let renderStartFramePrompt: string;
       if (effectiveSoftenLevel === 0) {
@@ -21315,12 +21330,6 @@ export const verticalDramaEpisodesRouter = router({
           tenantId,
           userId,
           seriesId
-        );
-        const softenProductLockFacts = await loadSeriesProductTieInFacts(
-          tenantId,
-          userId,
-          seriesId,
-          productRefUrls.length > 0
         );
         const {
           generateShotImageAction,
@@ -21356,9 +21365,11 @@ export const verticalDramaEpisodesRouter = router({
             },
             productLock: {
               active: productRefUrls.length > 0,
-              productName: softenProductLockFacts?.productName ?? null,
+              productName: renderProductLockFacts?.productName ?? null,
               productDescription:
-                softenProductLockFacts?.productDescription ?? null,
+                renderProductLockFacts?.productDescription ?? null,
+              productDimensions:
+                renderProductLockFacts?.productDimensions ?? null,
             },
             gridLayout: null,
             promptMaxChars: imagePromptMaxChars,
@@ -21405,6 +21416,24 @@ export const verticalDramaEpisodesRouter = router({
         renderStartFramePrompt = softenActionResult.prompt;
         softenedNegativePrompt =
           softenActionResult.negativePrompt || softenedNegativePrompt;
+      }
+
+      // The saved start-frame prompt may predate the user's product-size
+      // entry. Carry this explicit measurement into the actual image render
+      // as a factual scale cue, while leaving product identity to the
+      // attached reference image and the scene to the approved shot prompt.
+      const suppliedProductDimensions =
+        productRefUrls.length > 0
+          ? renderProductLockFacts?.productDimensions
+              ?.replace(/[\r\n]+/g, " ")
+              .trim()
+              .slice(0, 240)
+          : undefined;
+      const productScaleFact = suppliedProductDimensions
+        ? `PRODUCT SCALE FACT (user supplied): ${suppliedProductDimensions}. Match the product's real-world apparent scale to these measurements relative to people and scene objects, from this camera perspective; preserve the attached product's exact design.`
+        : undefined;
+      if (productScaleFact) {
+        renderStartFramePrompt = `${renderStartFramePrompt.trim()}\n\n${productScaleFact}`;
       }
 
       // Check only the current shot's story-bearing facts before folding the
@@ -21473,6 +21502,10 @@ export const verticalDramaEpisodesRouter = router({
             }))
           );
       renderStartFramePrompt = renderIdentityLock.prompt;
+      const protectedRenderPromptFragments = [
+        renderIdentityLock.identityLockBlock,
+        productScaleFact,
+      ].filter((fragment): fragment is string => Boolean(fragment));
 
       // Final-prompt QC (hard length cap) — enforced right before the
       // outgoing image render call. Normal image prompts always pass through
@@ -21484,9 +21517,10 @@ export const verticalDramaEpisodesRouter = router({
       const imagePromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: renderStartFramePrompt,
-        semanticProtectedFragments: renderIdentityLock.identityLockBlock
-          ? [renderIdentityLock.identityLockBlock!]
-          : undefined,
+        semanticProtectedFragments:
+          protectedRenderPromptFragments.length > 0
+            ? protectedRenderPromptFragments
+            : undefined,
         maxChars: imagePromptMaxChars,
         // `policy_safe_rewrite` is already a safety-constrained final skill;
         // sending it through a creative refiner could reintroduce wording
@@ -22355,6 +22389,8 @@ export const verticalDramaEpisodesRouter = router({
             productName: gridProductLockFacts?.productName ?? null,
             productDescription:
               gridProductLockFacts?.productDescription ?? null,
+            productDimensions:
+              gridProductLockFacts?.productDimensions ?? null,
           },
           gridLayout: { panelCount: 9, layout: "3x3" },
           promptMaxChars: gridPromptMaxChars,
@@ -22953,6 +22989,8 @@ export const verticalDramaEpisodesRouter = router({
             productName: repairProductLockFacts?.productName ?? null,
             productDescription:
               repairProductLockFacts?.productDescription ?? null,
+            productDimensions:
+              repairProductLockFacts?.productDimensions ?? null,
           },
           gridLayout: null,
           promptMaxChars: repairPromptMaxChars,
@@ -25831,6 +25869,8 @@ export const verticalDramaEpisodesRouter = router({
               shotStartFramePromptProductLockFacts?.productName ?? null,
             productDescription:
               shotStartFramePromptProductLockFacts?.productDescription ?? null,
+            productDimensions:
+              shotStartFramePromptProductLockFacts?.productDimensions ?? null,
           },
           // NO CODE-SIDE PROMPT APPENDING — the two new modes' own skills
           // author the product-tie-in directive from these SAME facts (see
@@ -25842,6 +25882,8 @@ export const verticalDramaEpisodesRouter = router({
               shotStartFramePromptProductLockFacts?.productName ?? null,
             productDescription:
               shotStartFramePromptProductLockFacts?.productDescription ?? null,
+            productDimensions:
+              shotStartFramePromptProductLockFacts?.productDimensions ?? null,
           },
           // Phase 2 of `planning/polished-toasting-gadget.md` — see this
           // procedure's own `shotStartFramePromptLocationEntry` doc comment

@@ -81,7 +81,8 @@
           "description": "True when this shot has a product tie-in reference image attached to the render call."
         },
         "product_name": { "type": ["string", "null"] },
-        "product_description": { "type": ["string", "null"] }
+        "product_description": { "type": ["string", "null"] },
+        "product_dimensions": { "type": ["string", "null"] }
       }
     },
     "grid_layout": {

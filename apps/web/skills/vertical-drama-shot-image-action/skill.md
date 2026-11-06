@@ -385,8 +385,10 @@ action):
 - **`product_lock`** — when `active` is true, name the product (`product_name`) and
   describe it (`product_description`) if given, then state that it must appear
   EXACTLY as shown — identical shape, proportions, size, colors, materials, logo,
-  and label text; never redesigned, restyled, recolored, resized, or reinvented as
-  a variant. Add the matching negative-prompt terms: `altered product design, wrong
+  and label text; when `product_dimensions` is supplied, use those measurements
+  to keep its apparent scale realistic relative to people and scene objects. Do
+  not invent dimensions. Never redesign, restyle, recolor, resize, or reinvent it
+  as a variant. Add the matching negative-prompt terms: `altered product design, wrong
   product color, distorted logo, modified packaging, redesigned product`.
 
 ## Prompt length limit — MANDATORY

@@ -165,6 +165,8 @@ export type VerticalDramaProductTieInConfig = {
   enabled: boolean;
   productName?: string;
   productDescription?: string;
+  /** Optional physical dimensions used to ground product scale in generated frames. */
+  productDimensions?: string;
   referenceAssetIds: string[];
   productSource?: "manual" | "marketplace" | "library" | "uploaded_reference";
   disclosurePolicy:

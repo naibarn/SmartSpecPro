@@ -163,6 +163,7 @@ export interface VerticalDramaShotImageActionProductLockFact {
   active: boolean;
   productName?: string | null;
   productDescription?: string | null;
+  productDimensions?: string | null;
 }
 
 export interface GenerateShotImageActionParams {
@@ -247,7 +248,7 @@ export function buildShotImageActionUserPrompt(
     params.productLock
       ? `product_lock: active=${params.productLock.active}${
           params.productLock.active
-            ? ` product_name="${params.productLock.productName ?? ""}" product_description="${params.productLock.productDescription ?? ""}"`
+            ? ` product_name="${params.productLock.productName ?? ""}" product_description="${params.productLock.productDescription ?? ""}" product_dimensions="${params.productLock.productDimensions ?? ""}"`
             : ""
         }`
       : `product_lock: (none)`,

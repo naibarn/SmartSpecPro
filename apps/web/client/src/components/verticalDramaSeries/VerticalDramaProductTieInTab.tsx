@@ -62,6 +62,8 @@ import { VerticalDramaAdBannerStudio } from "@/components/verticalDramaSeries/Ve
 export interface VerticalDramaProductTieIn {
   enabled?: boolean;
   productName?: string;
+  /** Physical product dimensions supplied by the user for visual scale grounding. */
+  productDimensions?: string;
   productId?: string;
   productImageUrl?: string;
   productSource?: string;
@@ -95,6 +97,9 @@ export function VerticalDramaProductTieInTab({
 }: VerticalDramaProductTieInTabProps) {
   const [enabled, setEnabled] = useState(Boolean(productTieIn?.enabled));
   const [productName, setProductName] = useState(productTieIn?.productName ?? "");
+  const [productDimensions, setProductDimensions] = useState(
+    productTieIn?.productDimensions ?? "",
+  );
   const [forbiddenClaims, setForbiddenClaims] = useState(
     (productTieIn?.forbiddenClaims ?? []).join(", "),
   );
@@ -111,6 +116,7 @@ export function VerticalDramaProductTieInTab({
   useEffect(() => {
     setEnabled(Boolean(productTieIn?.enabled));
     setProductName(productTieIn?.productName ?? "");
+    setProductDimensions(productTieIn?.productDimensions ?? "");
     setForbiddenClaims((productTieIn?.forbiddenClaims ?? []).join(", "));
     setMarketplaceCaptureId(productTieIn?.marketplaceCaptureId ?? "");
     setVideoNarrationCaption(productTieIn?.videoNarrationCaption ?? "");
@@ -152,6 +158,7 @@ export function VerticalDramaProductTieInTab({
       ...(productTieIn ?? {}),
       enabled,
       productName: productName.trim() || undefined,
+      productDimensions: productDimensions.trim() || undefined,
       forbiddenClaims: forbiddenClaims
         .split(",")
         .map((s) => s.trim())
@@ -166,6 +173,7 @@ export function VerticalDramaProductTieInTab({
   const dirty =
     enabled !== Boolean(productTieIn?.enabled) ||
     productName !== (productTieIn?.productName ?? "") ||
+    productDimensions !== (productTieIn?.productDimensions ?? "") ||
     forbiddenClaims !== (productTieIn?.forbiddenClaims ?? []).join(", ") ||
     marketplaceCaptureId !== (productTieIn?.marketplaceCaptureId ?? "") ||
     videoNarrationCaption !== (productTieIn?.videoNarrationCaption ?? "") ||
@@ -222,6 +230,32 @@ export function VerticalDramaProductTieInTab({
                 onChange={(e) => setProductName(e.target.value)}
                 disabled={readOnly || updateMutation.isPending}
               />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="product-tie-in-dimensions"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                {lang === "th" ? "ขนาดสินค้า" : "Product dimensions"}
+              </Label>
+              <Input
+                id="product-tie-in-dimensions"
+                value={productDimensions}
+                onChange={e => setProductDimensions(e.target.value)}
+                disabled={readOnly || updateMutation.isPending}
+                maxLength={240}
+                placeholder={
+                  lang === "th"
+                    ? "เช่น กว้าง 21 × ลึก 26 × สูง 29 ซม."
+                    : "e.g. 21 cm wide × 26 cm deep × 29 cm tall"
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ระบบจะส่งขนาดนี้เป็นข้อมูลอ้างอิงสัดส่วนสินค้าให้ skill สร้าง prompt ภาพเริ่มต้น"
+                  : "These measurements are passed to the prompt skill as product scale context for start-frame images."}
+              </p>
             </div>
 
             <div className="grid gap-1.5">

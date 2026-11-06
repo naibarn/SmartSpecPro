@@ -778,7 +778,7 @@ export interface VerticalDramaStoryboardPanelData {
       source: VerticalDramaShotReferenceView["source"];
       mediaType?: "image" | "video" | "audio";
     }
-  ) => void;
+  ) => void | Promise<void>;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
   onUseShotReferenceAsMain?: (shotNumber: number, mediaAssetId: string) => void;

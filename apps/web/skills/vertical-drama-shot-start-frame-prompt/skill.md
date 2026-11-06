@@ -525,8 +525,10 @@ visible details against the image. Do not invent hidden features, model
 numbers, logo text, or product specifications.
 
 Preserve and state in `prompt` every explicit dimension or size stated in
+`product_lock.product_dimensions`, `product_tie_in.product_dimensions`,
 `product_lock.product_description`, `product_tie_in.product_description`,
-`canonical_shot_summary`, or `repair_instruction`. Keep the rendered scale
+`canonical_shot_summary`, or `repair_instruction`. Treat supplied dimensions as
+the scale source of truth relative to people and scene objects. Keep the rendered scale
 consistent with those dimensions and the camera perspective. If no size is stated, preserve the
 reference product's proportions and plausible relative scale in the scene;
 do not invent measurements or let the image model arbitrarily resize it.

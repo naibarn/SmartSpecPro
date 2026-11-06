@@ -1281,6 +1281,7 @@ export const verticalDramaProductTieInConfigSchema = z.object({
   enabled: z.boolean(),
   productName: z.string().max(256).optional(),
   productDescription: z.string().max(4000).optional(),
+  productDimensions: z.string().max(240).optional(),
   referenceAssetIds: z.array(z.string().max(128)).max(50),
   productSource: z.enum(VD_TIE_IN_PRODUCT_SOURCES).optional(),
   disclosurePolicy: z.enum(VD_TIE_IN_DISCLOSURE_POLICIES),
@@ -1354,7 +1355,8 @@ export interface BuildSpecialEditionProductTieInConfigParams {
    * Raw wizard `productTieIn` record — loosely-typed input, same
    * "wizard-shell-payload" convention as every other free-form field on
    * `createSeriesInput` (`bible`/`memory`/`policy`). Recognized keys:
-   * `enabled`, `productName`, `productDescription`, `productSource`,
+   * `enabled`, `productName`, `productDescription`, `productDimensions`,
+   * `productSource`,
    * `marketplaceCaptureId` (Stage 2.5 source 1 — passed through verbatim by
    * the caller, NOT part of this function's return value, see the header
    * doc comment on `marketplaceCaptureId` being left as-is), `productImageUrl`,
@@ -1416,6 +1418,10 @@ export function buildSpecialEditionProductTieInConfig(
     enabled: raw.enabled !== false,
     productName: readOptionalTrimmedString(raw, "productName"),
     productDescription: readOptionalTrimmedString(raw, "productDescription"),
+    productDimensions: readOptionalTrimmedString(
+      raw,
+      "productDimensions"
+    )?.slice(0, 240),
     referenceAssetIds,
     productSource,
     // A special edition IS a paid tie-in for its entire runtime (owner

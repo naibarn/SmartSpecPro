@@ -9,7 +9,8 @@ See `schemas/input.schema.json`. This skill is invoked explicitly by
   truth — the skill must preserve their content, never reinvent it.
 - `repair_instruction` is required (non-null) only for `action == "repair"`.
 - `character_reference_manifest`, `target_audience_region`, and `product_lock`
-  carry FACTS only (names, image indices, descriptors, product identity) — never
-  pre-authored instruction sentences. The skill is responsible for turning these
-  facts into natural prose.
+  carry FACTS only (names, image indices, descriptors, product identity, and
+  optional measured product dimensions) — never pre-authored instruction
+  sentences. The skill is responsible for turning these facts into natural
+  prose and using supplied dimensions to ground product scale.
 - `grid_layout` is present only for `action == "multi_angle_grid"`.
