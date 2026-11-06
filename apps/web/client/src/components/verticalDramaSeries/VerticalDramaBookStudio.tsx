@@ -122,6 +122,7 @@ export function VerticalDramaBookStudio({
 
   const currentBooks = booksQuery.data ?? [];
   const currentDocument = document;
+  const compositionQuote = bookQuery.data?.book.sourceSelection as { estimatedCompositionCredits?: unknown; compositionModelId?: unknown } | undefined;
   const jobStatus = (jobQuery.data as any)?.status as string | undefined;
   const isComposing = Boolean(compositionJobId && !["succeeded", "failed", "cancelled", "expired"].includes(jobStatus ?? ""));
   const statusText = useMemo(() => {
@@ -411,7 +412,13 @@ export function VerticalDramaBookStudio({
           ) : null}
           {!readOnly && activeRevision?.status === "draft" ? (
             <HStack gap={2} wrap="wrap">
-              <p className="text-sm text-muted-foreground">{lang === "th" ? `ประมาณ ${currentDocument.chapters.length * 20} เครดิต (${currentDocument.chapters.length} บท)` : `Estimated ${currentDocument.chapters.length * 20} credits (${currentDocument.chapters.length} chapters)`}</p>
+              <p className="text-sm text-muted-foreground">
+                {Number.isFinite(Number(compositionQuote?.estimatedCompositionCredits))
+                  ? (lang === "th"
+                    ? `ประมาณไม่เกิน ${Number(compositionQuote?.estimatedCompositionCredits)} เครดิต · ${currentDocument.chapters.length} บท · โมเดล ${String(compositionQuote?.compositionModelId ?? "")}`
+                    : `Estimated up to ${Number(compositionQuote?.estimatedCompositionCredits)} credits · ${currentDocument.chapters.length} chapters · model ${String(compositionQuote?.compositionModelId ?? "")}`)
+                  : (lang === "th" ? "จะแสดงราคาประเมินก่อนเริ่มเรียบเรียง" : "A credit estimate will be checked before composition starts")}
+              </p>
               <Button onClick={() => composeMutation.mutate({ bookId: selectedBookId })} disabled={isComposing || composeMutation.isPending || bookQuery.data.book.stale}>
                 {lang === "th" ? "เรียบเรียงต้นฉบับ" : "Compose draft"}
               </Button>

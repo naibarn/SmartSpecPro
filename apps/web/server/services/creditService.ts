@@ -1579,7 +1579,8 @@ export async function isModelFree(modelId: string): Promise<boolean> {
  * Get dynamic pricing from model_provider_map, returns null if not found
  */
 async function getModelPricingFromDb(
-  modelId: string
+  modelId: string,
+  providerId?: number,
 ): Promise<{ input: number; output: number } | null> {
   const rows = await db
     .select({
@@ -1595,7 +1596,8 @@ async function getModelPricingFromDb(
     .where(
       and(
         buildModelProviderMapLookupCondition(modelId),
-        eq(modelProviderMap.isEnabled, true)
+        eq(modelProviderMap.isEnabled, true),
+        ...(providerId ? [eq(modelProviderMap.providerId, providerId)] : [])
       )
     )
     .limit(1);
@@ -1686,9 +1688,10 @@ export async function deductCreditsForModel(params: {
 export async function calculateCreditsForLLMDynamic(
   inputTokens: number,
   outputTokens: number,
-  model: string
+  model: string,
+  providerId?: number,
 ): Promise<number> {
-  const dbPricing = await getModelPricingFromDb(model);
+  const dbPricing = await getModelPricingFromDb(model, providerId);
   if (dbPricing) {
     if (dbPricing.input === 0 && dbPricing.output === 0) return 1;
     const costUsd =

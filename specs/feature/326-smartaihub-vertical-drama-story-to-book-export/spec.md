@@ -100,10 +100,14 @@ episodes may be included only through explicit selection. No episode is silently
 added because it belongs to the same season.
 
 The source snapshot must pin the exact selected episode revisions and artwork
-versions/checksums, not only mutable asset URLs. If a selected source changes
-later, mark the book draft as source-stale and offer an explicit
-refresh/recompose path. Never silently mix a new episode revision into a
-reviewed book or replace prior user edits.
+versions/checksums, not only mutable asset URLs. When an upstream episode has a
+canonical revision ID, persist it. For legacy mutable episode rows without one,
+the immutable captured payload plus its canonical SHA-256 fingerprint is the
+source version identity; do not invent an upstream revision ID. Persist that
+payload and fingerprint with the book revision so a retry/export reads the same
+source. If a selected source changes later, mark the book draft as source-stale
+and offer an explicit refresh/recompose path. Never silently mix a new episode
+revision into a reviewed book or replace prior user edits.
 
 ## 4. Author workflow
 
@@ -118,9 +122,14 @@ reviewed book or replace prior user edits.
    mode requires a usable image for every selected shot).
    Choose a book cover independently from existing authorized cover/key visual
    artwork. v1 does not generate new images.
-5. Review estimated AI cost, selected episode count, image count/size,
-   shot-image coverage, and source freshness before starting prose composition.
-   Use the existing model policy, credit quote, and credit ledger.
+5. Review the model-based conservative AI credit estimate, selected episode
+   count, image count/size, shot-image coverage, and source freshness before
+   starting prose composition. Before each physical chapter-composition call,
+   reserve credits for the pinned model, bounded input, output-token ceiling,
+   retry count, and price headroom. Settle every provider attempt once against
+   its reservation, then return unused reserved credits. Retries resume from
+   completed chapters and must not reuse a closed reservation; replaying the
+   same attempt settlement key must not draw credits twice.
 6. Wait for durable composition progress, then edit the generated title,
    chapter titles, paragraphs, dialogue, scene breaks, captions, and artwork
    placements in a book preview/editor.
@@ -390,8 +399,10 @@ successfully validated artifact for the other.
    of its normal/special episodes, arrange chapter order, rename chapters, and
    persist the mapping without mutating source episodes.
 2. A source snapshot fingerprints the selected episode revisions and
-   referenced assets. Later source edits visibly mark affected drafts stale;
-   an export always identifies the exact approved book revision it used.
+   referenced assets. Legacy episode rows without revision IDs are identified
+   by the canonical fingerprint of their captured immutable payload. Later
+   source edits visibly mark affected drafts stale; an export always identifies
+   the exact approved book revision it used.
 3. Composition produces typed, editable blocks with dialogue and source
    provenance. It obeys the no-unsupported-facts contract and does not expose
    shot numbers as book structure.
@@ -421,8 +432,11 @@ successfully validated artifact for the other.
    content.
 10. Composition and rendering are durable, idempotent, resumable/cancellable,
     cost-gated for AI calls, and visible through the canonical job status
-    surface. A request timeout does not lose progress or create a duplicate
-    charge/artifact.
+    surface. Cost estimates use the pinned model and bounded token envelope;
+    actual provider attempts settle through a reservation with unique stable
+    settlement keys. A request timeout does not lose persisted chapter progress
+    or create a duplicate artifact; ambiguous provider usage remains a
+    reconciliation case rather than being silently treated as free.
 11. Thai EPUB layout is checked with reader-controlled font scaling; Thai PDF
     text and pagination are checked in representative page-render samples.
     Informative image alternatives and missing-alt warnings are covered.

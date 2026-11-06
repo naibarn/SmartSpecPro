@@ -5,6 +5,8 @@ const {
   mockExecuteWithFallback,
   mockResolveProviders,
   mockDeductCreditsForModel,
+  mockDrawFromReservation,
+  mockCalculateCreditsForLLMDynamic,
   mockRunPlanner,
   mockRecordStepAttempt,
   mockResolveStructuredAutoChatModelSelection,
@@ -13,6 +15,8 @@ const {
     mockExecuteWithFallback: vi.fn(),
     mockResolveProviders: vi.fn(),
     mockDeductCreditsForModel: vi.fn(),
+    mockDrawFromReservation: vi.fn(),
+    mockCalculateCreditsForLLMDynamic: vi.fn(),
     mockRunPlanner: vi.fn(),
     mockRecordStepAttempt: vi.fn(),
     mockResolveStructuredAutoChatModelSelection: vi.fn(),
@@ -26,6 +30,9 @@ vi.mock("../llmRouter", () => ({
 
 vi.mock("../creditService", () => ({
   deductCreditsForModel: mockDeductCreditsForModel,
+  drawFromReservation: mockDrawFromReservation,
+  calculateCreditsForLLMDynamic: mockCalculateCreditsForLLMDynamic,
+  calculateCreditsFromCost: (costUsd: number) => Math.ceil(costUsd * 1000),
 }));
 
 vi.mock("../auditLogger", () => ({
@@ -74,6 +81,8 @@ beforeEach(() => {
     creditsUsed: 5,
     wasFree: false,
   });
+  mockDrawFromReservation.mockResolvedValue({ drawn: 3, remaining: 5 });
+  mockCalculateCreditsForLLMDynamic.mockResolvedValue(3);
   mockRunPlanner.mockResolvedValue(null);
   mockRecordStepAttempt.mockResolvedValue(undefined);
 });
@@ -115,6 +124,24 @@ describe("callLLMStructured", () => {
     const result = await callLLMStructured(baseParams);
 
     expect(result.data).toEqual({ title: "My List", items: ["one", "two"] });
+  });
+
+  it("settles reserved credits once per physical structured-output attempt", async () => {
+    mockExecuteWithFallback
+      .mockResolvedValueOnce(makeSuccessResponse("not-json"))
+      .mockResolvedValueOnce(makeSuccessResponse(JSON.stringify({ title: "Retry", items: [] })));
+
+    const result = await callLLMStructured({
+      ...baseParams,
+      maxRetries: 1,
+      billingMetadata: { idempotencyKey: "chapter-key" },
+      creditReservation: { reservationId: "reservation-1", settlementKey: "settlement-1" },
+    });
+
+    expect(result.data.title).toBe("Retry");
+    expect(mockDrawFromReservation).toHaveBeenNthCalledWith(1, "reservation-1", 3, undefined, "settlement-1:attempt:1");
+    expect(mockDrawFromReservation).toHaveBeenNthCalledWith(2, "reservation-1", 3, undefined, "settlement-1:attempt:2");
+    expect(mockDeductCreditsForModel).not.toHaveBeenCalled();
   });
 
   it("extracts tokensUsed and creditsUsed from response metadata", async () => {

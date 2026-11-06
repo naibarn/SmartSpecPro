@@ -2,7 +2,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import type { Message } from "../_core/llm";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
-import { deductCreditsForModel } from "./creditService";
+import { calculateCreditsForLLMDynamic, calculateCreditsFromCost, deductCreditsForModel, drawFromReservation } from "./creditService";
 import { auditLogger } from "./auditLogger";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { resolveStructuredAutoChatModelSelection } from "./chatModelSelection";
@@ -36,6 +36,8 @@ export interface CallLLMStructuredParams<T> {
   tenantId: string;
   billingDescription?: string;
   billingMetadata?: Record<string, unknown>;
+  /** Optional pre-debited reservation used for bounded, per-attempt settlement. */
+  creditReservation?: { reservationId: string; settlementKey: string };
   /** Max output tokens forwarded to the provider. */
   maxTokens?: number;
   runtimeOptions?: CallLLMStructuredRuntimeOptions | null;
@@ -564,6 +566,7 @@ async function callLLMStructuredLegacy<T>(
     billingDescription,
     billingMetadata,
     maxTokens,
+    creditReservation,
   } = params;
   const requestedModel =
     typeof model === "string" && model.trim().length > 0
@@ -633,7 +636,7 @@ The JSON must strictly conform to the expected schema.`;
       {
         role: "user",
         content: isRetry
-          ? `${userMessage}\n\nYour previous response was invalid JSON or did not match the expected schema. The error was: ${lastZodError ? lastZodError.message : "Invalid JSON syntax"}. Raw response (truncated): "${lastRawResponse.slice(0, 500)}". Please try again and return ONLY valid JSON.`
+          ? `${userMessage}\n\nYour previous response was invalid JSON or did not match the expected schema. The error was: ${lastZodError ? lastZodError.message.slice(0, 2000) : "Invalid JSON syntax"}. Raw response (truncated): "${lastRawResponse.slice(0, 500)}". Please try again and return ONLY valid JSON.`
           : userMessage,
       },
     ];
@@ -730,25 +733,34 @@ The JSON must strictly conform to the expected schema.`;
     }
 
     // Deduct credits for this attempt
-    const { creditsUsed } = await deductCreditsForModel({
-      userId,
-      model: effectiveModel,
-      provider: result.providerName,
-      inputTokens,
-      outputTokens,
-      costUsd,
-      tenantId,
-      description: billingDescription,
-      skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
-      idempotencyKey: fixedSkillRunId ?? genericIdempotencyKey,
-      metadata: {
-        requestType: "structured_llm",
-        structured: true,
-        attempt: attempt + 1,
-        ...(billingMetadata ?? {}),
-      },
-      sourceType: billingMetadata?.skillSlug ? "skill" : "chat",
-    });
+    const creditsUsed = creditReservation
+      ? (await drawFromReservation(
+          creditReservation.reservationId,
+          costUsd && costUsd > 0
+            ? calculateCreditsFromCost(costUsd)
+            : await calculateCreditsForLLMDynamic(inputTokens, outputTokens, effectiveModel, result.providerId),
+          billingDescription,
+          `${creditReservation.settlementKey}:attempt:${attempt + 1}`,
+        )).drawn
+      : (await deductCreditsForModel({
+          userId,
+          model: effectiveModel,
+          provider: result.providerName,
+          inputTokens,
+          outputTokens,
+          costUsd,
+          tenantId,
+          description: billingDescription,
+          skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
+          idempotencyKey: fixedSkillRunId ?? genericIdempotencyKey,
+          metadata: {
+            requestType: "structured_llm",
+            structured: true,
+            attempt: attempt + 1,
+            ...(billingMetadata ?? {}),
+          },
+          sourceType: billingMetadata?.skillSlug ? "skill" : "chat",
+        })).creditsUsed;
     totalCredits += creditsUsed;
 
     // Record step attempt for each retry (per-attempt tracking)

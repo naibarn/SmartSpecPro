@@ -15,6 +15,8 @@ import { createFeature186VerticalDramaJobRef } from "../services/feature186Verti
 import { storageGet } from "../storage";
 import { cancelQueuedUserWorkerJob } from "../services/workerJobMonitorService";
 import { getCreditBalance } from "../services/creditService";
+import { estimateVerticalDramaBookCompositionCredits } from "../services/verticalDramaBookComposition";
+import { resolveStructuredAutoChatModelSelection } from "../services/chatModelSelection";
 
 const bookProcedure = protectedProcedure.use(requireFeatureFlag("verticalDramaSeries"));
 
@@ -197,6 +199,15 @@ export const verticalDramaBooksRouter = router({
         blocks: [{ id: `chapter-${episode.episodeId}-opening`, type: "paragraph", text: "", sourceRefs: [] }],
       })),
     });
+    const modelSelection = await resolveStructuredAutoChatModelSelection();
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const estimate = await estimateVerticalDramaBookCompositionCredits({
+      chapterCount: bookDocument.chapters.length,
+      maxInputBytesPerChapter,
+      modelSelection,
+    });
+    const creditBalance = await getCreditBalance(actor.userId);
+    if (!creditBalance || Number(creditBalance.credits) < estimate.estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated chapter composition cost." });
     const documentFingerprint = fingerprintBookSource(bookDocument);
     const { book, revision } = await db.transaction(async tx => {
       const [createdBook] = await tx.insert(verticalDramaBooks).values({
@@ -204,7 +215,7 @@ export const verticalDramaBooksRouter = router({
         seriesId: input.seriesId,
         title: input.title,
         metadata: { ...bookDocument.metadata, imageDensity: input.imageDensity },
-        sourceSelection: { episodeIds: input.episodeIds, imageDensity: input.imageDensity },
+        sourceSelection: { episodeIds: input.episodeIds, imageDensity: input.imageDensity, compositionModelId: estimate.modelId, compositionProviderId: estimate.preferredProviderId, estimatedCompositionCredits: estimate.estimatedCredits },
         currentRevisionNumber: 1,
         sourceFingerprint: source.sourceContentFingerprint,
       }).returning();
@@ -226,6 +237,8 @@ export const verticalDramaBooksRouter = router({
       book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, currentRevisionNumber: book.currentRevisionNumber },
       revision: { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document },
       imageCoverage: source.imageCoverage,
+      estimatedCredits: estimate.estimatedCredits,
+      modelId: estimate.modelId,
     };
   }),
 
@@ -314,7 +327,16 @@ export const verticalDramaBooksRouter = router({
       additionalAssetIds: documentAssetSelections(document),
     });
     if (source.sourceContentFingerprint !== book.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode sources changed. Refresh the book before composing." });
-    const estimatedCredits = document.chapters.length * 20;
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const selection = book.sourceSelection as { compositionModelId?: unknown; compositionProviderId?: unknown };
+    const modelId = typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined;
+    const preferredProviderId = Number.isSafeInteger(selection.compositionProviderId) ? Number(selection.compositionProviderId) : undefined;
+    const estimate = await estimateVerticalDramaBookCompositionCredits({
+      chapterCount: document.chapters.length,
+      maxInputBytesPerChapter,
+      ...(modelId ? { modelSelection: { resolvedModelId: modelId, preferredProviderId } } : {}),
+    });
+    const { estimatedCredits } = estimate;
     const creditBalance = await getCreditBalance(actor.userId);
     if (!creditBalance || Number(creditBalance.credits) < estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated chapter composition cost." });
     if (imageDensity === "all_shots") {
@@ -345,7 +367,7 @@ export const verticalDramaBooksRouter = router({
         executionClass: "long",
         idempotencyKey: `vd:book-compose:${book.id}:${source.fingerprint}:${revisionNumber}`,
         activeDedupeKey: `vd:book-compose:active:${actor.tenantId}:${book.id}`,
-        payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: candidate.id, imageDensity },
+        payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: candidate.id, imageDensity, modelId: estimate.modelId, preferredProviderId: estimate.preferredProviderId },
       });
     } catch {
       await db.delete(verticalDramaBookRevisions).where(and(
@@ -355,10 +377,10 @@ export const verticalDramaBooksRouter = router({
     }
     await db.update(verticalDramaBooks).set({
       currentRevisionNumber: revisionNumber,
-      sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId },
+      sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId, compositionModelId: estimate.modelId, compositionProviderId: estimate.preferredProviderId, estimatedCompositionCredits: estimatedCredits },
       updatedAt: new Date(),
     }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
-    return { jobId, revisionId: candidate.id, revisionNumber, estimatedCredits };
+    return { jobId, revisionId: candidate.id, revisionNumber, estimatedCredits, modelId: estimate.modelId };
   }),
 
   cancelComposition: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
@@ -405,11 +427,20 @@ export const verticalDramaBooksRouter = router({
     if (!Array.isArray(selected) || !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) notFound();
     const candidateDocument = verticalDramaBookDocumentSchema.parse(revision.document);
     const remainingChapters = candidateDocument.chapters.filter(chapter => !chapter.blocks.some(block => block.type !== "paragraph" || block.text.trim())).length;
-    const estimatedCredits = remainingChapters * 20;
-    const creditBalance = await getCreditBalance(actor.userId);
-    if (!creditBalance || Number(creditBalance.credits) < estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated remaining chapters." });
     const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selected.map(Number), additionalAssetIds: documentAssetSelections(candidateDocument) });
     if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode or artwork sources changed. Create a new book from current episodes." });
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const selection = book.sourceSelection as { compositionModelId?: unknown; compositionProviderId?: unknown };
+    const modelId = typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined;
+    const preferredProviderId = Number.isSafeInteger(selection.compositionProviderId) ? Number(selection.compositionProviderId) : undefined;
+    const estimate = await estimateVerticalDramaBookCompositionCredits({
+      chapterCount: remainingChapters,
+      maxInputBytesPerChapter,
+      ...(modelId ? { modelSelection: { resolvedModelId: modelId, preferredProviderId } } : {}),
+    });
+    const { estimatedCredits } = estimate;
+    const creditBalance = await getCreditBalance(actor.userId);
+    if (!creditBalance || Number(creditBalance.credits) < estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated remaining chapters." });
     const jobId = randomUUID();
     await createFeature186VerticalDramaJobRef({
       jobId,
@@ -419,12 +450,12 @@ export const verticalDramaBooksRouter = router({
       executionClass: "long",
       idempotencyKey: `vd:book-compose-retry:${revision.id}:${jobId}`,
       activeDedupeKey: `vd:book-compose:active:${actor.tenantId}:${book.id}`,
-      payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: revision.id, imageDensity },
+      payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: revision.id, imageDensity, modelId: estimate.modelId, preferredProviderId: estimate.preferredProviderId },
     });
-    await db.update(verticalDramaBooks).set({ sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId }, updatedAt: new Date() }).where(and(
+    await db.update(verticalDramaBooks).set({ sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId, compositionModelId: estimate.modelId, compositionProviderId: estimate.preferredProviderId, estimatedCompositionCredits: estimatedCredits }, updatedAt: new Date() }).where(and(
       eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
     ));
-    return { jobId, revisionId: revision.id, revisionNumber: revision.revisionNumber, estimatedCredits };
+    return { jobId, revisionId: revision.id, revisionNumber: revision.revisionNumber, estimatedCredits, modelId: estimate.modelId };
   }),
 
   export: bookProcedure.input(z.object({

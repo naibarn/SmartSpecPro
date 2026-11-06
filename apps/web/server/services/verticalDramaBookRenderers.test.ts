@@ -1,7 +1,7 @@
 import AdmZip from "adm-zip";
 import { describe, expect, it } from "vitest";
 import { verticalDramaBookDocumentSchema } from "../../shared/verticalDramaSeries/bookDocument";
-import { buildVerticalDramaBookEpub, buildVerticalDramaBookPrintHtml } from "./verticalDramaBookRenderers";
+import { buildVerticalDramaBookEpub, buildVerticalDramaBookPrintHtml, renderVerticalDramaBookPdf, validateVerticalDramaBookEpub } from "./verticalDramaBookRenderers";
 import { createHash } from "node:crypto";
 
 const image = Buffer.from("book-shot-image");
@@ -47,5 +47,26 @@ describe("vertical drama book renderers", () => {
     expect(html).toContain('id="chapter-1"');
     expect(html).not.toContain("http://");
     expect(html).not.toContain("https://");
+  });
+});
+
+describe.runIf(process.env.BOOK_EXPORT_RENDER_ACCEPTANCE === "1")("vertical drama book runtime acceptance", () => {
+  it("validates EPUB and renders/extracts Thai PDF text with local tools", async () => {
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pWQAAAAASUVORK5CYII=", "base64");
+    const pngChecksum = createHash("sha256").update(png).digest("hex");
+    const thaiDocument = verticalDramaBookDocumentSchema.parse({
+      schemaVersion: 1,
+      metadata: { title: "นิยายทดสอบ", author: "ผู้เขียน", language: "th", coverMediaAssetId: 1, coverChecksum: pngChecksum, coverAltText: "ภาพปก" },
+      source: { seriesId: 1, sourceFingerprint: "b".repeat(64), episodeIds: [1] },
+      chapters: [{ id: "chapter-1", title: "ตอนที่หนึ่ง", sourceEpisodeIds: [1], blocks: [
+        { id: "paragraph-1", type: "paragraph", text: "ภาษาไทยทดสอบการจัดหน้าและการดึงข้อความจากไฟล์ PDF", sourceRefs: [] },
+        { id: "image-1", type: "illustration", mediaAssetId: 1, mediaChecksum: pngChecksum, placement: "chapter_opener", altText: "ภาพประกอบ", sourceRefs: [] },
+      ] }],
+    });
+    const input = { document: thaiDocument, images: [{ mediaAssetId: 1, checksum: pngChecksum, mimeType: "image/png", bytes: png }] };
+    const epubValidation = await validateVerticalDramaBookEpub(buildVerticalDramaBookEpub(input));
+    const pdf = await renderVerticalDramaBookPdf(input);
+    expect(epubValidation).toEqual(expect.objectContaining({ validator: "epubcheck", status: "passed" }));
+    expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   });
 });

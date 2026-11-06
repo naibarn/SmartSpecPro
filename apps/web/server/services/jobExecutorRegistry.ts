@@ -998,6 +998,8 @@ defaultJobExecutorRegistry.register({
     const bookId = Number(input.bookId);
     const revisionId = Number(input.revisionId);
     const imageDensity = input.imageDensity;
+    const modelId = typeof input.modelId === "string" ? input.modelId : undefined;
+    const preferredProviderId = Number.isSafeInteger(input.preferredProviderId) ? Number(input.preferredProviderId) : undefined;
     if (!tenantId || !Number.isSafeInteger(userId) || !Number.isSafeInteger(bookId) || !Number.isSafeInteger(revisionId) ||
         !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) {
       throw new Error("BOOK_COMPOSITION_JOB_INPUT_INVALID");
@@ -1007,6 +1009,8 @@ defaultJobExecutorRegistry.register({
     const output = await withLeaseHeartbeat(lease, reporter, () => composeVerticalDramaBookRevision({
       tenantId, userId, bookId, revisionId,
       imageDensity: imageDensity as "none" | "chapter_openers" | "occasional" | "all_shots",
+      modelId,
+      preferredProviderId,
       onProgress: progress => reporter.progress(lease, {
         progress: Math.round(progress.completedChapters / Math.max(1, progress.totalChapters) * 100),
         stage: "composing_chapters",

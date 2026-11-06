@@ -17,10 +17,9 @@ runtime acceptance evidence.
   and download actions.
 - **Focused recheck:** `bookDocument.test.ts`, `verticalDramaBookSnapshot.test.ts`,
   `verticalDramaBookRenderers.test.ts`; UI and router esbuild checks.
-- **Remaining:** The credit display is a conservative fixed estimate
-  (20 credits/chapter), not a provider-specific quote. Exact quoting remains
-  open because the shared structured-LLM call surface does not expose a quote
-  API.
+- **Closed in follow-up:** The fixed 20-credit estimate was replaced with a
+  conservative quote for the selected model/provider, bounded prompt bytes,
+  output cap, retry count, and price headroom. The quote is shown in Book Studio.
 
 ## Round 2 — Tenant and authorization boundaries
 
@@ -49,10 +48,10 @@ runtime acceptance evidence.
   hash/revision/locator and chapter source membership; asset checksum changes
   are covered by tests.
 - **Focused recheck:** source snapshot and document schema Vitest suites.
-- **Remaining:** Current episode repair rows are not authoritative active
-  revisions for ordinary Vertical Drama reads, so snapshot `episodeRevisionId`
-  remains null while a complete payload fingerprint and immutable payload are
-  stored. Exact linkage to an active source-revision contract remains open.
+- **Closed by contract:** These source rows do not expose an authoritative
+  upstream revision ID. The feature uses the immutable captured payload and
+  canonical SHA-256 `revisionFingerprint` as its source-version identity;
+  `episodeRevisionId` remains null rather than fabricating a foreign ID.
 
 ## Round 4 — Image coverage and ordering
 
@@ -93,13 +92,18 @@ runtime acceptance evidence.
   candidate and completed chapters; export reuses an active canonical job;
   composition/export cancellation is exposed; renderer asserts its lease
   before publishing; non-available uploaded files are deleted on failure.
-  Composition performs a 20-credit/chapter precheck and displays that estimate.
+  Composition pins the model/provider selected for the quote, reserves a
+  bounded amount per chapter, settles provider attempts with distinct stable
+  settlement keys, and refunds unused reserved credits. Structured retries
+  cap validation feedback so the retry prompt remains inside its reserved
+  input envelope.
 - **Focused recheck:** job registry and Book router esbuild; retry/cancel state
   paths inspected.
-- **Remaining:** Credits are checked but not reserved atomically before each
-  provider call, and exact cost is not quoted. A provider call may be repeated
-  after a process crash before chapter persistence, although app credit debit
-  remains idempotent.
+- **Remaining:** A new provider invocation after a worker crash before chapter
+  persistence is billable as a new invocation; exact-once provider execution is
+  not guaranteed across that external-call/database boundary. Same-attempt
+  settlement replay is idempotent. Paid-provider crash recovery and real
+  database concurrency acceptance still need an isolated integration runtime.
 
 ## Round 7 — EPUB structure, accessibility, and validation
 
@@ -112,9 +116,9 @@ runtime acceptance evidence.
   paths and escaped text.
 - **Focused recheck:** `verticalDramaBookRenderers.test.ts` opens the archive,
   inspects first-entry/stored-mimetype, cover, chapter text, image, and escaping.
-- **Remaining:** `epubcheck` and Java are absent on this host. The worker fails
-  closed, so no EPUB can become available here until EPUBCheck runs in the
-  canonical worker.
+- **Closed in follow-up:** EPUBCheck 5.4.0 and Java 21 were installed in the
+  local verification environment; the runtime acceptance test reported zero
+  errors and zero warnings for the generated EPUB.
 
 ## Round 8 — PDF Thai text and pagination
 
@@ -128,8 +132,10 @@ runtime acceptance evidence.
   `pdfinfo` are available and the output has extractable chapter text and
   metadata. No external URL is permitted by the renderer CSP.
 - **Focused recheck:** PDF HTML fixture checks.
-- **Remaining:** Chromium, Noto Sans Thai/Th Sarabun New, `pdftotext`, and
-  `pdfinfo` are absent here. Representative Thai PDF acceptance is open.
+- **Closed for renderer fixture:** Playwright Chromium, Noto Thai fonts, and
+  Poppler were provisioned locally. Runtime acceptance rendered a three-page
+  A5 PDF, extracted Thai text and metadata successfully, and a rendered page
+  was visually inspected. Authenticated product-flow acceptance remains open.
 
 ## Round 9 — Artifact privacy, integrity, and resource bounds
 
@@ -156,9 +162,11 @@ runtime acceptance evidence.
   contains no raw `div` or `span` layout elements.
 - **Focused recheck:** esbuild of Book Studio and series detail page; manual
   JSX/ARIA review; `git diff --check`.
-- **Remaining:** No authenticated browser session or local Chromium is
-  available, so mobile/tablet/desktop screenshots, keyboard interaction, and
-  responsive overflow checks remain open.
+- **Remaining:** The local Chromium binary is available, but the repository's
+  authenticated UAT profile requires a disposable database/user ending in
+  `_dev`. The configured development database is shared and does not satisfy
+  that isolation guard, so authenticated mobile/tablet/desktop and keyboard
+  flows were not run against it.
 
 ## Closeout
 
@@ -169,9 +177,12 @@ confirmed journal tag `0417_vertical_drama_book_studio` matched its timestamp
 and SQL hash, and the catalog audit returned `READY` with no missing tables or
 constraints.
 
-Full acceptance remains **validation-pending** because this host lacks
-EPUBCheck, Chromium, Thai fonts, `pdftotext`, and `pdfinfo`; authenticated
-browser, real-series export, storage-provider, database concurrency, and
-cross-tenant authorization evidence is also outstanding. Cost reservation and
-exact provider quoting remain open design/verification gaps. This document
-does not mark those requirements passed.
+Follow-up verification closed the source-identity, cost-estimate/reservation,
+EPUB conformance, and Thai PDF renderer-fixture gaps. The focused suites passed
+26 tests, including runtime EPUBCheck and PDF generation/extraction. Full
+acceptance remains **validation-pending**: authenticated responsive UI,
+representative real-series/all-shot export, private storage-provider readback
+and download, cross-tenant authorization, and database-backed concurrency and
+crash-recovery evidence still require an isolated `_dev` integration database
+and approved provider-backed fixture. No production or paid-provider export was
+run.
