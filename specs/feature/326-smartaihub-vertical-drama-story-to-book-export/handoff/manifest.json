@@ -2,7 +2,10 @@
   "acceptance": {
     "evidence": [
       "gap-review-10-rounds.md",
-      "Feature 326 development migration receipt and post-migration ledger/catalog audits (0417 applied; catalog READY)"
+      "Feature 326 development migration receipt and post-migration ledger/catalog audits (0417 applied; catalog READY)",
+      "994faa07c51af9822a2e1d01ca8375f42138f419: pinned-model/provider composition quote and per-chapter credit reservation/settlement",
+      "BOOK_EXPORT_RENDER_ACCEPTANCE=1 EPUBCheck 5.4.0 + Chromium + Noto Thai + Poppler: 26 tests passed; EPUBCheck 0 errors/0 warnings; Thai A5 PDF text and metadata extracted",
+      "Authenticated UI, real-series/storage, cross-tenant, and database concurrency acceptance remain open under the isolation guard recorded in gap-review-10-rounds.md"
     ],
     "required": true,
     "status": "VALIDATION_PENDING"
@@ -13,12 +16,12 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
+        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
         "kind": "OWNER_DIRECTED_IMPLEMENTATION",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -29,24 +32,19 @@
   },
   "blockers": [
     {
-      "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo are unavailable on the current host",
+      "capability": "Authenticated Book Studio browser flow, representative real-series/all-shot export, and private storage readback/download evidence are unavailable",
       "classification": "WAITING_CAPABILITY",
-      "next_action": "Run EPUB conformance and representative Thai PDF extraction/pagination checks in an equipped canonical worker."
+      "next_action": "Run on an isolated authenticated _dev UAT database with a representative fixture and configured provider/storage test doubles."
     },
     {
-      "capability": "Authenticated browser, representative real-series export, and storage-provider readback evidence are unavailable",
-      "classification": "WAITING_CAPABILITY",
-      "next_action": "Run authenticated mobile/tablet/desktop and keyboard flows, then export a representative series and verify private storage readback/download."
-    },
-    {
-      "capability": "Database-backed cross-tenant authorization and revision/job concurrency acceptance has not run",
+      "capability": "Database-backed cross-tenant authorization, revision/job concurrency, and worker-crash recovery acceptance has not run",
       "classification": "WAITING_VERIFICATION",
-      "next_action": "Run the focused integration acceptance for owner isolation, concurrent saves/approvals, idempotent retries, and cancellation races."
+      "next_action": "Run focused integration acceptance on an isolated _dev database; do not use the shared smartspec database because the UAT guard rejects it."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "03fba26045939ce7328031927d56547d5982e410",
-    "expected_spec_digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92"
+    "expected_canonical_sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
+    "expected_spec_digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83"
   },
   "continuation": {
     "next_action": null,
@@ -69,32 +67,34 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       }
     ],
-    "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
-    "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
+    "next_action": "Run authenticated responsive Book Studio, representative series/storage, and cross-tenant/concurrency acceptance with an isolated _dev UAT database.",
+    "rationale": "Code-level cost reservation, content-addressed legacy source identity, EPUB conformance, and Thai PDF renderer acceptance are closed. Product-flow and database integration evidence remains pending because the configured shared database does not meet the UAT isolation contract.",
     "residual_requirements": [
-      "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
-      "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
-      "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
-      "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
+      "Authenticated responsive and keyboard Book Studio acceptance.",
+      "Representative all-shot series export with private storage readback and authorized download.",
+      "Database-backed cross-tenant, save/approval concurrency, retry/cancel, and worker-crash recovery acceptance in isolated _dev environment."
     ]
   },
   "dependencies": {
     "predicates": [],
     "runtime_capabilities": [
       {
-        "name": "EPUBCheck",
-        "status": "UNAVAILABLE_ON_CURRENT_HOST"
+        "name": "EPUBCheck + Java",
+        "status": "AVAILABLE_LOCAL_VERIFIED"
       },
       {
-        "name": "Chromium + Thai font + Poppler",
-        "status": "UNAVAILABLE_ON_CURRENT_HOST"
+        "name": "Playwright Chromium + Noto Thai fonts + Poppler",
+        "status": "AVAILABLE_LOCAL_VERIFIED"
       },
       {
-        "name": "Authenticated browser preview",
-        "status": "UNAVAILABLE_ON_CURRENT_HOST"
+        "name": "Authenticated UAT browser + isolated _dev database",
+        "status": "UNAVAILABLE_FOR_CONFIGURED_SHARED_DATABASE"
       }
     ],
-    "satisfaction_evidence": [],
+    "satisfaction_evidence": [
+      "Local EPUBCheck 5.4.0 acceptance: 0 fatals / 0 errors / 0 warnings.",
+      "Local Chromium/Poppler acceptance: A5 PDF generated; Thai chapter text extracted; title metadata and page size verified."
+    ],
     "specs": []
   },
   "deployment": {
@@ -109,12 +109,12 @@
     "confidence": "MEDIUM",
     "evidence": [
       {
-        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
+        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
         "kind": "IMPLEMENTATION_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
@@ -144,26 +144,32 @@
       "fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8",
       "7934c2119d432712bb5d05a071285db4cfeb4ce5",
       "e3f822cf40b23431bc54bf2e3378970dd2cc482b",
-      "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
+      "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
+      "994faa07c51af9822a2e1d01ca8375f42138f419"
     ],
     "mapping": [],
     "source_paths": [
+      "apps/web/client/src/components/verticalDramaSeries/VerticalDramaBookStudio.tsx",
       "apps/web/drizzle/0417_vertical_drama_book_studio.sql",
       "apps/web/drizzle/dev-active-baseline/migrations/0424_vertical_drama_book_studio.sql",
       "apps/web/server/routers/verticalDramaBooks.ts",
+      "apps/web/server/services/__tests__/verticalDramaBookComposition.test.ts",
+      "apps/web/server/services/callLLMStructured.ts",
+      "apps/web/server/services/creditService.ts",
+      "apps/web/server/services/jobExecutorRegistry.ts",
       "apps/web/server/services/verticalDramaBookComposition.ts",
       "apps/web/server/services/verticalDramaBookExportService.ts",
-      "apps/web/server/services/verticalDramaBookRenderers.ts",
-      "apps/web/client/src/components/verticalDramaSeries/VerticalDramaBookStudio.tsx"
+      "apps/web/server/services/verticalDramaBookRenderers.test.ts",
+      "apps/web/server/services/verticalDramaBookRenderers.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "03fba26045939ce7328031927d56547d5982e410",
+    "canonical_sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
     "integrated": true,
-    "integrated_at": "2026-11-06T12:28:20Z"
+    "integrated_at": "2026-11-06T14:12:51Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -258,24 +264,22 @@
     "reconciled_at": "2026-11-06T10:55:00Z",
     "sources": [
       {
-        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+        "digest": "90609a4dd7820ec8a8c3366348a852986500353630b4ead553bb0f01bcce0b83",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       },
       {
-        "digest": "0ef9590fdebb9d1c98c73f79b19e2f54616164be8d1f829d2622aa9797f954c1",
+        "digest": "8b9f82cf271b99c9cf1184676537ec22409d2fcb424b9c363ee19d9bbcdda219",
         "kind": "IMPLEMENTATION_EVIDENCE",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/gap-review-10-rounds.md"
       }
     ],
     "stale_fields": [],
     "unproven_fields": [
-      "canonical worker renderer behavior",
       "authenticated browser acceptance",
-      "representative real-series export",
-      "database-backed authorization and concurrency",
-      "active episode revision identity",
-      "provider-specific cost reservation/quote"
+      "representative real-series and private storage export/download",
+      "database-backed cross-tenant authorization and concurrency",
+      "worker-crash recovery across external provider invocation and chapter persistence"
     ]
   },
   "relevance_assessment": {
@@ -416,7 +420,7 @@
     "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T12:28:53.536696Z",
+  "updated_at": "2026-11-06T14:12:51Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -426,13 +430,16 @@
       "focused esbuild checks for Book Studio, series detail, Book router, root router, export service, and job registry (passed)",
       "node --import dotenv/config --import tsx scripts/db-migrate-with-receipt.ts migrate: succeeded; canonical profile; applied 0417_vertical_drama_book_studio; target database:ecf9dc471c705d645d3e",
       "pnpm run db:audit-ledger after migration: 0417 matched_timestamp_and_hash, ledger row 396, total 378",
-      "pnpm run db:audit-catalog after migration: READY, requiredDrift=0, no missing Feature 326 tables or constraints"
+      "pnpm run db:audit-catalog after migration: READY, requiredDrift=0, no missing Feature 326 tables or constraints",
+      "Focused Vitest plus renderer runtime acceptance (4 files, 26 tests passed; EPUBCheck 0 errors/0 warnings; Chromium PDF render, Thai extraction, metadata and A5 page size passed).",
+      "Focused esbuild syntax bundles passed for creditService, verticalDramaBooks router, Book Studio UI, and jobExecutorRegistry.",
+      "git diff --check passed; integrated development commit 994faa07c51af9822a2e1d01ca8375f42138f419 is reachable from origin/main."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "03fba26045939ce7328031927d56547d5982e410",
+    "sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
     "status": "VALIDATION_PENDING",
     "task_regressions": []
   }

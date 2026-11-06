@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `13`
-- Updated (UTC): `2026-11-06T12:28:01.342796+00:00`
+- State generation: `18`
+- Updated (UTC): `2026-11-06T14:13:27.292655+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1`
+- Latest recorded merged Main SHA: `994faa07c51af9822a2e1d01ca8375f42138f419`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-book-studio-ui-and-acceptance`
-- Next action: Run EPUBCheck and representative Thai PDF in a runtime with Chromium, Thai fonts, and Poppler; then collect authenticated browser, cross-tenant, concurrency, and real-series export evidence. Development migration 0417 is applied and catalog is READY.
+- Next action: Complete authenticated Book Studio browser acceptance, representative all-shot export/storage readback, and cross-tenant/concurrency acceptance in an isolated _dev test database.
 
 ## Sections
 
@@ -19,12 +19,13 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-domain-foundation | checkpointed | — | — | d7056382abeceacf16374a8f37bcd12aaa709396 | d7056382abeceacf16374a8f37bcd12aaa709396 | Verify configured dev migration profile/target, apply the new Feature 326 migration, then implement authoring and canonical jobs. |
 | section-02-authoring-and-jobs | checkpointed | — | — | fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8 | fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8 | Complete renderers, artifact privacy, EPUB/PDF validation, and independent export jobs. |
-| section-03-epub-pdf-export | checkpointed | — | — | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | Run conformance and representative Thai PDF validation in a canonical worker with EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo; current host has none. |
-| section-04-book-studio-ui-and-acceptance | checkpointed | — | — | 996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1 | 996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1 | Run EPUBCheck and representative Thai PDF in a runtime with Chromium, Thai fonts, and Poppler; then collect authenticated browser, cross-tenant, concurrency, and real-series export evidence. Development migration 0417 is applied and catalog is READY. |
+| section-03-epub-pdf-export | checkpointed | — | — | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | 7934c2119d432712bb5d05a071285db4cfeb4ce5 | Local EPUBCheck and Thai A5 PDF runtime acceptance passed; remaining evidence is authenticated product-flow export with storage readback in the isolated _dev integration environment. |
+| section-04-book-studio-ui-and-acceptance | checkpointed | — | — | 994faa07c51af9822a2e1d01ca8375f42138f419 | 994faa07c51af9822a2e1d01ca8375f42138f419 | Complete authenticated Book Studio browser acceptance, representative all-shot export/storage readback, and cross-tenant/concurrency acceptance in an isolated _dev test database. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- None recorded; this does not imply final acceptance.
+- Authenticated UI, representative-series export/storage, and DB-backed cross-tenant/concurrency acceptance remain unverified; UAT isolation rejects the configured shared smartspec database.
+- A provider invocation replayed after worker crash before chapter persistence is a new billable invocation; exact-once external execution is not guaranteed.
 
 ## Resume
 
