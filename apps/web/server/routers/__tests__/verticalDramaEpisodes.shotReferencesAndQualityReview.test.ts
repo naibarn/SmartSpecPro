@@ -6105,7 +6105,7 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
     );
   });
 
-  it("generateStartFrameImage rejects an invalid resolution with BAD_REQUEST when the model has known resolutionOptions", async () => {
+  it("generateStartFrameImage falls back to the model default for an unsupported resolution", async () => {
     mockDeriveModelResolutionOptions.mockReturnValueOnce([
       { value: "720p", label: "720p" },
       { value: "1080p", label: "1080p" },
@@ -6114,20 +6114,22 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 150, configJson: {} }])); // pricing lookup
 
-    await expect(
-      router.generateStartFrameImage({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          resolution: "8K",
-        },
-      })
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const result = await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        resolution: "8K",
+      },
+    });
 
-    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.taskId).toBe("task-1");
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.not.objectContaining({ resolution: "8K" }),
+      expect.any(String)
+    );
+    expect(mockDeductCredits).toHaveBeenCalled();
   });
 
   it("generateStartFrameImage ignores a supplied resolution (no validation error) when the model has no resolution options at all", async () => {
@@ -6153,25 +6155,33 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
     );
   });
 
-  it("generateStartFrameAngleVariations rejects an invalid resolution with BAD_REQUEST", async () => {
+  it("generateStartFrameAngleVariations falls back to the model default for an unsupported resolution", async () => {
     mockDeriveModelResolutionOptions.mockReturnValueOnce([
       { value: "720p", label: "720p" },
     ]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
-    await expect(
-      router.generateStartFrameAngleVariations({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          resolution: "invalid",
-        },
-      })
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const result = await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        resolution: "invalid",
+      },
+    });
+
+    expect(result.taskId).toBe("task-1");
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.not.objectContaining({ resolution: "invalid" }),
+      expect.any(String)
+    );
   });
 });
 
@@ -6690,7 +6700,7 @@ describe("repairShotImage (Phase 6.5)", () => {
     expect(mockRefundCredits).toHaveBeenCalled();
   });
 
-  it("rejects an invalid resolution with BAD_REQUEST before submitting", async () => {
+  it("falls back to the model default for an unsupported repair resolution", async () => {
     mockDeriveModelResolutionOptions.mockReturnValueOnce([
       { value: "1K", label: "1K" },
     ]);
@@ -6699,21 +6709,28 @@ describe("repairShotImage (Phase 6.5)", () => {
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
       ) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-task-1" });
 
-    await expect(
-      router.repairShotImage({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          instruction: "change the jacket to red",
-          resolution: "4K",
-        },
-      })
-    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+    const result = await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "change the jacket to red",
+        resolution: "4K",
+      },
+    });
+
+    expect(result.taskId).toBe("repair-task-1");
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.not.objectContaining({ resolution: "4K" }),
+      expect.any(String)
+    );
   });
 
   it("Wave-7D: appends the series' preset visual identity fragments onto the repair prompt/negative-prompt when verticalDramaSeriesPresetMixV2 is on", async () => {
@@ -6915,25 +6932,24 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
   });
 
   describe("generateStartFrameImage", () => {
-    it("rejects with VD_TIE_IN_BELOW_FLOOR when no tie-in report exists yet for a tie-in shot", async () => {
+    it("continues when no tie-in report exists yet for a tie-in shot", async () => {
       mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-        .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
+        .mockReturnValueOnce(selectChain([])) // loadLatestTieInQualityReport -> none
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // quality policy
+        .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
 
-      await expect(
-        router.generateStartFrameImage({
-          ctx: ctx(),
-          input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-        })
-      ).rejects.toMatchObject({
-        code: "PRECONDITION_FAILED",
-        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
       });
-      expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+
+      expect(result.taskId).toBe("task-1");
+      expect(mediaGenerationService.generateImageAsync).toHaveBeenCalled();
     });
 
-    it("rejects with VD_TIE_IN_BELOW_FLOOR when the latest tie-in report is failing", async () => {
+    it("continues when the latest tie-in report is failing", async () => {
       mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
@@ -6941,17 +6957,17 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
           selectChain([
             { jsonPayload: { passed: false, naturalnessScore: 40 } },
           ])
-        ); // failing report
+        ) // failing report
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // quality policy
+        .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
 
-      await expect(
-        router.generateStartFrameImage({
-          ctx: ctx(),
-          input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-        })
-      ).rejects.toMatchObject({
-        code: "PRECONDITION_FAILED",
-        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
       });
+
+      expect(result.taskId).toBe("task-1");
+      expect(mediaGenerationService.generateImageAsync).toHaveBeenCalled();
     });
 
     it("proceeds normally when the latest tie-in report has passed", async () => {
@@ -7110,22 +7126,24 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
   });
 
   describe("generateVideoClip", () => {
-    it("rejects with VD_TIE_IN_BELOW_FLOOR when no tie-in report exists yet for a tie-in-carrying clip", async () => {
+    it("continues when no tie-in report exists yet for a tie-in-carrying clip", async () => {
       mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
-        .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
+        .mockReturnValueOnce(selectChain([])) // loadLatestTieInQualityReport -> none
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // quality policy
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolve start-frame asset
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
-      await expect(
-        router.generateVideoClip({
-          ctx: ctx(),
-          input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
-        })
-      ).rejects.toMatchObject({
-        code: "PRECONDITION_FAILED",
-        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
       });
-      expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+
+      expect(result.taskId).toBe("task-1");
+      expect(mockGenerateVideoAsync).toHaveBeenCalled();
     });
 
     it("proceeds normally when the latest tie-in report has passed", async () => {
@@ -7319,27 +7337,24 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerate
   });
 
   describe("runStage", () => {
-    it("rejects VD_TIE_IN_BELOW_FLOOR for a real (full-mode) create_storyboard_review_project run when the tie-in report is missing", async () => {
+    it("runs create_storyboard_review_project when the tie-in report is missing", async () => {
       mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
         .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
 
-      await expect(
-        router.runStage({
-          ctx: ctx(),
-          input: {
-            seriesId: "10",
-            episodeId: "100",
-            stage: "create_storyboard_review_project",
-            mode: "full",
-          },
-        })
-      ).rejects.toMatchObject({
-        code: "PRECONDITION_FAILED",
-        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      const result = await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "create_storyboard_review_project",
+          mode: "full",
+        },
       });
-      expect(mockRunStage).not.toHaveBeenCalled();
+
+      expect(result).toBeDefined();
+      expect(mockRunStage).toHaveBeenCalled();
     });
 
     it("never gates a dry_run/plan_only preview run, even with a failing tie-in report", async () => {
@@ -7389,7 +7404,7 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerate
   });
 
   describe("regenerateStage", () => {
-    it("rejects VD_TIE_IN_BELOW_FLOOR before deleting any prior run when the tie-in report is failing", async () => {
+    it("continues regeneration when the tie-in report is failing", async () => {
       mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
@@ -7398,21 +7413,23 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerate
             { jsonPayload: { passed: false, naturalnessScore: 30 } },
           ])
         ); // failing report
-
-      await expect(
-        router.regenerateStage({
-          ctx: ctx(),
-          input: {
-            seriesId: "10",
-            episodeId: "100",
-            stage: "create_storyboard_review_project",
-          },
-        })
-      ).rejects.toMatchObject({
-        code: "PRECONDITION_FAILED",
-        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      mockDb.delete.mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
       });
-      expect(mockDb.delete).not.toHaveBeenCalled();
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      const result = await router.regenerateStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "create_storyboard_review_project",
+        },
+      });
+
+      expect(result).toBeDefined();
+      expect(mockDb.delete).toHaveBeenCalled();
+      expect(mockRunStage).toHaveBeenCalled();
     });
 
     it("skips the gate entirely when verticalDramaSeriesTieInQc is off (default)", async () => {

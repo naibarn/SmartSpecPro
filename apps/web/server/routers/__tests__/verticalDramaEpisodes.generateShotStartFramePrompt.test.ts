@@ -387,6 +387,15 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
   };
 }
 
+function setupDeterministicPromptFallbackPersistence(episodeRow: unknown) {
+  // A few extra optional fact lookups may run before prompt persistence. The
+  // fallback behavior under test should not depend on how many are enabled.
+  mockDb.select.mockReturnValue(selectChain([]));
+  mockDb.update.mockReturnValueOnce({
+    set: vi.fn(() => updateChain([episodeRow])),
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   // Default transaction stub: `tx.select` resolves to an empty row (so the
@@ -1010,7 +1019,7 @@ describe("generateShotStartFramePrompt", () => {
     );
   });
 
-  it("maps a VdReferenceMappingError (still-contradictory prompt after one corrective retry) to a PRECONDITION_FAILED TRPCError", async () => {
+  it("uses a deterministic prompt when the skill returns a mismatched reference map", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockVdReferenceMappingError("reference mapping still contradicts the manifest", [
         { characterName: "Hero Name", claimedImageIndex: 2, expectedImageIndex: 1 },
@@ -1021,16 +1030,18 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }]))
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
+    setupDeterministicPromptFallbackPersistence(episodeRow);
 
-    await expect(
-      router.executeShotStartFramePromptJob({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
-      }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    const result = await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    expect(result.prompt).toContain("Create a highly detailed realistic vertical-drama start-frame image");
+    expect(result.prompt).toContain("fix it");
   });
 
-  it("maps InsufficientCreditsError to a FORBIDDEN TRPCError", async () => {
+  it("authors a deterministic prompt when prompt-authoring credits are unavailable", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockInsufficientCreditsError("insufficient credits"),
     );
@@ -1039,16 +1050,17 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }]))
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
+    setupDeterministicPromptFallbackPersistence(episodeRow);
 
-    await expect(
-      router.executeShotStartFramePromptJob({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
-      }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const result = await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    expect(result.prompt).toContain("fix it");
   });
 
-  it("maps VdSchemaValidationError to an INTERNAL_SERVER_ERROR TRPCError", async () => {
+  it("authors a deterministic prompt when the skill output fails schema validation", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockVdSchemaValidationError("bad schema", {}),
     );
@@ -1057,16 +1069,17 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }]))
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
+    setupDeterministicPromptFallbackPersistence(episodeRow);
 
-    await expect(
-      router.executeShotStartFramePromptJob({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
-      }),
-    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    const result = await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    expect(result.prompt).toContain("fix it");
   });
 
-  it("maps RateLimitExceededError to a TOO_MANY_REQUESTS TRPCError", async () => {
+  it("authors a deterministic prompt when the prompt skill rate limit is reached", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockRateLimitExceededError("slow down"),
     );
@@ -1075,29 +1088,31 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }]))
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
+    setupDeterministicPromptFallbackPersistence(episodeRow);
 
-    await expect(
-      router.executeShotStartFramePromptJob({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
-      }),
-    ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", message: "slow down" });
+    const result = await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    expect(result.prompt).toContain("fix it");
   });
 
-  it("maps an unrecognized error to INTERNAL_SERVER_ERROR with its own message", async () => {
+  it("authors a deterministic prompt after an unexpected skill error", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(new Error("boom"));
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }]))
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
+    setupDeterministicPromptFallbackPersistence(episodeRow);
 
-    await expect(
-      router.executeShotStartFramePromptJob({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
-      }),
-    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "boom" });
+    const result = await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    expect(result.prompt).toContain("fix it");
   });
 
   it("passes idempotencyKey through to the service call", async () => {

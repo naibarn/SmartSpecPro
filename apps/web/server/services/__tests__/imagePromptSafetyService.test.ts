@@ -175,16 +175,17 @@ describe("imagePromptSafetyService", () => {
     expect(result.metadata.blocked).toBe(false);
   });
 
-  it("still blocks a real high-risk current story context at the media boundary", async () => {
-    await expect(
-      prepareImagePromptSafety({
-        prompt: "REFERENCE MAPPING: Image 1 = รินลดา",
-        mode: "vertical_drama_managed",
-        storyContext: {
-          canonicalShotSummary: "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและถอยหนี",
-        },
-      })
-    ).rejects.toMatchObject({ code: "blocked" });
+  it("keeps high-risk story scan results advisory for Vertical Drama image generation", async () => {
+    const result = await prepareImagePromptSafety({
+      prompt: "REFERENCE MAPPING: Image 1 = รินลดา",
+      mode: "vertical_drama_managed",
+      storyContext: {
+        canonicalShotSummary: "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและถอยหนี",
+      },
+    });
+
+    expect(result.prompt).toBe("REFERENCE MAPPING: Image 1 = รินลดา");
+    expect(result.metadata.blocked).toBe(false);
   });
 
   it("uses the dedicated safety skill for an episode cover", async () => {

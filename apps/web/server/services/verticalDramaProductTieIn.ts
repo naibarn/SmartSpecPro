@@ -905,18 +905,14 @@ export function resolveFrameProductReferenceAssetIds(input: {
 }
 
 /**
- * Merge location + scene-anchor + product reference URLs onto a shot's existing character
- * reference URL list and trim to the resolved model's `maxReferenceImages`,
- * if any. Priority order (highest to lowest, per
- * `planning/polished-toasting-gadget.md` Phase 2 "Render-time attachment"):
- * character refs first (never trimmed first — identity-lock is the single
- * most important reference), then the shot's location reference (Location
- * Visual Bible — at most one URL per shot), then product refs LAST (trimmed
- * first — a product tie-in already has its own independent hard gate
- * elsewhere that blocks render if missing, so it is comparatively
- * protected). Prop/object refs are appended after product refs and are the
- * lowest-priority optional references, so they are dropped first when a
- * provider has a tight capacity. Returns the merged list plus how many
+ * Merge character, location, product, scene-anchor, and prop reference URLs
+ * onto a shot and trim to the resolved model's `maxReferenceImages`, if any.
+ * Priority order (highest to lowest): character refs (identity), the shot's
+ * location reference (environment), selected product refs (product
+ * fidelity), then scene anchors and ordinary prop refs (continuity/detail).
+ * Product images stay ahead of optional continuity/prop images so a tight
+ * model limit does not silently discard the product the user selected.
+ * Returns the merged list plus how many
  * entries were trimmed off
  * the END (so callers can surface a "reference images were trimmed" notice,
  * matching the existing convention used for shot-reference trimming
@@ -933,8 +929,8 @@ export function mergeAndTrimReferenceImageUrls(
   const merged = [
     ...characterRefUrls,
     ...locationRefUrls,
-    ...sceneAnchorRefUrls,
     ...productRefUrls,
+    ...sceneAnchorRefUrls,
     ...propObjectRefUrls,
   ].filter(
     (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,

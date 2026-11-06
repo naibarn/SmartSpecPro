@@ -443,7 +443,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     expect(trimmedCount).toBe(0);
   });
 
-  it("places the scene anchor between location and product references", () => {
+  it("keeps selected product references ahead of the optional scene anchor", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1"],
       ["location-1"],
@@ -451,11 +451,11 @@ describe("mergeAndTrimReferenceImageUrls", () => {
       ["product-1"],
       undefined,
     );
-    expect(urls).toEqual(["char-1", "location-1", "anchor-2", "product-1"]);
+    expect(urls).toEqual(["char-1", "location-1", "product-1", "anchor-2"]);
     expect(trimmedCount).toBe(0);
   });
 
-  it("trims product, then anchor, then location before character refs", () => {
+  it("trims scene anchors before selected product references", () => {
     expect(
       mergeAndTrimReferenceImageUrls(
         ["char-1"],
@@ -465,7 +465,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
         3,
       ),
     ).toEqual({
-      urls: ["char-1", "location-1", "anchor-2"],
+      urls: ["char-1", "location-1", "product-1"],
       trimmedCount: 1,
     });
     expect(

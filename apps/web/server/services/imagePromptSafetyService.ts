@@ -291,9 +291,12 @@ function managedResult(input: ImagePromptSafetyInput): ImagePromptSafetyResult {
           })
         );
   if (isBlockingVerticalDramaStorySafety(storySafety)) {
-    throw new ImagePromptSafetyError(
-      "blocked",
-      "Vertical Drama image prompt contains a high-risk story context; repair the episode before generating media.",
+    console.warn(
+      "[image_prompt_safety] vertical drama story scan found a high-risk signal; continuing with the authored prompt",
+      {
+        findingCodes: storySafety.findings.map(finding => finding.code),
+        detectorVersion: storySafety.findings[0]?.detectorVersion ?? null,
+      },
     );
   }
   return {
