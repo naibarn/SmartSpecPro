@@ -269,7 +269,7 @@ export const verticalDramaBooksRouter = router({
       const asset = coverById.get(Number(candidate.mediaAssetId));
       return asset ? [{ ...candidate, checksum: asset.checksumSha256, url: asset.storageKey ? `/api/storage/files/${encodeURI(asset.storageKey)}` : null }] : [];
     });
-    return { book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, sourceSelection: book.sourceSelection, currentRevisionNumber: book.currentRevisionNumber, stale: sourceStale, updatedAt: book.updatedAt }, coverCandidates, exports };
+    return { book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, sourceSelection: book.sourceSelection, currentRevisionNumber: book.currentRevisionNumber, stale: sourceStale, updatedAt: book.updatedAt }, revisions, coverCandidates, exports };
   }),
 
   create: bookProcedure.input(z.object({
