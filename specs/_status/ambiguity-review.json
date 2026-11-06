@@ -133692,7 +133692,7 @@
     {
       "acceptance": "VALIDATION_PENDING",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "746509021b72c5959096122eb07bb5fac91fd659",
+      "canonical_sha": "02eb25241224a9da11d7594951e1b2cd09a9a936",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -133837,7 +133837,7 @@
       ],
       "declared_relationship_claims": [],
       "declared_status_claims": [],
-      "deployment": "UNKNOWN",
+      "deployment": "PASS",
       "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "FRESH",
