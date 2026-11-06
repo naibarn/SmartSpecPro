@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import type { Message } from "../_core/llm";
+import type { Message, MessageContent } from "../_core/llm";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { calculateCreditsForLLMDynamic, calculateCreditsFromCost, deductCreditsForModel, drawFromReservation } from "./creditService";
 import { auditLogger } from "./auditLogger";
@@ -25,7 +25,7 @@ import type { ProviderCandidate } from "./llmRouter";
 
 export interface CallLLMStructuredParams<T> {
   systemPrompt: string;
-  userMessage: string;
+  userMessage: string | MessageContent[];
   model?: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
@@ -298,19 +298,26 @@ function shouldUseResponsesRuntime(
 export async function callLLMStructured<T>(
   params: CallLLMStructuredParams<T>,
 ): Promise<CallLLMStructuredResult<T>> {
-  if (shouldUseResponsesRuntime(params.runtimeOptions)) {
-    return callLLMStructuredWithResponsesRuntime(params);
+  // Shared agent runtimes currently accept text prompts only. Keep image-bearing
+  // structured requests on the pinned legacy provider path so attached source
+  // images are actually passed to the selected vision model.
+  if (Array.isArray(params.userMessage)) {
+    return callLLMStructuredLegacy(params);
+  }
+  const textParams = { ...params, userMessage: params.userMessage as string };
+  if (shouldUseResponsesRuntime(textParams.runtimeOptions)) {
+    return callLLMStructuredWithResponsesRuntime(textParams);
   }
 
-  if (params.runtimeOptions?.skillSlugs?.length) {
-    return callLLMStructuredWithRuntime(params);
+  if (textParams.runtimeOptions?.skillSlugs?.length) {
+    return callLLMStructuredWithRuntime(textParams);
   }
 
-  return callLLMStructuredLegacy(params);
+  return callLLMStructuredLegacy(textParams);
 }
 
 async function callLLMStructuredWithRuntime<T>(
-  params: CallLLMStructuredParams<T>,
+  params: CallLLMStructuredParams<T> & { userMessage: string },
 ): Promise<CallLLMStructuredResult<T>> {
   const {
     model,
@@ -426,7 +433,7 @@ async function callLLMStructuredWithRuntime<T>(
 }
 
 async function callLLMStructuredWithResponsesRuntime<T>(
-  params: CallLLMStructuredParams<T>,
+  params: CallLLMStructuredParams<T> & { userMessage: string },
 ): Promise<CallLLMStructuredResult<T>> {
   const {
     model,
@@ -636,7 +643,7 @@ The JSON must strictly conform to the expected schema.`;
       {
         role: "user",
         content: isRetry
-          ? `${userMessage}\n\nYour previous response was invalid JSON or did not match the expected schema. The error was: ${lastZodError ? lastZodError.message.slice(0, 2000) : "Invalid JSON syntax"}. Raw response (truncated): "${lastRawResponse.slice(0, 500)}". Please try again and return ONLY valid JSON.`
+          ? appendStructuredRetryHint(userMessage, `${lastZodError ? lastZodError.message.slice(0, 2000) : "Invalid JSON syntax"}. Raw response (truncated): "${lastRawResponse.slice(0, 500)}".`)
           : userMessage,
       },
     ];
@@ -900,4 +907,19 @@ The JSON must strictly conform to the expected schema.`;
     totalTokens,
     totalCredits,
   );
+}
+
+function appendStructuredRetryHint(userMessage: string | MessageContent[], error: string): string | MessageContent[] {
+  const hint = `Your previous response was invalid JSON or did not match the expected schema. The error was: ${error} Please try again and return ONLY valid JSON.`;
+  if (!Array.isArray(userMessage)) return `${userMessage}\n\n${hint}`;
+  const firstTextIndex = userMessage.findIndex(part => typeof part === "string" || (part && typeof part === "object" && part.type === "text"));
+  if (firstTextIndex < 0) return [{ type: "text", text: hint }, ...userMessage];
+  const next = [...userMessage];
+  const part = next[firstTextIndex];
+  next[firstTextIndex] = typeof part === "string"
+    ? `${part}\n\n${hint}`
+    : part.type === "text"
+      ? { type: "text", text: `${part.text}\n\n${hint}` }
+      : part;
+  return next;
 }

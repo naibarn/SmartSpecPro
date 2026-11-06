@@ -999,6 +999,7 @@ defaultJobExecutorRegistry.register({
     const revisionId = Number(input.revisionId);
     const imageDensity = input.imageDensity;
     const modelId = typeof input.modelId === "string" ? input.modelId : undefined;
+    const targetChapterId = typeof input.targetChapterId === "string" ? input.targetChapterId : undefined;
     const preferredProviderId = Number.isSafeInteger(input.preferredProviderId) ? Number(input.preferredProviderId) : undefined;
     if (!tenantId || !Number.isSafeInteger(userId) || !Number.isSafeInteger(bookId) || !Number.isSafeInteger(revisionId) ||
         !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) {
@@ -1011,12 +1012,46 @@ defaultJobExecutorRegistry.register({
       imageDensity: imageDensity as "none" | "chapter_openers" | "occasional" | "all_shots",
       modelId,
       preferredProviderId,
+      targetChapterId,
       onProgress: progress => reporter.progress(lease, {
         progress: Math.round(progress.completedChapters / Math.max(1, progress.totalChapters) * 100),
         stage: "composing_chapters",
         message: `Composed ${progress.completedChapters} of ${progress.totalChapters} chapters`,
       }),
     }));
+    await reporter.assertActive(lease);
+    return { output };
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "vertical_drama.book.cover",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = context.input as Record<string, unknown>;
+    const tenantId = String(input.tenantId ?? "");
+    const userId = Number(input.userId);
+    const bookId = Number(input.bookId);
+    const revisionId = Number(input.revisionId);
+    const roundId = String(input.roundId ?? "");
+    const jobId = String(input.jobId ?? "");
+    const modelId = String(input.modelId ?? "");
+    if (!tenantId || !Number.isSafeInteger(userId) || !Number.isSafeInteger(bookId) || !Number.isSafeInteger(revisionId) || !roundId || !jobId || !modelId) {
+      throw new Error("BOOK_COVER_JOB_INPUT_INVALID");
+    }
+    const { clearVerticalDramaBookCoverJob, generateVerticalDramaBookCoverCandidates } = await import("./verticalDramaBookCoverService");
+    await reporter.assertActive(lease);
+    let output: { roundId: string; candidates: unknown[] };
+    try {
+      output = await withLeaseHeartbeat(lease, reporter, () => generateVerticalDramaBookCoverCandidates({
+        tenantId, userId, bookId, revisionId, roundId, jobId, modelId,
+        onProgress: async (completed, total) => reporter.progress(lease, { progress: Math.round(completed / total * 100), stage: "generating_cover_candidates", message: `Generated ${completed} of ${total} cover candidates` }),
+      }));
+    } catch (error) {
+      await clearVerticalDramaBookCoverJob({ tenantId, userId, bookId, jobId }).catch(() => undefined);
+      throw error;
+    }
     await reporter.assertActive(lease);
     return { output };
   },

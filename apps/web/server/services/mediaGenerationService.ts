@@ -386,6 +386,7 @@ async function resolveEffectiveMediaRequestModel(input: {
   promptText?: string | null;
   requestedApiConfig?: MediaApiConfig;
   fallbackModel: string;
+  strictModelSelection?: boolean;
 }): Promise<{
   modelId: string;
   provider: string;
@@ -405,7 +406,7 @@ async function resolveEffectiveMediaRequestModel(input: {
     requestedModel,
     requestedProvider,
     requireConfiguredProvider: true,
-    allowSubstitution: true,
+    allowSubstitution: !input.strictModelSelection,
   });
 
   if (selection.ok) {
@@ -427,6 +428,9 @@ async function resolveEffectiveMediaRequestModel(input: {
 
   if (selection.reasonCode !== "media_registry_unavailable") {
     throw new Error(`${selection.reasonCode}: ${selection.message}`);
+  }
+  if (input.strictModelSelection) {
+    throw new Error("media_registry_unavailable: strict model selection requires the enabled model registry");
   }
 
   const modelId = requestedModel || input.fallbackModel;
@@ -1360,6 +1364,8 @@ export const DEFAULT_MODELS = {
 export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
+  /** Fail closed if the chosen model becomes disabled or unavailable. */
+  strictModelSelection?: boolean;
   /** Stable provider/media-task operation key supplied by a control-plane worker. */
   controlPlaneOperationKey?: string;
   /** Internal observability hook; called immediately before the provider request. */
@@ -3626,6 +3632,7 @@ export class MediaGenerationService {
           promptText: request.prompt,
           requestedApiConfig: request.apiConfig,
           fallbackModel: DEFAULT_MODELS.image,
+          strictModelSelection: request.strictModelSelection,
         });
     const normalizedPrompt =
       normalizeMediaPrompt(request.prompt) || request.prompt.trim();

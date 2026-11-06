@@ -15,8 +15,9 @@ import { createFeature186VerticalDramaJobRef } from "../services/feature186Verti
 import { storageGet } from "../storage";
 import { cancelQueuedUserWorkerJob } from "../services/workerJobMonitorService";
 import { getCreditBalance } from "../services/creditService";
-import { estimateVerticalDramaBookCompositionCredits } from "../services/verticalDramaBookComposition";
-import { resolveStructuredAutoChatModelSelection } from "../services/chatModelSelection";
+import { estimateVerticalDramaBookCompositionCredits, listVerticalDramaBookNovelizerModels, resolveVerticalDramaBookNovelizerModel } from "../services/verticalDramaBookComposition";
+import { listVerticalDramaBookCoverModels, resolveVerticalDramaBookCoverModel } from "../services/verticalDramaBookCoverService";
+import { mediaGenerationLimiter } from "../services/rateLimiter";
 
 const bookProcedure = protectedProcedure.use(requireFeatureFlag("verticalDramaSeries"));
 
@@ -39,6 +40,12 @@ function documentAssetSelections(document: { metadata: { coverMediaAssetId?: num
     }
   }
   return [...assets].map(([id, purpose]) => ({ id, purpose }));
+}
+
+function estimateBookChapterInputBytes(episode: unknown): number {
+  const row = episode && typeof episode === "object" && !Array.isArray(episode) ? episode as { shots?: unknown } : {};
+  const shotCount = Array.isArray(row.shots) ? row.shots.length : 0;
+  return Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384 + Math.min(9, shotCount) * 8192;
 }
 
 function assertDocumentBoundToSnapshot(document: z.infer<typeof verticalDramaBookDocumentSchema>, snapshot: { assets: Array<{ mediaAssetId: number; checksum: string }>; episodes: Array<{ episodeId: number; episodeRevisionId: number | null; revisionFingerprint: string }> }, selectedEpisodeIds: number[]) {
@@ -77,6 +84,83 @@ function assertDocumentBoundToSnapshot(document: z.infer<typeof verticalDramaBoo
 }
 
 export const verticalDramaBooksRouter = router({
+  novelizerModels: bookProcedure.query(async () => ({ models: await listVerticalDramaBookNovelizerModels() })),
+  coverModels: bookProcedure.query(async () => ({ models: await listVerticalDramaBookCoverModels() })),
+
+  quoteNovelization: bookProcedure.input(z.object({ bookId: z.number().int().positive(), modelId: z.string().trim().min(1).max(256) })).query(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const model = await resolveVerticalDramaBookNovelizerModel(input.modelId);
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber))).limit(1);
+    if (!revision) notFound();
+    const document = verticalDramaBookDocumentSchema.parse(revision.document);
+    const maxInputBytesPerChapter = Math.max(...(Array.isArray((revision.sourceSnapshot as { episodes?: unknown }).episodes) ? (revision.sourceSnapshot as { episodes: unknown[] }).episodes : []).map(estimateBookChapterInputBytes), 64 * 1024);
+    const estimate = await estimateVerticalDramaBookCompositionCredits({ chapterCount: document.chapters.length, maxInputBytesPerChapter, modelSelection: { resolvedModelId: model.id, preferredProviderId: model.providerId } });
+    const perChapter = await estimateVerticalDramaBookCompositionCredits({ chapterCount: 1, maxInputBytesPerChapter, modelSelection: { resolvedModelId: model.id, preferredProviderId: model.providerId } });
+    return { ...estimate, perChapterEstimatedCredits: perChapter.estimatedCredits, chapterCount: document.chapters.length };
+  }),
+
+  quoteCoverGeneration: bookProcedure.input(z.object({ bookId: z.number().int().positive(), modelId: z.string().trim().min(1).max(256) })).query(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const model = await resolveVerticalDramaBookCoverModel(input.modelId);
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber))).limit(1);
+    if (!revision) notFound();
+    const snapshot = revision.sourceSnapshot as { episodes?: Array<{ shots?: Array<{ mediaAssetId?: number | null }> }> };
+    const imageIds = new Set((snapshot.episodes ?? []).flatMap(episode => (episode.shots ?? []).map(shot => Number(shot.mediaAssetId)).filter(id => Number.isSafeInteger(id) && id > 0)));
+    const referenceImageCount = Math.min(model.maxReferenceImages, imageIds.size);
+    return { modelId: model.modelId, estimatedCredits: model.creditCost * 3, outputCount: 3, referenceImageCount, availableShotImageCount: imageIds.size, mayReuseReferences: imageIds.size <= referenceImageCount };
+  }),
+
+  generateCover: bookProcedure.input(z.object({ bookId: z.number().int().positive(), revisionId: z.number().int().positive(), modelId: z.string().trim().min(1).max(256) })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    if (!mediaGenerationLimiter.isAllowed(`user:${actor.userId}`)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Image generation limit reached. Please try again later." });
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.id, input.revisionId), eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber), eq(verticalDramaBookRevisions.status, "draft"))).limit(1);
+    if (!revision) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save an editable book draft before generating covers." });
+    const model = await resolveVerticalDramaBookCoverModel(input.modelId);
+    const selection = book.sourceSelection as { episodeIds?: unknown; coverJobId?: unknown; imageDensity?: unknown };
+    if (typeof selection.coverJobId === "string") throw new TRPCError({ code: "CONFLICT", message: "A cover generation round is already running." });
+    if (!Array.isArray(selection.episodeIds)) notFound();
+    const document = verticalDramaBookDocumentSchema.parse(revision.document);
+    const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selection.episodeIds.map(Number), additionalAssetIds: documentAssetSelections(document) });
+    if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode sources changed. Refresh the book draft before generating a cover." });
+    const shotImageCount = source.snapshot.episodes.flatMap(episode => episode.shots).filter(shot => shot.mediaAssetId != null).length;
+    if (shotImageCount < 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No approved storyboard shot images are available for cover references." });
+    const estimatedCredits = model.creditCost * 3;
+    const creditBalance = await getCreditBalance(actor.userId);
+    if (estimatedCredits > 0 && (!creditBalance || Number(creditBalance.credits) < estimatedCredits)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for three book cover options." });
+    const jobId = randomUUID();
+    const roundId = randomUUID();
+    await createFeature186VerticalDramaJobRef({
+      jobId, tenantId: actor.tenantId, userId: actor.userId, jobType: "vertical_drama.book.cover", executionClass: "long",
+      idempotencyKey: `vd-book-cover:${actor.tenantId}:${book.id}:${roundId}`,
+      activeDedupeKey: `vd-book-cover:active:${actor.tenantId}:${book.id}`,
+      payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: revision.id, roundId, jobId, modelId: model.modelId },
+    });
+    await db.update(verticalDramaBooks).set({ sourceSelection: { ...book.sourceSelection as Record<string, unknown>, coverJobId: jobId, coverPendingRoundId: roundId, coverModelId: model.modelId, estimatedCoverCredits: estimatedCredits }, updatedAt: new Date() }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
+    return { jobId, roundId, estimatedCredits, modelId: model.modelId, outputCount: 3 };
+  }),
+
+  cancelCoverGeneration: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const jobId = (book.sourceSelection as { coverJobId?: unknown }).coverJobId;
+    if (typeof jobId !== "string") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No active cover generation round was found." });
+    const result = await cancelQueuedUserWorkerJob({ auth: actor, jobId });
+    if (result.canceled) {
+      const next = { ...book.sourceSelection as Record<string, unknown> };
+      delete next.coverJobId;
+      delete next.coverPendingRoundId;
+      await db.update(verticalDramaBooks).set({ sourceSelection: next, updatedAt: new Date() }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
+    }
+    return { cancelled: result.canceled };
+  }),
+
   availableAssets: bookProcedure.input(z.object({
     seriesId: z.number().int().positive(),
     episodeIds: z.array(z.number().int().positive()).min(1).max(100),
@@ -144,7 +228,16 @@ export const verticalDramaBooksRouter = router({
     } else sourceStale = true;
     const revisions = revisionRows.map(revision => ({ id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, approvedAt: revision.approvedAt, createdAt: revision.createdAt }));
     const exports = exportRows.map(artifact => ({ id: artifact.id, revisionId: artifact.revisionId, format: artifact.format, status: artifact.status, checksumSha256: artifact.checksumSha256, sizeBytes: artifact.sizeBytes, validation: artifact.validation, errorCode: artifact.errorCode, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt }));
-    return { book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, sourceSelection: book.sourceSelection, currentRevisionNumber: book.currentRevisionNumber, stale: sourceStale, updatedAt: book.updatedAt }, revisions, exports };
+    const sourceSelection = book.sourceSelection as Record<string, unknown>;
+    const coverCandidatesRaw = Array.isArray(sourceSelection.coverCandidates) ? sourceSelection.coverCandidates.map(value => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null).filter((value): value is Record<string, unknown> => value !== null) : [];
+    const coverAssetIds = [...new Set(coverCandidatesRaw.map(candidate => Number(candidate.mediaAssetId)).filter(id => Number.isSafeInteger(id) && id > 0))];
+    const coverRows = coverAssetIds.length ? await db.select({ id: mediaAssets.id, storageKey: mediaAssets.storageKey, checksumSha256: mediaAssets.checksumSha256, status: mediaAssets.status }).from(mediaAssets).where(and(eq(mediaAssets.tenantId, actor.tenantId), eq(mediaAssets.userId, actor.userId), inArray(mediaAssets.id, coverAssetIds))) : [];
+    const coverById = new Map(coverRows.filter(asset => asset.status === "ready").map(asset => [asset.id, asset]));
+    const coverCandidates = coverCandidatesRaw.flatMap(candidate => {
+      const asset = coverById.get(Number(candidate.mediaAssetId));
+      return asset ? [{ ...candidate, checksum: asset.checksumSha256, url: asset.storageKey ? `/api/storage/files/${encodeURI(asset.storageKey)}` : null }] : [];
+    });
+    return { book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, sourceSelection: book.sourceSelection, currentRevisionNumber: book.currentRevisionNumber, stale: sourceStale, updatedAt: book.updatedAt }, coverCandidates, exports };
   }),
 
   create: bookProcedure.input(z.object({
@@ -199,12 +292,13 @@ export const verticalDramaBooksRouter = router({
         blocks: [{ id: `chapter-${episode.episodeId}-opening`, type: "paragraph", text: "", sourceRefs: [] }],
       })),
     });
-    const modelSelection = await resolveStructuredAutoChatModelSelection();
-    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const modelSelection = (await listVerticalDramaBookNovelizerModels())[0];
+    if (!modelSelection) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled vision model is available for novelization." });
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(estimateBookChapterInputBytes));
     const estimate = await estimateVerticalDramaBookCompositionCredits({
       chapterCount: bookDocument.chapters.length,
       maxInputBytesPerChapter,
-      modelSelection,
+      modelSelection: { resolvedModelId: modelSelection.id, preferredProviderId: modelSelection.providerId },
     });
     const creditBalance = await getCreditBalance(actor.userId);
     if (!creditBalance || Number(creditBalance.credits) < estimate.estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated chapter composition cost." });
@@ -303,7 +397,7 @@ export const verticalDramaBooksRouter = router({
     return { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document };
   }),
 
-  compose: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  compose: bookProcedure.input(z.object({ bookId: z.number().int().positive(), modelId: z.string().trim().min(1).max(256).optional() })).mutation(async ({ ctx, input }) => {
     const actor = owner(ctx);
     const [book] = await db.select().from(verticalDramaBooks).where(and(
       eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
@@ -327,10 +421,13 @@ export const verticalDramaBooksRouter = router({
       additionalAssetIds: documentAssetSelections(document),
     });
     if (source.sourceContentFingerprint !== book.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode sources changed. Refresh the book before composing." });
-    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(estimateBookChapterInputBytes));
     const selection = book.sourceSelection as { compositionModelId?: unknown; compositionProviderId?: unknown };
-    const modelId = typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined;
-    const preferredProviderId = Number.isSafeInteger(selection.compositionProviderId) ? Number(selection.compositionProviderId) : undefined;
+    const requestedModel = input.modelId ?? (typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined);
+    const model = requestedModel ? await resolveVerticalDramaBookNovelizerModel(requestedModel) : (await listVerticalDramaBookNovelizerModels())[0];
+    if (!model) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled vision model is available for novelization." });
+    const modelId = model.id;
+    const preferredProviderId = model.providerId;
     const estimate = await estimateVerticalDramaBookCompositionCredits({
       chapterCount: document.chapters.length,
       maxInputBytesPerChapter,
@@ -405,6 +502,7 @@ export const verticalDramaBooksRouter = router({
       }
       const selection = { ...book.sourceSelection as Record<string, unknown> };
       delete selection.compositionJobId;
+      delete selection.novelizedChapterId;
       await tx.update(verticalDramaBooks).set({ sourceSelection: selection, updatedAt: new Date() }).where(and(
         eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
       ));
@@ -412,7 +510,7 @@ export const verticalDramaBooksRouter = router({
     return { cancelled: true };
   }),
 
-  retryComposition: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  retryComposition: bookProcedure.input(z.object({ bookId: z.number().int().positive(), modelId: z.string().trim().min(1).max(256).optional() })).mutation(async ({ ctx, input }) => {
     const actor = owner(ctx);
     const [book] = await db.select().from(verticalDramaBooks).where(and(
       eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
@@ -429,10 +527,13 @@ export const verticalDramaBooksRouter = router({
     const remainingChapters = candidateDocument.chapters.filter(chapter => !chapter.blocks.some(block => block.type !== "paragraph" || block.text.trim())).length;
     const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selected.map(Number), additionalAssetIds: documentAssetSelections(candidateDocument) });
     if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode or artwork sources changed. Create a new book from current episodes." });
-    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(episode => Buffer.byteLength(JSON.stringify(episode), "utf8") * 2 + 16_384));
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(estimateBookChapterInputBytes));
     const selection = book.sourceSelection as { compositionModelId?: unknown; compositionProviderId?: unknown };
-    const modelId = typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined;
-    const preferredProviderId = Number.isSafeInteger(selection.compositionProviderId) ? Number(selection.compositionProviderId) : undefined;
+    const requestedModel = input.modelId ?? (typeof selection.compositionModelId === "string" ? selection.compositionModelId : undefined);
+    const model = requestedModel ? await resolveVerticalDramaBookNovelizerModel(requestedModel) : (await listVerticalDramaBookNovelizerModels())[0];
+    if (!model) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled vision model is available for novelization." });
+    const modelId = model.id;
+    const preferredProviderId = model.providerId;
     const estimate = await estimateVerticalDramaBookCompositionCredits({
       chapterCount: remainingChapters,
       maxInputBytesPerChapter,
@@ -456,6 +557,91 @@ export const verticalDramaBooksRouter = router({
       eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
     ));
     return { jobId, revisionId: revision.id, revisionNumber: revision.revisionNumber, estimatedCredits, modelId: estimate.modelId };
+  }),
+
+  reNovelizeChapter: bookProcedure.input(z.object({ bookId: z.number().int().positive(), chapterId: z.string().trim().min(1).max(128), modelId: z.string().trim().min(1).max(256) })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(
+      eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+    )).limit(1);
+    if (!book) notFound();
+    const [base] = await db.select().from(verticalDramaBookRevisions).where(and(
+      eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber),
+    )).limit(1);
+    if (!base || base.status !== "draft") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save or apply the current draft before creating an episode review candidate." });
+    const document = verticalDramaBookDocumentSchema.parse(base.document);
+    const chapter = document.chapters.find(item => item.id === input.chapterId);
+    if (!chapter || chapter.sourceEpisodeIds.length !== 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a chapter linked to one selected episode." });
+    const model = await resolveVerticalDramaBookNovelizerModel(input.modelId);
+    const selected = (book.sourceSelection as { episodeIds?: unknown; imageDensity?: unknown }).episodeIds;
+    const imageDensity = (book.sourceSelection as { imageDensity?: unknown }).imageDensity;
+    if (!Array.isArray(selected) || !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) notFound();
+    const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selected.map(Number), additionalAssetIds: documentAssetSelections(document) });
+    if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== base.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode sources changed. Create a fresh book revision before novelizing again." });
+    const maxInputBytesPerChapter = Math.max(...source.snapshot.episodes.map(estimateBookChapterInputBytes));
+    const estimate = await estimateVerticalDramaBookCompositionCredits({ chapterCount: 1, maxInputBytesPerChapter, modelSelection: { resolvedModelId: model.id, preferredProviderId: model.providerId } });
+    const creditBalance = await getCreditBalance(actor.userId);
+    if (!creditBalance || Number(creditBalance.credits) < estimate.estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for this episode's estimated novelization cost." });
+    const revisionNumber = book.currentRevisionNumber + 1;
+    const [candidate] = await db.insert(verticalDramaBookRevisions).values({
+      ...actor, seriesId: book.seriesId, bookId: book.id, revisionNumber, status: "candidate", schemaVersion: 1,
+      document, sourceSnapshot: source.snapshot, sourceFingerprint: source.fingerprint, documentFingerprint: base.documentFingerprint,
+    }).returning();
+    const jobId = randomUUID();
+    try {
+      await createFeature186VerticalDramaJobRef({
+        jobId, tenantId: actor.tenantId, userId: actor.userId, jobType: "vertical_drama.book.compose", executionClass: "long",
+        idempotencyKey: `vd:book-novelize:${book.id}:${candidate.id}:${input.chapterId}`,
+        activeDedupeKey: `vd:book-compose:active:${actor.tenantId}:${book.id}`,
+        payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: candidate.id, imageDensity, modelId: model.id, preferredProviderId: model.providerId, targetChapterId: input.chapterId },
+      });
+    } catch {
+      await db.delete(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.id, candidate.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId)));
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Episode novelization could not be queued. Please retry." });
+    }
+    await db.update(verticalDramaBooks).set({
+      currentRevisionNumber: revisionNumber,
+      sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId, compositionModelId: model.id, compositionProviderId: model.providerId, estimatedCompositionCredits: estimate.estimatedCredits, novelizedChapterId: input.chapterId },
+      updatedAt: new Date(),
+    }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
+    return { jobId, revisionId: candidate.id, revisionNumber, estimatedCredits: estimate.estimatedCredits, modelId: model.id, chapterId: input.chapterId };
+  }),
+
+  applyNovelizedCandidate: bookProcedure.input(z.object({ bookId: z.number().int().positive(), revisionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.id, input.revisionId), eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber), eq(verticalDramaBookRevisions.status, "candidate"))).limit(1);
+    const jobId = (book.sourceSelection as { compositionJobId?: unknown }).compositionJobId;
+    const [job] = typeof jobId === "string" ? await db.select({ status: workerJobs.status }).from(workerJobs).where(and(eq(workerJobs.id, jobId), eq(workerJobs.tenantId, actor.tenantId), eq(workerJobs.requestedByUserId, actor.userId))).limit(1) : [];
+    if (!revision || job?.status !== "succeeded") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Wait for the episode novelization to finish before applying it." });
+    const selected = (book.sourceSelection as { episodeIds?: unknown }).episodeIds;
+    if (!Array.isArray(selected)) notFound();
+    const candidateDocument = verticalDramaBookDocumentSchema.parse(revision.document);
+    const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selected.map(Number), additionalAssetIds: documentAssetSelections(candidateDocument) });
+    if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode sources changed. Refresh the book before applying this novelization." });
+    await db.update(verticalDramaBookRevisions).set({ status: "draft" }).where(and(eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.status, "candidate")));
+    const nextSelection = { ...book.sourceSelection as Record<string, unknown> };
+    delete nextSelection.novelizedChapterId;
+    await db.update(verticalDramaBooks).set({ sourceSelection: nextSelection, updatedAt: new Date() }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
+    return { revisionId: revision.id, revisionNumber: revision.revisionNumber };
+  }),
+
+  discardNovelizedCandidate: bookProcedure.input(z.object({ bookId: z.number().int().positive(), revisionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId))).limit(1);
+    if (!book) notFound();
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.id, input.revisionId), eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber), eq(verticalDramaBookRevisions.status, "candidate"))).limit(1);
+    const jobId = (book.sourceSelection as { compositionJobId?: unknown }).compositionJobId;
+    const [job] = typeof jobId === "string" ? await db.select({ status: workerJobs.status }).from(workerJobs).where(and(eq(workerJobs.id, jobId), eq(workerJobs.tenantId, actor.tenantId), eq(workerJobs.requestedByUserId, actor.userId))).limit(1) : [];
+    if (!revision || !job || !["succeeded", "failed", "cancelled", "expired"].includes(job.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Wait for the episode novelization to finish before discarding it." });
+    const [previous] = await db.select().from(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, revision.revisionNumber - 1))).limit(1);
+    await db.delete(verticalDramaBookRevisions).where(and(eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.status, "candidate")));
+    const nextSelection = { ...book.sourceSelection as Record<string, unknown> };
+    delete nextSelection.compositionJobId;
+    delete nextSelection.novelizedChapterId;
+    await db.update(verticalDramaBooks).set({ currentRevisionNumber: revision.revisionNumber - 1, ...(previous ? { title: (verticalDramaBookDocumentSchema.parse(previous.document)).metadata.title, metadata: (verticalDramaBookDocumentSchema.parse(previous.document)).metadata } : {}), sourceSelection: nextSelection, updatedAt: new Date() }).where(and(eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId)));
+    return { discarded: true };
   }),
 
   export: bookProcedure.input(z.object({

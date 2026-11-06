@@ -1,22 +1,50 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import fs from "node:fs";
+import path from "node:path";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { verticalDramaBookRevisions } from "../../drizzle/schema";
+import { llmProviders, mediaAssets, modelProviderMap, verticalDramaBookRevisions } from "../../drizzle/schema";
 import { verticalDramaBookDocumentSchema, type VerticalDramaBookDocument } from "../../shared/verticalDramaSeries/bookDocument";
+import type { MessageContent } from "../_core/llm";
 import { db } from "../db";
 import { calculateCreditsForLLMDynamic, createCreditReservation, refundReservation } from "./creditService";
 import { callLLMStructured } from "./callLLMStructured";
-import { resolveStructuredAutoChatModelSelection } from "./chatModelSelection";
 import { fingerprintBookSource } from "./verticalDramaBookSnapshot";
+import { storageReadBuffer } from "../storage";
+import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 
 const chapterOutputSchema = z.object({
-  passages: z.array(z.object({
-    shotNumber: z.number().int().min(0),
-    prose: z.string().trim().min(1).max(5000),
-    dialogue: z.array(z.object({ speaker: z.string().trim().max(300).nullable(), text: z.string().trim().min(1).max(2000) })).max(80).default([]),
-  }).strict()).min(1).max(100),
+  blocks: z.array(z.discriminatedUnion("type", [
+    z.object({ type: z.literal("paragraph"), sourceShotNumbers: z.array(z.number().int().min(0)).min(1).max(9), text: z.string().trim().min(1).max(8000) }).strict(),
+    z.object({ type: z.literal("dialogue"), sourceShotNumbers: z.array(z.number().int().min(0)).min(1).max(9), speaker: z.string().trim().max(300).nullable(), text: z.string().trim().min(1).max(2000) }).strict(),
+    z.object({ type: z.literal("scene_break"), sourceShotNumbers: z.array(z.number().int().min(0)).min(1).max(9) }).strict(),
+  ])).min(1).max(120),
 }).strict();
+
+export type VerticalDramaBookNovelizerModel = { id: string; name: string; providerId: number };
+
+export async function listVerticalDramaBookNovelizerModels(): Promise<VerticalDramaBookNovelizerModel[]> {
+  const rows = await db.select({
+    modelId: modelProviderMap.modelId,
+    modelName: modelProviderMap.modelName,
+    providerId: llmProviders.id,
+    providerName: llmProviders.providerName,
+    providerDisplayName: llmProviders.displayName,
+    supportsVision: modelProviderMap.supportsVision,
+  }).from(modelProviderMap).innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id)).where(and(
+    eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true),
+  )).orderBy(modelProviderMap.priority, modelProviderMap.id);
+  const visionPatterns = ["gpt-4o", "gpt-4-vision", "gpt-4-turbo", "gpt-5", "claude-3", "claude-sonnet", "claude-opus", "gemini", "qwen-vl"];
+  return rows.filter(row => row.supportsVision || [row.modelId, row.modelName].some(value => visionPatterns.some(pattern => value.toLowerCase().includes(pattern))))
+    .map(row => ({ id: row.modelId.includes("/") ? row.modelId : `${row.providerName}/${row.modelId}`, name: `${row.modelName} · ${row.providerDisplayName}`, providerId: row.providerId }));
+}
+
+export async function resolveVerticalDramaBookNovelizerModel(modelId: string): Promise<VerticalDramaBookNovelizerModel> {
+  const match = (await listVerticalDramaBookNovelizerModels()).find(model => model.id === modelId);
+  if (!match) throw new Error("BOOK_NOVELIZER_MODEL_UNAVAILABLE");
+  return match;
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -32,12 +60,19 @@ function shotDescription(payload: Record<string, unknown>, shotNumber: number): 
   return typeof shot?.description === "string" ? shot.description.slice(0, 3000) : "";
 }
 
-const COMPOSITION_SYSTEM_PROMPT = [
-  "You are composing one chapter of an illustrated novel from an author's selected vertical-drama source.",
-  "Write readable prose and dialogue in the source language. Preserve event order and facts. Do not invent actions, backstory, motives, relationships, or resolution.",
-  "Return one prose passage for each supplied shot, in source order, and retain dialogue meaning and known speaker names.",
-  "Do not expose shot numbers as headings. Use shot numbers only in the structured passage references.",
-].join(" ");
+let cachedNovelizerPrompt: string | null = null;
+function loadNovelizerPrompt(): string {
+  if (cachedNovelizerPrompt) return cachedNovelizerPrompt;
+  for (const directory of resolveSkillDirCandidates(path.join("skills", "vertical-drama-book-novelizer"))) {
+    const manifestPath = resolveSkillManifestPath(directory);
+    if (!manifestPath || !fs.existsSync(manifestPath)) continue;
+    const raw = fs.readFileSync(manifestPath, "utf8");
+    cachedNovelizerPrompt = raw.replace(/^---[\s\S]*?---\s*/, "").trim();
+    if (cachedNovelizerPrompt) return cachedNovelizerPrompt;
+  }
+  throw new Error("BOOK_NOVELIZER_SKILL_UNAVAILABLE");
+}
+
 type CompositionModelSelection = { resolvedModelId: string; preferredProviderId?: number; resolvedProviderId?: number };
 
 function buildChapterUserMessage(source: Record<string, unknown>, payload: Record<string, unknown>, shots: Array<Record<string, unknown>>): string {
@@ -60,7 +95,11 @@ export async function estimateVerticalDramaBookCompositionCredits(input: {
   maxInputBytesPerChapter?: number;
   modelSelection?: CompositionModelSelection;
 }) {
-  const selection = input.modelSelection ?? await resolveStructuredAutoChatModelSelection();
+  const selection = input.modelSelection ?? await (async () => {
+    const first = (await listVerticalDramaBookNovelizerModels())[0];
+    if (!first) throw new Error("BOOK_NOVELIZER_MODEL_UNAVAILABLE");
+    return { resolvedModelId: first.id, preferredProviderId: first.providerId };
+  })();
   const inputTokensCeiling = input.maxInputBytesPerChapter ?? 64 * 1024;
   const providerId = selection.preferredProviderId ?? selection.resolvedProviderId;
   const oneAttempt = await calculateCreditsForLLMDynamic(inputTokensCeiling, 7000, selection.resolvedModelId, providerId);
@@ -81,6 +120,7 @@ export async function composeVerticalDramaBookRevision(input: {
   imageDensity: "none" | "chapter_openers" | "occasional" | "all_shots";
   modelId?: string;
   preferredProviderId?: number | null;
+  targetChapterId?: string;
   onProgress?: (progress: { completedChapters: number; totalChapters: number; chapterTitle: string }) => Promise<void>;
 }) {
   const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(
@@ -99,15 +139,19 @@ export async function composeVerticalDramaBookRevision(input: {
   const mutableChapters = initial.chapters.map(chapter => ({ ...chapter, blocks: [...chapter.blocks] }));
   const density = input.imageDensity;
   const assetChecksums = new Map(asArray(source.assets).map(asset => [Number(asset.mediaAssetId), String(asset.checksum)]));
-  const modelSelection = input.modelId
-    ? { resolvedModelId: input.modelId, preferredProviderId: input.preferredProviderId ?? undefined }
-    : await resolveStructuredAutoChatModelSelection();
+  const model = input.modelId
+    ? await resolveVerticalDramaBookNovelizerModel(input.modelId)
+    : (await listVerticalDramaBookNovelizerModels())[0];
+  if (!model) throw new Error("BOOK_NOVELIZER_MODEL_UNAVAILABLE");
+  const modelSelection = { resolvedModelId: model.id, preferredProviderId: model.providerId };
 
+  let completedChapters = 0;
   for (let index = 0; index < sourceEpisodes.length; index += 1) {
     const episode = sourceEpisodes[index];
     const chapter = mutableChapters[index];
+    if (input.targetChapterId && chapter.id !== input.targetChapterId) continue;
     const existingContent = chapter.blocks.some(block => block.type !== "paragraph" || block.text.trim().length > 0);
-    if (existingContent) continue;
+    if (!input.targetChapterId && existingContent) continue;
     const payload = asRecord(episode.payload);
     const pinnedShots = asArray(episode.shots);
     const shots = pinnedShots.length > 0
@@ -115,8 +159,29 @@ export async function composeVerticalDramaBookRevision(input: {
       : [{ shotNumber: 0, mediaAssetId: null, locator: `episode:${Number(episode.episodeId)}/script` }];
     const episodeId = Number(episode.episodeId);
     const revisionFingerprint = String(episode.revisionFingerprint);
-    const userMessage = buildChapterUserMessage(source, payload, shots);
-    const inputBytes = Buffer.byteLength(COMPOSITION_SYSTEM_PROMPT, "utf8") + Buffer.byteLength(userMessage, "utf8");
+    const userPrompt = buildChapterUserMessage(source, payload, shots);
+    const sourceAssetIds = [...new Set(shots.map(shot => Number(shot.mediaAssetId)).filter(id => Number.isSafeInteger(id) && id > 0))].slice(0, 9);
+    const imageRowsUnordered = sourceAssetIds.length ? await db.select({ id: mediaAssets.id, storageKey: mediaAssets.storageKey, mimeType: mediaAssets.mimeType, status: mediaAssets.status, checksum: mediaAssets.checksumSha256 })
+      .from(mediaAssets).where(and(eq(mediaAssets.tenantId, input.tenantId), eq(mediaAssets.userId, input.userId), inArray(mediaAssets.id, sourceAssetIds))) : [];
+    const imageOrder = new Map(sourceAssetIds.map((id, order) => [id, order]));
+    const imageRows = imageRowsUnordered.sort((left, right) => (imageOrder.get(left.id) ?? 0) - (imageOrder.get(right.id) ?? 0));
+    const imageParts: MessageContent[] = [];
+    const attachedAssetIds = new Set<number>();
+    let imageBytes = 0;
+    for (const row of imageRows) {
+      if (row.status !== "ready" || !row.mimeType.startsWith("image/") || assetChecksums.get(row.id) !== row.checksum) continue;
+      const bytes = await storageReadBuffer(row.storageKey);
+      if (!bytes || bytes.length > 4 * 1024 * 1024 || imageBytes + bytes.length > 12 * 1024 * 1024) continue;
+      imageBytes += bytes.length;
+      imageParts.push({ type: "image_url", image_url: { url: `data:${row.mimeType};base64,${bytes.toString("base64")}`, detail: "low" } });
+      attachedAssetIds.add(row.id);
+    }
+    const imageLabels = attachedAssetIds.size ? imageRows.filter(row => attachedAssetIds.has(row.id)).map(row => `Authorized episode shot image asset ${row.id}.`).join(" ") : "No source images could be attached.";
+    const userMessage: MessageContent[] = [
+      { type: "text", text: `${userPrompt}\n\nAttached images are ordered by the media asset IDs referenced in the source shot records. ${imageLabels} Use visible evidence conservatively.` },
+      ...imageParts,
+    ];
+    const inputBytes = Buffer.byteLength(loadNovelizerPrompt(), "utf8") + Buffer.byteLength(userPrompt, "utf8") + imageParts.length * 8192;
     const inputTokensCeiling = inputBytes + 4096;
     const attemptsCeiling = 2;
     const priceSafetyMultiplier = 2;
@@ -128,14 +193,14 @@ export async function composeVerticalDramaBookRevision(input: {
       input.userId,
       reservationAmount,
       "chat",
-      { feature: "326", bookId: input.bookId, revisionId: input.revisionId, chapterId: chapter.id, model: modelSelection.resolvedModelId, inputBytes, maxOutputTokens: 7000, maxAttempts: attemptsCeiling },
+      { feature: "326", bookId: input.bookId, revisionId: input.revisionId, chapterId: chapter.id, model: modelSelection.resolvedModelId, inputBytes, maxOutputTokens: 7000, maxAttempts: attemptsCeiling, skillSlug: "vertical-drama-book-novelizer", sourceImageCount: imageParts.length },
       `vd-book-compose:${input.tenantId}:${input.bookId}:${input.revisionId}:${chapter.id}:${randomUUID()}`,
       { tenantId: input.tenantId, description: "Vertical drama book chapter composition reservation" },
     );
     let result;
     try {
       result = await callLLMStructured({
-      systemPrompt: COMPOSITION_SYSTEM_PROMPT,
+      systemPrompt: loadNovelizerPrompt(),
       userMessage,
       model: modelSelection.resolvedModelId,
       preferredProviderId: modelSelection.preferredProviderId,
@@ -149,6 +214,7 @@ export async function composeVerticalDramaBookRevision(input: {
       billingDescription: "vertical drama book chapter composition",
       billingMetadata: {
         feature: "326",
+        skillSlug: "vertical-drama-book-novelizer",
         bookId: input.bookId,
         revisionId: input.revisionId,
         chapterId: chapter.id,
@@ -160,30 +226,38 @@ export async function composeVerticalDramaBookRevision(input: {
       await refundReservation(reservation.reservationId);
     }
     const expectedShotNumbers = new Set(shots.map(shot => Number(shot.shotNumber)));
-    const actualShotNumbers = result.data.passages.map(passage => passage.shotNumber);
-    if (new Set(actualShotNumbers).size !== actualShotNumbers.length || actualShotNumbers.length !== expectedShotNumbers.size || actualShotNumbers.some(number => !expectedShotNumbers.has(number))) {
-      throw new Error("BOOK_COMPOSITION_PASSAGE_SET_INVALID");
+    const referencedShotNumbers = new Set(result.data.blocks.flatMap(block => block.sourceShotNumbers));
+    if ([...expectedShotNumbers].some(number => !referencedShotNumbers.has(number)) || [...referencedShotNumbers].some(number => !expectedShotNumbers.has(number))) {
+      throw new Error("BOOK_COMPOSITION_SOURCE_COVERAGE_INVALID");
     }
-    const passages = new Map(result.data.passages.map(passage => [passage.shotNumber, passage]));
     const blocks: VerticalDramaBookDocument["chapters"][number]["blocks"] = [];
+    const shotByNumber = new Map(shots.map(shot => [Number(shot.shotNumber), shot]));
+    result.data.blocks.forEach((block, blockIndex) => {
+      const sourceRefs = block.sourceShotNumbers.map(shotNumber => {
+        const shot = shotByNumber.get(shotNumber);
+        if (!shot) throw new Error("BOOK_COMPOSITION_SOURCE_COVERAGE_INVALID");
+        return { episodeId, episodeRevisionId: episode.episodeRevisionId == null ? null : Number(episode.episodeRevisionId), locator: typeof shot.locator === "string" ? shot.locator : `episode:${episodeId}/shot:${shotNumber}`, sourceHash: revisionFingerprint };
+      });
+      if (block.type === "scene_break") {
+        blocks.push({ id: `${chapter.id}-scene-${blockIndex + 1}`, type: "scene_break", sourceRefs });
+        return;
+      }
+      blocks.push(block.type === "paragraph"
+        ? { id: `${chapter.id}-narrative-${blockIndex + 1}`, type: "paragraph", text: block.text, sourceRefs }
+        : { id: `${chapter.id}-dialogue-${blockIndex + 1}`, type: "dialogue", speaker: block.speaker, text: block.text, sourceRefs });
+    });
     for (const shot of shots) {
       const shotNumber = Number(shot.shotNumber);
-      const passage = passages.get(shotNumber);
-      if (!passage) throw new Error("BOOK_COMPOSITION_PASSAGE_MISSING");
-      const locator = typeof shot.locator === "string" ? shot.locator : `episode:${episodeId}/shot:${shotNumber}`;
-      const sourceRef = { episodeId, episodeRevisionId: episode.episodeRevisionId == null ? null : Number(episode.episodeRevisionId), locator, sourceHash: revisionFingerprint };
-      blocks.push({ id: `${chapter.id}-shot-${shotNumber}-prose`, type: "paragraph", text: passage.prose, sourceRefs: [sourceRef] });
-      passage.dialogue.forEach((line, lineIndex) => blocks.push({
-        id: `${chapter.id}-shot-${shotNumber}-dialogue-${lineIndex + 1}`,
-        type: "dialogue",
-        speaker: line.speaker,
-        text: line.text,
-        sourceRefs: [sourceRef],
-      }));
       const mediaAssetId = Number(shot.mediaAssetId);
       const checksum = assetChecksums.get(mediaAssetId);
       const includeImage = shotNumber > 0 && (density === "all_shots" || (density === "chapter_openers" && shotNumber === Number(shots[0]?.shotNumber)) || (density === "occasional" && shotNumber % 3 === 1));
       if (includeImage && Number.isSafeInteger(mediaAssetId) && mediaAssetId > 0 && checksum) {
+        const sourceRef = {
+          episodeId,
+          episodeRevisionId: episode.episodeRevisionId == null ? null : Number(episode.episodeRevisionId),
+          locator: typeof shot.locator === "string" ? shot.locator : `episode:${episodeId}/shot:${shotNumber}`,
+          sourceHash: revisionFingerprint,
+        };
         blocks.push({
           id: `${chapter.id}-shot-${shotNumber}-illustration`,
           type: "illustration",
@@ -202,12 +276,13 @@ export async function composeVerticalDramaBookRevision(input: {
     await db.update(verticalDramaBookRevisions).set({ document: partialDocument }).where(and(
       eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, input.tenantId), eq(verticalDramaBookRevisions.userId, input.userId), eq(verticalDramaBookRevisions.status, "candidate"),
     ));
-    await input.onProgress?.({ completedChapters: index + 1, totalChapters: sourceEpisodes.length, chapterTitle: chapter.title });
+    completedChapters += 1;
+    await input.onProgress?.({ completedChapters, totalChapters: input.targetChapterId ? 1 : sourceEpisodes.length, chapterTitle: chapter.title });
   }
 
   const document = verticalDramaBookDocumentSchema.parse({ ...initial, chapters: mutableChapters });
   const documentFingerprint = fingerprintBookSource(document);
-  await db.update(verticalDramaBookRevisions).set({ document, documentFingerprint, status: "draft" }).where(and(
+  await db.update(verticalDramaBookRevisions).set({ document, documentFingerprint, status: input.targetChapterId ? "candidate" : "draft" }).where(and(
     eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, input.tenantId), eq(verticalDramaBookRevisions.userId, input.userId), eq(verticalDramaBookRevisions.status, "candidate"),
   ));
   return { revisionId: revision.id, documentFingerprint, chapterCount: document.chapters.length };

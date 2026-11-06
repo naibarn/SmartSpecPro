@@ -44,6 +44,7 @@ export function VerticalDramaBookStudio({
   const booksQuery = trpc.verticalDramaBooks.list.useQuery({ seriesId: numericSeriesId });
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
   const [compositionJobId, setCompositionJobId] = useState<string | null>(null);
+  const [coverJobId, setCoverJobId] = useState<string | null>(null);
   const jobQuery = trpc.workerJobs.detail.useQuery(
     { jobId: compositionJobId ?? "" },
     {
@@ -54,6 +55,10 @@ export function VerticalDramaBookStudio({
       },
     },
   );
+  const coverJobQuery = trpc.workerJobs.detail.useQuery({ jobId: coverJobId ?? "" }, {
+    enabled: Boolean(coverJobId),
+    refetchInterval: query => ["succeeded", "failed", "cancelled", "expired"].includes(String((query.state.data as any)?.status ?? "")) ? false : 1500,
+  });
   const bookQuery = trpc.verticalDramaBooks.get.useQuery(
     { bookId: selectedBookId ?? 0 },
     {
@@ -62,7 +67,8 @@ export function VerticalDramaBookStudio({
         const exports = (query.state.data as any)?.exports ?? [];
         const exporting = exports.some((item: any) => ["queued", "running", "validating"].includes(item.status));
         const composing = Boolean(compositionJobId && !["succeeded", "failed", "cancelled", "expired"].includes((jobQuery.data as any)?.status));
-        return exporting || composing ? 2500 : false;
+        const generatingCover = Boolean(coverJobId && !["succeeded", "failed", "cancelled", "expired"].includes(String((coverJobQuery.data as any)?.status ?? "")));
+        return exporting || composing || generatingCover ? 2500 : false;
       },
     },
   );
@@ -75,7 +81,11 @@ export function VerticalDramaBookStudio({
   const [density, setDensity] = useState<"none" | "chapter_openers" | "occasional" | "all_shots">("occasional");
   const [coverAssetId, setCoverAssetId] = useState<string>("");
   const [coverAltText, setCoverAltText] = useState("");
+  const [novelizerModelId, setNovelizerModelId] = useState("");
+  const [coverModelId, setCoverModelId] = useState("");
   const [document, setDocument] = useState<BookDocument | null>(null);
+  const novelizerModelsQuery = trpc.verticalDramaBooks.novelizerModels.useQuery(undefined, { staleTime: 60_000 });
+  const coverModelsQuery = trpc.verticalDramaBooks.coverModels.useQuery(undefined, { staleTime: 60_000 });
   const availableAssetsQuery = trpc.verticalDramaBooks.availableAssets.useQuery(
     { seriesId: numericSeriesId, episodeIds: selectedEpisodeIds },
     { enabled: selectedEpisodeIds.length > 0 },
@@ -93,6 +103,10 @@ export function VerticalDramaBookStudio({
     if (jobId) setCompositionJobId(jobId);
     const episodeIds = (bookQuery.data?.book.sourceSelection as { episodeIds?: unknown } | undefined)?.episodeIds;
     if (Array.isArray(episodeIds)) setSelectedEpisodeIds(episodeIds.map(Number));
+    const coverModel = (bookQuery.data?.book.sourceSelection as { coverModelId?: unknown } | undefined)?.coverModelId;
+    if (typeof coverModel === "string") setCoverModelId(coverModel);
+    const coverJob = (bookQuery.data?.book.sourceSelection as { coverJobId?: unknown } | undefined)?.coverJobId;
+    if (typeof coverJob === "string") setCoverJobId(coverJob);
   }, [activeRevision?.id, bookQuery.data?.book.sourceSelection]);
 
   const createMutation = trpc.verticalDramaBooks.create.useMutation({
@@ -108,6 +122,9 @@ export function VerticalDramaBookStudio({
       void bookQuery.refetch();
     },
   });
+  const reNovelizeMutation = trpc.verticalDramaBooks.reNovelizeChapter.useMutation({ onSuccess: result => { setCompositionJobId(result.jobId); void bookQuery.refetch(); } });
+  const applyCandidateMutation = trpc.verticalDramaBooks.applyNovelizedCandidate.useMutation({ onSuccess: () => void bookQuery.refetch() });
+  const discardCandidateMutation = trpc.verticalDramaBooks.discardNovelizedCandidate.useMutation({ onSuccess: result => { if (result.discarded) setCompositionJobId(null); void bookQuery.refetch(); } });
   const cancelCompositionMutation = trpc.verticalDramaBooks.cancelComposition.useMutation({ onSuccess: () => void bookQuery.refetch() });
   const retryCompositionMutation = trpc.verticalDramaBooks.retryComposition.useMutation({ onSuccess: result => { setCompositionJobId(result.jobId); void bookQuery.refetch(); } });
   const saveMutation = trpc.verticalDramaBooks.saveRevision.useMutation({
@@ -119,12 +136,40 @@ export function VerticalDramaBookStudio({
   const exportMutation = trpc.verticalDramaBooks.export.useMutation({ onSettled: () => void bookQuery.refetch() });
   const downloadMutation = trpc.verticalDramaBooks.download.useMutation();
   const cancelExportMutation = trpc.verticalDramaBooks.cancelExport.useMutation({ onSuccess: () => void bookQuery.refetch() });
+  const coverMutation = trpc.verticalDramaBooks.generateCover.useMutation({ onSuccess: result => { setCoverJobId(result.jobId); void bookQuery.refetch(); } });
+  const cancelCoverMutation = trpc.verticalDramaBooks.cancelCoverGeneration.useMutation({ onSuccess: () => void bookQuery.refetch() });
 
   const currentBooks = booksQuery.data ?? [];
   const currentDocument = document;
-  const compositionQuote = bookQuery.data?.book.sourceSelection as { estimatedCompositionCredits?: unknown; compositionModelId?: unknown } | undefined;
+  const isReviewCandidate = activeRevision?.status === "candidate";
+  const previousRevisionDocument = isReviewCandidate ? bookQuery.data?.revisions?.[1]?.document as BookDocument | undefined : undefined;
+  const persistedCoverDocument = activeRevision?.document as BookDocument | undefined;
+  const coverTextUnsaved = Boolean(currentDocument && persistedCoverDocument && (
+    currentDocument.metadata.title !== persistedCoverDocument.metadata.title ||
+    currentDocument.metadata.author !== persistedCoverDocument.metadata.author ||
+    currentDocument.metadata.subtitle !== persistedCoverDocument.metadata.subtitle
+  ));
+  const compositionQuote = bookQuery.data?.book.sourceSelection as { estimatedCompositionCredits?: unknown; compositionModelId?: unknown; novelizedChapterId?: unknown } | undefined;
+  useEffect(() => {
+    const storedModel = typeof compositionQuote?.compositionModelId === "string" ? compositionQuote.compositionModelId : "";
+    if (storedModel && novelizerModelsQuery.data?.models.some(model => model.id === storedModel)) setNovelizerModelId(storedModel);
+    else if (novelizerModelsQuery.data?.models[0]) setNovelizerModelId(novelizerModelsQuery.data.models[0].id);
+  }, [selectedBookId, novelizerModelsQuery.data]);
+  const novelizationQuoteQuery = trpc.verticalDramaBooks.quoteNovelization.useQuery(
+    { bookId: selectedBookId ?? 0, modelId: novelizerModelId },
+    { enabled: Boolean(selectedBookId && novelizerModelId), staleTime: 30_000 },
+  );
+  const coverQuoteQuery = trpc.verticalDramaBooks.quoteCoverGeneration.useQuery(
+    { bookId: selectedBookId ?? 0, modelId: coverModelId },
+    { enabled: Boolean(selectedBookId && coverModelId), staleTime: 30_000 },
+  );
+  useEffect(() => {
+    if (!coverModelId && coverModelsQuery.data?.models[0]) setCoverModelId(coverModelsQuery.data.models[0].id);
+  }, [coverModelId, coverModelsQuery.data]);
   const jobStatus = (jobQuery.data as any)?.status as string | undefined;
   const isComposing = Boolean(compositionJobId && !["succeeded", "failed", "cancelled", "expired"].includes(jobStatus ?? ""));
+  const coverJobStatus = (coverJobQuery.data as any)?.status as string | undefined;
+  const isGeneratingCover = Boolean(coverJobId && !["succeeded", "failed", "cancelled", "expired"].includes(coverJobStatus ?? ""));
   const statusText = useMemo(() => {
     if (booksQuery.isLoading) return lang === "th" ? "กำลังโหลดหนังสือ…" : "Loading books…";
     if (booksQuery.error) return lang === "th" ? "โหลดหนังสือไม่สำเร็จ ลองใหม่อีกครั้ง" : "Could not load books. Try again.";
@@ -230,7 +275,7 @@ export function VerticalDramaBookStudio({
         {statusText ? <p role={booksQuery.error ? "alert" : undefined}>{statusText}</p> : null}
         <HStack gap={2} wrap="wrap" aria-label={lang === "th" ? "รายการหนังสือ" : "Book list"}>
           {currentBooks.map(book => (
-            <Button key={book.id} variant={selectedBookId === book.id ? "default" : "outline"} onClick={() => setSelectedBookId(book.id)}>
+            <Button key={book.id} variant={selectedBookId === book.id ? "default" : "outline"} onClick={() => { setCompositionJobId(null); setCoverJobId(null); setDocument(null); setSelectedBookId(book.id); }}>
               {book.title}
             </Button>
           ))}
@@ -328,13 +373,13 @@ export function VerticalDramaBookStudio({
       {selectedBookId && bookQuery.data && currentDocument ? (
         <VStack as="article" gap={4} aria-label={currentDocument.metadata.title}>
           {bookQuery.data.book.stale ? <p role="alert" className="text-sm text-destructive">{lang === "th" ? "แหล่งข้อมูลต้นฉบับเปลี่ยนแปลงแล้ว กรุณาสร้างฉบับใหม่จากตอนปัจจุบันก่อนอนุมัติ" : "Source episodes changed. Create a fresh book revision from the current episodes before approval."}</p> : null}
-          {!readOnly && activeRevision?.status !== "approved" ? <VStack as="section" gap={2} aria-label={lang === "th" ? "ข้อมูลหนังสือ" : "Book metadata"}>
+          {!readOnly && activeRevision?.status === "draft" ? <VStack as="section" gap={2} aria-label={lang === "th" ? "ข้อมูลหนังสือ" : "Book metadata"}>
             <Label htmlFor="book-editor-title">{lang === "th" ? "ชื่อหนังสือ" : "Book title"}</Label>
-            <Input id="book-editor-title" value={currentDocument.metadata.title} maxLength={255} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, title: event.target.value } } : current)} />
+            <Input id="book-editor-title" value={currentDocument.metadata.title} maxLength={255} disabled={isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, title: event.target.value } } : current)} />
             <Label htmlFor="book-editor-subtitle">{lang === "th" ? "คำโปรยรอง" : "Subtitle"}</Label>
-            <Input id="book-editor-subtitle" value={String(currentDocument.metadata.subtitle ?? "")} maxLength={255} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, subtitle: event.target.value || null } } : current)} />
+            <Input id="book-editor-subtitle" value={String(currentDocument.metadata.subtitle ?? "")} maxLength={255} disabled={isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, subtitle: event.target.value || null } } : current)} />
             <Label htmlFor="book-editor-author">{lang === "th" ? "ชื่อผู้เขียน" : "Author"}</Label>
-            <Input id="book-editor-author" value={currentDocument.metadata.author} maxLength={255} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, author: event.target.value } } : current)} />
+            <Input id="book-editor-author" value={currentDocument.metadata.author} maxLength={255} disabled={isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, author: event.target.value } } : current)} />
             <Label htmlFor="book-editor-description">{lang === "th" ? "คำอธิบายหนังสือ" : "Description"}</Label>
             <Textarea id="book-editor-description" rows={3} maxLength={5000} value={String(currentDocument.metadata.description ?? "")} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, description: event.target.value || null } } : current)} />
             <Label htmlFor="book-editor-copyright">{lang === "th" ? "ข้อความลิขสิทธิ์" : "Copyright page text"}</Label>
@@ -346,12 +391,25 @@ export function VerticalDramaBookStudio({
               {isComposing ? (lang === "th" ? "กำลังเรียบเรียงบท…" : "Composing chapters…") : jobStatus === "failed" ? (lang === "th" ? "เรียบเรียงไม่สำเร็จ" : "Composition failed") : (activeRevision?.status ?? "draft")}
             </p>
             {!readOnly && isComposing ? <Button type="button" variant="outline" onClick={() => cancelCompositionMutation.mutate({ bookId: selectedBookId })} disabled={cancelCompositionMutation.isPending}>{lang === "th" ? "ยกเลิกการเรียบเรียง" : "Cancel composition"}</Button> : null}
-            {!readOnly && activeRevision?.status === "candidate" && ["failed", "cancelled", "expired"].includes(jobStatus ?? "") ? <Button type="button" variant="outline" onClick={() => retryCompositionMutation.mutate({ bookId: selectedBookId })} disabled={retryCompositionMutation.isPending || bookQuery.data.book.stale}>{lang === "th" ? "ลองเรียบเรียงต่อ" : "Retry composition"}</Button> : null}
+            {!readOnly && activeRevision?.status === "candidate" && !compositionQuote?.novelizedChapterId && ["failed", "cancelled", "expired"].includes(jobStatus ?? "") ? <Button type="button" variant="outline" onClick={() => retryCompositionMutation.mutate({ bookId: selectedBookId, modelId: novelizerModelId || undefined })} disabled={retryCompositionMutation.isPending || bookQuery.data.book.stale}>{lang === "th" ? "ลองเรียบเรียงต่อ" : "Retry composition"}</Button> : null}
+            {!readOnly && isReviewCandidate && jobStatus === "succeeded" ? <>
+              <Button type="button" onClick={() => applyCandidateMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id })} disabled={applyCandidateMutation.isPending}>{lang === "th" ? "ใช้ฉบับใหม่นี้" : "Apply this version"}</Button>
+              <Button type="button" variant="outline" onClick={() => discardCandidateMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id })} disabled={discardCandidateMutation.isPending}>{lang === "th" ? "เก็บฉบับเดิม" : "Keep previous version"}</Button>
+            </> : null}
+            {!readOnly && isReviewCandidate && ["failed", "cancelled", "expired"].includes(jobStatus ?? "") ? <Button type="button" variant="outline" onClick={() => discardCandidateMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id })} disabled={discardCandidateMutation.isPending}>{lang === "th" ? "กลับไปฉบับเดิม" : "Return to previous version"}</Button> : null}
           </HStack>
-          {retryCompositionMutation.error ? <p role="alert" className="text-sm text-destructive">{retryCompositionMutation.error.message}</p> : null}
+          {retryCompositionMutation.error || reNovelizeMutation.error || applyCandidateMutation.error || discardCandidateMutation.error ? <p role="alert" className="text-sm text-destructive">{retryCompositionMutation.error?.message ?? reNovelizeMutation.error?.message ?? applyCandidateMutation.error?.message ?? discardCandidateMutation.error?.message}</p> : null}
           {currentDocument.chapters.map(chapter => (
             <VStack key={chapter.id} as="section" gap={3} aria-label={chapter.title}>
-              {!readOnly && activeRevision?.status !== "approved" ? <HStack gap={2} wrap="wrap">
+              {isReviewCandidate && previousRevisionDocument ? <details><summary>{lang === "th" ? "เปรียบเทียบกับฉบับก่อนหน้า" : "Compare with previous version"}</summary><VStack gap={2}>{(previousRevisionDocument.chapters.find(item => item.id === chapter.id)?.blocks ?? []).filter((block: any) => block.type === "paragraph" || block.type === "dialogue").map((block: any) => <p key={block.id}>{block.type === "dialogue" && block.speaker ? <strong>{block.speaker}: </strong> : null}{block.text}</p>)}</VStack></details> : null}
+              <VStack as="article" gap={2} aria-label={lang === "th" ? `ตัวอย่างการอ่าน ${chapter.title}` : `Reading preview: ${chapter.title}`}>
+                <h4 className="font-semibold">{chapter.title}</h4>
+                {chapter.blocks.map((block: any) => block.type === "paragraph" ? <p key={block.id}>{block.text}</p> : block.type === "dialogue" ? <p key={block.id}>{block.speaker ? <strong>{block.speaker}: </strong> : null}{block.text}</p> : block.type === "scene_break" ? <p aria-label={lang === "th" ? "จุดเปลี่ยนฉาก" : "Scene break"} key={block.id}>＊ ＊ ＊</p> : block.type === "illustration" ? <img key={block.id} src={availableAssetsQuery.data?.assets.find(asset => asset.mediaAssetId === block.mediaAssetId)?.url ?? ""} alt={block.decorative ? "" : block.altText} loading="lazy" /> : null)}
+              </VStack>
+              {!readOnly && activeRevision?.status === "draft" ? <HStack gap={2} wrap="wrap">
+                <Button type="button" variant="outline" size="sm" onClick={() => reNovelizeMutation.mutate({ bookId: selectedBookId, chapterId: chapter.id, modelId: novelizerModelId })} disabled={isComposing || !novelizerModelId || bookQuery.data.book.stale || reNovelizeMutation.isPending}>{lang === "th" ? "แปลงตอนนี้ใหม่" : "Re-novelize this episode"}</Button>
+              </HStack> : null}
+              {!readOnly && activeRevision?.status === "draft" ? <HStack gap={2} wrap="wrap">
                 <Button type="button" variant="outline" size="sm" aria-label={lang === "th" ? "เลื่อนบทขึ้น" : "Move chapter up"} disabled={currentDocument.chapters[0].id === chapter.id} onClick={() => reorderChapter(chapter.id, -1)}>↑</Button>
                 <Button type="button" variant="outline" size="sm" aria-label={lang === "th" ? "เลื่อนบทลง" : "Move chapter down"} disabled={currentDocument.chapters.at(-1)?.id === chapter.id} onClick={() => reorderChapter(chapter.id, 1)}>↓</Button>
                 <Button type="button" variant="outline" size="sm" disabled={chapter.blocks.length < 2} onClick={() => splitChapter(chapter.id)}>{lang === "th" ? "แยกบท" : "Split chapter"}</Button>
@@ -359,9 +417,9 @@ export function VerticalDramaBookStudio({
                 <Button type="button" variant="outline" size="sm" onClick={() => addChapterBlock(chapter.id, "paragraph")}>{lang === "th" ? "เพิ่มย่อหน้า" : "Add paragraph"}</Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => addChapterBlock(chapter.id, "scene_break")}>{lang === "th" ? "เพิ่มจุดเปลี่ยนฉาก" : "Add scene break"}</Button>
               </HStack> : null}
-              <Label htmlFor={`chapter-title-${chapter.id}`}>{lang === "th" ? "ชื่อบท" : "Chapter title"}</Label>
-              <Input id={`chapter-title-${chapter.id}`} value={chapter.title} disabled={readOnly || isComposing || activeRevision?.status === "approved"} onChange={event => setDocument(current => current ? { ...current, chapters: current.chapters.map(item => item.id === chapter.id ? { ...item, title: event.target.value } : item) } : current)} />
-              {chapter.blocks.map(block => block.type === "paragraph" || block.type === "dialogue" ? (
+              {activeRevision?.status === "draft" ? <><Label htmlFor={`chapter-title-${chapter.id}`}>{lang === "th" ? "ชื่อบท" : "Chapter title"}</Label>
+              <Input id={`chapter-title-${chapter.id}`} value={chapter.title} disabled={readOnly || isComposing} onChange={event => setDocument(current => current ? { ...current, chapters: current.chapters.map(item => item.id === chapter.id ? { ...item, title: event.target.value } : item) } : current)} /></> : null}
+              {activeRevision?.status === "draft" ? chapter.blocks.map(block => block.type === "paragraph" || block.type === "dialogue" ? (
                 <VStack key={block.id} gap={1}>
                   <Label htmlFor={`block-${block.id}`}>{block.type === "dialogue" ? (block.speaker || (lang === "th" ? "บทพูด" : "Dialogue")) : (lang === "th" ? "เนื้อหา" : "Narrative")}</Label>
                   <Textarea id={`block-${block.id}`} rows={5} value={block.text} disabled={readOnly || isComposing || activeRevision?.status === "approved"} onChange={event => updateBlock(chapter.id, block.id, event.target.value)} />
@@ -389,40 +447,81 @@ export function VerticalDramaBookStudio({
                     <HStack as="label" gap={2} align="center"><Checkbox checked={block.decorative} disabled={readOnly || isComposing || activeRevision?.status === "approved"} onCheckedChange={checked => setDocument(current => current ? { ...current, chapters: current.chapters.map(item => item.id === chapter.id ? { ...item, blocks: item.blocks.map(candidate => candidate.id === block.id ? { ...candidate, decorative: checked === true } : candidate) } : item) } : current)} /><p>{lang === "th" ? "ภาพตกแต่ง ไม่ต้องมีคำอธิบาย" : "Decorative image"}</p></HStack>
                   </VStack>
                 </VStack>
-              ) : null)}
+              ) : null) : null}
             </VStack>
           ))}
-          {!readOnly && activeRevision?.status !== "approved" ? (
+          {!readOnly && activeRevision?.status === "draft" ? (
             <HStack gap={3} wrap="wrap">
+              <VStack as="section" gap={2} aria-label={lang === "th" ? "สร้างภาพปกหนังสือ" : "Generate book cover artwork"}>
+                <h4 className="font-semibold">{lang === "th" ? "สร้างภาพปกหนังสือโดยเฉพาะ" : "Create a dedicated book cover"}</h4>
+                <Label htmlFor="book-cover-model">{lang === "th" ? "โมเดลสร้างภาพ" : "Image model"}</Label>
+                <Select value={coverModelId} onValueChange={setCoverModelId} disabled={isGeneratingCover || coverModelsQuery.isLoading}>
+                  <SelectTrigger id="book-cover-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลที่รองรับภาพอ้างอิง" : "Choose a reference image model"} /></SelectTrigger>
+                  <SelectContent>{(coverModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">{coverQuoteQuery.data ? (lang === "th" ? `สร้าง 3 แบบ · ใช้ภาพอ้างอิง ${coverQuoteQuery.data.referenceImageCount} ภาพ · ประมาณ ${coverQuoteQuery.data.estimatedCredits} เครดิต` : `3 options · ${coverQuoteQuery.data.referenceImageCount} shot references · about ${coverQuoteQuery.data.estimatedCredits} credits`) : (lang === "th" ? "เลือกโมเดลภาพอ้างอิงเพื่อดูราคาและจำนวนภาพ" : "Choose a reference image model to see cost and source coverage")}</p>
+                {coverQuoteQuery.data?.mayReuseReferences ? <p role="status">{lang === "th" ? "จำนวนภาพต้นฉบับมีจำกัด รอบถัดไปอาจต้องใช้ชุดภาพอ้างอิงเดิม" : "The source image pool is small, so a later round may reuse the same shot references."}</p> : null}
+                {coverTextUnsaved ? <p role="status">{lang === "th" ? "บันทึกชื่อเรื่อง ผู้เขียน และคำโปรยก่อนสร้างปก เพื่อให้ข้อความบนปกตรงกับหนังสือ" : "Save title, author, and blurb edits before generating the cover so its text matches the book."}</p> : null}
+                <HStack gap={2} wrap="wrap">
+                  <Button type="button" onClick={() => selectedBookId && activeRevision && coverMutation.mutate({ bookId: selectedBookId, revisionId: activeRevision.id, modelId: coverModelId })} disabled={!selectedBookId || !coverModelId || !coverQuoteQuery.data?.referenceImageCount || isGeneratingCover || coverMutation.isPending || coverTextUnsaved || bookQuery.data.book.stale}>
+                    {isGeneratingCover ? (lang === "th" ? `กำลังสร้างปก ${String((coverJobQuery.data as any)?.progress ?? "")}%` : `Generating covers ${String((coverJobQuery.data as any)?.progress ?? "")}%`) : (lang === "th" ? "สร้างตัวเลือกปก 3 แบบ" : "Generate 3 cover options")}
+                  </Button>
+                  {isGeneratingCover ? <Button type="button" variant="outline" onClick={() => selectedBookId && cancelCoverMutation.mutate({ bookId: selectedBookId })} disabled={cancelCoverMutation.isPending}>{lang === "th" ? "ยกเลิก" : "Cancel"}</Button> : null}
+                </HStack>
+                {coverMutation.error || coverModelsQuery.error || coverQuoteQuery.error ? <p role="alert" className="text-sm text-destructive">{coverMutation.error?.message ?? coverModelsQuery.error?.message ?? coverQuoteQuery.error?.message}</p> : null}
+                {!isGeneratingCover && coverJobStatus === "failed" && bookQuery.data.coverCandidates?.length ? <p role="status">{lang === "th" ? "งานรอบล่าสุดไม่สำเร็จทั้งหมด แต่ภาพที่สร้างสำเร็จยังเลือกใช้ได้" : "The latest round did not finish, but completed cover options remain available."}</p> : null}
+                {bookQuery.data.coverCandidates?.length ? <HStack as="ul" gap={3} wrap="wrap" aria-label={lang === "th" ? "ตัวเลือกภาพปก" : "Cover candidates"}>
+                  {bookQuery.data.coverCandidates.map((candidate: any) => {
+                    const overlayMatches = candidate.overlayText?.title === currentDocument.metadata.title && candidate.overlayText?.author === currentDocument.metadata.author && candidate.overlayText?.blurb === String(currentDocument.metadata.subtitle ?? "");
+                    return <VStack as="li" key={`${candidate.roundId}-${candidate.outputIndex}`} gap={2}>
+                    {typeof candidate.url === "string" ? <img src={candidate.url} alt={`${currentDocument.metadata.title} · ${lang === "th" ? "ตัวเลือกปก" : "Cover option"} ${Number(candidate.outputIndex) + 1}`} loading="lazy" /> : null}
+                    <p className="text-xs text-muted-foreground">{String(candidate.modelId)} · {lang === "th" ? `ภาพอ้างอิง ${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} ภาพ` : `${Array.isArray(candidate.referenceAssetIds) ? candidate.referenceAssetIds.length : 0} shot references`}</p>
+                    {!overlayMatches ? <p role="alert">{lang === "th" ? "ปกนี้สร้างจากชื่อหรือคำโปรยฉบับเดิม กรุณาสร้างใหม่เพื่อให้ข้อความตรงกัน" : "This cover uses older title or blurb text. Generate a fresh option to match the current book."}</p> : null}
+                    <Button type="button" variant="outline" size="sm" disabled={!overlayMatches} onClick={() => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: Number(candidate.mediaAssetId), coverChecksum: String(candidate.checksum), coverAltText: `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "book cover"}` } } : current)}>{lang === "th" ? "เลือกภาพปกนี้" : "Choose this cover"}</Button>
+                  </VStack>;
+                  })}
+                </HStack> : null}
+                {currentDocument.metadata.coverMediaAssetId ? <p role="status">{lang === "th" ? `เลือกภาพปก #${currentDocument.metadata.coverMediaAssetId} แล้ว · บันทึกฉบับเพื่อใช้ภาพนี้` : `Cover #${currentDocument.metadata.coverMediaAssetId} selected · save the revision to keep it`}</p> : null}
+              </VStack>
               <VStack gap={1}>
                 <Label htmlFor="book-cover-editor">{lang === "th" ? "ภาพปก" : "Book cover"}</Label>
-                <Select value={currentDocument.metadata.coverMediaAssetId ? String(currentDocument.metadata.coverMediaAssetId) : "none"} disabled={readOnly || activeRevision?.status === "approved"} onValueChange={value => {
+                <Select value={currentDocument.metadata.coverMediaAssetId ? String(currentDocument.metadata.coverMediaAssetId) : "none"} disabled={readOnly || activeRevision?.status === "approved" || isGeneratingCover} onValueChange={value => {
                   const asset = availableAssetsQuery.data?.assets.find(item => String(item.mediaAssetId) === value);
-                  setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: asset?.mediaAssetId ?? null, coverChecksum: asset?.checksum ?? null } } : current);
+                  const candidate = bookQuery.data.coverCandidates?.find((item: any) => String(item.mediaAssetId) === value);
+                  const mediaAssetId = asset?.mediaAssetId ?? (candidate ? Number(candidate.mediaAssetId) : null);
+                  const checksum = asset?.checksum ?? (candidate ? String(candidate.checksum) : null);
+                  setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverMediaAssetId: mediaAssetId, coverChecksum: checksum, coverAltText: mediaAssetId ? current.metadata.coverAltText || `${current.metadata.title} — ${lang === "th" ? "ภาพปกหนังสือ" : "book cover"}` : null } } : current);
                 }}>
                   <SelectTrigger id="book-cover-editor"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">{lang === "th" ? "ไม่ใช้ภาพปก" : "No cover image"}</SelectItem>{(availableAssetsQuery.data?.assets ?? []).map(asset => <SelectItem key={asset.mediaAssetId} value={String(asset.mediaAssetId)}>{asset.purpose === "cover" ? "Episode cover" : "Shot image"} #{asset.mediaAssetId}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="none">{lang === "th" ? "ไม่ใช้ภาพปก" : "No cover image"}</SelectItem>{(availableAssetsQuery.data?.assets ?? []).map(asset => <SelectItem key={asset.mediaAssetId} value={String(asset.mediaAssetId)}>{asset.purpose === "cover" ? "Episode cover" : "Shot image"} #{asset.mediaAssetId}</SelectItem>)}{(bookQuery.data.coverCandidates ?? []).map((candidate: any) => <SelectItem key={`generated-cover-${candidate.mediaAssetId}`} value={String(candidate.mediaAssetId)}>{lang === "th" ? "ภาพปกที่สร้าง" : "Generated cover"} #{Number(candidate.outputIndex) + 1}</SelectItem>)}</SelectContent>
                 </Select>
               </VStack>
               {currentDocument.metadata.coverMediaAssetId ? <VStack gap={1}>
                 <Label htmlFor="book-cover-alt">{lang === "th" ? "คำอธิบายภาพปก" : "Cover alternative text"}</Label>
-                <Input id="book-cover-alt" value={String(currentDocument.metadata.coverAltText ?? "")} disabled={readOnly || activeRevision?.status === "approved"} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverAltText: event.target.value } } : current)} />
+                <Input id="book-cover-alt" value={String(currentDocument.metadata.coverAltText ?? "")} disabled={readOnly || activeRevision?.status === "approved" || isGeneratingCover} onChange={event => setDocument(current => current ? { ...current, metadata: { ...current.metadata, coverAltText: event.target.value } } : current)} />
               </VStack> : null}
             </HStack>
           ) : null}
           {!readOnly && activeRevision?.status === "draft" ? (
             <HStack gap={2} wrap="wrap">
+              <VStack gap={1}>
+                <Label htmlFor="book-novelizer-model">{lang === "th" ? "โมเดล AI สำหรับเรียบเรียงนิยาย" : "Novelization vision model"}</Label>
+                <Select value={novelizerModelId} onValueChange={setNovelizerModelId} disabled={isComposing || novelizerModelsQuery.isLoading}>
+                  <SelectTrigger id="book-novelizer-model"><SelectValue placeholder={lang === "th" ? "เลือกโมเดลที่รองรับภาพ" : "Choose a vision model"} /></SelectTrigger>
+                  <SelectContent>{(novelizerModelsQuery.data?.models ?? []).map(model => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </VStack>
               <p className="text-sm text-muted-foreground">
-                {Number.isFinite(Number(compositionQuote?.estimatedCompositionCredits))
+                {Number.isFinite(Number(novelizationQuoteQuery.data?.estimatedCredits))
                   ? (lang === "th"
-                    ? `ประมาณไม่เกิน ${Number(compositionQuote?.estimatedCompositionCredits)} เครดิต · ${currentDocument.chapters.length} บท · โมเดล ${String(compositionQuote?.compositionModelId ?? "")}`
-                    : `Estimated up to ${Number(compositionQuote?.estimatedCompositionCredits)} credits · ${currentDocument.chapters.length} chapters · model ${String(compositionQuote?.compositionModelId ?? "")}`)
+                    ? `ประมาณไม่เกิน ${Number(novelizationQuoteQuery.data?.estimatedCredits)} เครดิต สำหรับ ${currentDocument.chapters.length} ตอน · แปลงซ้ำรายตอนประมาณ ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} เครดิต`
+                    : `Estimated up to ${Number(novelizationQuoteQuery.data?.estimatedCredits)} credits for ${currentDocument.chapters.length} episodes · one-episode re-novelization about ${Number(novelizationQuoteQuery.data?.perChapterEstimatedCredits)} credits`)
                   : (lang === "th" ? "จะแสดงราคาประเมินก่อนเริ่มเรียบเรียง" : "A credit estimate will be checked before composition starts")}
               </p>
-              <Button onClick={() => composeMutation.mutate({ bookId: selectedBookId })} disabled={isComposing || composeMutation.isPending || bookQuery.data.book.stale}>
+              <Button onClick={() => composeMutation.mutate({ bookId: selectedBookId, modelId: novelizerModelId })} disabled={isComposing || composeMutation.isPending || bookQuery.data.book.stale || !novelizerModelId}>
                 {lang === "th" ? "เรียบเรียงต้นฉบับ" : "Compose draft"}
               </Button>
-              <Button variant="outline" onClick={() => saveMutation.mutate({ bookId: selectedBookId, document: currentDocument })} disabled={saveMutation.isPending || isComposing || bookQuery.data.book.stale}>
+              <Button variant="outline" onClick={() => saveMutation.mutate({ bookId: selectedBookId, document: currentDocument })} disabled={saveMutation.isPending || isComposing || isGeneratingCover || bookQuery.data.book.stale}>
                 {lang === "th" ? "บันทึกฉบับแก้ไข" : "Save revision"}
               </Button>
               {saveMutation.isSuccess ? <p role="status">{lang === "th" ? "บันทึกแล้ว" : "Saved"}</p> : null}

@@ -1,0 +1,10 @@
+interface:
+  display_name: "Vertical Drama Book Novelizer"
+  short_description: "Transform episode storyboards into faithful, readable novel chapters."
+  default_prompt: |
+    $vertical-drama-book-novelizer
+
+    Turn the selected episode's synopsis, storyboard, dialogue, and images into polished novel prose.
+
+policy:
+  allow_implicit_invocation: true

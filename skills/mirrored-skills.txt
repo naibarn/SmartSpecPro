@@ -43,6 +43,7 @@ structured-data-generator
 sub-agents
 visual-diff
 visual-ui-enhancement
+vertical-drama-book-novelizer
 web-design-engineer
 web-video-presentation
 workspace-cleanup

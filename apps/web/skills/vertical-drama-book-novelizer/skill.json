@@ -1,0 +1,11 @@
+{
+  "name": "vertical_drama_book_novelizer",
+  "display_name": "Vertical Drama Book Novelizer",
+  "display_name_th": "เรียบเรียงซีรีส์แนวตั้งเป็นนิยาย",
+  "version": "1.0.0",
+  "description": "Transform one vertical-drama episode's synopsis, storyboard, dialogue, and shot images into faithful novel prose.",
+  "description_th": "แปลงเรื่องย่อ สตอรีบอร์ด บทพูด และภาพช็อตของตอนละครแนวตั้งให้เป็นเนื้อหานิยายที่สละสลวยโดยคงข้อเท็จจริงต้นฉบับ",
+  "entry_prompt": "Turn the selected episode's ordered synopsis, storyboard, dialogue, series context, and attached shot images into readable novel prose. Preserve source facts, natural dialogue, episode boundaries, and shot-level provenance.",
+  "contract_version": 1,
+  "capabilities": ["novelization", "episode_scoped", "multimodal", "source_provenance"]
+}

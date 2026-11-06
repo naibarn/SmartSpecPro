@@ -41,11 +41,11 @@
     },
     "section-05-dedicated-book-cover-generation": {
       "status": "in_progress",
-      "next_action": "Implement server-side model capability validation, authorized random shot sampling, durable three-candidate cover generation, Unicode-safe text composition, private asset persistence, and Book Studio selection; then run focused verification."
+      "next_action": "Cover service, three-candidate UI, reference sampling and durable worker are implemented. Syntax and diff checks pass; commit and integrate this scope, then record remaining authenticated browser/storage and isolated DB acceptance gaps."
     },
     "section-06-episode-novelization-skill-and-review": {
       "status": "in_progress",
-      "next_action": "Implement the new vertical-drama-book-novelizer skill, multimodal per-episode composition with pinned user-selected model and cost estimate, episode reader/review UI, and target-only candidate re-novelization preserving other content."
+      "next_action": "Novelizer skill, pinned multimodal model, per-episode reader/review, candidate apply/discard and target-only retry are implemented. Syntax and diff checks pass; commit and integrate, then record remaining authenticated browser/storage and isolated DB acceptance gaps."
     }
   },
   "pre_commit": {
@@ -57,11 +57,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-06T09:43:56.878964+00:00",
-  "generation": 20,
-  "updated_at": "2026-11-06T15:22:04.548670+00:00",
+  "generation": 22,
+  "updated_at": "2026-11-06T17:24:21.006401+00:00",
   "progress": {
     "active_section": "section-06-episode-novelization-skill-and-review",
-    "next_action": "Implement the new vertical-drama-book-novelizer skill, multimodal per-episode composition with pinned user-selected model and cost estimate, episode reader/review UI, and target-only candidate re-novelization preserving other content.",
+    "next_action": "Novelizer skill, pinned multimodal model, per-episode reader/review, candidate apply/discard and target-only retry are implemented. Syntax and diff checks pass; commit and integrate, then record remaining authenticated browser/storage and isolated DB acceptance gaps.",
     "merged_main_sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
     "gaps": [
       "Authenticated UI, representative-series export/storage, and DB-backed cross-tenant/concurrency acceptance remain unverified; UAT isolation rejects the configured shared smartspec database.",
