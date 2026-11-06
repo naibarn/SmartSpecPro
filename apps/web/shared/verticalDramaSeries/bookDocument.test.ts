@@ -34,4 +34,10 @@ describe("vertical drama Book Document", () => {
     unsafe.chapters[0].blocks = [{ id: "html-1", type: "html", html: "<script>" }];
     expect(verticalDramaBookDocumentSchema.safeParse(unsafe).success).toBe(false);
   });
+
+  it("requires a pinned checksum and alternative text when a cover is selected", () => {
+    const invalidCover = structuredClone(base);
+    invalidCover.metadata = { ...invalidCover.metadata, coverMediaAssetId: 99, coverChecksum: hash, coverAltText: "" };
+    expect(verticalDramaBookDocumentSchema.safeParse(invalidCover).success).toBe(false);
+  });
 });

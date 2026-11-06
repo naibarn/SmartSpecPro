@@ -63,6 +63,12 @@ export const verticalDramaBookDocumentSchema = z.object({
     blocks: z.array(verticalDramaBookBlockSchema).max(20_000),
   }).strict()).min(1).max(500),
 }).strict().superRefine((document, ctx) => {
+  if (Boolean(document.metadata.coverMediaAssetId) !== Boolean(document.metadata.coverChecksum)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["metadata", "coverChecksum"], message: "Cover asset and checksum must be selected together" });
+  }
+  if (document.metadata.coverMediaAssetId && !document.metadata.coverAltText?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["metadata", "coverAltText"], message: "Informative book covers require alternative text" });
+  }
   const chapterIds = new Set<string>();
   const blockIds = new Set<string>();
   for (const [chapterIndex, chapter] of document.chapters.entries()) {

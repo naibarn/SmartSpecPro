@@ -79,6 +79,7 @@ import {
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
 import { VerticalDramaObjectReferenceTab } from "@/components/verticalDramaSeries/VerticalDramaObjectReferenceTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
+import { VerticalDramaBookStudio } from "@/components/verticalDramaSeries/VerticalDramaBookStudio";
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
@@ -155,6 +156,7 @@ type TabId =
   | "scenes"
   | "episodes"
   | "production"
+  | "books"
   | "bible"
   | "seriesMemory"
   | "memory"
@@ -178,6 +180,7 @@ const ALL_TABS: TabId[] = [
   "scenes",
   "episodes",
   "production",
+  "books",
   "bible",
   "seriesMemory",
   "memory",
@@ -202,6 +205,7 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
   // deliberately NOT part of `STORY_TABS`/`ADVANCED_TABS` (so it never gets
   // a "needs attention" dot), same precedent as "episodes" itself above.
   production: { th: "ตอนเต็ม (Production)", en: "Production" },
+  books: { th: "หนังสือ", en: "Book Studio" },
   bible: { th: "ไบเบิล", en: "Bible" },
   characters: { th: "ตัวละคร", en: "Characters" },
   scenes: { th: "ฉาก", en: "Locations" },
@@ -661,6 +665,15 @@ export default function VerticalDramaSeriesDetailPage() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="books" className="min-w-0 w-full max-w-full pt-4">
+                <VerticalDramaBookStudio
+                  seriesId={seriesId}
+                  episodes={detailQuery.data?.episodes ?? []}
+                  lang={lang}
+                  readOnly={isArchived}
+                />
               </TabsContent>
 
               <TabsContent value="overview" className="space-y-4 pt-4">

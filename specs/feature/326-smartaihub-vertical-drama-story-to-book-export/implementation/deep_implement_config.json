@@ -1,0 +1,55 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-domain-foundation",
+    "section-02-authoring-and-jobs",
+    "section-03-epub-pdf-export",
+    "section-04-book-studio-ui-and-acceptance"
+  ],
+  "sections_state": {
+    "section-01-domain-foundation": {
+      "status": "checkpointed",
+      "next_action": "Verify configured dev migration profile/target, apply the new Feature 326 migration, then implement authoring and canonical jobs.",
+      "checkpoint_sha": "d7056382abeceacf16374a8f37bcd12aaa709396",
+      "merged_main_sha": "d7056382abeceacf16374a8f37bcd12aaa709396"
+    },
+    "section-02-authoring-and-jobs": {
+      "status": "checkpointed",
+      "next_action": "Complete renderers, artifact privacy, EPUB/PDF validation, and independent export jobs.",
+      "checkpoint_sha": "fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8",
+      "merged_main_sha": "fc4419bebb7c9fcea8825a7bbe05539b2fa2e8b8"
+    },
+    "section-03-epub-pdf-export": {
+      "status": "checkpointed",
+      "next_action": "Run conformance and representative Thai PDF validation in a canonical worker with EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo; current host has none.",
+      "checkpoint_sha": "7934c2119d432712bb5d05a071285db4cfeb4ce5",
+      "merged_main_sha": "7934c2119d432712bb5d05a071285db4cfeb4ce5"
+    },
+    "section-04-book-studio-ui-and-acceptance": {
+      "status": "in_progress",
+      "next_action": "Finish Book Studio, verify responsive/accessibility behavior, complete ten recorded gap-review rounds, and reconcile handoff evidence."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-06T09:43:56.878964+00:00",
+  "generation": 9,
+  "updated_at": "2026-11-06T10:42:05.099729+00:00",
+  "progress": {
+    "active_section": "section-04-book-studio-ui-and-acceptance",
+    "next_action": "Finish Book Studio, verify responsive/accessibility behavior, complete ten recorded gap-review rounds, and reconcile handoff evidence.",
+    "merged_main_sha": "7934c2119d432712bb5d05a071285db4cfeb4ce5"
+  }
+}

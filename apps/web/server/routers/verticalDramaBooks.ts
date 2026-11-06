@@ -97,7 +97,13 @@ export const verticalDramaBooksRouter = router({
       const row = byId.get(asset.mediaAssetId);
       if (!row) return [];
       const url = row.storageKey ? `/api/storage/files/${encodeURI(row.storageKey)}` : row.thumbnailUrl ?? row.originalUrl;
-      return [{ mediaAssetId: asset.mediaAssetId, checksum: asset.checksum, purpose: asset.purpose, fileSize: row.fileSize ?? 0, url }];
+      const sourceRefs = source.snapshot.episodes.flatMap(episode => episode.shots.filter(shot => shot.mediaAssetId === asset.mediaAssetId).map(shot => ({
+        episodeId: episode.episodeId,
+        episodeRevisionId: episode.episodeRevisionId,
+        locator: shot.locator,
+        sourceHash: episode.revisionFingerprint,
+      })));
+      return [{ mediaAssetId: asset.mediaAssetId, checksum: asset.checksum, purpose: asset.purpose, fileSize: row.fileSize ?? 0, url, sourceRefs }];
     });
     return { assets, imageCoverage: source.imageCoverage };
   }),
@@ -134,7 +140,7 @@ export const verticalDramaBooksRouter = router({
         sourceStale = true;
       }
     } else sourceStale = true;
-    const revisions = revisionRows.map(revision => ({ id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, documentFingerprint: revision.documentFingerprint, sourceFingerprint: revision.sourceFingerprint, approvedAt: revision.approvedAt, createdAt: revision.createdAt }));
+    const revisions = revisionRows.map(revision => ({ id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, approvedAt: revision.approvedAt, createdAt: revision.createdAt }));
     const exports = exportRows.map(artifact => ({ id: artifact.id, revisionId: artifact.revisionId, format: artifact.format, status: artifact.status, checksumSha256: artifact.checksumSha256, sizeBytes: artifact.sizeBytes, validation: artifact.validation, errorCode: artifact.errorCode, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt }));
     return { book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, sourceSelection: book.sourceSelection, currentRevisionNumber: book.currentRevisionNumber, stale: sourceStale, updatedAt: book.updatedAt }, revisions, exports };
   }),
@@ -144,6 +150,8 @@ export const verticalDramaBooksRouter = router({
     episodeIds: z.array(z.number().int().positive()).min(1).max(100),
     title: z.string().trim().min(1).max(255),
     author: z.string().trim().min(1).max(255),
+    coverMediaAssetId: z.number().int().positive().nullable().optional(),
+    coverAltText: z.string().max(2000).nullable().optional(),
     subtitle: z.string().max(255).nullable().optional(),
     description: z.string().max(5000).nullable().optional(),
     copyrightText: z.string().max(3000).nullable().optional(),
@@ -152,7 +160,12 @@ export const verticalDramaBooksRouter = router({
     const actor = owner(ctx);
     let source;
     try {
-      source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: input.seriesId, episodeIds: input.episodeIds });
+      source = await captureOwnedVerticalDramaBookSource({
+        ...actor,
+        seriesId: input.seriesId,
+        episodeIds: input.episodeIds,
+        additionalAssetIds: input.coverMediaAssetId ? [{ id: input.coverMediaAssetId, purpose: "cover" }] : [],
+      });
       if (input.imageDensity === "all_shots") assertAllShotImageCoverage(source);
     } catch (error) {
       const code = error instanceof Error ? error.message : "BOOK_SOURCE_INVALID";
@@ -172,9 +185,9 @@ export const verticalDramaBooksRouter = router({
         language: source.snapshot.seriesPayload.locale ?? "th",
         description: input.description ?? null,
         copyrightText: input.copyrightText ?? null,
-        coverMediaAssetId: null,
-        coverChecksum: null,
-        coverAltText: null,
+        coverMediaAssetId: input.coverMediaAssetId ?? null,
+        coverChecksum: input.coverMediaAssetId ? source.snapshot.assets.find(asset => asset.mediaAssetId === input.coverMediaAssetId)?.checksum ?? null : null,
+        coverAltText: input.coverMediaAssetId ? input.coverAltText?.trim() || "Book cover" : null,
       },
       source: { seriesId: input.seriesId, sourceFingerprint: source.fingerprint, episodeIds: input.episodeIds },
       chapters: source.snapshot.episodes.map(episode => ({
@@ -185,30 +198,33 @@ export const verticalDramaBooksRouter = router({
       })),
     });
     const documentFingerprint = fingerprintBookSource(bookDocument);
-    const [book] = await db.insert(verticalDramaBooks).values({
-      ...actor,
-      seriesId: input.seriesId,
-      title: input.title,
-      metadata: { ...bookDocument.metadata, imageDensity: input.imageDensity },
-      sourceSelection: { episodeIds: input.episodeIds, imageDensity: input.imageDensity },
-      currentRevisionNumber: 1,
-      sourceFingerprint: source.sourceContentFingerprint,
-    }).returning();
-    const [revision] = await db.insert(verticalDramaBookRevisions).values({
-      ...actor,
-      seriesId: input.seriesId,
-      bookId: book.id,
-      revisionNumber: 1,
-      status: "draft",
-      schemaVersion: 1,
-      document: bookDocument,
-      sourceSnapshot: source.snapshot,
-      sourceFingerprint: source.fingerprint,
-      documentFingerprint,
-    }).returning();
+    const { book, revision } = await db.transaction(async tx => {
+      const [createdBook] = await tx.insert(verticalDramaBooks).values({
+        ...actor,
+        seriesId: input.seriesId,
+        title: input.title,
+        metadata: { ...bookDocument.metadata, imageDensity: input.imageDensity },
+        sourceSelection: { episodeIds: input.episodeIds, imageDensity: input.imageDensity },
+        currentRevisionNumber: 1,
+        sourceFingerprint: source.sourceContentFingerprint,
+      }).returning();
+      const [createdRevision] = await tx.insert(verticalDramaBookRevisions).values({
+        ...actor,
+        seriesId: input.seriesId,
+        bookId: createdBook.id,
+        revisionNumber: 1,
+        status: "draft",
+        schemaVersion: 1,
+        document: bookDocument,
+        sourceSnapshot: source.snapshot,
+        sourceFingerprint: source.fingerprint,
+        documentFingerprint,
+      }).returning();
+      return { book: createdBook, revision: createdRevision };
+    });
     return {
       book: { id: book.id, seriesId: book.seriesId, title: book.title, metadata: book.metadata, currentRevisionNumber: book.currentRevisionNumber },
-      revision: { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, documentFingerprint: revision.documentFingerprint },
+      revision: { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document },
       imageCoverage: source.imageCoverage,
     };
   }),
@@ -271,7 +287,7 @@ export const verticalDramaBooksRouter = router({
       ));
       return created;
     });
-    return { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, documentFingerprint: revision.documentFingerprint };
+    return { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document };
   }),
 
   compose: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
@@ -372,6 +388,43 @@ export const verticalDramaBooksRouter = router({
       ));
     });
     return { cancelled: true };
+  }),
+
+  retryComposition: bookProcedure.input(z.object({ bookId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const actor = owner(ctx);
+    const [book] = await db.select().from(verticalDramaBooks).where(and(
+      eq(verticalDramaBooks.id, input.bookId), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+    )).limit(1);
+    if (!book) notFound();
+    const [revision] = await db.select().from(verticalDramaBookRevisions).where(and(
+      eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.revisionNumber, book.currentRevisionNumber), eq(verticalDramaBookRevisions.status, "candidate"),
+    )).limit(1);
+    if (!revision) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There is no failed composition to retry." });
+    const selected = (book.sourceSelection as { episodeIds?: unknown; imageDensity?: unknown }).episodeIds;
+    const imageDensity = (book.sourceSelection as { imageDensity?: unknown }).imageDensity;
+    if (!Array.isArray(selected) || !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) notFound();
+    const candidateDocument = verticalDramaBookDocumentSchema.parse(revision.document);
+    const remainingChapters = candidateDocument.chapters.filter(chapter => !chapter.blocks.some(block => block.type !== "paragraph" || block.text.trim())).length;
+    const estimatedCredits = remainingChapters * 20;
+    const creditBalance = await getCreditBalance(actor.userId);
+    if (!creditBalance || Number(creditBalance.credits) < estimatedCredits) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "There are not enough credits for the estimated remaining chapters." });
+    const source = await captureOwnedVerticalDramaBookSource({ ...actor, seriesId: book.seriesId, episodeIds: selected.map(Number), additionalAssetIds: documentAssetSelections(candidateDocument) });
+    if (source.sourceContentFingerprint !== book.sourceFingerprint || source.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode or artwork sources changed. Create a new book from current episodes." });
+    const jobId = randomUUID();
+    await createFeature186VerticalDramaJobRef({
+      jobId,
+      tenantId: actor.tenantId,
+      userId: actor.userId,
+      jobType: "vertical_drama.book.compose",
+      executionClass: "long",
+      idempotencyKey: `vd:book-compose-retry:${revision.id}:${jobId}`,
+      activeDedupeKey: `vd:book-compose:active:${actor.tenantId}:${book.id}`,
+      payload: { tenantId: actor.tenantId, userId: actor.userId, seriesId: book.seriesId, bookId: book.id, revisionId: revision.id, imageDensity },
+    });
+    await db.update(verticalDramaBooks).set({ sourceSelection: { ...book.sourceSelection as Record<string, unknown>, compositionJobId: jobId }, updatedAt: new Date() }).where(and(
+      eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+    ));
+    return { jobId, revisionId: revision.id, revisionNumber: revision.revisionNumber, estimatedCredits };
   }),
 
   export: bookProcedure.input(z.object({
@@ -499,7 +552,7 @@ export const verticalDramaBooksRouter = router({
       eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId),
     )).limit(1);
     if (!revision) notFound();
-    if (revision.status === "approved") return { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, documentFingerprint: revision.documentFingerprint, approvedAt: revision.approvedAt };
+    if (revision.status === "approved") return { id: revision.id, revisionNumber: revision.revisionNumber, status: revision.status, document: revision.document, approvedAt: revision.approvedAt };
     const reviewedDocument = verticalDramaBookDocumentSchema.safeParse(revision.document);
     if (!reviewedDocument.success || fingerprintBookSource(reviewedDocument.data) !== revision.documentFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Book revision integrity check failed. Save a new revision before approval." });
     if (!reviewedDocument.data.chapters.some(chapter => chapter.blocks.some(block => block.type === "illustration" || ("text" in block && block.text.trim())))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Add story text or an illustration before approving this revision." });
@@ -518,6 +571,10 @@ export const verticalDramaBooksRouter = router({
     if (fresh.sourceContentFingerprint !== book.sourceFingerprint || fresh.fingerprint !== revision.sourceFingerprint) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Episode or image sources changed. Refresh and review the book before approval." });
     const now = new Date();
     return db.transaction(async tx => {
+      const [lockedBook] = await tx.select({ id: verticalDramaBooks.id }).from(verticalDramaBooks).where(and(
+        eq(verticalDramaBooks.id, book.id), eq(verticalDramaBooks.tenantId, actor.tenantId), eq(verticalDramaBooks.userId, actor.userId),
+      )).for("update").limit(1);
+      if (!lockedBook) notFound();
       await tx.update(verticalDramaBookRevisions).set({ status: "superseded" }).where(and(
         eq(verticalDramaBookRevisions.bookId, book.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.status, "approved"),
       ));
@@ -525,7 +582,7 @@ export const verticalDramaBooksRouter = router({
         eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, actor.tenantId), eq(verticalDramaBookRevisions.userId, actor.userId), eq(verticalDramaBookRevisions.status, "draft"),
       )).returning();
       if (!approved) throw new TRPCError({ code: "CONFLICT", message: "This book revision is no longer editable." });
-      return { id: approved.id, revisionNumber: approved.revisionNumber, status: approved.status, document: approved.document, documentFingerprint: approved.documentFingerprint, approvedAt: approved.approvedAt };
+      return { id: approved.id, revisionNumber: approved.revisionNumber, status: approved.status, document: approved.document, approvedAt: approved.approvedAt };
     });
   }),
 });

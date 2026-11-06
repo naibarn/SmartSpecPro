@@ -2,7 +2,7 @@
 
 - **Version:** 0.1
 - **Created:** 2026-11-06
-- **Status:** Proposed
+- **Status:** In Progress
 - **Priority:** P1
 - **Owner:** Vertical Drama / Book Composition / Document Export
 - **Depends-on:** Feature 131 (Vertical Drama Series), Feature 153 (Long-form Story Architecture), Feature 201 (Content Provenance and Copyright Protection)
