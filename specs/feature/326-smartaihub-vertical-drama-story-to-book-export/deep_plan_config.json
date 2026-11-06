@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+  "initial_file": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
+  "review_mode": "self_review"
+}
