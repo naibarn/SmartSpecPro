@@ -14428,7 +14428,7 @@ function ShotReferenceStrip({
             {dropHint ?? t2.dropReferenceHint}
           </span>
         ) : null}
-        {references.map(ref => (
+        {references.map((ref, idx) => (
           <div
             key={ref.referenceId}
             className={cn(
