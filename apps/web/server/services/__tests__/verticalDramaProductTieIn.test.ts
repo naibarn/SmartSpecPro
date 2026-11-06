@@ -14,6 +14,7 @@ import {
   findPlacementForShot,
   appendProductPresenceDirective,
   mergeAndTrimReferenceImageUrls,
+  buildProductReferenceRenderLock,
   resolveProductReferenceImageUrls,
   resolveMarketplaceCaptureProductImageUrls,
   listAvailableProductReferenceImages,
@@ -501,6 +502,39 @@ describe("mergeAndTrimReferenceImageUrls", () => {
         undefined,
       ).urls,
     ).toEqual(["anchor-2", "location-1", "product-1"]);
+  });
+});
+
+describe("buildProductReferenceRenderLock", () => {
+  it("maps selected product images and overrides conflicting legacy descriptions", () => {
+    const promptLock = buildProductReferenceRenderLock({
+      references: [
+        { url: "product-front", label: "Selected product reference 1" },
+        { url: "product-side", label: "Selected product reference 2" },
+      ],
+      attachedReferenceUrls: ["character-1", "character-2", "character-3", "location", "product-front", "product-side"],
+      dimensions: "กว้าง 21 x ลึก 26 x สูง 29 ซม.",
+      maxChars: 4000,
+    });
+
+    expect(promptLock).toContain("Image 5 = PRIMARY selected product reference (Selected product reference 1)");
+    expect(promptLock).toContain("Image 6 = additional view of the same selected product (Selected product reference 2)");
+    expect(promptLock).toContain("overrides conflicting product appearance text");
+    expect(promptLock).toContain("legacy prop locks");
+    expect(promptLock).toContain("กว้าง 21 x ลึก 26 x สูง 29 ซม.");
+    expect(promptLock).toContain("(scale only)");
+  });
+
+  it("continues image generation if selected product images are unavailable to the model", () => {
+    const promptLock = buildProductReferenceRenderLock({
+      references: [{ url: "unavailable-product", label: "Espresso machine" }],
+      attachedReferenceUrls: ["character-1", "location"],
+      maxChars: 4000,
+    });
+
+    expect(promptLock).toContain("No selected product image is attached");
+    expect(promptLock).toContain("continue image generation");
+    expect(promptLock).toContain("Do not stop or reject the render");
   });
 });
 

@@ -320,6 +320,7 @@ import {
   evaluateFatigue,
   screenClaims,
   buildTieInQualityReport,
+  buildProductReferenceRenderLock,
   VERTICAL_DRAMA_TIE_IN_FATIGUE_WINDOW,
   mergeAndTrimReferenceImageUrls,
   mergeProductLockNegativePrompt,
@@ -6689,54 +6690,6 @@ function resolveShotProductDimensions(
   return seriesProductDimensions?.trim() || null;
 }
 
-function buildProductReferenceRenderLock(input: {
-  references: readonly ResolvedShotPropObjectReference[];
-  attachedReferenceUrls: readonly string[];
-  dimensions?: string | null;
-  maxChars: number;
-}): string | undefined {
-  if (input.references.length === 0) return undefined;
-
-  const attachedMappings = input.references
-    .flatMap(reference => {
-      const imageIndex = input.attachedReferenceUrls.indexOf(reference.url);
-      return imageIndex >= 0
-        ? [`Image ${imageIndex + 1} = ${reference.label.trim().replace(/\s+/g, " ").slice(0, 80)}`]
-        : [];
-    });
-  const imageMappings = attachedMappings.slice(0, 8);
-  if (imageMappings.length === 0) {
-    imageMappings.push(
-      `Selected product reference = ${(input.references[0]?.label ?? "product").trim().replace(/\s+/g, " ").slice(0, 80)} (image unavailable at this model's reference limit)`
-    );
-  } else if (attachedMappings.length > imageMappings.length) {
-    imageMappings.push(`${attachedMappings.length - imageMappings.length} additional product reference(s)`);
-  }
-  const fixedText = [
-    `PRODUCT REFERENCE RENDER LOCK: ${imageMappings.join("; ")}.`,
-    "Treat these as object-only references. Preserve the exact visible product identity, silhouette, proportions, color, materials, components, branding, and labels; do not redesign, substitute, or add/remove parts.",
-    "Keep the approved story location, background, camera composition, and character blocking. Add the product naturally as an in-scene prop; never copy the product photo background or replace the scene with it.",
-  ].join(" ");
-  const dimensionPrefix = " Authoritative supplied product measurements: ";
-  const dimensionSuffix = ". Match apparent scale to these measurements and camera perspective; do not invent or contradict dimensions.";
-  const availableDimensionChars = Math.max(
-    0,
-    input.maxChars - fixedText.length - dimensionPrefix.length - dimensionSuffix.length - 1
-  );
-  const dimensions = input.dimensions?.trim().replace(/[\r\n]+/g, " ");
-  if (!dimensions) {
-    return `${fixedText} If the reference includes stated measurements, follow them; otherwise do not invent dimensions.`;
-  }
-  const boundedDimensions = dimensions.slice(0, availableDimensionChars);
-  if (boundedDimensions.length < dimensions.length) {
-    console.warn("[vd_product_reference] product measurement lock was shortened to fit the provider prompt budget", {
-      originalChars: dimensions.length,
-      retainedChars: boundedDimensions.length,
-    });
-  }
-  return `${fixedText}${dimensionPrefix}${boundedDimensions}${dimensionSuffix}`;
-}
-
 function buildDeterministicShotImagePromptFallback(input: {
   shotNumber: number;
   frameRole: "start" | "stop";
@@ -6794,13 +6747,13 @@ function buildDeterministicShotImagePromptFallback(input: {
     input.locationName?.trim()
       ? `Scene location: ${input.locationName.trim()}${input.locationDescription?.trim() ? ` — ${input.locationDescription.trim()}` : ""}. Keep the location as the background.`
       : "Keep the established scene/background; attached object and product images are props and must not replace it.",
-    productNames.length
-      ? `PRODUCT REFERENCE LOCK: Reproduce the selected product reference${productNames.length === 1 ? "" : "s"} as the same real object${productNames.length === 1 ? "" : "s"}: ${productNames.join("; ")}.${input.productDescription?.trim() ? ` Product details: ${input.productDescription.trim()}.` : ""} Preserve visible shape, proportions, color, materials, components, branding, and labels. Keep the product naturally in the scene as an additive prop; never substitute or redesign it.`
-      : "",
     input.productDimensions?.trim()
-      ? `AUTHORITATIVE PRODUCT DIMENSIONS: ${input.productDimensions.trim().replace(/[\r\n]+/g, " ")}. Match apparent scale to these measurements and camera perspective.`
+      ? `AUTHORITATIVE PRODUCT DIMENSIONS (scale only): ${input.productDimensions.trim().replace(/[\r\n]+/g, " ")}. Use these measurements for real-world scale and perspective; the attached image remains authoritative for product design.`
       : "",
     input.continuityLock?.trim() ?? "",
+    productNames.length
+      ? `PRODUCT APPEARANCE SOURCE OF TRUTH: the attached selected product image${productNames.length === 1 ? " is" : "s are"} authoritative for the exact object's appearance: ${productNames.join("; ")}. Match its silhouette, proportions, color, materials, finish, component layout, controls, openings, attachments, packaging, and only the branding or labels actually visible. Do not substitute a similar model, redesign it, simplify it, or add/remove/invent details. This image-based lock overrides conflicting product appearance text in the synopsis, storyboard, continuity notes, legacy prop locks, catalog description, or other prompt sections; use text only for the product's story role, placement, handling, and action.${input.productDescription?.trim() ? ` Product text is secondary and cannot override the attached image: ${input.productDescription.trim()}.` : ""} Keep the product as an additive in-scene prop and preserve the approved location/background; do not copy the product photo background.`
+      : "",
     "Use a natural, physically coherent composition and lighting. No subtitles, captions, or added on-screen text.",
   ].filter(Boolean);
   const maxChars = Math.max(256, input.maxChars);

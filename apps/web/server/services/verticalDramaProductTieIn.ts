@@ -594,7 +594,7 @@ export const VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT = VD_PRODUCT_LOCK_NEGATIVE
  * edit to the video pipeline in this phase.
  */
 export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
-  "PRODUCT LOCK (MANDATORY): when a product reference image is attached, inspect it and preserve that exact physical object in every frame: same silhouette, proportions, color, materials, components, visible controls, branding/logo placement, labels, and distinctive details. Include every explicitly supplied product dimension in the generated prompt exactly as stated, and keep scale consistent with those dimensions and perspective; if no dimensions are supplied, do not invent measurements or arbitrarily resize the product. Treat each product image as an object-only cue: keep the approved start frame's scene and background, place the product as an additive in-scene prop, and never replace the location with the product photo's backdrop. Do not redesign, substitute, add or remove parts, warp, morph, recolor, resize, or drift the product's logo or labels.";
+  "PRODUCT LOCK (MANDATORY): when a product reference image is attached, inspect it and preserve that exact physical object in every frame; it must remain visually unchanged throughout the motion in silhouette, proportions, color, materials, components, visible controls, branding/logo placement, labels, and distinctive details. Include every explicitly supplied product dimension in the generated prompt exactly as stated, and keep scale consistent with those dimensions and perspective; if no dimensions are supplied, do not invent measurements or arbitrarily resize the product. Treat each product image as an object-only cue: keep the approved start frame's scene and background, place the product as an additive in-scene prop, and never replace the location with the product photo's backdrop. Do not redesign, substitute, add or remove parts, warp, morph, recolor, resize, or drift the product's logo or labels.";
 
 /**
  * Append a concise, natural in-scene product-presence direction PLUS the hard
@@ -942,6 +942,72 @@ export function mergeAndTrimReferenceImageUrls(
     urls: merged.slice(0, maxReferenceImages),
     trimmedCount: merged.length - maxReferenceImages,
   };
+}
+
+export interface ProductReferenceRenderLockReference {
+  url: string;
+  label: string;
+  productDimensions?: string;
+}
+
+/**
+ * Build the final provider-bound product appearance lock from selected product
+ * images and their exact attachment order. Images govern appearance; older
+ * prompt/continuity prose is context only and cannot override them. This is
+ * advisory: if an image is unavailable, generation still proceeds.
+ */
+export function buildProductReferenceRenderLock(input: {
+  references: readonly ProductReferenceRenderLockReference[];
+  attachedReferenceUrls: readonly string[];
+  dimensions?: string | null;
+  maxChars: number;
+}): string | undefined {
+  if (input.references.length === 0) return undefined;
+
+  const attachedProductReferences = input.references
+    .map(reference => ({
+      reference,
+      imageIndex: input.attachedReferenceUrls.indexOf(reference.url),
+    }))
+    .filter(item => item.imageIndex >= 0);
+  const attachedMappings = attachedProductReferences.map(
+    ({ reference, imageIndex }, index) => {
+      const label = reference.label.trim().replace(/\s+/g, " ").slice(0, 80);
+      return index === 0
+        ? `Image ${imageIndex + 1} = PRIMARY selected product reference (${label})`
+        : `Image ${imageIndex + 1} = additional view of the same selected product (${label})`;
+    }
+  );
+  const imageMappings = attachedMappings.slice(0, 8);
+  if (attachedMappings.length > imageMappings.length) {
+    imageMappings.push(`${attachedMappings.length - imageMappings.length} additional product reference(s)`);
+  }
+
+  const noImageNote = attachedMappings.length === 0
+    ? "Selected product images were unavailable to this model; continue image generation with the remaining scene references and available product facts. Do not stop or reject the render."
+    : "The first mapped product image is the primary appearance reference; the other mapped product images are alternate views of the same selected object.";
+  const fixedText = [
+    `PRODUCT APPEARANCE SOURCE OF TRUTH (highest priority for this object): ${imageMappings.length ? imageMappings.join("; ") + "." : "No selected product image is attached."}`,
+    noImageNote,
+    "When product images are attached, reproduce that exact physical object rather than a similar model. Match its visible silhouette, proportions, color, finish, materials, component layout, controls, openings, attachments, packaging, and visible branding or labels. Do not redesign, substitute, simplify, add, remove, relocate, or invent product details; copy only markings actually visible in the reference.",
+    "This image-based product lock overrides conflicting product appearance text anywhere else in the synopsis, storyboard, continuity notes, legacy prop locks, catalog description, or prompt. Use written descriptions only for the product's story role, placement, handling, and action. Keep the approved characters, camera composition, location, and background; the product is an additive in-scene prop and its reference-photo background must not replace the scene.",
+  ].join(" ");
+  const dimensionPrefix = " Authoritative supplied product measurements (scale only): ";
+  const dimensionSuffix = ". Use these measurements for real-world scale and perspective; they do not override the reference image's design. If no measurements are supplied, do not invent them.";
+  const dimensions = input.dimensions?.trim().replace(/[\r\n]+/g, " ");
+  if (!dimensions) return `${fixedText} If no measurements are supplied, do not invent them.`;
+
+  const availableDimensionChars = Math.max(0,
+    input.maxChars - fixedText.length - dimensionPrefix.length - dimensionSuffix.length - 1
+  );
+  const boundedDimensions = dimensions.slice(0, availableDimensionChars);
+  if (boundedDimensions.length < dimensions.length) {
+    console.warn("[vd_product_reference] product measurement lock was shortened to fit the provider prompt budget", {
+      originalChars: dimensions.length,
+      retainedChars: boundedDimensions.length,
+    });
+  }
+  return `${fixedText}${dimensionPrefix}${boundedDimensions}${dimensionSuffix}`;
 }
 
 /* -------------------------------------------------------------------------- */
