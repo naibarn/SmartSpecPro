@@ -5053,6 +5053,21 @@
       "confidence": "LOW",
       "declared_claim_count": 0,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "326"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory",

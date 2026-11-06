@@ -1,5 +1,5 @@
 {
-  "indexed_record_count": 488,
+  "indexed_record_count": 489,
   "invariant_discovered_equals_indexed": true,
   "inventory": {
     "alternate_roots": [
@@ -13,7 +13,7 @@
       "specs/security"
     ],
     "counts": {
-      "CANONICAL_SPEC": 331,
+      "CANONICAL_SPEC": 332,
       "COLLECTION_ENTRY_NO_SPEC": 1,
       "HISTORICAL_CANDIDATE": 25,
       "HISTORICAL_SPEC": 2,
@@ -22,9 +22,9 @@
     },
     "diagnostics": [],
     "invariants": {
-      "canonical_spec_count": 331,
+      "canonical_spec_count": 332,
       "invalid_candidate_count": 0,
-      "record_count": 488,
+      "record_count": 489,
       "walk_complete": true
     },
     "records": [
@@ -6294,6 +6294,24 @@
       },
       {
         "configured_root": "specs/feature",
+        "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+        "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+        "problem": null,
+        "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+        "record_kind": "CANONICAL_SPEC",
+        "relationships": {
+          "duplicate_ids": [],
+          "duplicate_revisions": []
+        },
+        "revision": "0.1",
+        "root_kind": "CANONICAL",
+        "slug": "326-smartaihub-vertical-drama-story-to-book-export",
+        "spec_id": "326",
+        "spec_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
+        "title": "Feature 326: Vertical Drama Story-to-Book Studio and EPUB/PDF Export"
+      },
+      {
+        "configured_root": "specs/feature",
         "digest": null,
         "path": "specs/feature/_candidates",
         "problem": null,
@@ -8818,7 +8836,7 @@
   },
   "reconciliation_confidence_counts": {
     "confidence.HIGH": 5,
-    "confidence.LOW": 321,
+    "confidence.LOW": 322,
     "confidence.MEDIUM": 5,
     "confidence.NOT_APPLICABLE": 130,
     "confidence.UNRESOLVED": 27
@@ -144873,6 +144891,123 @@
       "spec_path": "specs/feature/325-smartaihub-zero-trust-always-on-agent-security/spec.md",
       "successors": [],
       "title": "SmartAIHub Zero-Trust & Always-on Agent Security Architecture",
+      "true_blockers": 0,
+      "verification": "UNKNOWN"
+    },
+    {
+      "acceptance": "UNKNOWN",
+      "authority": "UNRESOLVED",
+      "canonical_sha": null,
+      "completion_eligible": false,
+      "completion_reasons": [
+        "reconciliation confidence is LOW or UNRESOLVED",
+        "Spec authority is unresolved or conflicting",
+        "disposition is not an active continuation target",
+        "lifecycle has not reached implementation completion",
+        "requirement REQ-450E4BFADAB4 is OPEN",
+        "requirement REQ-75966C0F418D is OPEN",
+        "requirement REQ-C5967CF44DBB is OPEN",
+        "requirement REQ-8F155D5503EE is OPEN",
+        "requirement REQ-F1D390872E03 is OPEN",
+        "requirement REQ-4500DF0FF34D is OPEN",
+        "requirement REQ-C0D09393418C is OPEN",
+        "requirement REQ-12E6F25A38A8 is OPEN",
+        "requirement REQ-8989798A734D is OPEN",
+        "requirement REQ-1A6D2FB40343 is OPEN",
+        "requirement REQ-CB998CB5BF7A is OPEN",
+        "requirement REQ-B6911A25DB15 is OPEN",
+        "requirement REQ-F98D89879617 is OPEN",
+        "requirement REQ-B61E03FF1977 is OPEN",
+        "requirement REQ-323D8569232C is OPEN",
+        "requirement REQ-EF01B5E4250C is OPEN",
+        "requirement REQ-2CA48FED1148 is OPEN",
+        "requirement REQ-B6731BD4687A is OPEN",
+        "requirement REQ-2666517026F3 is OPEN",
+        "requirement REQ-DE2B87CFD2AB is OPEN",
+        "requirement REQ-34A7597CF5F8 is OPEN",
+        "requirement REQ-BC0DF090946E is OPEN",
+        "requirement REQ-9B011226BCFB is OPEN",
+        "requirement REQ-4A0AEB60811A is OPEN",
+        "requirement REQ-4385D6765F94 is OPEN",
+        "requirement REQ-98EEB3E80D40 is OPEN",
+        "requirement REQ-1F59140AE1A8 is OPEN",
+        "requirement REQ-1BAF2BF38C06 is OPEN",
+        "requirement REQ-3C0172EF0AE1 is OPEN",
+        "requirement REQ-2B30B5CD697C is OPEN",
+        "requirement REQ-FE56BCB45D19 is OPEN",
+        "requirement REQ-CE2BD2273661 is OPEN",
+        "requirement REQ-8C85A14AAD73 is OPEN",
+        "requirement REQ-26DE6A3FF378 is OPEN",
+        "requirement REQ-B740C816BFB0 is OPEN",
+        "requirement REQ-A162153CE864 is OPEN",
+        "requirement REQ-C5788E597904 is OPEN",
+        "required verification evidence is missing",
+        "canonical integration evidence is missing"
+      ],
+      "confidence": "LOW",
+      "configured_root": "specs/feature",
+      "continuation": "RECONCILIATION_REQUIRED",
+      "current_reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "declared_claims": [],
+      "declared_relationship_claims": [],
+      "declared_status_claims": [],
+      "deployment": "UNKNOWN",
+      "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+      "disposition": "DORMANT_UNRESOLVED",
+      "evidence_freshness": "UNKNOWN",
+      "implementation_last_touched_at": null,
+      "last_reconciled": "2026-11-06T09:07:11.426611Z",
+      "lifecycle": "DISCOVERING",
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "primary_blocker": null,
+      "problem": null,
+      "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "record_kind": "CANONICAL_SPEC",
+      "relationship_claims": [],
+      "relationships": {
+        "duplicate_ids": [],
+        "duplicate_revisions": []
+      },
+      "relevance_assessment": {
+        "active_references": [],
+        "conflict_duplication_risk": "UNASSESSED",
+        "current_architecture_fit": "UNASSESSED",
+        "current_product_relevance": "UNASSESSED",
+        "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+        "declared_claims": [],
+        "deployment_reality": "UNVERIFIED",
+        "evidence": [
+          {
+            "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+            "kind": "NORMATIVE_SPEC",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
+          }
+        ],
+        "implementation_equivalence": "UNASSESSED",
+        "residual_requirements": [],
+        "security_data_compliance_obligations": "REVIEW_REQUIRED",
+        "successor_or_supersession": "UNASSESSED"
+      },
+      "requirements": {
+        "open": 37,
+        "pass": 0,
+        "total": 37
+      },
+      "revision": "0.1",
+      "root_kind": "CANONICAL",
+      "section_status_claims": [],
+      "slug": "326-smartaihub-vertical-drama-story-to-book-export",
+      "spec_created_at": "2026-11-06T16:03:04+07:00",
+      "spec_id": "326",
+      "spec_last_changed_at": "2026-11-06T16:03:04+07:00",
+      "spec_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
+      "successors": [],
+      "title": "Feature 326: Vertical Drama Story-to-Book Studio and EPUB/PDF Export",
       "true_blockers": 0,
       "verification": "UNKNOWN"
     },
