@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
+    "expected_canonical_sha": "31d63db7cf374ca16e588b14f9f6476f972b565f",
     "expected_spec_digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
@@ -96,9 +96,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
+    "canonical_sha": "31d63db7cf374ca16e588b14f9f6476f972b565f",
     "integrated": true,
-    "integrated_at": "2026-11-06T09:12:27Z"
+    "integrated_at": "2026-11-06T09:31:22Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -181,7 +181,7 @@
     "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T09:30:16.068877Z",
+  "updated_at": "2026-11-06T09:31:41.857159Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

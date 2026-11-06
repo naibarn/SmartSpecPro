@@ -136107,7 +136107,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
+      "canonical_sha": "31d63db7cf374ca16e588b14f9f6476f972b565f",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
