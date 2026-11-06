@@ -406,6 +406,14 @@ export function VerticalDramaBookStudio({
                 <h4 className="font-semibold">{chapter.title}</h4>
                 {chapter.blocks.map((block: any) => block.type === "paragraph" ? <p key={block.id}>{block.text}</p> : block.type === "dialogue" ? <p key={block.id}>{block.speaker ? <strong>{block.speaker}: </strong> : null}{block.text}</p> : block.type === "scene_break" ? <p aria-label={lang === "th" ? "จุดเปลี่ยนฉาก" : "Scene break"} key={block.id}>＊ ＊ ＊</p> : block.type === "illustration" ? <img key={block.id} src={availableAssetsQuery.data?.assets.find(asset => asset.mediaAssetId === block.mediaAssetId)?.url ?? ""} alt={block.decorative ? "" : block.altText} loading="lazy" /> : null)}
               </VStack>
+              {chapter.qualityReview ? <details>
+                <summary>{lang === "th" ? "ผลประเมินคุณภาพฉบับร่าง" : "Draft quality review"}</summary>
+                <VStack as="ul" gap={1}>
+                  <li>{lang === "th" ? `ความลื่นไหล ${chapter.qualityReview.flow}/5 · อ่านเข้าใจ ${chapter.qualityReview.readability}/5 · ความต่อเนื่อง ${chapter.qualityReview.continuity}/5` : `Flow ${chapter.qualityReview.flow}/5 · Readability ${chapter.qualityReview.readability}/5 · Continuity ${chapter.qualityReview.continuity}/5`}</li>
+                  <li>{lang === "th" ? `บทพูด ${chapter.qualityReview.dialogue}/5 · อิงต้นฉบับ ${chapter.qualityReview.sourceCoverage}/5 · ควบคุมข้อมูลที่แต่งเพิ่ม ${chapter.qualityReview.unsupportedDetail}/5` : `Dialogue ${chapter.qualityReview.dialogue}/5 · Source coverage ${chapter.qualityReview.sourceCoverage}/5 · Unsupported-detail control ${chapter.qualityReview.unsupportedDetail}/5`}</li>
+                  {chapter.qualityReview.findings.map((finding: string, findingIndex: number) => <li key={`${chapter.id}-finding-${findingIndex}`}>{finding}</li>)}
+                </VStack>
+              </details> : null}
               {!readOnly && activeRevision?.status === "draft" ? <HStack gap={2} wrap="wrap">
                 <Button type="button" variant="outline" size="sm" onClick={() => reNovelizeMutation.mutate({ bookId: selectedBookId, chapterId: chapter.id, modelId: novelizerModelId })} disabled={isComposing || !novelizerModelId || bookQuery.data.book.stale || reNovelizeMutation.isPending}>{lang === "th" ? "แปลงตอนนี้ใหม่" : "Re-novelize this episode"}</Button>
               </HStack> : null}

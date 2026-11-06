@@ -22,7 +22,8 @@ Write polished novel prose from the selected episode's ordered source material. 
 - Place dialogue at the point it occurs in the scene, interleaved with narration. Avoid converting the chapter into a screenplay or transcript.
 - Preserve suspense and emotional beats without adding melodrama that is absent from the source.
 - Use the source language and the series' established tone. Prefer clear, idiomatic Thai when the source language is Thai.
+- Return a concise quality rubric from 1 (needs work) to 5 (strong) for flow, readability, continuity, dialogue integration, source coverage, and unsupported-detail control. Add up to six short findings that help the author decide what to review; never claim a high score when source evidence is missing.
 
 ## Quality pass
 
-Before returning the structured chapter, check flow, readability, continuity, character voice, dialogue naturalness, source coverage, and unsupported details. Make at most one focused self-revision. Return only the requested structured result and attach source shot references to every prose or dialogue block.
+Before returning the structured chapter, check flow, readability, continuity, character voice, dialogue naturalness, source coverage, and unsupported details. Make at most one focused self-revision. Return the structured chapter blocks plus the six rubric scores and concise findings; attach source shot references to every prose or dialogue block.

@@ -5,7 +5,8 @@
       "Feature 326 development migration receipt and post-migration ledger/catalog audits (0417 applied; catalog READY)",
       "994faa07c51af9822a2e1d01ca8375f42138f419: pinned-model/provider composition quote and per-chapter credit reservation/settlement",
       "BOOK_EXPORT_RENDER_ACCEPTANCE=1 EPUBCheck 5.4.0 + Chromium + Noto Thai + Poppler: 26 tests passed; EPUBCheck 0 errors/0 warnings; Thai A5 PDF text and metadata extracted",
-      "Authenticated UI, real-series/storage, cross-tenant, and database concurrency acceptance remain open under the isolation guard recorded in gap-review-10-rounds.md"
+      "Authenticated UI, real-series/storage, cross-tenant, and database concurrency acceptance remain open under the isolation guard recorded in gap-review-10-rounds.md",
+      "7ef792294aec887395d44b97ddac6f67a4e1fb0f: Sections 05 and 06 implementation integrated on origin/main; authenticated product flow and isolated DB acceptance remain pending."
     ],
     "required": true,
     "status": "VALIDATION_PENDING"
@@ -43,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e7b749831f6d332aaed358228778abb8c1391baa",
+    "expected_canonical_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
     "expected_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254"
   },
   "continuation": {
-    "next_action": "Implement the pending dedicated cover creator in section 05, then implement the novelization skill, episode reader, selectable LLM and target-only re-novelization in section 06.",
-    "next_ready_workunit": "section-05-dedicated-book-cover-generation",
-    "reactivation_predicate": null,
-    "resume_point": "Sections 05 and 06 are specified and integrated at e7b749831f6d332aaed358228778abb8c1391baa; resume with section 05 implementation, then section 06.",
+    "next_action": "Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.",
+    "next_ready_workunit": "section-04-book-studio-ui-and-acceptance",
+    "reactivation_predicate": "An isolated authenticated _dev UAT database and representative series fixture are available.",
+    "resume_point": "Sections 05 and 06 implementation integrated at 7ef792294aec887395d44b97ddac6f67a4e1fb0f; resume with authenticated Book Studio acceptance and isolated _dev database verification.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -67,13 +68,12 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       }
     ],
-    "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
-    "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
+    "next_action": "Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.",
+    "rationale": "Feature code for cover generation and episode novelization is integrated. Final acceptance remains pending because authenticated product-flow and isolated database evidence have not been collected.",
     "residual_requirements": [
-      "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
-      "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
-      "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
-      "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
+      "Run authenticated responsive/keyboard Book Studio flows and export a representative all-shot series.",
+      "Run private storage readback/download, cross-tenant authorization, revision/job concurrency, retry and cancellation acceptance on an isolated _dev database.",
+      "Capture provider cost reservation and recovery behavior under worker retry, including the known limit that an external provider invocation may replay after a worker crash before persistence."
     ]
   },
   "dependencies": {
@@ -123,13 +123,13 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 15,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-06T15:23:22.077958Z",
+      "last_evidence_at": "2026-11-06T17:28:47.058206Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-06T16:03:04+07:00",
       "spec_last_changed_at": "2026-11-06T16:03:04+07:00"
@@ -146,7 +146,8 @@
       "7934c2119d432712bb5d05a071285db4cfeb4ce5",
       "e3f822cf40b23431bc54bf2e3378970dd2cc482b",
       "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
-      "994faa07c51af9822a2e1d01ca8375f42138f419"
+      "994faa07c51af9822a2e1d01ca8375f42138f419",
+      "7ef792294aec887395d44b97ddac6f67a4e1fb0f"
     ],
     "mapping": [],
     "source_paths": [
@@ -161,16 +162,21 @@
       "apps/web/server/services/verticalDramaBookComposition.ts",
       "apps/web/server/services/verticalDramaBookExportService.ts",
       "apps/web/server/services/verticalDramaBookRenderers.test.ts",
-      "apps/web/server/services/verticalDramaBookRenderers.ts"
+      "apps/web/server/services/verticalDramaBookRenderers.ts",
+      "apps/web/server/jobs/feature186JobTypes.ts",
+      "apps/web/server/services/mediaGenerationService.ts",
+      "apps/web/server/services/verticalDramaBookCoverService.ts",
+      "apps/web/skills/vertical-drama-book-novelizer/skill.md",
+      "skills/vertical-drama-book-novelizer/SKILL.md"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "e7b749831f6d332aaed358228778abb8c1391baa",
+    "canonical_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
     "integrated": true,
-    "integrated_at": "2026-11-06T14:12:51Z"
+    "integrated_at": "2026-11-06T17:28:58Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -178,9 +184,10 @@
     "state_evidence": [
       "origin/main:03fba26045939ce7328031927d56547d5982e410",
       "gap-review-10-rounds.md",
-      "development migration receipt and post-migration ledger/catalog audits"
+      "development migration receipt and post-migration ledger/catalog audits",
+      "origin/main:7ef792294aec887395d44b97ddac6f67a4e1fb0f: Sections 05 and 06 implementation integrated; focused syntax and diff checks passed."
     ],
-    "updated_at": "2026-11-06T10:52:59.386399Z"
+    "updated_at": "2026-11-06T17:28:58Z"
   },
   "manual_decisions": {
     "authority": {
@@ -217,13 +224,12 @@
           "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
         }
       ],
-      "next_action": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
-      "rationale": "The development migration is applied and the catalog is READY. Runtime renderer conformance and integration acceptance remain open.",
+      "next_action": "Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.",
+      "rationale": "Feature code for cover generation and episode novelization is integrated. Final acceptance remains pending because authenticated product-flow and isolated database evidence have not been collected.",
       "residual_requirements": [
-        "Run EPUBCheck and Thai PDF extraction/pagination acceptance in a runtime with Chromium, Thai fonts, and Poppler.",
-        "Run authenticated responsive and keyboard UI acceptance and export a representative all-shot series.",
-        "Run storage readback/download, cross-tenant authorization, concurrency, retry, and cancellation integration tests.",
-        "Resolve active episode revision linkage and exact provider cost reservation/quote behavior."
+        "Run authenticated responsive/keyboard Book Studio flows and export a representative all-shot series.",
+        "Run private storage readback/download, cross-tenant authorization, revision/job concurrency, retry and cancellation acceptance on an isolated _dev database.",
+        "Capture provider cost reservation and recovery behavior under worker retry, including the known limit that an external provider invocation may replay after a worker crash before persistence."
       ]
     },
     "disposition": {
@@ -249,13 +255,224 @@
       "state_evidence": [
         "origin/main:03fba26045939ce7328031927d56547d5982e410",
         "gap-review-10-rounds.md",
-        "development migration receipt and post-migration ledger/catalog audits"
+        "development migration receipt and post-migration ledger/catalog audits",
+        "origin/main:7ef792294aec887395d44b97ddac6f67a4e1fb0f: Sections 05 and 06 implementation integrated; focused syntax and diff checks passed."
       ],
-      "updated_at": "2026-11-06T10:52:59.386399Z"
+      "updated_at": "2026-11-06T17:28:58Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
       "value": "MEDIUM"
+    },
+    "requirements": {
+      "REQ-22FFB8D03042": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L176"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L176",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "9f9403b0ff06dd62d051426d961094d9049f828b042a10c48f024c39b22a4363",
+        "requirement_id": "REQ-22FFB8D03042",
+        "requirement_text": "series context needed for continuity. Composition must:",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-2BA31B43D284": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L497"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L497",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "5c51ce5e8af33423d3ff6c4e22fa7d762cd91a9d0c5469d3c27d6f2f45c5eceb",
+        "requirement_id": "REQ-2BA31B43D284",
+        "requirement_text": "8. The cover creator offers only enabled, authorized image models that support",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-455C596CF24F": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L477"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L477",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "75885e87441821cff9ce0a01c8a8202e504bd2a6f5b56e07cba2da40f693c8a7",
+        "requirement_id": "REQ-455C596CF24F",
+        "requirement_text": "4. Book Studio provides an episode reader so each converted episode can be read",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-AC68AF296944": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L472"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L472",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "db4eb89c2eeafcc563273011b780f71e03833bdfc348e83662a7b8aa50a59492",
+        "requirement_id": "REQ-AC68AF296944",
+        "requirement_text": "3. Composition produces typed, editable blocks with dialogue and source",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-AE7A020653F7": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L487"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L487",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "f0d5d8d4e96f4a3e831204a417a5f7570c1b16df2cf73dda5d7457cf4d160e58",
+        "requirement_id": "REQ-AE7A020653F7",
+        "requirement_text": "6. The `vertical-drama-book-novelizer` skill applies a documented prose",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-B1BEFD272D47": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L483"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L483",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "cf4e9838c234c932677bf8ae0c2c391100acb8245b0f44741882af05d3efcbb0",
+        "requirement_id": "REQ-B1BEFD272D47",
+        "requirement_text": "5. The user selects an eligible LLM model for whole-book composition and may",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-F9FCCAF19FB9": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L504"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L504",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "15adadc0545de641db4243438890a3bd18828ce9d0608c89bc5895af6a03d8cf",
+        "requirement_id": "REQ-F9FCCAF19FB9",
+        "requirement_text": "9. Generated cover artwork is combined with exact title, author, and optional",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-FC8799CFA6ED": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L528"
+        ],
+        "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L528",
+        "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
+        "requirement_digest": "5e5fb8f8fb100e27112464864695aa9f75f95d2eeb260810baead6e8373ea49d",
+        "requirement_id": "REQ-FC8799CFA6ED",
+        "requirement_text": "14. Composition, targeted episode re-novelization, cover generation, and",
+        "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      }
     }
   },
   "reconciliation": {
@@ -266,7 +483,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-06T15:23:22.077958Z",
+    "reconciled_at": "2026-11-06T17:28:47.058206Z",
     "sources": [
       {
         "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
@@ -289,17 +506,17 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "2d9ebdc6a41f15a273e2bd3fde60a7bba45ff981d899b6fced5218702a0eac60",
+        "digest": "862be3586def0a5769da7ed74b08839a9cbd102532ef8cbaae1177f11938317c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       },
       {
-        "digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json"
       },
       {
-        "digest": "f8607023aa7ab6ee591055ac4422087c9f5fc6b2f24e3dfdd97c6b206b44e3f6",
+        "digest": "90449bbe1721191bfe7483290ddcb82d531277134a1087b5fd1342365849d9b1",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/handoff_history.jsonl"
       },
@@ -349,7 +566,7 @@
         "line": null,
         "section": "section-01-domain-foundation",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -363,7 +580,7 @@
         "line": null,
         "section": "section-02-authoring-and-jobs",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -377,7 +594,7 @@
         "line": null,
         "section": "section-03-epub-pdf-export",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -391,7 +608,7 @@
         "line": null,
         "section": "section-04-book-studio-ui-and-acceptance",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -400,13 +617,13 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-05-dedicated-book-cover-generation: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-05-dedicated-book-cover-generation: checkpointed; commit_hash=missing",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": null,
         "section": "section-05-dedicated-book-cover-generation",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
-        "value": "in_progress"
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -414,13 +631,13 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-06-episode-novelization-skill-and-review: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-06-episode-novelization-skill-and-review: checkpointed; commit_hash=missing",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": null,
         "section": "section-06-episode-novelization-skill-and-review",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
-        "value": "in_progress"
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
+        "value": "checkpointed"
       }
     ],
     "stale_fields": [
@@ -453,7 +670,7 @@
         "line": null,
         "section": "section-01-domain-foundation",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -466,7 +683,7 @@
         "line": null,
         "section": "section-02-authoring-and-jobs",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -479,7 +696,7 @@
         "line": null,
         "section": "section-03-epub-pdf-export",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -492,7 +709,7 @@
         "line": null,
         "section": "section-04-book-studio-ui-and-acceptance",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "value": "checkpointed"
       },
       {
@@ -501,12 +718,12 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-05-dedicated-book-cover-generation: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-05-dedicated-book-cover-generation: checkpointed; commit_hash=missing",
         "line": null,
         "section": "section-05-dedicated-book-cover-generation",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
-        "value": "in_progress"
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -514,12 +731,12 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-06-episode-novelization-skill-and-review: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-06-episode-novelization-skill-and-review: checkpointed; commit_hash=missing",
         "line": null,
         "section": "section-06-episode-novelization-skill-and-review",
         "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
-        "source_digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
-        "value": "in_progress"
+        "source_digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
+        "value": "checkpointed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
@@ -545,17 +762,17 @@
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "2d9ebdc6a41f15a273e2bd3fde60a7bba45ff981d899b6fced5218702a0eac60",
+        "digest": "862be3586def0a5769da7ed74b08839a9cbd102532ef8cbaae1177f11938317c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
       },
       {
-        "digest": "c8be50b2d0ec5ce3d0115c6d01d150d96cf0c057f171b3e6f449c200bb3bff90",
+        "digest": "dde6e93210e4d5ffeeec35057ca24fbfef4563e8dafa8d5db5ac42bf4b99fc86",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json"
       },
       {
-        "digest": "f8607023aa7ab6ee591055ac4422087c9f5fc6b2f24e3dfdd97c6b206b44e3f6",
+        "digest": "90449bbe1721191bfe7483290ddcb82d531277134a1087b5fd1342365849d9b1",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/handoff_history.jsonl"
       },
@@ -601,7 +818,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 8,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -610,7 +827,7 @@
     "unresolved": 47
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T15:24:23.716616Z",
+  "updated_at": "2026-11-06T17:29:37.889213Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -623,13 +840,14 @@
       "pnpm run db:audit-catalog after migration: READY, requiredDrift=0, no missing Feature 326 tables or constraints",
       "Focused Vitest plus renderer runtime acceptance (4 files, 26 tests passed; EPUBCheck 0 errors/0 warnings; Chromium PDF render, Thai extraction, metadata and A5 page size passed).",
       "Focused esbuild syntax bundles passed for creditService, verticalDramaBooks router, Book Studio UI, and jobExecutorRegistry.",
-      "git diff --check passed; integrated development commit 994faa07c51af9822a2e1d01ca8375f42138f419 is reachable from origin/main."
+      "git diff --check passed; integrated development commit 994faa07c51af9822a2e1d01ca8375f42138f419 is reachable from origin/main.",
+      "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation passed for cover, novelizer, worker, LLM/media service, router and Book Studio; git diff --check passed; no tests or typecheck run."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "994faa07c51af9822a2e1d01ca8375f42138f419",
+    "sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
     "status": "VALIDATION_PENDING",
     "task_regressions": []
   }

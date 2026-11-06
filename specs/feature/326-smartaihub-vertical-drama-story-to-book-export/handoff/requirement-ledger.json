@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 14,
   "historical_requirements": [
     {
       "applicability": "UNASSESSED",
@@ -489,25 +489,29 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L176"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L176",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "9f9403b0ff06dd62d051426d961094d9049f828b042a10c48f024c39b22a4363",
       "requirement_id": "REQ-22FFB8D03042",
       "requirement_text": "series context needed for continuity. Composition must:",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
@@ -1150,91 +1154,107 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L472"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L472",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "db4eb89c2eeafcc563273011b780f71e03833bdfc348e83662a7b8aa50a59492",
       "requirement_id": "REQ-AC68AF296944",
       "requirement_text": "3. Composition produces typed, editable blocks with dialogue and source",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L477"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L477",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "75885e87441821cff9ce0a01c8a8202e504bd2a6f5b56e07cba2da40f693c8a7",
       "requirement_id": "REQ-455C596CF24F",
       "requirement_text": "4. Book Studio provides an episode reader so each converted episode can be read",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L483"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L483",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "cf4e9838c234c932677bf8ae0c2c391100acb8245b0f44741882af05d3efcbb0",
       "requirement_id": "REQ-B1BEFD272D47",
       "requirement_text": "5. The user selects an eligible LLM model for whole-book composition and may",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L487"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L487",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "f0d5d8d4e96f4a3e831204a417a5f7570c1b16df2cf73dda5d7457cf4d160e58",
       "requirement_id": "REQ-AE7A020653F7",
       "requirement_text": "6. The `vertical-drama-book-novelizer` skill applies a documented prose",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
@@ -1260,47 +1280,55 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L497"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L497",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "5c51ce5e8af33423d3ff6c4e22fa7d762cd91a9d0c5469d3c27d6f2f45c5eceb",
       "requirement_id": "REQ-2BA31B43D284",
       "requirement_text": "8. The cover creator offers only enabled, authorized image models that support",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L504"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L504",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "15adadc0545de641db4243438890a3bd18828ce9d0608c89bc5895af6a03d8cf",
       "requirement_id": "REQ-F9FCCAF19FB9",
       "requirement_text": "9. Generated cover artwork is combined with exact title, author, and optional",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
@@ -1392,25 +1420,29 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L528"
       ],
       "authority_source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md#L528",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UI and isolated _dev database acceptance have not run.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7ef792294aec887395d44b97ddac6f67a4e1fb0f",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: implementation integrated; focused esbuild syntax compilation passed."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated browser and isolated database acceptance recorded in the Feature 326 handoff.",
       "requirement_digest": "5e5fb8f8fb100e27112464864695aa9f75f95d2eeb260810baead6e8373ea49d",
       "requirement_id": "REQ-FC8799CFA6ED",
       "requirement_text": "14. Composition, targeted episode re-novelization, cover generation, and",
       "source_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
       "successor_mapping": [],
-      "verification_evidence": [],
+      "verification_evidence": [
+        "7ef792294aec887395d44b97ddac6f67a4e1fb0f: focused esbuild syntax compilation and git diff --check passed; no tests were run."
+      ],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {

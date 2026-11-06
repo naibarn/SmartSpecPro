@@ -5,11 +5,11 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 47 unresolved of 47
-- Next action: Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.
-- Manifest generation: 15
+- Next action: Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.
+- Manifest generation: 26
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
-- Deep-implement section claims (6): CHECKPOINTED: 4, IN_PROGRESS: 2
+- Deep-implement section claims (6): CHECKPOINTED: 6

@@ -38,6 +38,17 @@ export const verticalDramaBookBlockSchema = z.discriminatedUnion("type", [
 ]);
 export type VerticalDramaBookBlock = z.infer<typeof verticalDramaBookBlockSchema>;
 
+export const verticalDramaBookChapterQualityReviewSchema = z.object({
+  flow: z.number().int().min(1).max(5),
+  readability: z.number().int().min(1).max(5),
+  continuity: z.number().int().min(1).max(5),
+  dialogue: z.number().int().min(1).max(5),
+  sourceCoverage: z.number().int().min(1).max(5),
+  unsupportedDetail: z.number().int().min(1).max(5),
+  findings: z.array(z.string().trim().min(1).max(300)).max(6).default([]),
+}).strict();
+export type VerticalDramaBookChapterQualityReview = z.infer<typeof verticalDramaBookChapterQualityReviewSchema>;
+
 export const verticalDramaBookDocumentSchema = z.object({
   schemaVersion: z.literal(1),
   metadata: z.object({
@@ -61,6 +72,7 @@ export const verticalDramaBookDocumentSchema = z.object({
     title: z.string().trim().min(1).max(255),
     sourceEpisodeIds: z.array(z.number().int().positive()).min(1).max(100),
     blocks: z.array(verticalDramaBookBlockSchema).max(20_000),
+    qualityReview: verticalDramaBookChapterQualityReviewSchema.optional(),
   }).strict()).min(1).max(500),
 }).strict().superRefine((document, ctx) => {
   if (Boolean(document.metadata.coverMediaAssetId) !== Boolean(document.metadata.coverChecksum)) {

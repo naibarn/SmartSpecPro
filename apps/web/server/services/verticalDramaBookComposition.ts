@@ -5,11 +5,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { llmProviders, mediaAssets, modelProviderMap, verticalDramaBookRevisions } from "../../drizzle/schema";
-import { verticalDramaBookDocumentSchema, type VerticalDramaBookDocument } from "../../shared/verticalDramaSeries/bookDocument";
+import { verticalDramaBookDocumentSchema, verticalDramaBookChapterQualityReviewSchema, type VerticalDramaBookDocument } from "../../shared/verticalDramaSeries/bookDocument";
 import type { MessageContent } from "../_core/llm";
 import { db } from "../db";
 import { calculateCreditsForLLMDynamic, createCreditReservation, refundReservation } from "./creditService";
 import { callLLMStructured } from "./callLLMStructured";
+import { resolveStructuredAutoChatModelSelection } from "./chatModelSelection";
 import { fingerprintBookSource } from "./verticalDramaBookSnapshot";
 import { storageReadBuffer } from "../storage";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
@@ -20,6 +21,7 @@ const chapterOutputSchema = z.object({
     z.object({ type: z.literal("dialogue"), sourceShotNumbers: z.array(z.number().int().min(0)).min(1).max(9), speaker: z.string().trim().max(300).nullable(), text: z.string().trim().min(1).max(2000) }).strict(),
     z.object({ type: z.literal("scene_break"), sourceShotNumbers: z.array(z.number().int().min(0)).min(1).max(9) }).strict(),
   ])).min(1).max(120),
+  qualityReview: verticalDramaBookChapterQualityReviewSchema.optional(),
 }).strict();
 
 export type VerticalDramaBookNovelizerModel = { id: string; name: string; providerId: number };
@@ -95,11 +97,7 @@ export async function estimateVerticalDramaBookCompositionCredits(input: {
   maxInputBytesPerChapter?: number;
   modelSelection?: CompositionModelSelection;
 }) {
-  const selection = input.modelSelection ?? await (async () => {
-    const first = (await listVerticalDramaBookNovelizerModels())[0];
-    if (!first) throw new Error("BOOK_NOVELIZER_MODEL_UNAVAILABLE");
-    return { resolvedModelId: first.id, preferredProviderId: first.providerId };
-  })();
+  const selection = input.modelSelection ?? await resolveStructuredAutoChatModelSelection();
   const inputTokensCeiling = input.maxInputBytesPerChapter ?? 64 * 1024;
   const providerId = selection.preferredProviderId ?? selection.resolvedProviderId;
   const oneAttempt = await calculateCreditsForLLMDynamic(inputTokensCeiling, 7000, selection.resolvedModelId, providerId);
@@ -271,7 +269,7 @@ export async function composeVerticalDramaBookRevision(input: {
         });
       }
     }
-    mutableChapters[index] = { ...chapter, blocks };
+    mutableChapters[index] = { ...chapter, blocks, ...(result.data.qualityReview ? { qualityReview: result.data.qualityReview } : {}) };
     const partialDocument = { ...initial, chapters: mutableChapters };
     await db.update(verticalDramaBookRevisions).set({ document: partialDocument }).where(and(
       eq(verticalDramaBookRevisions.id, revision.id), eq(verticalDramaBookRevisions.tenantId, input.tenantId), eq(verticalDramaBookRevisions.userId, input.userId), eq(verticalDramaBookRevisions.status, "candidate"),
