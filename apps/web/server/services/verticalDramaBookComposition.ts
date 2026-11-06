@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -23,6 +24,34 @@ const chapterOutputSchema = z.object({
   ])).min(1).max(120),
   qualityReview: verticalDramaBookChapterQualityReviewSchema.optional(),
 }).strict();
+
+const NOVELIZER_MAX_SOURCE_IMAGE_BYTES = 24 * 1024 * 1024;
+const NOVELIZER_MAX_IMAGE_BYTES = 300 * 1024;
+const NOVELIZER_MAX_TOTAL_IMAGE_BYTES = 2 * 1024 * 1024;
+const NOVELIZER_MAX_REQUEST_BYTES = 6 * 1024 * 1024;
+
+function boundedJson(value: unknown, maxBytes: number): unknown {
+  const serialized = JSON.stringify(value ?? null) ?? "null";
+  if (Buffer.byteLength(serialized, "utf8") <= maxBytes) return value ?? null;
+  let excerpt = serialized.slice(0, maxBytes);
+  while (Buffer.byteLength(excerpt, "utf8") > maxBytes) excerpt = excerpt.slice(0, Math.max(0, excerpt.length - 1024));
+  return `${excerpt}\n[Source context shortened to fit the novel-writing request.]`;
+}
+
+async function encodeNovelizerImage(sourceBytes: Buffer): Promise<Buffer | null> {
+  try {
+    const encode = (width: number, quality: number) => sharp(sourceBytes, { animated: false, limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({ width, height: width, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true })
+      .toBuffer();
+    let encoded = await encode(768, 68);
+    if (encoded.length > NOVELIZER_MAX_IMAGE_BYTES) encoded = await encode(640, 48);
+    return encoded.length <= NOVELIZER_MAX_IMAGE_BYTES ? encoded : null;
+  } catch {
+    return null;
+  }
+}
 
 export type VerticalDramaBookNovelizerModel = { id: string; name: string; providerId: number };
 
@@ -80,8 +109,19 @@ type CompositionModelSelection = { resolvedModelId: string; preferredProviderId?
 function buildChapterUserMessage(source: Record<string, unknown>, payload: Record<string, unknown>, shots: Array<Record<string, unknown>>): string {
   const seriesPayload = asRecord(source.seriesPayload);
   return JSON.stringify({
-    series: { title: seriesPayload.title, locale: seriesPayload.locale, genre: seriesPayload.genre, tone: seriesPayload.tone, bible: seriesPayload.bible },
-    episode: { title: payload.title, script: payload.script, dialogueAudioPlan: payload.dialogueAudioPlan },
+    series: {
+      title: seriesPayload.title,
+      synopsis: boundedJson(seriesPayload.synopsis, 6000),
+      locale: seriesPayload.locale,
+      genre: seriesPayload.genre,
+      tone: seriesPayload.tone,
+      bible: boundedJson(seriesPayload.bible, 24000),
+    },
+    episode: {
+      title: payload.title,
+      script: boundedJson(payload.script, 24000),
+      dialogueAudioPlan: boundedJson(payload.dialogueAudioPlan, 16000),
+    },
     shots: shots.map(shot => ({
       shotNumber: Number(shot.shotNumber),
       description: Number(shot.shotNumber) === 0
@@ -166,12 +206,16 @@ export async function composeVerticalDramaBookRevision(input: {
     const imageParts: MessageContent[] = [];
     const attachedAssetIds = new Set<number>();
     let imageBytes = 0;
+    let sourceImageBytes = 0;
     for (const row of imageRows) {
       if (row.status !== "ready" || !row.mimeType.startsWith("image/") || assetChecksums.get(row.id) !== row.checksum) continue;
       const bytes = await storageReadBuffer(row.storageKey);
-      if (!bytes || bytes.length > 4 * 1024 * 1024 || imageBytes + bytes.length > 12 * 1024 * 1024) continue;
-      imageBytes += bytes.length;
-      imageParts.push({ type: "image_url", image_url: { url: `data:${row.mimeType};base64,${bytes.toString("base64")}`, detail: "low" } });
+      if (!bytes || bytes.length > NOVELIZER_MAX_SOURCE_IMAGE_BYTES) continue;
+      const optimized = await encodeNovelizerImage(bytes);
+      if (!optimized || imageBytes + optimized.length > NOVELIZER_MAX_TOTAL_IMAGE_BYTES) continue;
+      sourceImageBytes += bytes.length;
+      imageBytes += optimized.length;
+      imageParts.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${optimized.toString("base64")}`, detail: "low" } });
       attachedAssetIds.add(row.id);
     }
     const imageLabels = attachedAssetIds.size ? imageRows.filter(row => attachedAssetIds.has(row.id)).map(row => `Authorized episode shot image asset ${row.id}.`).join(" ") : "No source images could be attached.";
@@ -179,7 +223,10 @@ export async function composeVerticalDramaBookRevision(input: {
       { type: "text", text: `${userPrompt}\n\nAttached images are ordered by the media asset IDs referenced in the source shot records. ${imageLabels} Use visible evidence conservatively.` },
       ...imageParts,
     ];
-    const inputBytes = Buffer.byteLength(loadNovelizerPrompt(), "utf8") + Buffer.byteLength(userPrompt, "utf8") + imageParts.length * 8192;
+    const systemPrompt = loadNovelizerPrompt();
+    const requestBytes = Buffer.byteLength(systemPrompt, "utf8") + Buffer.byteLength(JSON.stringify(userMessage), "utf8");
+    if (requestBytes > NOVELIZER_MAX_REQUEST_BYTES) throw new Error("BOOK_COMPOSITION_INPUT_TOO_LARGE");
+    const inputBytes = Buffer.byteLength(systemPrompt, "utf8") + Buffer.byteLength(userPrompt, "utf8") + imageParts.length * 8192;
     const inputTokensCeiling = inputBytes + 4096;
     const attemptsCeiling = 2;
     const priceSafetyMultiplier = 2;
@@ -191,14 +238,14 @@ export async function composeVerticalDramaBookRevision(input: {
       input.userId,
       reservationAmount,
       "chat",
-      { feature: "326", bookId: input.bookId, revisionId: input.revisionId, chapterId: chapter.id, model: modelSelection.resolvedModelId, inputBytes, maxOutputTokens: 7000, maxAttempts: attemptsCeiling, skillSlug: "vertical-drama-book-novelizer", sourceImageCount: imageParts.length },
+      { feature: "326", bookId: input.bookId, revisionId: input.revisionId, chapterId: chapter.id, model: modelSelection.resolvedModelId, inputBytes, maxOutputTokens: 7000, maxAttempts: attemptsCeiling, skillSlug: "vertical-drama-book-novelizer", sourceImageCount: imageParts.length, sourceImageBytes, optimizedImageBytes: imageBytes, serializedRequestBytes: requestBytes },
       `vd-book-compose:${input.tenantId}:${input.bookId}:${input.revisionId}:${chapter.id}:${randomUUID()}`,
       { tenantId: input.tenantId, description: "Vertical drama book chapter composition reservation" },
     );
     let result;
     try {
       result = await callLLMStructured({
-      systemPrompt: loadNovelizerPrompt(),
+      systemPrompt,
       userMessage,
       model: modelSelection.resolvedModelId,
       preferredProviderId: modelSelection.preferredProviderId,
