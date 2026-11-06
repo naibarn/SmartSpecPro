@@ -45,7 +45,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
+    "expected_canonical_sha": "02eb25241224a9da11d7594951e1b2cd09a9a936",
     "expected_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254"
   },
   "continuation": {
@@ -100,16 +100,16 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d60015196168ddabcf28b1121d473e20f28ef011a2a6ad36b2c446ece0499179",
+    "artifact_digest": "sha256:18ec0da113435eb1f8a7268e4fe2862bf0076f4018c2e0c11e40216ab3387461",
     "environment": "legacy-debian-dev (development, smartaihub.app)",
     "evidence": [
-      "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ce7eab875ebb07ea928363aca7b3f37e1ff093f4-2fc8ab621316-400.json",
-      "release:status: source/frontend/backend/runtime SHA matched; target_matches_release=true",
-      "https://smartaihub.app/healthz HTTP 200; https://smartaihub.app/login HTTP 200",
-      "smartspec-web.service and smartspec-node-worker.service healthy on release generation 400"
+      "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-02eb25241224a9da11d7594951e1b2cd09a9a936-00222f4229f9-401.json",
+      "Book Studio UI updated and production bundle built for source 02eb25241224a9da11d7594951e1b2cd09a9a936; focused TSX syntax transpile and git diff --check passed.",
+      "release:status confirms frontend/backend/runtime SHA match and target_matches_release=true; web and Node worker healthy.",
+      "https://smartaihub.app/healthz HTTP 200; /login HTTP 200; /drama-series/53?tab=books HTTP 200 (SPA route response only; authenticated UI acceptance remains pending)."
     ],
     "required": false,
-    "source_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
+    "source_sha": "02eb25241224a9da11d7594951e1b2cd09a9a936",
     "status": "PASS"
   },
   "disposition": {
@@ -129,7 +129,7 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 36,
+  "generation": 37,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
@@ -181,9 +181,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
+    "canonical_sha": "02eb25241224a9da11d7594951e1b2cd09a9a936",
     "integrated": true,
-    "integrated_at": "2026-11-07T00:35:38+07:00"
+    "integrated_at": "2026-11-07T01:16:48+07:00"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -852,7 +852,7 @@
     "unresolved": 47
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T17:58:07.345920Z",
+  "updated_at": "2026-11-06T18:21:40.673792Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
