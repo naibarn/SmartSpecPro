@@ -249,6 +249,7 @@ export function buildObjectReferencePrompt(input: {
   objectType?: string | null;
   description?: string | null;
   continuityNotes?: string | null;
+  productDimensions?: string | null;
   sceneContext?: string | null;
 }): string {
   const parts = [
@@ -260,6 +261,9 @@ export function buildObjectReferencePrompt(input: {
     input.continuityNotes?.trim()
       ? `Continuity lock: ${input.continuityNotes.trim()}.`
       : "Preserve the same shape, material, colors, markings, and distinctive details across shots.",
+    input.productDimensions?.trim()
+      ? `Product dimensions: ${input.productDimensions.trim()}. Match the product's real-world proportions and scale to these measurements; do not invent additional measurements.`
+      : "",
     input.sceneContext?.trim()
       ? `Current scene context: ${input.sceneContext.trim()}.`
       : "",

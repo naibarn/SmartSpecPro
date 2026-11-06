@@ -92,6 +92,15 @@ function numberId(value: string | number) {
   return id;
 }
 
+function readProductDimensions(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    return null;
+  const value = (metadata as Record<string, unknown>).productDimensions;
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 240)
+    : null;
+}
+
 async function ownedSeries(
   actor: VerticalDramaObjectReferenceActor,
   seriesId: string | number
@@ -184,6 +193,10 @@ export async function listVerticalDramaObjectReferences(
   return objects.map(object => ({
     ...object,
     id: String(object.id),
+    productDimensions:
+      object.mode === "commercial_tie_in"
+        ? readProductDimensions(object.metadataJson)
+        : null,
     assets: assets
       .filter(asset => asset.objectReferenceId === object.id)
       .map(asset => ({
@@ -206,6 +219,10 @@ export async function previewVerticalDramaObjectReferencePrompt(
       objectType: object.objectType,
       description: object.description,
       continuityNotes: object.continuityNotes,
+      productDimensions:
+        object.mode === "commercial_tie_in"
+          ? readProductDimensions(object.metadataJson)
+          : null,
       sceneContext: input.sceneContext,
     }),
     paid: false,
@@ -254,6 +271,10 @@ export async function getVerticalDramaObjectReferenceGenerationContext(
       objectType: object.objectType,
       description: object.description,
       continuityNotes: object.continuityNotes,
+      productDimensions:
+        object.mode === "commercial_tie_in"
+          ? readProductDimensions(object.metadataJson)
+          : null,
       sceneContext: input.sceneContext,
     }),
     object.canonicalPrompt?.trim() || "",
@@ -285,6 +306,10 @@ export async function requestVerticalDramaObjectReferencePrompt(
     objectType: object.objectType,
     description: object.description,
     continuityNotes: object.continuityNotes,
+    productDimensions:
+      object.mode === "commercial_tie_in"
+        ? readProductDimensions(object.metadataJson)
+        : null,
     sceneContext: input.sceneContext,
   });
   const inputFingerprint = objectReferenceContextFingerprint({
@@ -406,6 +431,7 @@ export async function updateVerticalDramaObjectReference(
     name?: string;
     description?: string | null;
     canonicalPrompt?: string | null;
+    productDimensions?: string | null;
     mode?: string;
     objectType?: string;
     narrativeRole?: string | null;
@@ -420,9 +446,28 @@ export async function updateVerticalDramaObjectReference(
     current.revision !== input.expectedRevision
   )
     throw new Error("Object reference revision conflict");
+  let metadataJsonUpdate:
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (input.productDimensions !== undefined) {
+    const metadata =
+      current.metadataJson &&
+      typeof current.metadataJson === "object" &&
+      !Array.isArray(current.metadataJson)
+        ? { ...(current.metadataJson as Record<string, unknown>) }
+        : {};
+    const productDimensions = input.productDimensions?.trim().slice(0, 240);
+    if (productDimensions) metadata.productDimensions = productDimensions;
+    else delete metadata.productDimensions;
+    metadataJsonUpdate = Object.keys(metadata).length ? metadata : null;
+  }
   const [row] = await getDb()
     .update(verticalDramaObjectReferences)
     .set({
+      ...(metadataJsonUpdate !== undefined
+        ? { metadataJson: metadataJsonUpdate }
+        : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.description !== undefined
         ? { description: input.description }

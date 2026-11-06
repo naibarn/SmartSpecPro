@@ -48,6 +48,7 @@ type ObjectReferenceListItem = {
   name: string;
   description?: string | null;
   canonicalPrompt?: string | null;
+  productDimensions?: string | null;
   mode: string;
   status: string;
   assets?: Array<{
@@ -75,6 +76,7 @@ export function VerticalDramaObjectReferenceTab({
   const [promptObjectId, setPromptObjectId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editProductDimensions, setEditProductDimensions] = useState("");
   const [productEditorOpen, setProductEditorOpen] = useState(
     Boolean(productTieIn?.enabled)
   );
@@ -277,10 +279,16 @@ export function VerticalDramaObjectReferenceTab({
 
   async function saveEdit() {
     if (!editingId || !editName.trim()) return;
+    const editingObject = objectReferences.find(
+      object => object.id === editingId
+    );
     await updateObject.mutateAsync({
       objectReferenceId: editingId,
       name: editName.trim(),
       description: editDescription.trim() || null,
+      ...(editingObject?.mode === "commercial_tie_in"
+        ? { productDimensions: editProductDimensions.trim() || null }
+        : {}),
     });
     setEditingId(null);
     await utils.verticalDramaSeries.listObjectReferences.invalidate({
@@ -503,6 +511,26 @@ export function VerticalDramaObjectReferenceTab({
                           isTh ? "คำอธิบายวัตถุ" : "Object description"
                         }
                       />
+                      {object.mode === "commercial_tie_in" && (
+                        <div className="grid gap-1.5">
+                          <Label htmlFor={`vd-object-dimensions-${object.id}`}>
+                            {isTh ? "ขนาดสินค้า" : "Product dimensions"}
+                          </Label>
+                          <Input
+                            id={`vd-object-dimensions-${object.id}`}
+                            value={editProductDimensions}
+                            onChange={event =>
+                              setEditProductDimensions(event.target.value)
+                            }
+                            maxLength={240}
+                            placeholder={
+                              isTh
+                                ? "เช่น กว้าง 21 × ลึก 26 × สูง 29 ซม."
+                                : "e.g. 21 cm wide × 26 cm deep × 29 cm tall"
+                            }
+                          />
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -528,6 +556,12 @@ export function VerticalDramaObjectReferenceTab({
                       {object.description}
                     </p>
                   ) : null}
+                  {editingId !== object.id && object.productDimensions && (
+                    <p className="text-xs text-muted-foreground">
+                      {isTh ? "ขนาดสินค้า: " : "Product dimensions: "}
+                      {object.productDimensions}
+                    </p>
+                  )}
                   {object.canonicalPrompt && (
                     <p className="text-xs text-muted-foreground">
                       {object.canonicalPrompt}
@@ -702,6 +736,9 @@ export function VerticalDramaObjectReferenceTab({
                             setEditingId(object.id);
                             setEditName(object.name);
                             setEditDescription(object.description ?? "");
+                            setEditProductDimensions(
+                              object.productDimensions ?? ""
+                            );
                           }}
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />

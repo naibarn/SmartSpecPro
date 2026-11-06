@@ -10579,6 +10579,7 @@ export const verticalDramaSeriesRouter = router({
         name: z.string().trim().min(1).max(160).optional(),
         description: z.string().trim().max(2000).nullable().optional(),
         canonicalPrompt: z.string().trim().max(4000).nullable().optional(),
+        productDimensions: z.string().trim().max(240).nullable().optional(),
         mode: z.enum(["story_object", "commercial_tie_in"]).optional(),
         objectType: z.string().trim().max(32).optional(),
         narrativeRole: z.string().trim().max(160).nullable().optional(),

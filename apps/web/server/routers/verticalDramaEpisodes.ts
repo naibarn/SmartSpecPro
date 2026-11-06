@@ -54,6 +54,9 @@ import {
   verticalDramaSeriesSoundBibles,
   verticalDramaAudioQcReports,
   verticalDramaAudioManifests,
+  verticalDramaObjectReferenceProjections,
+  verticalDramaObjectReferences,
+  verticalDramaObjectReferenceAssets,
 } from "../../drizzle/schema";
 import type { VerticalDramaShotBrollBinding } from "../../drizzle/schema";
 import {
@@ -6476,42 +6479,251 @@ async function resolveShotProductReferenceUrls(
 }
 
 /**
+ * Resolve product reference images and enrich catalog-backed assets with the
+ * dimensions stored on their commercial object reference. Direct URLs remain
+ * supported but cannot be associated with catalog metadata.
+ */
+async function resolveShotProductReferenceDetails(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  productReferenceAssetIds: string[] | undefined
+): Promise<ResolvedShotPropObjectReference[]> {
+  if (!productReferenceAssetIds?.length) return [];
+
+  const numericIds = Array.from(
+    new Set(
+      productReferenceAssetIds
+        .map(value => Number(value))
+        .filter(
+          (value): value is number => Number.isSafeInteger(value) && value > 0
+        )
+    )
+  );
+  const urlsById = await resolveMediaAssetUrlsByIds(
+    tenantId,
+    userId,
+    numericIds
+  );
+  const detailsByAssetId = new Map<
+    number,
+    { name: string; productDimensions?: string }
+  >();
+  if (numericIds.length > 0) {
+    try {
+      const rows = await db
+        .select({
+          mediaAssetId: verticalDramaObjectReferenceAssets.mediaAssetId,
+          name: verticalDramaObjectReferences.name,
+          mode: verticalDramaObjectReferences.mode,
+          metadataJson: verticalDramaObjectReferences.metadataJson,
+        })
+        .from(verticalDramaObjectReferenceAssets)
+        .innerJoin(
+          verticalDramaObjectReferences,
+          eq(
+            verticalDramaObjectReferences.id,
+            verticalDramaObjectReferenceAssets.objectReferenceId
+          )
+        )
+        .where(
+          and(
+            eq(verticalDramaObjectReferenceAssets.tenantId, tenantId),
+            eq(verticalDramaObjectReferenceAssets.userId, userId),
+            eq(verticalDramaObjectReferenceAssets.state, "active"),
+            eq(verticalDramaObjectReferences.tenantId, tenantId),
+            eq(verticalDramaObjectReferences.userId, userId),
+            eq(verticalDramaObjectReferences.seriesId, seriesId),
+            eq(verticalDramaObjectReferences.mode, "commercial_tie_in"),
+            inArray(verticalDramaObjectReferenceAssets.mediaAssetId, numericIds)
+          )
+        );
+      for (const row of rows) {
+        const mediaAssetId = Number(row.mediaAssetId);
+        if (
+          !Number.isSafeInteger(mediaAssetId) ||
+          detailsByAssetId.has(mediaAssetId)
+        )
+          continue;
+        const productDimensions = readObjectReferenceProductDimensions(
+          row.metadataJson
+        );
+        detailsByAssetId.set(mediaAssetId, {
+          name: row.name,
+          ...(productDimensions ? { productDimensions } : {}),
+        });
+      }
+    } catch (error) {
+      // Metadata enriches a valid reference; it must not block image creation.
+      console.warn(
+        "[vd_product_reference] failed to resolve catalog dimensions — continuing without them",
+        { seriesId, tenantId, error }
+      );
+    }
+  }
+
+  const results: ResolvedShotPropObjectReference[] = [];
+  const seenUrls = new Set<string>();
+  let index = 0;
+  for (const reference of productReferenceAssetIds) {
+    const directUrl =
+      /^https?:\/\//i.test(reference) ||
+      reference.startsWith("/api/storage/files/") ||
+      reference.startsWith("/uploads/")
+        ? reference
+        : undefined;
+    const assetId = Number(reference);
+    const url = directUrl ?? urlsById.get(assetId);
+    if (!url || seenUrls.has(url)) continue;
+    seenUrls.add(url);
+    const catalogDetails = Number.isSafeInteger(assetId)
+      ? detailsByAssetId.get(assetId)
+      : undefined;
+    index += 1;
+    results.push({
+      url,
+      label: catalogDetails?.name ?? `Selected product reference ${index}`,
+      ...(catalogDetails?.productDimensions
+        ? { productDimensions: catalogDetails.productDimensions }
+        : {}),
+    });
+  }
+  return results;
+}
+
+/**
  * Resolve user-attached ordinary-shot prop/object references to authorized
  * media URLs. This is intentionally best-effort: an expired or temporarily
  * unavailable prop image must never block prompt or image generation.
  */
-async function resolveShotPropObjectReferenceUrls(
+type ResolvedShotPropObjectReference = {
+  url: string;
+  label: string;
+  productDimensions?: string;
+};
+
+function readObjectReferenceProductDimensions(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    return undefined;
+  const value = (metadata as Record<string, unknown>).productDimensions;
+  return typeof value === "string" && value.trim()
+    ? value
+        .trim()
+        .replace(/[\r\n]+/g, " ")
+        .slice(0, 240)
+    : undefined;
+}
+
+function appendShotPropObjectDimensionLock(
+  prompt: string,
+  references: readonly ResolvedShotPropObjectReference[]
+) {
+  const facts = references
+    .map(reference =>
+      reference.productDimensions?.trim()
+        ? `${reference.label}: ${reference.productDimensions.trim()}`
+        : ""
+    )
+    .filter(Boolean);
+  if (!facts.length) return prompt;
+  const normalizedPrompt = prompt.toLocaleLowerCase();
+  const missingFacts = facts.filter(
+    fact => !normalizedPrompt.includes(fact.toLocaleLowerCase())
+  );
+  if (!missingFacts.length) return prompt;
+  return `${prompt.trimEnd()}\n\nATTACHED PRODUCT DIMENSION LOCK: ${missingFacts.join("; ")}. Match each attached product's proportions and apparent scale to its stated measurements and the shot perspective; preserve the reference design and do not invent dimensions.`;
+}
+
+async function resolveShotPropObjectReferenceDetails(
   tenantId: string,
   userId: number,
   seriesId: number,
   episodeId: number,
   shotNumber: number
-): Promise<string[]> {
+): Promise<ResolvedShotPropObjectReference[]> {
   try {
     const references = await verticalDramaShotReferencesService.listForShot(
       { tenantId, userId, seriesId },
       episodeId,
       shotNumber
     );
-    const assetIds = references
-      .filter(
-        reference =>
-          reference.source === "prop_object" &&
-          (reference.mediaType === undefined || reference.mediaType === "image")
-      )
-      .map(reference => Number(reference.mediaAssetId));
+    const propReferences = references.filter(
+      reference =>
+        reference.source === "prop_object" &&
+        (reference.mediaType === undefined || reference.mediaType === "image")
+    );
+    const assetIds = propReferences.map(reference =>
+      Number(reference.mediaAssetId)
+    );
+    const referenceIds = propReferences
+      .map(reference => Number(reference.referenceId))
+      .filter(id => Number.isSafeInteger(id) && id > 0);
+    if (assetIds.length === 0) return [];
     const urlsById = await resolveMediaAssetUrlsByIds(
       tenantId,
       userId,
       assetIds
     );
-    return Array.from(
-      new Set(
-        assetIds
-          .map(assetId => urlsById.get(assetId))
-          .filter((url): url is string => Boolean(url))
-      )
+    const projections = referenceIds.length
+      ? await db
+          .select({
+            shotReferenceId:
+              verticalDramaObjectReferenceProjections.shotReferenceId,
+            objectName: verticalDramaObjectReferences.name,
+            objectMode: verticalDramaObjectReferences.mode,
+            metadataJson: verticalDramaObjectReferences.metadataJson,
+          })
+          .from(verticalDramaObjectReferenceProjections)
+          .innerJoin(
+            verticalDramaObjectReferences,
+            eq(
+              verticalDramaObjectReferences.id,
+              verticalDramaObjectReferenceProjections.objectReferenceId
+            )
+          )
+          .where(
+            and(
+              eq(verticalDramaObjectReferenceProjections.tenantId, tenantId),
+              eq(verticalDramaObjectReferenceProjections.userId, userId),
+              eq(verticalDramaObjectReferenceProjections.episodeId, episodeId),
+              eq(
+                verticalDramaObjectReferenceProjections.shotNumber,
+                shotNumber
+              ),
+              inArray(
+                verticalDramaObjectReferenceProjections.shotReferenceId,
+                referenceIds
+              ),
+              eq(verticalDramaObjectReferences.tenantId, tenantId),
+              eq(verticalDramaObjectReferences.userId, userId),
+              eq(verticalDramaObjectReferences.seriesId, seriesId)
+            )
+          )
+      : [];
+    const projectionByReferenceId = new Map(
+      projections.map(projection => [projection.shotReferenceId, projection])
     );
+    const seenUrls = new Set<string>();
+    return propReferences.flatMap((reference, index) => {
+      const assetId = Number(reference.mediaAssetId);
+      const url = urlsById.get(assetId);
+      if (!url || seenUrls.has(url)) return [];
+      seenUrls.add(url);
+      const projection = projectionByReferenceId.get(
+        Number(reference.referenceId)
+      );
+      const productDimensions =
+        projection?.objectMode === "commercial_tie_in"
+          ? readObjectReferenceProductDimensions(projection.metadataJson)
+          : undefined;
+      return [
+        {
+          url,
+          label: projection?.objectName ?? `Prop/object reference ${index + 1}`,
+          ...(productDimensions ? { productDimensions } : {}),
+        },
+      ];
+    });
   } catch (error) {
     console.warn(
       "[vd_prop_object_reference] failed to resolve prop/object references — continuing without them",
@@ -21159,17 +21371,26 @@ export const verticalDramaEpisodesRouter = router({
       // in the shot, not just be described in text) — appended AFTER
       // character/location refs so identity-lock and environment-lock always
       // take priority when a model's `maxReferenceImages` forces trimming.
-      const productRefUrls = await resolveShotProductReferenceUrls(
-        tenantId,
-        userId,
-        frame.productReferenceAssetIds
+      const productReferenceDetails =
+        await resolveShotProductReferenceDetails(
+          tenantId,
+          userId,
+          seriesId,
+          frame.productReferenceAssetIds
+        );
+      const productRefUrls = productReferenceDetails.map(
+        reference => reference.url
       );
-      const propObjectRefUrls = await resolveShotPropObjectReferenceUrls(
-        tenantId,
-        userId,
-        seriesId,
-        episodeId,
-        input.shotNumber
+      const propObjectReferenceDetails =
+        await resolveShotPropObjectReferenceDetails(
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          input.shotNumber
+        );
+      const propObjectRefUrls = propObjectReferenceDetails.map(
+        reference => reference.url
       );
 
       // Resolution order (spec Phase 1.2): episode-level selection →
@@ -21435,6 +21656,10 @@ export const verticalDramaEpisodesRouter = router({
       if (productScaleFact) {
         renderStartFramePrompt = `${renderStartFramePrompt.trim()}\n\n${productScaleFact}`;
       }
+      renderStartFramePrompt = appendShotPropObjectDimensionLock(
+        renderStartFramePrompt,
+        [...propObjectReferenceDetails, ...productReferenceDetails]
+      );
 
       // Check only the current shot's story-bearing facts before folding the
       // negative exclusions into the provider prompt. The provider prompt also
@@ -22176,17 +22401,30 @@ export const verticalDramaEpisodesRouter = router({
       const locationRefUrls = locationRefEntry?.url
         ? [locationRefEntry.url]
         : [];
-      const productRefUrls = await resolveShotProductReferenceUrls(
-        tenantId,
-        userId,
-        frame.productReferenceAssetIds
+      const angleProductReferenceDetails =
+        await resolveShotProductReferenceDetails(
+          tenantId,
+          userId,
+          seriesId,
+          frame.productReferenceAssetIds
+        );
+      const productRefUrls = angleProductReferenceDetails.map(
+        reference => reference.url
       );
-      const propObjectRefUrls = await resolveShotPropObjectReferenceUrls(
-        tenantId,
-        userId,
-        seriesId,
-        episodeId,
-        input.shotNumber
+      const anglePropObjectReferenceDetails =
+        await resolveShotPropObjectReferenceDetails(
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          input.shotNumber
+        );
+      const propObjectRefUrls = anglePropObjectReferenceDetails.map(
+        reference => reference.url
+      );
+      softenedImagePrompt = appendShotPropObjectDimensionLock(
+        softenedImagePrompt,
+        [...anglePropObjectReferenceDetails, ...angleProductReferenceDetails]
       );
 
       // Character identity map (2026-07-07 non-human-character-vanishing
@@ -22923,6 +23161,26 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         repairIsTieInShot
       );
+      const repairProductReferenceDetails = repairIsTieInShot
+        ? await resolveShotProductReferenceDetails(
+            tenantId,
+            userId,
+            seriesId,
+            frame.productReferenceAssetIds
+          )
+        : [];
+      const repairProductDimensions = [
+        repairProductLockFacts?.productDimensions?.trim(),
+        ...repairProductReferenceDetails
+          .map(reference =>
+            reference.productDimensions?.trim()
+              ? `${reference.label}: ${reference.productDimensions.trim()}`
+              : undefined
+          )
+          .filter((value): value is string => Boolean(value)),
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join("; ");
       const repairCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
           tenantId,
@@ -22989,8 +23247,7 @@ export const verticalDramaEpisodesRouter = router({
             productName: repairProductLockFacts?.productName ?? null,
             productDescription:
               repairProductLockFacts?.productDescription ?? null,
-            productDimensions:
-              repairProductLockFacts?.productDimensions ?? null,
+            productDimensions: repairProductDimensions || null,
           },
           gridLayout: null,
           promptMaxChars: repairPromptMaxChars,
@@ -25245,16 +25502,12 @@ export const verticalDramaEpisodesRouter = router({
       // never replace the storyboard scene/background reference.
       const shotStartFramePromptProductReferenceImages =
         shotStartFramePromptIsTieInShot
-          ? (
-              await resolveShotProductReferenceUrls(
-                tenantId,
-                userId,
-                frame.productReferenceAssetIds
-              )
-            ).map((url, index) => ({
-              url,
-              label: `Selected product reference ${index + 1}`,
-            }))
+          ? await resolveShotProductReferenceDetails(
+              tenantId,
+              userId,
+              seriesId,
+              frame.productReferenceAssetIds
+            )
           : undefined;
       const shotStartFramePromptCanonicalSynopsis =
         input.canonicalShotSummary?.trim() ||
@@ -25723,8 +25976,8 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const shotStartFramePromptPropObjectReferenceUrls =
-        await resolveShotPropObjectReferenceUrls(
+      const shotStartFramePromptPropObjectReferenceImages =
+        await resolveShotPropObjectReferenceDetails(
           tenantId,
           userId,
           seriesId,
@@ -25920,9 +26173,9 @@ export const verticalDramaEpisodesRouter = router({
           attachShotImage: input.attachShotImage,
           imageUrl: resolvedImageUrl,
           propObjectReferenceImages:
-            shotStartFramePromptPropObjectReferenceUrls.map((url, index) => ({
-              url: resolveReferenceUrl(url, ctx.publicUrl ?? undefined),
-              label: `Prop/object reference ${index + 1}`,
+            shotStartFramePromptPropObjectReferenceImages.map(reference => ({
+              ...reference,
+              url: resolveReferenceUrl(reference.url, ctx.publicUrl ?? undefined),
             })),
           additionalImageUrls: input.additionalImageUrls?.map((url, idx) => ({
             url: resolveReferenceUrl(url, ctx.publicUrl ?? undefined),
@@ -28141,16 +28394,19 @@ export const verticalDramaEpisodesRouter = router({
             ]
           : [];
       const promptSkillAdditionalImages = input.additionalImageUrls;
-      const productReferenceImages = (
-        await resolveShotProductReferenceUrls(
+      const productReferenceDetails =
+        await resolveShotProductReferenceDetails(
           tenantId,
           userId,
+          seriesId,
           frame?.productReferenceAssetIds
-        )
-      ).map((url, index) => ({
-        url: resolveReferenceUrl(url, ctx.publicUrl ?? undefined),
-        label: `PRODUCT_REFERENCE_IMAGE_${index + 1}`,
-      }));
+        );
+      const productReferenceImages = productReferenceDetails.map(
+        (reference, index) => ({
+          url: resolveReferenceUrl(reference.url, ctx.publicUrl ?? undefined),
+          label: reference.label || `PRODUCT_REFERENCE_IMAGE_${index + 1}`,
+        })
+      );
 
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
       const storyboardShot = storyboard?.shots?.find(
@@ -28370,10 +28626,23 @@ export const verticalDramaEpisodesRouter = router({
               ? rawProductTieIn.productCategory
               : undefined;
         }
-        productReferenceDescription =
+        const storedProductFacts = [
           typeof rawProductTieIn?.productDescription === "string"
-            ? rawProductTieIn.productDescription
-            : undefined;
+            ? rawProductTieIn.productDescription.trim()
+            : "",
+          typeof rawProductTieIn?.productDimensions === "string"
+            ? `Product dimensions: ${rawProductTieIn.productDimensions.trim()}`
+            : "",
+          ...productReferenceDetails
+            .filter(reference => reference.productDimensions?.trim())
+            .map(
+              reference =>
+                `${reference.label} dimensions: ${reference.productDimensions?.trim()}`
+            ),
+        ].filter(Boolean);
+        productReferenceDescription = storedProductFacts.length
+          ? Array.from(new Set(storedProductFacts)).join("; ")
+          : undefined;
       }
 
       // Hoisted from further below (planning/`polished-toasting-gadget.md`
