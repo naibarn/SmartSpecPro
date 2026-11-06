@@ -13,7 +13,7 @@
 
 ## Important data boundary
 
-The source spec expects pinned episode revisions and asset versions. Current episode rows expose mutable JSON columns and no immutable revision identifier was found in the targeted schema search. Therefore a Book source revision must retain exact source payload snapshots plus canonical fingerprints, and asset version/checksum where present. A URL alone is never provenance or authorization. Shot image coverage must be derived from existing managed image references and media rows, not guessed from shot counts or arbitrary JSON URLs.
+The source spec expects pinned episode revisions and asset versions. `vertical_drama_episode_revisions` exists for repair candidates, but does not cover the full episode/media state. A Book source revision must retain exact canonical source payload snapshots plus fingerprints, reference the candidate revision ID when applicable, and pin asset version/checksum where present. A URL alone is never provenance or authorization. Shot image coverage must be derived from existing managed image references and media rows, not guessed from shot counts or arbitrary JSON URLs.
 
 ## UI pattern search
 

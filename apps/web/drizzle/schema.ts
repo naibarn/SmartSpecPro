@@ -27631,6 +27631,90 @@ export type VerticalDramaEpisodeRevisionRow =
 export type InsertVerticalDramaEpisodeRevisionRow =
   typeof verticalDramaEpisodeRevisions.$inferInsert;
 
+/** Author-owned book projects derived from, but isolated from, a VD series. */
+export const verticalDramaBooks = pgTable(
+  "vertical_drama_books",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    metadata: jsonb("metadata").notNull().default({}),
+    sourceSelection: jsonb("sourceSelection").notNull().default({}),
+    currentRevisionNumber: integer("currentRevisionNumber").notNull().default(0),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }),
+    staleAt: timestamp("staleAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vds_book_series_owner_idx").on(t.tenantId, t.userId, t.seriesId, t.updatedAt),
+    index("vds_book_source_fingerprint_idx").on(t.tenantId, t.seriesId, t.sourceFingerprint),
+  ],
+);
+export type VerticalDramaBookRow = typeof verticalDramaBooks.$inferSelect;
+export type InsertVerticalDramaBookRow = typeof verticalDramaBooks.$inferInsert;
+
+/** Immutable editable-document snapshots and complete pinned source evidence. */
+export const verticalDramaBookRevisions = pgTable(
+  "vertical_drama_book_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    bookId: bigint("bookId", { mode: "number" }).notNull().references(() => verticalDramaBooks.id, { onDelete: "cascade" }),
+    revisionNumber: integer("revisionNumber").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    schemaVersion: integer("schemaVersion").notNull().default(1),
+    document: jsonb("document").notNull(),
+    sourceSnapshot: jsonb("sourceSnapshot").notNull(),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }).notNull(),
+    documentFingerprint: varchar("documentFingerprint", { length: 64 }).notNull(),
+    approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_book_revision_number_unique").on(t.tenantId, t.bookId, t.revisionNumber),
+    index("vds_book_revision_source_fingerprint_idx").on(t.tenantId, t.seriesId, t.sourceFingerprint),
+  ],
+);
+export type VerticalDramaBookRevisionRow = typeof verticalDramaBookRevisions.$inferSelect;
+export type InsertVerticalDramaBookRevisionRow = typeof verticalDramaBookRevisions.$inferInsert;
+
+/** Private, independently validated EPUB/PDF outputs for one immutable revision. */
+export const verticalDramaBookExportArtifacts = pgTable(
+  "vertical_drama_book_export_artifacts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    bookId: bigint("bookId", { mode: "number" }).notNull().references(() => verticalDramaBooks.id, { onDelete: "cascade" }),
+    revisionId: bigint("revisionId", { mode: "number" }).notNull().references(() => verticalDramaBookRevisions.id, { onDelete: "cascade" }),
+    format: varchar("format", { length: 8 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    jobId: varchar("jobId", { length: 64 }),
+    idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+    profileFingerprint: varchar("profileFingerprint", { length: 64 }).notNull(),
+    storageKey: text("storageKey"),
+    checksumSha256: varchar("checksumSha256", { length: 64 }),
+    sizeBytes: bigint("sizeBytes", { mode: "number" }),
+    validation: jsonb("validation"),
+    errorCode: varchar("errorCode", { length: 80 }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_book_export_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("vds_book_export_revision_format_idx").on(t.tenantId, t.revisionId, t.format, t.createdAt),
+  ],
+);
+export type VerticalDramaBookExportArtifactRow = typeof verticalDramaBookExportArtifacts.$inferSelect;
+export type InsertVerticalDramaBookExportArtifactRow = typeof verticalDramaBookExportArtifacts.$inferInsert;
+
 /**
  * Restricted forensic record for each logical LLM attempt made by the
  * episode-scoped repair pipeline. Raw output is intentionally kept separate

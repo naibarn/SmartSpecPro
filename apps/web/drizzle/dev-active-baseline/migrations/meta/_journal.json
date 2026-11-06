@@ -64,6 +64,13 @@
       "when": 1793267726779,
       "tag": "0423_dev_active_unified_thread_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793310000001,
+      "tag": "0424_vertical_drama_book_studio",
+      "breakpoints": true
     }
   ]
 }

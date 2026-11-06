@@ -6,7 +6,7 @@ The current spec is authoritative. Do not silently narrow the all-shot-image mod
 
 ## Existing implementation facts
 
-- Series and episode source is in `apps/web/drizzle/schema.ts`; episode script, storyboard, start-frame plan and cover image are JSON data. There is no confirmed immutable episode revision table, so pin canonical source snapshots and hashes in Book revisions.
+- Series and episode source is in `apps/web/drizzle/schema.ts`; episode script, storyboard, start-frame plan and cover image are JSON data. `vertical_drama_episode_revisions` stores repair candidates but does not capture all episode/media state; pin complete canonical source snapshots and hashes in Book revisions and retain its ID when applicable.
 - `media_assets` stores tenant-owned media and storage keys/checksums; use existing media authorization/storage functions to resolve bytes and never trust a user-supplied URL.
 - Vertical Drama long work is admitted through `createFeature186VerticalDramaJobRef()` into `worker_jobs` + outbox. Register executors in `jobExecutorRegistry.ts` and job types in `feature186JobTypes.ts`.
 - Existing authoring surface is `VerticalDramaSeriesDetailPage.tsx`; reuse its tabs, shell, episode and asset patterns.
