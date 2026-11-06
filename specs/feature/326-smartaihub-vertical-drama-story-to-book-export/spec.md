@@ -26,14 +26,15 @@ flows.
 ### 2.1 Recommended book style
 
 Start with an **Illustrated Novel**: readable prose and dialogue form the main
-content; selected existing artwork appears at chapter openings or occasional
-scene breaks. This fits both reflowable EPUB and designed PDF without requiring
-an image for every scene. The author may choose no illustrations, chapter
-openers, or occasional illustrations.
+content, with existing authorized artwork placed alongside the related story
+text. The author may choose no illustrations, chapter openers, occasional
+illustrations, or every available storyboard-shot image. The all-shots option
+supports series that already have an image for every shot while keeping image
+selection and book text editable.
 
 | Approach | EPUB | PDF | Decision |
 | --- | --- | --- | --- |
-| Illustrated Novel: prose plus selected artwork | Strong | Strong | MVP default; one reviewed source can produce both outputs |
+| Illustrated Novel: prose plus optional artwork, including every shot image | Strong | Strong | MVP; one reviewed source can produce both outputs |
 | Light Novel: text-first with a few illustrations | Strong | Strong | Compatible with the document model; a later editorial preset |
 | Poster/Photo Storybook: image-led fixed pages | Limited | Strong | Defer; needs a separate visual-page editor and fixed-layout validation |
 
@@ -90,7 +91,8 @@ Default mapping:
 | Episode title | Suggested chapter title; editable by the author |
 | Ordered scene/shot notes | Scene order and source facts for prose composition; never expose raw shot numbers as book headings |
 | Dialogue and speaker context | Typed dialogue blocks with source links |
-| Existing episode cover, key visual, or approved scene image | Optional book cover, chapter-opening illustration, or inline illustration |
+| Existing series/episode cover or key visual | Optional book cover, independent of chapter illustration settings |
+| Ordered storyboard shots and their approved images | Inline illustrations paired with the corresponding rewritten story passages; shot numbers remain internal source references |
 
 Authors can select a subset of episodes, reorder them, rename chapters, and
 combine or split chapter groupings while retaining source links. Special
@@ -112,11 +114,13 @@ reviewed book or replace prior user edits.
    description, and optional copyright-page text. Default language to the
    series locale.
 4. Choose the Illustrated Novel profile and image density: none, chapter
-   openers, or occasional illustrations. Choose from existing authorized
-   artwork; v1 does not generate new images.
-5. Review estimated AI cost, selected episode count, and source freshness before
-   starting prose composition. Use the existing model policy, credit quote,
-   and credit ledger.
+   openers, occasional illustrations, or every storyboard-shot image (all-shot
+   mode requires a usable image for every selected shot).
+   Choose a book cover independently from existing authorized cover/key visual
+   artwork. v1 does not generate new images.
+5. Review estimated AI cost, selected episode count, image count/size,
+   shot-image coverage, and source freshness before starting prose composition.
+   Use the existing model policy, credit quote, and credit ledger.
 6. Wait for durable composition progress, then edit the generated title,
    chapter titles, paragraphs, dialogue, scene breaks, captions, and artwork
    placements in a book preview/editor.
@@ -144,9 +148,14 @@ series context needed for continuity. Composition must:
   creates a candidate revision or updates only the explicitly selected blocks.
 
 Artwork placement suggestions must reference only assets included in the
-authorized source snapshot. The author can remove or move any illustration and
-edit its caption and alternative text. If there is no suitable image, compose a
-text-only chapter rather than requesting image generation.
+authorized source snapshot. In the all-shots mode, include each selected
+storyboard shot's authorized image once, in source-shot order, adjacent to the
+rewritten prose for that shot; retain the prose as real editable text. Offer
+all-shots mode as complete only after confirming that every selected shot has a
+usable image.
+The author can remove or move any illustration and edit its caption and
+alternative text. If there is no suitable image, compose a text-only passage
+rather than requesting image generation.
 
 ## 5. Book Document contract
 
@@ -168,7 +177,8 @@ Minimum document shape:
     "description": "...",
     "copyrightText": null,
     "coverAssetId": null,
-    "coverAssetVersionId": null
+    "coverAssetVersionId": null,
+    "coverAltText": null
   },
   "source": {
     "seriesId": "...",
@@ -209,7 +219,7 @@ Minimum document shape:
           "assetId": "...",
           "assetVersionId": "...",
           "assetChecksum": "...",
-          "placement": "chapter_opener",
+          "placement": "inline",
           "altText": "...",
           "caption": null,
           "decorative": false,
@@ -226,9 +236,12 @@ Minimum document shape:
 ```
 
 Supported block types in v1: `heading`, `paragraph`, `dialogue`, `scene_break`,
-`illustration`, `caption`, and `quote`. Layout-only properties belong to
-format-specific settings, not the shared document, except for semantic chapter
-boundaries and explicit author-selected image placements.
+`illustration`, `caption`, and `quote`. In the all-shots mode, each selected
+shot image is an illustration block ordered at its related story passage and
+linked to the exact source shot. Its `placement` only identifies semantic flow
+such as `inline` or `chapter_opener`; block order and source links are canonical.
+Renderer-specific sizing and page-break behavior stay in format settings.
+Layout-only properties do not belong in the shared document.
 
 Minimum persistent records:
 
@@ -253,6 +266,12 @@ book editing cannot mutate the series bible, episodes, or story memory.
 - Export EPUB 3.3 reflowable, with semantic XHTML chapter content, package
   metadata, a valid EPUB navigation document, and correct reading order.
 - Include cover metadata/image, title, author, language, and table of contents.
+- Use the selected cover image and its alternative text as the publication
+  cover; this does not replace or count as a chapter/shot illustration.
+- Include every illustration block selected in the approved Book Document,
+  including all selected shot images when all-shots mode is chosen, in document
+  order alongside the text. The book-cover image is separate from chapter and
+  shot illustrations.
 - Preserve real text and dialogue; do not render page text into images.
 - Make body text user-styleable. CSS must not force a specific font size, page
   width, or fixed page break within normal chapter content.
@@ -274,6 +293,11 @@ book editing cannot mutate the series bible, episodes, or story memory.
   chapter opener, page numbering, and image placement in a versioned PDF profile.
 - Include cover, title page, optional copyright page, contents, chapter
   openings, body, and optional closing note when present in the Book Document.
+- Use the selected cover image and its alternative text on the PDF cover page;
+  it does not replace or count as a chapter/shot illustration.
+- Include every illustration block selected in the approved Book Document,
+  including all selected shot images when all-shots mode is chosen, in document
+  order alongside the text. Keep the cover image separate from inline images.
 - Preserve Unicode/selectable/searchable text, including Thai dialogue; do not
   flatten the whole page into an image.
 - Keep illustrations proportional, avoid accidental crop, and avoid a
@@ -310,15 +334,21 @@ successfully validated artifact for the other.
   required for EPUB. PDF validation must verify non-empty pages, expected
   metadata, and extractable text before availability.
 - Missing or inaccessible selected artwork fails preflight with the chapter and
-  block identified; do not silently omit artwork. The author can remove the
-  asset or retry after access is repaired.
+  block identified; do not silently omit artwork. When all-shots mode is
+  selected, report the affected shot references so the author can repair the
+  image or explicitly remove that illustration before approval.
+- For all-shots mode, preflight compares usable authorized shot images with the
+  selected source shot count and shows coverage plus missing-shot references.
+  Do not label the book as having complete shot-image coverage when any selected
+  source shot lacks a usable image; let the author repair the source or choose a
+  lower image density explicitly.
 - If a source episode changes during composition, finish only against the
   pinned snapshot or stop as stale. Never combine revisions in one artifact.
 - Large books are processed in bounded chapter batches and must not load an
   unbounded set of source images or rendered pages into web-process memory. If
   configured worker, token, image-size, or artifact-size limits are exceeded,
-  show the author a volume-splitting action and preserve completed chapter
-  work.
+  show the author the estimated image count/size and a volume-splitting or
+  lower-image-density action; preserve completed chapter work.
 - User-visible errors are concise and sanitized; internal worker paths, stack
   traces, credentials, and raw provider diagnostics remain protected.
 
@@ -367,16 +397,23 @@ successfully validated artifact for the other.
    shot numbers as book structure.
 4. User edits survive regeneration unless the user explicitly selects those
    blocks for replacement. Approval is tied to a specific immutable revision.
-5. The user can choose no artwork, chapter openers, or occasional illustrations
-   from authorized existing assets. No image-generation job is called in v1.
-6. EPUB output opens as a valid reflowable EPUB 3.3 publication with cover,
-   metadata, navigation, chapter order, Unicode text, and local images. EPUBCheck
-   passes before the file is downloadable.
+5. The user can choose no artwork, chapter openers, occasional illustrations,
+   or all selected storyboard-shot images from authorized existing assets.
+   All-shots mode preserves source shot order and pairs every image with its
+   related editable prose; missing-shot coverage is reported before
+   composition. A book cover can be chosen independently. No image-generation
+   job is called in v1.
+6. EPUB output opens as a valid reflowable EPUB 3.3 publication with a cover,
+   metadata, navigation, chapter order, Unicode text, and local images. When
+   all-shots mode is selected, each selected shot image appears once next to its
+   related prose in source order. EPUBCheck passes before download.
 7. PDF output has the configured fixed page size, readable/extractable Thai
-   text, intact aspect ratios, sensible chapter breaks, and a contents page with
-   working links. Bookmarks are produced where the selected renderer supports
-   them. Pages do not contain full-page rasterized text, and PDF structural and
-   text checks pass before the file is downloadable.
+   text, intact image aspect ratios, sensible chapter breaks, and a contents
+   page with working links. When all-shots mode is selected, each selected shot
+   image appears once next to its related prose in source order. Bookmarks are
+   produced where the selected renderer supports them. Pages do not contain
+   full-page rasterized text, and PDF structural and text checks pass before
+   download.
 8. A request for both formats creates independent jobs; one format may be
    retried without losing the other format's available artifact.
 9. Tenant isolation covers book records, progress, source assets, and artifact

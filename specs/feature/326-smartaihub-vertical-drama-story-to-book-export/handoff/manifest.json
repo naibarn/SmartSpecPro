@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+        "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "7b89f9a94b2c340e337e002b403b618ce9eb4841",
-    "expected_spec_digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8"
+    "expected_spec_digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3"
   },
   "continuation": {
     "next_action": null,
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+        "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
-    "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+    "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-06T09:07:11.426611Z",
+      "last_evidence_at": "2026-11-06T09:30:16.068877Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-06T16:03:04+07:00",
       "spec_last_changed_at": "2026-11-06T16:03:04+07:00"
@@ -101,10 +101,10 @@
     "integrated_at": "2026-11-06T09:12:27Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-11-06T09:07:11.426611Z"
+    "updated_at": "2026-11-06T09:30:16.068877Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -130,15 +130,20 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-06T09:07:11.426611Z",
+    "reconciled_at": "2026-11-06T09:30:16.068877Z",
     "sources": [
       {
-        "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+        "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -156,7 +161,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "7880d759578a4549c7dcac8a6ab928e3befa9956bfb7e71467c582bba10b92e8",
+        "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
       }
@@ -172,11 +177,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 37,
-    "unresolved": 37
+    "total": 40,
+    "unresolved": 40
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T09:12:41.766175Z",
+  "updated_at": "2026-11-06T09:30:16.068877Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
