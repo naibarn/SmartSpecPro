@@ -45,7 +45,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "746509021b72c5959096122eb07bb5fac91fd659",
+    "expected_canonical_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
     "expected_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254"
   },
   "continuation": {
@@ -100,12 +100,17 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": null,
-    "evidence": [],
+    "artifact_digest": "sha256:d60015196168ddabcf28b1121d473e20f28ef011a2a6ad36b2c446ece0499179",
+    "environment": "legacy-debian-dev (development, smartaihub.app)",
+    "evidence": [
+      "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ce7eab875ebb07ea928363aca7b3f37e1ff093f4-2fc8ab621316-400.json",
+      "release:status: source/frontend/backend/runtime SHA matched; target_matches_release=true",
+      "https://smartaihub.app/healthz HTTP 200; https://smartaihub.app/login HTTP 200",
+      "smartspec-web.service and smartspec-node-worker.service healthy on release generation 400"
+    ],
     "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "source_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "MEDIUM",
@@ -124,7 +129,7 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
@@ -176,9 +181,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "746509021b72c5959096122eb07bb5fac91fd659",
+    "canonical_sha": "ce7eab875ebb07ea928363aca7b3f37e1ff093f4",
     "integrated": true,
-    "integrated_at": "2026-11-06T17:33:28Z"
+    "integrated_at": "2026-11-07T00:35:38+07:00"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -847,7 +852,7 @@
     "unresolved": 47
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T17:34:16.607795Z",
+  "updated_at": "2026-11-06T17:58:07.345920Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
