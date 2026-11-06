@@ -10,7 +10,7 @@ import {
 } from "../../drizzle/schema";
 import { verticalDramaBookDocumentSchema } from "../../shared/verticalDramaSeries/bookDocument";
 import { db } from "../db";
-import { storagePut, storageReadBuffer } from "../storage";
+import { storageDelete, storagePut, storageReadBuffer } from "../storage";
 import { buildVerticalDramaBookEpub, renderVerticalDramaBookPdf, validateVerticalDramaBookEpub } from "./verticalDramaBookRenderers";
 import { fingerprintBookSource } from "./verticalDramaBookSnapshot";
 
@@ -48,6 +48,7 @@ export async function exportApprovedVerticalDramaBook(input: {
   )).returning({ id: verticalDramaBookExportArtifacts.id });
   if (!claimed) throw new Error("BOOK_EXPORT_ALREADY_CLAIMED");
 
+  let outputStorageKey: string | null = null;
   try {
     const expectedChecksums = new Map<number, string>();
     if (document.metadata.coverMediaAssetId && document.metadata.coverChecksum) expectedChecksums.set(document.metadata.coverMediaAssetId, document.metadata.coverChecksum);
@@ -111,14 +112,14 @@ export async function exportApprovedVerticalDramaBook(input: {
     await input.assertActive?.();
     const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
     const extension = artifact.format;
-    const storageKey = `vertical-drama-books/${input.tenantId}/${book.id}/${revision.id}/${artifact.format}/${artifact.id}.${extension}`;
-    await storagePut(storageKey, bytes, artifact.format === "epub" ? "application/epub+zip" : "application/pdf");
-    const readback = await storageReadBuffer(storageKey);
+    outputStorageKey = `vertical-drama-books/${input.tenantId}/${book.id}/${revision.id}/${artifact.format}/${artifact.id}.${extension}`;
+    await storagePut(outputStorageKey, bytes, artifact.format === "epub" ? "application/epub+zip" : "application/pdf");
+    const readback = await storageReadBuffer(outputStorageKey);
     if (!readback || createHash("sha256").update(readback).digest("hex") !== checksumSha256) throw new Error("BOOK_EXPORT_STORAGE_READBACK_FAILED");
     await input.assertActive?.();
     const [available] = await db.update(verticalDramaBookExportArtifacts).set({
       status: "available",
-      storageKey,
+      storageKey: outputStorageKey,
       checksumSha256,
       sizeBytes: bytes.byteLength,
       validation,
@@ -132,6 +133,13 @@ export async function exportApprovedVerticalDramaBook(input: {
     return { artifactId: available.id, format: artifact.format, checksumSha256, sizeBytes: bytes.byteLength, validation };
   } catch (error) {
     const code = error instanceof Error && /^BOOK_[A-Z0-9_]+$/.test(error.message) ? error.message : "BOOK_EXPORT_FAILED";
+    let currentArtifact: { status: string } | undefined;
+    try {
+      [currentArtifact] = await db.select({ status: verticalDramaBookExportArtifacts.status }).from(verticalDramaBookExportArtifacts).where(and(
+        eq(verticalDramaBookExportArtifacts.id, artifact.id), eq(verticalDramaBookExportArtifacts.tenantId, input.tenantId), eq(verticalDramaBookExportArtifacts.userId, input.userId),
+      )).limit(1);
+    } catch { /* retain the artifact when availability cannot be confirmed */ }
+    if (outputStorageKey && currentArtifact && currentArtifact.status !== "available") await storageDelete(outputStorageKey).catch(() => false);
     await db.update(verticalDramaBookExportArtifacts).set({ status: "failed", errorCode: code, updatedAt: new Date() }).where(and(
       eq(verticalDramaBookExportArtifacts.id, artifact.id), eq(verticalDramaBookExportArtifacts.tenantId, input.tenantId), eq(verticalDramaBookExportArtifacts.userId, input.userId), inArray(verticalDramaBookExportArtifacts.status, ["running", "validating"]),
     ));
