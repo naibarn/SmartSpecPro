@@ -136,6 +136,29 @@ type Reference = {
   provenance?: Record<string, unknown>;
 };
 
+function referenceTypeForReviewSubject(
+  subjectType: MarketplaceReviewIdeaInput["reviewSubjectType"],
+  current: ReferenceType,
+): ReferenceType {
+  switch (subjectType) {
+    case "restaurant":
+      return "store";
+    case "place":
+    case "tourist_attraction":
+      return "location";
+    case "documentary":
+      return current;
+    default:
+      return "product";
+  }
+}
+
+function referenceRoleForType(
+  referenceType: ReferenceType,
+): Reference["role"] | undefined {
+  return referenceType === "mixed" ? undefined : referenceType;
+}
+
 type SceneSuggestion = {
   sceneLabel: string;
   description: string;
@@ -149,6 +172,7 @@ type SceneSuggestion = {
 
 type IdeaHistoryResumeSnapshot = {
   productSource: "marketplace_capture" | "upload";
+  reviewSubjectType?: MarketplaceReviewIdeaInput["reviewSubjectType"];
   presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
   storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   productBrief?: string;
@@ -190,6 +214,9 @@ function getPresentationStyleLabel(
     feature_explainer:
       lang === "th" ? "สาธิตคุณสมบัติ" : "Feature demonstration",
     problem_solution: lang === "th" ? "ปัญหาและทางออก" : "Problem to solution",
+    experience_review:
+      lang === "th" ? "รีวิวประสบการณ์จริง" : "Firsthand experience review",
+    documentary: lang === "th" ? "เล่าแบบสารคดี" : "Documentary style",
   };
   return labels[value];
 }
@@ -565,6 +592,9 @@ export function SpecialTieInEpisodeDialog({
   const [idea, setIdea] = useState("");
   const [presentationStyle, setPresentationStyle] =
     useState<MarketplaceReviewIdeaInput["presentationStyle"]>("varied");
+  const [reviewSubjectType, setReviewSubjectType] = useState<
+    MarketplaceReviewIdeaInput["reviewSubjectType"]
+  >("product");
   const [storyStructure, setStoryStructure] =
     useState<MarketplaceReviewIdeaInput["storyStructure"]>("varied");
   const [referenceType, setReferenceType] = useState<ReferenceType>("product");
@@ -852,7 +882,7 @@ export function SpecialTieInEpisodeDialog({
     );
   const currentIdeaGenerationScopeKey = selectedProductId
     ? `marketplace-review-ideas:${seriesId}:${selectedProductId}`
-    : "marketplace-review-ideas:pending";
+    : `marketplace-review-ideas:${seriesId}:${reviewSubjectType}:pending`;
   const ideaGenerationJobQuery =
     trpc.verticalDramaSeries.getInteractiveJobStatus.useQuery(
       {
@@ -1018,11 +1048,12 @@ export function SpecialTieInEpisodeDialog({
   const selectedProduct = products.find(
     product => String(product.id) === selectedProductId
   );
-  const directUploadReferenceImages = references.filter(
-    reference => reference.source === "upload"
-  );
+  const hasMarketplaceProductContext =
+    reviewSubjectType === "product" && Boolean(selectedProductId);
   const requiresUploadedProductBrief =
-    !selectedProductId && directUploadReferenceImages.length > 0;
+    reviewSubjectType === "product" &&
+    !hasMarketplaceProductContext &&
+    references.length > 0;
   const productImages = (imagesQuery.data?.pages ?? []).flatMap(
     page => page.images
   );
@@ -1217,13 +1248,13 @@ export function SpecialTieInEpisodeDialog({
   const ideaGenerationBlockers = [
     references.length === 0
       ? lang === "th"
-        ? "เลือกภาพสินค้าอย่างน้อย 1 ภาพจากเครื่องหรือ Marketplace Capture"
-        : "Choose at least one product image from your device or Marketplace Capture"
+        ? "เลือกภาพอ้างอิงอย่างน้อย 1 ภาพจากเครื่อง, ฉาก หรือ Marketplace Capture"
+        : "Choose at least one reference image from your device, scenes, or Marketplace Capture"
       : null,
     requiresUploadedProductBrief && !idea.trim()
       ? lang === "th"
-        ? "ระบุชื่อ/ประเภทสินค้าและรายละเอียดที่ยืนยันได้"
-        : "Describe the product and its verifiable details"
+        ? "ใส่รายละเอียดสินค้าที่ตรวจสอบได้ หรือเลือกข้อมูลจาก Marketplace"
+        : "Add verifiable product details or choose Marketplace product data"
       : null,
     characterIds.length === 0
       ? lang === "th"
@@ -1328,6 +1359,7 @@ export function SpecialTieInEpisodeDialog({
       setCharacterIds(restoredCharacterIds);
       setSpeakerCharacterIds([]);
       setDialogueMode(resume.dialogueMode);
+      setReviewSubjectType(resume.reviewSubjectType ?? "product");
       setPresentationStyle(resume.presentationStyle ?? "varied");
       setStoryStructure(resume.storyStructure ?? "varied");
       setReferences(
@@ -1487,12 +1519,12 @@ export function SpecialTieInEpisodeDialog({
     });
   };
 
-  const uploadReference = async (file: File) => {
+  const uploadReference = async (file: File, reservedCount = 0) => {
     if (!file.type.startsWith("image/"))
       throw new Error(
         lang === "th" ? "รองรับเฉพาะไฟล์ภาพ" : "Only image files are supported"
       );
-    if (!canAddSpecialReferences(references.length))
+    if (!canAddSpecialReferences(references.length + reservedCount))
       throw new Error(
         lang === "th"
           ? "เลือกภาพอ้างอิงได้ไม่เกิน 3 ภาพ"
@@ -1523,6 +1555,20 @@ export function SpecialTieInEpisodeDialog({
         provenance: { source: "user_upload", managed: true },
       },
     ]);
+  };
+
+  const uploadReferenceFiles = async (files: File[]) => {
+    let reservedCount = 0;
+    for (const file of files) {
+      try {
+        await uploadReference(file, reservedCount);
+        reservedCount += 1;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Upload failed"
+        );
+      }
+    }
   };
 
   const uploadFootage = async (file: File) => {
@@ -1826,34 +1872,27 @@ export function SpecialTieInEpisodeDialog({
   };
 
   const generateMarketplaceIdeas = async () => {
-    const marketplaceReferenceImages = references
-      .filter(reference => reference.source === "marketplace_capture")
-      .map(reference => ({
-        mediaAssetId: reference.mediaAssetId,
-        imageId: String(reference.provenance?.marketplaceImageId ?? ""),
-        label: reference.label,
-      }));
-    const uploadedReferenceImages = directUploadReferenceImages.map(reference => ({
+    const visualReferenceImages = references.map(reference => ({
       mediaAssetId: reference.mediaAssetId,
+      ...(reference.source === "marketplace_capture"
+        ? { imageId: String(reference.provenance?.marketplaceImageId ?? "") }
+        : {}),
       label: reference.label,
     }));
-    const usingMarketplaceProduct =
-      Boolean(selectedProductId) && marketplaceReferenceImages.length > 0;
-    const usingUploadedProduct =
-      !selectedProductId && uploadedReferenceImages.length > 0;
-    if (!usingMarketplaceProduct && !usingUploadedProduct) {
+    const usingMarketplaceProduct = hasMarketplaceProductContext;
+    if (references.length === 0) {
       toast.error(
         lang === "th"
-          ? "เลือกสินค้าและภาพจาก Marketplace หรืออัปโหลดภาพสินค้าเองก่อน"
-          : "Choose a Marketplace product or upload product images first"
+          ? "เลือกภาพอ้างอิงของหัวข้อรีวิวอย่างน้อย 1 ภาพก่อน"
+          : "Choose at least one image reference for the review subject first"
       );
       return;
     }
-    if (usingUploadedProduct && !idea.trim()) {
+    if (requiresUploadedProductBrief && !idea.trim()) {
       toast.error(
         lang === "th"
-          ? "กรุณาใส่รายละเอียดสินค้าในช่องไอเดียก่อนสร้างไอเดียจากภาพที่อัปโหลด"
-          : "Describe the uploaded product in the idea field before generating ideas"
+          ? "กรุณาใส่รายละเอียดสินค้าที่ตรวจสอบได้ก่อนสร้างไอเดีย"
+          : "Add verifiable product details before generating ideas"
       );
       return;
     }
@@ -1885,11 +1924,10 @@ export function SpecialTieInEpisodeDialog({
         productSource: usingMarketplaceProduct
           ? "marketplace_capture"
           : "upload",
-        referenceImages: usingMarketplaceProduct
-          ? marketplaceReferenceImages
-          : uploadedReferenceImages,
+        referenceImages: visualReferenceImages,
         dialogueMode,
         presentationStyle,
+        reviewSubjectType,
         storyStructure,
         selectedCharacterIds: characterIds.slice(0, 4),
         customerJourney: usingMarketplaceProduct
@@ -1903,7 +1941,10 @@ export function SpecialTieInEpisodeDialog({
           selectedMarketplaceIdea || !idea.trim()
             ? undefined
             : idea.trim().slice(0, 2_000),
-        productBrief: usingUploadedProduct ? idea.trim().slice(0, 8_000) : undefined,
+        productBrief:
+          !usingMarketplaceProduct && idea.trim()
+            ? idea.trim().slice(0, 8_000)
+            : undefined,
         llmModelId: ideaLlmModelId === "auto" ? undefined : ideaLlmModelId,
         variationSeed: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       });
@@ -2393,6 +2434,7 @@ export function SpecialTieInEpisodeDialog({
 
   const reset = () => {
     setIdea("");
+    setReviewSubjectType("product");
     setReferences([]);
     setCharacterIds([]);
     setSpeakerCharacterIds([]);
@@ -2922,41 +2964,34 @@ export function SpecialTieInEpisodeDialog({
                     : "Review the story flow, actions, and tie-in before creating the special episode and prompts."}
                 </p>
               ) : null}
-              {requiresUploadedProductBrief ? (
-                <div
-                  className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950"
-                  role="alert"
-                >
-                  <p className="font-medium">
-                    {lang === "th"
-                      ? "ภาพนี้อัปโหลดเอง ยังไม่มีรายละเอียดสินค้าในระบบ"
-                      : "These product images were uploaded directly and have no catalog details."}
-                  </p>
-                  <p className="mt-1 leading-5">
-                    {lang === "th"
-                      ? "กรุณาใส่ข้อมูลในช่องนี้ก่อนสร้างไอเดีย เช่น ชื่อ/ประเภทสินค้า จุดเด่นหรือวัสดุที่ยืนยันได้ วิธีใช้ กลุ่มผู้ใช้ และข้อควรหลีกเลี่ยงในการกล่าวอ้าง ระบบจะใช้ข้อความนี้เป็นข้อมูลสินค้าและทิศทางเรื่อง ห้ามเว้นว่างหรือให้ระบบเดาเอง"
-                      : "Before generating ideas, provide the product name/type, verifiable features or materials, intended use, target audience, and claims to avoid. This text becomes the product brief and story direction; the system will not guess missing facts."}
-                  </p>
-                </div>
-              ) : null}
               <Textarea
                 id="special-tie-in-idea"
                 value={idea}
                 onChange={event => setIdea(event.target.value)}
-                maxLength={requiresUploadedProductBrief ? 8000 : 12000}
+                maxLength={12000}
                 rows={selectedMarketplaceIdea ? 12 : 6}
                 placeholder={
                   lang === "th"
-                      ? selectedMarketplaceIdea
-                        ? "เรื่องละครที่เลือกจะแสดงตรงนี้ แก้ไขเนื้อหาได้ก่อนสร้าง 9 ช็อต…"
-                        : requiresUploadedProductBrief
-                          ? "เช่น ชื่อสินค้า/ประเภท จุดเด่นที่ยืนยันได้ วิธีใช้ กลุ่มผู้ใช้ และข้อห้ามในการกล่าวอ้าง…"
-                        : "อธิบายสิ่งที่ต้องการให้เกิดขึ้นในตอนพิเศษ…"
+                    ? selectedMarketplaceIdea
+                      ? "เรื่องละครที่เลือกจะแสดงตรงนี้ แก้ไขเนื้อหาได้ก่อนสร้าง 9 ช็อต…"
+                      : "ระบุทิศทางเรื่องหรือข้อเท็จจริงที่ยืนยันได้เพิ่มเติม (ไม่บังคับ)…"
                     : "Describe what should happen in the special episode…"
                 }
               />
+              {!selectedMarketplaceIdea ? (
+                <p className="text-xs text-muted-foreground">
+                  {lang === "th"
+                    ? requiresUploadedProductBrief
+                      ? "สำหรับสินค้าแนบภาพอัปโหลด กรุณาระบุข้อมูลสินค้าใต้ภาพที่ยืนยันได้ ส่วนร้าน สถานที่ แอป และวัตถุชนิดอื่นสามารถเว้นว่างได้ ระบบจะไม่เดาราคา เวลาเปิดบริการ ฟีเจอร์ หรือข้อเท็จจริงที่มองไม่เห็น"
+                      : "แนบภาพได้หลายมุมและเว้นช่องนี้ว่างได้ ระบบจะใช้ภาพเป็น reference ในขั้นสร้างภาพ และไม่เดาราคา เวลาเปิดบริการ ฟีเจอร์ หรือข้อเท็จจริงที่มองไม่เห็น"
+                    : requiresUploadedProductBrief
+                      ? "For uploaded product images, provide verifiable product details. Other subjects such as places, restaurants, apps, and objects can use image-only references."
+                      : "Attach multiple angles or leave this blank. Images are forwarded as visual references; the system will not guess unseen prices, hours, features, or facts."
+                  }
+                </p>
+              ) : null}
               <p className="text-right text-xs text-muted-foreground">
-                {idea.length}/{requiresUploadedProductBrief ? 8000 : 12000}
+                {idea.length}/12000
               </p>
             </div>
 
@@ -3058,9 +3093,16 @@ export function SpecialTieInEpisodeDialog({
               </Label>
               <Select
                 value={referenceType}
-                onValueChange={value =>
-                  setReferenceType(value as ReferenceType)
-                }
+                onValueChange={value => {
+                  const nextType = value as ReferenceType;
+                  setReferenceType(nextType);
+                  const role = referenceRoleForType(nextType);
+                  if (role) {
+                    setReferences(current =>
+                      current.map(reference => ({ ...reference, role }))
+                    );
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -3087,25 +3129,20 @@ export function SpecialTieInEpisodeDialog({
               onDragOver={event => event.preventDefault()}
               onDrop={event => {
                 event.preventDefault();
-                const file = event.dataTransfer.files?.[0];
-                if (file)
-                  void uploadReference(file).catch(error =>
-                    toast.error(
-                      error instanceof Error ? error.message : "Upload failed"
-                    )
-                  );
+                const files = Array.from(event.dataTransfer.files ?? []);
+                if (files.length) void uploadReferenceFiles(files);
               }}
             >
               <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
                 {lang === "th"
-                  ? "ลากภาพมาวางที่นี่ หรือเลือกจากเครื่อง/Marketplace Capture"
-                  : "Drop an image here, or choose from your device/Marketplace Capture"}
+                  ? "ลากภาพหลายมุมมาวางที่นี่ หรือเลือกหลายภาพจากเครื่อง/Marketplace Capture"
+                  : "Drop multiple angles here, or choose several images from your device/Marketplace Capture"}
               </p>
               <div className="flex items-center justify-between">
                 <Label>
                   {lang === "th"
-                    ? "ภาพสินค้า/สถานที่/ร้านค้า"
-                    : "Product/location/store images"}
+                    ? "ภาพอ้างอิงหัวข้อ (สินค้า/วัตถุ/ร้าน/สถานที่/หน้าจอ)"
+                    : "Review references (product/object/venue/place/screens)"}
                 </Label>
                 <Badge variant="outline">{references.length}/3</Badge>
               </div>
@@ -3216,18 +3253,12 @@ export function SpecialTieInEpisodeDialog({
                   id="special-tie-in-upload"
                   className="hidden"
                   type="file"
+                  multiple
                   accept="image/*"
                   onChange={event => {
-                    const file = event.target.files?.[0];
+                    const files = Array.from(event.currentTarget.files ?? []);
                     event.currentTarget.value = "";
-                    if (file)
-                      void uploadReference(file).catch(error =>
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Upload failed"
-                        )
-                      );
+                    if (files.length) void uploadReferenceFiles(files);
                   }}
                 />
                 <Button
@@ -3250,13 +3281,13 @@ export function SpecialTieInEpisodeDialog({
                 <div>
                   <Label>
                     {lang === "th"
-                      ? "Skill: สร้างไอเดียรีวิวแบบละครซีรีย์"
-                      : "Skill: series tie-in review ideas"}
+                      ? "Skill: สร้างไอเดียรีวิวและเรื่องเล่าแบบซีรีย์"
+                      : "Skill: review and story ideas for a series"}
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     {lang === "th"
-                      ? "เลือกรูปแบบการนำเสนอสินค้าและโครงสร้างเรื่องได้ ระบบจะสร้าง 3 ไอเดียตามแนวที่เลือก"
-                      : "Choose how the product is presented and how each story is structured."}
+                      ? "เลือกประเภทหัวข้อรีวิว แนวการเล่า และโครงสร้างเรื่อง ระบบจะสร้าง 3 ไอเดียจากข้อมูลกับภาพอ้างอิง"
+                      : "Choose what is being reviewed, the presentation style, and story structure. Ideas use the supplied details and visual references."}
                   </p>
                 </div>
                 <Button
@@ -3277,11 +3308,82 @@ export function SpecialTieInEpisodeDialog({
                 </Button>
               </div>
               <fieldset className="grid gap-2 sm:grid-cols-2">
+                <fieldset className="min-w-0 space-y-1 sm:col-span-2">
+                  <Label htmlFor="special-tie-in-review-subject-type">
+                    {lang === "th"
+                      ? "ประเภทหัวข้อรีวิว/เนื้อหา"
+                      : "Review subject or content type"}
+                  </Label>
+                  <Select
+                    value={reviewSubjectType}
+                    onValueChange={value => {
+                      const nextType =
+                        value as MarketplaceReviewIdeaInput["reviewSubjectType"];
+                      const nextReferenceType = referenceTypeForReviewSubject(
+                        nextType,
+                        referenceType,
+                      );
+                      setReviewSubjectType(nextType);
+                      setReferenceType(nextReferenceType);
+                      const role = referenceRoleForType(nextReferenceType);
+                      if (role) {
+                        setReferences(current =>
+                          current.map(reference => ({ ...reference, role }))
+                        );
+                      }
+                      if (nextType !== "product") setSelectedProductId(null);
+                    }}
+                  >
+                    <SelectTrigger id="special-tie-in-review-subject-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="product">
+                        {lang === "th" ? "สินค้า/ผลิตภัณฑ์" : "Product"}
+                      </SelectItem>
+                      <SelectItem value="object">
+                        {lang === "th" ? "วัตถุ/อุปกรณ์" : "Object or equipment"}
+                      </SelectItem>
+                      <SelectItem value="restaurant">
+                        {lang === "th" ? "ร้านอาหาร" : "Restaurant"}
+                      </SelectItem>
+                      <SelectItem value="place">
+                        {lang === "th" ? "สถานที่/ธุรกิจบริการ" : "Place or venue"}
+                      </SelectItem>
+                      <SelectItem value="tourist_attraction">
+                        {lang === "th" ? "สถานที่ท่องเที่ยว" : "Tourist attraction"}
+                      </SelectItem>
+                      <SelectItem value="documentary">
+                        {lang === "th" ? "สารคดี/หัวข้อข้อมูล" : "Documentary or topic"}
+                      </SelectItem>
+                      <SelectItem value="app">
+                        {lang === "th" ? "แอป" : "App"}
+                      </SelectItem>
+                      <SelectItem value="software">
+                        {lang === "th" ? "โปรแกรม/ซอฟต์แวร์" : "Software"}
+                      </SelectItem>
+                      <SelectItem value="work_system">
+                        {lang === "th" ? "ระบบงาน/เวิร์กโฟลว์" : "Work system or workflow"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "th"
+                      ? reviewSubjectType === "product" &&
+                        !hasMarketplaceProductContext
+                        ? "แนบภาพสินค้าได้หลายมุม และระบุรายละเอียดที่ยืนยันได้ ส่วนวัตถุ ร้านอาหาร สถานที่ แอป และระบบงานใช้ภาพอย่างเดียวได้"
+                        : "แนบภาพหลายมุมได้ เช่น สินค้า วัตถุ ร้านอาหาร สถานที่ หรือภาพหน้าจอ; รายละเอียดเพิ่มเติมช่วยให้เรื่องตรงข้อเท็จจริงยิ่งขึ้น"
+                      : reviewSubjectType === "product" &&
+                        !hasMarketplaceProductContext
+                        ? "Attach multiple product angles and add verifiable details. Objects, restaurants, places, apps, and work systems can use image-only references."
+                        : "Attach multiple angles of a product, object, restaurant, place, or app screen; additional details improve factual accuracy."}
+                  </p>
+                </fieldset>
                 <fieldset className="min-w-0 space-y-1">
                   <Label htmlFor="special-tie-in-presentation-style">
                     {lang === "th"
-                      ? "แนวการนำเสนอสินค้า"
-                      : "Product presentation style"}
+                      ? "แนวการนำเสนอ/รีวิว"
+                      : "Presentation or review style"}
                   </Label>
                   <Select
                     value={presentationStyle}
@@ -3307,23 +3409,31 @@ export function SpecialTieInEpisodeDialog({
                       </SelectItem>
                       <SelectItem value="direct_product_pitch">
                         {lang === "th"
-                          ? "พูดแนะนำ/ขายสินค้าตรง ๆ แบบมีข้อมูลรองรับ"
-                          : "Direct, evidence-based product pitch"}
+                          ? "พูดแนะนำหัวข้อรีวิวตรง ๆ แบบมีข้อมูลรองรับ"
+                          : "Direct, evidence-based recommendation"}
                       </SelectItem>
                       <SelectItem value="unboxing">
                         {lang === "th"
-                          ? "เปิดกล่องและทดลองใช้สินค้า"
-                          : "Unbox and try the product"}
+                          ? "เปิดกล่อง/สำรวจครั้งแรก ทดลองใช้หรือพาชม"
+                          : "First look, unbox, try, or tour"}
                       </SelectItem>
                       <SelectItem value="feature_explainer">
                         {lang === "th"
-                          ? "สาธิตหรืออธิบายคุณสมบัติสินค้า"
-                          : "Demonstrate product features"}
+                          ? "สาธิตคุณสมบัติ ขั้นตอน หรือจุดเด่น"
+                          : "Explain features, workflow, or highlights"}
                       </SelectItem>
                       <SelectItem value="problem_solution">
                         {lang === "th"
-                          ? "เปิดด้วยปัญหา แล้วเล่าว่าสินค้าช่วยอย่างไร"
-                          : "Start with a problem, then show how the product helps"}
+                          ? "เริ่มจากปัญหา แล้วเล่าว่าหัวข้อรีวิวเกี่ยวข้องอย่างไร"
+                          : "Start with a problem, then show how the subject relates"}
+                      </SelectItem>
+                      <SelectItem value="experience_review">
+                        {lang === "th"
+                          ? "รีวิวจากประสบการณ์ตรง"
+                          : "Firsthand experience review"}
+                      </SelectItem>
+                      <SelectItem value="documentary">
+                        {lang === "th" ? "เล่าแบบสารคดี" : "Documentary style"}
                       </SelectItem>
                     </SelectContent>
                   </Select>

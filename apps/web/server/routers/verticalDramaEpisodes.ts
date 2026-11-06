@@ -168,6 +168,7 @@ import { materializeMarketplaceImageReference } from "../services/verticalDramaS
 import { specialTieInInputSchema } from "../../shared/verticalDramaSeries/specialTieInContracts";
 import {
   marketplaceReviewPresentationStylePreferenceSchema,
+  marketplaceReviewSubjectTypeSchema,
   marketplaceReviewStoryStructurePreferenceSchema,
 } from "../../shared/marketplaceReviewIdeas/contracts";
 import {
@@ -12382,6 +12383,7 @@ export const verticalDramaEpisodesRouter = router({
         dialogueMode: z.enum(["none", "character_dialogue"]),
         presentationStyle:
           marketplaceReviewPresentationStylePreferenceSchema.default("varied"),
+        reviewSubjectType: marketplaceReviewSubjectTypeSchema.default("product"),
         storyStructure:
           marketplaceReviewStoryStructurePreferenceSchema.default("varied"),
         selectedCharacterIds: z
@@ -12402,13 +12404,21 @@ export const verticalDramaEpisodesRouter = router({
         userId: ctx.user.id,
       };
       const seriesId = parseId(input.seriesId, "series id");
-      if (input.productSource === "marketplace_capture" && !input.productId) {
+      if (
+        input.reviewSubjectType === "product" &&
+        input.productSource === "marketplace_capture" &&
+        !input.productId
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "กรุณาเลือกสินค้าจาก Marketplace Capture ก่อนสร้างไอเดีย",
         });
       }
-      if (input.productSource === "upload" && input.productId) {
+      if (
+        input.reviewSubjectType === "product" &&
+        input.productSource === "upload" &&
+        input.productId
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "สินค้าที่อัปโหลดเองต้องไม่มี Marketplace product id",
@@ -12422,7 +12432,7 @@ export const verticalDramaEpisodesRouter = router({
       const requestJson = JSON.stringify(request);
       const requestChunks = requestJson.match(/[\s\S]{1,8000}/g) ?? ["{}"];
       const sourceKey =
-        input.productSource === "marketplace_capture"
+        request.productSource === "marketplace_capture"
           ? input.productId!
           : `upload:${request.product.productId}`;
       const job = await enqueueVerticalDramaInteractiveJob({

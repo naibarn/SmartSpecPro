@@ -1,7 +1,7 @@
 {
   "type": "object",
   "ui": {
-    "title": "Marketplace → ซีรีย์ tie-in รีวิว",
+    "title": "ซีรีย์รีวิว/สารคดีจากภาพอ้างอิงหลายมุม",
     "outputMode": "idea_cards",
     "cardCount": 3
   }

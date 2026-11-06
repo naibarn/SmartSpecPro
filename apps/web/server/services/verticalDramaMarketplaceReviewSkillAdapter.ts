@@ -44,7 +44,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai drama episode in at least 3 connected paragraphs with setup, character problem, product appearance that follows the selected presentation style, believable use, and scene resolution; do not write bullets or a product review. Use the product category, description, specifications, claims, and direction supplied in input.product and input.direction as source context when thinking up all 3 ideas; let relevant details shape the situation and character actions naturally without forcing exact wording or repeated mentions. Treat written product details as the source of facts; do not infer product facts from image URLs or labels. If input.productSource is upload, treat input.product.description and input.direction as user-provided product facts and story direction; do not invent brand, specifications, benefits, safety, efficacy, or claims that the user did not provide. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant product details when they fit what a character sees, does, or needs; other shots should advance the drama naturally and need not mention the product. Do not force exact product wording or repeat product mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the product clearly but must stay factual, modest, and non-pressuring. Keep product references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear product-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai review/story episode in at least 3 connected paragraphs with setup, an observation or character need, a review subject experience that follows the selected presentation style, and scene resolution; allow factual reviews and documentary-style stories, not only product tie-ins. Use input.reviewSubjectType and the written subject description, specifications, claims, and direction as source context when thinking up all 3 ideas. Let relevant details shape the story naturally without forcing exact wording or repeated mentions. Treat attached images as downstream visual references, including multiple angles of one product, object, restaurant, or place. This text-only idea planner receives image URLs and labels rather than image pixels, so do not claim visual observations from them; preserve all references for the later image-generation flow. Do not infer facts such as price, hours, services, software features, performance, or claims. If input.productSource is upload, treat input.product.description and input.direction as the user-provided review-subject brief and story direction; if either is empty, keep the idea general to the selected review-subject type and avoid unsupported factual claims because this text-only planner cannot inspect image pixels. Do not invent brand, specifications, benefits, features, services, safety, efficacy, or claims. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant review-subject details when supported and when they fit what a character sees, does, or needs; other shots should advance the story naturally and need not mention the subject. Do not force exact wording or repeat mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the selected review subject clearly but must stay factual, modest, and non-pressuring. Keep references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear subject-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -72,6 +72,8 @@ const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
                   "unboxing",
                   "feature_explainer",
                   "problem_solution",
+                  "experience_review",
+                  "documentary",
                 ],
               },
               storyStructure: {
@@ -494,6 +496,7 @@ function normalizePersistedOutput(value: unknown): MarketplaceReviewIdeaOutput {
 
 export type MarketplaceReviewIdeaResumeSnapshot = {
   productSource: "marketplace_capture" | "upload";
+  reviewSubjectType?: MarketplaceReviewIdeaInput["reviewSubjectType"];
   presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
   storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   productBrief?: string;
@@ -533,6 +536,9 @@ export function buildMarketplaceReviewIdeaResumeSnapshot(
   const rawInput = asRecord(value);
   return {
     productSource: input.productSource,
+    ...(typeof rawInput.reviewSubjectType === "string"
+      ? { reviewSubjectType: input.reviewSubjectType }
+      : {}),
     ...(typeof rawInput.presentationStyle === "string"
       ? { presentationStyle: input.presentationStyle }
       : {}),
@@ -727,20 +733,47 @@ function buildUserPrompt(
   repairFeedback?: string,
 ): string {
   return JSON.stringify({
-    task: "สร้างไอเดียตอนซีรีย์สินค้า 3 ใบ โดยแต่ละใบต้องระบุรูปแบบการนำเสนอสินค้าและโครงสร้างเรื่องให้ตรงกับสิ่งที่เขียนจริง",
+    task: "สร้างไอเดียรีวิวหรือเล่าเรื่องแบบซีรีย์ 3 ใบ โดยแต่ละใบต้องระบุรูปแบบการนำเสนอและโครงสร้างเรื่องให้ตรงกับประเภทหัวข้อที่ผู้ใช้เลือก",
+    reviewSubjectType: input.reviewSubjectType,
+    reviewSubjectGuidance: {
+      product:
+        "รีวิวสินค้า ใช้ชื่อ แบรนด์ คุณสมบัติ ขนาด และข้อเท็จจริงจากข้อมูลเขียนหรือระเบียน Marketplace เท่านั้น",
+      object:
+        "รีวิววัตถุหรืออุปกรณ์ เน้นรูปลักษณ์ วัสดุ สัดส่วน และการใช้งานเท่าที่ผู้ใช้ระบุ ภาพหลายมุมเป็น reference สำหรับขั้นสร้างภาพภายหลัง ไม่ใช่ข้อเท็จจริงที่ planner นี้ตรวจเห็นได้",
+      restaurant:
+        "รีวิวร้านอาหาร ใช้คำบรรยายที่ผู้ใช้ให้เพื่อเล่าประสบการณ์ ภาพหลายมุมเป็น reference สำหรับขั้นสร้างภาพภายหลัง ห้ามเดาเมนู ราคา เวลาเปิดบริการ หรือบริการอื่นที่ไม่ได้ระบุ",
+      place:
+        "รีวิวสถานที่ ใช้คำบรรยายที่ผู้ใช้ให้เพื่อเล่าประสบการณ์ ภาพหลายมุมเป็น reference สำหรับขั้นสร้างภาพภายหลัง ห้ามแต่งสิ่งอำนวยความสะดวก การเดินทาง หรือข้อเท็จจริงที่ไม่มีข้อมูล",
+      tourist_attraction:
+        "รีวิวสถานที่ท่องเที่ยว ใช้คำบรรยายที่ผู้ใช้ให้เพื่อเล่าประสบการณ์ ภาพหลายมุมเป็น reference สำหรับขั้นสร้างภาพภายหลัง ห้ามเดาค่าเข้า เวลาเปิด หรือสิ่งอำนวยความสะดวก",
+      documentary:
+        "เล่าแนวสารคดีอย่างสังเกตการณ์ แยกข้อเท็จจริงที่ผู้ใช้ให้จากข้อสันนิษฐาน และไม่สร้างเหตุการณ์ ผู้เชี่ยวชาญ หรือบทสัมภาษณ์ขึ้นเอง",
+      app:
+        "รีวิวแอป ใช้คำบรรยายและข้อมูลหน้าจอที่ผู้ใช้ให้เท่านั้น ภาพหน้าจอจะส่งต่อเป็น visual reference สำหรับขั้นสร้างภาพและไม่ใช่หลักฐานที่ planner นี้ตรวจเห็นได้ ห้ามเดาฟังก์ชันหรือผลลัพธ์",
+      software:
+        "รีวิวโปรแกรม ใช้คำบรรยายและข้อมูลหน้าจอที่ผู้ใช้ให้ อธิบายเฉพาะขั้นตอนที่ยืนยันได้ ภาพจะส่งต่อเป็น visual reference สำหรับขั้นสร้างภาพ ห้ามสร้างความสามารถ ประสิทธิภาพ หรือความปลอดภัยขึ้นเอง",
+      work_system:
+        "รีวิวระบบงาน อธิบาย workflow จากข้อมูลที่ผู้ใช้ให้ ภาพหลายมุมจะส่งต่อเป็น visual reference สำหรับขั้นสร้างภาพ ห้ามกล่าวอ้าง KPI ความเร็ว การประหยัด หรือความปลอดภัยที่ไม่มีหลักฐาน",
+    },
+    visualReferenceRules:
+      "ภาพอ้างอิงทั้งหมดอาจเป็นวัตถุเดียวกันจากหลายมุมหรือภาพหลายมุมของร้าน/สถานที่ ภาพเหล่านี้จะส่งต่อเป็น visual references ไปยังขั้นสร้างภาพ แต่คำขอวางแผนนี้ได้รับเฉพาะ URL/label ไม่ได้รับพิกเซลภาพ จึงห้ามอ้างรายละเอียดที่มองเห็นจากภาพ ใช้ประเภทหัวข้อและข้อความที่ผู้ใช้ให้เป็นข้อเท็จจริง และรักษาภาพทั้งหมดไว้เพื่อคุมอัตลักษณ์และความต่อเนื่องในขั้นสร้างภาพ",
     creativeDirection: {
       presentationStylePreference: input.presentationStyle,
       presentationStyleGuidance: {
         story_tie_in:
-          "สินค้าเป็นส่วนหนึ่งของเหตุการณ์และความสัมพันธ์ในละคร ไม่หยุดเรื่องเพื่อขาย",
+          "หัวข้อรีวิวเป็นส่วนหนึ่งของเหตุการณ์และความสัมพันธ์ในละคร ไม่หยุดเรื่องเพื่อขาย",
         direct_product_pitch:
-          "ตัวละครพูดแนะนำสินค้าอย่างตรงไปตรงมา บอกเฉพาะข้อมูลหรือประโยชน์ที่มีหลักฐาน และชวนพิจารณาอย่างสุภาพโดยไม่กดดัน",
+          "ตัวละครแนะนำหัวข้อรีวิวอย่างตรงไปตรงมา บอกเฉพาะข้อมูลหรือประโยชน์ที่มีหลักฐาน และชวนพิจารณาอย่างสุภาพโดยไม่กดดัน",
         unboxing:
-          "เปิดกล่องหรือสำรวจสินค้า เห็นรายละเอียดและทดลองใช้ตามที่ข้อมูลรองรับ ห้ามแต่งรายละเอียดบรรจุภัณฑ์ที่ไม่มีในข้อมูล",
+          "เปิดกล่อง ทดลองใช้ หรือพาชม/สำรวจครั้งแรกให้เหมาะกับประเภทหัวข้อ โดยไม่แต่งรายละเอียดที่ไม่มีในข้อมูล",
         feature_explainer:
-          "สาธิตหรืออธิบายคุณสมบัติที่ระบุไว้ โดยผูกกับการใช้งานจริง ห้ามสร้างสเปกหรือผลลัพธ์เพิ่ม",
+          "สาธิตหรืออธิบายคุณสมบัติ ขั้นตอน หรือจุดเด่นที่ระบุไว้ โดยผูกกับการใช้งานจริง ห้ามสร้างสเปกหรือผลลัพธ์เพิ่ม",
         problem_solution:
-          "เริ่มจากปัญหาที่ตัวละครพบ แล้วแสดงว่าสินค้ามีส่วนช่วยอย่างไรโดยไม่อ้างผลเกินข้อมูล",
+          "เริ่มจากปัญหาหรือความต้องการ แล้วแสดงว่าหัวข้อรีวิวเกี่ยวข้องหรือช่วยได้อย่างไรโดยไม่อ้างผลเกินข้อมูล",
+        experience_review:
+          "เล่าประสบการณ์ตรงและรายละเอียดที่สังเกตได้จากการไปใช้/เยี่ยมชม/ทดลอง โดยแยกความเห็นออกจากข้อเท็จจริง",
+        documentary:
+          "เล่าเชิงสารคดีด้วยลำดับข้อเท็จจริง การสังเกต และบริบทที่ผู้ใช้ให้ โดยไม่แต่งแหล่งข่าวหรือข้อมูลเพิ่มเติม",
       },
       storyStructurePreference: input.storyStructure,
       storyStructureGuidance: {
@@ -768,7 +801,7 @@ function buildUserPrompt(
           ideaId: "unique-card-id",
           title: "ชื่อไอเดีย",
           presentationStyle:
-            "story_tie_in | direct_product_pitch | unboxing | feature_explainer | problem_solution",
+            "story_tie_in | direct_product_pitch | unboxing | feature_explainer | problem_solution | experience_review | documentary",
           storyStructure:
             "three_act | problem_solution | aida | before_after_bridge | hero_journey",
           logline: "ประโยคสรุปเหตุการณ์",
@@ -781,7 +814,7 @@ function buildUserPrompt(
             atmosphere: "บรรยากาศ",
             beats: ["จังหวะที่ 1", "จังหวะที่ 2"],
           },
-          productMentionReason: "เหตุผลที่ตัวละครพูดถึงสินค้าในเหตุการณ์นี้",
+          productMentionReason: "เหตุผลที่หัวข้อรีวิวเข้ากับเหตุการณ์นี้",
           dialogue: [{ speaker: "ชื่อตัวละคร", line: "บทสนทนา", delivery: "น้ำเสียง" }],
           shotDialogues: Array.from({ length: 9 }, (_, index) => ({
             shotNumber: index + 1,
@@ -815,7 +848,7 @@ function buildUserPrompt(
     },
     productSourceRules:
       input.productSource === "upload"
-        ? "The product description and direction are the user's uploaded-product brief. Use only those stated facts; do not infer unseen packaging text, brand, ingredients, performance, certification, or results from the image."
+        ? "The product.description and direction are the user's written brief about the selected review subject. Use only those stated facts; when the brief is empty, keep the story visual and conservative. Treat uploaded and selected images as visual references, not as evidence for unseen pricing, services, features, performance, opening hours, or claims."
         : "Use the Marketplace product record as the source of product facts; treat optional direction as the user's story preference.",
     dialogueRules: {
       eligibleAdultSpeakerNames: input.dialogueSpeakerCharacterNames,
@@ -823,15 +856,15 @@ function buildUserPrompt(
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
       advertisingCompliance:
-        "ห้ามกล่าวอ้างเกินจริงและห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำสินค้าอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ห้ามกดดันหรือชวนซื้อเกินควร",
+        "ห้ามกล่าวอ้างเกินจริงและห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำหัวข้อรีวิวอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ห้ามกดดันหรือชวนซื้อเกินควร",
       productTieIn:
         input.presentationStyle === "direct_product_pitch"
           ? input.dialogueMode === "character_dialogue"
-            ? "แนวนี้ต้องแนะนำสินค้าอย่างชัดเจนในบทพูดของผู้ใหญ่ โดยใช้เฉพาะรายละเอียดหรือประโยชน์ที่มีในข้อมูล และพูดอย่างสุภาพไม่กดดัน ช็อตอื่นยังเล่าเรื่องต่อได้ ไม่ต้องพูดถึงสินค้าในทุกช็อต"
-            : "แนวนี้ให้ตัวละครสาธิตหรือจัดวางสินค้าอย่างชัดเจนและเล่าประโยชน์ผ่านการกระทำ ใช้เฉพาะข้อมูลที่มี ห้ามมีบทพูด"
+            ? "แนวนี้ต้องแนะนำหัวข้อรีวิวอย่างชัดเจนในบทพูดของผู้ใหญ่ โดยใช้เฉพาะรายละเอียดหรือประโยชน์ที่มีในข้อมูล และพูดอย่างสุภาพไม่กดดัน ช็อตอื่นยังเล่าเรื่องต่อได้ ไม่ต้องกล่าวถึงหัวข้อในทุกช็อต"
+            : "แนวนี้ให้ตัวละครพาชมหรือสาธิตหัวข้อรีวิวอย่างชัดเจนผ่านการกระทำ ใช้เฉพาะข้อมูลที่มี ห้ามมีบทพูด"
           : input.dialogueMode === "character_dialogue"
-            ? "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์อย่างเป็นธรรมชาติ บทพูดจะกล่าวถึงสินค้าเมื่อเหมาะกับฉาก ไม่จำเป็นต้องเอ่ยถึงสินค้าในทุกช็อต"
-            : "ใช้รายละเอียดสินค้า สเปก และทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้สินค้าเข้ากับเหตุการณ์หรือการกระทำอย่างเป็นธรรมชาติ ห้ามมีบทพูด",
+            ? "ใช้รายละเอียดหัวข้อรีวิวและทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้หัวข้อเข้ากับเหตุการณ์อย่างเป็นธรรมชาติ บทพูดจะกล่าวถึงหัวข้อนี้เมื่อเหมาะกับฉาก ไม่จำเป็นต้องกล่าวถึงในทุกช็อต"
+            : "ใช้รายละเอียดหัวข้อรีวิวและทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้หัวข้อเข้ากับเหตุการณ์หรือการกระทำอย่างเป็นธรรมชาติ ห้ามมีบทพูด",
     },
     repairFeedback: repairFeedback || undefined,
     input,
@@ -918,6 +951,7 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   seriesId: number;
   productId?: string;
   productSource: "marketplace_capture" | "upload";
+  reviewSubjectType?: MarketplaceReviewIdeaInput["reviewSubjectType"];
   presentationStyle?: MarketplaceReviewIdeaInput["presentationStyle"];
   storyStructure?: MarketplaceReviewIdeaInput["storyStructure"];
   referenceImages: Array<{
@@ -934,15 +968,18 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   selectedCharacterIds: string[];
   variationSeed: string;
 }): Promise<MarketplaceReviewIdeaInput> {
+  const reviewSubjectType = input.reviewSubjectType ?? "product";
+  const productSource =
+    reviewSubjectType === "product" ? input.productSource : "upload";
   const productBrief = input.productBrief?.trim() || input.direction?.trim() || "";
-  if (input.productSource === "upload" && !productBrief) {
+  if (productSource === "upload" && reviewSubjectType === "product" && !productBrief) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
-        "กรุณาใส่รายละเอียดสินค้าในช่องไอเดียก่อนสร้างไอเดียจากภาพที่อัปโหลด",
+        "กรุณาใส่รายละเอียดสินค้าหรือข้อเท็จจริงที่ยืนยันได้ก่อนสร้างไอเดียจากภาพที่อัปโหลด",
     });
   }
-  if (input.productSource === "marketplace_capture" && !input.productId) {
+  if (productSource === "marketplace_capture" && !input.productId) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Marketplace tie-in ideas require a selected product",
@@ -969,7 +1006,7 @@ export async function buildMarketplaceReviewIdeaInput(input: {
     throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
 
   const bundle =
-    input.productSource === "marketplace_capture"
+    productSource === "marketplace_capture"
       ? await getMarketplaceProductWithAccess(input.productId!, input.actor)
       : null;
   const imageIds = input.referenceImages.map(image => image.mediaAssetId);
@@ -1128,18 +1165,21 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   const normalizedUploadProductId = `upload:${crypto
     .createHash("sha256")
     .update(
-      JSON.stringify(
-        input.referenceImages.map(image => image.mediaAssetId).sort()
-      )
+      JSON.stringify({
+        reviewSubjectType,
+        referenceImages: input.referenceImages
+          .map(image => image.mediaAssetId)
+          .sort(),
+      })
     )
     .digest("hex")
     .slice(0, 32)}`;
   const normalizedProductId =
-    input.productSource === "upload"
+    productSource === "upload"
       ? normalizedUploadProductId
       : input.productId!;
   const normalizedProductDescription =
-    input.productSource === "upload"
+    productSource === "upload"
       ? bounded(productBrief, 8000)
       : bounded(
           product.descriptionText ??
@@ -1148,33 +1188,59 @@ export async function buildMarketplaceReviewIdeaInput(input: {
           8000
         );
 
+  const reviewSubjectLabels: Record<
+    MarketplaceReviewIdeaInput["reviewSubjectType"],
+    string
+  > = {
+    product: "สินค้า",
+    object: "วัตถุ/อุปกรณ์",
+    restaurant: "ร้านอาหาร",
+    place: "สถานที่",
+    tourist_attraction: "สถานที่ท่องเที่ยว",
+    documentary: "ประเด็นสารคดี",
+    app: "แอป",
+    software: "โปรแกรม",
+    work_system: "ระบบงาน",
+  };
+
   return marketplaceReviewIdeaInputSchema.parse({
     schemaVersion: 1,
-    productSource: input.productSource,
+    productSource,
+    reviewSubjectType,
     product: {
       productId: normalizedProductId,
       name: String(
-        input.productSource === "upload"
-          ? "สินค้าจากภาพอัปโหลด"
+        productSource === "upload"
+          ? `${reviewSubjectLabels[reviewSubjectType]}จากภาพอ้างอิง`
           : product.productName ?? input.productId
       ),
-      brand: bounded(product.brand, 255),
-      category: bounded(
-        product.productCategory ??
-          descriptionJson.categoryText ??
-          specsJson.categoryText,
-        255
-      ),
+      brand:
+        productSource === "marketplace_capture"
+          ? bounded(product.brand, 255)
+          : undefined,
+      category:
+        productSource === "marketplace_capture"
+          ? bounded(
+              product.productCategory ??
+                descriptionJson.categoryText ??
+                specsJson.categoryText,
+              255
+            )
+          : reviewSubjectLabels[reviewSubjectType],
       description: normalizedProductDescription,
-      specs: safeJson({ specs: specsJson, source: platformRawJson }, 6000),
-      customerJourney:
-        input.customerJourney ??
-        safeJson(
-          { description: descriptionJson, platform: platformRawJson },
-          6000
-        ),
+      specs:
+        productSource === "marketplace_capture"
+          ? safeJson({ specs: specsJson, source: platformRawJson }, 6000)
+          : undefined,
+      customerJourney: input.customerJourney ??
+        (productSource === "marketplace_capture"
+          ? safeJson(
+              { description: descriptionJson, platform: platformRawJson },
+              6000
+            )
+          : undefined),
       sourceClaims:
-        input.productSource === "upload"
+        productSource === "upload"
           ? []
           : [
               ...(Array.isArray(descriptionJson.claims)
@@ -1240,7 +1306,7 @@ export async function buildMarketplaceReviewIdeaInput(input: {
     customerJourney: input.customerJourney,
     footageGuide: input.footageGuide,
     direction:
-      input.productSource === "upload" ? productBrief : input.direction,
+      productSource === "upload" ? productBrief : input.direction,
     llmModelId: input.llmModelId,
     variationSeed: input.variationSeed,
   });
@@ -1310,7 +1376,7 @@ export async function generateMarketplaceReviewIdeas(input: {
       repairFeedback =
         `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${
           error instanceof Error ? error.message : String(error)
-        }. ปรับเรื่องและบทพูดให้ใช้รายละเอียดสินค้าตามโจทย์อย่างเป็นธรรมชาติ โดยไม่ฝืนใส่สินค้าในทุกช็อต สร้าง JSON ใหม่ทั้งชุดให้ครบ 9 ช็อตและแก้ตามกฎ ห้ามส่งผลลัพธ์บางส่วน`;
+        }. ปรับเรื่องและบทพูดให้ตรงกับประเภทหัวข้อรีวิวและข้อมูลที่ยืนยันได้อย่างเป็นธรรมชาติ ไม่ฝืนกล่าวถึงหัวข้อในทุกช็อต สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
     }
   }
   if (!output) {

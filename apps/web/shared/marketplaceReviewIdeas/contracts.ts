@@ -10,6 +10,20 @@ export const marketplaceReviewPresentationStylePreferenceSchema = z.enum([
   "unboxing",
   "feature_explainer",
   "problem_solution",
+  "experience_review",
+  "documentary",
+]);
+
+export const marketplaceReviewSubjectTypeSchema = z.enum([
+  "product",
+  "object",
+  "restaurant",
+  "place",
+  "tourist_attraction",
+  "documentary",
+  "app",
+  "software",
+  "work_system",
 ]);
 
 export const marketplaceReviewStoryStructurePreferenceSchema = z.enum([
@@ -27,6 +41,8 @@ const marketplaceReviewPresentationStyleSchema = z.enum([
   "unboxing",
   "feature_explainer",
   "problem_solution",
+  "experience_review",
+  "documentary",
 ]);
 
 const marketplaceReviewStoryStructureSchema = z.enum([
@@ -80,6 +96,7 @@ export const marketplaceReviewIdeaInputSchema = z.object({
   storyStructure: marketplaceReviewStoryStructurePreferenceSchema.default(
     "varied"
   ),
+  reviewSubjectType: marketplaceReviewSubjectTypeSchema.default("product"),
   /** Character IDs explicitly selected by the user for this idea run. */
   selectedCharacterIds: z.array(boundedText(128)).min(1).max(4),
   /** Names that must not be introduced as characters in the generated story. */
