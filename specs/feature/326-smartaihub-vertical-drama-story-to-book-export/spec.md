@@ -159,9 +159,12 @@ revision into a reviewed book or replace prior user edits.
    its reservation, then return unused reserved credits. Retries resume from
    completed chapters and must not reuse a closed reservation; replaying the
    same attempt settlement key must not draw credits twice.
-6. Wait for durable composition progress, then edit the generated title,
-   chapter titles, paragraphs, dialogue, scene breaks, captions, and artwork
-   placements in a book preview/editor.
+6. Select an eligible vision-capable LLM and the **Vertical Drama Book
+   Novelizer** skill for composition. Wait for durable per-episode progress,
+   then read the result as continuous novel prose in the episode reader. Review
+   and edit chapter titles, narration, dialogue, scene breaks, captions, and
+   artwork placements. If an episode reads poorly, request a new draft for
+   only that episode and choose the LLM model for that run.
 7. Approve a specific Book Document revision. Export EPUB, PDF, or both. Each
    format has independent progress and can succeed or fail independently.
 8. Download the private export artifact from the series workspace. Re-export
@@ -174,6 +177,19 @@ series context needed for continuity. Composition must:
 
 - convert scene/shot notes into book prose and transitions rather than copy the
   production shot list into the book;
+- write each episode as a coherent, flowing novel chapter with an opening,
+  connected scenes, varied sentence rhythm, narration and dialogue integrated
+  into action, and a satisfying episode ending. Do not emit one isolated
+  summary paragraph per storyboard shot or preserve the nine-shot format as
+  visible structure;
+- consume the ordered shot synopsis, original dialogue, relevant character and
+  setting context, and authorized shot images through an eligible multimodal
+  model. Use image evidence to clarify visible action, expression, and setting;
+  do not treat the image as permission to invent off-screen facts;
+- apply the new `vertical-drama-book-novelizer` skill contract, including a
+  prose-quality pass for flow, readability, continuity, voice, source coverage,
+  and unsupported-detail checks. If the bounded self-review finds a material
+  defect, allow one targeted revision before returning the episode draft;
 - preserve event order, established facts, character relationships, and
   author-approved dialogue meaning;
 - avoid inventing actions, history, relationships, motivations, or resolution
@@ -182,8 +198,28 @@ series context needed for continuity. Composition must:
   is known; flag missing/ambiguous speaker attribution for author review;
 - keep each generated block linked to its source episode/scene references;
 - generate chapter-sized bounded work units with resumable checkpoints;
-- never overwrite user-edited/locked blocks during regeneration. Regeneration
-  creates a candidate revision or updates only the explicitly selected blocks.
+- return chapter prose with source references at paragraph/scene granularity,
+  not one reference-only sentence for each shot;
+- never overwrite user-edited/locked blocks during regeneration. A user-requested
+  episode re-novelization creates a candidate revision that changes only that
+  episode's mapped chapter(s); previously approved content and edits in every
+  other episode remain intact;
+- pin the user-selected LLM model for the complete episode attempt, expose a
+  conservative cost estimate before execution, and never silently substitute a
+  different model. Model selection may be changed for a later episode retry.
+
+### 4.2 Episode reading and targeted re-novelization
+
+Book Studio provides an episode-oriented reader that displays the finished
+prose in reading order, separate from the source storyboard structure. Authors
+can navigate between episodes, inspect the corresponding source shots and
+dialogue when needed, and edit the novelized text before approval. Each episode
+has an explicit **อ่านทบทวน / Review** and **แปลงตอนนี้ใหม่ / Re-novelize this
+episode** action. The re-novelization form lets the user select an eligible
+vision-capable LLM model and see the model-specific estimate before queuing.
+The result appears as a candidate for that episode so the user can compare,
+keep the existing text, or apply the new episode draft. Other episodes are not
+regenerated, reset, or overwritten.
 
 Artwork placement suggestions must reference only assets included in the
 authorized source snapshot. In the all-shots mode, include each selected
@@ -434,55 +470,70 @@ successfully validated artifact for the other.
    source edits visibly mark affected drafts stale; an export always identifies
    the exact approved book revision it used.
 3. Composition produces typed, editable blocks with dialogue and source
-   provenance. It obeys the no-unsupported-facts contract and does not expose
-   shot numbers as book structure.
-4. User edits survive regeneration unless the user explicitly selects those
-   blocks for replacement. Approval is tied to a specific immutable revision.
-5. The user can choose no artwork, chapter openers, occasional illustrations,
+   provenance. Chapters read as continuous, polished novel prose with connected
+   scenes, natural narration/dialogue, and an episode arc; shot numbers are not
+   exposed as book structure. Ordered shot synopses, dialogue and authorized
+   images are consumed by the new novelizer skill through a vision-capable model.
+4. Book Studio provides an episode reader so each converted episode can be read
+   and reviewed as prose with source context available on demand. User edits
+   survive regeneration unless the user explicitly selects that episode draft
+   for replacement. Re-novelizing one episode changes only its mapped
+   chapter(s), preserves all other episode content, and presents a candidate
+   before application. Approval is tied to a specific immutable revision.
+5. The user selects an eligible LLM model for whole-book composition and may
+   select a different eligible model for a targeted episode retry. A
+   model-specific conservative estimate is shown before each paid run; the
+   selected model is pinned through the job and there is no silent fallback.
+6. The `vertical-drama-book-novelizer` skill applies a documented prose
+   quality rubric covering flow, readability, continuity, dialogue integration,
+   source coverage, and unsupported details, and performs at most one bounded
+   self-revision per episode before returning the result.
+7. The user can choose no artwork, chapter openers, occasional illustrations,
    or all selected storyboard-shot images from authorized existing assets.
    All-shots mode preserves source shot order and pairs every image with its
    related editable prose; missing-shot coverage is reported before
    composition. A book cover can be chosen independently from existing artwork
    or generated with the book-cover creator.
-6. The cover creator offers only enabled, authorized image models that support
+8. The cover creator offers only enabled, authorized image models that support
    reference images; it submits a bounded random sample of authorized images
    from selected episodes and title, author, blurb, and theme context. Each
    round yields three candidates. A later round uses a different image
    combination when the authorized image pool allows it. The user may select
    any candidate and generate more without replacing the current cover until a
    replacement is explicitly selected.
-7. Generated cover artwork is combined with exact title, author, and optional
+9. Generated cover artwork is combined with exact title, author, and optional
    blurb text by a deterministic Unicode-safe renderer. Candidates are private
    tenant/user-owned media assets with checksums; selected asset identity and
    alternative text are bound to the saved Book Document revision. Cover jobs
    use canonical worker jobs/outbox, report the three-image credit estimate
    before submission, and expose sanitized progress/failure states. Failed or
    cancelled jobs preserve the existing cover and completed candidates.
-8. EPUB output opens as a valid reflowable EPUB 3.3 publication with a cover,
+10. EPUB output opens as a valid reflowable EPUB 3.3 publication with a cover,
    metadata, navigation, chapter order, Unicode text, and local images. When
    all-shots mode is selected, each selected shot image appears once next to its
    related prose in source order. EPUBCheck passes before download.
-9. PDF output has the configured fixed page size, readable/extractable Thai
+11. PDF output has the configured fixed page size, readable/extractable Thai
    text, intact image aspect ratios, sensible chapter breaks, and a contents
    page with working links. When all-shots mode is selected, each selected shot
    image appears once next to its related prose in source order. Bookmarks are
    produced where the selected renderer supports them. Pages do not contain
    full-page rasterized text, and PDF structural and text checks pass before
    download.
-10. A request for both formats creates independent jobs; one format may be
+12. A request for both formats creates independent jobs; one format may be
    retried without losing the other format's available artifact.
-11. Tenant isolation covers book records, progress, source assets, generated
+13. Tenant isolation covers book records, progress, source assets, generated
    cover candidates, and artifact
    downloads. Export packages contain no remote resources or arbitrary active
    content.
-12. Composition, cover generation, and rendering are durable, idempotent, resumable/cancellable,
+14. Composition, targeted episode re-novelization, cover generation, and
+    rendering are durable, idempotent, resumable/cancellable,
     cost-gated for AI calls, and visible through the canonical job status
     surface. Cost estimates use the pinned model and bounded token envelope;
     actual provider attempts settle through a reservation with unique stable
     settlement keys. A request timeout does not lose persisted chapter progress
     or create a duplicate artifact; ambiguous provider usage remains a
     reconciliation case rather than being silently treated as free.
-13. Thai EPUB layout is checked with reader-controlled font scaling; Thai PDF
+15. Thai EPUB layout is checked with reader-controlled font scaling; Thai PDF
     text and pagination are checked in representative page-render samples.
     Informative image alternatives and missing-alt warnings are covered.
 
@@ -490,8 +541,10 @@ successfully validated artifact for the other.
 
 1. Add versioned Book workspace/revision/artifact contracts and source snapshot
    reader; verify series and asset authorization and stale-source behavior.
-2. Build bounded narrative composition into the Book Document with credit
-   admission, provenance, review/edit, and revision approval.
+2. Add the `vertical-drama-book-novelizer` skill and build multimodal,
+   episode-bounded novelization into the Book Document with selectable pinned
+   models, quality review, source provenance, credit admission, and resumable
+   jobs.
 3. Implement EPUB 3.3 serialization and EPUBCheck validation.
 4. Implement PDF profile/rendering, first proving browser/font availability and
    Thai text extraction in the canonical job runtime.
@@ -502,6 +555,9 @@ successfully validated artifact for the other.
    downloads, and accessibility/layout regression coverage.
 7. Pilot with one short series, a multi-chapter volume, a text-only book, a
    portrait-heavy book, and a source-stale edit before broad rollout.
+8. Validate novelization quality with representative episodes from dialogue-
+   heavy, action-heavy, and visually dependent stories; verify targeted retry
+   changes only the requested episode and preserve author edits elsewhere.
 
 ## 12. Research references
 

@@ -9,6 +9,7 @@ section-02-authoring-and-jobs
 section-03-epub-pdf-export
 section-04-book-studio-ui-and-acceptance
 section-05-dedicated-book-cover-generation
+section-06-episode-novelization-skill-and-review
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -22,6 +23,7 @@ END_MANIFEST -->
 | section-03-epub-pdf-export | 01, 02 | 04 | No |
 | section-04-book-studio-ui-and-acceptance | 01, 02, 03 | - | No |
 | section-05-dedicated-book-cover-generation | 01, 04 | - | No |
+| section-06-episode-novelization-skill-and-review | 01, 02, 04 | - | No |
 
 ## Execution Order
 
@@ -30,6 +32,7 @@ END_MANIFEST -->
 3. section-03-epub-pdf-export
 4. section-04-book-studio-ui-and-acceptance
 5. section-05-dedicated-book-cover-generation
+6. section-06-episode-novelization-skill-and-review
 
 ## Section Summaries
 
@@ -47,3 +50,6 @@ Integrate Book Studio into series detail and close requirement evidence, respons
 
 ### section-05-dedicated-book-cover-generation
 Add the author-triggered cover creator with model capability checks, randomized authorized shot references, three reviewable candidates, exact Unicode text composition, private media assets, credit estimate, and durable canonical job lifecycle.
+
+### section-06-episode-novelization-skill-and-review
+Create a dedicated storyboard-to-novel skill, multimodal episode composition, user-selectable pinned LLM, episode reader/review UI, and isolated per-episode re-novelization that preserves other episodes and author edits.
