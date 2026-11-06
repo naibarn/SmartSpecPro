@@ -594,7 +594,7 @@ export const VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT = VD_PRODUCT_LOCK_NEGATIVE
  * edit to the video pipeline in this phase.
  */
 export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
-  "PRODUCT LOCK (MANDATORY): the product must remain visually unchanged while in motion — same shape, proportions, size relative to the scene, colors, materials, logo, and label text as the reference image, for the entire clip. Never let the product warp, morph, recolor, resize, or drift its logo/label during the motion.";
+  "PRODUCT LOCK (MANDATORY): when a product reference image is attached, inspect it and preserve that exact physical object in every frame: same silhouette, proportions, color, materials, components, visible controls, branding/logo placement, labels, and distinctive details. Include every explicitly supplied product dimension in the generated prompt exactly as stated, and keep scale consistent with those dimensions and perspective; if no dimensions are supplied, do not invent measurements or arbitrarily resize the product. Treat each product image as an object-only cue: keep the approved start frame's scene and background, place the product as an additive in-scene prop, and never replace the location with the product photo's backdrop. Do not redesign, substitute, add or remove parts, warp, morph, recolor, resize, or drift the product's logo or labels.";
 
 /**
  * Append a concise, natural in-scene product-presence direction PLUS the hard

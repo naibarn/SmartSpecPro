@@ -6503,7 +6503,10 @@ export class VerticalDramaEpisodePipeline {
     videoPromptMaxChars: number;
   }> {
     const [motionSeriesRow] = await db
-      .select({ genre: verticalDramaSeries.genre })
+      .select({
+        genre: verticalDramaSeries.genre,
+        productTieIn: verticalDramaSeries.productTieIn,
+      })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -6513,6 +6516,12 @@ export class VerticalDramaEpisodePipeline {
         )
       )
       .limit(1);
+    const motionProductTieIn =
+      (motionSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+    const productReferenceDescription =
+      typeof motionProductTieIn?.productDescription === "string"
+        ? motionProductTieIn.productDescription
+        : undefined;
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
     const shots: Array<Record<string, unknown>> = Array.isArray(
@@ -6682,6 +6691,11 @@ export class VerticalDramaEpisodePipeline {
             f.approvedMediaAssetId.trim().length > 0
         );
         if (approvedFrames.length === 0) return undefined;
+        const productReferenceAssetIds = approvedFrames.flatMap(frame =>
+          (frame.productReferenceAssetIds ?? [])
+            .map(value => Number(value))
+            .filter(id => Number.isInteger(id) && id > 0)
+        );
         const assetIds = approvedFrames
           .flatMap(f => {
             const dualView = normalizeVerticalDramaBarrierMultiView(
@@ -6728,7 +6742,13 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaShotReferences.episodeId, owner.episodeId)
             )
           );
-        assetIds.push(...referenceRows.map(row => row.assetId));
+        const requiredAssetIds = Array.from(
+          new Set([...assetIds, ...referenceRows.map(row => row.assetId)])
+        );
+        assetIds.push(
+          ...referenceRows.map(row => row.assetId),
+          ...productReferenceAssetIds
+        );
         if (assetIds.length === 0) return undefined;
         // Explicitly typed (`db.select(...)` is loosely typed `any` in this
         // codebase's `db` wrapper, see `server/db.ts` — matches
@@ -6764,7 +6784,9 @@ export class VerticalDramaEpisodePipeline {
           if (row.url) urlByAssetId.set(row.id, row.url);
           assetById.set(row.id, row);
         }
-        const expectedAssetIds = Array.from(new Set(assetIds));
+        // Product refs are useful visual grounding but remain best-effort;
+        // a stale optional product image must not fail the whole prompt pack.
+        const expectedAssetIds = requiredAssetIds;
         const unavailableAssetIds = expectedAssetIds.filter(id => {
           const asset = assetById.get(id);
           return !asset || asset.status !== "ready" || !asset.url;
@@ -6897,6 +6919,36 @@ export class VerticalDramaEpisodePipeline {
                     ])
                   )
                 );
+              const productReferenceImages: Array<{
+                url: string;
+                label: string;
+              }> = [];
+              for (const [index, referenceValue] of (
+                f.productReferenceAssetIds ?? []
+              ).entries()) {
+                const referenceAssetId = Number(referenceValue);
+                const rawProductReferenceUrl =
+                  Number.isInteger(referenceAssetId) && referenceAssetId > 0
+                    ? urlByAssetId.get(referenceAssetId)
+                    : /^https?:\/\//i.test(referenceValue) ||
+                        referenceValue.startsWith("/api/storage/files/") ||
+                        referenceValue.startsWith("/uploads/")
+                      ? referenceValue
+                      : undefined;
+                if (!rawProductReferenceUrl) continue;
+                try {
+                  const { resolveReferenceUrl } = await import(
+                    "./mediaGenerationService"
+                  );
+                  productReferenceImages.push({
+                    url: resolveReferenceUrl(rawProductReferenceUrl),
+                    label: `PRODUCT_REFERENCE_IMAGE_${index + 1}`,
+                  });
+                } catch {
+                  // Product refs are additive and best-effort; an unavailable
+                  // optional reference must not abort the episode prompt pack.
+                }
+              }
               return {
                 shotNumber: f.shotNumber,
                 url,
@@ -6923,6 +6975,13 @@ export class VerticalDramaEpisodePipeline {
                 characterReferenceImages: characterReferenceImages.length
                   ? characterReferenceImages
                   : undefined,
+                productReferenceImages: productReferenceImages.length
+                  ? productReferenceImages
+                  : undefined,
+                productReferenceDescription:
+                  productReferenceImages.length
+                    ? productReferenceDescription
+                    : undefined,
               };
             })
           )
@@ -6939,6 +6998,10 @@ export class VerticalDramaEpisodePipeline {
             characterReferenceImages:
               | ShotVideoPromptCharacterReferenceImage[]
               | undefined;
+            productReferenceImages:
+              | Array<{ url: string; label: string }>
+              | undefined;
+            productReferenceDescription: string | undefined;
           } => v !== null
         );
         return resolved.length > 0 ? resolved : undefined;

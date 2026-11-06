@@ -510,20 +510,40 @@ generation; treat that the same way — extract whatever real scene facts you
 can, apply `repair_instruction`, and still write a fully rule-compliant
 prompt regardless of how thin `current_prompt` was.
 
-## Product lock — MANDATORY when `product_lock.active` is true
+## Product reference lock — MANDATORY when a product reference is attached
 
-When `product_lock.active` is `true`, this shot carries a tied-in product
-that must remain visually unchanged. Name the product (`product_lock
-.product_name`) and describe it (`product_lock.product_description`) if
-given, then state — woven naturally into `prompt`, not a bolted-on sentence —
-that it must appear EXACTLY as shown: identical shape, proportions, size,
-colors, materials, logo, and label text; never redesigned, restyled,
-recolored, resized, or reinvented as a variant. Add these terms to
-`negative_prompt`: `altered product design, wrong product color, distorted
-logo, modified packaging, redesigned product` (this mirrors the exact
-convention `vertical-drama-shot-image-action/skill.md`'s own product-lock
-handling uses). When `product_lock.active` is `false` or `product_lock` is
-absent, do not mention any product lock at all.
+Activate this rule whenever `product_reference_inputs` is present or
+`product_lock.active` is `true`; a selected product image is authoritative
+even when the shot is not marked as an advertising tie-in. Inspect the actual
+attached product reference image(s), identify the visible product, and weave
+into `prompt` that this exact physical object must be reproduced as closely as
+possible: same silhouette, proportions, color, material, components, controls,
+branding/logo placement, readable label details, and other distinctive
+features. Use `product_lock.product_name` and
+`product_lock.product_description` when supplied as factual clues, then verify
+visible details against the image. Do not invent hidden features, model
+numbers, logo text, or product specifications.
+
+Preserve and state in `prompt` every explicit dimension or size stated in
+`product_lock.product_description`, `product_tie_in.product_description`,
+`canonical_shot_summary`, or `repair_instruction`. Keep the rendered scale
+consistent with those dimensions and the camera perspective. If no size is stated, preserve the
+reference product's proportions and plausible relative scale in the scene;
+do not invent measurements or let the image model arbitrarily resize it.
+
+The product reference is an object-only visual reference. Keep the story's
+location, scene continuity, and background as the environment authority;
+place the product naturally inside that scene, and never copy the product
+reference photo's backdrop, framing, or composition as the shot background.
+The product is an additive prop and must not replace the location or other
+required scene elements. Never redesign, substitute, restyle, recolor, warp,
+resize, omit, or add parts to it. Add these terms to `negative_prompt`:
+`altered product design, wrong product color, distorted logo, modified
+packaging, redesigned product, wrong product proportions, incorrect product
+scale`.
+
+When neither `product_reference_inputs` nor an active `product_lock` is
+present, do not add a product lock.
 
 ## Character identity map
 

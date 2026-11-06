@@ -6444,7 +6444,9 @@ async function resolveShotProductReferenceUrls(
   const directUrls = productReferenceAssetIds.filter(
     (value): value is string =>
       typeof value === "string" &&
-      (/^https?:\/\//.test(value) || value.startsWith("/api/storage/files/"))
+      (/^https?:\/\//i.test(value) ||
+        value.startsWith("/api/storage/files/") ||
+        value.startsWith("/uploads/"))
   );
   const numericIds = productReferenceAssetIds
     .map(value => Number(value))
@@ -11251,6 +11253,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   tieInPlacement: VerticalDramaShotProductPlacement | undefined;
   tieInProductName: string | undefined;
   tieInProductCategory: string | undefined;
+  productReferenceImages?: Array<{ url: string; label?: string }>;
+  productReferenceDescription?: string;
   selectedVideoModel: Awaited<ReturnType<typeof resolveEpisodeVideoModel>>;
   locale: VerticalDramaSeriesLocale;
   shotDurationSeconds: number;
@@ -11339,6 +11343,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     tieInPlacement,
     tieInProductName,
     tieInProductCategory,
+    productReferenceImages,
+    productReferenceDescription,
     selectedVideoModel,
     locale,
     shotDurationSeconds,
@@ -11382,6 +11388,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       imageUrl,
       imagePrompt,
       characterReferenceImages,
+      productReferenceImages,
+      productReferenceDescription,
       barrierReferenceImage,
       locationReferenceImage,
       qualityLoop,
@@ -28091,6 +28099,16 @@ export const verticalDramaEpisodesRouter = router({
             ]
           : [];
       const promptSkillAdditionalImages = input.additionalImageUrls;
+      const productReferenceImages = (
+        await resolveShotProductReferenceUrls(
+          tenantId,
+          userId,
+          frame?.productReferenceAssetIds
+        )
+      ).map((url, index) => ({
+        url: resolveReferenceUrl(url, ctx.publicUrl ?? undefined),
+        label: `PRODUCT_REFERENCE_IMAGE_${index + 1}`,
+      }));
 
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
       const storyboardShot = storyboard?.shots?.find(
@@ -28282,7 +28300,10 @@ export const verticalDramaEpisodesRouter = router({
       );
       let tieInProductName: string | undefined;
       let tieInProductCategory: string | undefined;
-      if (tieInPlacement) {
+      let productReferenceDescription: string | undefined;
+      const hasProductReferenceImages =
+        (frame?.productReferenceAssetIds?.length ?? 0) > 0;
+      if (tieInPlacement || hasProductReferenceImages) {
         const [tieInSeriesRow] = await db
           .select({ productTieIn: verticalDramaSeries.productTieIn })
           .from(verticalDramaSeries)
@@ -28297,13 +28318,19 @@ export const verticalDramaEpisodesRouter = router({
         const rawProductTieIn =
           (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ??
           null;
-        tieInProductName =
-          typeof rawProductTieIn?.productName === "string"
-            ? rawProductTieIn.productName
-            : undefined;
-        tieInProductCategory =
-          typeof rawProductTieIn?.productCategory === "string"
-            ? rawProductTieIn.productCategory
+        if (tieInPlacement) {
+          tieInProductName =
+            typeof rawProductTieIn?.productName === "string"
+              ? rawProductTieIn.productName
+              : undefined;
+          tieInProductCategory =
+            typeof rawProductTieIn?.productCategory === "string"
+              ? rawProductTieIn.productCategory
+              : undefined;
+        }
+        productReferenceDescription =
+          typeof rawProductTieIn?.productDescription === "string"
+            ? rawProductTieIn.productDescription
             : undefined;
       }
 
@@ -28853,6 +28880,8 @@ export const verticalDramaEpisodesRouter = router({
             tieInPlacement,
             tieInProductName,
             tieInProductCategory,
+            productReferenceImages,
+            productReferenceDescription,
             selectedVideoModel,
             locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
             shotDurationSeconds,
@@ -28919,6 +28948,8 @@ export const verticalDramaEpisodesRouter = router({
           imageUrl,
           imagePrompt: frame?.imagePrompt,
           characterReferenceImages: shotVideoCharacterReferenceImages,
+          productReferenceImages,
+          productReferenceDescription,
           barrierReferenceImage,
           motionContractsEnabled,
           locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
@@ -28966,13 +28997,7 @@ export const verticalDramaEpisodesRouter = router({
                   placementStyle: tieInPlacement.placementStyle,
                   productCategory: tieInProductCategory,
                 }
-              : Boolean(frame?.productReferenceAssetIds?.length)
-                ? {
-                    placementStyle: "in_use_moment" as const,
-                    benefitTalkingPoint:
-                      "the selected product reference and its demonstrated use from the reviewed special-episode story",
-                  }
-                : undefined,
+              : undefined,
             genre:
               typeof localeSeriesRow?.genre === "string"
                 ? localeSeriesRow.genre

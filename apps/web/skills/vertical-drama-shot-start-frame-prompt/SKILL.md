@@ -63,6 +63,24 @@ application supplies this as a raw fact; you author the final provider prompt
 here. When it is absent, use `current_prompt` as the compatibility
 scene-grounding source.
 
+## Episode Narrative Stakes & Dramatic Visual Tension — MANDATORY
+
+The prompt carries `บริบทฉากของตอน` (`episode_plan_context`: episode working title, logline, and key beats). Every shot must be staged with cinematic awareness of the characters' dramatic situation and stakes:
+
+1. **Dramatic Stakes & Threat Staging:**
+   - When the episode or shot involves pursuit, escape, hiding, conflict, or high danger (e.g. fleeing a coup, avoiding searchers, concealing an identity or prop):
+     - **Body Posture Tension:** Direct tense, coiled, defensive body language (crouching low, hunched behind cover, shoulders drawn, hands tightly gripping or concealing objects, vigilant stance) — NEVER generic upright standing or casual relaxed poses.
+     - **Gaze & Eye-Line:** Direct sharp, watchful, wary gaze looking toward off-screen angles or checking behind for danger (e.g. "gaze darting warily toward background shadows"), rather than blankly staring at the lens.
+     - **Cinematic Lighting & Shadow:** Use atmospheric high-contrast chiaroscuro, moody shadows, rain streaks, cold dawn or harsh sodium-vapor lighting matching the tension — avoiding flat, evenly lit studio looks.
+     - **Foreground/Background Depth:** Stage meaningful layers (foreground obstacles like crates, tarps, or raindrops, and background silhouettes or atmosphere) to create cinematic depth and visual urgency.
+2. **Arc-Aware Staging:**
+   - For opening beats / inciting crisis, capture the tension immediately in character posture and environment.
+   - For confrontation or climax beats, emphasize psychological power dynamics and sharp eye-lines.
+   - For cliffhanger beats, stage a lingering dramatic question or frozen moment of suspense.
+3. **Scene Situation Overrides Genre Look Preset (Auto-Adaptation):**
+   - The shot's concrete scene environment, weather (e.g. rain, storm), time of day (dawn, midnight), and dramatic stakes (pursuit, evasion, crisis) ALWAYS OVERRIDE any series-level genre look preset (such as "Drama / Romance" or "gentle window warmth").
+   - Individual episodes and shots vary in dramatic tension across the series. Never force cozy window warmth or romantic pastel highlights onto a rain-soaked, tense, or nighttime escape scene. The authentic physical reality and dramatic urgency of the scene take absolute priority.
+
 ## Temporal frame role — MANDATORY
 
 The application may provide a `FRAME ROLE` block. Treat the synopsis as an
@@ -86,6 +104,11 @@ For example, if Thanwa walks through a dawn fish market, evades pursuers,
 shuts off his phone, hides it in an empty ice crate, and abandons his CEO
 identity, START freezes the market escape before phone disposal. STOP freezes
 the phone being hidden and the decision to disappear.
+
+For `FRAME ROLE: START`, the positive `prompt` must contain only the opening
+state. Do not restate a later phone/message reveal, insert, or terminal action
+as a simultaneous action in that positive prompt. Put any needed exclusion in
+`negative_prompt`; the downstream video prompt owns the transition.
 
 Return ONLY valid JSON (no markdown, no commentary) matching:
 
@@ -142,11 +165,14 @@ produce a fully rule-compliant prompt.
    spoken line between them, as sufficient to trigger this — you do NOT need
    the beat to be explicitly labelled "interacting". Orient each involved
    character's HEAD, EYE-LINE, AND their SHOULDERS/torso toward the OTHER
-   character — angled three-quarter INWARD toward each other (or a clean
-   over-the-shoulder framing) — NEVER both squared flat to the camera, and
-   NEVER turned toward opposite sides of the frame with their profiles or
-   backs to each other (two people facing away reads as strangers ignoring
-   one another, not a conversation). Combined with the speaker-order rule
+   character — angled three-quarter INWARD toward each other in an OPEN TWO-SHOT
+   (NEVER a closed over-the-shoulder framing that shows the back of a head,
+   never full profile, and NEVER hide either character's face behind hair,
+   shoulders, or props) — BOTH characters' faces must be clearly visible and
+   readable to the camera lens at three-quarter angles so downstream video
+   face-tracking and lip-sync do not distort or morph the characters' faces.
+   NEVER have both squared flat to the camera, and NEVER turned toward opposite
+   sides of the frame with their profiles or backs to each other. Combined with the speaker-order rule
    below, the LEFT-positioned character faces toward screen-RIGHT (toward
    their partner) and the RIGHT-positioned character faces screen-LEFT, so
    their eye-lines meet across the frame; a third character angles inward
@@ -484,20 +510,40 @@ generation; treat that the same way — extract whatever real scene facts you
 can, apply `repair_instruction`, and still write a fully rule-compliant
 prompt regardless of how thin `current_prompt` was.
 
-## Product lock — MANDATORY when `product_lock.active` is true
+## Product reference lock — MANDATORY when a product reference is attached
 
-When `product_lock.active` is `true`, this shot carries a tied-in product
-that must remain visually unchanged. Name the product (`product_lock
-.product_name`) and describe it (`product_lock.product_description`) if
-given, then state — woven naturally into `prompt`, not a bolted-on sentence —
-that it must appear EXACTLY as shown: identical shape, proportions, size,
-colors, materials, logo, and label text; never redesigned, restyled,
-recolored, resized, or reinvented as a variant. Add these terms to
-`negative_prompt`: `altered product design, wrong product color, distorted
-logo, modified packaging, redesigned product` (this mirrors the exact
-convention `vertical-drama-shot-image-action/skill.md`'s own product-lock
-handling uses). When `product_lock.active` is `false` or `product_lock` is
-absent, do not mention any product lock at all.
+Activate this rule whenever `product_reference_inputs` is present or
+`product_lock.active` is `true`; a selected product image is authoritative
+even when the shot is not marked as an advertising tie-in. Inspect the actual
+attached product reference image(s), identify the visible product, and weave
+into `prompt` that this exact physical object must be reproduced as closely as
+possible: same silhouette, proportions, color, material, components, controls,
+branding/logo placement, readable label details, and other distinctive
+features. Use `product_lock.product_name` and
+`product_lock.product_description` when supplied as factual clues, then verify
+visible details against the image. Do not invent hidden features, model
+numbers, logo text, or product specifications.
+
+Preserve and state in `prompt` every explicit dimension or size stated in
+`product_lock.product_description`, `product_tie_in.product_description`,
+`canonical_shot_summary`, or `repair_instruction`. Keep the rendered scale
+consistent with those dimensions and the camera perspective. If no size is stated, preserve the
+reference product's proportions and plausible relative scale in the scene;
+do not invent measurements or let the image model arbitrarily resize it.
+
+The product reference is an object-only visual reference. Keep the story's
+location, scene continuity, and background as the environment authority;
+place the product naturally inside that scene, and never copy the product
+reference photo's backdrop, framing, or composition as the shot background.
+The product is an additive prop and must not replace the location or other
+required scene elements. Never redesign, substitute, restyle, recolor, warp,
+resize, omit, or add parts to it. Add these terms to `negative_prompt`:
+`altered product design, wrong product color, distorted logo, modified
+packaging, redesigned product, wrong product proportions, incorrect product
+scale`.
+
+When neither `product_reference_inputs` nor an active `product_lock` is
+present, do not add a product lock.
 
 ## Character identity map
 

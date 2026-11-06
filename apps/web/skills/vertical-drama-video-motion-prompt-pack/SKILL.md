@@ -159,6 +159,22 @@ is a FAILED clip. Concretely:
    inside `prompt`; treat `negative_motion_prompt` as supplementary
    reinforcement for models that support it.
 
+4. **Product reference lock — MANDATORY for any shot with a labeled product
+   reference image:** use that image as the exact visual source for the
+   physical product only. For every resulting clip sourced from that shot,
+   keep the same silhouette, proportions, colors, materials, components,
+   controls, visible branding/labels, and distinctive details throughout the
+   motion. Preserve explicitly supplied product dimensions in each affected
+   clip's `prompt`, and keep scale consistent with them and the shot
+   perspective; never invent measurements or arbitrarily resize the product.
+   The approved start frame and scene facts
+   define the setting/background. The product reference is an additive prop
+   reference only: never copy its backdrop or replace the scene with it. State
+   this lock positively in each affected clip's `prompt` (Grok may not receive
+   a negative prompt) and reinforce it in `negative_motion_prompt` when that
+   field is supported. Do not force the product into a clip whose source shot
+   does not show or call for it.
+
 ## IDENTITY-PRESERVING MOTION — MANDATORY when start-frame images are attached
 
 Activate this section only when the caller also states

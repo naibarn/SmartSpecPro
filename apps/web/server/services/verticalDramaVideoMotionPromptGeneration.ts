@@ -884,6 +884,10 @@ export interface GenerateVideoMotionPromptPackParams {
     referenceImageUrls?: string[];
     /** Fact block naming every image/video/audio reference in the bundle. */
     mediaReferenceInstruction?: string;
+    /** Product-only references, separate from the environment/start frame. */
+    productReferenceImages?: Array<{ url: string; label?: string }>;
+    /** Product facts including any explicitly stated physical dimensions. */
+    productReferenceDescription?: string;
   }>;
   storyboardShots: Array<{
     shotNumber: number;
@@ -1055,7 +1059,9 @@ function buildUserPrompt(
   const visionBundleFacts = (params.startFrameImages ?? [])
     .filter(
       frame =>
-        frame.characterReferenceImages?.length || frame.dualViewReferenceImage
+        frame.characterReferenceImages?.length ||
+        frame.dualViewReferenceImage ||
+        frame.productReferenceImages?.length
     )
     .map(frame => {
       const refs = (frame.characterReferenceImages ?? [])
@@ -1067,7 +1073,10 @@ function buildUserPrompt(
       const portraits = refs
         ? ` Compare the views against these labeled character portraits before assigning any speaker position or action: ${refs}.`
         : "";
-      return `VISION BUNDLE — Shot ${frame.shotNumber}:${dualView}${portraits} Each attached view is authoritative for its own character placement and environment.`;
+      const product = frame.productReferenceImages?.length
+        ? ` Product reference image(s) are attached for this shot (${frame.productReferenceImages.map(ref => ref.label ?? "product reference").join(", ")}); use them only to preserve the product's exact visible design/details. Keep the approved start frame and scene/location as the setting authority; never use the product reference backdrop. Include every explicitly stated product dimension in each affected clip prompt exactly as supplied, and never invent measurements.${frame.productReferenceDescription?.trim() ? ` Product facts: ${frame.productReferenceDescription.trim()}` : ""}`
+        : "";
+      return `VISION BUNDLE — Shot ${frame.shotNumber}:${dualView}${portraits}${product} Each attached view is authoritative for its declared role.`;
     });
 
   // Part B3 — reference-only episode scene-setting context, same
@@ -1294,6 +1303,10 @@ export async function generateVideoMotionPromptPack(
             ...(frame.characterReferenceImages ?? []).map(ref => ({
               url: ref.url,
               label: `Shot ${frame.shotNumber} character reference: ${ref.name ?? ref.characterKey} (${ref.characterKey})`,
+            })),
+            ...(frame.productReferenceImages ?? []).map((ref, index) => ({
+              url: ref.url,
+              label: `Shot ${frame.shotNumber} product reference ${index + 1}: ${ref.label ?? "object only, not scene background"}`,
             })),
             ...(frame.referenceImageUrls ?? []).map((url, index) => ({
               url,
@@ -1687,6 +1700,7 @@ function buildShotVideoPromptVisionImages(
   barrierReferenceImage?: { url: string; name?: string },
   additionalImageUrls?: string[],
   shotMediaReferenceImages?: VisionAwareImageInput[],
+  productReferenceImages?: VisionAwareImageInput[],
 ): VisionAwareImageInput[] {
   return [
     {
@@ -1715,6 +1729,10 @@ function buildShotVideoPromptVisionImages(
           },
         ]
       : []),
+    ...(productReferenceImages ?? []).map((ref, index) => ({
+      url: ref.url,
+      label: `Product reference image ${index + 1}: ${ref.label ?? "exact product appearance; object only, not the scene background"}`,
+    })),
     ...(shotMediaReferenceImages ?? []),
     // VideoPromptAiEditDialog — user-supplied additional reference images;
     // appended after all system-resolved reference images so the model
@@ -2840,6 +2858,10 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * most important regression bar for this change.
    */
   locationReferenceImage?: { url: string; name?: string };
+  /** Product-only visual references; kept separate from environment refs so their backdrop cannot become the scene. */
+  productReferenceImages?: VisionAwareImageInput[];
+  /** Optional factual product description; use explicit dimensions only and do not infer missing measurements. */
+  productReferenceDescription?: string;
   barrierReferenceImage?: { url: string; name?: string };
   shotContext: {
     /**
@@ -3294,6 +3316,9 @@ export function buildShotVideoPromptUserPrompt(
   // architecture). Omitted entirely when `locationReferenceImage` is absent
   // (every existing caller), preserving today's byte-identical prompt.
   const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
+  const hasAttachedProductReferences =
+    params.attachShotImage !== false &&
+    (params.productReferenceImages?.length ?? 0) > 0;
 
   return [
     `Shot number: ${params.shotNumber}`,
@@ -3365,6 +3390,9 @@ export function buildShotVideoPromptUserPrompt(
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
       : null,
+    hasAttachedProductReferences
+      ? `PRODUCT REFERENCE IMAGE(S) attached below the location reference and before generic shot media (${params.productReferenceImages!.length} image(s)): inspect these images for the exact physical product only. Preserve visible design, proportions, color, materials, components, branding/labels, and distinctive details; include explicit dimensions from the product facts or shot brief in the prompt exactly as stated, and never invent measurements. These images do not define the scene: the approved start frame and scene/location facts remain the background authority. Add the product as an in-scene prop; do not copy the product photo's backdrop.`
+      : null,
     params.shotMediaReferenceInstruction && params.attachShotImage !== false
       ? params.shotMediaReferenceInstruction
       : null,
@@ -3387,7 +3415,13 @@ export function buildShotVideoPromptUserPrompt(
       ? `NO-SOURCE-DIALOGUE (MANDATORY): no dialogue line was supplied for this shot. If the shot description/camera setup above clearly implies a character is speaking (e.g. mentions talking, calling out, answering, a line of dialogue, or a mouth-open speaking beat), WRITE one short, natural line yourself (1 sentence, fitting the scene's emotion) in ${dialogueLanguageName}, and return it in the "dialogue" array. Otherwise (the shot is genuinely silent/ambient — no character is depicted speaking), leave "dialogue" as an empty array and do NOT invent speech.`
       : null,
     shotContext.productContext
-      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in the "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in the "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text.`
+      : null,
+    (shotContext.productContext || hasAttachedProductReferences)
+      ? `PRODUCT APPEARANCE FACTS (grounding only; include explicitly stated dimensions in the generated prompt, but do not copy product names or marketing claims into provider-facing prose): ${params.productReferenceDescription?.trim() || "Use the attached product reference image as the visual source of truth; preserve only details visible in the image or explicitly stated in the shot brief."}`
+      : null,
+    shotContext.productContext || hasAttachedProductReferences
+      ? VD_PRODUCT_LOCK_VIDEO_INSTRUCTION
       : null,
     shotContext.productContext
       ? buildThaiAdComplianceInstruction(shotContext.productContext.productCategory)
@@ -3686,6 +3720,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.barrierReferenceImage,
       params.additionalImageUrls,
       params.shotMediaReferenceImages,
+      params.productReferenceImages,
     ),
     userId: params.userId,
     tenantId: params.tenantId,
@@ -3851,6 +3886,7 @@ export async function generateVerticalDramaShotVideoPrompt(
         params.barrierReferenceImage,
         params.additionalImageUrls,
         params.shotMediaReferenceImages,
+        params.productReferenceImages,
       );
       const agentRepair = await tryRunVideoPromptRepairAgent({
         tenantId: params.tenantId,
@@ -4064,6 +4100,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.barrierReferenceImage,
       params.additionalImageUrls,
       params.shotMediaReferenceImages,
+      params.productReferenceImages,
     );
     const agentRepair = await tryRunVideoPromptRepairAgent({
       tenantId: params.tenantId,
@@ -4433,6 +4470,9 @@ function buildSpeakerSwitchUserPrompt(
   // `buildShotVideoPromptUserPrompt`'s identical `locationReferenceImageName`
   // doc comment.
   const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
+  const hasAttachedProductReferences =
+    params.attachShotImage !== false &&
+    (params.productReferenceImages?.length ?? 0) > 0;
 
   // Resolve every speaker's DISPLAY NAME (from characterKey) so both the
   // per-line attribution and the segment's anchor-speaker label read as the
@@ -4548,6 +4588,9 @@ function buildSpeakerSwitchUserPrompt(
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
       : null,
+    hasAttachedProductReferences
+      ? `PRODUCT REFERENCE IMAGE(S) attached below the location reference and before generic shot media (${params.productReferenceImages!.length} image(s)): inspect these images for the exact physical product only. Preserve visible design, proportions, color, materials, components, branding/labels, and distinctive details; include explicit dimensions from the product facts or shot brief in the prompt exactly as stated, and never invent measurements. These images do not define the scene: the approved start frame and scene/location facts remain the background authority. Add the product as an in-scene prop; do not copy the product photo's backdrop.`
+      : null,
     shotContext.barrierMultiView
       ? renderVerticalDramaBarrierMultiViewFactBlock(shotContext.barrierMultiView)
       : null,
@@ -4569,7 +4612,13 @@ function buildSpeakerSwitchUserPrompt(
       : null,
     `Timed segment facts (structured facts only, in chronological order — return exactly ONE combined "prompt" for the whole shot):\n${segmentBlocks}`,
     shotContext.productContext
-      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in whichever segment's dialogue/acting beat fits it best — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in whichever segment's dialogue/acting beat fits it best — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text.`
+      : null,
+    (shotContext.productContext || hasAttachedProductReferences)
+      ? `PRODUCT APPEARANCE FACTS (grounding only; include explicitly stated dimensions in the generated prompt, but do not copy product names or marketing claims into provider-facing prose): ${params.productReferenceDescription?.trim() || "Use the attached product reference image as the visual source of truth; preserve only details visible in the image or explicitly stated in the shot brief."}`
+      : null,
+    shotContext.productContext || hasAttachedProductReferences
+      ? VD_PRODUCT_LOCK_VIDEO_INSTRUCTION
       : null,
     shotContext.productContext
       ? buildThaiAdComplianceInstruction(shotContext.productContext.productCategory)
@@ -4769,6 +4818,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.barrierReferenceImage,
       params.additionalImageUrls,
       params.shotMediaReferenceImages,
+      params.productReferenceImages,
     ),
     userId: params.userId,
     tenantId: params.tenantId,
@@ -4896,6 +4946,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         params.barrierReferenceImage,
         params.additionalImageUrls,
         params.shotMediaReferenceImages,
+        params.productReferenceImages,
       );
       const agentRepair = await tryRunVideoPromptRepairAgent({
         tenantId: params.tenantId,
@@ -5095,6 +5146,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.barrierReferenceImage,
       params.additionalImageUrls,
       params.shotMediaReferenceImages,
+      params.productReferenceImages,
     );
     const agentRepair = await tryRunVideoPromptRepairAgent({
       tenantId: params.tenantId,
@@ -5589,6 +5641,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
   imageUrl?: string;
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
   locationReferenceImage?: { url: string; name?: string };
+  productReferenceImages?: VisionAwareImageInput[];
   barrierReferenceImage?: { url: string; name?: string };
   additionalImageUrls?: string[];
   attachShotImage?: boolean;
@@ -5619,6 +5672,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
               args.barrierReferenceImage,
               args.additionalImageUrls,
               args.shotMediaReferenceImages,
+              args.productReferenceImages,
             )
           : [],
       userId: args.userId,
@@ -5833,6 +5887,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     imageUrl: params.imageUrl,
     characterReferenceImages: params.characterReferenceImages,
     locationReferenceImage: params.locationReferenceImage,
+    productReferenceImages: params.productReferenceImages,
     barrierReferenceImage: params.barrierReferenceImage,
     additionalImageUrls: params.additionalImageUrls,
     attachShotImage: params.attachShotImage,
@@ -6106,6 +6161,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     imageUrl: params.imageUrl,
     characterReferenceImages: params.characterReferenceImages,
     locationReferenceImage: params.locationReferenceImage,
+    productReferenceImages: params.productReferenceImages,
     barrierReferenceImage: params.barrierReferenceImage,
     additionalImageUrls: params.additionalImageUrls,
     attachShotImage: params.attachShotImage,

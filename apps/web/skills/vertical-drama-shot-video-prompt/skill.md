@@ -446,16 +446,28 @@ none of these entries.
    sound texture (always the first thing to drop). A downstream
    quality-control pass will refine/compress any prompt that is still over
    the limit, but a well-written prompt should not rely on that fallback.
-9. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
-   directive for this shot:** the tied-in product must remain visually
-   unchanged while in motion — same shape, proportions, physical size
-   relative to the scene, colors, materials, logo, and label text as the
-   product's reference image, for the entire clip. Never describe the
-   product morphing, recoloring, resizing, or its logo/label drifting during
-   the motion; only describe how the CHARACTER interacts with it. Include
-   "altered product design, wrong product color, distorted logo, modified
-   packaging, redesigned product" among the artifacts `negative_motion_prompt`
-   guards against for this shot.
+9. **Product reference lock — MANDATORY when this shot has a PRODUCT TIE-IN
+   directive or labeled PRODUCT REFERENCE IMAGE(S):** inspect the attached
+   product reference image(s) and treat them as the visual authority for the
+   exact physical product. In every clip where it appears, preserve the same
+   silhouette, proportions, color, materials, components, visible controls,
+   branding/logo placement, readable label details, and distinctive features
+   through every frame. Preserve explicit product dimensions or size stated
+   in the supplied product facts or shot brief and state those values in
+   `prompt`; keep scale consistent with those dimensions and perspective.
+   When no dimensions are given, preserve the observed proportions and
+   plausible relative scale without inventing
+   measurements or arbitrarily resizing the object. The reference is an
+   object-only cue: the approved start frame and scene/location facts remain
+   the authority for the setting and background. Keep the product as an
+   additive in-scene prop; never replace the location or copy the product
+   reference photo's backdrop. Do not redesign, substitute, add/remove parts,
+   warp, morph, recolor, resize, or drift its logo/labels. Describe only the
+   character's interaction with the locked object. State this lock positively
+   in `prompt` because Grok Imagine may not receive a negative prompt, and
+   include `altered product design, wrong product color, distorted logo,
+   modified packaging, redesigned product, wrong product proportions,
+   incorrect product scale` in `negative_motion_prompt` when available.
 10. **Hook shot / retention-ending shot motion energy — MANDATORY WHEN the
    caller states `is_opening_shot: true` or `is_retention_ending_shot: true`
    for this shot:**
