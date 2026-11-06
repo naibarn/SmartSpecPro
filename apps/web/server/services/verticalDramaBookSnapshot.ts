@@ -30,6 +30,7 @@ export type BookSnapshotEpisode = {
 export type BookSnapshotBuildResult = {
   snapshot: VerticalDramaBookSourceSnapshot;
   fingerprint: string;
+  sourceContentFingerprint: string;
   imageCoverage: { totalShots: number; usableShots: number; missing: Array<{ episodeId: number; shotNumber: number }> };
 };
 
@@ -68,6 +69,11 @@ function readStoryboardShotNumbers(value: unknown): number[] {
   }))].sort((a, b) => a - b);
 }
 
+const SUPPORTED_BOOK_IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]);
+function isSupportedBookImageMime(mimeType: string): boolean {
+  return SUPPORTED_BOOK_IMAGE_MIMES.has(mimeType.toLowerCase().split(";")[0].trim());
+}
+
 export function collectApprovedBookImageIds(episodes: readonly BookSnapshotEpisode[]): number[] {
   const ids = new Set<number>();
   for (const episode of episodes) {
@@ -84,6 +90,7 @@ export function buildVerticalDramaBookSourceSnapshot(input: {
   series: { id: number; title: string; synopsis?: string | null; locale?: string | null; genre?: string | null; tone?: string | null; bible?: unknown };
   episodes: BookSnapshotEpisode[];
   assets: BookSnapshotAsset[];
+  additionalAssetIds?: Array<{ id: number; purpose: "cover" | "shot" }>;
   now?: Date;
 }): BookSnapshotBuildResult {
   if (input.episodes.length === 0) throw new Error("BOOK_SOURCE_EPISODES_REQUIRED");
@@ -101,7 +108,7 @@ export function buildVerticalDramaBookSourceSnapshot(input: {
       const frame = frames.get(shotNumber);
       const parsedId = Number(frame?.approvedMediaAssetId);
       const asset = Number.isSafeInteger(parsedId) ? assetsById.get(parsedId) : undefined;
-      const usable = !!asset && asset.status !== "expired" && asset.mimeType.toLowerCase().startsWith("image/") && /^[a-f0-9]{64}$/.test(asset.checksumSha256 ?? "");
+      const usable = !!asset && asset.status === "ready" && isSupportedBookImageMime(asset.mimeType) && /^[a-f0-9]{64}$/.test(asset.checksumSha256 ?? "");
       if (usable) usableShots += 1;
       else missing.push({ episodeId: episode.id, shotNumber });
       const locator = `episode:${episode.id}/shot:${shotNumber}`;
@@ -138,10 +145,18 @@ export function buildVerticalDramaBookSourceSnapshot(input: {
   };
   const referencedIds = new Set<number>();
   for (const episode of episodes) for (const shot of episode.shots) if (shot.mediaAssetId) referencedIds.add(shot.mediaAssetId);
-  const pinnedAssets = Array.from(referencedIds).sort((a, b) => a - b).map(mediaAssetId => ({
+  const purposeById = new Map<number, "cover" | "shot">([...referencedIds].map(id => [id, "shot"]));
+  for (const item of input.additionalAssetIds ?? []) {
+    const asset = assetsById.get(item.id);
+    if (!asset || asset.status !== "ready" || !isSupportedBookImageMime(asset.mimeType) || !/^[a-f0-9]{64}$/.test(asset.checksumSha256 ?? "")) {
+      throw new Error("BOOK_SOURCE_ASSET_NOT_FOUND");
+    }
+    purposeById.set(item.id, item.purpose);
+  }
+  const pinnedAssets = Array.from(purposeById.keys()).sort((a, b) => a - b).map(mediaAssetId => ({
     mediaAssetId,
     checksum: assetsById.get(mediaAssetId)!.checksumSha256!.toLowerCase(),
-    purpose: "shot" as const,
+    purpose: purposeById.get(mediaAssetId)!,
   }));
   const seriesFingerprint = fingerprintBookSource({ id: input.series.id, seriesPayload });
   const snapshot = verticalDramaBookSourceSnapshotSchema.parse({
@@ -156,6 +171,15 @@ export function buildVerticalDramaBookSourceSnapshot(input: {
   return {
     snapshot,
     fingerprint: fingerprintBookSource({ ...snapshot, capturedAt: undefined }),
+    sourceContentFingerprint: fingerprintBookSource({
+      seriesFingerprint,
+      assets: snapshot.assets.map(asset => ({ mediaAssetId: asset.mediaAssetId, checksum: asset.checksum, purpose: asset.purpose })),
+      episodes: snapshot.episodes.map(episode => ({
+        episodeId: episode.episodeId,
+        revisionFingerprint: episode.revisionFingerprint,
+        shots: episode.shots,
+      })),
+    }),
     imageCoverage: { totalShots, usableShots, missing },
   };
 }

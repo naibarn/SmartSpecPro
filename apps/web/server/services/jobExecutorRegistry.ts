@@ -988,6 +988,61 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "vertical_drama.book.compose",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = context.input as Record<string, unknown>;
+    const tenantId = String(input.tenantId ?? "");
+    const userId = Number(input.userId);
+    const bookId = Number(input.bookId);
+    const revisionId = Number(input.revisionId);
+    const imageDensity = input.imageDensity;
+    if (!tenantId || !Number.isSafeInteger(userId) || !Number.isSafeInteger(bookId) || !Number.isSafeInteger(revisionId) ||
+        !["none", "chapter_openers", "occasional", "all_shots"].includes(String(imageDensity))) {
+      throw new Error("BOOK_COMPOSITION_JOB_INPUT_INVALID");
+    }
+    const { composeVerticalDramaBookRevision } = await import("./verticalDramaBookComposition");
+    await reporter.assertActive(lease);
+    const output = await withLeaseHeartbeat(lease, reporter, () => composeVerticalDramaBookRevision({
+      tenantId, userId, bookId, revisionId,
+      imageDensity: imageDensity as "none" | "chapter_openers" | "occasional" | "all_shots",
+      onProgress: progress => reporter.progress(lease, {
+        progress: Math.round(progress.completedChapters / Math.max(1, progress.totalChapters) * 100),
+        stage: "composing_chapters",
+        message: `Composed ${progress.completedChapters} of ${progress.totalChapters} chapters`,
+      }),
+    }));
+    await reporter.assertActive(lease);
+    return { output };
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "vertical_drama.book.export",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = context.input as Record<string, unknown>;
+    const tenantId = String(input.tenantId ?? "");
+    const userId = Number(input.userId);
+    const artifactId = Number(input.artifactId);
+    if (!tenantId || !Number.isSafeInteger(userId) || !Number.isSafeInteger(artifactId)) {
+      throw new Error("BOOK_EXPORT_JOB_INPUT_INVALID");
+    }
+    const { exportApprovedVerticalDramaBook } = await import("./verticalDramaBookExportService");
+    await reporter.assertActive(lease);
+    const output = await withLeaseHeartbeat(lease, reporter, () => exportApprovedVerticalDramaBook({
+      tenantId, userId, artifactId,
+      onProgress: (stage, progress) => reporter.progress(lease, { progress, stage, message: `Book export ${stage}` }),
+      assertActive: () => reporter.assertActive(lease),
+    }));
+    await reporter.assertActive(lease);
+    return { output };
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "vertical_drama.draft_composition",
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),

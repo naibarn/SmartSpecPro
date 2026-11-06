@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { mediaAssets, verticalDramaEpisodes, verticalDramaSeries } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { readEpisodeCoverState } from "../../shared/verticalDramaSeries/episodeCover";
 import {
   buildVerticalDramaBookSourceSnapshot,
   collectApprovedBookImageIds,
@@ -14,6 +15,7 @@ export async function captureOwnedVerticalDramaBookSource(input: {
   userId: number;
   seriesId: number;
   episodeIds: number[];
+  additionalAssetIds?: Array<{ id: number; purpose: "cover" | "shot" }>;
 }) {
   const ids = [...new Set(input.episodeIds)];
   if (ids.length === 0 || ids.length !== input.episodeIds.length) throw new Error("BOOK_SOURCE_EPISODE_SELECTION_INVALID");
@@ -52,12 +54,23 @@ export async function captureOwnedVerticalDramaBookSource(input: {
   if (rows.length !== ids.length) throw new Error("BOOK_SOURCE_EPISODE_NOT_FOUND");
   const byId = new Map(rows.map(row => [row.id, row]));
   const ordered = ids.map(id => byId.get(id)!).map(row => ({ ...row, revisionId: null, revisionFingerprint: null })) as BookSnapshotEpisode[];
-  const assetIds = collectApprovedBookImageIds(ordered);
+  const episodeCoverIds = ordered.flatMap(episode => {
+    const cover = readEpisodeCoverState(episode.coverImage);
+    const id = Number(cover?.mediaAssetId);
+    return cover?.status === "ready" && Number.isSafeInteger(id) && id > 0 ? [id] : [];
+  });
+  const assetIds = [...new Set([
+    ...collectApprovedBookImageIds(ordered),
+    ...episodeCoverIds,
+    ...(input.additionalAssetIds ?? []).map(item => item.id),
+  ])];
   const assets = assetIds.length === 0 ? [] : await db.select({
     id: mediaAssets.id,
     checksumSha256: mediaAssets.checksumSha256,
     mimeType: mediaAssets.mimeType,
     status: mediaAssets.status,
+    thumbnailUrl: mediaAssets.thumbnailUrl,
+    originalUrl: mediaAssets.originalUrl,
   }).from(mediaAssets).where(and(
     eq(mediaAssets.tenantId, input.tenantId),
     eq(mediaAssets.userId, input.userId),
@@ -68,5 +81,9 @@ export async function captureOwnedVerticalDramaBookSource(input: {
     series,
     episodes: ordered,
     assets,
+    additionalAssetIds: [
+      ...episodeCoverIds.map(id => ({ id, purpose: "cover" as const })),
+      ...(input.additionalAssetIds ?? []),
+    ],
   });
 }

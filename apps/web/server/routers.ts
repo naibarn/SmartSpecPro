@@ -63,6 +63,7 @@ import { packagesRouter } from "./routers/packages";
 import { llmProvidersRouter } from "./routers/llmProviders";
 import { chatRouter } from "./routers/chat";
 import { verticalDramaSeriesRouter } from "./routers/verticalDramaSeries";
+import { verticalDramaBooksRouter } from "./routers/verticalDramaBooks";
 import { verticalDramaEpisodesRouter } from "./routers/verticalDramaEpisodes";
 import { verticalDramaCharactersRouter } from "./routers/verticalDramaCharacters";
 import { verticalDramaLocationsRouter } from "./routers/verticalDramaLocations";
@@ -3264,6 +3265,7 @@ const authRouter = router({
 
 type AppRouterShape = {
   verticalDramaSeries: typeof verticalDramaSeriesRouter;
+  verticalDramaBooks: typeof verticalDramaBooksRouter;
   verticalDramaEpisodes: typeof verticalDramaEpisodesRouter;
   verticalDramaCharacters: typeof verticalDramaCharactersRouter;
   verticalDramaLocations: typeof verticalDramaLocationsRouter;
@@ -3580,6 +3582,7 @@ const appRouterInternal = router<AppRouterShape>({
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,
+  verticalDramaBooks: verticalDramaBooksRouter,
   verticalDramaEpisodes: verticalDramaEpisodesRouter,
   verticalDramaCharacters: verticalDramaCharactersRouter,
   // Location Visual Bible (`planning/polished-toasting-gadget.md` Phase 2) —

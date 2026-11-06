@@ -35,11 +35,22 @@ describe("vertical drama Book source snapshot", () => {
     expect(() => assertAllShotImageCoverage(result)).toThrow("BOOK_ALL_SHOTS_IMAGE_COVERAGE_INCOMPLETE");
   });
 
+  it("does not count pending assets as usable images", () => {
+    const source = input();
+    source.assets[0].status = "pending";
+    const result = buildVerticalDramaBookSourceSnapshot(source);
+    expect(result.imageCoverage.usableShots).toBe(1);
+    expect(result.imageCoverage.missing).toEqual([{ episodeId: 21, shotNumber: 1 }]);
+  });
+
   it("fingerprints source changes while ignoring object key order", () => {
     expect(fingerprintBookSource({ a: 1, b: { x: 2, y: 3 } })).toBe(fingerprintBookSource({ b: { y: 3, x: 2 }, a: 1 }));
     const first = buildVerticalDramaBookSourceSnapshot(input());
     const changed = input();
     changed.episodes[0].script = { beats: ["changed"] };
     expect(buildVerticalDramaBookSourceSnapshot(changed).fingerprint).not.toBe(first.fingerprint);
+    const changedArtwork = input();
+    changedArtwork.assets[0].checksumSha256 = "d".repeat(64);
+    expect(buildVerticalDramaBookSourceSnapshot(changedArtwork).sourceContentFingerprint).not.toBe(first.sourceContentFingerprint);
   });
 });
