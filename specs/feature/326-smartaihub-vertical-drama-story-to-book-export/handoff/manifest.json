@@ -43,14 +43,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "161b7bb062f850ca2f96e3ba7a4be7caef00c459",
+    "expected_canonical_sha": "e7b749831f6d332aaed358228778abb8c1391baa",
     "expected_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254"
   },
   "continuation": {
-    "next_action": "Implement the dedicated book-cover creator in section-05-dedicated-book-cover-generation; generated cover candidates and API/UI are not implemented yet.",
+    "next_action": "Implement the pending dedicated cover creator in section 05, then implement the novelization skill, episode reader, selectable LLM and target-only re-novelization in section 06.",
     "next_ready_workunit": "section-05-dedicated-book-cover-generation",
     "reactivation_predicate": null,
-    "resume_point": "Section 05 plan is integrated at 161b7bb062f850ca2f96e3ba7a4be7caef00c459; begin implementation from its product/API contract.",
+    "resume_point": "Sections 05 and 06 are specified and integrated at e7b749831f6d332aaed358228778abb8c1391baa; resume with section 05 implementation, then section 06.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -123,7 +123,7 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 14,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
@@ -168,7 +168,7 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "161b7bb062f850ca2f96e3ba7a4be7caef00c459",
+    "canonical_sha": "e7b749831f6d332aaed358228778abb8c1391baa",
     "integrated": true,
     "integrated_at": "2026-11-06T14:12:51Z"
   },
@@ -610,7 +610,7 @@
     "unresolved": 47
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T15:23:22.077958Z",
+  "updated_at": "2026-11-06T15:24:23.716616Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
