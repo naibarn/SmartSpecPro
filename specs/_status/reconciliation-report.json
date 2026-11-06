@@ -6294,7 +6294,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
+        "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
         "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
         "problem": null,
         "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
@@ -8836,8 +8836,8 @@
   },
   "reconciliation_confidence_counts": {
     "confidence.HIGH": 5,
-    "confidence.LOW": 322,
-    "confidence.MEDIUM": 5,
+    "confidence.LOW": 321,
+    "confidence.MEDIUM": 6,
     "confidence.NOT_APPLICABLE": 130,
     "confidence.UNRESOLVED": 27
   },
@@ -144895,14 +144895,11 @@
       "verification": "UNKNOWN"
     },
     {
-      "acceptance": "UNKNOWN",
-      "authority": "UNRESOLVED",
-      "canonical_sha": "31d63db7cf374ca16e588b14f9f6476f972b565f",
+      "acceptance": "VALIDATION_PENDING",
+      "authority": "ACTIVE_CANONICAL",
+      "canonical_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
       "completion_eligible": false,
       "completion_reasons": [
-        "reconciliation confidence is LOW or UNRESOLVED",
-        "Spec authority is unresolved or conflicting",
-        "disposition is not an active continuation target",
         "lifecycle has not reached implementation completion",
         "requirement REQ-5145ADC79C95 is OPEN",
         "requirement REQ-CDEDD4D3D820 is OPEN",
@@ -144944,29 +144941,87 @@
         "requirement REQ-600DB2F8B1D8 is OPEN",
         "requirement REQ-63A47DAA5124 is OPEN",
         "requirement REQ-43D11DC4844A is OPEN",
-        "required verification evidence is missing"
+        "required verification evidence is missing",
+        "required acceptance evidence is missing"
       ],
-      "confidence": "LOW",
+      "confidence": "MEDIUM",
       "configured_root": "specs/feature",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "CONTINUE_REQUIRED",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
         "TEST": 0
       },
-      "declared_claims": [],
+      "declared_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-domain-foundation",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-authoring-and-jobs",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-epub-pdf-export",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-book-studio-ui-and-acceptance",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        }
+      ],
       "declared_relationship_claims": [],
       "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
-      "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
+      "disposition": "ACTIVE_CANONICAL",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-06T09:30:16.068877Z",
+      "last_reconciled": "2026-11-06T10:55:00Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
+      "next_action": "Verify EPUBCheck, Chromium, Thai fonts, and Poppler in the canonical worker; resolve the exact dev migration target/profile and pending ledger before applying Feature 326 migrations.",
       "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "capability": "EPUBCheck, Chromium, Thai fonts, pdftotext, and pdfinfo in canonical worker",
+        "classification": "WAITING_CAPABILITY",
+        "next_action": "Run renderer acceptance in canonical worker and record tool/font versions and output evidence."
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "record_kind": "CANONICAL_SPEC",
@@ -144981,13 +145036,121 @@
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
-        "declared_claims": [],
+        "declared_claims": [
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-domain-foundation",
+            "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+            "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-authoring-and-jobs",
+            "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+            "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-03-epub-pdf-export",
+            "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+            "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-04-book-studio-ui-and-acceptance",
+            "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+            "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+            "value": "checkpointed"
+          }
+        ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "8f67e92a8141687e4435f6d0edd305cc7b03724f0555764bb0bbceba4e1cdfb3",
+            "digest": "b49a021c8875d99d3783aa5346cebda70348ffac197d84b266758883b0523f92",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md"
+          },
+          {
+            "digest": "88f3d0057081bc4e7224f53bdcb98a32c924f74bb357db5ac7d2cb6f38dba8ff",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/claude-plan.md"
+          },
+          {
+            "digest": "80407b58f4927620044d2c67cfc8e5dc5510e05755318031c1df43bbe7e40722",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/claude-spec.md"
+          },
+          {
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/.deep_implement_state.lock"
+          },
+          {
+            "digest": "97fa72dcc1be9a1eaf05f1d63abcc0747fb3a8b3f4ccf2cc913f4aed9d30b6cf",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "4c6f2c704270f0b1e02e2753cb48846b2445a401b4fa28ce024355dde4d87a40",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "862c18f63a0b52c6397017136f5d5d4e22bb3310231006ebf525793506303491",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/index.md"
+          },
+          {
+            "digest": "41820ab16cdb0a9bf207056d59edb389c3f4fcf3a78984c20084695a5b35dd1c",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-01-domain-foundation.md"
+          },
+          {
+            "digest": "92a8ac57c3c3897d4d0d068a431017194b94b636358467d3d5ec79b21ec9212a",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-02-authoring-and-jobs.md"
+          },
+          {
+            "digest": "6c0a167895a7b4bddb5fe31abb0a7c68743966b31f2944e2121c01e90935b5b6",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-03-epub-pdf-export.md"
+          },
+          {
+            "digest": "2cab1cf11e4f2a05f09dadc405d9c6d2fd4ed85d0344332a3ce48b603e97ee38",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/sections/section-04-book-studio-ui-and-acceptance.md"
           }
         ],
         "implementation_equivalence": "UNASSESSED",
@@ -145002,7 +145165,60 @@
       },
       "revision": "0.1",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-domain-foundation: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-domain-foundation",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-authoring-and-jobs: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-authoring-and-jobs",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-epub-pdf-export: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-epub-pdf-export",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-book-studio-ui-and-acceptance: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-book-studio-ui-and-acceptance",
+          "source": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/implementation/deep_implement_config.json",
+          "source_digest": "76cf2ccd2436bc51d289638f6515df074c78712a95165549f4f5ccda59e069ce",
+          "value": "checkpointed"
+        }
+      ],
       "slug": "326-smartaihub-vertical-drama-story-to-book-export",
       "spec_created_at": "2026-11-06T16:03:04+07:00",
       "spec_id": "326",
@@ -145011,7 +145227,7 @@
       "successors": [],
       "title": "Feature 326: Vertical Drama Story-to-Book Studio and EPUB/PDF Export",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "VALIDATION_PENDING"
     },
     {
       "acceptance": "UNKNOWN",

@@ -32,8 +32,10 @@
       "merged_main_sha": "7934c2119d432712bb5d05a071285db4cfeb4ce5"
     },
     "section-04-book-studio-ui-and-acceptance": {
-      "status": "in_progress",
-      "next_action": "Finish Book Studio, verify responsive/accessibility behavior, complete ten recorded gap-review rounds, and reconcile handoff evidence."
+      "status": "checkpointed",
+      "next_action": "Safely apply Feature 326 migration after authorized dev database profile and ledger reconciliation; then complete EPUBCheck and Thai PDF/browser acceptance in an equipped runtime.",
+      "checkpoint_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1",
+      "merged_main_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
     }
   },
   "pre_commit": {
@@ -45,11 +47,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-06T09:43:56.878964+00:00",
-  "generation": 9,
-  "updated_at": "2026-11-06T10:42:05.099729+00:00",
+  "generation": 12,
+  "updated_at": "2026-11-06T10:58:50.017794+00:00",
   "progress": {
     "active_section": "section-04-book-studio-ui-and-acceptance",
-    "next_action": "Finish Book Studio, verify responsive/accessibility behavior, complete ten recorded gap-review rounds, and reconcile handoff evidence.",
-    "merged_main_sha": "7934c2119d432712bb5d05a071285db4cfeb4ce5"
+    "next_action": "Safely apply Feature 326 migration after authorized dev database profile and ledger reconciliation; then complete EPUBCheck and Thai PDF/browser acceptance in an equipped runtime.",
+    "merged_main_sha": "996bf5e05ed4dd0616eb9f5639e83b7e8cf365c1"
   }
 }

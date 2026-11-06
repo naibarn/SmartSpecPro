@@ -5052,21 +5052,6 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Await user review of the proposed spec; after approval, create the implementation plan.",
-      "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
-      "priority": "R5_NO_DIRECT_EVIDENCE",
-      "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "326"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 0,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory",
       "priority": "R5_NO_DIRECT_EVIDENCE",
@@ -5364,6 +5349,15 @@
       "rationale": "Retain SPECIFIED status. A future implementation task must realize the credential broker, identity controls and device protocol, then pass the guarded negative tests before enabling remote execution.",
       "record_key": "canonical:specs/feature/325-smartaihub-zero-trust-always-on-agent-security",
       "spec_id": "325"
+    },
+    {
+      "confidence": "MEDIUM",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "priority": "P1",
+      "rationale": "Verify EPUBCheck, Chromium, Thai fonts, and Poppler in the canonical worker; resolve the exact dev migration target/profile and pending ledger before applying Feature 326 migrations.",
+      "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "spec_id": "326"
     },
     {
       "confidence": "LOW",

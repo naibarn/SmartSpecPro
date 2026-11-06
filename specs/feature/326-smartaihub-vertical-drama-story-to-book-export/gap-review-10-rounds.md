@@ -138,7 +138,8 @@ runtime acceptance evidence.
   cancellation races, download URL handling, and managed-storage authorization.
 - **Finding:** A cancellation after storage upload but before availability
   could leave an unreferenced private object. The worker now removes that
-  object unless a row reached `available`.
+  object only after confirming the row is not `available`; when row status
+  cannot be read, it preserves the object to avoid breaking a published link.
 - **Focused recheck:** export service esbuild, checksum fixture tests, and
   authorization predicate inspection.
 - **Remaining:** Storage-provider readback and cross-tenant download need a
