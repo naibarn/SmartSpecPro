@@ -5049,6 +5049,21 @@
       "spec_id": "300"
     },
     {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.",
+      "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "326"
+    },
+    {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
@@ -5351,11 +5366,11 @@
       "spec_id": "325"
     },
     {
-      "confidence": "MEDIUM",
+      "confidence": "LOW",
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "priority": "P1",
-      "rationale": "Run EPUBCheck and representative Thai PDF in an equipped runtime; collect authenticated browser, real-series export, storage readback, and database-backed authorization/concurrency evidence.",
+      "rationale": "Run authenticated Book Studio cover and episode-review flow, then isolated _dev database acceptance for source/asset ownership, job retries/cancellation, exports and storage readback. Preserve the shared smartspec database guard.",
       "record_key": "canonical:specs/feature/326-smartaihub-vertical-drama-story-to-book-export",
       "spec_id": "326"
     },
