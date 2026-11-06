@@ -6614,24 +6614,55 @@ function readObjectReferenceProductDimensions(metadata: unknown) {
     : undefined;
 }
 
+/** Selected catalog measurements override legacy series-wide dimensions. */
+function resolveShotProductDimensions(
+  seriesProductDimensions: string | null | undefined,
+  productReferences: readonly ResolvedShotPropObjectReference[]
+): string | null {
+  const selectedReferenceDimensions = Array.from(
+    new Set(
+      productReferences
+        .filter(reference => reference.productDimensions?.trim())
+        .map(
+          reference =>
+            `${reference.label}: ${reference.productDimensions?.trim()}`
+        )
+    )
+  );
+  if (selectedReferenceDimensions.length > 0) {
+    return selectedReferenceDimensions.join("; ").slice(0, 3000);
+  }
+  return seriesProductDimensions?.trim() || null;
+}
+
 function appendShotPropObjectDimensionLock(
   prompt: string,
   references: readonly ResolvedShotPropObjectReference[]
 ) {
-  const facts = references
-    .map(reference =>
-      reference.productDimensions?.trim()
-        ? `${reference.label}: ${reference.productDimensions.trim()}`
-        : ""
+  const facts = Array.from(
+    new Set(
+      references
+        .map(reference =>
+          reference.productDimensions?.trim()
+            ? `${reference.label}: ${reference.productDimensions.trim()}`
+            : ""
+        )
+        .filter(Boolean)
     )
-    .filter(Boolean);
+  );
   if (!facts.length) return prompt;
   const normalizedPrompt = prompt.toLocaleLowerCase();
   const missingFacts = facts.filter(
     fact => !normalizedPrompt.includes(fact.toLocaleLowerCase())
   );
-  if (!missingFacts.length) return prompt;
-  return `${prompt.trimEnd()}\n\nATTACHED PRODUCT DIMENSION LOCK: ${missingFacts.join("; ")}. Match each attached product's proportions and apparent scale to its stated measurements and the shot perspective; preserve the reference design and do not invent dimensions.`;
+  if (
+    !missingFacts.length &&
+    normalizedPrompt.includes("selected reference measurements are authoritative")
+  ) {
+    return prompt;
+  }
+  const factsToLock = missingFacts.length > 0 ? missingFacts : facts;
+  return `${prompt.trimEnd()}\n\nATTACHED PRODUCT DIMENSION LOCK (selected reference measurements are authoritative): ${factsToLock.join("; ")}. Match each attached product's proportions and apparent scale to its stated measurements and the shot perspective. Ignore any conflicting older prompt, series-level tie-in, or description size. Preserve the reference design and do not invent dimensions.`;
 }
 
 async function resolveShotPropObjectReferenceDetails(
@@ -21524,6 +21555,10 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         productRefUrls.length > 0
       );
+      const renderProductDimensions = resolveShotProductDimensions(
+        renderProductLockFacts?.productDimensions,
+        productReferenceDetails
+      );
 
       let renderStartFramePrompt: string;
       if (effectiveSoftenLevel === 0) {
@@ -21589,8 +21624,7 @@ export const verticalDramaEpisodesRouter = router({
               productName: renderProductLockFacts?.productName ?? null,
               productDescription:
                 renderProductLockFacts?.productDescription ?? null,
-              productDimensions:
-                renderProductLockFacts?.productDimensions ?? null,
+              productDimensions: renderProductDimensions,
             },
             gridLayout: null,
             promptMaxChars: imagePromptMaxChars,
@@ -21644,14 +21678,9 @@ export const verticalDramaEpisodesRouter = router({
       // as a factual scale cue, while leaving product identity to the
       // attached reference image and the scene to the approved shot prompt.
       const suppliedProductDimensions =
-        productRefUrls.length > 0
-          ? renderProductLockFacts?.productDimensions
-              ?.replace(/[\r\n]+/g, " ")
-              .trim()
-              .slice(0, 240)
-          : undefined;
+        productRefUrls.length > 0 ? renderProductDimensions : undefined;
       const productScaleFact = suppliedProductDimensions
-        ? `PRODUCT SCALE FACT (user supplied): ${suppliedProductDimensions}. Match the product's real-world apparent scale to these measurements relative to people and scene objects, from this camera perspective; preserve the attached product's exact design.`
+        ? `PRODUCT SCALE FACT (authoritative selected product reference measurements): ${suppliedProductDimensions}. Match the product's real-world apparent scale to these measurements relative to people and scene objects, from this camera perspective. Ignore conflicting dimensions from older prompts or series-level tie-in settings. Preserve the attached product's exact design.`
         : undefined;
       if (productScaleFact) {
         renderStartFramePrompt = `${renderStartFramePrompt.trim()}\n\n${productScaleFact}`;
@@ -22588,6 +22617,10 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         productRefUrls.length > 0
       );
+      const gridProductDimensions = resolveShotProductDimensions(
+        gridProductLockFacts?.productDimensions,
+        angleProductReferenceDetails
+      );
 
       const {
         generateShotImageAction,
@@ -22627,8 +22660,7 @@ export const verticalDramaEpisodesRouter = router({
             productName: gridProductLockFacts?.productName ?? null,
             productDescription:
               gridProductLockFacts?.productDescription ?? null,
-            productDimensions:
-              gridProductLockFacts?.productDimensions ?? null,
+            productDimensions: gridProductDimensions,
           },
           gridLayout: { panelCount: 9, layout: "3x3" },
           promptMaxChars: gridPromptMaxChars,
@@ -22707,9 +22739,10 @@ export const verticalDramaEpisodesRouter = router({
       const gridPromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: gridPromptWithIdentityLock.prompt,
-        semanticProtectedFragments: gridPromptWithIdentityLock.identityLockBlock
-          ? [gridPromptWithIdentityLock.identityLockBlock!]
-          : undefined,
+        semanticProtectedFragments: [
+          gridPromptWithIdentityLock.identityLockBlock,
+          ...(gridProductDimensions ? [gridProductDimensions] : []),
+        ].filter((fragment): fragment is string => Boolean(fragment)),
         maxChars: gridPromptMaxChars,
         finalizeWithRefiner: true,
         failClosed: true,
@@ -23169,18 +23202,10 @@ export const verticalDramaEpisodesRouter = router({
             frame.productReferenceAssetIds
           )
         : [];
-      const repairProductDimensions = [
-        repairProductLockFacts?.productDimensions?.trim(),
-        ...repairProductReferenceDetails
-          .map(reference =>
-            reference.productDimensions?.trim()
-              ? `${reference.label}: ${reference.productDimensions.trim()}`
-              : undefined
-          )
-          .filter((value): value is string => Boolean(value)),
-      ]
-        .filter((value): value is string => Boolean(value))
-        .join("; ");
+      const repairProductDimensions = resolveShotProductDimensions(
+        repairProductLockFacts?.productDimensions,
+        repairProductReferenceDetails
+      );
       const repairCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
           tenantId,
@@ -23294,6 +23319,10 @@ export const verticalDramaEpisodesRouter = router({
       // the `generateShotImageAction` call above — no separate soften pass
       // runs on its output.
       let softenedRepairPrompt = repairActionResult.prompt;
+      softenedRepairPrompt = appendShotPropObjectDimensionLock(
+        softenedRepairPrompt,
+        repairProductReferenceDetails
+      );
       let repairNegativePrompt: string | undefined =
         repairActionResult.negativePrompt || undefined;
 
@@ -23345,6 +23374,9 @@ export const verticalDramaEpisodesRouter = router({
       const repairPromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: softenedRepairPrompt,
+        protectedFragments: repairProductDimensions
+          ? [repairProductDimensions]
+          : undefined,
         maxChars: repairPromptMaxChars,
         // The shot-image action skill has already authored the repair prompt.
         // Do not invoke a second semantic refiner when this prompt is already
@@ -25509,6 +25541,13 @@ export const verticalDramaEpisodesRouter = router({
               frame.productReferenceAssetIds
             )
           : undefined;
+      const shotStartFramePromptProductDimensions =
+        shotStartFramePromptIsTieInShot
+          ? resolveShotProductDimensions(
+              shotStartFramePromptProductLockFacts?.productDimensions,
+              shotStartFramePromptProductReferenceImages ?? []
+            )
+          : null;
       const shotStartFramePromptCanonicalSynopsis =
         input.canonicalShotSummary?.trim() ||
         frame.canonicalShotSummary?.trim();
@@ -26122,8 +26161,7 @@ export const verticalDramaEpisodesRouter = router({
               shotStartFramePromptProductLockFacts?.productName ?? null,
             productDescription:
               shotStartFramePromptProductLockFacts?.productDescription ?? null,
-            productDimensions:
-              shotStartFramePromptProductLockFacts?.productDimensions ?? null,
+            productDimensions: shotStartFramePromptProductDimensions,
           },
           // NO CODE-SIDE PROMPT APPENDING — the two new modes' own skills
           // author the product-tie-in directive from these SAME facts (see
@@ -26135,8 +26173,7 @@ export const verticalDramaEpisodesRouter = router({
               shotStartFramePromptProductLockFacts?.productName ?? null,
             productDescription:
               shotStartFramePromptProductLockFacts?.productDescription ?? null,
-            productDimensions:
-              shotStartFramePromptProductLockFacts?.productDimensions ?? null,
+            productDimensions: shotStartFramePromptProductDimensions,
           },
           // Phase 2 of `planning/polished-toasting-gadget.md` — see this
           // procedure's own `shotStartFramePromptLocationEntry` doc comment
@@ -26264,9 +26301,10 @@ export const verticalDramaEpisodesRouter = router({
         const shotStartFramePromptQc = await ensurePromptWithinLimit({
           kind: "image",
           prompt: shotStartFramePromptResult.prompt,
-          protectedFragments: shotStartFrameIdentityLock.identityLockBlock
-            ? [shotStartFrameIdentityLock.identityLockBlock!]
-            : undefined,
+          protectedFragments: [
+            shotStartFrameIdentityLock.identityLockBlock,
+            shotStartFramePromptProductDimensions,
+          ].filter((fragment): fragment is string => Boolean(fragment)),
           maxChars: shotStartFramePromptImagePromptMaxChars,
           userId,
           tenantId,
@@ -28626,19 +28664,19 @@ export const verticalDramaEpisodesRouter = router({
               ? rawProductTieIn.productCategory
               : undefined;
         }
+        const shotVideoProductDimensions = resolveShotProductDimensions(
+          typeof rawProductTieIn?.productDimensions === "string"
+            ? rawProductTieIn.productDimensions.trim()
+            : null,
+          productReferenceDetails
+        );
         const storedProductFacts = [
           typeof rawProductTieIn?.productDescription === "string"
             ? rawProductTieIn.productDescription.trim()
             : "",
-          typeof rawProductTieIn?.productDimensions === "string"
-            ? `Product dimensions: ${rawProductTieIn.productDimensions.trim()}`
+          shotVideoProductDimensions
+            ? `Product dimensions (selected references are authoritative): ${shotVideoProductDimensions}`
             : "",
-          ...productReferenceDetails
-            .filter(reference => reference.productDimensions?.trim())
-            .map(
-              reference =>
-                `${reference.label} dimensions: ${reference.productDimensions?.trim()}`
-            ),
         ].filter(Boolean);
         productReferenceDescription = storedProductFacts.length
           ? Array.from(new Set(storedProductFacts)).join("; ")

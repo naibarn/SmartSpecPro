@@ -2735,30 +2735,43 @@ function appendAttachedObjectReferencePromptLocks(params: {
     productDimensions?: string;
   }[];
 }): string {
-  const productDimensionFacts = [
-    ...(params.productReferenceImages ?? []),
-    ...(params.propObjectReferenceImages ?? []),
-  ]
-    .filter(reference => reference.productDimensions?.trim())
-    .map(
-      reference =>
-        `${reference.label}: ${reference.productDimensions?.trim()}`
-    );
+  const productDimensionFacts = Array.from(
+    new Set(
+      [
+        ...(params.productReferenceImages ?? []),
+        ...(params.propObjectReferenceImages ?? []),
+      ]
+        .filter(reference => reference.productDimensions?.trim())
+        .map(
+          reference =>
+            `${reference.label}: ${reference.productDimensions?.trim()}`
+        )
+    )
+  );
   const locks = [
     params.productReferenceImages?.length
-      ? "ATTACHED PRODUCT REFERENCE LOCK: reproduce the product shown in the attached product reference image(s) as the same physical object, matching its visible shape, proportions, color, materials, components, branding, labels, and distinctive details as closely as possible. Preserve every explicitly supplied product dimension and size; do not invent measurements. Keep the product at the physically consistent scale implied by those dimensions and the shot perspective. Treat the reference as an object-only visual source: place the product naturally inside the story's scene, keep the story/location background, and never replace it with the product reference image's background. Do not redesign, substitute, add, remove, or alter product details."
+      ? "ATTACHED PRODUCT REFERENCE LOCK: reproduce the product shown in the attached product reference image(s) as the same physical object, matching its visible shape, proportions, color, materials, components, branding, labels, and distinctive details as closely as possible. Keep the product at the physically consistent scale implied by its selected reference measurements and shot perspective. If those selected measurements conflict with older prompts or series-level tie-in settings, the selected measurements are authoritative. Do not invent measurements. Treat the reference as an object-only visual source: place the product naturally inside the story's scene, keep the story/location background, and never replace it with the product reference image's background. Do not redesign, substitute, add, remove, or alter product details."
       : null,
     params.propObjectReferenceImages?.length
       ? "ATTACHED PROP/OBJECT REFERENCE LOCK: when the referenced prop/object is visible, preserve the attached image(s)' visible design, color, shape, materials, and distinctive details. Let the image model choose natural placement and action for this shot; do not redesign or replace it."
       : null,
     productDimensionFacts.length
-      ? `ATTACHED PRODUCT DIMENSION LOCK: ${productDimensionFacts.join("; ")}. Match each attached product's real-world proportions and apparent scale to its stated measurements and the shot perspective; preserve the reference design and do not invent dimensions.`
+      ? `ATTACHED PRODUCT DIMENSION LOCK: ${productDimensionFacts.join("; ")}. These selected reference measurements are authoritative; ignore any conflicting older prompt or series-level tie-in dimensions. Match each attached product's real-world proportions and apparent scale to its stated measurements and the shot perspective; preserve the reference design and do not invent dimensions.`
       : null,
   ].filter((line): line is string => Boolean(line));
   if (locks.length === 0) return params.prompt;
 
   const normalizedPrompt = params.prompt.toLocaleLowerCase();
   const missingLocks = locks.filter(lock => {
+    if (lock.startsWith("ATTACHED PRODUCT DIMENSION LOCK:")) {
+      const hasAllSelectedMeasurements = productDimensionFacts.every(fact =>
+        normalizedPrompt.includes(fact.toLocaleLowerCase())
+      );
+      return (
+        !hasAllSelectedMeasurements ||
+        !normalizedPrompt.includes("selected reference measurements are authoritative")
+      );
+    }
     const marker = lock.slice(0, lock.indexOf(":"));
     return !normalizedPrompt.includes(marker.toLocaleLowerCase());
   });
@@ -3403,7 +3416,7 @@ export function buildStartFrameShotPromptUserPrompt(
       ? `two_shot_face_visibility_rule: MANDATORY OPEN TWO-SHOT — both characters must be angled three-quarter toward camera and each other with BOTH faces clearly visible, readable, and well-lit. NEVER place either character with their back to camera, back of head to lens, full profile, or face hidden in deep shadow or behind hair. Both faces must remain readable for video face-matching and lip-sync.`
       : null,
     params.productReferenceImages?.length
-      ? `product_reference_inputs: ${params.productReferenceImages.length} attached product reference image(s) are the visual source of truth for the product's exact visible identity and details. Inspect each image and preserve its shape, proportions, colors, materials, components, branding, labels, and distinctive details. Preserve and state in the final prompt every explicitly supplied measurement in product_lock.product_dimensions, product_lock.product_description, product_tie_in.product_dimensions, product_tie_in.product_description, canonical_shot_summary, or repair_instruction; never invent measurements. Use the supplied dimensions to keep the product's scale realistic relative to people and scene objects, consistent with the shot perspective. The product reference is an additive physical prop reference only: the shot's story, location, and scene continuity remain the background authority; never transfer the reference image's background or composition into the shot.`
+      ? `product_reference_inputs: ${params.productReferenceImages.length} attached product reference image(s) are the visual source of truth for the product's exact visible identity and details. Inspect each image and preserve its shape, proportions, colors, materials, components, branding, labels, and distinctive details. When selected product-reference metadata supplies dimensions, use those measurements exactly and treat them as authoritative over conflicting legacy product_lock or product_tie_in dimensions, descriptions, canonical summaries, and repair instructions. If selected references have no dimensions, preserve the explicitly supplied legacy product measurements instead. Never invent measurements. Use the authoritative dimensions to keep the product's scale realistic relative to people and scene objects, consistent with the shot perspective. The product reference is an additive physical prop reference only: the shot's story, location, and scene continuity remain the background authority; never transfer the reference image's background or composition into the shot.`
       : null,
     params.propObjectReferenceImages?.length
       ? "prop_object_reference_inputs: the attached prop/object reference image(s) are the visual source of truth for the physical object; the final prompt must reference the attached image(s) and preserve their visible shape, materials, colors, and distinctive details when the prop is visible, while the image model chooses natural placement and action"
