@@ -612,6 +612,7 @@ function selectChain(rows: unknown[]) {
     from: vi.fn(() => chain),
     leftJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    for: vi.fn(() => chain),
     orderBy: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any) => Promise.resolve(rows).then(resolve),
@@ -854,7 +855,35 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     };
   }
 
+  function mockPromotionTransaction(row: {
+    startFramePlan: unknown;
+    motionPromptPack: unknown;
+  }) {
+    const update = updateChain([{}]);
+    const tx = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              startFramePlan: row.startFramePlan,
+              motionPromptPack: row.motionPromptPack,
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ id: 901 }])
+        ),
+      update: vi.fn(() => update),
+    };
+    mockDb.transaction.mockImplementation(async (run: (tx: unknown) => unknown) =>
+      run(tx)
+    );
+    return update;
+  }
+
   beforeEach(() => {
+    mockDb.transaction.mockReset();
     mockShotReferencesService.linkReference.mockResolvedValue({
       referenceId: "1",
     });
@@ -868,7 +897,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
         selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
       ) // mediaAssets ownership lookup for the new asset
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
-    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+    mockPromotionTransaction(episodeRowWithFrame("900"));
 
     const result = await router.setApprovedStartFrameAsset({
       ctx: ctx(),
@@ -913,7 +942,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
         selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
       ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
-    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+    mockPromotionTransaction(episodeRowWithFrame(undefined));
 
     await router.setApprovedStartFrameAsset({
       ctx: ctx(),
@@ -944,7 +973,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
         selectChain([{ id: 900, mimeType: "image/png", status: "ready" }])
       ) // mediaAssets ownership lookup (same asset)
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
-    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+    mockPromotionTransaction(episodeRowWithFrame("900"));
 
     await router.setApprovedStartFrameAsset({
       ctx: ctx(),
@@ -989,8 +1018,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
         selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
       ) // mediaAssets ownership
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
-    const update = updateChain([{}]);
-    mockDb.update.mockReturnValueOnce(update);
+    const update = mockPromotionTransaction(row);
 
     await router.setApprovedStartFrameAsset({
       ctx: ctx(),
@@ -1015,7 +1043,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
         selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
       ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
-    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+    mockPromotionTransaction(episodeRowWithFrame("900"));
     mockShotReferencesService.linkReference.mockRejectedValue(
       new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted")
     );
@@ -1031,6 +1059,239 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     });
 
     expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
+  });
+
+  it("rejects an image task from an older prompt and leaves the prior approved asset current", async () => {
+    const row = episodeRowWithFrame("900");
+    Object.assign(row.startFramePlan.frames[0], {
+      ...row.startFramePlan.frames[0],
+      imagePromptHash: "new-prompt-hash",
+      imageTask: {
+        pendingTaskId: "stale-task",
+        promptHash: "old-prompt-hash",
+        status: "processing",
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      );
+    const update = mockPromotionTransaction(row);
+
+    await expect(
+      router.setApprovedStartFrameAsset({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "901",
+          sourceTaskId: "stale-task",
+          promptHash: "old-prompt-hash",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(update.set).not.toHaveBeenCalled();
+    expect(row.startFramePlan.frames[0].approvedMediaAssetId).toBe("900");
+    expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
+  });
+
+  it("commits a current task's candidate and closes the task marker atomically", async () => {
+    const row = episodeRowWithFrame("900");
+    Object.assign(row.startFramePlan.frames[0], {
+      ...row.startFramePlan.frames[0],
+      imagePromptHash: "prompt-v1",
+      imageTask: {
+        pendingTaskId: "task-v1",
+        promptHash: "prompt-v1",
+        status: "processing",
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      )
+      .mockReturnValueOnce(selectChain([]));
+    const update = mockPromotionTransaction(row);
+
+    const result = await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+        sourceTaskId: "task-v1",
+        promptHash: "prompt-v1",
+      },
+    });
+
+    expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
+    expect(result.startFramePlan.frames[0].imageTask).toMatchObject({
+      lastTaskId: "task-v1",
+      promptHash: "prompt-v1",
+      status: "completed",
+    });
+    expect(update.set).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the prior asset untouched when database activation fails", async () => {
+    const row = episodeRowWithFrame("900");
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      );
+    const update = mockPromotionTransaction(row);
+    update.where.mockRejectedValue(new Error("episode update failed"));
+
+    await expect(
+      router.setApprovedStartFrameAsset({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "901",
+        },
+      })
+    ).rejects.toThrow("episode update failed");
+
+    expect(row.startFramePlan.frames[0].approvedMediaAssetId).toBe("900");
+    expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
+  });
+});
+
+describe("persistStartFrameImageTask — prompt revision binding", () => {
+  function mockLockedPlan(plan: Record<string, unknown>) {
+    const update = updateChain([]);
+    const lockedPlanQuery = selectChain([{ startFramePlan: plan }]);
+    mockDb.transaction.mockImplementation(async (run: (tx: unknown) => unknown) =>
+      run({
+        select: vi.fn(() => lockedPlanQuery),
+        update: vi.fn(() => update),
+      })
+    );
+    return update;
+  }
+
+  it("persists the prompt hash with the pending provider task", async () => {
+    const plan = {
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "current prompt",
+          imagePromptHash: "prompt-v1",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+        },
+      ],
+    };
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ id: 100, tenantId: "tenant-1", userId: 42, seriesId: 10 }])
+    );
+    const update = mockLockedPlan(plan);
+
+    const result = await router.persistStartFrameImageTask({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        promptHash: "prompt-v1",
+        imageTask: { taskId: "task-v1", status: "submitted" },
+      },
+    });
+
+    expect(result.persisted).toBe(true);
+    expect(
+      update.set.mock.calls[0][0].startFramePlan.frames[0].imageTask
+    ).toMatchObject({
+      pendingTaskId: "task-v1",
+      promptHash: "prompt-v1",
+      status: "submitted",
+    });
+  });
+
+  it("clears only the completed stale task marker and preserves the approved asset", async () => {
+    const plan = {
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "new prompt",
+          imagePromptHash: "prompt-v2",
+          approvedMediaAssetId: "900",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+          imageTask: {
+            pendingTaskId: "task-v1",
+            promptHash: "prompt-v1",
+            status: "processing",
+          },
+        },
+      ],
+    };
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ id: 100, tenantId: "tenant-1", userId: 42, seriesId: 10 }])
+    );
+    const update = mockLockedPlan(plan);
+
+    const result = await router.persistStartFrameImageTask({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        promptHash: "prompt-v1",
+        imageTask: { taskId: "task-v1", status: "completed" },
+      },
+    });
+
+    expect(result.persisted).toBe(true);
+    const frame = update.set.mock.calls[0][0].startFramePlan.frames[0];
+    expect(frame.approvedMediaAssetId).toBe("900");
+    expect(frame.imageTask).toBeUndefined();
+  });
+
+  it("accepts the duplicate completion callback after promotion as an idempotent no-op", async () => {
+    const plan = {
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "current prompt",
+          imagePromptHash: "prompt-v1",
+          approvedMediaAssetId: "901",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+          imageTask: {
+            lastTaskId: "task-v1",
+            promptHash: "prompt-v1",
+            status: "completed",
+          },
+        },
+      ],
+    };
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ id: 100, tenantId: "tenant-1", userId: 42, seriesId: 10 }])
+    );
+    const update = mockLockedPlan(plan);
+
+    const result = await router.persistStartFrameImageTask({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        promptHash: "prompt-v1",
+        imageTask: { taskId: "task-v1", status: "completed" },
+      },
+    });
+
+    expect(result.persisted).toBe(true);
+    expect(update.set).not.toHaveBeenCalled();
   });
 });
 
@@ -7182,8 +7443,16 @@ describe("repairShotImage (Phase 6.5)", () => {
   });
 
   it("refunds credits when generation submission fails", async () => {
+    const baseEpisode = episodeRowWithApprovedAsset();
+    const repairEpisode = {
+      ...baseEpisode,
+      startFramePlan: {
+        ...baseEpisode.startFramePlan,
+        selectedImageModelId: "google-nano-banana-pro",
+      },
+    };
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([repairEpisode])) // loadOwnedEpisode
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
       ) // resolveMediaAssetUrlsByIds
@@ -7206,6 +7475,9 @@ describe("repairShotImage (Phase 6.5)", () => {
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockRefundCredits).toHaveBeenCalled();
+    // A provider admission failure does not write a candidate pointer; the
+    // previously approved image remains the current shot asset.
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 
   it("falls back to the model default for an unsupported repair resolution", async () => {

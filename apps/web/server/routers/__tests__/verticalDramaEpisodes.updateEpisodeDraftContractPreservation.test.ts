@@ -43,6 +43,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -75,6 +76,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
@@ -325,6 +330,53 @@ describe("updateEpisodeDraft — contract preservation regression (F132C)", () =
     expect(setCallArgs.startFramePlan.frames[0]).toMatchObject({
       imagePrompt: "authoritative generated prompt",
       approvedMediaAssetId: "1840",
+    });
+  });
+
+  it("stamps an edited image prompt hash so an in-flight old render cannot be promoted", async () => {
+    const existingPlan = {
+      mode: "single_frame_per_shot",
+      frames: [
+        {
+          shotNumber: 4,
+          imagePrompt: "old prompt",
+          imagePromptHash: "old-hash",
+          approvedMediaAssetId: "1840",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+          imageTask: {
+            pendingTaskId: "old-task",
+            promptHash: "old-hash",
+            status: "processing",
+          },
+        },
+      ],
+    };
+    const editedPlan = {
+      ...existingPlan,
+      frames: [{ ...existingPlan.frames[0], imagePrompt: "new prompt" }],
+    };
+    const episode = { ...EPISODE_ROW, startFramePlan: existingPlan };
+    mockDb.select.mockReturnValueOnce(selectChain([episode]));
+    mockDb.update.mockReturnValueOnce(updateChain([episode]));
+
+    await router.updateEpisodeDraft({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        startFramePlan: editedPlan,
+      },
+    });
+
+    const frame = mockDb.update.mock.results[0].value.set.mock.calls[0][0]
+      .startFramePlan.frames[0];
+    expect(frame.imagePromptHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(frame.imagePromptHash).not.toBe("old-hash");
+    expect(frame.approvedMediaAssetId).toBeUndefined();
+    expect(frame.imageTask).toMatchObject({
+      pendingTaskId: "old-task",
+      promptHash: "old-hash",
     });
   });
 });

@@ -2029,6 +2029,7 @@ function EpisodeWorkspaceShell({
     shotNumber: number;
     taskId?: string;
     frameRole?: "start" | "stop";
+    promptHash?: string;
     failureStage: "provider" | "sync" | "admission";
     error: string;
   }) {
@@ -2041,7 +2042,8 @@ function EpisodeWorkspaceShell({
           failureStage: input.failureStage,
           error: input.error,
         },
-        input.frameRole ?? "start"
+        input.frameRole ?? "start",
+        input.promptHash
       );
       // A false result means a newer task won the server-side row-lock guard;
       // never let an older browser callback paint that newer task as failed.
@@ -2205,6 +2207,7 @@ function EpisodeWorkspaceShell({
               shotNumber,
               taskId,
               frameRole,
+              promptHash,
               failureStage: "provider",
               error,
             });
@@ -2230,6 +2233,8 @@ function EpisodeWorkspaceShell({
               shotNumber,
               frameRole,
               mediaAssetId: resolved.mediaAssetId,
+              sourceTaskId: taskId,
+              ...(promptHash ? { promptHash } : {}),
             });
             await persistStartFrameTask(
               shotNumber,
@@ -2258,6 +2263,7 @@ function EpisodeWorkspaceShell({
               shotNumber,
               taskId,
               frameRole,
+              promptHash,
               failureStage: "sync",
               error: syncError,
             });
@@ -2314,6 +2320,7 @@ function EpisodeWorkspaceShell({
             shotNumber,
             taskId,
             frameRole,
+            promptHash,
             failureStage: "provider",
             error: errorMessage,
           });
@@ -2404,11 +2411,20 @@ function EpisodeWorkspaceShell({
           episodeId,
           shotNumber,
           mediaAssetId: resolved.mediaAssetId,
+          sourceTaskId: taskId,
+          ...(frame?.imageTask?.promptHash
+            ? { promptHash: frame.imageTask.promptHash }
+            : {}),
         });
-        await persistStartFrameTask(shotNumber, {
-          taskId,
-          status: "completed",
-        });
+        await persistStartFrameTask(
+          shotNumber,
+          {
+            taskId,
+            status: "completed",
+          },
+          "start",
+          frame?.imageTask?.promptHash
+        );
         clearImageGenerationError(shotNumber);
         toast.success(
           lang === "th"
@@ -2425,27 +2441,38 @@ function EpisodeWorkspaceShell({
         await persistTerminalImageFailure({
           shotNumber,
           taskId,
+          promptHash: frame?.imageTask?.promptHash,
           failureStage: "provider",
           error: taskError,
         });
         toast.error(taskError);
         return;
       }
-      await persistStartFrameTask(shotNumber, {
-        taskId,
-        status:
-          status === "queued" ||
-          status === "processing" ||
-          status === "submitted"
-            ? status
-            : "processing",
-      });
+      await persistStartFrameTask(
+        shotNumber,
+        {
+          taskId,
+          status:
+            status === "queued" ||
+            status === "processing" ||
+            status === "submitted"
+              ? status
+              : "processing",
+        },
+        "start",
+        frame?.imageTask?.promptHash
+      );
       toast.info(
         lang === "th"
           ? "งานสร้างภาพยังไม่เสร็จ ระบบจะติดตามต่อให้"
           : "The image task is still running; tracking has resumed."
       );
-      await pollStartFrameTask(taskId, shotNumber);
+      await pollStartFrameTask(
+        taskId,
+        shotNumber,
+        "start",
+        frame?.imageTask?.promptHash
+      );
     } catch (error) {
       const message =
         error instanceof Error
@@ -2456,6 +2483,7 @@ function EpisodeWorkspaceShell({
       await persistTerminalImageFailure({
         shotNumber,
         taskId,
+        promptHash: frame?.imageTask?.promptHash,
         failureStage: "sync",
         error: message,
       });
@@ -2498,6 +2526,8 @@ function EpisodeWorkspaceShell({
           shotNumber: input.shotNumber,
           frameRole: input.frameRole,
           mediaAssetId: resolved.mediaAssetId,
+          sourceTaskId: input.taskId,
+          ...(input.promptHash ? { promptHash: input.promptHash } : {}),
         });
         await persistStartFrameTask(
           input.shotNumber,
@@ -3897,7 +3927,7 @@ function EpisodeWorkspaceShell({
         taskId,
         shotNumber,
         "start",
-        frame.imagePromptHash,
+        imageTask?.promptHash,
         imageTask?.softenLevel
       );
     }
@@ -3916,7 +3946,7 @@ function EpisodeWorkspaceShell({
           frameRole: "start",
           taskId:
             frame.imageTask!.pendingTaskId ?? frame.imageTask!.lastTaskId!,
-          promptHash: frame.imagePromptHash,
+          promptHash: frame.imageTask?.promptHash,
         });
       }
       if (
@@ -3930,7 +3960,7 @@ function EpisodeWorkspaceShell({
           frameRole: "stop",
           taskId:
             frame.stopFrameTask!.pendingTaskId ?? frame.stopFrameTask!.lastTaskId!,
-          promptHash: frame.stopFramePromptHash,
+          promptHash: frame.stopFrameTask?.promptHash,
         });
       }
     }
@@ -3962,7 +3992,7 @@ function EpisodeWorkspaceShell({
         taskId,
         shotNumber,
         "stop",
-        frame.stopFramePromptHash
+        task.promptHash
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -577,6 +577,8 @@ export type VerticalDramaStartFramePlan = {
     imageTask?: {
       pendingTaskId?: string;
       lastTaskId?: string;
+      /** Prompt revision used by the task; stale durable outputs are never promoted. */
+      promptHash?: string;
       status:
         | "submitted"
         | "queued"
@@ -618,6 +620,8 @@ export type VerticalDramaStartFramePlan = {
     stopFrameTask?: {
       pendingTaskId?: string;
       lastTaskId?: string;
+      /** Prompt revision used by the task; stale durable outputs are never promoted. */
+      promptHash?: string;
       status:
         | "submitted"
         | "queued"
