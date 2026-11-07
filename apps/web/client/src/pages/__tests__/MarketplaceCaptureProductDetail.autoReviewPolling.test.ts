@@ -19,6 +19,19 @@ function sourceBetween(start: string, end: string) {
 }
 
 describe("MarketplaceCaptureProductDetail auto review polling", () => {
+  it("places generated AI insights after the product details and images", () => {
+    const aiInsightsIndex = source.indexOf("<MarketplaceInsightsSection");
+    const productImagesIndex = source.indexOf(
+      '<h2 className="text-lg font-semibold">Product Images</h2>'
+    );
+    const descriptionIndex = source.indexOf(
+      '<h2 className="mt-8 text-lg font-semibold">Description</h2>'
+    );
+
+    expect(aiInsightsIndex).toBeGreaterThan(productImagesIndex);
+    expect(aiInsightsIndex).toBeGreaterThan(descriptionIndex);
+  });
+
   it("keeps polling while a newly-started auto review run is being materialized", () => {
     const autoReviewRunsQuery = sourceBetween(
       "const autoReviewRuns = trpc.marketplaceCapture.listAutoReviewRuns.useQuery",

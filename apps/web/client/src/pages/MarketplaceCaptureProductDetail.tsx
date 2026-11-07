@@ -10050,13 +10050,6 @@ export default function MarketplaceCaptureProductDetail() {
             </section>
           ) : null}
 
-          <MarketplaceInsightsSection
-            insights={insights}
-            isLoading={productInsights.isLoading}
-            emptyText="No AI insights have been synced for this product or its source capture yet."
-            allowStorytellingAction
-          />
-
           <section
             className={`rounded-lg border bg-white p-6 shadow-sm transition ${isDropActive ? "border-sky-400 ring-4 ring-sky-100" : ""}`}
             onDragOver={event => {
@@ -10622,6 +10615,12 @@ export default function MarketplaceCaptureProductDetail() {
               </dl>
             </details>
           </section>
+          <MarketplaceInsightsSection
+            insights={insights}
+            isLoading={productInsights.isLoading}
+            emptyText="No AI insights have been synced for this product or its source capture yet."
+            allowStorytellingAction
+          />
         </div>
 
         <aside className="min-w-0 xl:sticky xl:top-4 xl:h-[calc(100dvh-2rem)]">
