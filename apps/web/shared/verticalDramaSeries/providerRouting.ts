@@ -86,6 +86,7 @@ export type VideoRoutingDecision = {
     | "veo_first_last_frame"
     | "external_image_to_video"
     | "openai_prompt_only"
+    | "selected_model_prompt_only"
     | "manual_review";
   execution_status:
     | "ready"

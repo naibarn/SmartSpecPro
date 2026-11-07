@@ -427,6 +427,7 @@ export function normalizeEnhancedStoryboardShot(
 export function isEnhancedCapabilityCompatible(input: {
   model: EnhancedModelFacts;
   mediaBundle: VideoShotMediaBundle;
+  durationSeconds?: number;
 }): boolean {
   const profile = parseVideoCapabilityProfile(input.model.capabilitySnapshot);
   if (!profile) return false;
@@ -434,6 +435,7 @@ export function isEnhancedCapabilityCompatible(input: {
     startFrame: Boolean(input.mediaBundle.startFrame),
     stopFrame: Boolean(input.mediaBundle.stopFrame),
     references: input.mediaBundle.references,
+    durationSeconds: input.durationSeconds,
   };
   const fullSelection = selectVideoCapabilityMode(profile, capabilityInput);
   if (fullSelection.mode.id !== "unsupported") return true;

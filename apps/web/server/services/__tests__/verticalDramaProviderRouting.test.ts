@@ -178,6 +178,67 @@ describe("routeVideo gating", () => {
     });
     expect(decision.normalizedStatus).toBe("blocked");
   });
+
+  it("never uses prompt fallback to bypass a tenant provider allowlist", () => {
+    const decision = routeVideo({
+      model: geminiOmni,
+      policy: {
+        ...VERTICAL_DRAMA_DEFAULT_PROVIDER_POLICY,
+        allowedProviders: ["another-provider"],
+        allowPromptOnlyFallback: true,
+      },
+      requestedMotionMode: "first_last_frame_bridge",
+      containsHumanFace: false,
+      requireFirstLastFrame: true,
+      requireNativeAudio: false,
+      aspectRatio: "9:16",
+      clipDurationsSeconds: [8],
+      prompt: "x",
+    });
+    expect(decision.normalizedStatus).toBe("blocked");
+    expect(decision.recommended_provider_path).toBe("manual_review");
+    expect(decision.blockingReasons).toContain(
+      "provider_not_in_tenant_allowlist",
+    );
+  });
+
+  it("blocks a request with a duration absent from the selected model registry facts", () => {
+    const decision = routeVideo({
+      model: geminiOmni,
+      requestedMotionMode: "first_frame_to_video",
+      containsHumanFace: false,
+      requireFirstLastFrame: false,
+      requireNativeAudio: false,
+      aspectRatio: "9:16",
+      clipDurationsSeconds: [8, 12],
+      prompt: "x",
+    });
+    expect(decision.normalizedStatus).toBe("blocked");
+    expect(decision.blockingReasons).toContain("duration_unsupported:12");
+  });
+
+  it("blocks a resolution absent from the selected model registry facts", () => {
+    const modelWith720pOnly: ModelDefinition = {
+      ...geminiOmni,
+      configJson: {
+        ...geminiOmni.configJson,
+        supportedResolutions: ["720p"],
+      },
+    };
+    const decision = routeVideo({
+      model: modelWith720pOnly,
+      requestedMotionMode: "first_frame_to_video",
+      containsHumanFace: false,
+      requireFirstLastFrame: false,
+      requireNativeAudio: false,
+      aspectRatio: "9:16",
+      resolution: "4K",
+      clipDurationsSeconds: [8],
+      prompt: "x",
+    });
+    expect(decision.normalizedStatus).toBe("blocked");
+    expect(decision.blockingReasons).toContain("resolution_unsupported:4K");
+  });
 });
 
 describe("bridge + fallback duration profiles", () => {

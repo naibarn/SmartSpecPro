@@ -258,7 +258,17 @@ function deriveVideoSizes(
     "4K": "2160x3840",
   };
   const sizes = res.map((r) => map[r] ?? r);
-  return sizes.length > 0 ? sizes : ["720x1280"];
+  return sizes;
+}
+
+function normalizeVideoSize(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    "720p": "720x1280",
+    "1080p": "1080x1920",
+    "4k": "2160x3840",
+  };
+  return aliases[normalized] ?? normalized;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -408,6 +418,8 @@ export interface RouteVideoInput {
   requireFirstLastFrame: boolean;
   requireNativeAudio: boolean;
   aspectRatio?: "9:16" | "16:9" | "1:1";
+  /** Optional requested output tier, resolved against registry/provider facts. */
+  resolution?: string;
   clipDurationsSeconds: number[];
   prompt: string;
   firstFrameAssetId?: string;
@@ -436,6 +448,23 @@ export function routeVideo(input: RouteVideoInput): VideoRoutingDecision {
   // Aspect-ratio gate.
   if (!caps.allowedAspectRatios.includes(aspect)) {
     blockingReasons.push(`aspect_ratio_unsupported:${aspect}`);
+  }
+
+  const unsupportedDurations = Array.from(new Set(input.clipDurationsSeconds))
+    .filter(duration => !caps.allowedVideoSeconds.includes(duration))
+    .sort((a, b) => a - b);
+  if (caps.allowedVideoSeconds.length > 0 && unsupportedDurations.length > 0) {
+    blockingReasons.push(`duration_unsupported:${unsupportedDurations.join(",")}`);
+  }
+
+  if (
+    input.resolution &&
+    caps.allowedVideoSizes.length > 0 &&
+    !caps.allowedVideoSizes.some(
+      size => normalizeVideoSize(size) === normalizeVideoSize(input.resolution!),
+    )
+  ) {
+    blockingReasons.push(`resolution_unsupported:${input.resolution}`);
   }
 
   // Native-audio gate.
@@ -469,6 +498,22 @@ export function routeVideo(input: RouteVideoInput): VideoRoutingDecision {
     recommendedPath = "manual_review";
     executionStatus = "manual_review_required";
     normalizedStatus = "manual_review_required";
+  } else if (
+    !caps.supportsVideoGeneration ||
+    blockingReasons.some(
+      reason =>
+        reason === "provider_not_in_tenant_allowlist" ||
+        reason === "native_audio_unsupported" ||
+        reason === "human_face_input_unsupported" ||
+        reason.startsWith("aspect_ratio_unsupported") ||
+        reason.startsWith("duration_unsupported") ||
+        reason.startsWith("resolution_unsupported"),
+    )
+  ) {
+    recommendedPath = "manual_review";
+    executionStatus = "blocked";
+    normalizedStatus = "blocked";
+    if (!caps.supportsVideoGeneration) blockingReasons.push("model_disabled");
   } else if (wantsBridge && canBridge) {
     recommendedPath = "veo_first_last_frame";
     executionStatus = "ready";
@@ -481,7 +526,10 @@ export function routeVideo(input: RouteVideoInput): VideoRoutingDecision {
       normalizedStatus = "external_provider_required";
       blockingReasons.push("first_last_frame_rerouted_to_external");
     } else if (policy.allowPromptOnlyFallback) {
-      recommendedPath = "openai_prompt_only";
+      // This is a prompt-only mode on the already-selected model. Never
+      // imply an OpenAI/provider switch unless that provider was explicitly
+      // selected and passed the same registry/tenant gates above.
+      recommendedPath = "selected_model_prompt_only";
       executionStatus = "fallback_text_to_video";
       normalizedStatus = "fallback_prompt_only";
       blockingReasons.push("first_last_frame_unsupported_fallback_prompt_only");
@@ -511,6 +559,9 @@ export function routeVideo(input: RouteVideoInput): VideoRoutingDecision {
     blockingReasons.some(
       (r) =>
         r.startsWith("aspect_ratio_unsupported") ||
+        r.startsWith("duration_unsupported") ||
+        r.startsWith("resolution_unsupported") ||
+        r === "model_disabled" ||
         r === "provider_not_in_tenant_allowlist" ||
         r === "native_audio_unsupported" ||
         r === "human_face_input_unsupported",
@@ -1233,6 +1284,7 @@ export interface PlanProviderRoutingInput {
   requireFirstLastFrame?: boolean;
   requireNativeAudio?: boolean;
   aspectRatio?: "9:16" | "16:9" | "1:1";
+  resolution?: string;
   prompt?: string;
   firstFrameAssetId?: string;
   lastFrameAssetId?: string;
@@ -1270,6 +1322,7 @@ export function planProviderRouting(input: PlanProviderRoutingInput): ProviderRo
     requireFirstLastFrame: input.requireFirstLastFrame ?? caps.supportsFirstLastFrameVideo,
     requireNativeAudio: input.requireNativeAudio ?? false,
     aspectRatio: input.aspectRatio ?? VERTICAL_DRAMA_TARGET_ASPECT_RATIO,
+    resolution: input.resolution,
     clipDurationsSeconds: profile.jobs.map((j) => j.durationSeconds),
     prompt: input.prompt ?? "",
     firstFrameAssetId: input.firstFrameAssetId,

@@ -87,6 +87,47 @@ describe("vertical drama video capability profiles", () => {
     expect(result.blockedReferenceIds).toEqual(["image-0"]);
   });
 
+  it("selects only modes that support the requested clip duration", () => {
+    const alternateMode: VideoCapabilityProfile["modes"][number] = {
+      ...mode,
+      id: "short-reference-to-video",
+      maxVideoDurationSec: 10,
+    };
+    const durationProfile: VideoCapabilityProfile = {
+      ...profile,
+      modes: [alternateMode, mode],
+    };
+    expect(
+      selectVideoCapabilityMode(durationProfile, {
+        startFrame: true,
+        stopFrame: false,
+        references: [],
+        durationSeconds: 10,
+      }).mode.id,
+    ).toBe("short-reference-to-video");
+    expect(
+      selectVideoCapabilityMode(durationProfile, {
+        startFrame: true,
+        stopFrame: false,
+        references: [],
+        durationSeconds: 11,
+      }).mode.id,
+    ).toBe("reference-to-video");
+  });
+
+  it("fails closed when no declared mode supports the requested duration", () => {
+    const result = selectVideoCapabilityMode(profile, {
+      startFrame: true,
+      stopFrame: false,
+      references: [],
+      durationSeconds: 31,
+    });
+    expect(result.mode.id).toBe("unsupported");
+    expect(result.blockingReasons).toContain(
+      "selected model has no compatible video duration mode",
+    );
+  });
+
   it("rejects incomplete profile data", () => {
     expect(parseVideoCapabilityProfile({ modelKey: "future-model" })).toBeNull();
   });

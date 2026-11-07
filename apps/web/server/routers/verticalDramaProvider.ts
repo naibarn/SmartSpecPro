@@ -223,6 +223,7 @@ export const verticalDramaProviderRouter = router({
         requireFirstLastFrame: z.boolean().optional(),
         requireNativeAudio: z.boolean().optional(),
         aspectRatio: z.enum(["9:16", "16:9", "1:1"]).optional(),
+        resolution: z.string().trim().max(32).optional(),
         prompt: z.string().max(8000).optional(),
         subShotsFlagOn: z.boolean().optional(),
         perSubShotStartFrames: z.boolean().optional(),
@@ -252,6 +253,7 @@ export const verticalDramaProviderRouter = router({
         requireFirstLastFrame: input.requireFirstLastFrame,
         requireNativeAudio: input.requireNativeAudio,
         aspectRatio: input.aspectRatio,
+        resolution: input.resolution,
         prompt: input.prompt,
         externalConfigured: Boolean(VERTICAL_DRAMA_DEFAULT_PROVIDER_POLICY.externalImageToVideo),
         subShots: input.subShotsFlagOn

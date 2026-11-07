@@ -51,6 +51,8 @@ export type VideoCapabilityInput = {
   startFrame: boolean;
   stopFrame: boolean;
   references: VideoShotMediaBundle["references"];
+  /** Requested clip length. When supplied, it must fit the selected provider mode. */
+  durationSeconds?: number;
 };
 
 export type VideoCapabilitySelection = {
@@ -101,6 +103,14 @@ function modeSupportsFrames(mode: VideoCapabilityMode, input: VideoCapabilityInp
   return true;
 }
 
+function modeSupportsDuration(mode: VideoCapabilityMode, input: VideoCapabilityInput): boolean {
+  return (
+    input.durationSeconds === undefined ||
+    mode.maxVideoDurationSec === null ||
+    input.durationSeconds <= mode.maxVideoDurationSec
+  );
+}
+
 export function selectVideoCapabilityMode(
   profile: VideoCapabilityProfile,
   input: VideoCapabilityInput,
@@ -139,7 +149,9 @@ export function selectVideoCapabilityMode(
     return score(b) - score(a);
   });
   const selected = orderedModes.find(mode =>
-    modeSupportsFrames(mode, input) && supportsReferences(mode, input),
+    modeSupportsFrames(mode, input) &&
+    supportsReferences(mode, input) &&
+    modeSupportsDuration(mode, input),
   );
   if (selected) {
     return {
@@ -154,6 +166,16 @@ export function selectVideoCapabilityMode(
   const reasons: string[] = [];
   if (input.startFrame || input.stopFrame) reasons.push("selected model has no compatible temporal frame mode");
   if (input.references.length > 0) reasons.push("selected model has no compatible reference modality/limit mode");
+  if (
+    input.durationSeconds !== undefined &&
+    profile.modes.some(
+      mode =>
+        mode.maxVideoDurationSec !== null &&
+        input.durationSeconds! > mode.maxVideoDurationSec,
+    )
+  ) {
+    reasons.push("selected model has no compatible video duration mode");
+  }
   return {
     mode: {
       id: "unsupported",

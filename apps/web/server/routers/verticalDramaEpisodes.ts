@@ -1575,6 +1575,7 @@ async function loadEnhancedShotContext(input: {
   const capabilityReady = isEnhancedCapabilityCompatible({
     model: targetVideoModel,
     mediaBundle,
+    durationSeconds: storyboardShot?.durationSeconds ?? clip.durationSeconds,
   });
   const locationId = storyboardShot?.locationId;
   const visualCastPolicy = {
@@ -24696,6 +24697,7 @@ export const verticalDramaEpisodesRouter = router({
             startFrame: Boolean(mediaBundle.startFrame),
             stopFrame: Boolean(mediaBundle.stopFrame),
             references: mediaBundle.references,
+            durationSeconds: clip.durationSeconds,
           })
         : null;
       if (selectedVideoCapabilityMode?.mode.id === "unsupported") {
