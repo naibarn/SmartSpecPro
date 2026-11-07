@@ -1,0 +1,38 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/03-p2-advisory-qa-and-asset-preservation/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/03-p2-advisory-qa-and-asset-preservation/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-advisory-qc-status-and-ui",
+    "section-02-successful-asset-version-preservation",
+    "section-03-partial-assembly-and-truthful-fallback"
+  ],
+  "sections_state": {
+    "section-01-advisory-qc-status-and-ui": {
+      "status": "checkpointed",
+      "next_action": "Start section-02-successful-asset-version-preservation: trace manual repair candidate promotion, failed provider outcomes, and owner-scoped asset version/readability semantics.",
+      "checkpoint_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e",
+      "merged_main_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-07T07:52:58.823236+00:00",
+  "generation": 3,
+  "updated_at": "2026-11-07T08:07:09.822264+00:00",
+  "progress": {
+    "active_section": "section-01-advisory-qc-status-and-ui",
+    "next_action": "Start section-02-successful-asset-version-preservation: trace manual repair candidate promotion, failed provider outcomes, and owner-scoped asset version/readability semantics.",
+    "merged_main_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e"
+  }
+}
