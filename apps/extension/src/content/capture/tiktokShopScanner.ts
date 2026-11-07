@@ -609,12 +609,30 @@ export async function collectTikTokShowcaseImagesForProduct(productId: string, t
   return candidate;
 }
 
+function isTikTokProductNameNoise(line: string) {
+  return /sold by|จำหน่ายไป|จัดส่งฟรี|ส่งฟรี|free\s+shipping|free\s+delivery|shipping\s+included|delivery\s+included|เลือกตัวเลือก|การจัดส่ง|คืนสินค้า|TikTok Shop/i.test(line)
+    || /^(?:ซื้อเลย|เพิ่มลงรถเข็น|add to cart|buy now|จำนวน\s*:?|quantity\s*:?)$/i.test(line);
+}
+
 function extractProductName(rawDomText: string) {
+  const heading = clean(document.querySelector("h1")?.textContent || "");
+  if (heading.length >= 8 && !isTikTokProductNameNoise(heading)) {
+    return { text: heading, source: "dom:h1", confidence: 0.9 };
+  }
+
   const lines = rawDomText.split(/\n+/).map((line) => clean(line)).filter(Boolean);
   const priceLineIndex = lines.findIndex((line) => /[฿$]\s?[\d,.]+/.test(line));
   const titleAfterPrice = lines.slice(Math.max(0, priceLineIndex + 1), priceLineIndex + 8)
-    .find((line) => line.length >= 8 && !/sold by|จำหน่ายไป|จัดส่งฟรี|เลือกตัวเลือก|การจัดส่ง|คืนสินค้า|TikTok Shop/i.test(line));
-  return titleAfterPrice || document.querySelector("h1")?.textContent?.trim() || document.title.replace(/\|.*$/, "").trim() || null;
+    .find((line) => line.length >= 8 && !isTikTokProductNameNoise(line));
+  if (titleAfterPrice) {
+    return { text: titleAfterPrice, source: "text:title_context", confidence: 0.68 };
+  }
+
+  const documentTitle = clean(document.title.replace(/\|.*$/, ""));
+  if (documentTitle.length >= 8 && !isTikTokProductNameNoise(documentTitle)) {
+    return { text: documentTitle, source: "document:title", confidence: 0.72 };
+  }
+  return { text: null, source: "text:title_context", confidence: 0.68 };
 }
 
 function extractDescription(rawDomText: string) {
@@ -834,7 +852,7 @@ export function scanTikTokShopProductPage(): ProductCapturePayload {
   const parsedUrl = parseTikTokShopUrl(location.href);
   const rawDomText = document.body.innerText.slice(0, 80_000);
   const productName = extractProductName(rawDomText);
-  const categoryData = extractTikTokCategoryData(productName);
+  const categoryData = extractTikTokCategoryData(productName.text);
   const categoryText = categoryData?.text ?? null;
   const priceMatches = Array.from(rawDomText.matchAll(/[฿$]\s?[\d,.]+/g)).map((match) => match[0]);
   const priceCurrentText = priceMatches[0] ?? null;
@@ -857,7 +875,7 @@ export function scanTikTokShopProductPage(): ProductCapturePayload {
   const selectedMainImage = imageCandidates.find((candidate) => candidate.kind === "main" && candidate.selected);
   const fieldWarnings = [tinyMainImageWarning(selectedMainImage)].filter(Boolean) as string[];
   const fieldEvidence = Object.fromEntries(Object.entries({
-    productName: evidence(productName, "text:title_context", 0.68),
+    productName: evidence(productName.text, productName.source, productName.confidence),
     priceCurrentText: evidence(priceCurrentText, "text:price_regex", 0.72, { normalized: priceCurrentValue }),
     priceOriginalText: evidence(priceOriginalText, "text:price_regex", 0.58, { normalized: priceOriginalValue }),
     discountText: evidence(discountText, "text:discount_regex", 0.7, { normalized: discountPercent }),
@@ -885,7 +903,7 @@ export function scanTikTokShopProductPage(): ProductCapturePayload {
     externalProductId: parsedUrl.productId,
     externalShopId: null,
     pageTitle: document.title,
-    productName,
+    productName: productName.text,
     priceCurrentText,
     priceCurrentValue,
     priceOriginalText,

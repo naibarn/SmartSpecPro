@@ -2539,18 +2539,30 @@ export default function App() {
   function mergeProductImagesForReview(nextProduct: ProductCapturePayload) {
     nextProduct = withoutRelatedProductImages(enrichProductWithMatchedCandidate(nextProduct, candidates));
     productSourceRef.current = productSourceRef.current || nextProduct.sourceUrl;
+    const existingProductName = product?.productName || liveProduct?.productName || "";
+    const existingProductNameConfidence = product?.fieldEvidence?.productName?.confidence
+      ?? liveProduct?.fieldEvidence?.productName?.confidence
+      ?? 0;
+    const nextProductNameConfidence = nextProduct.fieldEvidence?.productName?.confidence ?? 0;
+    const preferIncomingProductName = Boolean(
+      nextProduct.productName
+      && nextProductNameConfidence > existingProductNameConfidence
+      && (!existingProductName || editable.productName.trim() === existingProductName.trim()),
+    );
     const mergeInto = (current: ProductCapturePayload | null) => {
       if (!current || current.sourceUrl !== nextProduct.sourceUrl) return nextProduct;
       const currentFieldEvidence = current.fieldEvidence ?? {};
       const nextFieldEvidence = nextProduct.fieldEvidence ?? {};
       const currentWarnings = current.fieldWarnings ?? [];
       const nextWarnings = nextProduct.fieldWarnings ?? [];
+      const shouldUseIncomingProductName = preferIncomingProductName
+        && nextProductNameConfidence > (currentFieldEvidence.productName?.confidence ?? 0);
       return {
         ...current,
         pageTitle: nextProduct.pageTitle || current.pageTitle,
         rawDomText: nextProduct.rawDomText || current.rawDomText,
         htmlBlocks: nextProduct.htmlBlocks.length > current.htmlBlocks.length ? nextProduct.htmlBlocks : current.htmlBlocks,
-        productName: current.productName || nextProduct.productName,
+        productName: shouldUseIncomingProductName ? nextProduct.productName : current.productName || nextProduct.productName,
         priceCurrentText: current.priceCurrentText || nextProduct.priceCurrentText,
         priceCurrentValue: current.priceCurrentValue ?? nextProduct.priceCurrentValue,
         priceOriginalText: current.priceOriginalText || nextProduct.priceOriginalText,
@@ -2578,7 +2590,13 @@ export default function App() {
         affiliateMatch: current.affiliateMatch || nextProduct.affiliateMatch,
         specificationText: current.specificationText || nextProduct.specificationText,
         imageCandidates: mergeImageCandidates(current.imageCandidates, nextProduct.imageCandidates),
-        fieldEvidence: { ...nextFieldEvidence, ...currentFieldEvidence },
+        fieldEvidence: {
+          ...nextFieldEvidence,
+          ...currentFieldEvidence,
+          ...(shouldUseIncomingProductName && nextFieldEvidence.productName
+            ? { productName: nextFieldEvidence.productName }
+            : {}),
+        },
         fieldWarnings: Array.from(new Set([...currentWarnings, ...nextWarnings])),
       };
     };
@@ -2588,7 +2606,7 @@ export default function App() {
       const incoming = toEditableProduct(nextProduct);
       return {
         ...current,
-        productName: current.productName || incoming.productName,
+        productName: preferIncomingProductName ? incoming.productName : current.productName || incoming.productName,
         shopName: current.shopName || incoming.shopName,
         priceCurrentText: current.priceCurrentText || incoming.priceCurrentText,
         commissionRateText: current.commissionRateText || incoming.commissionRateText,
