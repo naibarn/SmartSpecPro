@@ -265,6 +265,15 @@ export type VerticalDramaCompiledVideoState = {
   /** Number of clips actually concatenated (may be less than the full shot
    *  count when the job was submitted with `allowPartial: true`). */
   shotCount?: number;
+  /** Canonical shot-level assembly truth captured at submission. Clip counts
+   *  alone cannot identify partial output for variable shot counts or legacy
+   *  split clips. */
+  assemblyCompleteness?: {
+    expectedShotNumbers: number[];
+    includedShotNumbers: number[];
+    missingShotNumbers: number[];
+    partial: boolean;
+  };
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;

@@ -33882,6 +33882,9 @@ export const verticalDramaEpisodesRouter = router({
       let resolved: {
         ordered: EpisodeClipSource[];
         missing: { clipNumber: number }[];
+        assemblyCompleteness?: NonNullable<
+          CompiledVideoState["assemblyCompleteness"]
+        >;
       };
       try {
         resolved = resolveClipsForAssembly(clipSources, {
@@ -34180,6 +34183,9 @@ export const verticalDramaEpisodesRouter = router({
       const renderFeed = {
         owner,
         clips: resolved.ordered,
+        ...(resolved.assemblyCompleteness
+          ? { assemblyCompleteness: resolved.assemblyCompleteness }
+          : {}),
         removeDeadAir:
           input.assemblyMode === "compound" && input.removeDeadAir !== false,
         internalBaseUrl,
@@ -34230,6 +34236,7 @@ export const verticalDramaEpisodesRouter = router({
           const submitted = await submitVdRemotionAssembly({
             owner,
             clips: renderFeed.clips,
+            assemblyCompleteness: renderFeed.assemblyCompleteness,
             removeDeadAir: renderFeed.removeDeadAir,
             footage: footageSegments.length > 0 ? footageSegments : undefined,
             timelineRevision: footageTimeline.revision,
@@ -34328,6 +34335,9 @@ export const verticalDramaEpisodesRouter = router({
           retryJobId: undefined,
           status: "pending",
           error: undefined,
+          ...(resolved.assemblyCompleteness
+            ? { assemblyCompleteness: resolved.assemblyCompleteness }
+            : {}),
           renderEngine: "ffmpeg",
         });
         jobId = job.id as string;
@@ -34398,7 +34408,15 @@ export const verticalDramaEpisodesRouter = router({
         jobId,
         shotCount: resolved.ordered.length,
         missingClipNumbers: resolved.missing.map(m => m.clipNumber),
-        partial: resolved.missing.length > 0,
+        missingShotNumbers:
+          resolved.assemblyCompleteness?.missingShotNumbers ??
+          resolved.missing.map(m => m.clipNumber),
+        partial:
+          resolved.assemblyCompleteness?.partial ??
+          resolved.missing.length > 0,
+        ...(resolved.assemblyCompleteness
+          ? { assemblyCompleteness: resolved.assemblyCompleteness }
+          : {}),
         // Ad Banner Overlay (F131W, #30-A2) — designs the plan selected but
         // that were excluded from THIS render (missing/not-ready design, or
         // approval-required-and-not-approved). Always `[]` when the flag is

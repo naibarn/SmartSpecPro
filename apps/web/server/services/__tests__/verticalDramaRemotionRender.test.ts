@@ -971,6 +971,12 @@ describe("submitVdEpisodePreview", () => {
 describe("submitVdRemotionAssembly", () => {
   it("enqueues a job and persists a pending compiledVideo state stamped remotion_queue, never dispatching Lane A in-process", async () => {
     episodeRow = { assemblyManifest: {} };
+    const assemblyCompleteness = {
+      expectedShotNumbers: [1, 2],
+      includedShotNumbers: [1],
+      missingShotNumbers: [2],
+      partial: true,
+    };
     const queueJob = vi
       .fn()
       .mockResolvedValue({ created: true, job: { id: "job-1" } });
@@ -982,6 +988,7 @@ describe("submitVdRemotionAssembly", () => {
       {
         owner,
         clips: [{ clipNumber: 1, videoUrl: "https://cdn.example.com/1.mp4" }],
+        assemblyCompleteness,
         internalBaseUrl: "http://localhost:3000",
         filename: "ep-1.mp4",
         tenantId: owner.tenantId,
@@ -999,11 +1006,37 @@ describe("submitVdRemotionAssembly", () => {
       pendingJobId: "job-1",
       status: "pending",
       renderEngine: "remotion_queue",
+      assemblyCompleteness,
     });
     expect(
       typeof (episodeRow.assemblyManifest as any).compiledVideo
         .renderSubmittedAt
     ).toBe("number");
+  });
+
+  it("rejects an unreadable/corrupt required clip before queueing assembly", async () => {
+    episodeRow = { assemblyManifest: {} };
+    const queueJob = vi.fn();
+    const stageAsset = vi.fn().mockResolvedValue({
+      error: "could not probe video duration",
+      sha256: "failed-source",
+    });
+
+    await expect(
+      submitVdRemotionAssembly(
+        {
+          owner,
+          clips: [{ clipNumber: 1, videoUrl: "https://cdn.example.com/broken.mp4" }],
+          internalBaseUrl: "http://localhost:3000",
+          filename: "ep-1.mp4",
+          tenantId: owner.tenantId,
+          requestedByUserId: owner.userId,
+        },
+        { queueJob, stageAsset }
+      )
+    ).rejects.toThrow(/Could not determine duration/);
+
+    expect(queueJob).not.toHaveBeenCalled();
   });
 
   it("stages managed B-roll, resolves it for the worker, and preserves destination/source timing", async () => {

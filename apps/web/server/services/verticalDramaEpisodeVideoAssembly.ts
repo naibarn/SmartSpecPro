@@ -195,6 +195,15 @@ export interface CompiledVideoState {
   }>;
   durationSeconds?: number;
   shotCount?: number;
+  /** Canonical shot-level truth captured when this assembly was submitted.
+   *  `shotCount` is a clip count and cannot reliably identify partial output
+   *  for variable shot counts or legacy split clips. */
+  assemblyCompleteness?: {
+    expectedShotNumbers: number[];
+    includedShotNumbers: number[];
+    missingShotNumbers: number[];
+    partial: boolean;
+  };
   assembledAt?: string;
   status?: CompiledVideoStatus;
   error?: string;
@@ -391,7 +400,13 @@ export function resolveClipsForAssembly(
     storyboardShotNumbers?: readonly unknown[];
     startFrameShotNumbers?: readonly unknown[];
   } = {}
-): { ordered: EpisodeClipSource[]; missing: MissingClip[] } {
+): {
+  ordered: EpisodeClipSource[];
+  missing: MissingClip[];
+  assemblyCompleteness?: NonNullable<
+    CompiledVideoState["assemblyCompleteness"]
+  >;
+} {
   const canonical = resolveCanonicalShotAssembly({
     clips,
     storyboardShotNumbers: opts.storyboardShotNumbers,
@@ -419,7 +434,16 @@ export function resolveClipsForAssembly(
     );
   }
 
-  return { ordered: canonical.selectedClips, missing };
+  return {
+    ordered: canonical.selectedClips,
+    missing,
+    assemblyCompleteness: {
+      expectedShotNumbers: canonical.expectedShotNumbers,
+      includedShotNumbers: canonical.readyShotNumbers,
+      missingShotNumbers: canonical.missingShotNumbers,
+      partial: canonical.missingShotNumbers.length > 0,
+    },
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1374,6 +1398,9 @@ export interface RunAssemblyJobArgs {
   owner: AssembleEpisodeVideoOwner;
   jobId: string;
   clips: EpisodeClipSource[];
+  assemblyCompleteness?: NonNullable<
+    CompiledVideoState["assemblyCompleteness"]
+  >;
   /** Best-effort edge-silence trimming for Compound assembly. Detection
    *  failures leave each source clip unchanged and never fail the job. */
   removeDeadAir?: boolean;
@@ -1781,6 +1808,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         : {}),
       durationSeconds,
       shotCount: clips.length,
+      ...(args.assemblyCompleteness
+        ? { assemblyCompleteness: args.assemblyCompleteness }
+        : {}),
       protectionStatus: protectionRequested ? "processing" : "not_requested",
       ...(artifactVersions && artifactVersions.length > 0
         ? { artifactVersions }
@@ -1816,6 +1846,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       pendingJobId: undefined,
       status: "failed",
       error: message,
+      ...(args.assemblyCompleteness
+        ? { assemblyCompleteness: args.assemblyCompleteness }
+        : {}),
     }).catch(() => {
       /* best-effort — job status is still readable via jobs map while process is alive */
     });
@@ -1832,6 +1865,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
 export async function submitAssemblyJob(args: {
   owner: AssembleEpisodeVideoOwner;
   clips: EpisodeClipSource[];
+  assemblyCompleteness?: NonNullable<CompiledVideoState["assemblyCompleteness"]>;
   internalBaseUrl: string;
   filename: string;
   ffmpegRunner?: FfmpegRunner;
@@ -1850,6 +1884,9 @@ export async function submitAssemblyJob(args: {
     retryJobId: undefined,
     status: "pending",
     error: undefined,
+    ...(args.assemblyCompleteness
+      ? { assemblyCompleteness: args.assemblyCompleteness }
+      : {}),
   });
   jobs.set(jobId, { jobId, owner: args.owner, status: "pending" });
 
@@ -1858,6 +1895,7 @@ export async function submitAssemblyJob(args: {
     owner: args.owner,
     jobId,
     clips: args.clips,
+    assemblyCompleteness: args.assemblyCompleteness,
     internalBaseUrl: args.internalBaseUrl,
     filename: args.filename,
     ffmpegRunner: args.ffmpegRunner,

@@ -1214,6 +1214,9 @@ export function absoluteVdAssetUrl(url: string, baseUrl: string): string {
 export interface SubmitVdRemotionAssemblyInput {
   owner: AssembleEpisodeVideoOwner;
   clips: EpisodeClipSource[];
+  assemblyCompleteness?: NonNullable<
+    RunAssemblyJobArgs["assemblyCompleteness"]
+  >;
   /** Trims detected silent heads/tails before joining compound clips. */
   removeDeadAir?: boolean;
   /** Optional main-track footage segments. Their order already includes the
@@ -1811,6 +1814,9 @@ export async function submitVdRemotionAssembly(
     retryJobId: undefined,
     status: "pending",
     error: undefined,
+    ...(input.assemblyCompleteness
+      ? { assemblyCompleteness: input.assemblyCompleteness }
+      : {}),
     // Additive on `CompiledVideoState` — the ONLY marker
     // `reconcileVdRemotionAssembly` needs to know which queue to poll.
     renderEngine: "remotion_queue",

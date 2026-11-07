@@ -2349,6 +2349,12 @@ export interface VerticalDramaCompiledVideoView {
   }>;
   durationSeconds?: number;
   shotCount?: number;
+  assemblyCompleteness?: {
+    expectedShotNumbers: number[];
+    includedShotNumbers: number[];
+    missingShotNumbers: number[];
+    partial: boolean;
+  };
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
@@ -10979,6 +10985,19 @@ export function VerticalDramaStoryboardPanel({
                       : "The footage timeline changed after this video was rendered. Reassemble to apply the latest order."}
                   </p>
                 ) : null}
+                {compiledVideo.assemblyCompleteness?.partial ? (
+                  <p
+                    className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                    data-testid="vd-compiled-video-partial-status"
+                  >
+                    {t2.compiledVideoPartialMissingWarning.replace(
+                      "{list}",
+                      compiledVideo.assemblyCompleteness.missingShotNumbers.join(
+                        ", "
+                      ) || "unknown"
+                    )}
+                  </p>
+                ) : null}
                 {availableCompiledArtifacts.length > 0 ? (
                   <div
                     className="flex flex-wrap items-center gap-1.5"
@@ -11118,13 +11137,17 @@ export function VerticalDramaStoryboardPanel({
                       {t2.compiledVideoDurationLabel}
                     </Badge>
                   ) : null}
-                  {typeof compiledVideo.shotCount === "number" &&
-                  totalShotCount > 0 &&
-                  compiledVideo.shotCount < totalShotCount ? (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                  {compiledVideo.assemblyCompleteness?.partial ? (
+                    <Badge
+                      variant="outline"
+                      className="px-1.5 py-0 text-[9px]"
+                      data-testid="vd-compiled-video-partial-badge"
+                    >
                       {vdCopyWithCount(
                         t2.compiledVideoPartialBadge,
-                        compiledVideo.shotCount
+                        compiledVideo.shotCount ??
+                          compiledVideo.assemblyCompleteness.includedShotNumbers
+                            .length
                       )}
                     </Badge>
                   ) : null}
@@ -11136,8 +11159,16 @@ export function VerticalDramaStoryboardPanel({
                     onClick={() => {
                       const filename =
                         seriesId != null
-                          ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
-                          : "compiled-episode.mp4";
+                          ? `series-${seriesId}-ep-${episodeNumber ?? 0}-${
+                              compiledVideo.assemblyCompleteness?.partial
+                                ? "partial"
+                                : "full"
+                            }.mp4`
+                          : `compiled-episode${
+                              compiledVideo.assemblyCompleteness?.partial
+                                ? "-partial"
+                                : ""
+                            }.mp4`;
                       void downloadStoryboardMediaUrl(
                         selectedCompiledVideoUrl,
                         filename
@@ -11154,6 +11185,14 @@ export function VerticalDramaStoryboardPanel({
                     <p className="font-medium">
                       {t2.compiledVideoReassembleConfirm}
                     </p>
+                    {missingShotNumbers.length > 0 ? (
+                      <p className="mt-1 text-amber-800 dark:text-amber-300">
+                        {t2.compiledVideoMissingWarning.replace(
+                          "{list}",
+                          missingShotNumbers.join(", ")
+                        )}
+                      </p>
+                    ) : null}
                     <div className="mt-1.5 flex gap-1.5">
                       <Button
                         type="button"
@@ -11217,6 +11256,14 @@ export function VerticalDramaStoryboardPanel({
                         }`;
                   })()}
                 </p>
+                {missingShotNumbers.length > 0 ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t2.compiledVideoMissingWarning.replace(
+                      "{list}",
+                      missingShotNumbers.join(", ")
+                    )}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {locale === "th"
                     ? "ถ้างานเดิมยัง retry ได้ ให้กดปุ่ม ‘ลอง retry งานเดิม’ เพื่อใช้ job เดิมโดยไม่เริ่ม workflow ใหม่; ปุ่ม ‘ลองใหม่’ ด้านล่างเป็นทางเลือกสำหรับส่งงานประกอบใหม่"
@@ -11255,7 +11302,9 @@ export function VerticalDramaStoryboardPanel({
                       className="h-3.5 w-3.5 animate-spin"
                     />
                   ) : null}
-                  {t2.compiledVideoRetry}
+                  {missingShotNumbers.length > 0
+                    ? t2.compiledVideoAssemblePartial
+                    : t2.compiledVideoRetry}
                 </Button>
               </div>
             ) : compiledVideo?.status === "pending" ||
@@ -11268,6 +11317,19 @@ export function VerticalDramaStoryboardPanel({
                   />
                   {t2.compiledVideoProcessing}
                 </div>
+                {compiledVideo?.assemblyCompleteness?.partial ? (
+                  <p
+                    className="pl-6 text-xs text-amber-700 dark:text-amber-300"
+                    data-testid="vd-compiled-video-partial-pending"
+                  >
+                    {t2.compiledVideoPartialMissingWarning.replace(
+                      "{list}",
+                      compiledVideo.assemblyCompleteness.missingShotNumbers.join(
+                        ", "
+                      ) || "unknown"
+                    )}
+                  </p>
+                ) : null}
                 <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
                   <span>{t2.compiledVideoQueuedHint}</span>
                   <Link
@@ -11322,8 +11384,12 @@ export function VerticalDramaStoryboardPanel({
                     />
                   ) : null}
                   {locale === "th"
-                    ? "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
-                    : "Start a new assembly (if this is stuck)"}
+                    ? missingShotNumbers.length > 0
+                      ? "เริ่มประกอบเฉพาะคลิปที่เสร็จแล้ว"
+                      : "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
+                    : missingShotNumbers.length > 0
+                      ? "Assemble with completed clips only"
+                      : "Start a new assembly (if this is stuck)"}
                 </Button>
               </div>
             ) : (

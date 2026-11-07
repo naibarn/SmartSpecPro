@@ -564,7 +564,9 @@ export const VD_COPY = {
       "This replaces the current compiled video and cannot be undone.",
     compiledVideoReadyHint: "{ready}/{total} clips ready",
     compiledVideoMissingWarning:
-      "Missing clips: {list} — generate those clips first, or assemble with only the completed clips.",
+      "Video is not ready for shots: {list} — generate those videos first, or assemble with only the completed clips.",
+    compiledVideoPartialMissingWarning:
+      "This partial video omits shots {list}; still images and placeholders are not counted as generated video clips.",
     compiledVideoAssemblePartial: "Assemble with completed clips only",
     compiledVideoProcessing: "Assembling the full Sub-episode video…",
     compiledVideoQueuedHint:
@@ -1320,7 +1322,9 @@ export const VD_COPY = {
       "การทำนี้จะแทนที่วิดีโอรวมที่มีอยู่ และย้อนกลับไม่ได้",
     compiledVideoReadyHint: "พร้อม {ready}/{total} คลิป",
     compiledVideoMissingWarning:
-      "ยังไม่มีคลิป: {list} — สร้างคลิปเหล่านี้ก่อน หรือประกอบเฉพาะช็อตที่เสร็จแล้ว",
+      "วิดีโอของช็อต {list} ยังไม่พร้อม — สร้างวิดีโอก่อน หรือประกอบเฉพาะคลิปที่เสร็จแล้ว",
+    compiledVideoPartialMissingWarning:
+      "วิดีโอนี้เว้นช็อต {list} ที่ยังขาดไว้ ภาพนิ่งและ placeholder จะไม่นับเป็นคลิปวิดีโอที่สร้างแล้ว",
     compiledVideoAssemblePartial: "ประกอบเฉพาะช็อตที่เสร็จแล้ว",
     compiledVideoProcessing: "กำลังประกอบวิดีโอรวม Sub-episode…",
     compiledVideoQueuedHint:

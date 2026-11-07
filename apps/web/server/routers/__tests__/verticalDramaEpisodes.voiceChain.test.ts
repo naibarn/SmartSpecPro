@@ -54,6 +54,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -102,6 +103,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
@@ -153,6 +158,10 @@ vi.mock("../../services/verticalDramaProviderRouting", () => ({
 vi.mock("../../services/verticalDramaSeriesMemory", () => ({
   verticalDramaSeriesMemoryService: {},
   memoryRowToEvent: vi.fn(),
+}));
+
+vi.mock("../../services/verticalDramaVisualSourceSnapshotService", () => ({
+  captureSeriesVisualSourceSnapshot: vi.fn(async () => null),
 }));
 
 vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
@@ -790,6 +799,79 @@ describe("assembleEpisodeVideo — dialogueAudioTimeline merge (W12-A)", () => {
     expect(mockSubmitVdRemotionAssembly).toHaveBeenCalledWith(
       expect.objectContaining({ clips: selectedClipSources }),
     );
+  });
+
+  it("returns and persists the exact partial shot scope without letting advisory QA filter ready clips", async () => {
+    const selectedClipSources = [
+      {
+        clipNumber: 1,
+        videoUrl: "https://cdn.example.com/1.mp4",
+        identityQc: { status: "fail", verdict: "identity_break" },
+      },
+    ];
+    const assemblyCompleteness = {
+      expectedShotNumbers: [1, 2],
+      includedShotNumbers: [1],
+      missingShotNumbers: [2],
+      partial: true,
+    };
+    vi.mocked(episodeVideoAssembly.resolveClipsForAssembly).mockReturnValue({
+      ordered: selectedClipSources as any,
+      missing: [{ clipNumber: 2 }],
+      assemblyCompleteness,
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesVoiceChain: false,
+    });
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...EPISODE_ROW_BASE,
+            motionPromptPack: {},
+            storyboard: { shots: [{ shot_number: 1 }, { shot_number: 2 }] },
+          },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([{ title: "Series 10" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ episodeKind: "normal" }]));
+
+    const result = await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20", allowPartial: true },
+    });
+
+    expect(result).toMatchObject({
+      partial: true,
+      missingClipNumbers: [2],
+      missingShotNumbers: [2],
+      assemblyCompleteness,
+    });
+    expect(episodeVideoAssembly.resolveClipsForAssembly).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ allowPartial: true }),
+    );
+    expect(mockSubmitVdRemotionAssembly).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clips: selectedClipSources,
+        assemblyCompleteness,
+      }),
+    );
+  });
+
+  it("fails closed for a caller that does not own the episode before resolving partial clips", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+
+    await expect(
+      router.assembleEpisodeVideo({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "20", allowPartial: true },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(episodeVideoAssembly.resolveClipsForAssembly).not.toHaveBeenCalled();
+    expect(mockSubmitVdRemotionAssembly).not.toHaveBeenCalled();
   });
 
   it("flag OFF: never queries for a fresh manifest or writes dialogueAudioTimeline", async () => {

@@ -229,6 +229,63 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     });
     expect(ordered.map(c => c.clipNumber)).toEqual([1, 3]);
     expect(missing.map(m => m.clipNumber)).toEqual([2]);
+    expect(
+      resolveClipsForAssembly(clips, { allowPartial: true })
+        .assemblyCompleteness
+    ).toEqual({
+      expectedShotNumbers: [1, 2, 3],
+      includedShotNumbers: [1, 3],
+      missingShotNumbers: [2],
+      partial: true,
+    });
+  });
+
+  it("keeps a technically complete clip eligible when advisory identity QC warns or fails", () => {
+    const warnedClip = {
+      clipNumber: 1,
+      videoUrl: "/ready.mp4",
+      identityQc: { status: "fail", verdict: "identity_break" },
+    } as EpisodeClipSource;
+
+    const result = resolveClipsForAssembly([warnedClip], {
+      storyboardShotNumbers: [1],
+    });
+
+    expect(result.ordered).toEqual([warnedClip]);
+    expect(result.assemblyCompleteness).toEqual({
+      expectedShotNumbers: [1],
+      includedShotNumbers: [1],
+      missingShotNumbers: [],
+      partial: false,
+    });
+  });
+
+  it("never treats a still image or placeholder as a completed video clip", () => {
+    const actualClip = { clipNumber: 1, videoUrl: "/ready.mp4" };
+    const stillOnly = {
+      clipNumber: 2,
+      stillImageUrl: "/shot-2.png",
+      placeholder: true,
+    } as EpisodeClipSource;
+
+    const result = resolveClipsForAssembly([actualClip, stillOnly], {
+      allowPartial: true,
+      storyboardShotNumbers: [1, 2],
+    });
+
+    expect(result.ordered).toEqual([actualClip]);
+    expect(result.assemblyCompleteness).toEqual({
+      expectedShotNumbers: [1, 2],
+      includedShotNumbers: [1],
+      missingShotNumbers: [2],
+      partial: true,
+    });
+    expect(() =>
+      resolveClipsForAssembly([stillOnly], {
+        allowPartial: true,
+        storyboardShotNumbers: [2],
+      })
+    ).toThrowError(/no_clips|no completed video/);
   });
 
   it("uses canonical partial assembly with clip-derived fallback", () => {
@@ -261,6 +318,12 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     const { ordered, missing } = resolveClipsForAssembly(complete);
     expect(ordered).toHaveLength(3);
     expect(missing).toEqual([]);
+    expect(resolveClipsForAssembly(complete).assemblyCompleteness).toEqual({
+      expectedShotNumbers: [1, 2, 3],
+      includedShotNumbers: [1, 2, 3],
+      missingShotNumbers: [],
+      partial: false,
+    });
   });
 });
 
@@ -599,10 +662,17 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     // construction regardless of how long the async chain actually takes.
     const fakeRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
     const fakeProbe = vi.fn(async () => undefined);
+    const assemblyCompleteness = {
+      expectedShotNumbers: [1, 2, 3],
+      includedShotNumbers: [1, 3],
+      missingShotNumbers: [2],
+      partial: true,
+    };
 
     const { jobId } = await submitAssemblyJob({
       owner,
       clips,
+      assemblyCompleteness,
       internalBaseUrl: "http://localhost:3000",
       filename: "series-x-ep-1-compiled.mp4",
       ffmpegRunner: fakeRunner,
@@ -629,6 +699,7 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     expect(compiled.status).toBe("completed");
     expect(compiled.videoUrl).toContain("/api/storage/files/");
     expect(compiled.shotCount).toBe(2);
+    expect(compiled.assemblyCompleteness).toEqual(assemblyCompleteness);
     expect(compiled.pendingJobId).toBeUndefined();
     expect(compiled.error).toBeUndefined();
   });

@@ -81,6 +81,97 @@ describe("VerticalDramaStoryboardPanel — Remotion render badge (planning/vd-re
     ).not.toBeInTheDocument();
   });
 
+  it("labels partial output from its stored canonical missing-shot list", async () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          compiledVideo: {
+            status: "completed",
+            videoUrl: "https://cdn.example.com/partial.mp4",
+            shotCount: 1,
+            assemblyCompleteness: {
+              expectedShotNumbers: [1, 9],
+              includedShotNumbers: [1],
+              missingShotNumbers: [9],
+              partial: true,
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      await screen.findByTestId("vd-compiled-video-partial-badge")
+    ).toHaveTextContent("บางส่วน (1 คลิป)");
+    expect(screen.getByTestId("vd-compiled-video-partial-status")).toHaveTextContent(
+      "เว้นช็อต 9 ที่ยังขาดไว้"
+    );
+    expect(screen.getByTestId("vd-compiled-video-partial-status")).toHaveTextContent(
+      "ภาพนิ่งและ placeholder จะไม่นับเป็นคลิปวิดีโอที่สร้างแล้ว"
+    );
+  });
+
+  it("does not infer partial output from clip count when the stored shot scope is complete", async () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          compiledVideo: {
+            status: "completed",
+            videoUrl: "https://cdn.example.com/complete.mp4",
+            shotCount: 0,
+            assemblyCompleteness: {
+              expectedShotNumbers: [1],
+              includedShotNumbers: [1],
+              missingShotNumbers: [],
+              partial: false,
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    await screen.findByTestId("vd-compiled-video-download");
+    expect(screen.queryByTestId("vd-compiled-video-partial-badge")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("vd-compiled-video-partial-status")).not.toBeInTheDocument();
+  });
+
+  it("labels the partial assembly choice before explicitly submitting allowPartial", async () => {
+    const onAssemble = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              { shot_number: 1, visual_description: "ready", characters: [] },
+              { shot_number: 2, visual_description: "missing", characters: [] },
+            ],
+          },
+          motionPromptPack: {
+            selectedVideoModelId: "model",
+            durationProfileId: "test",
+            motionMode: "image_to_video",
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "ready",
+                durationSeconds: 8,
+                videoTask: { videoUrl: "/ready.mp4" },
+              },
+            ],
+            warnings: [],
+          },
+          onAssembleCompiledVideo: onAssemble,
+        }) as any)}
+      />
+    );
+
+    const assembleButton = await screen.findByTestId("vd-compiled-video-assemble");
+    expect(assembleButton).toHaveTextContent("ประกอบเฉพาะช็อตที่เสร็จแล้ว");
+    fireEvent.click(assembleButton);
+    expect(onAssemble).toHaveBeenCalledWith({ allowPartial: true });
+  });
+
   it("shows a direct retry action for a server-approved existing worker job", async () => {
     const onRetry = vi.fn();
     render(
