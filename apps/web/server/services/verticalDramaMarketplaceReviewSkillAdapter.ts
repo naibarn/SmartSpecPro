@@ -728,10 +728,34 @@ export function validateMarketplaceReviewIdeaOutput(
   return output;
 }
 
+export function removeMarketplacePriceReferences(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(removeMarketplacePriceReferences);
+  if (!value || typeof value !== "object") {
+    if (typeof value !== "string") return value;
+    return value
+      .split(/(?<=[.!?。])\s+|\n+/)
+      .filter(
+        part =>
+          !/(ราคา|price|฿|\$|€|£|¥|บาท|\bthb\b|\busd\b|ส่วนลด|discount|coupon|voucher|โปรโมชั่น|promotion|โปรโมชัน)/i.test(part)
+      )
+      .join(" ")
+      .trim();
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !/(price|discount|coupon|voucher|promotion|promo)/i.test(key))
+      .map(([key, item]) => [key, removeMarketplacePriceReferences(item)])
+  );
+}
+
 function buildUserPrompt(
   input: MarketplaceReviewIdeaInput,
   repairFeedback?: string,
 ): string {
+  const promptInput =
+    input.productSource === "marketplace_capture"
+      ? removeMarketplacePriceReferences(input)
+      : input;
   return JSON.stringify({
     task: "สร้างไอเดียรีวิวหรือเล่าเรื่องแบบซีรีย์ 3 ใบ โดยแต่ละใบต้องระบุรูปแบบการนำเสนอและโครงสร้างเรื่องให้ตรงกับประเภทหัวข้อที่ผู้ใช้เลือก",
     reviewSubjectType: input.reviewSubjectType,
@@ -849,7 +873,7 @@ function buildUserPrompt(
     productSourceRules:
       input.productSource === "upload"
         ? "The product.description and direction are the user's written brief about the selected review subject. Use only those stated facts; when the brief is empty, keep the story visual and conservative. Treat uploaded and selected images as visual references, not as evidence for unseen pricing, services, features, performance, opening hours, or claims."
-        : "Use the Marketplace product record as the source of product facts; treat optional direction as the user's story preference.",
+        : "Use the Marketplace product record as the authoritative source of product facts; optional direction and saved AI insights are creative guidance only and must never override product facts. Never mention current/original prices, discounts, coupons, vouchers, or promotions in the story, ideas, dialogue, or video concepts.",
     dialogueRules: {
       eligibleAdultSpeakerNames: input.dialogueSpeakerCharacterNames,
       prohibitedSpeakerNames: input.dialogueProhibitedCharacterNames,
@@ -867,7 +891,7 @@ function buildUserPrompt(
             : "ใช้รายละเอียดหัวข้อรีวิวและทิศทางที่ผู้ใช้ให้มาเป็นข้อมูลประกอบการคิดไอเดีย ให้หัวข้อเข้ากับเหตุการณ์หรือการกระทำอย่างเป็นธรรมชาติ ห้ามมีบทพูด",
     },
     repairFeedback: repairFeedback || undefined,
-    input,
+    input: promptInput,
   });
 }
 

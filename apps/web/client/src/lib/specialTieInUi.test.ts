@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSpecialTieInMarketplaceProductBrief,
   canAddSpecialReferences,
   resolveSpecialTieInCharacterId,
   specialEpisodeLabel,
@@ -7,6 +8,34 @@ import {
 } from "./specialTieInUi";
 
 describe("special tie-in UI constraints", () => {
+  it("builds a product brief from saved insights without volatile price or promo text", () => {
+    const brief = buildSpecialTieInMarketplaceProductBrief({
+      productName: "SKG espresso machine SK-1222",
+      brand: "SKG",
+      productCategory: "Coffee appliances",
+      supportingInsights: {
+        summary: {
+          shortSummary: "เครื่องชงกาแฟพร้อมเครื่องบดในตัว ราคา ฿5,790",
+          sellingPoints: ["หัวชงมาตรฐาน 58 มม.", "ส่วนลด 30% วันนี้"],
+          contentAngles: ["สาธิตการชงกาแฟที่บ้าน"],
+        },
+        storytelling: {
+          storyOptions: [{
+            recommended: true,
+            title: "มุมกาแฟที่บ้าน",
+            hook: "เริ่มวันด้วยกาแฟแก้วโปรด",
+            videoBrief: { scenes: [{ sceneGoal: "สาธิตการชงกาแฟ" }] },
+          }],
+        },
+      },
+    });
+
+    expect(brief).toContain("SKG espresso machine SK-1222");
+    expect(brief).toContain("หัวชงมาตรฐาน 58 มม.");
+    expect(brief).toContain("มุมกาแฟที่บ้าน");
+    expect(brief).not.toMatch(/5,790|฿|ส่วนลด|30%/);
+  });
+
   it("enforces the aggregate three-reference cap", () => {
     expect(canAddSpecialReferences(1, 2)).toBe(true);
     expect(canAddSpecialReferences(2, 2)).toBe(false);

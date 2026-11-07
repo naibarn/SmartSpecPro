@@ -7,6 +7,7 @@ import {
   Loader2,
   MapPin,
   Search,
+  Sparkles,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSe
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
 import {
+  buildSpecialTieInMarketplaceProductBrief,
   canAddSpecialReferences,
   resolveSpecialTieInCharacterId,
   shouldLoadSpecialTieInHistory,
@@ -1871,7 +1873,7 @@ export function SpecialTieInEpisodeDialog({
     }
   };
 
-  const generateMarketplaceIdeas = async () => {
+  const generateMarketplaceIdeas = async (directionOverride?: string) => {
     const visualReferenceImages = references.map(reference => ({
       mediaAssetId: reference.mediaAssetId,
       ...(reference.source === "marketplace_capture"
@@ -1938,9 +1940,11 @@ export function SpecialTieInEpisodeDialog({
           ? footageAnalysisOutput?.guide
           : undefined,
         direction:
-          selectedMarketplaceIdea || !idea.trim()
-            ? undefined
-            : idea.trim().slice(0, 2_000),
+          directionOverride !== undefined
+            ? directionOverride.trim().slice(0, 2_000) || undefined
+            : selectedMarketplaceIdea || !idea.trim()
+              ? undefined
+              : idea.trim().slice(0, 2_000),
         productBrief:
           !usingMarketplaceProduct && idea.trim()
             ? idea.trim().slice(0, 8_000)
@@ -1964,6 +1968,29 @@ export function SpecialTieInEpisodeDialog({
             : "Could not generate ideas"
       );
     }
+  };
+
+  const generateIdeasFromMarketplaceProduct = () => {
+    if (!selectedProduct) {
+      toast.error(
+        lang === "th"
+          ? "เลือกสินค้าจาก Marketplace Capture ก่อน"
+          : "Choose a Marketplace Capture product first"
+      );
+      return;
+    }
+    const productBrief = buildSpecialTieInMarketplaceProductBrief(selectedProduct);
+    if (!productBrief.trim()) {
+      toast.error(
+        lang === "th"
+          ? "สินค้านี้ยังไม่มีข้อมูลเพียงพอสำหรับสร้าง Product Brief"
+          : "This product does not have enough information for a Product Brief"
+      );
+      return;
+    }
+    setIdea(productBrief);
+    setSelectedMarketplaceIdea(null);
+    void generateMarketplaceIdeas(productBrief);
   };
 
   const chooseMarketplaceIdea = async (
@@ -3306,7 +3333,35 @@ export function SpecialTieInEpisodeDialog({
                   ) : null}
                   {lang === "th" ? "สร้างไอเดีย 3 ใบ" : "Generate 3 ideas"}
                 </Button>
+                {hasMarketplaceProductContext ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      !selectedProduct ||
+                      generateIdeasMutation.isPending ||
+                      Boolean(ideaGenerationJobId) ||
+                      characterIds.length === 0
+                    }
+                    onClick={generateIdeasFromMarketplaceProduct}
+                  >
+                    {generateIdeasMutation.isPending || ideaGenerationJobId ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    {lang === "th" ? "ใช้ Product Brief สร้างไอเดีย" : "Use Product Brief"}
+                  </Button>
+                ) : null}
               </div>
+              {hasMarketplaceProductContext ? (
+                <p className="text-xs text-muted-foreground">
+                  {lang === "th"
+                    ? "ดึงข้อมูลสินค้าและแนวคิด AI ที่บันทึกไว้มาเติมโจทย์ให้อัตโนมัติ โดยไม่ใช้ราคาและโปรโมชัน"
+                    : "Automatically use saved product details and AI concepts as the brief, without prices or promotions."}
+                </p>
+              ) : null}
               <fieldset className="grid gap-2 sm:grid-cols-2">
                 <fieldset className="min-w-0 space-y-1 sm:col-span-2">
                   <Label htmlFor="special-tie-in-review-subject-type">

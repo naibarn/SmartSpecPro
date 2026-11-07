@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMarketplaceReviewIdeaResumeSnapshot,
+  removeMarketplacePriceReferences,
   validateMarketplaceReviewIdeaOutput,
 } from "../verticalDramaMarketplaceReviewSkillAdapter";
 
@@ -53,6 +54,21 @@ const paragraphs = [
 ].join("\n\n");
 
 describe("Marketplace review idea output gate", () => {
+  it("removes volatile price and promotion data from saved creative context", () => {
+    expect(
+      removeMarketplacePriceReferences({
+        sellingPoint: "หัวชงมาตรฐาน 58 มม.",
+        price: 5790,
+        story: "สาธิตการชงกาแฟ ราคา ฿5,790",
+        contentAngle: "การชงกาแฟที่บ้าน",
+      })
+    ).toEqual({
+      sellingPoint: "หัวชงมาตรฐาน 58 มม.",
+      story: "",
+      contentAngle: "การชงกาแฟที่บ้าน",
+    });
+  });
+
   it("requires three connected story paragraphs and two named dialogue lines", () => {
     const output = {
       schemaVersion: 1,
