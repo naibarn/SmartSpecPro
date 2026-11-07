@@ -46,8 +46,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
+import {
+  clearSpecialTieInEpisodeDraft,
+  hasMeaningfulSpecialTieInDraft,
+  readSpecialTieInEpisodeDraft,
+  specialTieInEpisodeDraftKey,
+  writeSpecialTieInEpisodeDraft,
+  type SpecialTieInEpisodeDraftValues,
+} from "@/lib/specialTieInEpisodeDraft";
 import {
   buildSpecialTieInMarketplaceProductBrief,
   canAddSpecialReferences,
@@ -137,6 +146,37 @@ type Reference = {
   previewUrl?: string;
   provenance?: Record<string, unknown>;
 };
+
+export function buildSpecialTieInSceneHref(
+  seriesId: string,
+  locationKey: string
+): string {
+  return `/drama-series/${seriesId}?tab=scenes&locationKey=${encodeURIComponent(locationKey)}`;
+}
+
+export function SpecialTieInSceneLink({
+  lang,
+  seriesId,
+  locationKey,
+}: {
+  lang: "th" | "en";
+  seriesId: string;
+  locationKey: string;
+}) {
+  return (
+    <Button asChild variant="outline">
+      <a
+        href={buildSpecialTieInSceneHref(seriesId, locationKey)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {lang === "th"
+          ? "เปิดหน้าฉากเพื่อสร้างภาพ"
+          : "Open Scenes to generate image"}
+      </a>
+    </Button>
+  );
+}
 
 function referenceTypeForReviewSubject(
   subjectType: MarketplaceReviewIdeaInput["reviewSubjectType"],
@@ -590,6 +630,8 @@ export function SpecialTieInEpisodeDialog({
   initialMode?: SpecialTieInStartMode;
   onSubmitInput?: (input: SpecialTieInInput) => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const isEditingExistingEpisode = Boolean(initialInput || onSubmitInput);
   const utils = trpc.useUtils();
   const [idea, setIdea] = useState("");
   const [presentationStyle, setPresentationStyle] =
@@ -679,6 +721,180 @@ export function SpecialTieInEpisodeDialog({
   const debouncedProductQuery = useDebouncedValue(productQuery, 300);
   const { requestConfirmation, cancelConfirmation, creditConfirmDialog } =
     useVerticalDramaCreditConfirmation();
+  const draftKey = useMemo(
+    () =>
+      specialTieInEpisodeDraftKey({
+        tenantId: user?.currentTenantId,
+        userId: user?.id,
+        seriesId,
+      }),
+    [seriesId, user?.currentTenantId, user?.id]
+  );
+  const [draftHydratedKey, setDraftHydratedKey] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
+  const [draftSaved, setDraftSaved] = useState<boolean | null>(null);
+  const draftValues = useMemo<SpecialTieInEpisodeDraftValues>(
+    () => ({
+      idea,
+      presentationStyle,
+      reviewSubjectType,
+      storyStructure,
+      referenceType,
+      references,
+      characterIds,
+      speakerCharacterIds,
+      durationSeconds: durationSeconds as SpecialTieInEpisodeDraftValues["durationSeconds"],
+      dialogueMode,
+      dialogueBrief,
+      shotDialogueDrafts,
+      allowAdditionalCharacters,
+      lockCharacterReferences,
+      lockReferenceImages,
+      imageModelId,
+      videoModelId,
+      ideaLlmModelId,
+      productQuery,
+      selectedProductId,
+      pendingImageIds,
+      selectedLocationId,
+      sceneSuggestions,
+      sceneChoiceByLabel,
+      selectedSceneLocationKey,
+      selectedIdeaId,
+      selectedMarketplaceIdea,
+      footageAssetId,
+      footageFileName,
+      footageAnalysisJobId,
+      footagePrepareJobId,
+      footageTrimStartMs,
+      footageTrimEndMs,
+      brollAssetId,
+      brollStartMs,
+      brollEndMs,
+      brollSourceInMs,
+      brollPlacements,
+      brollRenderJobId,
+    }),
+    [
+      idea,
+      presentationStyle,
+      reviewSubjectType,
+      storyStructure,
+      referenceType,
+      references,
+      characterIds,
+      speakerCharacterIds,
+      durationSeconds,
+      dialogueMode,
+      dialogueBrief,
+      shotDialogueDrafts,
+      allowAdditionalCharacters,
+      lockCharacterReferences,
+      lockReferenceImages,
+      imageModelId,
+      videoModelId,
+      ideaLlmModelId,
+      productQuery,
+      selectedProductId,
+      pendingImageIds,
+      selectedLocationId,
+      sceneSuggestions,
+      sceneChoiceByLabel,
+      selectedSceneLocationKey,
+      selectedIdeaId,
+      selectedMarketplaceIdea,
+      footageAssetId,
+      footageFileName,
+      footageAnalysisJobId,
+      footagePrepareJobId,
+      footageTrimStartMs,
+      footageTrimEndMs,
+      brollAssetId,
+      brollStartMs,
+      brollEndMs,
+      brollSourceInMs,
+      brollPlacements,
+      brollRenderJobId,
+    ]
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setDraftHydratedKey(null);
+      setDraftRestoredAt(null);
+      setDraftSaved(null);
+      return;
+    }
+    // Episode edits have their own server-backed source of truth.
+    if (isEditingExistingEpisode) {
+      setDraftHydratedKey(null);
+      setDraftRestoredAt(null);
+      return;
+    }
+
+    const saved = readSpecialTieInEpisodeDraft(draftKey);
+    if (saved) {
+      // The local form draft is newer than the optional server idea-history
+      // resume snapshot. Keep that snapshot from replacing these edits.
+      historyHydratedRef.current = true;
+      const draft = saved.values;
+      setIdea(draft.idea);
+      setPresentationStyle(draft.presentationStyle);
+      setReviewSubjectType(draft.reviewSubjectType);
+      setStoryStructure(draft.storyStructure);
+      setReferenceType(draft.referenceType);
+      setReferences(draft.references);
+      setCharacterIds(draft.characterIds);
+      setSpeakerCharacterIds(draft.speakerCharacterIds);
+      setDurationSeconds(draft.durationSeconds);
+      setDialogueMode(draft.dialogueMode);
+      setDialogueBrief(draft.dialogueBrief);
+      setShotDialogueDrafts(draft.shotDialogueDrafts);
+      setAllowAdditionalCharacters(draft.allowAdditionalCharacters);
+      setLockCharacterReferences(draft.lockCharacterReferences);
+      setLockReferenceImages(draft.lockReferenceImages);
+      setImageModelId(draft.imageModelId);
+      setVideoModelId(draft.videoModelId);
+      setIdeaLlmModelId(draft.ideaLlmModelId);
+      setProductQuery(draft.productQuery);
+      setSelectedProductId(draft.selectedProductId);
+      setPendingImageIds(draft.pendingImageIds);
+      setSelectedLocationId(draft.selectedLocationId);
+      setSceneSuggestions(draft.sceneSuggestions);
+      setSceneChoiceByLabel(draft.sceneChoiceByLabel);
+      setSelectedSceneLocationKey(draft.selectedSceneLocationKey);
+      setSelectedIdeaId(draft.selectedIdeaId);
+      setSelectedMarketplaceIdea(draft.selectedMarketplaceIdea);
+      setFootageAssetId(draft.footageAssetId);
+      setFootageFileName(draft.footageFileName);
+      setFootageAnalysisJobId(draft.footageAnalysisJobId);
+      setFootagePrepareJobId(draft.footagePrepareJobId);
+      setFootageTrimStartMs(draft.footageTrimStartMs);
+      setFootageTrimEndMs(draft.footageTrimEndMs);
+      setBrollAssetId(draft.brollAssetId);
+      setBrollStartMs(draft.brollStartMs);
+      setBrollEndMs(draft.brollEndMs);
+      setBrollSourceInMs(draft.brollSourceInMs);
+      setBrollPlacements(draft.brollPlacements);
+      setBrollRenderJobId(draft.brollRenderJobId);
+      setMarketplaceOpen(draft.pendingImageIds.length > 0);
+      setDraftRestoredAt(saved.savedAt);
+    } else {
+      setDraftRestoredAt(null);
+    }
+    setDraftHydratedKey(draftKey);
+  }, [open, draftKey, isEditingExistingEpisode]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !draftKey ||
+      draftHydratedKey !== draftKey ||
+      isEditingExistingEpisode
+    )
+      return;
+    setDraftSaved(writeSpecialTieInEpisodeDraft(draftKey, draftValues));
+  }, [open, draftKey, draftHydratedKey, draftValues, isEditingExistingEpisode]);
 
   useEffect(() => {
     if (!open) cancelConfirmation();
@@ -2407,6 +2623,8 @@ export function SpecialTieInEpisodeDialog({
           : "Special episode created; prompts are being generated"
       );
       onOpenChange(false);
+      clearSpecialTieInEpisodeDraft(draftKey);
+      setDraftRestoredAt(null);
       onCreated?.(String(result.episodeId));
     } catch (error) {
       toast.error(
@@ -2461,16 +2679,25 @@ export function SpecialTieInEpisodeDialog({
 
   const reset = () => {
     setIdea("");
+    setPresentationStyle("varied");
     setReviewSubjectType("product");
+    setStoryStructure("varied");
+    setReferenceType("product");
     setReferences([]);
     setCharacterIds([]);
     setSpeakerCharacterIds([]);
-    setDialogueMode("none");
+    setDurationSeconds(10);
+    setDialogueMode(DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE);
     setDialogueBrief("");
+    setShotDialogueDrafts([]);
+    setAllowAdditionalCharacters(false);
+    setLockCharacterReferences(true);
+    setLockReferenceImages(true);
     setImageModelId("");
     setVideoModelId("");
     setIdeaLlmModelId("auto");
     setMarketplaceOpen(false);
+    setProductQuery("");
     setPendingImageIds([]);
     setSelectedProductId(null);
     setSelectedLocationId(null);
@@ -2481,9 +2708,11 @@ export function SpecialTieInEpisodeDialog({
     setIdeaGenerationJobScopeKey(null);
     setFreshIdeaRunId(null);
     setShowIdeaHistory(false);
+    historyHydratedRef.current = false;
     setSelectedIdeaId(null);
     setSelectedMarketplaceIdea(null);
     setSceneSuggestions([]);
+    setSceneChoiceByLabel({});
     setSelectedSceneLocationKey(null);
     setFootageAssetId(null);
     setFootageFileName("");
@@ -2500,6 +2729,16 @@ export function SpecialTieInEpisodeDialog({
     setBrollPlacements([]);
     setBrollRenderJobId(null);
     setBrollFullscreen(false);
+    setLightbox(null);
+  };
+
+  const discardSavedDraft = () => {
+    clearSpecialTieInEpisodeDraft(draftKey);
+    reset();
+    historyHydratedRef.current = true;
+    setDraftRestoredAt(null);
+    setDraftSaved(true);
+    setDraftHydratedKey(draftKey);
   };
 
   const addExistingLocationAsset = (asset: {
@@ -2537,7 +2776,19 @@ export function SpecialTieInEpisodeDialog({
     <Dialog
       open={open}
       onOpenChange={value => {
-        if (!value) reset();
+        if (!value) {
+          if (
+            !isEditingExistingEpisode &&
+            draftKey &&
+            draftHydratedKey === draftKey
+          ) {
+            setDraftSaved(writeSpecialTieInEpisodeDraft(draftKey, draftValues));
+          }
+          reset();
+          setDraftHydratedKey(null);
+          setDraftRestoredAt(null);
+          setDraftSaved(null);
+        }
         onOpenChange(value);
       }}
     >
@@ -2555,6 +2806,43 @@ export function SpecialTieInEpisodeDialog({
               : "For product, location, or store tie-ins. Prompts for start frames and video are generated automatically without using the normal Overview story."}
           </DialogDescription>
         </DialogHeader>
+
+        {!isEditingExistingEpisode &&
+        Boolean(draftKey) &&
+        draftHydratedKey === draftKey &&
+        (draftRestoredAt !== null ||
+          hasMeaningfulSpecialTieInDraft(draftValues)) ? (
+          <section
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs"
+            role="status"
+          >
+            <p className="text-muted-foreground">
+              {draftSaved === false
+                ? lang === "th"
+                  ? "บันทึกฉบับร่างในเบราว์เซอร์นี้ไม่สำเร็จ"
+                  : "This browser could not save the draft"
+                : draftSaved === null
+                  ? lang === "th"
+                    ? "กำลังบันทึกฉบับร่างอัตโนมัติ..."
+                    : "Saving draft automatically…"
+                  : draftRestoredAt !== null
+                    ? lang === "th"
+                      ? "กู้คืนฉบับร่างแล้ว · บันทึกอัตโนมัติในเบราว์เซอร์นี้"
+                      : "Draft restored · automatically saved in this browser"
+                    : lang === "th"
+                      ? "บันทึกฉบับร่างอัตโนมัติในเบราว์เซอร์นี้แล้ว"
+                      : "Draft is saved automatically in this browser"}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={discardSavedDraft}
+            >
+              {lang === "th" ? "ล้างฉบับร่าง" : "Discard draft"}
+            </Button>
+          </section>
+        ) : null}
 
         <section
           className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3"
@@ -3950,20 +4238,11 @@ export function SpecialTieInEpisodeDialog({
                         : "This scene has no image yet. Generate one in the Scenes tab."}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    onOpenChange(false);
-                    window.location.assign(
-                      `/drama-series/${seriesId}?tab=scenes&locationKey=${encodeURIComponent(selectedSceneLocationKey)}`
-                    );
-                  }}
-                >
-                  {lang === "th"
-                    ? "เปิดหน้าฉากเพื่อสร้างภาพ"
-                    : "Open Scenes to generate image"}
-                </Button>
+                <SpecialTieInSceneLink
+                  lang={lang}
+                  seriesId={seriesId}
+                  locationKey={selectedSceneLocationKey}
+                />
               </div>
             ) : null}
 
