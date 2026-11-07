@@ -3,23 +3,23 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `7`
-- Updated (UTC): `2026-11-07T09:52:16.372817+00:00`
+- State generation: `10`
+- Updated (UTC): `2026-11-07T10:14:33.958288+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/04-p3-audio-editing-and-cross-episode/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `6e2f2ed404731273a51b9d3585205b99c4a2b765`
+- Latest recorded merged Main SHA: `747109a597ac49e0e30ad30a65a2d559292193d8`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-audio-qc-editing-and-assembly`
-- Next action: Continue Section 02: implement source-bound repair and QC through canonical worker_jobs plus outbox, with billing/idempotency and artifact writeback; then wire real stems into mastering and assembly.
+- Next action: Audit canonical audio repair job contracts, worker_jobs/outbox, credit reservation, and artifact writeback; implement source-bound repair without blocking video.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-dialogue-audio-contracts | checkpointed | — | — | 20b9fa843d5d8259657acad7cc7a66a94eefcfcf | 20b9fa843d5d8259657acad7cc7a66a94eefcfcf | Inspect audio QC, repair, mastering, worker scheduling, and assembly failure semantics; preserve successful video and native/original audio while adding only verified missing behavior. |
-| section-02-audio-qc-editing-and-assembly | checkpointed | — | — | 017916574fe175490357a7d816af27a08af25cad | 6e2f2ed404731273a51b9d3585205b99c4a2b765 | Continue Section 02: implement source-bound repair and QC through canonical worker_jobs plus outbox, with billing/idempotency and artifact writeback; then wire real stems into mastering and assembly. |
-| section-03-cross-episode-continuity | pending | — | — | — | — | — |
+| section-02-audio-qc-editing-and-assembly | checkpointed | — | — | 017916574fe175490357a7d816af27a08af25cad | 6e2f2ed404731273a51b9d3585205b99c4a2b765 | Audit canonical audio repair job contracts, worker_jobs/outbox, credit reservation, and artifact writeback; implement source-bound repair without blocking video. |
+| section-03-cross-episode-continuity | checkpointed | — | — | 747109a597ac49e0e30ad30a65a2d559292193d8 | 747109a597ac49e0e30ad30a65a2d559292193d8 | Resume Section 02: implement source-bound audio repair through canonical worker_jobs plus outbox with idempotent billing and artifact writeback, then close supported stem mastering/QC gaps. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
