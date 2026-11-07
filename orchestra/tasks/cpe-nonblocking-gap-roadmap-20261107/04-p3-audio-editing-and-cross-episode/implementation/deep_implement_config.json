@@ -1,0 +1,38 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/04-p3-audio-editing-and-cross-episode/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/04-p3-audio-editing-and-cross-episode/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-dialogue-audio-contracts",
+    "section-02-audio-qc-editing-and-assembly",
+    "section-03-cross-episode-continuity"
+  ],
+  "sections_state": {
+    "section-01-dialogue-audio-contracts": {
+      "status": "checkpointed",
+      "next_action": "Inspect audio QC, repair, mastering, worker scheduling, and assembly failure semantics; preserve successful video and native/original audio while adding only verified missing behavior.",
+      "checkpoint_sha": "20b9fa843d5d8259657acad7cc7a66a94eefcfcf",
+      "merged_main_sha": "20b9fa843d5d8259657acad7cc7a66a94eefcfcf"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-07T09:00:12.205654+00:00",
+  "generation": 3,
+  "updated_at": "2026-11-07T09:19:06.022540+00:00",
+  "progress": {
+    "active_section": "section-01-dialogue-audio-contracts",
+    "next_action": "Inspect audio QC, repair, mastering, worker scheduling, and assembly failure semantics; preserve successful video and native/original audio while adding only verified missing behavior.",
+    "merged_main_sha": "20b9fa843d5d8259657acad7cc7a66a94eefcfcf"
+  }
+}
