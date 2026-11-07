@@ -22,7 +22,7 @@
       "status": "checkpointed",
       "next_action": "Continue Section 02: implement source-bound repair and QC through canonical worker_jobs plus outbox, with billing/idempotency and artifact writeback; then wire real stems into mastering and assembly.",
       "checkpoint_sha": "017916574fe175490357a7d816af27a08af25cad",
-      "merged_main_sha": "017916574fe175490357a7d816af27a08af25cad"
+      "merged_main_sha": "6e2f2ed404731273a51b9d3585205b99c4a2b765"
     }
   },
   "pre_commit": {
@@ -34,12 +34,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T09:00:12.205654+00:00",
-  "generation": 6,
-  "updated_at": "2026-11-07T09:51:05.499232+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-07T09:52:16.372817+00:00",
   "progress": {
     "active_section": "section-02-audio-qc-editing-and-assembly",
     "next_action": "Continue Section 02: implement source-bound repair and QC through canonical worker_jobs plus outbox, with billing/idempotency and artifact writeback; then wire real stems into mastering and assembly.",
-    "merged_main_sha": "017916574fe175490357a7d816af27a08af25cad",
+    "merged_main_sha": "6e2f2ed404731273a51b9d3585205b99c4a2b765",
     "gaps": [
       "Feature 175 surgical repair is unavailable until a validated source clip and matching TTS asset are bound to a canonical outbox job, credit reservation is idempotent, and the completed artifact is persisted back to the episode manifest.",
       "Foley/ambience stem mixing, mastering/QC worker generation and measurement persistence remain unsupported; controls stay disabled and QC reports unavailable until real outputs exist."
