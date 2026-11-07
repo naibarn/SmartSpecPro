@@ -25,6 +25,10 @@ const chapterOutputSchema = z.object({
   qualityReview: verticalDramaBookChapterQualityReviewSchema.optional(),
 }).strict();
 
+const NOVELIZER_OUTPUT_CONTRACT = `Return exactly one JSON object matching this shape. Do not use a root-level "novel" field, put rubric scores at the root, add other fields, or wrap the JSON in Markdown:
+{"blocks":[{"type":"paragraph","sourceShotNumbers":[1,2],"text":"Narrative prose."},{"type":"dialogue","sourceShotNumbers":[2],"speaker":"Character name","text":"Dialogue."},{"type":"scene_break","sourceShotNumbers":[3]}],"qualityReview":{"flow":4,"readability":4,"continuity":4,"dialogue":4,"sourceCoverage":4,"unsupportedDetail":5,"findings":[]}}
+Use only paragraph, dialogue, and scene_break blocks. Each block must include sourceShotNumbers from this episode's supplied shots; together the blocks must cover every supplied shot number and no others. Dialogue speaker may be null. Rubric scores are integers 1–5 and findings has at most six short strings.`;
+
 const NOVELIZER_MAX_SOURCE_IMAGE_BYTES = 24 * 1024 * 1024;
 const NOVELIZER_MAX_IMAGE_BYTES = 300 * 1024;
 const NOVELIZER_MAX_TOTAL_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -223,7 +227,7 @@ export async function composeVerticalDramaBookRevision(input: {
       { type: "text", text: `${userPrompt}\n\nAttached images are ordered by the media asset IDs referenced in the source shot records. ${imageLabels} Use visible evidence conservatively.` },
       ...imageParts,
     ];
-    const systemPrompt = loadNovelizerPrompt();
+    const systemPrompt = `${loadNovelizerPrompt()}\n\n## Required structured output contract\n${NOVELIZER_OUTPUT_CONTRACT}`;
     const requestBytes = Buffer.byteLength(systemPrompt, "utf8") + Buffer.byteLength(JSON.stringify(userMessage), "utf8");
     if (requestBytes > NOVELIZER_MAX_REQUEST_BYTES) throw new Error("BOOK_COMPOSITION_INPUT_TOO_LARGE");
     const inputBytes = Buffer.byteLength(systemPrompt, "utf8") + Buffer.byteLength(userPrompt, "utf8") + imageParts.length * 8192;
