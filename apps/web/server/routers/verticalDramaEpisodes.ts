@@ -18660,10 +18660,13 @@ export const verticalDramaEpisodesRouter = router({
       const frame = plan?.frames?.find(candidate => candidate.shotNumber === input.shotNumber);
       const sourceMediaAssetId = String(frame?.approvedMediaAssetId ?? "");
       const assetNumericId = Number(sourceMediaAssetId);
-      if (!Number.isInteger(assetNumericId) || assetNumericId <= 0 || frame?.imageStaleReason) {
+      // A stale prompt means the approved image may not match the latest
+      // prompt edits, but it is still the image shown in this editor. Speaker
+      // detection is advisory and read-only, so allow the user to inspect it.
+      if (!Number.isInteger(assetNumericId) || assetNumericId <= 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "ต้องมีภาพ Start frame ปัจจุบันที่อนุมัติแล้วก่อนตรวจจับคนในภาพ",
+          message: "ต้องมีภาพ Start frame ที่อนุมัติแล้วก่อนตรวจจับคนในภาพ",
         });
       }
       const imageUrl = (await resolveMediaAssetUrlsByIds(tenantId, ctx.user.id, [assetNumericId])).get(assetNumericId);
