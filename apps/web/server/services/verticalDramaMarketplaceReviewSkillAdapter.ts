@@ -47,7 +47,10 @@ const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE =
   'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai review/story episode in at least 3 connected paragraphs with setup, an observation or character need, a review subject experience that follows the selected presentation style, and scene resolution; allow factual reviews and documentary-style stories, not only product tie-ins. Use input.reviewSubjectType and the written subject description, specifications, claims, and direction as source context when thinking up all 3 ideas. Let relevant details shape the story naturally without forcing exact wording or repeated mentions. Treat attached images as downstream visual references, including multiple angles of one product, object, restaurant, or place. This text-only idea planner receives image URLs and labels rather than image pixels, so do not claim visual observations from them; preserve all references for the later image-generation flow. Do not infer facts such as price, hours, services, software features, performance, or claims. If input.productSource is upload, treat input.product.description and input.direction as the user-provided review-subject brief and story direction; if either is empty, keep the idea general to the selected review-subject type and avoid unsupported factual claims because this text-only planner cannot inspect image pixels. Do not invent brand, specifications, benefits, features, services, safety, efficacy, or claims. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant review-subject details when supported and when they fit what a character sees, does, or needs; other shots should advance the story naturally and need not mention the subject. Do not force exact wording or repeat mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the selected review subject clearly but must stay factual, modest, and non-pressuring. Keep references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear subject-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
-  `${MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE} In every spoken line and dialogueScript, never use absolute superlatives or urgent purchase commands, even as a joke, quotation, or negation. Replace superlatives with a modest, verifiable observation from the input; replace purchase commands with a calm, optional suggestion to review the available information.`;
+  `${MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE} In every spoken line and dialogueScript, never use absolute superlatives or urgent purchase commands, even as a joke, quotation, or negation. Replace superlatives with a modest, verifiable observation from the input; replace purchase commands with a calm, optional suggestion to review the available information. shotDialogues is the single source of truth for speech; dialogue is only its first 12 representative lines, and dialogueScript must restate its spoken lines without adding different speech.`;
+
+const SPECIAL_DIALOGUE_COMPLIANCE_FALLBACK =
+  "เราลองดูข้อมูลที่มีให้ครบก่อน แล้วค่อยตัดสินใจกันนะ";
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -269,10 +272,9 @@ const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   },
 } as const;
 
-// Some JSON-mode providers serialize the numeric contract version as "1.0".
-// Normalize that harmless representation before applying the strict business
-// contract; all other missing or malformed fields must still be repaired by
-// the schema retry loop rather than fabricated here.
+// Normalize harmless JSON-mode variations and derive the redundant dialogue
+// summary/script from authoritative shotDialogues. Required structural fields
+// remain subject to the strict schema retry loop.
 function normalizeGeneratedDialogueSummary(
   value: unknown,
   dialogueMode: "none" | "character_dialogue",
@@ -291,21 +293,133 @@ function normalizeGeneratedDialogueSummary(
         return { ...idea, dialogue: [] };
       }
       if (dialogueMode !== "character_dialogue") return idea;
-      const supplied = Array.isArray(idea.dialogue) ? idea.dialogue : [];
-      if (supplied.length > 0 && supplied.length <= 12) return idea;
-      const shotLines = Array.isArray(idea.shotDialogues)
-        ? idea.shotDialogues.flatMap(shot => {
+      const shotDialogues = idea.shotDialogues;
+      const shotLines = Array.isArray(shotDialogues)
+        ? shotDialogues.flatMap(shot => {
             if (!shot || typeof shot !== "object" || Array.isArray(shot)) return [];
             const lines = (shot as Record<string, unknown>).lines;
             return Array.isArray(lines) ? lines : [];
           })
         : [];
+      const dialogueScript = Array.isArray(shotDialogues)
+        ? shotDialogues
+            .map((shot, index) => {
+              if (!shot || typeof shot !== "object" || Array.isArray(shot)) return "";
+              const shotRecord = shot as Record<string, unknown>;
+              const lines = Array.isArray(shotRecord.lines) ? shotRecord.lines : [];
+              const renderedLines = lines.flatMap(line => {
+                if (!line || typeof line !== "object" || Array.isArray(line)) return [];
+                const lineRecord = line as Record<string, unknown>;
+                if (typeof lineRecord.speaker !== "string" || typeof lineRecord.line !== "string") return [];
+                return [`${lineRecord.speaker}: ${lineRecord.line}`];
+              });
+              return renderedLines.length > 0
+                ? `ช็อต ${String(shotRecord.shotNumber ?? index + 1)}\n${renderedLines.join("\n")}`
+                : "";
+            })
+            .filter(Boolean)
+            .join("\n\n")
+        : idea.dialogueScript;
       return {
         ...idea,
-        dialogue: (supplied.length > 12 ? supplied : shotLines).slice(0, 12),
+        shotDialogues,
+        dialogue: shotLines.slice(0, 12),
+        ...(typeof idea.dialogueScript === "string" ? { dialogueScript } : {}),
       };
     }),
   };
+}
+
+function sanitizeMarketplaceReviewDialogueCompliance(value: unknown): unknown {
+  const normalized = normalizeGeneratedDialogueSummary(value, "character_dialogue");
+  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+    return normalized;
+  }
+  const record = normalized as Record<string, unknown>;
+  if (!Array.isArray(record.ideas)) return normalized;
+  const sanitized = {
+    ...record,
+    ideas: record.ideas.map(candidate => {
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+        return candidate;
+      }
+      const idea = candidate as Record<string, unknown>;
+      if (!Array.isArray(idea.shotDialogues)) return idea;
+      return {
+        ...idea,
+        shotDialogues: idea.shotDialogues.map(shot => {
+          if (!shot || typeof shot !== "object" || Array.isArray(shot)) return shot;
+          const shotRecord = shot as Record<string, unknown>;
+          if (!Array.isArray(shotRecord.lines)) return shot;
+          return {
+            ...shotRecord,
+            lines: shotRecord.lines.map(line => {
+              if (!line || typeof line !== "object" || Array.isArray(line)) return line;
+              const lineRecord = line as Record<string, unknown>;
+              if (typeof lineRecord.line !== "string") return line;
+              return screenSpecialDialogueCompliance([lineRecord.line])
+                .hasViolations
+                ? { ...lineRecord, line: SPECIAL_DIALOGUE_COMPLIANCE_FALLBACK }
+                : line;
+            }),
+          };
+        }),
+      };
+    }),
+  };
+  return normalizeGeneratedDialogueSummary(sanitized, "character_dialogue");
+}
+
+function marketplaceReviewRepairGuidance(errorMessage: string): string {
+  if (errorMessage.includes("advertising dialogue compliance failed")) {
+    return "บทพูดไม่ผ่านการตรวจโฆษณา: เขียนบทพูดใหม่โดยลบถ้อยคำที่ถูกปฏิเสธออกให้หมด ห้ามคัดคำเดิมมาอ้าง ยกตัวอย่าง หรือปฏิเสธซ้ำ ใช้ข้อสังเกตที่ยืนยันได้จากข้อมูลแทนคำยกย่องเด็ดขาด และใช้ข้อเสนอแนะที่สุภาพ ไม่เร่งตัดสินใจแทนคำสั่งซื้อสินค้า";
+  }
+  if (errorMessage.includes("dialogue speaker is not selected")) {
+    return "มีผู้พูดที่ไม่ได้เลือก: ใช้ชื่อจริงแบบตรงตัวจาก eligibleAdultSpeakerNames เท่านั้น ห้ามใช้ placeholder เช่นคำอธิบายแทนชื่อ และห้ามเปลี่ยนชื่อเอง";
+  }
+  if (errorMessage.includes("age-eligible adult characters may speak")) {
+    return "ผู้พูดไม่ผ่านเงื่อนไขอายุ: ให้เฉพาะชื่อใน eligibleAdultSpeakerNames พูดได้ ห้ามให้เด็กหรือตัวละครที่อายุไม่ชัดเจนพูด";
+  }
+  if (errorMessage.includes("look slot requested for an unselected character")) {
+    return "คำขอ look slot อ้างอิงตัวละครที่ไม่ได้เลือก: ลบคำขอนั้นหรือใช้ characterId จริงจาก selectedCharacterIds เท่านั้น";
+  }
+  if (errorMessage.includes("unselected character")) {
+    return "มีการใช้ตัวละครที่ไม่ได้เลือก: ลบชื่อตัวละครนั้นออกจาก logline, episodeStory, dialogue, dialogueScript, shotDialogues, actions และช่องอื่นทั้งหมด ใช้ได้เฉพาะตัวละครที่เลือก";
+  }
+  if (errorMessage.includes("unsupported product claim")) {
+    return "มีคำกล่าวอ้างที่ไม่มีหลักฐาน: ลบหรือเขียนใหม่ในทุกช่องให้เหลือเฉพาะข้อเท็จจริงจากข้อมูลสินค้า ห้ามอนุมานประสิทธิภาพ ความปลอดภัย หรือผลลัพธ์";
+  }
+  if (errorMessage.includes("episode story or dialogue script is not usable")) {
+    return "โครงเรื่องหรือบทพูดยังไม่ครบ: เขียน episodeStory ภาษาไทยอย่างน้อย 3 ย่อหน้าที่ต่อเนื่อง และ dialogueScript จากบทพูดของ shotDialogues ทั้ง 9 ช็อต โดยแต่ละช็อตมี 2-3 บรรทัดจากผู้ใหญ่ที่เลือก";
+  }
+  return "ปรับเฉพาะส่วนที่ validator ระบุให้ตรงกับ schema และข้อมูลที่ยืนยันได้ โดยรักษาข้อเท็จจริงและใช้ชื่อผู้พูดที่เลือกแบบตรงตัว";
+}
+
+function marketplaceReviewFailureCode(error: unknown): string {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const validationCodes: Array<[string, string]> = [
+    ["duplicate idea ids", "DUPLICATE_ID"],
+    ["No-dialogue ideas", "NO_DIALOGUE_MODE"],
+    ["episode story or dialogue script is not usable", "STORY_DIALOGUE_STRUCTURE"],
+    ["look slot requested for an unselected character", "UNSELECTED_LOOK_SLOT"],
+    ["dialogue speaker is not selected", "UNSELECTED_DIALOGUE_SPEAKER"],
+    ["only age-eligible adult characters may speak", "INELIGIBLE_DIALOGUE_SPEAKER"],
+    ["minor or age-unknown character", "INELIGIBLE_DIALOGUE_SPEAKER"],
+    ["advertising dialogue compliance failed", "AD_DIALOGUE_COMPLIANCE"],
+    ["unselected character", "EXCLUDED_CHARACTER_REFERENCE"],
+    ["unsupported product claim", "UNSUPPORTED_PRODUCT_CLAIM"],
+  ];
+  const validationCode = validationCodes.find(([marker]) =>
+    errorMessage.includes(marker)
+  )?.[1];
+  if (validationCode) return validationCode;
+  if (errorMessage.startsWith("LLM request failed:")) return "LLM_PROVIDER_FAILURE";
+  if (errorMessage.includes("response was not valid JSON")) return "LLM_INVALID_JSON";
+  if (error instanceof z.ZodError) return "OUTPUT_SCHEMA_INVALID";
+  if (error instanceof Error && error.name === "VdSchemaValidationError") {
+    return "LLM_OUTPUT_SCHEMA_INVALID";
+  }
+  return "GENERATION_FAILED";
 }
 
 function marketplaceReviewIdeaLlmOutputSchema(
@@ -762,6 +876,7 @@ function buildUserPrompt(
   input: MarketplaceReviewIdeaInput,
   repairFeedback?: string,
 ): string {
+  const exampleAdultSpeaker = input.dialogueSpeakerCharacterNames[0] ?? "";
   const promptInput =
     input.productSource === "marketplace_capture"
       ? removeMarketplacePriceReferences(input)
@@ -840,7 +955,10 @@ function buildUserPrompt(
             "three_act | problem_solution | aida | before_after_bridge | hero_journey",
           logline: "ประโยคสรุปเหตุการณ์",
           episodeStory: "เรื่องละครภาษาไทยแบบร้อยแก้วต่อเนื่องอย่างน้อย 3 ย่อหน้า ตั้งแต่เริ่มปัญหาจนจบฉาก",
-          dialogueScript: "ชื่อผู้ใหญ่ที่เลือก: (การกระทำ) ประโยคสั้นที่เหมาะกับฉาก\nชื่อผู้ใหญ่ที่เลือก: ประโยคตอบรับหรือพาเรื่องต่อ",
+          dialogueScript:
+            input.dialogueMode === "character_dialogue"
+              ? `${exampleAdultSpeaker}: ประโยคสั้นที่เป็นธรรมชาติ\n${exampleAdultSpeaker}: ประโยคตอบรับหรือพาเรื่องต่อ`
+              : "",
           storyFunction: "หน้าที่ของฉากในเรื่อง",
           scene: {
             location: "สถานที่",
@@ -849,14 +967,17 @@ function buildUserPrompt(
             beats: ["จังหวะที่ 1", "จังหวะที่ 2"],
           },
           productMentionReason: "เหตุผลที่หัวข้อรีวิวเข้ากับเหตุการณ์นี้",
-          dialogue: [{ speaker: "ชื่อตัวละคร", line: "บทสนทนา", delivery: "น้ำเสียง" }],
+          dialogue:
+            input.dialogueMode === "character_dialogue"
+              ? [{ speaker: exampleAdultSpeaker, line: "ประโยคสั้นที่เป็นธรรมชาติ", delivery: "น้ำเสียง" }]
+              : [],
           shotDialogues: Array.from({ length: 9 }, (_, index) => ({
             shotNumber: index + 1,
             lines:
               input.dialogueMode === "character_dialogue"
                 ? [
-                    { speaker: "ชื่อผู้ใหญ่ที่เลือก", line: "ประโยคสั้นที่เป็นธรรมชาติ" },
-                    { speaker: "ชื่อผู้ใหญ่ที่เลือก", line: "ประโยคตอบรับหรือพาเรื่องต่อ" },
+                    { speaker: exampleAdultSpeaker, line: "ประโยคสั้นที่เป็นธรรมชาติ" },
+                    { speaker: exampleAdultSpeaker, line: "ประโยคตอบรับหรือพาเรื่องต่อ" },
                   ]
                 : [],
           })),
@@ -1363,6 +1484,8 @@ export async function generateMarketplaceReviewIdeas(input: {
     ReturnType<typeof executeJsonPlanningCallWithRetry>
   > | null = null;
   let output: MarketplaceReviewIdeaOutput | null = null;
+  let lastRawOutput: unknown = null;
+  let lastFailureCode = "GENERATION_FAILED";
   let repairFeedback = "";
   for (let attempt = 1; attempt <= 3 && !output; attempt += 1) {
     try {
@@ -1396,6 +1519,7 @@ export async function generateMarketplaceReviewIdeas(input: {
             model,
           })
         : planningResult!.data;
+      lastRawOutput = rawOutput;
       output = validateMarketplaceReviewIdeaOutput(rawOutput, {
         allowedCharacterIds: parsed.selectedCharacterIds,
         allowedCharacterNames: parsed.characters.map(character => character.name),
@@ -1407,19 +1531,37 @@ export async function generateMarketplaceReviewIdeas(input: {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      const complianceRepair = errorMessage.includes(
-        "advertising dialogue compliance failed"
-      )
-        ? "บทพูดไม่ผ่านการตรวจโฆษณา: เขียนบทพูดใหม่ทุกจุดที่เกี่ยวข้องใน dialogueScript, dialogue และ shotDialogues โดยลบถ้อยคำที่ถูกปฏิเสธออกให้หมด ห้ามคัดคำเดิมมาอ้าง ยกตัวอย่าง หรือปฏิเสธซ้ำ ใช้ข้อสังเกตที่ยืนยันได้จากข้อมูลแทนคำยกย่องเด็ดขาด และใช้ข้อเสนอแนะที่สุภาพ ไม่เร่งตัดสินใจแทนคำสั่งซื้อสินค้า ตรวจทุกบรรทัดก่อนส่ง JSON"
-        : "ปรับเรื่องและบทพูดให้ตรงกับประเภทหัวข้อรีวิวและข้อมูลที่ยืนยันได้อย่างเป็นธรรมชาติ ไม่ฝืนกล่าวถึงหัวข้อในทุกช็อต";
+      lastFailureCode = marketplaceReviewFailureCode(error);
+      const repairGuidance = marketplaceReviewRepairGuidance(errorMessage);
       repairFeedback =
-        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${errorMessage}. ${complianceRepair} สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
+        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${errorMessage}. ${repairGuidance} สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
+    }
+  }
+  if (!output && lastFailureCode === "AD_DIALOGUE_COMPLIANCE" && lastRawOutput) {
+    try {
+      output = validateMarketplaceReviewIdeaOutput(
+        sanitizeMarketplaceReviewDialogueCompliance(lastRawOutput),
+        {
+          allowedCharacterIds: parsed.selectedCharacterIds,
+          allowedCharacterNames: parsed.characters.map(character => character.name),
+          excludedCharacterNames: parsed.excludedCharacterNames,
+          dialogueSpeakerCharacterNames: parsed.dialogueSpeakerCharacterNames,
+          dialogueProhibitedCharacterNames: parsed.dialogueProhibitedCharacterNames,
+          dialogueMode: parsed.dialogueMode,
+        }
+      );
+      console.info("[MARKETPLACE_REVIEW_IDEA_DIALOGUE_REPAIRED]", {
+        seriesId: input.seriesId,
+        repairKind: "non_compliant_spoken_lines_replaced",
+      });
+    } catch (error) {
+      lastFailureCode = marketplaceReviewFailureCode(error);
     }
   }
   if (!output) {
     console.error("[MARKETPLACE_REVIEW_IDEA_REPAIR_FAILED]", {
       seriesId: input.seriesId,
-      reasonCode: "MARKETPLACE_REVIEW_OUTPUT_INVALID",
+      reasonCode: lastFailureCode,
     });
     throw new Error(
       "สร้างไอเดียไม่สำเร็จ เนื้อหาที่ระบบสร้างยังไม่ผ่านการตรวจ กรุณาลองใหม่อีกครั้ง"
