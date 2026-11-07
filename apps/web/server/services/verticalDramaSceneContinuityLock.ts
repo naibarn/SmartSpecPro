@@ -28,6 +28,8 @@ export interface VdSceneContinuityLockResolution {
   };
 }
 
+const SCENE_STATE_AUTHORING_BUDGET_MS = 60_000;
+
 function record(value: unknown): StoryboardRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? value as StoryboardRecord
@@ -78,6 +80,7 @@ export function buildSceneVisualStateAuthoringInput(params: {
   seriesLook?: GenerateSceneVisualStateParams["seriesLook"];
   lang?: GenerateSceneVisualStateParams["lang"];
   idempotencyKey?: string;
+  timeoutMs?: number;
 }): GenerateSceneVisualStateParams {
   const locationImageUrl = stringValue(params.locationImageUrl) ?? stringValue(
     params.location.location_image_url ??
@@ -101,6 +104,7 @@ export function buildSceneVisualStateAuthoringInput(params: {
     revision: params.revision,
     lang: params.lang,
     idempotencyKey: params.idempotencyKey,
+    timeoutMs: params.timeoutMs,
   };
 }
 
@@ -138,6 +142,7 @@ export async function resolveSceneContinuityLocks(params: {
   });
   const stored = readSceneVisualStatesFromPlan(params.startFramePlan);
   const resolution = emptyResolution();
+  const authoringDeadline = Date.now() + SCENE_STATE_AUTHORING_BUDGET_MS;
   resolution.diagnostics.sceneCount = groups.length;
   const requested = new Set(params.shotNumbers);
   const shotsByNumber = new Map(
@@ -180,6 +185,14 @@ export async function resolveSceneContinuityLocks(params: {
         continue;
       }
       if (!params.authorIfMissing) continue;
+      const remainingAuthoringMs = authoringDeadline - Date.now();
+      if (remainingAuthoringMs <= 0) {
+        resolution.diagnostics.authoringFailures.push({
+          locationKey: group.locationKey,
+          reason: "scene_state_authoring_budget_exhausted",
+        });
+        continue;
+      }
       const authorStartedAt = Date.now();
       try {
         const rawLocations = record(params.storyboard).distinct_locations;
@@ -208,6 +221,7 @@ export async function resolveSceneContinuityLocks(params: {
             idempotencyKey: params.idempotencyKey
               ? `${params.idempotencyKey}:scene-visual-state:${group.locationKey}`
               : undefined,
+            timeoutMs: remainingAuthoringMs,
           }),
         );
         state = authored.state;

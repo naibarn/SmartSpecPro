@@ -4,6 +4,7 @@ import {
   evaluateCheck,
   computeQcScore,
   qcPassed,
+  stageBlocksPaidGeneration,
   buildPrefilledRepair,
   repairEntryPointSection,
   repairRequiresCreditConfirmation,
@@ -107,6 +108,19 @@ describe("repair staleness propagation", () => {
 });
 
 describe("evaluateCheck primitives", () => {
+  it("does not turn character identity or wardrobe quality findings into a paid-generation block", () => {
+    const report = runQcForStage(base("start_frame_image", {
+      aspectRatio: "9:16",
+      characterIdentityConsistent: false,
+      wardrobeConsistent: false,
+      assetsTenantOwnedAndFresh: true,
+    }));
+
+    expect(report.passed).toBe(false);
+    expect(report.issues.some(issue => issue.severity === "error")).toBe(true);
+    expect(stageBlocksPaidGeneration(report.issues)).toBe(false);
+  });
+
   it("flags provider capability policy not honored", () => {
     const r = evaluateCheck("provider_capability_policy", base("provider_routing", {
       providerRouting: { provider: "x", provider_caps: {} as any, recommended_provider_path: "manual_review", execution_status: "blocked", normalizedStatus: "blocked", blockingReasons: ["aspect_ratio_unsupported:16:9"], provider_request: { provider: "x", execution_status: "blocked", normalizedStatus: "blocked" } },

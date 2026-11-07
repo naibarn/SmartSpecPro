@@ -48,9 +48,16 @@ vi.mock("../verticalDramaSeriesMemory", () => ({
   memoryRowToEvent: vi.fn(),
 }));
 
-const { mockGenerateEpisodeScript, mockGenerateStoryboardShotgrid } = vi.hoisted(() => ({
+const {
+  mockGenerateEpisodeScript,
+  mockGenerateStoryboardShotgrid,
+  mockGenerateStartFrameRenderPlan,
+  mockResolveSceneContinuityLocks,
+} = vi.hoisted(() => ({
   mockGenerateEpisodeScript: vi.fn(),
   mockGenerateStoryboardShotgrid: vi.fn(),
+  mockGenerateStartFrameRenderPlan: vi.fn(),
+  mockResolveSceneContinuityLocks: vi.fn(),
 }));
 vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
@@ -78,9 +85,18 @@ vi.mock("../verticalDramaDialogueAudio", () => ({
   VdSchemaValidationError: class extends Error {},
 }));
 vi.mock("../verticalDramaStartFrameGeneration", () => ({
-  generateStartFrameRenderPlan: vi.fn(),
+  generateStartFrameRenderPlan: mockGenerateStartFrameRenderPlan,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+}));
+vi.mock("../verticalDramaSceneContinuityLock", () => ({
+  resolveSceneContinuityLocks: mockResolveSceneContinuityLocks,
+}));
+const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 vi.mock("../verticalDramaVideoMotionPromptGeneration", () => ({
   generateVideoMotionPromptPack: vi.fn(),
@@ -203,6 +219,21 @@ beforeEach(() => {
     storyboard: { shots: [] },
     creditsUsed: 1,
     model: "gpt-x",
+  });
+  mockGenerateStartFrameRenderPlan.mockResolvedValue({
+    plan: { frames: [] },
+    creditsUsed: 1,
+    model: "gpt-x",
+  });
+  mockResolveSceneContinuityLocks.mockResolvedValue({
+    blockByShotNumber: new Map(),
+    locationKeyByShotNumber: new Map(),
+    statesByLocationKey: {},
+    newlyAuthoredByLocationKey: {},
+    diagnostics: { sceneCount: 0, authoredCount: 0, authoringFailures: [] },
+  });
+  mockGetTenantFeatureFlags.mockResolvedValue({
+    verticalDramaSceneContinuity: true,
   });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
   mockListLocationRows.mockResolvedValue([]);
@@ -403,6 +434,96 @@ const KITCHEN_GROUP = {
   description: "a kitchen",
   shot_numbers: [4, 5, 6, 7, 8, 9],
 };
+
+describe("generateRealStartFramePlan — optional scene continuity failures", () => {
+  it("keeps the existing start-frame path when scene continuity is disabled", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValueOnce({
+      verticalDramaSceneContinuity: false,
+    });
+
+    const result = await pipeline.generateRealStartFramePlan(owner, {
+      ...episode,
+      storyboard: {
+        shots: [{ shot_number: 1, duration_seconds: 6, visual_description: "A store" }],
+        distinct_locations: [STORE_GROUP],
+      },
+    });
+
+    expect(mockResolveSceneContinuityLocks).not.toHaveBeenCalled();
+    expect(mockGenerateStartFrameRenderPlan).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("keeps generating the start-frame plan and emits an advisory warning when a scene lock cannot be authored", async () => {
+    mockResolveSceneContinuityLocks.mockResolvedValueOnce({
+      blockByShotNumber: new Map(),
+      locationKeyByShotNumber: new Map([[1, "loc_store"]]),
+      statesByLocationKey: {},
+      newlyAuthoredByLocationKey: {},
+      diagnostics: {
+        sceneCount: 1,
+        authoredCount: 0,
+        authoringFailures: [
+          { locationKey: "loc_store", reason: "provider timeout" },
+        ],
+      },
+    });
+
+    const result = await pipeline.generateRealStartFramePlan(owner, {
+      ...episode,
+      storyboard: {
+        shots: [{ shot_number: 1, duration_seconds: 6, visual_description: "A store" }],
+        distinct_locations: [STORE_GROUP],
+      },
+    });
+
+    expect(mockGenerateStartFrameRenderPlan).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_CONTINUITY_SKIPPED",
+          severity: "warning",
+          targetStage: "start_frame_render_plan",
+          repairable: false,
+        }),
+      ]),
+    );
+    expect(mockDebugError).toHaveBeenCalledWith(
+      "vd_optional_scene_continuity",
+      expect.stringContaining("continuing without locks"),
+      expect.any(Array),
+    );
+  });
+
+  it("continues with the start-frame plan when the optional continuity resolver itself throws", async () => {
+    mockResolveSceneContinuityLocks.mockRejectedValueOnce(
+      new Error("continuity resolver unavailable"),
+    );
+
+    const result = await pipeline.generateRealStartFramePlan(owner, {
+      ...episode,
+      storyboard: {
+        shots: [{ shot_number: 1, duration_seconds: 6, visual_description: "A store" }],
+        distinct_locations: [STORE_GROUP],
+      },
+    });
+
+    expect(mockGenerateStartFrameRenderPlan).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_CONTINUITY_SKIPPED",
+          severity: "warning",
+        }),
+      ]),
+    );
+    expect(mockDebugError).toHaveBeenCalledWith(
+      "vd_optional_scene_continuity",
+      expect.stringContaining("continuing without locks"),
+      expect.objectContaining({ message: "continuity resolver unavailable" }),
+    );
+  });
+});
 
 /**
  * Queue the exact `mockDb.select` sequence a successful

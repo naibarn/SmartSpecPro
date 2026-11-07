@@ -180,6 +180,8 @@ export interface GenerateSceneVisualStateParams {
   revision: number;
   lang?: StoryScriptLang;
   idempotencyKey?: string;
+  /** Per-call deadline supplied by the batch continuity resolver. */
+  timeoutMs?: number;
 }
 
 function cleanList(values: readonly string[] | undefined): string {
@@ -347,11 +349,12 @@ export async function generateSceneVisualState(
     schema: sceneVisualStatePlanOutputSchema,
     firstAttemptMaxTokens: 2000,
     retryMaxTokens: 3000,
-    // Scene-state calls are vision-aware and can receive an empty/truncated
-    // response from an otherwise healthy provider. Use the bounded shared
-    // recovery path before surfacing an error to the creator.
-    maxSchemaRetries: 2,
-    modelFallbackPolicy: "recommended",
+    // Scene-state is optional enrichment. Keep one provider attempt inside
+    // the caller's batch deadline; a timeout or malformed response lets the
+    // episode continue with its existing storyboard/start-frame facts.
+    singleAttempt: true,
+    timeoutMs: params.timeoutMs ?? 60_000,
+    disableProviderFallbacks: true,
   });
   const inputTokens = response.usage?.prompt_tokens ?? 0;
   const outputTokens = response.usage?.completion_tokens ?? 0;

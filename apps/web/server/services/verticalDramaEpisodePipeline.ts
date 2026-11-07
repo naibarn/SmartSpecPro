@@ -6119,8 +6119,13 @@ export class VerticalDramaEpisodePipeline {
             sceneContinuityFlags?.verticalDramaSeriesLookLock === true,
         })
       : undefined;
-    const sceneContinuityResolution = sceneContinuityEnabled
-      ? await resolveSceneContinuityLocks({
+    let sceneContinuityResolution:
+      | Awaited<ReturnType<typeof resolveSceneContinuityLocks>>
+      | undefined;
+    let sceneContinuityResolutionError: unknown;
+    if (sceneContinuityEnabled) {
+      try {
+        sceneContinuityResolution = await resolveSceneContinuityLocks({
           enabled: true,
           tenantId: owner.tenantId,
           userId: owner.userId,
@@ -6137,12 +6142,30 @@ export class VerticalDramaEpisodePipeline {
           locationImageUrlByLocationKey: locationImageUrlsByKey,
           seriesLook: sceneContinuitySeriesLook,
           lang: resolveStoryScriptLangFromLocale(seriesRow?.locale),
-        })
-      : undefined;
-    if (sceneContinuityResolution?.diagnostics.authoringFailures.length) {
-      throw new Error(
-        `Scene continuity planning failed for ${sceneContinuityResolution.diagnostics.authoringFailures.map(f => f.locationKey).join(", ")}; retry the start-frame plan`
+        });
+      } catch (error) {
+        sceneContinuityResolutionError = error;
+      }
+    }
+    const sceneContinuityWarnings: VerticalDramaWarning[] = [];
+    const sceneContinuityAuthoringFailures =
+      sceneContinuityResolution?.diagnostics.authoringFailures ?? [];
+    if (sceneContinuityResolutionError || sceneContinuityAuthoringFailures.length) {
+      const failedLocations = sceneContinuityAuthoringFailures
+        .map(failure => failure.locationKey);
+      debugError(
+        "vd_optional_scene_continuity",
+        `Optional scene continuity planning failed for episode #${owner.episodeId}; continuing without locks${failedLocations.length ? ` for ${failedLocations.join(", ")}` : ""}`,
+        sceneContinuityResolutionError ?? sceneContinuityAuthoringFailures,
       );
+      sceneContinuityWarnings.push({
+        code: "VD_OPTIONAL_SCENE_CONTINUITY_SKIPPED",
+        severity: "warning",
+        message:
+          "Optional scene continuity planning was unavailable; start-frame planning continues without the affected locks.",
+        targetStage: "start_frame_render_plan",
+        repairable: false,
+      });
     }
     const sceneVisualStatesForProjection = {
       ...(previousSceneVisualStates &&
@@ -6501,7 +6524,7 @@ export class VerticalDramaEpisodePipeline {
       ...generated,
       characters: characterIdentitySources,
       imagePromptMaxChars,
-      warnings: wardrobeWarnings,
+      warnings: [...sceneContinuityWarnings, ...wardrobeWarnings],
     };
   }
 

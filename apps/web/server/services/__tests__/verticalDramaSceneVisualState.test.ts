@@ -10,15 +10,30 @@ vi.mock("../skillFiles", () => ({
 vi.mock("@smartspec/skills", () => ({ parseSkillFile: vi.fn() }));
 vi.mock("fs", async () => {
   const actual = await vi.importActual<typeof import("fs")>("fs");
+  const isSceneSkill = (filePath: unknown) =>
+    String(filePath).includes("vertical-drama-scene-visual-state/skill.md");
+  const sceneSkillText = "---\nversion: 1.0.0\n---\nScene skill body";
   return {
     ...actual,
     default: {
       ...actual,
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      existsSync: vi.fn((filePath: unknown) =>
+        isSceneSkill(filePath) ? true : actual.existsSync(filePath as any),
+      ),
+      readFileSync: vi.fn((filePath: unknown, ...args: unknown[]) =>
+        isSceneSkill(filePath)
+          ? sceneSkillText
+          : actual.readFileSync(filePath as any, ...(args as any[])),
+      ),
     },
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    existsSync: vi.fn((filePath: unknown) =>
+      isSceneSkill(filePath) ? true : actual.existsSync(filePath as any),
+    ),
+    readFileSync: vi.fn((filePath: unknown, ...args: unknown[]) =>
+      isSceneSkill(filePath)
+        ? sceneSkillText
+        : actual.readFileSync(filePath as any, ...(args as any[])),
+      ),
   };
 });
 vi.mock("../verticalDramaStoryBible", async () => {
@@ -154,7 +169,6 @@ beforeEach(() => {
   mockResolveDirs.mockReturnValue(["/fake/skills/vertical-drama-scene-visual-state"]);
   mockResolveManifest.mockReturnValue("/fake/skills/vertical-drama-scene-visual-state/skill.md");
   mockExists.mockReturnValue(true);
-  mockRead.mockReturnValue("---\nversion: 1.0.0\n---\nScene skill body" as any);
   mockParse.mockReturnValue({ metadata: { version: "1.0.0" } as any, content: "Scene skill body" });
   mockExecute.mockResolvedValue(successResponse(validOutput()));
 });
@@ -175,6 +189,20 @@ describe("scene visual state skill loading", () => {
     expect(mockParse).toHaveBeenCalledTimes(1);
     expect(mockExecute.mock.calls[0][0].messages[0].content).toBe("Scene skill body");
     expect(first.state.skillVersion).toBe("1.0.0");
+  });
+
+  it("uses one provider attempt with a caller-bounded timeout for optional planning", async () => {
+    mockExecute.mockResolvedValue(successResponse({ contract_version: 1 }));
+
+    await expect(
+      generateSceneVisualState(params({ timeoutMs: 12_345 })),
+    ).rejects.toThrow();
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute.mock.calls[0][0]).toMatchObject({
+      timeoutMs: 12_345,
+      disableProviderFallbacks: true,
+    });
   });
 });
 
@@ -340,18 +368,15 @@ describe("scene visual state credit and failure contract", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("recovers from empty provider JSON before charging credits", async () => {
-    mockExecute
-      .mockReset()
-      .mockResolvedValueOnce(successResponseContent(""))
-      .mockResolvedValueOnce(successResponseContent(""))
-      .mockResolvedValueOnce(successResponse(validOutput()));
+  it("skips optional planning after an empty provider response without charging credits", async () => {
+    mockExecute.mockResolvedValueOnce(successResponseContent(""));
 
-    const result = await generateSceneVisualState(params());
+    await expect(generateSceneVisualState(params())).rejects.toThrow(
+      "Vision provider returned an empty response",
+    );
 
-    expect(result.state.locationKey).toBe("home-kitchen");
-    expect(mockExecute).toHaveBeenCalledTimes(3);
-    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("propagates schema and transport failures without deducting", async () => {

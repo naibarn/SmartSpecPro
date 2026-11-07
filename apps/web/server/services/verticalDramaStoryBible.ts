@@ -2578,6 +2578,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   };
   modelFallbackFrom?: string;
   modelFallbackReason?: string;
+  timeoutMs?: number;
+  disableProviderFallbacks?: boolean;
   onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
 }): Promise<{ data: T; response: VisionAwareCallResponse }> {
   const result = await executeWithFallback({
@@ -2590,6 +2592,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
     userId: args.userId,
     maxTokens: args.maxTokens,
     temperature: 0.7,
+    timeoutMs: args.timeoutMs,
+    disableProviderFallbacks: args.disableProviderFallbacks,
     extraBodyParams: args.extraBodyParams,
     modelFallbackFrom: args.modelFallbackFrom,
     modelFallbackReason: args.modelFallbackReason,
@@ -2660,6 +2664,10 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   disableModelFallback?: boolean;
   /** Restrict the recovery model to the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
+  /** Bound one optional planning call and stop after its first failed attempt. */
+  singleAttempt?: boolean;
+  timeoutMs?: number;
+  disableProviderFallbacks?: boolean;
   /** Observe every successful provider response, including schema-repair attempts. */
   onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
 }): Promise<{
@@ -2694,6 +2702,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       ),
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
+      timeoutMs: args.timeoutMs,
+      disableProviderFallbacks: args.disableProviderFallbacks,
       schema: args.schema,
       onUsage: args.onUsage,
       extraBodyParams: resolvedExtraBodyParams,
@@ -2704,6 +2714,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       `[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`,
       firstError instanceof Error ? firstError.message : firstError
     );
+    if (args.singleAttempt) throw firstError;
     if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy)
       throw firstError;
 

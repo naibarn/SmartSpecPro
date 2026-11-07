@@ -109,6 +109,8 @@ describe("verticalDramaSceneContinuityLock", () => {
       .mockRejectedValueOnce(new Error("provider timeout"));
     const result = await resolveSceneContinuityLocks(params({ authorIfMissing: true }));
     expect(authorState).toHaveBeenCalledTimes(2);
+    expect(authorState.mock.calls[0][0].timeoutMs).toBeGreaterThan(0);
+    expect(authorState.mock.calls[0][0].timeoutMs).toBeLessThanOrEqual(60_000);
     expect(result.diagnostics.authoredCount).toBe(1);
     expect(result.diagnostics.authoringFailures).toEqual([
       { locationKey: "street", reason: "provider timeout" },

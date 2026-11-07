@@ -47,15 +47,30 @@ vi.mock("@smartspec/skills", () => ({
 }));
 vi.mock("fs", async () => {
   const actual = await vi.importActual<typeof import("fs")>("fs");
+  const isMockSkill = (filePath: unknown) =>
+    String(filePath).includes("/fake/skills/skill.md");
+  const mockSkillText = "---\nname: test\n---\nSystem prompt body";
   return {
     ...actual,
     default: {
       ...actual,
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      existsSync: vi.fn((filePath: unknown) =>
+        isMockSkill(filePath) ? true : actual.existsSync(filePath as any),
+      ),
+      readFileSync: vi.fn((filePath: unknown, ...args: unknown[]) =>
+        isMockSkill(filePath)
+          ? mockSkillText
+          : actual.readFileSync(filePath as any, ...(args as any[])),
+      ),
     },
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    existsSync: vi.fn((filePath: unknown) =>
+      isMockSkill(filePath) ? true : actual.existsSync(filePath as any),
+    ),
+    readFileSync: vi.fn((filePath: unknown, ...args: unknown[]) =>
+      isMockSkill(filePath)
+        ? mockSkillText
+        : actual.readFileSync(filePath as any, ...(args as any[])),
+    ),
   };
 });
 vi.mock("../enabledLlmModels", () => ({
@@ -187,14 +202,12 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockResolveSkillDirCandidates.mockReturnValue(["/fake/skills"]);
     mockResolveSkillManifestPath.mockReturnValue("/fake/skills/skill.md");
-    mockExistsSync.mockReturnValue(true);
     // Both loaders (`loadShotVideoPromptSystemPrompt` and
     // `loadJudgeSystemPrompt`) read through the SAME mocked
     // `fs.readFileSync`/`parseSkillFile` pair — the exact system-prompt text
     // is irrelevant to every test in this file (routing is by USER text
     // content, never system-prompt content), so one shared canned value is
     // fine for both.
-    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
     mockParseSkillFile.mockReturnValue({
       metadata: {} as any,
       content: "System prompt body",
@@ -400,9 +413,10 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
 
     const result = await generateJudgedVerticalDramaShotVideoPrompt(baseParams());
 
-    // 2 clean candidates + four judge attempts (primary, retry, fallback,
-    // text-only fallback). No repair is attempted without a usable verdict.
-    expect(mockExecute).toHaveBeenCalledTimes(6);
+    // 2 clean candidates + three judge attempts (primary, retry, fallback).
+    // The fallback reports provider-unavailable, so text-only recovery is
+    // correctly skipped. No repair is attempted without a usable verdict.
+    expect(mockExecute).toHaveBeenCalledTimes(5);
     expect(result.prompt).toBe(CANDIDATE_A_PROMPT);
     expect(result.promptQuality.mode).toBe("judged");
     expect(result.promptQuality.candidates).toBe(2);
@@ -425,9 +439,9 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
 
     const result = await generateJudgedVerticalDramaShotVideoPrompt(baseParams());
 
-    // Candidate A: 1 call. Candidate B exhausts four vision/fallback attempts.
-    // Judge: 0 calls — never reached.
-    expect(mockExecute).toHaveBeenCalledTimes(5);
+    // Candidate A: 1 call. Candidate B exhausts primary, retry, and model
+    // fallback attempts. Judge: 0 calls — never reached.
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     expect(mockExecute.mock.calls.every(call => !extractUserText(call[0]).includes("--- CANDIDATES ---"))).toBe(
       true,
     );
@@ -570,8 +584,6 @@ describe("generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch (Phase 2 — f
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockResolveSkillDirCandidates.mockReturnValue(["/fake/skills"]);
     mockResolveSkillManifestPath.mockReturnValue("/fake/skills/skill.md");
-    mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
     mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
     mockLoadEnabledLlmModelRows.mockResolvedValue([{ modelId: "vision-model-1" } as any]);
     mockSelectBestLlmModel.mockReturnValue("vision-model-1");
@@ -720,9 +732,10 @@ describe("generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch (Phase 2 — f
       baseSpeakerSwitchParams(),
     );
 
-    // 2 clean candidates + four judge attempts (primary, retry, fallback,
-    // text-only fallback). No repair is attempted without a usable verdict.
-    expect(mockExecute).toHaveBeenCalledTimes(6);
+    // 2 clean candidates + three judge attempts (primary, retry, fallback).
+    // The fallback reports provider-unavailable, so text-only recovery is
+    // correctly skipped. No repair is attempted without a usable verdict.
+    expect(mockExecute).toHaveBeenCalledTimes(5);
     expect(result.prompt).toBe(SPEAKER_SWITCH_CANDIDATE_A_PROMPT);
     expect(result.promptQuality.mode).toBe("judged");
     expect(result.promptQuality.candidates).toBe(2);
@@ -747,9 +760,9 @@ describe("generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch (Phase 2 — f
       baseSpeakerSwitchParams(),
     );
 
-    // Candidate A: 1 call. Candidate B exhausts four vision/fallback attempts.
-    // Judge: 0 calls — never reached.
-    expect(mockExecute).toHaveBeenCalledTimes(5);
+    // Candidate A: 1 call. Candidate B exhausts primary, retry, and model
+    // fallback attempts. Judge: 0 calls — never reached.
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     expect(mockExecute.mock.calls.every(call => !extractUserText(call[0]).includes("--- CANDIDATES ---"))).toBe(
       true,
     );
