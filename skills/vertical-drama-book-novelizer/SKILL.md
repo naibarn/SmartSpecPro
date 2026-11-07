@@ -27,3 +27,28 @@ Write polished novel prose from the selected episode's ordered source material. 
 ## Quality pass
 
 Before returning the structured chapter, check flow, readability, continuity, character voice, dialogue naturalness, source coverage, and unsupported details. Make at most one focused self-revision. Return the structured chapter blocks plus the six rubric scores and concise findings; attach source shot references to every prose or dialogue block.
+
+## Required output format
+
+Return exactly one JSON object. Do not wrap it in Markdown, add a `novel` field, or put rubric scores at the root. Use this shape:
+
+```json
+{
+  "blocks": [
+    { "type": "paragraph", "sourceShotNumbers": [1, 2], "text": "Narrative prose." },
+    { "type": "dialogue", "sourceShotNumbers": [2], "speaker": "Character name", "text": "Dialogue." },
+    { "type": "scene_break", "sourceShotNumbers": [3] }
+  ],
+  "qualityReview": {
+    "flow": 4,
+    "readability": 4,
+    "continuity": 4,
+    "dialogue": 4,
+    "sourceCoverage": 4,
+    "unsupportedDetail": 5,
+    "findings": []
+  }
+}
+```
+
+Use only `paragraph`, `dialogue`, and `scene_break` blocks. Every block must include `sourceShotNumbers` using the exact shot numbers supplied for this episode; collectively, the blocks must reference every supplied shot number at least once and must not reference any other number. A dialogue speaker may be `null` when the source does not identify one. Scores are integers from 1 to 5, and `findings` contains no more than six short strings. Do not return chapter metadata or any additional fields.
