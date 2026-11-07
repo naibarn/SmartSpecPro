@@ -62,6 +62,7 @@ const { mockDb } = vi.hoisted(() => ({
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
+    transaction: vi.fn(),
     instance: {},
   },
 }));
@@ -93,6 +94,7 @@ vi.mock("../../services/mediaGenerationService", () => ({
     generateImageAsync: vi.fn(),
     generateVideoAsync: vi.fn(),
   },
+  resolveReferenceUrl: (url: string) => url,
   DEFAULT_MODELS: {
     image: "google-nano-banana-pro",
     video: "veo3/generate-veo-3-video-lite",
@@ -3194,6 +3196,83 @@ describe("getEpisodeDetail — episodeLocations field (Phase D, planning/polishe
 });
 
 describe("getEpisodeDetail — qualityReview field", () => {
+  it("returns a completed video and its advisory identity warning through the normal read path", async () => {
+    const completedPack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "single-shot",
+      motionMode: "image_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "The character turns toward the light",
+          durationSeconds: 8,
+          identityQc: {
+            status: "fail",
+            verdict: "identity_break",
+            warning: "Identity drift is advisory",
+            analyzedAt: "2026-11-07T00:00:00.000Z",
+          },
+          videoTask: {
+            videoUrl: "https://media.example/episode-1-clip-1.mp4",
+          },
+        },
+      ],
+      warnings: [],
+    };
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            script: null,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: completedPack,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            jsonPayload: {
+              scorecard: {},
+              summary: "Identity warning is advisory",
+              issues: [],
+              warnings: ["Clip identity drift"],
+              repair_queue: [],
+            },
+          },
+        ])
+      ) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])) // resolveEpisodePlanForEpisode
+      .mockReturnValueOnce(selectChain([])); // resolveSeriesEpisodeLocations
+
+    try {
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(result.motionPromptPack?.clips[0]).toMatchObject({
+        identityQc: { status: "fail", verdict: "identity_break" },
+        videoTask: {
+          videoUrl: "https://media.example/episode-1-clip-1.mp4",
+        },
+      });
+      expect(result.qualityReview?.warnings).toEqual(["Clip identity drift"]);
+    } finally {
+      mockDb.select.mockReset();
+    }
+  });
+
   it("returns null when no quality-review artifact has been written yet", async () => {
     mockDb.select
       .mockReturnValueOnce(
@@ -3975,6 +4054,198 @@ describe("getEpisodeDetail — qualityReview field", () => {
       // `verticalDramaLocationStockService.listRows` (service-level mock).
       expect(mockDb.select).toHaveBeenCalledTimes(4);
     });
+  });
+});
+
+describe("runClipIdentityQc advisory fallback", () => {
+  it("returns an unavailable warning and preserves the current video when sampling and report persistence fail", async () => {
+    // This large router test file uses queued DB chain responses; reset the
+    // queues explicitly because `clearAllMocks` does not discard unused
+    // `mockReturnValueOnce` implementations from unrelated cases.
+    mockDb.select.mockReset();
+    mockDb.insert.mockReset();
+    mockDb.update.mockReset();
+    mockDb.transaction.mockReset();
+    const originalPack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "single-shot",
+      motionMode: "image_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "The character turns toward the light",
+          durationSeconds: 8,
+          videoTask: {
+            videoUrl: "https://media.example/episode-1-clip-1.mp4",
+            mediaAssetId: "500",
+          },
+        },
+      ],
+      warnings: [],
+    };
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 100,
+          tenantId: "tenant-1",
+          userId: 42,
+          seriesId: 10,
+          motionPromptPack: originalPack,
+          startFramePlan: null,
+        },
+      ])
+    );
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 900 }])) // advisory QC run
+      .mockReturnValueOnce(
+        (() => {
+          const failedReportInsert: any = {
+            values: vi.fn(() => failedReportInsert),
+            returning: vi.fn().mockRejectedValue(
+              new Error("QC report store unavailable")
+            ),
+          };
+          return failedReportInsert;
+        })()
+      ); // QC report persistence failure is advisory
+
+    const lockedPackQuery = selectChain([
+      { motionPromptPack: originalPack },
+    ]) as ReturnType<typeof selectChain> & { for: ReturnType<typeof vi.fn> };
+    lockedPackQuery.for = vi.fn(() => lockedPackQuery);
+    const persistedPackUpdate = updateChain([]);
+    mockDb.transaction.mockImplementation(async (run: (tx: unknown) => unknown) =>
+      run({
+        select: vi.fn(() => lockedPackQuery),
+        update: vi.fn(() => persistedPackUpdate),
+      })
+    );
+    mockDb.update.mockReturnValue(updateChain([]));
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 503 }));
+    try {
+      const result = await router.runClipIdentityQc({
+        ctx: ctx({ publicUrl: "https://app.example" }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          idempotencyKey: "identity-qc-unavailable",
+        },
+      });
+
+      expect(result).toMatchObject({
+        runId: "900",
+        qcReportId: "qc-video_clip-identity-100-1-900",
+        usedVision: false,
+        identityQc: { status: "samples_unavailable", verdict: "unavailable" },
+      });
+      const persistedPack = persistedPackUpdate.set.mock.calls[0][0]
+        .motionPromptPack;
+      expect(persistedPack.clips[0]).toMatchObject({
+        identityQc: { status: "samples_unavailable" },
+        videoTask: {
+          videoUrl: "https://media.example/episode-1-clip-1.mp4",
+          mediaAssetId: "500",
+        },
+      });
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+      expect(
+        mockDb.update.mock.results[0].value.set.mock.calls[0][0].status
+      ).toBe("succeeded");
+    } finally {
+      fetchSpy.mockRestore();
+      mockDb.select.mockReset();
+      mockDb.insert.mockReset();
+      mockDb.update.mockReset();
+      mockDb.transaction.mockReset();
+    }
+  });
+
+  it("does not attach a delayed QC result to a clip replaced during analysis", async () => {
+    mockDb.select.mockReset();
+    mockDb.insert.mockReset();
+    mockDb.update.mockReset();
+    mockDb.transaction.mockReset();
+    const makePack = (mediaAssetId: string) => ({
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "single-shot",
+      motionMode: "image_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "The character turns toward the light",
+          durationSeconds: 8,
+          videoTask: {
+            videoUrl: "https://media.example/episode-1-clip-1.mp4",
+            mediaAssetId,
+          },
+        },
+      ],
+      warnings: [],
+    });
+    const originalPack = makePack("500");
+    const replacementPack = makePack("501");
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 100,
+          tenantId: "tenant-1",
+          userId: 42,
+          seriesId: 10,
+          motionPromptPack: originalPack,
+          startFramePlan: null,
+        },
+      ])
+    );
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 900 }]))
+      .mockReturnValueOnce(insertChain([{ id: 901 }]));
+    const lockedPackQuery: any = selectChain([
+      { motionPromptPack: replacementPack },
+    ]);
+    lockedPackQuery.for = vi.fn(() => lockedPackQuery);
+    const stalePackUpdate = updateChain([]);
+    mockDb.transaction.mockImplementation((run: (tx: unknown) => unknown) =>
+      run({
+        select: vi.fn(() => lockedPackQuery),
+        update: vi.fn(() => stalePackUpdate),
+      })
+    );
+    mockDb.update.mockReturnValue(updateChain([]));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 503 }));
+
+    try {
+      const result = await router.runClipIdentityQc({
+        ctx: ctx({ publicUrl: "https://app.example" }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          idempotencyKey: "identity-qc-stale-clip",
+        },
+      });
+
+      expect(result.identityQc).toMatchObject({
+        status: "samples_unavailable",
+      });
+      expect(stalePackUpdate.set).not.toHaveBeenCalled();
+      expect(mockDb.update.mock.results[0].value.set.mock.calls[0][0].status).toBe(
+        "succeeded"
+      );
+    } finally {
+      fetchSpy.mockRestore();
+      mockDb.select.mockReset();
+      mockDb.insert.mockReset();
+      mockDb.update.mockReset();
+      mockDb.transaction.mockReset();
+    }
   });
 });
 

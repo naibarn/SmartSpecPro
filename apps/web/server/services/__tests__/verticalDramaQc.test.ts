@@ -121,6 +121,36 @@ describe("evaluateCheck primitives", () => {
     expect(stageBlocksPaidGeneration(report.issues)).toBe(false);
   });
 
+  it("keeps relationship continuity and subjective cut-rhythm findings advisory", () => {
+    const continuity = runQcForStage(
+      base("episode_memory_update", { relationshipContinuityOk: false })
+    );
+    const cutRhythm = runQcForStage(
+      base("video_prompt", {
+        subShots: {
+          flagOn: true,
+          maxPerShot: 3,
+          minSubShotSeconds: 1,
+          shots: [
+            {
+              parentShotNumber: 1,
+              mainShotDurationSeconds: 8,
+              subShots: [{ durationSeconds: 4 }, { durationSeconds: 4 }],
+              cutRhythmOk: false,
+            },
+          ],
+        },
+      })
+    );
+
+    expect(continuity.passed).toBe(false);
+    expect(cutRhythm.issues.some(issue => issue.severity === "warning")).toBe(
+      true
+    );
+    expect(stageBlocksPaidGeneration(continuity.issues)).toBe(false);
+    expect(stageBlocksPaidGeneration(cutRhythm.issues)).toBe(false);
+  });
+
   it("flags provider capability policy not honored", () => {
     const r = evaluateCheck("provider_capability_policy", base("provider_routing", {
       providerRouting: { provider: "x", provider_caps: {} as any, recommended_provider_path: "manual_review", execution_status: "blocked", normalizedStatus: "blocked", blockingReasons: ["aspect_ratio_unsupported:16:9"], provider_request: { provider: "x", execution_status: "blocked", normalizedStatus: "blocked" } },

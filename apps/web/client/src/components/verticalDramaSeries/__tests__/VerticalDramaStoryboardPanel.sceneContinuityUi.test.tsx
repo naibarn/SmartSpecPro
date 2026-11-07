@@ -31,6 +31,72 @@ const baseProps = {
 };
 
 describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
+  it.each([
+    ["warn", "Minor drift"],
+    ["fail", "Identity break"],
+    ["samples_unavailable", "QC unavailable"],
+  ] as const)(
+    "keeps the completed clip playable and downloadable when identity QC is %s",
+    (status, label) => {
+      render(
+        <VerticalDramaStoryboardPanel
+          locale="en"
+          storyboard={{
+            shots: [
+              {
+                shot_number: 1,
+                visual_description: "Walks through the hall",
+                characters: [],
+              },
+            ],
+          }}
+          startFramePlan={{ frames: [{ shotNumber: 1, imagePrompt: "hall" }] }}
+          seriesId={10}
+          episodeNumber={1}
+          motionPromptPack={{
+            selectedVideoModelId: "video-model",
+            durationProfileId: "single-shot",
+            motionMode: "image_to_video",
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "Walks through the hall",
+                durationSeconds: 8,
+                identityQc: {
+                  status,
+                  verdict:
+                    status === "warn"
+                      ? "minor_drift"
+                      : status === "fail"
+                        ? "identity_break"
+                        : "unavailable",
+                  warning: "Identity QA is advisory",
+                },
+                videoTask: {
+                  videoUrl: "https://media.example/episode-1-clip-1.mp4",
+                  mediaAssetId: "500",
+                  durabilityStatus: "ready",
+                },
+              },
+            ],
+            warnings: [],
+          }}
+        />
+      );
+
+      expect(
+        screen.getByTestId("vd-storyboard-clip-identity-qc-badge-1")
+      ).toHaveTextContent(label);
+      expect(
+        screen.getByTestId("vd-storyboard-video-open-full-1")
+      ).toBeEnabled();
+      expect(
+        screen.getByTestId("vd-storyboard-video-download-1")
+      ).toBeEnabled();
+    }
+  );
+
   it("previews scene intent and visual source revisions without hiding render actions", () => {
     render(
       <VerticalDramaStoryboardPanel
