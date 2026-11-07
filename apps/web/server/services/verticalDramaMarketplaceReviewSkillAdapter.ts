@@ -43,8 +43,11 @@ import {
 
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
-const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
+const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE =
   'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai review/story episode in at least 3 connected paragraphs with setup, an observation or character need, a review subject experience that follows the selected presentation style, and scene resolution; allow factual reviews and documentary-style stories, not only product tie-ins. Use input.reviewSubjectType and the written subject description, specifications, claims, and direction as source context when thinking up all 3 ideas. Let relevant details shape the story naturally without forcing exact wording or repeated mentions. Treat attached images as downstream visual references, including multiple angles of one product, object, restaurant, or place. This text-only idea planner receives image URLs and labels rather than image pixels, so do not claim visual observations from them; preserve all references for the later image-generation flow. Do not infer facts such as price, hours, services, software features, performance, or claims. If input.productSource is upload, treat input.product.description and input.direction as the user-provided review-subject brief and story direction; if either is empty, keep the idea general to the selected review-subject type and avoid unsupported factual claims because this text-only planner cannot inspect image pixels. Do not invent brand, specifications, benefits, features, services, safety, efficacy, or claims. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant review-subject details when supported and when they fit what a character sees, does, or needs; other shots should advance the story naturally and need not mention the subject. Do not force exact wording or repeat mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the selected review subject clearly but must stay factual, modest, and non-pressuring. Keep references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear subject-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+
+const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
+  `${MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE} In every spoken line and dialogueScript, never use absolute superlatives or urgent purchase commands, even as a joke, quotation, or negation. Replace superlatives with a modest, verifiable observation from the input; replace purchase commands with a calm, optional suggestion to review the available information.`;
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -662,6 +665,13 @@ export function validateMarketplaceReviewIdeaOutput(
     ...idea.dialogue,
     ...idea.shotDialogues.flatMap(shot => shot.lines),
   ]);
+  const dialogueScriptLines = output.ideas.flatMap(idea =>
+    idea.dialogueScript
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => /^[^:\n]{1,80}:\s*\S+/.test(line))
+      .map(line => line.replace(/^[^:\n]{1,80}:\s*/, ""))
+  );
   if (
     dialogueMode === "character_dialogue" &&
     dialogueSpeakerNames.size > 0 &&
@@ -684,7 +694,7 @@ export function validateMarketplaceReviewIdeaOutput(
     );
   }
   const compliance = screenSpecialDialogueCompliance(
-    allIdeaLines.map(line => line.line)
+    [...allIdeaLines.map(line => line.line), ...dialogueScriptLines]
   );
   if (compliance.hasViolations) {
     throw new Error(`MARKETPLACE_REVIEW_OUTPUT_INVALID: advertising dialogue compliance failed (${compliance.violations.map(item => item.matchedPattern).join(", ")})`);
@@ -880,7 +890,7 @@ function buildUserPrompt(
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
       advertisingCompliance:
-        "ห้ามกล่าวอ้างเกินจริงและห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำหัวข้อรีวิวอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ห้ามกดดันหรือชวนซื้อเกินควร",
+        "ห้ามกล่าวอ้างเกินจริง ใช้คำยกย่องแบบเด็ดขาด หรือใช้คำสั่งเร่งซื้อ รวมถึงห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำหัวข้อรีวิวอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ให้ใช้ประโยคสุภาพที่ไม่กดดัน ไม่ชวนซื้อ และไม่เปรียบเทียบว่าเหนือกว่าทุกอย่าง",
       productTieIn:
         input.presentationStyle === "direct_product_pitch"
           ? input.dialogueMode === "character_dialogue"
@@ -1353,7 +1363,6 @@ export async function generateMarketplaceReviewIdeas(input: {
     ReturnType<typeof executeJsonPlanningCallWithRetry>
   > | null = null;
   let output: MarketplaceReviewIdeaOutput | null = null;
-  let lastValidationError: unknown = null;
   let repairFeedback = "";
   for (let attempt = 1; attempt <= 3 && !output; attempt += 1) {
     try {
@@ -1363,7 +1372,7 @@ export async function generateMarketplaceReviewIdeas(input: {
             model,
             systemPrompt,
             userPrompt: buildUserPrompt(parsed, repairFeedback),
-            temperature: 0.75,
+            temperature: attempt === 1 ? 0.75 : 0.2,
             userId: input.actor.userId,
             maxTokens: 12_000,
             modelFallbackPolicy: "recommended",
@@ -1396,16 +1405,24 @@ export async function generateMarketplaceReviewIdeas(input: {
         dialogueMode: parsed.dialogueMode,
       });
     } catch (error) {
-      lastValidationError = error;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const complianceRepair = errorMessage.includes(
+        "advertising dialogue compliance failed"
+      )
+        ? "บทพูดไม่ผ่านการตรวจโฆษณา: เขียนบทพูดใหม่ทุกจุดที่เกี่ยวข้องใน dialogueScript, dialogue และ shotDialogues โดยลบถ้อยคำที่ถูกปฏิเสธออกให้หมด ห้ามคัดคำเดิมมาอ้าง ยกตัวอย่าง หรือปฏิเสธซ้ำ ใช้ข้อสังเกตที่ยืนยันได้จากข้อมูลแทนคำยกย่องเด็ดขาด และใช้ข้อเสนอแนะที่สุภาพ ไม่เร่งตัดสินใจแทนคำสั่งซื้อสินค้า ตรวจทุกบรรทัดก่อนส่ง JSON"
+        : "ปรับเรื่องและบทพูดให้ตรงกับประเภทหัวข้อรีวิวและข้อมูลที่ยืนยันได้อย่างเป็นธรรมชาติ ไม่ฝืนกล่าวถึงหัวข้อในทุกช็อต";
       repairFeedback =
-        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${
-          error instanceof Error ? error.message : String(error)
-        }. ปรับเรื่องและบทพูดให้ตรงกับประเภทหัวข้อรีวิวและข้อมูลที่ยืนยันได้อย่างเป็นธรรมชาติ ไม่ฝืนกล่าวถึงหัวข้อในทุกช็อต สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
+        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${errorMessage}. ${complianceRepair} สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
     }
   }
   if (!output) {
+    console.error("[MARKETPLACE_REVIEW_IDEA_REPAIR_FAILED]", {
+      seriesId: input.seriesId,
+      reasonCode: "MARKETPLACE_REVIEW_OUTPUT_INVALID",
+    });
     throw new Error(
-      `MARKETPLACE_REVIEW_IDEA_REPAIR_FAILED: ไม่สามารถสร้างไอเดียและบทพูดที่ผ่านการตรวจได้ภายใน 3 รอบ (${lastValidationError instanceof Error ? lastValidationError.message : String(lastValidationError)})`
+      "สร้างไอเดียไม่สำเร็จ เนื้อหาที่ระบบสร้างยังไม่ผ่านการตรวจ กรุณาลองใหม่อีกครั้ง"
     );
   }
 
