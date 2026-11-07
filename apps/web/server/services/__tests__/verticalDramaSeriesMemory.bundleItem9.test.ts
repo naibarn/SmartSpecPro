@@ -95,7 +95,7 @@ describe("deriveStandingArcDriftWarnings (pure)", () => {
       event({
         memoryEventId: "2",
         memoryKind: "arc_replan_applied",
-        payload: { proposalId: "p-1", newVersionId: "v2" },
+        payload: { proposalId: "p-1", newVersionId: "v2", triggeredByEpisodeNumber: 3 },
         createdAt: new Date("2026-07-07T01:00:00.000Z").toISOString(),
       }),
     ];
@@ -109,7 +109,7 @@ describe("deriveStandingArcDriftWarnings (pure)", () => {
       event({
         memoryEventId: "2",
         memoryKind: "arc_replan_applied",
-        payload: { arcReplanApprovalOf: "p-1" },
+        payload: { arcReplanApprovalOf: "p-1", triggeredByEpisodeNumber: 3 },
         createdAt: new Date("2026-07-07T01:00:00.000Z").toISOString(),
       }),
     ];

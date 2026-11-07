@@ -132,11 +132,47 @@ vi.mock("../verticalDramaProductTieIn", () => ({
   resolveFrameProductReferenceAssetIds: vi.fn(),
 }));
 
-import { VerticalDramaEpisodePipeline } from "../verticalDramaEpisodePipeline";
+import {
+  buildEpisodeMemoryBundleBestEffort,
+  VerticalDramaEpisodePipeline,
+} from "../verticalDramaEpisodePipeline";
 
 const pipeline = new VerticalDramaEpisodePipeline();
 
 const owner = { tenantId: "tenant-1", userId: 42, seriesId: 10, episodeId: 100 };
+
+describe("optional series memory context", () => {
+  it("omits unavailable continuity memory without propagating the read error", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const service = {
+      buildEpisodeMemoryBundle: vi.fn().mockRejectedValue(new Error("memory store unavailable")),
+    };
+
+    await expect(
+      buildEpisodeMemoryBundleBestEffort(service, owner, 4),
+    ).resolves.toBeUndefined();
+    expect(service.buildEpisodeMemoryBundle).toHaveBeenCalledWith(
+      { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
+      4,
+    );
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  it("omits unavailable previous-episode wardrobe context without failing generation", async () => {
+    mockDb.select.mockImplementationOnce(() => {
+      throw new Error("episode memory query unavailable");
+    });
+
+    await expect(
+      (pipeline as any).resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        { episodeNumber: 4, episodeKind: "standard" },
+        [],
+      ),
+    ).resolves.toBeUndefined();
+  });
+});
 
 /** Build a thenable select-chain stub so `await db.select()....where(...)` resolves to `rows`. */
 function selectChain(rows: unknown[]) {

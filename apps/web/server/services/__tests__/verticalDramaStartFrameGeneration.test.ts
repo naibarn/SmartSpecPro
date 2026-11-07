@@ -23,15 +23,23 @@ vi.mock("@smartspec/skills", () => ({
 }));
 vi.mock("fs", async () => {
   const actual = await vi.importActual<typeof import("fs")>("fs");
+  const readFileSync = vi.fn((filePath: unknown, ...args: unknown[]) => {
+    // `verticalDramaEpisodePipeline` loads the deployment target map at import
+    // time; keep that real config available while other skill reads stay mocked.
+    if (String(filePath).endsWith("/scripts/deployment-targets.json")) {
+      return actual.readFileSync(filePath as any, ...(args as any[]));
+    }
+    return undefined;
+  });
   return {
     ...actual,
     default: {
       ...actual,
       existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      readFileSync,
     },
     existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync,
   };
 });
 vi.mock("../verticalDramaImproveScript", () => ({

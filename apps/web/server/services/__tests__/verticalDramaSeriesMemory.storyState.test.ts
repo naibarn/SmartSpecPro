@@ -19,6 +19,7 @@ function event(
     seriesId: "10",
     episodeId: "100",
     payload: {},
+    approved: true,
     createdAt: new Date("2026-07-07T00:00:00.000Z").toISOString(),
     ...over,
   };
@@ -75,7 +76,20 @@ describe("buildEpisodeMemoryBundle — storyState flag gating (F132B)", () => {
   it("includes storyState when ledgersEnabled is true and a matching event exists", () => {
     const events = [storyStateEvent("1", 3), storyStateEvent("2", 5)];
     const bundle = buildEpisodeMemoryBundle(events, 5, undefined, { ledgersEnabled: true });
-    expect(bundle.storyState?.episode).toBe(5);
+    expect(bundle.storyState?.episode).toBe(3);
+  });
+
+  it("omits unapproved story state and never projects state from the current or a future episode", () => {
+    const events = [
+      storyStateEvent("1", 2),
+      storyStateEvent("2", 3, { requiredNextEpisodeResponse: "unapproved" }),
+      storyStateEvent("3", 4),
+    ];
+    events[1].approved = false;
+
+    const bundle = buildEpisodeMemoryBundle(events, 4, undefined, { ledgersEnabled: true });
+
+    expect(bundle.storyState?.episode).toBe(2);
   });
 
   it("omits storyState when ledgersEnabled is true but no story_state event exists yet", () => {

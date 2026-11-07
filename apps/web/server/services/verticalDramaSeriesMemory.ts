@@ -317,8 +317,58 @@ function sortEventsStable(events: VerticalDramaMemoryEvent[]): VerticalDramaMemo
 }
 
 function eventEpisodeNumber(ev: VerticalDramaMemoryEvent): number | undefined {
-  const n = (ev.payload?.episodeNumber ?? ev.payload?.episode_number) as unknown;
-  return typeof n === "number" ? n : undefined;
+  const storyState = ev.payload?.storyState;
+  const raw =
+    ev.payload?.episodeNumber ??
+    ev.payload?.episode_number ??
+    ev.payload?.triggeredByEpisodeNumber ??
+    (storyState && typeof storyState === "object"
+      ? (storyState as Record<string, unknown>).episode
+      : undefined);
+  const n = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
+  return typeof n === "number" && Number.isInteger(n) && n > 0 ? n : undefined;
+}
+
+function eventText(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return undefined;
+}
+
+function isValidMemoryEventForProjection(ev: VerticalDramaMemoryEvent): boolean {
+  switch (ev.memoryKind) {
+    case "canonical_fact":
+      return eventText(ev.payload?.fact, ev.summaryText) !== undefined;
+    case "episode_summary":
+      return eventText(ev.payload?.summary, ev.summaryText) !== undefined;
+    case "hook_opened":
+    case "hook_resolved":
+      return (
+        eventText(ev.payload?.hook, ev.summaryText) !== undefined &&
+        eventText(ev.payload?.hookId, ev.payload?.hook, ev.summaryText) !== undefined
+      );
+    case "continuity_warning":
+      return eventText(ev.payload?.warning, ev.summaryText) !== undefined;
+    case "product_tie_in_usage":
+      return eventText(ev.payload?.productName, ev.payload?.product_name) !== undefined;
+    case "story_state":
+      return verticalDramaStoryStateSchema.safeParse(
+        ev.payload?.storyState ?? ev.payload,
+      ).success;
+    case "arc_replan_proposal":
+      return (
+        typeof ev.payload?.proposalId === "string" &&
+        eventText(ev.payload?.rationale) !== undefined
+      );
+    case "arc_replan_applied":
+      return typeof (ev.payload?.proposalId ?? ev.payload?.arcReplanApprovalOf) === "string";
+    case "character_delta":
+    case "relationship_delta":
+      return eventText(ev.summaryText) !== undefined;
+    default:
+      return false;
+  }
 }
 
 /** Derive the outcome of a retcon proposal purely from later append-only events. */
@@ -345,8 +395,9 @@ export function computeProductTieInFatigue(
   let lastUsedEpisodeNumber: number | undefined;
   for (const ev of events) {
     if (ev.memoryKind !== "product_tie_in_usage") continue;
+    const product = eventText(ev.payload?.productName, ev.payload?.product_name);
+    if (!product) continue;
     totalUsages += 1;
-    const product = String(ev.payload?.productName ?? ev.payload?.product_name ?? "unknown");
     byProduct[product] = (byProduct[product] ?? 0) + 1;
     const epNum = eventEpisodeNumber(ev);
     if (epNum != null) {
@@ -359,8 +410,10 @@ export function computeProductTieInFatigue(
 
 /** Build the compacted rolling-summary + verbatim-tail memory text (spec §7.6). */
 export function buildCompactedMemoryText(events: VerticalDramaMemoryEvent[]): string {
-  if (events.length === 0) return "";
-  const sorted = sortEventsStable(events);
+  const sorted = sortEventsStable(
+    events.filter((ev) => ev.approved === true && isValidMemoryEventForProjection(ev)),
+  );
+  if (sorted.length === 0) return "";
   const head = sorted.slice(0, Math.max(0, sorted.length - VERTICAL_DRAMA_MEMORY_COMPACTION_VERBATIM_TAIL));
   const tail = sorted.slice(-VERTICAL_DRAMA_MEMORY_COMPACTION_VERBATIM_TAIL);
   const byKind: Record<string, number> = {};
@@ -371,9 +424,36 @@ export function buildCompactedMemoryText(events: VerticalDramaMemoryEvent[]): st
       .map(([k, n]) => `${k}×${n}`)
       .join(", ");
   const verbatim = tail
-    .map((ev) => `- [${ev.memoryKind}] ${ev.summaryText ?? JSON.stringify(ev.payload)}`)
+    .map((ev) => `- [${ev.memoryKind}] ${compactedEventText(ev)}`)
     .join("\n");
   return `${rollingSummary}\n\nRECENT EVENTS (verbatim):\n${verbatim}`;
+}
+
+function compactedEventText(ev: VerticalDramaMemoryEvent): string {
+  switch (ev.memoryKind) {
+    case "canonical_fact":
+      return eventText(ev.summaryText, ev.payload?.fact) ?? "";
+    case "episode_summary":
+      return eventText(ev.summaryText, ev.payload?.summary) ?? "";
+    case "hook_opened":
+    case "hook_resolved":
+      return eventText(ev.summaryText, ev.payload?.hook) ?? "";
+    case "continuity_warning":
+      return eventText(ev.summaryText, ev.payload?.warning) ?? "";
+    case "product_tie_in_usage":
+      return eventText(ev.summaryText, ev.payload?.productName, ev.payload?.product_name) ?? "";
+    case "story_state": {
+      const state = (ev.payload?.storyState ?? ev.payload) as Record<string, unknown>;
+      return eventText(state.requiredNextEpisodeResponse) ?? "";
+    }
+    case "character_delta":
+    case "relationship_delta":
+    case "arc_replan_proposal":
+    case "arc_replan_applied":
+      return eventText(ev.summaryText) ?? "";
+    default:
+      return "";
+  }
 }
 
 /**
@@ -390,44 +470,144 @@ export function buildEpisodeMemoryBundle(
 ): VerticalDramaEpisodeMemoryBundle {
   const sorted = sortEventsStable(events);
 
+  // Only memory from completed, earlier episodes may influence this episode.
+  // The canonical event path writes approved facts with an episode number;
+  // approved retcons are the one intentionally series-scoped exception.
+  // Arc proposals remain advisory signals, but only after their triggering
+  // episode, and never enter the factual projections below.
+  const episodeScoped = sorted.flatMap((ev, index) => {
+    if (!isValidMemoryEventForProjection(ev)) return [];
+    const sourceEpisode = eventEpisodeNumber(ev);
+    if (sourceEpisode != null) {
+      if (sourceEpisode >= episodeNumber) return [];
+      if (ev.approved === true || ev.memoryKind === "arc_replan_proposal") {
+        return [{ ev, index, sourceEpisode }];
+      }
+      return [];
+    }
+    if (
+      ev.memoryKind === "canonical_fact" &&
+      ev.approved === true &&
+      typeof ev.payload?.retconApprovalOf === "string"
+    ) {
+      return [{ ev, index, sourceEpisode: undefined }];
+    }
+    return [];
+  });
+
+  // Append-only storage keeps old approvals. Project only the latest accepted
+  // checkpoint/manual summary revision for each source episode so a re-draft
+  // cannot leave stale facts or hooks in future prompts.
+  const latestSummaryIndexByEpisode = new Map<number, number>();
+  for (const entry of episodeScoped) {
+    if (entry.ev.memoryKind === "episode_summary" && entry.sourceEpisode != null) {
+      latestSummaryIndexByEpisode.set(entry.sourceEpisode, entry.index);
+    }
+  }
+  const eligible = episodeScoped
+    .filter(({ ev, index, sourceEpisode }) => {
+      if (sourceEpisode == null) return true;
+      const latestSummaryIndex = latestSummaryIndexByEpisode.get(sourceEpisode);
+      return latestSummaryIndex == null || index >= latestSummaryIndex;
+    })
+    .map(({ ev }) => ev);
+
   // Retcon supersession: an event id superseded by any later event is dropped.
   const supersededIds = new Set<string>();
-  for (const ev of sorted) {
+  for (const ev of eligible) {
     for (const sup of ev.supersedesEventIds ?? []) supersededIds.add(sup);
   }
-  const live = sorted.filter((ev) => !supersededIds.has(ev.memoryEventId));
+  const live = eligible.filter((ev) => !supersededIds.has(ev.memoryEventId));
 
   // Canonical facts (approved retcon approvals count as canonical facts too).
   const canonicalFacts = live
     .filter((ev) => ev.memoryKind === "canonical_fact")
-    .map((ev) => String(ev.payload?.fact ?? ev.summaryText ?? ""))
-    .filter((s) => s.length > 0);
+    .map((ev) => eventText(ev.payload?.fact, ev.summaryText))
+    .filter((fact): fact is string => fact !== undefined);
 
   // Episode summaries: keep the last N by episode number.
   const episodeSummaryEvents = live
     .filter((ev) => ev.memoryKind === "episode_summary")
     .sort((a, b) => (eventEpisodeNumber(a) ?? 0) - (eventEpisodeNumber(b) ?? 0));
-  const lastSummaries = episodeSummaryEvents.slice(-policy.includeLastEpisodeCount).map((ev) => ({
-    episodeId: String(ev.episodeId ?? ev.payload?.episodeId ?? ""),
-    episodeNumber: eventEpisodeNumber(ev) ?? 0,
-    summary: String(ev.payload?.summary ?? ev.summaryText ?? ""),
-    cliffhanger: ev.payload?.cliffhanger != null ? String(ev.payload.cliffhanger) : undefined,
-    characterDeltas: (ev.payload?.characterDeltas as VerticalDramaSeriesMemory["episodeSummaries"][number]["characterDeltas"]) ?? [],
-    productTieInUsage: ev.payload?.productTieInUsage as
-      | VerticalDramaSeriesMemory["episodeSummaries"][number]["productTieInUsage"]
-      | undefined,
-  }));
+  const lastSummaries = episodeSummaryEvents
+    .slice(-policy.includeLastEpisodeCount)
+    .flatMap((ev) => {
+      const summary = eventText(ev.payload?.summary, ev.summaryText);
+      const sourceEpisode = eventEpisodeNumber(ev);
+      if (!summary || sourceEpisode == null) return [];
+      const rawCharacterDeltas = ev.payload?.characterDeltas;
+      const characterDeltas = Array.isArray(rawCharacterDeltas)
+        ? rawCharacterDeltas.filter(
+            (delta): delta is VerticalDramaSeriesMemory["episodeSummaries"][number]["characterDeltas"][number] => {
+              if (!delta || typeof delta !== "object" || Array.isArray(delta)) return false;
+              const candidate = delta as Record<string, unknown>;
+              const changedFields = candidate.changedFields;
+              return (
+                typeof candidate.characterId === "string" && candidate.characterId.trim().length > 0 &&
+                typeof candidate.episodeNumber === "number" &&
+                Number.isInteger(candidate.episodeNumber) && candidate.episodeNumber > 0 &&
+                typeof candidate.summary === "string" && candidate.summary.trim().length > 0 &&
+                Array.isArray(changedFields) &&
+                changedFields.every((field) => typeof field === "string")
+              );
+            },
+          )
+        : [];
+      const rawProductTieIn = ev.payload?.productTieInUsage;
+      let productTieInUsage:
+        | VerticalDramaSeriesMemory["episodeSummaries"][number]["productTieInUsage"]
+        | undefined;
+      if (rawProductTieIn && typeof rawProductTieIn === "object" && !Array.isArray(rawProductTieIn)) {
+        const candidate = rawProductTieIn as Record<string, unknown>;
+        const claimsReview = candidate.claimsReview;
+        if (
+          typeof candidate.enabled === "boolean" &&
+          typeof candidate.episodeHasTieIn === "boolean" &&
+          Array.isArray(candidate.shotNumbers) &&
+          candidate.shotNumbers.every((shotNumber) => Number.isInteger(shotNumber) && Number(shotNumber) > 0) &&
+          typeof candidate.storyFunction === "string" && candidate.storyFunction.trim().length > 0 &&
+          typeof candidate.placementNaturalnessScore === "number" &&
+          Number.isFinite(candidate.placementNaturalnessScore) &&
+          !!claimsReview &&
+          typeof claimsReview === "object" &&
+          !Array.isArray(claimsReview) &&
+          typeof (claimsReview as Record<string, unknown>).unsupportedClaimsDetected === "boolean" &&
+          Array.isArray((claimsReview as Record<string, unknown>).warnings) &&
+          ((claimsReview as Record<string, unknown>).warnings as unknown[]).every((warning) => typeof warning === "string") &&
+          typeof candidate.disclosureRequired === "boolean"
+        ) {
+          productTieInUsage = rawProductTieIn as VerticalDramaSeriesMemory["episodeSummaries"][number]["productTieInUsage"];
+        }
+      }
+      const episodeId = eventText(ev.episodeId, ev.payload?.episodeId) ?? "";
+      const cliffhanger = eventText(ev.payload?.cliffhanger);
+      return [{
+        episodeId,
+        episodeNumber: sourceEpisode,
+        summary,
+        ...(cliffhanger ? { cliffhanger } : {}),
+        characterDeltas,
+        ...(productTieInUsage ? { productTieInUsage } : {}),
+      }];
+    });
 
   // Hooks.
   const openedHooks = live.filter((ev) => ev.memoryKind === "hook_opened");
   const resolvedHookEvents = live.filter((ev) => ev.memoryKind === "hook_resolved");
   const resolvedHookKeys = new Set(
-    resolvedHookEvents.map((ev) => String(ev.payload?.hookId ?? ev.payload?.hook ?? ev.summaryText ?? "")),
+    resolvedHookEvents
+      .map((ev) => eventText(ev.payload?.hookId, ev.payload?.hook, ev.summaryText))
+      .filter((hook): hook is string => hook !== undefined),
   );
   const unresolvedHooks = openedHooks
-    .map((ev) => ({ key: String(ev.payload?.hookId ?? ev.payload?.hook ?? ev.summaryText ?? ""), text: String(ev.payload?.hook ?? ev.summaryText ?? "") }))
-    .filter((h) => h.key.length > 0 && !resolvedHookKeys.has(h.key))
-    .map((h) => h.text);
+    .map((ev) => ({
+      key: eventText(ev.payload?.hookId, ev.payload?.hook, ev.summaryText),
+      text: eventText(ev.payload?.hook, ev.summaryText),
+    }))
+    .filter((hook): hook is { key: string; text: string } =>
+      hook.key !== undefined && hook.text !== undefined && !resolvedHookKeys.has(hook.key),
+    )
+    .map((hook) => hook.text);
 
   // Resolved-hook lookback: hooks resolved within the last N episodes.
   const resolvedHookLookback = resolvedHookEvents
@@ -435,16 +615,17 @@ export function buildEpisodeMemoryBundle(
       const epNum = eventEpisodeNumber(ev);
       return epNum == null || episodeNumber - epNum <= policy.includeResolvedHookLookbackCount;
     })
-    .map((ev) => String(ev.payload?.hook ?? ev.summaryText ?? ""))
-    .filter((s) => s.length > 0);
+    .map((ev) => eventText(ev.payload?.hook, ev.summaryText))
+    .filter((hook): hook is string => hook !== undefined);
 
   const continuityWarnings = live
     .filter((ev) => ev.memoryKind === "continuity_warning")
-    .map((ev) => String(ev.payload?.warning ?? ev.summaryText ?? ""))
-    .filter((s) => s.length > 0);
+    .map((ev) => eventText(ev.payload?.warning, ev.summaryText))
+    .filter((warning): warning is string => warning !== undefined);
 
-  const usedCompaction = sorted.length > VERTICAL_DRAMA_MEMORY_COMPACTION_EVENT_THRESHOLD;
-  const compactedMemoryText = usedCompaction ? buildCompactedMemoryText(sorted) : "";
+  const usedCompaction = live.filter((ev) => ev.approved === true).length >
+    VERTICAL_DRAMA_MEMORY_COMPACTION_EVENT_THRESHOLD;
+  const compactedMemoryText = usedCompaction ? buildCompactedMemoryText(live) : "";
 
   const productTieInFatigue = computeProductTieInFatigue(
     live,
@@ -453,7 +634,7 @@ export function buildEpisodeMemoryBundle(
   );
 
   // Deterministic updatedAt: last event's timestamp, else epoch.
-  const updatedAt = sorted.length > 0 ? sorted[sorted.length - 1].createdAt : new Date(0).toISOString();
+  const updatedAt = live.length > 0 ? live[live.length - 1].createdAt : new Date(0).toISOString();
 
   // Bundle item 9 (spec §7.7.3, section-13, added 2026-07-07) — flag-gated;
   // omitted entirely (not even present as `undefined` keys — see the object

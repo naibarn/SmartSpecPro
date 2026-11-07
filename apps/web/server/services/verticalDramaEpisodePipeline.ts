@@ -3934,6 +3934,27 @@ function buildSeriesLookRegister(
   };
 }
 
+/** Series memory is continuity context; storage failures must not stop production. */
+export async function buildEpisodeMemoryBundleBestEffort(
+  service: Pick<VerticalDramaSeriesMemoryService, "buildEpisodeMemoryBundle">,
+  owner: Pick<EpisodeRunOwner, "tenantId" | "userId" | "seriesId">,
+  episodeNumber: number,
+): Promise<Awaited<ReturnType<VerticalDramaSeriesMemoryService["buildEpisodeMemoryBundle"]>> | undefined> {
+  try {
+    return await service.buildEpisodeMemoryBundle(
+      { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
+      episodeNumber,
+    );
+  } catch (error) {
+    console.warn("[vd_pipeline] optional series-memory context unavailable", {
+      seriesId: owner.seriesId,
+      episodeNumber,
+      errorType: error instanceof Error ? error.name.slice(0, 64) : "unknown",
+    });
+    return undefined;
+  }
+}
+
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
@@ -4272,24 +4293,39 @@ export class VerticalDramaEpisodePipeline {
     ) {
       return undefined;
     }
-    const previousEpisodes = await db
-      .select({
-        id: verticalDramaEpisodes.id,
-        episodeNumber: verticalDramaEpisodes.episodeNumber,
-        episodeKind: verticalDramaEpisodes.episodeKind,
-        storyboard: verticalDramaEpisodes.storyboard,
-      })
-      .from(verticalDramaEpisodes)
-      .where(
-        and(
-          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-          eq(verticalDramaEpisodes.userId, owner.userId),
-          eq(verticalDramaEpisodes.seriesId, owner.seriesId),
-          lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber)
+    let previousEpisodes: Array<{
+      id: number;
+      episodeNumber: number;
+      episodeKind: string | null;
+      storyboard: unknown;
+    }>;
+    try {
+      previousEpisodes = await db
+        .select({
+          id: verticalDramaEpisodes.id,
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          episodeKind: verticalDramaEpisodes.episodeKind,
+          storyboard: verticalDramaEpisodes.storyboard,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+            eq(verticalDramaEpisodes.userId, owner.userId),
+            eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+            lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber)
+          )
         )
-      )
-      .orderBy(desc(verticalDramaEpisodes.episodeNumber))
-      .limit(20);
+        .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+        .limit(20);
+    } catch (error) {
+      debugError(
+        "vd_cross_episode_wardrobe",
+        `Previous-episode wardrobe context unavailable for episode #${episode.episodeNumber}`,
+        error
+      );
+      return undefined;
+    }
     for (const previous of previousEpisodes) {
       if (previous.episodeKind === "special_tie_in" || !previous.storyboard) {
         continue;
@@ -4680,7 +4716,8 @@ export class VerticalDramaEpisodePipeline {
     // -> deterministic bundle), never an LLM call, so re-deriving it per
     // stage costs nothing and keeps each stage's `runStage` invocation
     // self-contained (no cross-stage state threading required).
-    const memoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
+    const memoryBundle = await buildEpisodeMemoryBundleBestEffort(
+      this.memoryService,
       {
         tenantId: owner.tenantId,
         userId: owner.userId,
@@ -4955,7 +4992,8 @@ export class VerticalDramaEpisodePipeline {
     // Prior memory (built BEFORE this episode's own summary is appended —
     // the append only happens later, on explicit checkpoint approval) so the
     // planner sees continuity context but never double-counts this episode.
-    const priorMemoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
+    const priorMemoryBundle = await buildEpisodeMemoryBundleBestEffort(
+      this.memoryService,
       {
         tenantId: owner.tenantId,
         userId: owner.userId,
@@ -7560,7 +7598,8 @@ export class VerticalDramaEpisodePipeline {
 
     let memoryBundle: unknown;
     if (stage === "normalize_series_input") {
-      memoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
+      memoryBundle = await buildEpisodeMemoryBundleBestEffort(
+        this.memoryService,
         {
           tenantId: owner.tenantId,
           userId: owner.userId,
