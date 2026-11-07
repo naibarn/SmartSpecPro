@@ -65,6 +65,11 @@ import type {
   VerticalDramaDialogueLine,
 } from "@shared/verticalDramaSeries/audio";
 import {
+  classifyVerticalDramaAudioPlanSource,
+  type VerticalDramaEpisodeAudioSource,
+  type VerticalDramaAudioSourceStatus,
+} from "@shared/verticalDramaSeries/audioSourceRevision";
+import {
   resolveDialogueLineAbsoluteTimings,
   type VdDialogueTimelineClip,
 } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
@@ -1981,6 +1986,7 @@ export interface VdEpisodeDialogueAudioSubtitlesRunInputs {
   subtitles?: RunAssemblyJobSubtitlesInput;
   dialogueAudioSegmentsIncluded: number;
   subtitleLinesIncluded: number;
+  dialogueAudioSourceStatus?: VerticalDramaAudioSourceStatus;
 }
 
 /**
@@ -2075,6 +2081,8 @@ function buildDialogueLinesFromClipDialogue(
 
 export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   plan: VerticalDramaDialogueAudioPlan | null | undefined;
+  /** Current authored source; a stale optional plan is excluded from render. */
+  source?: VerticalDramaEpisodeAudioSource;
   motionClips: VdDialogueTimelineClip[];
   /** Per-clip authored dialogue, used as the subtitle source when `plan` has
    *  no lines. Keyed by `clipNumber`. Absent/empty ⇒ behavior is
@@ -2093,7 +2101,11 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
    *  `resolveAudienceAgeRating`'s own "no rating? default to 18+" default). */
   audienceAgeRating?: AudienceAgeRating;
 }): VdEpisodeDialogueAudioSubtitlesRunInputs {
-  const planLines = params.plan?.dialogueLines ?? [];
+  const dialogueAudioSourceStatus = params.source
+    ? classifyVerticalDramaAudioPlanSource(params.plan, params.source)
+    : undefined;
+  const usablePlan = dialogueAudioSourceStatus === "stale" ? null : params.plan;
+  const planLines = usablePlan?.dialogueLines ?? [];
   const lines =
     planLines.length > 0
       ? planLines
@@ -2135,6 +2147,7 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     return {
       dialogueAudioSegmentsIncluded: 0,
       subtitleLinesIncluded: 0,
+      ...(dialogueAudioSourceStatus ? { dialogueAudioSourceStatus } : {}),
       ...(badgeOnlySubtitles ? { subtitles: badgeOnlySubtitles } : {}),
     };
   }
@@ -2147,7 +2160,7 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
 
   const audioUrlByLineId = new Map<string, string>();
   if (params.includeDialogueAudio) {
-    for (const item of params.plan?.separateTtsPlan?.items ?? []) {
+    for (const item of usablePlan?.separateTtsPlan?.items ?? []) {
       const audioUrl = item.audioTask?.audioUrl;
       if (audioUrl && audioUrl.trim()) {
         audioUrlByLineId.set(item.lineId, audioUrl);
@@ -2257,6 +2270,7 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     subtitles,
     dialogueAudioSegmentsIncluded: segments.length,
     subtitleLinesIncluded: subtitleLines.length,
+    ...(dialogueAudioSourceStatus ? { dialogueAudioSourceStatus } : {}),
   };
 }
 

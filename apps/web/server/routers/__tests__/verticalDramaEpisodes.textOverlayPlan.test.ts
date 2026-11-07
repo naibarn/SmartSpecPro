@@ -56,6 +56,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -111,6 +112,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -328,6 +333,7 @@ vi.mock("../../services/verticalDramaAdBanner", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import * as episodeVideoAssembly from "../../services/verticalDramaEpisodeVideoAssembly";
+import { fingerprintVerticalDramaEpisodeAudioSource } from "@shared/verticalDramaSeries/audioSourceRevision";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<
   string,
@@ -382,6 +388,7 @@ const EPISODE_ROW_BASE = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDb.select.mockReturnValue(selectChain([]));
   mockGetTenantFeatureFlags.mockResolvedValue({
     verticalDramaSeriesTextOverlaySuite: true,
   });
@@ -638,6 +645,70 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
     expect(call.subtitles).toBeUndefined();
     expect(call.watermarkImages).toBeUndefined();
     expect(mockQueueVerticalDramaFfmpegAssemblyJob).not.toHaveBeenCalled();
+  });
+
+  it("continues video assembly with stale optional dialogue audio and records its source status", async () => {
+    const oldSource = {
+      seriesId: 10,
+      episodeId: 20,
+      script: { dialogue: "Old" },
+      storyboard: { shots: [] },
+    };
+    const currentSource = {
+      seriesId: 10,
+      episodeId: 20,
+      script: { dialogue: "Current" },
+      storyboard: { shots: [{ shotNumber: 1 }] },
+    };
+    const stalePlan = {
+      sourceRevision: {
+        scheme: "episode_script_storyboard_sha256_v1" as const,
+        fingerprint: fingerprintVerticalDramaEpisodeAudioSource(oldSource),
+        capturedAt: "2026-11-01T00:00:00.000Z",
+      },
+      separateTtsPlan: { items: [] },
+    };
+    const manifestPatch = vi.fn();
+    const updateChainStub = {
+      set: vi.fn((patch: unknown) => {
+        manifestPatch(patch);
+        return updateChainStub;
+      }),
+      where: vi.fn(() => Promise.resolve([])),
+    };
+    mockDb.update.mockReturnValue(updateChainStub);
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesTextOverlaySuite: false,
+      verticalDramaSeriesVoiceChain: true,
+    });
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          ...EPISODE_ROW_BASE,
+          ...currentSource,
+          dialogueAudioPlan: stalePlan,
+        },
+      ]),
+    );
+
+    const result = await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20" },
+    });
+
+    expect(result.jobId).toBe("job-1");
+    expect(mockSubmitVdRemotionAssembly).toHaveBeenCalled();
+    expect(episodeVideoAssembly.resolveEpisodeDialogueAudioAndSubtitlesRunInputs)
+      .toHaveBeenCalledWith(expect.objectContaining({
+        plan: stalePlan,
+        source: currentSource,
+      }));
+    expect(manifestPatch).toHaveBeenCalledWith(expect.objectContaining({
+      assemblyManifest: expect.objectContaining({
+        dialogueAudioTimeline: [],
+        dialogueAudioSourceStatus: "stale",
+      }),
+    }));
   });
 
   it("flag ON: merges resolved overlays into submitAssemblyJob's subtitles (preset falls back to no_subtitle_style)", async () => {

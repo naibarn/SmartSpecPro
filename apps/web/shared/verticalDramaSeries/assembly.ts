@@ -208,6 +208,9 @@ export type VerticalDramaAssemblyManifest = {
     startSeconds: number;
     durationSeconds?: number;
   }>;
+  /** Source revision check for the optional dialogue-audio plan used at the
+   *  most recent assembly attempt. Optional for legacy manifests. */
+  dialogueAudioSourceStatus?: "current" | "stale" | "unverified" | "missing";
   /** Paired with `dialogueAudioTimeline` — signals that a future renderer
    *  should loudness-normalize the per-line dialogue tracks before mixing
    *  (different TTS providers/voices can differ significantly in output

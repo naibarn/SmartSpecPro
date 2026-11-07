@@ -161,6 +161,32 @@ describe("buildDialogueAudioPlan", () => {
     expect(plan.separateTtsPlan?.injectsIntoVideoPrompts).toBe(false);
   });
 
+  it("preserves narrator intent independently from the selected dialogue-TTS mode", () => {
+    const plan = buildDialogueAudioPlan(
+      baseInput({ mode: "narrator", requestedStrategy: "dialogue_tts" }),
+    );
+
+    expect(plan.mode).toBe("narrator");
+    expect(plan.audioStrategy).toBe("dialogue_tts");
+    expect(plan.separateTtsPlan?.strategy).toBe("dialogue_tts");
+    expect(plan.separateTtsPlan?.injectsIntoVideoPrompts).toBe(false);
+  });
+
+  it("keeps a user-selected silent mode and resolves dialogue-free clips as silent", () => {
+    const userSelectedSilent = buildDialogueAudioPlan(
+      baseInput({ requestedStrategy: "silent" }),
+    );
+    const noDialogue = buildDialogueAudioPlan(
+      baseInput({ beats: [], requestedStrategy: "separate_tts_voiceover" }),
+    );
+
+    expect(userSelectedSilent.audioStrategy).toBe("silent");
+    expect(userSelectedSilent.separateTtsPlan).toBeUndefined();
+    expect(userSelectedSilent.nativeAudioSnippets).toEqual([]);
+    expect(noDialogue.audioStrategy).toBe("silent");
+    expect(noDialogue.separateTtsPlan).toBeUndefined();
+  });
+
   describe("speakability sanitize on outbound TTS/native-audio payloads (2026-07-08/W9-A, spec §14.1 rule 6b)", () => {
     it("sanitizes a real bad-data line (wrapping quotes + tilde) for the separate-TTS plan's outbound text, without touching the persisted dialogueLines artifact", () => {
       const plan = buildDialogueAudioPlan(

@@ -613,6 +613,7 @@ import type {
   VerticalDramaDialogueAudioPlan,
   VerticalDramaSeparateTtsPlanItem,
 } from "@shared/verticalDramaSeries/audio";
+import { classifyVerticalDramaAudioPlanSource } from "@shared/verticalDramaSeries/audioSourceRevision";
 import {
   readTargetAudienceRegionFromBible,
   // vertical-drama-skill-first-architecture plan, Phase 1 items 1-2 — the
@@ -17006,6 +17007,12 @@ export const verticalDramaEpisodesRouter = router({
       const previewDialogueRunInputs =
         resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
           plan: row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null,
+          source: {
+            seriesId: row.seriesId,
+            episodeId: row.id,
+            script: row.script,
+            storyboard: row.storyboard,
+          },
           motionClips: previewMotionClips,
           clipDialogue: buildClipAuthoredDialogueMap(pack?.clips ?? []),
           includedClipNumbers: clipsWithVideo.map(clip => clip.clipNumber),
@@ -34067,6 +34074,20 @@ export const verticalDramaEpisodesRouter = router({
         await resolveVerticalDramaVoiceChainFlag(tenantId);
       const dialoguePlan =
         row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null;
+      const dialogueAudioSourceStatus = classifyVerticalDramaAudioPlanSource(
+        dialoguePlan,
+        {
+          seriesId: row.seriesId,
+          episodeId: row.id,
+          script: row.script,
+          storyboard: row.storyboard,
+        },
+      );
+      // Optional audio intent from an earlier script/storyboard revision is
+      // excluded. Video clips stay eligible and clip-authored captions remain
+      // available through the resolver's fallback.
+      const usableDialoguePlan =
+        dialogueAudioSourceStatus === "stale" ? null : dialoguePlan;
       // Phase A render-options quick win — only queried when this render
       // actually requests the badge (see `loadSeriesAudienceAgeRating`'s own
       // doc comment), so every pre-existing caller pays zero extra DB cost.
@@ -34077,6 +34098,12 @@ export const verticalDramaEpisodesRouter = router({
       const dialogueRunInputs =
         resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
           plan: dialoguePlan,
+          source: {
+            seriesId: row.seriesId,
+            episodeId: row.id,
+            script: row.script,
+            storyboard: row.storyboard,
+          },
           motionClips: (pack?.clips ?? []).map(
             (c): VdDialogueTimelineClip => ({
               clipNumber: c.clipNumber,
@@ -34344,64 +34371,64 @@ export const verticalDramaEpisodesRouter = router({
       }
 
       // W12-A voice chain manifest audit trail (additive, flag-gated) —
-      // merges a RAW, shot-LOCAL-timed `dialogueAudioTimeline` snapshot into
-      // `assemblyManifest` whenever the episode's dialogue-audio plan has
-      // lines with a completed audio asset. This is a SEPARATE, simpler data
+      // merges a RAW, shot-LOCAL-timed `dialogueAudioTimeline` snapshot and
+      // source-currentness status into `assemblyManifest`. This is a SEPARATE, simpler data
       // contract from the real ABSOLUTE-timeline `dialogueRunInputs` feed
       // just submitted above (see `buildDialogueAudioTimelineFromPlan`'s own
       // doc comment) — kept as-is for its existing audit/display purpose;
       // task #21 phase B did not remove or change it. Flags-off (or no
-      // completed lines yet) is a complete no-op.
+      // completed lines yet) is recorded as an empty timeline, without changing
+      // whether the video render can proceed.
       if (voiceChainEnabled) {
-        // Reuses the SAME `dialoguePlan` cast computed above for the real
+        // Reuses the SAME source-checked plan computed above for the real
         // render feed — same source data, two independent consumers.
         const dialogueAudioTimeline =
-          buildDialogueAudioTimelineFromPlan(dialoguePlan);
-        if (dialogueAudioTimeline.length > 0) {
-          // Fresh read-modify-write: `submitAssemblyJob` (awaited above)
-          // already persisted its OWN `assemblyManifest.compiledVideo` patch
-          // synchronously before returning, so re-reading here (rather than
-          // reusing the `row` snapshot loaded before that call) preserves it
-          // — same "re-read before patching a sibling key" care
-          // `persistCompiledVideoState` itself takes.
-          const [freshRow] = await db
-            .select({
-              assemblyManifest: verticalDramaEpisodes.assemblyManifest,
-            })
-            .from(verticalDramaEpisodes)
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
-              )
+          buildDialogueAudioTimelineFromPlan(usableDialoguePlan);
+        // Fresh read-modify-write: `submitAssemblyJob` (awaited above)
+        // already persisted its OWN `assemblyManifest.compiledVideo` patch
+        // synchronously before returning, so re-reading here (rather than
+        // reusing the `row` snapshot loaded before that call) preserves it
+        // — same "re-read before patching a sibling key" care
+        // `persistCompiledVideoState` itself takes.
+        const [freshRow] = await db
+          .select({
+            assemblyManifest: verticalDramaEpisodes.assemblyManifest,
+          })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
             )
-            .limit(1);
-          const existingManifest =
-            freshRow?.assemblyManifest &&
-            typeof freshRow.assemblyManifest === "object"
-              ? (freshRow.assemblyManifest as Record<string, unknown>)
-              : {};
-          await db
-            .update(verticalDramaEpisodes)
-            .set({
-              assemblyManifest: {
-                ...existingManifest,
-                dialogueAudioTimeline,
-                loudnessNormalize: true as const,
-              },
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
-              )
-            );
-        }
+          )
+          .limit(1);
+        const existingManifest =
+          freshRow?.assemblyManifest &&
+          typeof freshRow.assemblyManifest === "object"
+            ? (freshRow.assemblyManifest as Record<string, unknown>)
+            : {};
+        await db
+          .update(verticalDramaEpisodes)
+          .set({
+            assemblyManifest: {
+              ...existingManifest,
+              dialogueAudioTimeline,
+              dialogueAudioSourceStatus,
+              loudnessNormalize:
+                dialogueAudioTimeline.length > 0 ? (true as const) : undefined,
+            },
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          );
       }
 
       return {

@@ -37,6 +37,7 @@ import {
 } from "../../drizzle/schema";
 import type { VerticalDramaWarning, VerticalDramaSeriesLocale } from "@shared/verticalDramaSeries";
 import { artifactChecksumSha256, verticalDramaLocaleEnglishName } from "@shared/verticalDramaSeries";
+import { fingerprintVerticalDramaEpisodeAudioSource } from "@shared/verticalDramaSeries/audioSourceRevision";
 import {
   buildVerticalDramaDialogueLanguageProfilePrompt,
   type VerticalDramaDialogueLanguageProfile,
@@ -1562,7 +1563,7 @@ export class VerticalDramaDialogueAudioService {
     if (!Number.isFinite(seriesId) || !Number.isFinite(episodeId)) {
       throw new VerticalDramaOwnershipError("Invalid series/episode id");
     }
-    await this.loadOwnedEpisode(owner, seriesId, episodeId);
+    const episode = await this.loadOwnedEpisode(owner, seriesId, episodeId);
     const run = await this.ensureRun(
       owner,
       seriesId,
@@ -1570,7 +1571,20 @@ export class VerticalDramaDialogueAudioService {
       input.runId != null ? Number(input.runId) : undefined,
     );
 
-    const plan = buildDialogueAudioPlan({ ...input, runId: String(run.id) });
+    const builtPlan = buildDialogueAudioPlan({ ...input, runId: String(run.id) });
+    const plan: VerticalDramaDialogueAudioPlan = {
+      ...builtPlan,
+      sourceRevision: {
+        scheme: "episode_script_storyboard_sha256_v1",
+        fingerprint: fingerprintVerticalDramaEpisodeAudioSource({
+          seriesId,
+          episodeId,
+          script: episode.script,
+          storyboard: episode.storyboard,
+        }),
+        capturedAt: builtPlan.updatedAt,
+      },
+    };
     const { artifactId } = await this.persistPlan(owner, seriesId, episodeId, run, plan);
     return {
       plan,

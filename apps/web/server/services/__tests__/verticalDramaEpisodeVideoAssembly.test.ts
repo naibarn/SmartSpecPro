@@ -94,6 +94,7 @@ import {
   submitSequentialAssemblyJobs,
   type EpisodeClipSource,
 } from "../verticalDramaEpisodeVideoAssembly";
+import { fingerprintVerticalDramaEpisodeAudioSource } from "@shared/verticalDramaSeries/audioSourceRevision";
 import { storagePutFromPath } from "../../storage";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
@@ -1629,6 +1630,74 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
   });
 
+  it("skips stale optional audio and uses current clip dialogue for captions", () => {
+    const oldSource = {
+      seriesId: 1,
+      episodeId: 1,
+      script: { dialogue: "Old line" },
+      storyboard: { shots: [{ shotNumber: 1 }] },
+    };
+    const currentSource = {
+      seriesId: 1,
+      episodeId: 1,
+      script: { dialogue: "Current line" },
+      storyboard: { shots: [{ shotNumber: 1, revised: true }] },
+    };
+    expect(
+      fingerprintVerticalDramaEpisodeAudioSource({ ...oldSource, episodeId: 2 }),
+    ).not.toBe(fingerprintVerticalDramaEpisodeAudioSource(oldSource));
+    const stalePlan = plan({
+      sourceRevision: {
+        scheme: "episode_script_storyboard_sha256_v1",
+        fingerprint: fingerprintVerticalDramaEpisodeAudioSource(oldSource),
+        capturedAt: "2026-11-01T00:00:00.000Z",
+      },
+      separateTtsPlan: {
+        strategy: "separate_tts_voiceover",
+        items: [ttsItem({ audioTask: { audioUrl: "https://example.test/stale.mp3" } })],
+        injectsIntoVideoPrompts: false,
+        blockedLineIds: [],
+      },
+    });
+
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: stalePlan,
+      source: currentSource,
+      motionClips: oneClip,
+      clipDialogue: new Map([[1, [{ text: "Current clip line", speakerName: "Aria" }]]]),
+      includedClipNumbers: [1],
+      includeDialogueAudio: true,
+      loudnessNormalize: true,
+      subtitlePreset: "classic_box",
+    });
+
+    expect(result.dialogueAudioSourceStatus).toBe("stale");
+    expect(result.dialogueAudioSegmentsIncluded).toBe(0);
+    expect(result.dialogueAudio).toBeUndefined();
+    expect(result.subtitles?.lines).toHaveLength(1);
+    expect(result.subtitles?.lines[0].text).toBe("Current clip line");
+  });
+
+  it("keeps legacy audio plans usable and reports their source as unverified", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan(),
+      source: {
+        seriesId: 1,
+        episodeId: 1,
+        script: { dialogue: "Current" },
+        storyboard: { shots: [] },
+      },
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false,
+      loudnessNormalize: false,
+      subtitlePreset: "classic_box",
+    });
+
+    expect(result.dialogueAudioSourceStatus).toBe("unverified");
+    expect(result.subtitles?.lines[0].text).toBe("We are not done here.");
+  });
+
   /**
    * Field incident 2026-08-01 (series 21 / episode 124): every storyboard shot
    * showed dialogue, but the render burned in ZERO subtitles — captions were
@@ -1854,7 +1923,12 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
 
     expect(result.dialogueAudioSegmentsIncluded).toBe(1);
     expect(result.dialogueAudio).toEqual({
-      segments: [{ audioUrl: "https://cdn.example.com/a.mp3", startSec: 0 }],
+      segments: [{
+        audioUrl: "https://cdn.example.com/a.mp3",
+        startSec: 0,
+        clipNumber: 1,
+        clipLocalStartFrac: 0,
+      }],
       loudnessNormalize: true,
     });
     // Both lines still show up as subtitles — captions don't require audio.

@@ -239,6 +239,12 @@ export type VerticalDramaDialogueAudioPlan = {
   timing: VerticalDramaAudioTimingSummary;
   /** Deterministic whole-episode speech density / usability analysis. */
   dialogueQuality?: VerticalDramaEpisodeDialogueQuality;
+  /** Optional source binding; absent on legacy persisted plans. */
+  sourceRevision?: {
+    scheme: "episode_script_storyboard_sha256_v1";
+    fingerprint: string;
+    capturedAt: string;
+  };
   repairQueue: VerticalDramaAudioRepairAction[];
   warnings: VerticalDramaWarning[];
   /** True when `verticalDramaSeriesSubShots` was enabled for this plan. */
