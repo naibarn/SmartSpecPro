@@ -3,27 +3,27 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `5`
-- Updated (UTC): `2026-11-07T06:26:34.176040+00:00`
+- State generation: `7`
+- Updated (UTC): `2026-11-07T06:35:02.834258+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/01-p0-nonblocking-foundation/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `f7f4441d39bda47a454bf1faaf4ec98bf4c71bbb`
+- Latest recorded merged Main SHA: `146c694b3e6db58f0001744d057ac28f56b9f78c`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-nonblocking-regression-proof`
-- Next action: Finalize the non-blocking matrix: verify feature-off, missing/stale/risky/incomplete face QC, prompt-generation advisory, optional assurance failure, UI action availability, hard media integrity, and idempotency; record exact focused evidence and pending hosted provider/browser proof.
+- Next action: P0 is checkpointed; continue P1 section 01 director shot-intent and current-revision fallback. Revisit hosted browser/provider proof when the corresponding authorized test environment is available.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-reconciliation | checkpointed | — | — | f7f4441d39bda47a454bf1faaf4ec98bf4c71bbb | f7f4441d39bda47a454bf1faaf4ec98bf4c71bbb | Implement the bounded advisory/hard-control boundary and focused regression tests in P0 section 02. |
-| section-02-advisory-hard-control-contract | in_progress | — | — | — | — | Remove only CPE face-QC and speaker-visual warning blockers from video prompt/render paths; preserve existing asset, authorization, provider capability, budget, safety, cancellation and technical integrity gates; add focused tests. |
-| section-03-nonblocking-regression-proof | in_progress | — | — | — | — | Finalize the non-blocking matrix: verify feature-off, missing/stale/risky/incomplete face QC, prompt-generation advisory, optional assurance failure, UI action availability, hard media integrity, and idempotency; record exact focused evidence and pending hosted provider/browser proof. |
+| section-02-advisory-hard-control-contract | checkpointed | — | — | 146c694b3e6db58f0001744d057ac28f56b9f78c | 146c694b3e6db58f0001744d057ac28f56b9f78c | P0 section 03 regression proof is integrated; begin P1 section 01 director shot-intent and current-revision fallback. |
+| section-03-nonblocking-regression-proof | checkpointed | — | — | 146c694b3e6db58f0001744d057ac28f56b9f78c | 146c694b3e6db58f0001744d057ac28f56b9f78c | P0 is checkpointed; continue P1 section 01 director shot-intent and current-revision fallback. Revisit hosted browser/provider proof when the corresponding authorized test environment is available. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- None recorded; this does not imply final acceptance.
+- Authenticated browser and real-provider rendering proof is pending; no user session/provider credential was exercised in this local focused slice.
 
 ## Resume
 

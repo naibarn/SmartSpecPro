@@ -5,6 +5,7 @@
 - Source branch: `main`
 - Candidate working tree based on: `95affe98568d0300ccb64ce904d3fd24b74a5de7`
 - Canonical baseline before this slice: same SHA as `origin/main`
+- Integrated implementation checkpoint: `146c694b3e6db58f0001744d057ac28f56b9f78c` (`main == origin/main` after fetch)
 - Scope: CPE face observability, optional quality/style feature reads, optional assurance persistence, video prompt/render UI eligibility, and preservation of hard media checks.
 - Verification profile: `quick` (focused Vitest suites and patch checks; no repository-wide typecheck).
 - Time: 2026-11-07 06:31 UTC. Resource snapshot at 06:26 UTC: `free -h` reported 30 GiB total and 24 GiB available; all focused runs exited normally with no OOM/SIGKILL.

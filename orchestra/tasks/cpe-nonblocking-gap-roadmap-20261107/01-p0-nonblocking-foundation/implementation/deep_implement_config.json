@@ -19,12 +19,16 @@
       "merged_main_sha": "f7f4441d39bda47a454bf1faaf4ec98bf4c71bbb"
     },
     "section-02-advisory-hard-control-contract": {
-      "status": "in_progress",
-      "next_action": "Remove only CPE face-QC and speaker-visual warning blockers from video prompt/render paths; preserve existing asset, authorization, provider capability, budget, safety, cancellation and technical integrity gates; add focused tests."
+      "status": "checkpointed",
+      "next_action": "P0 section 03 regression proof is integrated; begin P1 section 01 director shot-intent and current-revision fallback.",
+      "checkpoint_sha": "146c694b3e6db58f0001744d057ac28f56b9f78c",
+      "merged_main_sha": "146c694b3e6db58f0001744d057ac28f56b9f78c"
     },
     "section-03-nonblocking-regression-proof": {
-      "status": "in_progress",
-      "next_action": "Finalize the non-blocking matrix: verify feature-off, missing/stale/risky/incomplete face QC, prompt-generation advisory, optional assurance failure, UI action availability, hard media integrity, and idempotency; record exact focused evidence and pending hosted provider/browser proof."
+      "status": "checkpointed",
+      "next_action": "P0 is checkpointed; continue P1 section 01 director shot-intent and current-revision fallback. Revisit hosted browser/provider proof when the corresponding authorized test environment is available.",
+      "checkpoint_sha": "146c694b3e6db58f0001744d057ac28f56b9f78c",
+      "merged_main_sha": "146c694b3e6db58f0001744d057ac28f56b9f78c"
     }
   },
   "pre_commit": {
@@ -36,11 +40,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T05:51:14.453723+00:00",
-  "generation": 5,
-  "updated_at": "2026-11-07T06:26:34.176040+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-07T06:35:02.834258+00:00",
   "progress": {
     "active_section": "section-03-nonblocking-regression-proof",
-    "next_action": "Finalize the non-blocking matrix: verify feature-off, missing/stale/risky/incomplete face QC, prompt-generation advisory, optional assurance failure, UI action availability, hard media integrity, and idempotency; record exact focused evidence and pending hosted provider/browser proof.",
-    "merged_main_sha": "f7f4441d39bda47a454bf1faaf4ec98bf4c71bbb"
+    "next_action": "P0 is checkpointed; continue P1 section 01 director shot-intent and current-revision fallback. Revisit hosted browser/provider proof when the corresponding authorized test environment is available.",
+    "merged_main_sha": "146c694b3e6db58f0001744d057ac28f56b9f78c",
+    "gaps": [
+      "Authenticated browser and real-provider rendering proof is pending; no user session/provider credential was exercised in this local focused slice."
+    ]
   }
 }
