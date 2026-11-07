@@ -224,6 +224,7 @@ const CHARACTER_ROWS = [{ id: 1, characterKey: "char_aria", name: "Aria", role: 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDb.select.mockImplementation(() => selectChain([]));
   mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue(null);
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
   // No pending checkpoint by default — tests that care about the checkpoint
@@ -404,6 +405,15 @@ describe("repairStage — storyboard_shotgrid (real repair)", () => {
       expect.objectContaining({ storyboard: REPAIRED_STORYBOARD }),
     );
     expect(outcome.result.status).toBe("succeeded");
+    expect(outcome.result.errors).toEqual([]);
+    expect(outcome.result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_INTENT_SKIPPED",
+          severity: "warning",
+        }),
+      ]),
+    );
   });
 });
 
