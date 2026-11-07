@@ -624,6 +624,12 @@ export async function generateVerticalDramaShotSceneIntent(
         new Set(params.characters.map(character => character.characterId))
       ),
       label: "Vertical Drama shot scene intent",
+      // This planning pass is an optional enrichment. Bound its wall time and
+      // retries so a slow or invalid candidate quickly returns control to the
+      // original storyboard path.
+      timeoutMs: 60_000,
+      maxTransientRetries: 0,
+      maxSchemaRetries: 0,
       modelFallbackOnSchema: true,
       modelFallbackPolicy: "recommended",
       modelFallbackMaxAttempts: 1,

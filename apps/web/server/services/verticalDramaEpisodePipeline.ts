@@ -5369,54 +5369,84 @@ export class VerticalDramaEpisodePipeline {
         })),
       ],
     );
-    const sceneIntentResult = await generateVerticalDramaShotSceneIntent({
-      userId: owner.userId,
-      tenantId: owner.tenantId,
-      seriesId: owner.seriesId,
-      episodeId: owner.episodeId,
-      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
-      currentEpisodeNumber: episode.episodeNumber,
-      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
-      characters: sceneIntentCharacters,
-      shots: generated.storyboard.shots.map(shot => {
-        const record = shot as unknown as Record<string, unknown>;
-        return {
-          shotNumber: shot.shot_number,
-          synopsis: shot.narrative_purpose,
-          action:
-            typeof record.action === "string" ? record.action : undefined,
-          dialogueExcerpt:
-            typeof record.dialogue_excerpt === "string"
-              ? record.dialogue_excerpt
-              : typeof record.dialogue === "string"
-                ? record.dialogue
+    // This semantic/cinematic preflight is an optional enrichment of the
+    // already-valid storyboard. A timeout, unavailable planner, or rejected
+    // candidate must not turn the core storyboard stage into a production
+    // failure; keep the original contract and report an advisory diagnostic.
+    // Preserve any charge returned by a completed planning call even if its
+    // candidate is later rejected during projection.
+    let sceneIntentCreditsUsed = 0;
+    let sceneIntentCreditCharge:
+      | NonNullable<typeof generated.creditCharge>
+      | undefined;
+    let storyboardWithSceneIntent = generated.storyboard;
+    const sceneIntentWarnings: VerticalDramaWarning[] = [];
+    try {
+      const sceneIntentResult = await generateVerticalDramaShotSceneIntent({
+        userId: owner.userId,
+        tenantId: owner.tenantId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+        currentEpisodeNumber: episode.episodeNumber,
+        locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
+        characters: sceneIntentCharacters,
+        shots: generated.storyboard.shots.map(shot => {
+          const record = shot as unknown as Record<string, unknown>;
+          return {
+            shotNumber: shot.shot_number,
+            synopsis: shot.narrative_purpose,
+            action:
+              typeof record.action === "string" ? record.action : undefined,
+            dialogueExcerpt:
+              typeof record.dialogue_excerpt === "string"
+                ? record.dialogue_excerpt
+                : typeof record.dialogue === "string"
+                  ? record.dialogue
+                  : undefined,
+            visualDescription: shot.visual_description,
+            location:
+              typeof record.location === "string"
+                ? record.location
                 : undefined,
-          visualDescription: shot.visual_description,
-          location:
-            typeof record.location === "string"
-              ? record.location
-              : undefined,
-        };
-      }),
-      sceneBeats,
-      previousEpisodeContext: previousEpisodeIntentContext,
-      episodeGenerationSettings: episode.generationSettings,
-      deferCreditDeduction,
-      planningAttemptObserver,
-    });
-    const projectedSceneIntent = applyVerticalDramaShotSceneIntent({
-      storyboard: generated.storyboard as unknown as {
-        shots: Array<Record<string, any>>;
-      },
-      intents: sceneIntentResult.intent.shots,
-      validCharacterIds: sceneIntentCharacters.map(
-        (character: { characterId: string }) => character.characterId,
-      ),
-    });
-    const storyboardWithSceneIntent = {
-      ...generated.storyboard,
-      shots: projectedSceneIntent.shots,
-    } as StoryboardShotgridOutput;
+          };
+        }),
+        sceneBeats,
+        previousEpisodeContext: previousEpisodeIntentContext,
+        episodeGenerationSettings: episode.generationSettings,
+        deferCreditDeduction,
+        planningAttemptObserver,
+      });
+      sceneIntentCreditsUsed = sceneIntentResult.creditsUsed;
+      sceneIntentCreditCharge = sceneIntentResult.creditCharge;
+      const projectedSceneIntent = applyVerticalDramaShotSceneIntent({
+        storyboard: generated.storyboard as unknown as {
+          shots: Array<Record<string, any>>;
+        },
+        intents: sceneIntentResult.intent.shots,
+        validCharacterIds: sceneIntentCharacters.map(
+          (character: { characterId: string }) => character.characterId,
+        ),
+      });
+      storyboardWithSceneIntent = {
+        ...generated.storyboard,
+        shots: projectedSceneIntent.shots,
+      } as StoryboardShotgridOutput;
+    } catch (sceneIntentError) {
+      debugError(
+        "vd_optional_scene_intent",
+        `Optional storyboard scene-intent planning failed for episode #${owner.episodeId}; retaining the generated storyboard and continuing`,
+        sceneIntentError,
+      );
+      sceneIntentWarnings.push({
+        code: "VD_OPTIONAL_SCENE_INTENT_SKIPPED",
+        severity: "warning",
+        message:
+          "Optional cinematic scene planning was unavailable; the generated storyboard remains in use.",
+        targetStage: "storyboard_shotgrid",
+        repairable: false,
+      });
+    }
     const storyboard = await applyAutomaticCharacterLooksToStoryboard({
       owner,
       episode,
@@ -5450,12 +5480,12 @@ export class VerticalDramaEpisodePipeline {
     });
     return {
       ...generated,
-      creditsUsed: generated.creditsUsed + sceneIntentResult.creditsUsed,
+      creditsUsed: generated.creditsUsed + sceneIntentCreditsUsed,
       storyboard: storyboardWithHandoff,
-      warnings: wardrobeWarnings,
+      warnings: [...sceneIntentWarnings, ...wardrobeWarnings],
       creditCharges: [
         generated.creditCharge,
-        sceneIntentResult.creditCharge,
+        sceneIntentCreditCharge,
       ].filter(
         (charge): charge is NonNullable<typeof charge> => Boolean(charge),
       ),

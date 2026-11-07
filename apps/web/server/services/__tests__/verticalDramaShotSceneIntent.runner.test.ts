@@ -150,7 +150,11 @@ describe("generateVerticalDramaShotSceneIntent", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
     expect(mockExecute).toHaveBeenCalledOnce();
     const request = mockExecute.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(request.timeoutMs).toBe(60_000);
+    expect(request.maxTransientRetries).toBe(0);
+    expect(request.maxSchemaRetries).toBe(0);
     expect(request.modelFallbackOnSchema).toBe(true);
+    expect(request.modelFallbackMaxAttempts).toBe(1);
     expect(request.modelFallbackPolicy).toBe("recommended");
     expect(request.schemaRetryContract).toContain('"vd-shot-scene-intent-v1"');
     expect(request.schemaRetryContract).toContain("dialogue_routing:object[]");

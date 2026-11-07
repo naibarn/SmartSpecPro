@@ -146,6 +146,16 @@ vi.mock("../verticalDramaLocationReconciliation", () => ({
   reconcileEpisodeLocations: mockReconcileEpisodeLocations,
 }));
 
+const { mockGenerateShotSceneIntent, mockApplyShotSceneIntent } = vi.hoisted(() => ({
+  mockGenerateShotSceneIntent: vi.fn(),
+  mockApplyShotSceneIntent: vi.fn(),
+}));
+vi.mock("../verticalDramaShotSceneIntent", () => ({
+  generateVerticalDramaShotSceneIntent: mockGenerateShotSceneIntent,
+  applyVerticalDramaShotSceneIntent: mockApplyShotSceneIntent,
+  VerticalDramaShotSceneIntentReviewRequiredError: class extends Error {},
+}));
+
 const { mockDebugError } = vi.hoisted(() => ({
   mockDebugError: vi.fn(),
 }));
@@ -184,6 +194,7 @@ function selectChain(rows: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDb.select.mockImplementation(() => selectChain([]));
   mockDb.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
     callback(mockDb)
   );
@@ -195,6 +206,16 @@ beforeEach(() => {
   });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
   mockListLocationRows.mockResolvedValue([]);
+  mockGenerateShotSceneIntent.mockResolvedValue({
+    intent: { shots: [] },
+    creditsUsed: 0,
+    model: "gpt-x",
+  });
+  mockApplyShotSceneIntent.mockImplementation(
+    ({ storyboard }: { storyboard: { shots: unknown[] } }) => ({
+      shots: storyboard.shots,
+    }),
+  );
   mockGetActiveBreakdown.mockReturnValue([]);
   mockReconcileEpisodeLocations.mockResolvedValue({ createdLocations: [], reusedLocations: [] });
 });
@@ -520,6 +541,140 @@ describe("runStage — storyboard_shotgrid real-generation branch calls reconcil
     expect(outcome.result.errors).toEqual([]);
     expect(mockDebugError).toHaveBeenCalledTimes(1);
     expect(mockDebugError.mock.calls[0][0]).toBe("vd_location_reconciliation");
+  });
+
+  it("keeps the generated storyboard when optional scene-intent planning times out", async () => {
+    queueRunStageSelects();
+    setupWritePath();
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: NINE_SHOTS,
+        distinct_locations: [STORE_GROUP, KITCHEN_GROUP],
+      },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+    });
+    mockGenerateShotSceneIntent.mockRejectedValueOnce(
+      new Error("planner timed out"),
+    );
+
+    const outcome = await pipeline.runStage(owner, "storyboard_shotgrid", {
+      mode: "full",
+    });
+
+    const storyboardWrites = mockDb.update.mock.results[0].value.set.mock.calls
+      .map(([values]: [{ storyboard?: any }]) => values.storyboard)
+      .filter(Boolean);
+    expect(storyboardWrites[0].shots).toEqual(NINE_SHOTS);
+    expect(outcome.result.status).toBe("succeeded");
+    expect(outcome.result.errors).toEqual([]);
+    expect(outcome.result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_INTENT_SKIPPED",
+          severity: "warning",
+        }),
+      ]),
+    );
+    expect(mockGenerateStoryboardShotgrid).toHaveBeenCalledTimes(1);
+    expect(mockGenerateShotSceneIntent).toHaveBeenCalledTimes(1);
+    expect(mockDebugError.mock.calls[0][0]).toBe("vd_optional_scene_intent");
+  });
+
+  it("keeps the generated storyboard when the optional scene-intent service is unavailable", async () => {
+    queueRunStageSelects();
+    setupWritePath();
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: NINE_SHOTS,
+        distinct_locations: [STORE_GROUP, KITCHEN_GROUP],
+      },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+    });
+    mockGenerateShotSceneIntent.mockRejectedValueOnce(
+      new Error("scene-intent service unavailable"),
+    );
+
+    const outcome = await pipeline.runStage(owner, "storyboard_shotgrid", {
+      mode: "full",
+    });
+
+    expect(outcome.result.status).toBe("succeeded");
+    expect(outcome.result.errors).toEqual([]);
+    expect(outcome.result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_INTENT_SKIPPED",
+          severity: "warning",
+        }),
+      ]),
+    );
+    expect(mockGenerateStoryboardShotgrid).toHaveBeenCalledTimes(1);
+    expect(mockDebugError.mock.calls[0][0]).toBe("vd_optional_scene_intent");
+  });
+
+  it("falls back when the optional scene-intent candidate is rejected without losing its completed-call credit record", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: { shots: NINE_SHOTS },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+      creditCharge: {
+        amount: 3,
+        model: "gpt-4o-mini",
+        inputTokens: 10,
+        outputTokens: 20,
+        skillSlug: "vertical-drama-storyboard-shotgrid",
+        description: "base storyboard",
+      },
+    });
+    mockGenerateShotSceneIntent.mockResolvedValueOnce({
+      intent: { shots: [] },
+      creditsUsed: 2,
+      model: "gpt-4o-mini",
+      creditCharge: {
+        amount: 2,
+        model: "gpt-4o-mini",
+        inputTokens: 5,
+        outputTokens: 10,
+        skillSlug: "vertical-drama-shot-scene-intent",
+        description: "scene intent",
+      },
+    });
+    mockApplyShotSceneIntent.mockImplementationOnce(() => {
+      throw new Error("shot 1: model marked interpretation for review");
+    });
+
+    const result = await pipeline.generateRealStoryboard(owner, episode, false);
+
+    expect(result.storyboard.shots).toEqual(NINE_SHOTS);
+    expect(result.creditsUsed).toBe(5);
+    expect(result.creditCharges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ skillSlug: "vertical-drama-storyboard-shotgrid" }),
+        expect.objectContaining({ skillSlug: "vertical-drama-shot-scene-intent" }),
+      ]),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_OPTIONAL_SCENE_INTENT_SKIPPED",
+          severity: "warning",
+        }),
+      ]),
+    );
+    expect(mockDebugError).toHaveBeenCalledWith(
+      "vd_optional_scene_intent",
+      expect.any(String),
+      expect.objectContaining({
+        message: expect.stringContaining("model marked interpretation for review"),
+      }),
+    );
+    expect(mockGenerateStoryboardShotgrid).toHaveBeenCalledTimes(1);
   });
 
   it("dry_run mode never calls reconcileEpisodeLocations (no real generation override runs at all)", async () => {
