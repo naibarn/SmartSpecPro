@@ -7,7 +7,31 @@ import {
   detectWhisperHallucination,
   formatAudioQcTelemetryMetrics,
   AUDIO_QC_THRESHOLDS,
+  type AudioQcInput,
 } from "../verticalDramaAudioQc";
+
+function measuredQcInput(overrides: Partial<AudioQcInput> = {}): AudioQcInput {
+  return {
+    seriesId: "series_53",
+    episodeId: "252",
+    shotNumber: 1,
+    expectedText: "",
+    transcribedText: "",
+    hasSpeech: false,
+    speechDurationSec: 0,
+    avSyncOffsetMs: 0,
+    truePeakDbfs: -1.5,
+    integratedLufs: -14.0,
+    loudnessRangeLu: 4.2,
+    clippingDetected: false,
+    bgmBleedDetected: false,
+    meanF0Hz: 180,
+    f0IdentityDrift: false,
+    phaseCorrelation: 0.95,
+    dcOffsetDetected: false,
+    ...overrides,
+  };
+}
 
 describe("Vertical Drama Audio QC Engine", () => {
   describe("calculateCharacterErrorRate", () => {
@@ -52,16 +76,15 @@ describe("Vertical Drama Audio QC Engine", () => {
 
   describe("evaluateAudioQc", () => {
     it("passes with score ~10 for accurate dialogue, good sync, and clean acoustics", () => {
-      const report = evaluateAudioQc({
-        seriesId: "series_53",
-        episodeId: "252",
-        shotNumber: 1,
+      const report = evaluateAudioQc(measuredQcInput({
         expectedText: "ส้มอยากให้พี่ แกะกล่อง",
         transcribedText: "ส้มอยากให้พี่ แกะกล่อง",
+        hasSpeech: true,
+        speechDurationSec: 2.3,
         avSyncOffsetMs: -15,
         truePeakDbfs: -1.5,
         integratedLufs: -14.0,
-      });
+      }));
 
       expect(report.status).toBe("PASS");
       expect(report.overallScore).toBeGreaterThanOrEqual(9.5);
@@ -71,15 +94,14 @@ describe("Vertical Drama Audio QC Engine", () => {
     });
 
     it("flags WARNING_MINOR and suggests TTS_SWAP when speech CER is high", () => {
-      const report = evaluateAudioQc({
-        seriesId: "series_53",
-        episodeId: "252",
-        shotNumber: 1,
+      const report = evaluateAudioQc(measuredQcInput({
         expectedText: "สวัสดีครับคุณแม่",
         transcribedText: "ไปไหนมาครับ", // significant discrepancy
+        hasSpeech: true,
+        speechDurationSec: 1.8,
         avSyncOffsetMs: 0,
         truePeakDbfs: -1.2,
-      });
+      }));
 
       expect(report.status).toBe("WARNING_MINOR");
       expect(report.speechQc.passesCerThreshold).toBe(false);
@@ -87,19 +109,28 @@ describe("Vertical Drama Audio QC Engine", () => {
     });
 
     it("penalizes clipping and out-of-bounds AV sync", () => {
-      const report = evaluateAudioQc({
-        seriesId: "series_53",
-        episodeId: "252",
-        shotNumber: 1,
+      const report = evaluateAudioQc(measuredQcInput({
         expectedText: "บทพูด",
         transcribedText: "บทพูด",
+        hasSpeech: true,
+        speechDurationSec: 1.1,
         avSyncOffsetMs: -120, // out of [-60ms, +30ms]
         clippingDetected: true,
-      });
+      }));
 
       expect(report.overallScore).toBeLessThan(8.0);
       expect(report.syncQc.passesSyncThreshold).toBe(false);
       expect(report.acousticQc.clippingDetected).toBe(true);
+    });
+
+    it("does not invent QC results when worker measurements are missing", () => {
+      expect(() => evaluateAudioQc({
+        seriesId: "series_53",
+        episodeId: "252",
+        shotNumber: 1,
+        expectedText: "สวัสดีครับ",
+        transcribedText: "สวัสดีครับ",
+      } as AudioQcInput)).toThrow("AUDIO_QC_MEASUREMENTS_INCOMPLETE");
     });
   });
 
@@ -126,13 +157,12 @@ describe("Vertical Drama Audio QC Engine", () => {
     });
 
     it("formats OpenTelemetry metrics dictionary", () => {
-      const report = evaluateAudioQc({
-        seriesId: "series_53",
-        episodeId: "252",
-        shotNumber: 1,
+      const report = evaluateAudioQc(measuredQcInput({
         expectedText: "สวัสดีครับ",
         transcribedText: "สวัสดีครับ",
-      });
+        hasSpeech: true,
+        speechDurationSec: 1.0,
+      }));
       const metrics = formatAudioQcTelemetryMetrics(report);
       expect(metrics["vd_audio_qc_score"]).toBeGreaterThanOrEqual(9.5);
       expect(metrics["vd_audio_status"]).toBe("PASS");

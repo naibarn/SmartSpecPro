@@ -11,6 +11,7 @@ This script performs:
 """
 
 import argparse
+import importlib.metadata
 import json
 import os
 import subprocess
@@ -24,13 +25,15 @@ def run_command(cmd, desc=""):
         return True, res.stdout
     except subprocess.CalledProcessError as e:
         return False, e.stderr
+    except OSError as e:
+        return False, str(e)
 
 
 def check_demucs_available():
     try:
         import demucs  # noqa: F401
         import torch   # noqa: F401
-        return True
+        return importlib.metadata.version("demucs").split(".", 1)[0] == "4"
     except ImportError:
         return False
 
@@ -52,8 +55,7 @@ def separate_stems_demucs(input_wav: Path, output_dir: Path, model_name="htdemuc
     ]
     ok, err = run_command(demucs_cmd, desc="Demucs stem separation")
     if not ok:
-        sys.stderr.write(f"Demucs warning: {err}\n")
-        return None, None
+        raise RuntimeError(f"DEMUCS_SEPARATION_FAILED: {err}")
 
     stem_dir = output_dir / model_name / input_wav.stem
     vocals_wav = stem_dir / "vocals.wav"
@@ -61,7 +63,13 @@ def separate_stems_demucs(input_wav: Path, output_dir: Path, model_name="htdemuc
 
     if vocals_wav.exists() and no_vocals_wav.exists():
         return vocals_wav, no_vocals_wav
-    return None, None
+    raise RuntimeError("DEMUCS_OUTPUT_STEMS_MISSING")
+
+
+def fail(code, detail=""):
+    message = f"{code}: {detail}" if detail else code
+    print(json.dumps({"success": False, "error": message}))
+    sys.exit(2)
 
 
 def main():
@@ -78,20 +86,27 @@ def main():
         demucs_ready = check_demucs_available()
         status_info = {
             "demucsInstalled": demucs_ready,
-            "engine": "demucs_v4_htdemucs" if demucs_ready else "ffmpeg_direct_fallback",
+            "engine": "demucs_v4_htdemucs" if demucs_ready else "unavailable",
             "pythonVersion": sys.version.split()[0],
         }
         print(json.dumps(status_info))
         return
 
-    if not args.video or not args.output_video or not args.workspace:
-        print(json.dumps({"success": False, "error": "Missing required arguments: --video, --output-video, --workspace"}))
-        sys.exit(1)
+    if not check_demucs_available():
+        fail("RUNTIME_INCOMPATIBLE", "Demucs v4 and PyTorch are required; no direct-remux fallback is available")
+
+    if not args.video or not args.tts_audio or not args.output_video or not args.workspace:
+        fail("AUDIO_REPAIR_INPUT_INCOMPLETE", "--video, --tts-audio, --output-video, and --workspace are required")
 
     workspace = Path(args.workspace)
     workspace.mkdir(parents=True, exist_ok=True)
     input_video = Path(args.video)
+    tts_audio = Path(args.tts_audio)
     output_video = Path(args.output_video)
+    if not input_video.is_file() or input_video.stat().st_size <= 0:
+        fail("SOURCE_VIDEO_INVALID")
+    if not tts_audio.is_file() or tts_audio.stat().st_size <= 0:
+        fail("TTS_AUDIO_INVALID")
     output_video.parent.mkdir(parents=True, exist_ok=True)
 
     extracted_wav = workspace / "original_audio.wav"
@@ -104,39 +119,29 @@ def main():
     ]
     ok, err = run_command(extract_cmd, "Extract audio")
     if not ok:
-        print(json.dumps({"success": False, "error": f"Failed to extract audio: {err}"}))
-        sys.exit(1)
+        fail("SOURCE_AUDIO_EXTRACTION_FAILED", err)
 
-    # Step 2: Separate stems if Demucs is available
-    demucs_ready = check_demucs_available()
-    vocals_wav, no_vocals_wav = None, None
-    if demucs_ready:
-        vocals_wav, no_vocals_wav = separate_stems_demucs(extracted_wav, workspace / "stems")
+    # Step 2: Separate stems. This path never treats an unseparated source as
+    # a successful repair because that would silently preserve the bad dialogue.
+    try:
+        _, no_vocals_wav = separate_stems_demucs(extracted_wav, workspace / "stems")
+    except RuntimeError as exc:
+        fail("DEMUCS_SEPARATION_FAILED", str(exc))
 
-    # Step 3: Mix new speech with ambience / foley or fallback
-    has_tts = args.tts_audio and os.path.exists(args.tts_audio)
+    # Step 3: Mix new speech with the separated ambience / Foley bed.
     final_audio = workspace / "final_mixed_audio.wav"
-
-    if has_tts and no_vocals_wav and no_vocals_wav.exists():
-        # Clean hybrid mix: new TTS + original Foley & Ambience
-        mix_cmd = [
-            "ffmpeg", "-y",
-            "-i", str(args.tts_audio),
-            "-i", str(no_vocals_wav),
-            "-filter_complex",
-            "[0:a]volume=1.0[vocal];[1:a]volume=0.85[amb];[vocal][amb]amix=inputs=2:duration=first:dropout_transition=0[aout]",
-            "-map", "[aout]",
-            str(final_audio)
-        ]
-        ok, err = run_command(mix_cmd, "Mix TTS with Foley/Ambience")
-        separated = True
-    elif has_tts:
-        # Fallback: direct TTS replacement
-        final_audio = Path(args.tts_audio)
-        separated = False
-    else:
-        final_audio = extracted_wav
-        separated = False
+    mix_cmd = [
+        "ffmpeg", "-y",
+        "-i", str(tts_audio),
+        "-i", str(no_vocals_wav),
+        "-filter_complex",
+        "[0:a]volume=1.0[vocal];[1:a]volume=0.85[amb];[vocal][amb]amix=inputs=2:duration=first:dropout_transition=0[aout]",
+        "-map", "[aout]",
+        str(final_audio)
+    ]
+    ok, err = run_command(mix_cmd, "Mix TTS with Foley/Ambience")
+    if not ok:
+        fail("AUDIO_REPAIR_MIX_FAILED", err)
 
     # Step 4: Remux video with new audio (stream copy video frames!)
     remux_cmd = [
@@ -152,15 +157,16 @@ def main():
     ]
     ok, err = run_command(remux_cmd, "Remux repaired video")
     if not ok:
-        print(json.dumps({"success": False, "error": f"Failed to remux video: {err}"}))
-        sys.exit(1)
+        fail("AUDIO_REPAIR_REMUX_FAILED", err)
+    if not output_video.is_file() or output_video.stat().st_size <= 0:
+        fail("AUDIO_REPAIR_OUTPUT_INVALID")
 
     result = {
         "success": True,
         "outputPath": str(output_video),
-        "demucsUsed": separated,
-        "engine": "demucs_v4" if separated else "direct_audio_remux",
-        "hasNewTts": has_tts,
+        "demucsUsed": True,
+        "engine": "demucs_v4",
+        "hasNewTts": True,
     }
     print(json.dumps(result))
 

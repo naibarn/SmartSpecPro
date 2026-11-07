@@ -17,17 +17,50 @@ export interface AudioQcInput {
   shotNumber: number;
   clipNumber?: number;
   expectedText?: string;
-  transcribedText?: string;
-  hasSpeech?: boolean;
-  speechDurationSec?: number;
-  avSyncOffsetMs?: number;
-  truePeakDbfs?: number;
-  integratedLufs?: number;
-  loudnessRangeLu?: number;
-  clippingDetected?: boolean;
-  bgmBleedDetected?: boolean;
+  transcribedText: string;
+  hasSpeech: boolean;
+  speechDurationSec: number;
+  avSyncOffsetMs: number;
+  truePeakDbfs: number;
+  integratedLufs: number;
+  loudnessRangeLu: number;
+  clippingDetected: boolean;
+  bgmBleedDetected: boolean;
   meanF0Hz?: number;
-  f0IdentityDrift?: boolean;
+  f0IdentityDrift: boolean;
+  phaseCorrelation: number;
+  dcOffsetDetected: boolean;
+}
+
+function assertMeasuredQcInputs(input: AudioQcInput): void {
+  const requiredNumbers: Array<[string, unknown]> = [
+    ["speechDurationSec", input.speechDurationSec],
+    ["avSyncOffsetMs", input.avSyncOffsetMs],
+    ["truePeakDbfs", input.truePeakDbfs],
+    ["integratedLufs", input.integratedLufs],
+    ["loudnessRangeLu", input.loudnessRangeLu],
+    ["phaseCorrelation", input.phaseCorrelation],
+  ];
+  if (requiredNumbers.some(([, value]) => typeof value !== "number" || !Number.isFinite(value))) {
+    throw new Error("AUDIO_QC_MEASUREMENTS_INCOMPLETE");
+  }
+  if (
+    input.speechDurationSec! < 0 ||
+    input.phaseCorrelation! < -1 ||
+    input.phaseCorrelation! > 1
+  ) {
+    throw new Error("AUDIO_QC_MEASUREMENTS_INVALID");
+  }
+  if (
+    typeof input.hasSpeech !== "boolean" ||
+    typeof input.clippingDetected !== "boolean" ||
+    typeof input.bgmBleedDetected !== "boolean" ||
+    typeof input.dcOffsetDetected !== "boolean" ||
+    typeof input.f0IdentityDrift !== "boolean" ||
+    typeof input.transcribedText !== "string"
+  ) {
+    throw new Error("AUDIO_QC_MEASUREMENTS_INCOMPLETE");
+  }
 }
 
 export const AUDIO_QC_THRESHOLDS = {
@@ -112,26 +145,27 @@ export function buildIngestionTranscodingArgs(inputPath: string, outputPath: str
  * Evaluates audio health from worker metrics and returns a structured AudioQcReport.
  */
 export function evaluateAudioQc(input: AudioQcInput): AudioQcReport {
+  assertMeasuredQcInputs(input);
   const expectedText = input.expectedText ?? "";
-  const transcribedText = input.transcribedText ?? "";
+  const transcribedText = input.transcribedText!;
   const hasExpectedSpeech = expectedText.trim().length > 0;
-  const hasSpeech = input.hasSpeech ?? (transcribedText.trim().length > 0);
+  const hasSpeech = input.hasSpeech!;
 
   const cer = hasExpectedSpeech
     ? calculateCharacterErrorRate(expectedText, transcribedText)
     : 0.0;
   const passesCer = cer <= AUDIO_QC_THRESHOLDS.CER_MAX_PASS;
 
-  const avSyncOffsetMs = input.avSyncOffsetMs ?? 0;
+  const avSyncOffsetMs = input.avSyncOffsetMs!;
   const passesSync =
     avSyncOffsetMs >= AUDIO_QC_THRESHOLDS.AV_SYNC_MIN_MS &&
     avSyncOffsetMs <= AUDIO_QC_THRESHOLDS.AV_SYNC_MAX_MS;
 
-  const truePeakDbfs = input.truePeakDbfs ?? -2.0;
-  const integratedLufs = input.integratedLufs ?? -14.0;
-  const clippingDetected = input.clippingDetected ?? (truePeakDbfs > -0.1);
-  const bgmBleed = input.bgmBleedDetected ?? false;
-  const f0IdentityDrift = input.f0IdentityDrift ?? false;
+  const truePeakDbfs = input.truePeakDbfs!;
+  const integratedLufs = input.integratedLufs!;
+  const clippingDetected = input.clippingDetected!;
+  const bgmBleed = input.bgmBleedDetected!;
+  const f0IdentityDrift = input.f0IdentityDrift!;
 
   // Calculate composite score (0-10)
   let score = 10.0;
@@ -188,7 +222,7 @@ export function evaluateAudioQc(input: AudioQcInput): AudioQcReport {
     status,
     speechQc: {
       hasSpeech,
-      speechDurationSec: input.speechDurationSec ?? (hasSpeech ? 3.0 : 0.0),
+      speechDurationSec: input.speechDurationSec!,
       asrTranscribedText: transcribedText,
       canonicalExpectedText: expectedText,
       characterErrorRate: cer,
@@ -204,10 +238,10 @@ export function evaluateAudioQc(input: AudioQcInput): AudioQcReport {
     acousticQc: {
       truePeakDbfs,
       integratedLufs,
-      loudnessRangeLu: input.loudnessRangeLu ?? 4.2,
-      phaseCorrelation: 0.95,
+      loudnessRangeLu: input.loudnessRangeLu!,
+      phaseCorrelation: input.phaseCorrelation!,
       clippingDetected,
-      dcOffsetDetected: false,
+      dcOffsetDetected: input.dcOffsetDetected!,
       bgmBleedDetected: bgmBleed,
     },
     suggestedAction,

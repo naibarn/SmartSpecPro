@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { credentials } from "./agent.js";
-import { normalizedArchitecture, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_CLAIM_CAPABILITY, REMOTION_RENDER_CONTRACT_VERSION, runtimePackId, sidecarPath, workspaceRoot } from "./config.js";
+import { normalizedArchitecture, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_CLAIM_CAPABILITY, REMOTION_RENDER_CONTRACT_VERSION, runtimePackId, sidecarPath, VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE, workspaceRoot } from "./config.js";
 import { uploadArtifact, workerRequest } from "./controlPlane.js";
 import { ensureRuntimePack } from "./runtimeProvisioner.js";
 import { discoverHermesInstallations } from "./hermesInstallDiscovery.js";
@@ -104,7 +104,7 @@ export async function runWorker(): Promise<void> {
     if (!claimed.job) { await new Promise((resolve) => setTimeout(resolve, 3_000)); await heartbeat(); continue; }
     const job = claimed.job;
     try {
-      const isAudioRepair = job.jobType === "vd_audio_surgical_repair" || Boolean(job.inputJson?.targetIssue);
+      const isAudioRepair = job.jobType === VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE;
       const outputPath = isAudioRepair ? await executeAudioRepair(job) : await render(job);
       auth = await credentials();
       await workerRequest(`/api/worker-jobs/${job.id}/events`, auth.accessToken, { eventType: "job.progress", payloadJson: { stage: "upload_artifacts", message: "Uploading verified Remotion output" }, sequenceNumber: 1, leaseOwnerToken: job.leaseOwnerToken, assignmentAttempt: job.assignmentAttempt ?? null }, auth.device);
