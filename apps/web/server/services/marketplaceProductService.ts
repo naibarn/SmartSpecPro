@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   groupMembers,
@@ -116,6 +116,40 @@ function decimalText(value: string | number | null | undefined, options: { min?:
 function optionalText(value: unknown, max = 4096): string | null {
   const text = typeof value === "string" ? value.trim() : "";
   return text ? text.slice(0, max) : null;
+}
+
+function hasMarketplaceValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+function mergeMarketplaceRecord(
+  existing: unknown,
+  incoming: unknown,
+): Record<string, unknown> {
+  const base = existing && typeof existing === "object" && !Array.isArray(existing)
+    ? existing as Record<string, unknown>
+    : {};
+  const next = incoming && typeof incoming === "object" && !Array.isArray(incoming)
+    ? incoming as Record<string, unknown>
+    : {};
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(next)) {
+    if (!hasMarketplaceValue(value) && key in base) continue;
+    const currentValue = base[key];
+    if (
+      value && typeof value === "object" && !Array.isArray(value)
+      && currentValue && typeof currentValue === "object" && !Array.isArray(currentValue)
+    ) {
+      merged[key] = mergeMarketplaceRecord(currentValue, value);
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
 }
 
 function manualProductSourceUrl(productId: string, productPageUrl: string | null, sourceUrl?: string | null) {
@@ -776,18 +810,129 @@ function buildProductImageRows(productId: string, product: any, assetById: Map<s
   });
 }
 
-async function replaceCaptureProductImages(productId: string, product: any, assetById: Map<string, any>) {
+async function recoverPreviouslySelectedProductImages(
+  product: MarketplaceProductRow,
+  currentCaptureId: string,
+) {
   const db = getDb();
-  await db.delete(marketplaceProductImages)
+  const captures = await db.select({
+    id: marketplaceCaptureSessions.id,
+    rawPayloadJson: marketplaceCaptureSessions.rawPayloadJson,
+    createdAt: marketplaceCaptureSessions.createdAt,
+  }).from(marketplaceCaptureSessions)
     .where(and(
-      eq(marketplaceProductImages.productId, productId),
-      sql`${marketplaceProductImages.captureAssetId} IS NOT NULL`,
-    ));
-  const rows = buildProductImageRows(productId, product, assetById);
+      eq(marketplaceCaptureSessions.userId, product.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, product.tenantId ?? undefined),
+      eq(marketplaceCaptureSessions.platform, product.platform),
+      product.externalProductId
+        ? eq(marketplaceCaptureSessions.externalProductId, product.externalProductId)
+        : eq(marketplaceCaptureSessions.sourceUrl, product.sourceUrl),
+      product.externalShopId ? eq(marketplaceCaptureSessions.externalShopId, product.externalShopId) : undefined,
+      eq(marketplaceCaptureSessions.status, "confirmed"),
+      sql`${marketplaceCaptureSessions.id} <> ${currentCaptureId}`,
+    ))
+    .orderBy(asc(marketplaceCaptureSessions.createdAt));
+  if (captures.length === 0) return { rows: [], coverImageAssetId: null as string | null };
+
+  const captureIds = captures.map((capture) => capture.id);
+  const assets = await db.select().from(marketplaceCaptureAssets)
+    .where(and(
+      inArray(marketplaceCaptureAssets.captureId, captureIds),
+      eq(marketplaceCaptureAssets.userId, product.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, product.tenantId ?? undefined),
+      inArray(marketplaceCaptureAssets.kind, ["main_image", "description_image", "review_image"]),
+    ))
+    .orderBy(asc(marketplaceCaptureAssets.sortOrder), asc(marketplaceCaptureAssets.createdAt));
+  const heroByCaptureId = new Map(captures.map((capture) => {
+    const payload = capture.rawPayloadJson && typeof capture.rawPayloadJson === "object"
+      ? capture.rawPayloadJson as Record<string, unknown>
+      : {};
+    return [capture.id, typeof payload.heroImageUrl === "string" ? payload.heroImageUrl : ""];
+  }));
+  let coverImageAssetId: string | null = null;
+  const rows = assets.map((asset, index) => {
+    const metadata = asset.metadataJson && typeof asset.metadataJson === "object"
+      ? asset.metadataJson as Record<string, unknown>
+      : {};
+    const section = asset.section;
+    const type = section === "description" || section === "review" || section === "related_excluded"
+      ? section
+      : "main";
+    const heroUrl = heroByCaptureId.get(asset.captureId) ?? "";
+    const isCover = asset.id === product.coverImageAssetId
+      || Boolean(heroUrl && (heroUrl === asset.sourceUrl || heroUrl === metadata.originalImageUrl));
+    if (!coverImageAssetId && isCover && type === "main") coverImageAssetId = asset.id;
+    return {
+      id: createMarketplaceId("mpi"),
+      productId: product.id,
+      captureAssetId: asset.id,
+      type,
+      url: marketplaceAssetMediaUrl(asset),
+      storageKey: asset.storageKey,
+      originalSourceUrl: asset.sourceUrl ?? null,
+      sortOrder: index,
+      width: asset.width ?? null,
+      height: asset.height ?? null,
+      metadataJson: {
+        ...metadata,
+        captureId: asset.captureId,
+        selectedAsCover: isCover,
+        restoredFromConfirmedCapture: true,
+      },
+    };
+  });
+  if (!coverImageAssetId) coverImageAssetId = rows.find((row) => row.type === "main")?.captureAssetId ?? null;
+  return { rows, coverImageAssetId };
+}
+
+async function mergeCaptureProductImages(
+  productId: string,
+  product: MarketplaceProductRow,
+  currentCaptureId: string,
+  incomingProduct: any,
+  assetById: Map<string, any>,
+) {
+  const db = getDb();
+  const incomingRows = buildProductImageRows(productId, incomingProduct, assetById);
+  const existingRows = await db.select({
+    captureAssetId: marketplaceProductImages.captureAssetId,
+    url: marketplaceProductImages.url,
+    originalSourceUrl: marketplaceProductImages.originalSourceUrl,
+    sortOrder: marketplaceProductImages.sortOrder,
+  }).from(marketplaceProductImages)
+    .where(eq(marketplaceProductImages.productId, productId));
+  const recovered = existingRows.length === 0
+    ? await recoverPreviouslySelectedProductImages(product, currentCaptureId)
+    : { rows: [], coverImageAssetId: null as string | null };
+  const existingAssetIds = new Set(existingRows.map((row) => row.captureAssetId).filter(Boolean));
+  const existingSourceUrls = new Set(existingRows.map((row) => row.originalSourceUrl).filter(Boolean));
+  const existingUrls = new Set(existingRows.map((row) => row.url));
+  const recoveredRows = recovered.rows.filter((row) => {
+    if (
+      existingAssetIds.has(row.captureAssetId)
+      || existingSourceUrls.has(row.originalSourceUrl)
+      || existingUrls.has(row.url)
+    ) return false;
+    if (row.captureAssetId) existingAssetIds.add(row.captureAssetId);
+    if (row.originalSourceUrl) existingSourceUrls.add(row.originalSourceUrl);
+    existingUrls.add(row.url);
+    return true;
+  });
+  let nextSortOrder = Math.max(
+    ...existingRows.map((row) => row.sortOrder ?? -1),
+    ...recoveredRows.map((row) => row.sortOrder ?? -1),
+    -1,
+  ) + 1;
+  const newRows = incomingRows.filter((row) =>
+    !existingAssetIds.has(row.captureAssetId)
+    && !existingSourceUrls.has(row.originalSourceUrl)
+    && !existingUrls.has(row.url)
+  ).map((row) => ({ ...row, sortOrder: nextSortOrder++ }));
+  const rows = [...recoveredRows, ...newRows];
   if (rows.length > 0) {
     await db.insert(marketplaceProductImages).values(rows);
   }
-  return rows;
+  return { rows, coverImageAssetId: recovered.coverImageAssetId };
 }
 
 type MarketplaceImageVectorSource = {
@@ -1021,53 +1166,56 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
       const existing = duplicate.product;
       const incomingCommissionRatePercent = positivePercent(product.commissionRatePercent);
       const commissionRatePercent = incomingCommissionRatePercent ?? existing.commissionRatePercent ?? null;
+      const existingDescriptionJson = (existing.descriptionJson ?? {}) as Record<string, unknown>;
+      const nextDescriptionJson = mergeMarketplaceRecord(existingDescriptionJson, {
+        ingredients: product.description.ingredients,
+        claims: product.description.claims,
+        categoryText: capturedCategoryText,
+        categoryPath: capturedCategoryPath,
+        productCategory,
+      });
+      const nextSpecsJson = mergeMarketplaceRecord(existing.specsJson, product.description.specs);
+      const nextPlatformRawJson = mergeMarketplaceRecord(existing.platformRawJson, {
+        ...(productRawJson ?? {}),
+        commissionCheckUrl,
+        productPageUrl,
+        productCategory,
+        categoryText: capturedCategoryText,
+        categoryPath: capturedCategoryPath,
+        latestCaptureId: captureId,
+        latestCapturedAt: new Date().toISOString(),
+        latestCapturedByUserId: auth.userId,
+        duplicateAccessType: duplicate.accessType,
+        latestCommissionCheckUrl: commissionCheckUrl,
+        latestIncomingCommissionRatePercent: incomingCommissionRatePercent,
+        preservedCommissionRatePercent: incomingCommissionRatePercent ? null : existing.commissionRatePercent ?? null,
+        latestProductPageUrl: productPageUrl,
+        latestProductCategory: productCategory,
+        latestProductDraft: productRawJson,
+      });
       await db.update(marketplaceProducts)
         .set({
           productName: product.productName,
-          brand: product.brand ?? null,
-          shopName: product.shopName ?? null,
-          isMall: product.isMall ?? null,
-          priceCurrent: money(product.price.current),
-          priceOriginal: money(product.price.original),
-          currency: product.price.currency ?? "THB",
-          discountText: product.price.discountText ?? null,
+          brand: optionalText(product.brand) ?? existing.brand,
+          shopName: optionalText(product.shopName) ?? existing.shopName,
+          isMall: product.isMall ?? existing.isMall,
+          priceCurrent: money(product.price.current) ?? existing.priceCurrent,
+          priceOriginal: money(product.price.original) ?? existing.priceOriginal,
+          currency: product.price.currency ?? existing.currency ?? "THB",
+          discountText: optionalText(product.price.discountText, 64) ?? existing.discountText,
           commissionRatePercent,
-          productCategory,
+          productCategory: productCategory ?? existing.productCategory,
           sourceUrl: capture.sourceUrl,
           captureId,
-          ratingScore: money(product.rating.score),
-          reviewCountText,
-          soldCountText,
-          soldCountNormalized,
-          descriptionText: product.description.rawText ?? "",
-          descriptionJson: {
-            ingredients: product.description.ingredients,
-            claims: product.description.claims,
-            categoryText: capturedCategoryText,
-            categoryPath: capturedCategoryPath,
-            productCategory,
-          },
-          specsJson: product.description.specs,
-          platformRawJson: {
-            ...(existing.platformRawJson as Record<string, unknown> ?? {}),
-            ...(productRawJson ?? {}),
-            commissionCheckUrl,
-            productPageUrl,
-            productCategory,
-            categoryText: capturedCategoryText,
-            categoryPath: capturedCategoryPath,
-            latestCaptureId: captureId,
-            latestCapturedAt: new Date().toISOString(),
-            latestCapturedByUserId: auth.userId,
-            duplicateAccessType: duplicate.accessType,
-            latestCommissionCheckUrl: commissionCheckUrl,
-            latestIncomingCommissionRatePercent: incomingCommissionRatePercent,
-            preservedCommissionRatePercent: incomingCommissionRatePercent ? null : existing.commissionRatePercent ?? null,
-            latestProductPageUrl: productPageUrl,
-            latestProductCategory: productCategory,
-            latestProductDraft: productRawJson,
-          },
-          coverImageAssetId,
+          ratingScore: money(product.rating.score) ?? existing.ratingScore,
+          reviewCountText: reviewCountText ?? existing.reviewCountText,
+          soldCountText: soldCountText ?? existing.soldCountText,
+          soldCountNormalized: soldCountNormalized ?? existing.soldCountNormalized,
+          descriptionText: optionalText(product.description.rawText, 100_000) ?? existing.descriptionText,
+          descriptionJson: nextDescriptionJson,
+          specsJson: nextSpecsJson,
+          platformRawJson: nextPlatformRawJson,
+          coverImageAssetId: coverImageAssetId ?? existing.coverImageAssetId,
           updatedAt: new Date(),
         })
         .where(and(
@@ -1077,13 +1225,27 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
 
       await upsertAffiliateLinkForUser(existing.id, auth.userId, auth.tenantId, affiliateUrl);
 
-      const indexedRows = await replaceCaptureProductImages(existing.id, product, assetById);
-      queueMarketplaceProductImageIndexing(indexedRows, auth, {
+      const imageMerge = await mergeCaptureProductImages(
+        existing.id,
+        existing,
+        captureId,
+        product,
+        assetById,
+      );
+      if (!coverImageAssetId && !existing.coverImageAssetId && imageMerge.coverImageAssetId) {
+        await db.update(marketplaceProducts)
+          .set({ coverImageAssetId: imageMerge.coverImageAssetId, updatedAt: new Date() })
+          .where(and(
+            eq(marketplaceProducts.id, existing.id),
+            marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+          ));
+      }
+      queueMarketplaceProductImageIndexing(imageMerge.rows, auth, {
         productId: existing.id,
         productName: product.productName,
-        descriptionText: product.description.rawText ?? "",
+        descriptionText: optionalText(product.description.rawText, 100_000) ?? existing.descriptionText ?? "",
         platform: capture.platform,
-        productCategory,
+        productCategory: productCategory ?? existing.productCategory,
       });
       await insertMetricSnapshot(existing.id, captureId, product, auth, { commissionRatePercent });
       await linkCaptureInsightsToProduct(captureId, existing.id, auth);
