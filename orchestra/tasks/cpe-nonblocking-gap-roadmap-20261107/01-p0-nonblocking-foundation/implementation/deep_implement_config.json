@@ -1,0 +1,35 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/01-p0-nonblocking-foundation/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cpe-nonblocking-gap-roadmap-20261107/01-p0-nonblocking-foundation/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-canonical-reconciliation",
+    "section-02-advisory-hard-control-contract",
+    "section-03-nonblocking-regression-proof"
+  ],
+  "sections_state": {
+    "section-01-canonical-reconciliation": {
+      "status": "in_progress",
+      "next_action": "Reconcile canonical Feature/Quick ownership and requirements against current main 50595c8; confirm Feature 157 gate policy before code changes."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-07T05:51:14.453723+00:00",
+  "generation": 2,
+  "updated_at": "2026-11-07T05:51:23.490354+00:00",
+  "progress": {
+    "active_section": "section-01-canonical-reconciliation",
+    "next_action": "Reconcile canonical Feature/Quick ownership and requirements against current main 50595c8; confirm Feature 157 gate policy before code changes."
+  }
+}
