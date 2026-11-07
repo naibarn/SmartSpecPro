@@ -92,8 +92,7 @@ function normalizedStoryOptions(value: unknown) {
       const rankDiff = storyOptionRank(a) - storyOptionRank(b);
       if (rankDiff !== 0) return rankDiff;
       return Number(b.autoSelected) - Number(a.autoSelected) || Number(b.confidence ?? 0) - Number(a.confidence ?? 0);
-    })
-    .slice(0, 4);
+    });
 }
 
 function orderedShotItems(value: unknown) {
@@ -132,7 +131,7 @@ function latestInsightsByType(insights: MarketplaceInsightRow[]) {
 }
 
 function InlineList({ title, items }: { title: string; items: unknown[] }) {
-  const values = uniqueStrings(items, 8);
+  const values = uniqueStrings(items);
   if (values.length === 0) return null;
   return (
     <div>
@@ -203,12 +202,18 @@ function StoryOptionVideoBriefView({ option }: { option: Record<string, any> }) 
 function ProductBriefView({ payload }: { payload: Record<string, any> }) {
   return (
     <div className="space-y-3">
+      <p className="font-medium text-slate-800">
+        <strong>Product name:</strong> {compactText(payload.productName)}
+        {payload.category ? ` | ${compactText(payload.category)}` : ""}
+      </p>
       <p className="text-sm leading-6 text-slate-700">{compactText(payload.shortSummary)}</p>
       <div className="grid gap-4 md:grid-cols-2">
         <InlineList title="Selling points" items={asArray(payload.keySellingPoints)} />
         <InlineList title="Hooks" items={asArray(payload.suggestedHooks)} />
         <InlineList title="Audience" items={asArray(payload.targetAudiences)} />
-        <InlineList title="Objections / trust" items={[...asArray(payload.buyerObjections), ...asArray(payload.trustSignals)]} />
+        <InlineList title="Buyer pain points" items={asArray(payload.buyerPainPoints)} />
+        <InlineList title="Buyer objections" items={asArray(payload.buyerObjections)} />
+        <InlineList title="Trust signals" items={asArray(payload.trustSignals)} />
         <InlineList title="Content angles" items={asArray(payload.contentAngles)} />
         <InlineList title="CTA" items={asArray(payload.suggestedCTAs)} />
       </div>
@@ -298,7 +303,7 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
       {storyOptions.length > 0 ? (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs font-medium uppercase text-slate-500">Storytelling Handoff: 4 formats with videoBrief</div>
+            <div className="text-xs font-medium uppercase text-slate-500">Storytelling Handoff: story options with videoBrief</div>
             <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
               {storyOptions.length} formats | {storyOptionVideoBriefCount} video briefs
             </span>
@@ -328,7 +333,7 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
                   <div className="mt-3 rounded-md border bg-emerald-50 p-2">
                     <div className="text-xs font-medium uppercase text-emerald-700">User-confirmed additions</div>
                     <div className="mt-1 space-y-1">
-                      {asArray<Record<string, any>>(option.userAdditions).slice(-6).map((addition, index) => (
+                      {asArray<Record<string, any>>(option.userAdditions).map((addition, index) => (
                         <div className="text-xs text-emerald-900" key={`${compactText(addition.category)}-${index}`}>
                           <span className="font-medium">{compactText(addition.category)}:</span> {asArray(addition.values).join(" / ")}
                         </div>
@@ -346,7 +351,7 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
         <div>
           <div className="text-xs font-medium uppercase text-slate-500">Selected images</div>
           <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {selectedImages.slice(0, 8).map((image, index) => (
+            {selectedImages.map((image, index) => (
               <figure className="rounded-md border bg-slate-50 p-2" key={`${image.url}-${index}`}>
                 {image.url ? <AuthenticatedMediaImage className="aspect-square w-full rounded object-cover" src={image.url} alt="" loading="lazy" /> : null}
                 <figcaption className="mt-1 text-xs text-slate-500">{compactText(image.role)} | {compactText(image.fidelity)}</figcaption>
@@ -358,7 +363,7 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
       <div>
         <div className="text-xs font-medium uppercase text-slate-500">Claims</div>
         <div className="mt-2 space-y-2">
-          {asArray<Record<string, any>>(payload.claims).slice(0, 8).map((claim) => (
+          {asArray<Record<string, any>>(payload.claims).map((claim) => (
             <div className="rounded-md border bg-white p-3 text-sm" key={compactText(claim.id, compactText(claim.text))}>
               <div className="font-medium">{compactText(claim.text)}</div>
               <div className="mt-1 text-xs text-slate-500">Status: {compactText(claim.status)} | Evidence: {asArray(claim.evidenceIds).length} | Confidence: {formatConfidence(claim.confidence)}</div>
@@ -430,7 +435,7 @@ export function MarketplaceInsightsSection({
   emptyText?: string;
   allowStorytellingAction?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const contentId = useId();
   const rows = Array.from(new Map(insights
     .filter((insight) => insight && insight.insightType !== "video_brief")

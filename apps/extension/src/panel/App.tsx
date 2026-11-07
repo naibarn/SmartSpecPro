@@ -419,7 +419,7 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.149";
+const EXTENSION_VERSION = "0.1.150";
 const EXTENSION_BUILD_LABEL = "2026-11-07 07:44 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
@@ -4481,7 +4481,8 @@ export default function App() {
     if (!source || !rawBrief) throw new Error("กรุณาสร้าง AI Insight ก่อน");
     const brief = validateProductBrief(rawBrief, source);
     const video = (input.video ?? videoBrief) ? buildVideoBriefFromProduct(brief, source) : null;
-    const handoff = (input.handoff ?? storytellingHandoff) && video ? buildStorytellingHandoff(brief, video, source) : null;
+    const currentHandoff = input.handoff ?? storytellingHandoff;
+    const handoff = currentHandoff && video ? currentHandoff : null;
     setLocalAIState("syncing");
     const reviewedProduct = input.rawCapture ?? (product ? buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl }) : undefined);
     const supportPayloads = buildSupplementalInsightPayloads(source, brief);
