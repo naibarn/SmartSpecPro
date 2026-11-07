@@ -526,6 +526,70 @@ describe("updateEpisodeTextOverlayPlan", () => {
   });
 });
 
+describe("Feature 175 audio record truthfulness", () => {
+  it("returns only the persisted shot manifest instead of a fabricated default take", async () => {
+    const persistedManifest = {
+      id: 81,
+      version: 3,
+      nativeAudioMode: "native_baked",
+      stems: { nativeMasterUrl: "/api/storage/files/native-master.wav" },
+      mixDeltas: { dialogueDb: 2, foleyDb: -2, ambienceDb: -6 },
+      takeHistory: [{ version: 3, action: "mix_delta_update", timestamp: "2026-11-07T00:00:00.000Z" }],
+      updatedAt: new Date("2026-11-07T00:00:00.000Z"),
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]))
+      .mockReturnValueOnce(selectChain([persistedManifest]));
+
+    const result = await router.getShotAudioManifest({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20", shotNumber: 1 },
+    });
+
+    expect(result).toMatchObject({
+      manifestId: "81",
+      version: 3,
+      nativeAudioMode: "native_baked",
+      stems: persistedManifest.stems,
+      mixDeltas: persistedManifest.mixDeltas,
+      takeHistory: persistedManifest.takeHistory,
+    });
+  });
+
+  it("reports QC unavailable when no stored report exists", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]))
+      .mockReturnValueOnce(selectChain([]));
+
+    const result = await router.getShotAudioQcReport({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20", shotNumber: 1 },
+    });
+
+    expect(result).toMatchObject({
+      available: false,
+      reportId: null,
+      overallScore: null,
+      status: "UNAVAILABLE",
+      metrics: null,
+    });
+    expect(result).not.toHaveProperty("speechQc");
+  });
+
+  it("does not queue or claim credits for an unbound surgical repair request", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
+
+    await expect(
+      router.triggerSurgicalAudioRepair({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "20", shotNumber: 1 },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* getEpisodeDetail — textOverlayPlan / textOverlayPreview / flags            */
 /* -------------------------------------------------------------------------- */

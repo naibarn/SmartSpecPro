@@ -4,6 +4,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { VerticalDramaAudioInspector } from "../VerticalDramaAudioInspector";
 
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    verticalDramaEpisodes: {
+      getShotAudioManifest: { useQuery: () => ({ data: null, isError: false }) },
+      getShotAudioQcReport: { useQuery: () => ({ data: null, isError: false }) },
+    },
+  },
+}));
+
 describe("VerticalDramaAudioInspector component", () => {
   it("renders 3-stem faders when nativeAudioEnabled is true", () => {
     render(
@@ -34,13 +43,13 @@ describe("VerticalDramaAudioInspector component", () => {
       />
     );
 
-    expect(screen.getByText(/เสียงพูดอย่างเดียว/i)).toBeTruthy();
+    expect(screen.getByText(/ไม่ได้เปิดคำขอเสียงต้นฉบับ/i)).toBeTruthy();
     expect(screen.getByTestId("vd-audio-fader-dialogue")).toBeTruthy();
     expect(screen.queryByTestId("vd-audio-fader-foley")).toBeNull();
     expect(screen.queryByTestId("vd-audio-fader-ambience")).toBeNull();
   });
 
-  it("calls onTriggerRepair when repair button is clicked", () => {
+  it("does not submit a repair until the source-bound worker and billing path is available", () => {
     const onTriggerRepair = vi.fn();
     render(
       <VerticalDramaAudioInspector
@@ -54,7 +63,22 @@ describe("VerticalDramaAudioInspector component", () => {
 
     const repairBtn = screen.getByTestId("vd-audio-trigger-repair-btn");
     fireEvent.click(repairBtn);
-    expect(onTriggerRepair).toHaveBeenCalledTimes(1);
+    expect(repairBtn).toHaveProperty("disabled", true);
+    expect(onTriggerRepair).not.toHaveBeenCalled();
+  });
+
+  it("does not report a passing QC result when no report exists", () => {
+    render(
+      <VerticalDramaAudioInspector
+        seriesId="series_53"
+        episodeId="252"
+        shotNumber={1}
+        nativeAudioEnabled={false}
+      />
+    );
+
+    expect(screen.getByText("ยังไม่มีผล QC")).toBeTruthy();
+    expect(screen.queryByText(/QC ผ่าน/)).toBeNull();
   });
 
   it("toggles stem mute state when mute button is clicked", () => {
@@ -145,7 +169,7 @@ describe("VerticalDramaAudioInspector component", () => {
     expect(previewBtn.textContent).toContain("กำลังฟัง...");
   });
 
-  it("displays clipping warning when stem volume is boosted excessively", () => {
+  it("does not invent clipping measurements from mix settings", () => {
     render(
       <VerticalDramaAudioInspector
         seriesId="series_53"
@@ -156,7 +180,7 @@ describe("VerticalDramaAudioInspector component", () => {
       />
     );
 
-    expect(screen.getByTestId("vd-audio-clipping-warning")).toBeTruthy();
-    expect(screen.getByText(/ระวังเสียงแตก/i)).toBeTruthy();
+    expect(screen.getAllByText("ยังไม่มีผลวัด")).toHaveLength(2);
+    expect(screen.queryByTestId("vd-audio-clipping-warning")).toBeNull();
   });
 });

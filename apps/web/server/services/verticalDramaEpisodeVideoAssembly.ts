@@ -1204,7 +1204,14 @@ async function reconcileApprovedAudioPlansAfterCompiledCut(owner: AssembleEpisod
  */
 export interface FinalRenderManifestSection {
   bannerCount: number;
+  dialogueAudioSegmentsRequested: number;
   dialogueAudioSegmentCount: number;
+  /** Requested dialogue segments that could not be staged; video assembly
+   *  continues and the original clip audio remains the base track. */
+  dialogueAudioSegmentsMissing: Array<{
+    segmentIndex: number;
+    reason: "download_failed";
+  }>;
   loudnessNormalize: boolean;
   subtitlePreset?: CaptionPresetId;
   subtitleLineCount: number;
@@ -1536,8 +1543,11 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         });
       }
 
-      // Stage dialogue-audio segments (additive) — same download helper/convention as clips.
+      // Dialogue audio is an optional overlay. A missing or expired TTS asset
+      // degrades only that segment; it must not make an otherwise renderable
+      // video unavailable or replace the audio already baked into its clips.
       const resolvedDialogueSegments: DialogueAudioSegment[] = [];
+      const missingDialogueAudioSegments: FinalRenderManifestSection["dialogueAudioSegmentsMissing"] = [];
       for (const [index, segment] of (
         args.dialogueAudio?.segments ?? []
       ).entries()) {
@@ -1545,17 +1555,24 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
           workDir,
           `dialogue-${String(index).padStart(3, "0")}${inferDownloadExtension(segment.audioUrl, ".mp3")}`
         );
-        await downloadClipToFile(segment.audioUrl, dest, internalBaseUrl);
-        resolvedDialogueSegments.push({
-          localPath: dest,
-          startSec: trimmedTimelineWindows
-            ? retimeDialogueSegmentsToTrimmedClipWindows(
-                [segment],
-                trimmedTimelineWindows,
-              )[0].startSec
-            : segment.startSec,
-          gainDb: segment.gainDb,
-        });
+        try {
+          await downloadClipToFile(segment.audioUrl, dest, internalBaseUrl);
+          resolvedDialogueSegments.push({
+            localPath: dest,
+            startSec: trimmedTimelineWindows
+              ? retimeDialogueSegmentsToTrimmedClipWindows(
+                  [segment],
+                  trimmedTimelineWindows,
+                )[0].startSec
+              : segment.startSec,
+            gainDb: segment.gainDb,
+          });
+        } catch {
+          missingDialogueAudioSegments.push({
+            segmentIndex: index,
+            reason: "download_failed",
+          });
+        }
       }
 
       // Task #34 — stage the series' IMAGE watermark(s) (additive) BEFORE the
@@ -1688,15 +1705,14 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         output: outputPath,
         videoDurationSeconds,
         banners: entireResolvedBanners.length > 0 ? entireResolvedBanners : undefined,
-        dialogueAudio:
-          resolvedDialogueSegments.length > 0 ||
-          args.dialogueAudio?.loudnessNormalize
-            ? {
-                segments: resolvedDialogueSegments,
-                loudnessNormalize: args.dialogueAudio?.loudnessNormalize,
-                duckClipAudioDb: args.dialogueAudio?.duckClipAudioDb,
-              }
-            : undefined,
+        dialogueAudio: resolvedDialogueSegments.length > 0
+          ? {
+              segments: resolvedDialogueSegments,
+              loudnessNormalize:
+                args.dialogueAudio?.loudnessNormalize === true,
+              duckClipAudioDb: args.dialogueAudio?.duckClipAudioDb,
+            }
+          : undefined,
         subtitles: subtitlesForGraph ?? null,
         watermarkImages:
           resolvedWatermarkImages.length > 0 ? resolvedWatermarkImages : undefined,
@@ -1704,8 +1720,12 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
 
       finalRenderSummary = {
         bannerCount: resolvedBanners.length,
+        dialogueAudioSegmentsRequested: args.dialogueAudio?.segments.length ?? 0,
         dialogueAudioSegmentCount: resolvedDialogueSegments.length,
-        loudnessNormalize: args.dialogueAudio?.loudnessNormalize === true,
+        dialogueAudioSegmentsMissing: missingDialogueAudioSegments,
+        loudnessNormalize:
+          args.dialogueAudio?.loudnessNormalize === true &&
+          resolvedDialogueSegments.length > 0,
         subtitlePreset: args.subtitles?.preset,
         subtitleLineCount: args.subtitles?.lines?.length ?? 0,
         textOverlayEventCount: resolvedOverlayEvents.length,
@@ -2089,6 +2109,9 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
    *  byte-identical to before this fallback existed. */
   clipDialogue?: Map<number, VdClipAuthoredDialogueLine[]>;
   includedClipNumbers: number[];
+  /** Optional per-shot gain saved in the native audio manifest. Applied only
+   *  to separately generated dialogue; baked clip audio is never rewritten. */
+  dialogueGainDbByShot?: ReadonlyMap<number, number>;
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: CaptionPresetId | "none" | undefined;
@@ -2229,6 +2252,9 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
         segments.push({
           audioUrl,
           startSec: timing.absoluteStartSec,
+          ...(params.dialogueGainDbByShot?.has(timing.shotNumber)
+            ? { gainDb: params.dialogueGainDbByShot.get(timing.shotNumber) }
+            : {}),
           ...(timing.resolvedClipNumber != null && clipLocalStartFrac != null
             ? {
                 clipNumber: timing.resolvedClipNumber,

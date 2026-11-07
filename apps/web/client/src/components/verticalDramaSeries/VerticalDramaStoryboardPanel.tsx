@@ -1391,6 +1391,8 @@ interface VerticalDramaStoryboardPanelProps {
   /** Used only to build download filenames (`series-{seriesId}-ep-{episodeNumber}-...`)
    *  — not sent to any mutation from this panel. */
   seriesId?: string;
+  /** Persisted episode ID used by owner-scoped audio manifest/QC queries. */
+  episodeId?: string;
   episodeNumber?: number;
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
@@ -2373,6 +2375,7 @@ export interface VerticalDramaCompiledVideoView {
 export function VerticalDramaStoryboardPanel({
   locale = "th",
   seriesId,
+  episodeId,
   episodeNumber,
   storyboard,
   startFramePlan,
@@ -9101,7 +9104,7 @@ export function VerticalDramaStoryboardPanel({
                               >
                                 <VerticalDramaAudioInspector
                                   seriesId={String(seriesId ?? "")}
-                                  episodeId={String(episodeNumber ?? "0")}
+                                  episodeId={String(episodeId ?? "")}
                                   shotNumber={shotNumber}
                                   nativeAudioEnabled={
                                     nativeAudioEnabled ?? true

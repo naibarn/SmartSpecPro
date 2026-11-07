@@ -277,11 +277,6 @@ import {
   type VerticalDramaLocationIdentity,
 } from "@shared/verticalDramaSeries/locationIdentity";
 import {
-  VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE,
-  VERTICAL_DRAMA_AUDIO_CAPABILITY_FAMILIES,
-  VERTICAL_DRAMA_AUDIO_CONTRACT_VERSION,
-} from "../../shared/workerRuntime";
-import {
   deriveVerticalDramaSpokenCallerVirtualScreens,
   renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock,
   renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
@@ -9372,6 +9367,99 @@ export function buildDialogueAudioTimelineFromPlan(
     });
   }
   return timeline;
+}
+
+type VerticalDramaShotAudioMixDeltas = {
+  dialogueDb: number;
+  foleyDb: number;
+  ambienceDb: number;
+};
+
+function finiteAudioMetric(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Append a non-destructive shot audio-manifest version under a per-shot lock. */
+async function appendVerticalDramaShotAudioManifestVersion(input: {
+  tenantId: string;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+  action: "mix_delta_update" | "rollback";
+  mixDeltas?: VerticalDramaShotAudioMixDeltas;
+  restoreVersion?: number;
+}) {
+  return db.transaction(async tx => {
+    const lockKey = `vd-audio-manifest:${input.tenantId}:${input.episodeId}:${input.shotNumber}`;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+    const scope = and(
+      eq(verticalDramaAudioManifests.tenantId, input.tenantId),
+      eq(verticalDramaAudioManifests.seriesId, input.seriesId),
+      eq(verticalDramaAudioManifests.episodeId, input.episodeId),
+      eq(verticalDramaAudioManifests.shotNumber, input.shotNumber),
+    );
+    const [latest] = await tx
+      .select()
+      .from(verticalDramaAudioManifests)
+      .where(scope)
+      .orderBy(desc(verticalDramaAudioManifests.version))
+      .limit(1);
+    const [restoreTarget] = input.restoreVersion != null
+      ? await tx
+          .select()
+          .from(verticalDramaAudioManifests)
+          .where(and(scope, eq(verticalDramaAudioManifests.version, input.restoreVersion)))
+          .limit(1)
+      : [];
+    if (input.restoreVersion != null && !restoreTarget) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Audio take not found" });
+    }
+
+    const version = (latest?.version ?? 0) + 1;
+    const now = new Date();
+    const takeHistory = Array.isArray(latest?.takeHistory)
+      ? [...latest.takeHistory]
+      : [];
+    takeHistory.push({
+      version,
+      action: input.restoreVersion != null
+        ? `rollback_to_version_${input.restoreVersion}`
+        : input.action,
+      timestamp: now.toISOString(),
+    });
+    const [created] = await tx
+      .insert(verticalDramaAudioManifests)
+      .values({
+        tenantId: input.tenantId,
+        seriesId: input.seriesId,
+        episodeId: input.episodeId,
+        shotNumber: input.shotNumber,
+        version,
+        nativeAudioMode:
+          restoreTarget?.nativeAudioMode ?? latest?.nativeAudioMode ?? "unverified",
+        stems: restoreTarget?.stems ?? latest?.stems ?? {},
+        mixDeltas:
+          input.mixDeltas ?? restoreTarget?.mixDeltas ?? latest?.mixDeltas ?? {
+            dialogueDb: 0,
+            foleyDb: -2,
+            ambienceDb: -6,
+          },
+        takeHistory,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!created) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Audio manifest changed concurrently; refresh and retry",
+      });
+    }
+    return { manifest: created, restoredFromVersion: restoreTarget?.version };
+  });
 }
 
 /**
@@ -28362,29 +28450,34 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      const pack =
-        (row.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? null;
-      return {
-        manifestId: `aman_${episodeId}_s${input.shotNumber}_v1`,
-        version: 1,
-        seriesId: input.seriesId,
-        episodeId: input.episodeId,
-        shotNumber: input.shotNumber,
-        nativeAudioMode: pack?.nativeAudioEnabled
-          ? "native_baked"
-          : "silent_visual",
-        sampleRateHz: 48000,
-        channels: 2,
-        stems: {},
-        mixDeltas: { dialogueDb: 0, foleyDb: -2, ambienceDb: -6 },
-        takeHistory: [
-          {
-            version: 1,
-            action: "initial_generation",
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      };
+      const [manifest] = await db
+        .select()
+        .from(verticalDramaAudioManifests)
+        .where(
+          and(
+            eq(verticalDramaAudioManifests.tenantId, tenantId),
+            eq(verticalDramaAudioManifests.seriesId, seriesId),
+            eq(verticalDramaAudioManifests.episodeId, episodeId),
+            eq(verticalDramaAudioManifests.shotNumber, input.shotNumber)
+          )
+        )
+        .orderBy(desc(verticalDramaAudioManifests.version))
+        .limit(1);
+
+      return manifest
+        ? {
+            manifestId: String(manifest.id),
+            version: manifest.version,
+            seriesId: input.seriesId,
+            episodeId: input.episodeId,
+            shotNumber: input.shotNumber,
+            nativeAudioMode: manifest.nativeAudioMode,
+            stems: manifest.stems,
+            mixDeltas: manifest.mixDeltas,
+            takeHistory: manifest.takeHistory,
+            updatedAt: manifest.updatedAt.toISOString(),
+          }
+        : null;
     }),
 
   /** Feature 175 — Non-destructive Take History Rollback (0 credits) */
@@ -28402,7 +28495,7 @@ export const verticalDramaEpisodesRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
 
-      const [row] = await db
+      const [episode] = await db
         .select({ id: verticalDramaEpisodes.id })
         .from(verticalDramaEpisodes)
         .where(
@@ -28415,17 +28508,30 @@ export const verticalDramaEpisodesRouter = router({
         )
         .limit(1);
 
-      if (!row) {
+      if (!episode) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Episode not found",
         });
       }
 
+      const { manifest, restoredFromVersion } =
+        await appendVerticalDramaShotAudioManifestVersion({
+          tenantId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          action: "rollback",
+          restoreVersion: input.targetTakeVersion,
+        });
+
       return {
         success: true,
+        seriesId: input.seriesId,
+        episodeId: input.episodeId,
         shotNumber: input.shotNumber,
-        activeTakeVersion: input.targetTakeVersion,
+        activeTakeVersion: manifest.version,
+        restoredFromVersion,
         creditsCharged: 0,
       };
     }),
@@ -28438,9 +28544,9 @@ export const verticalDramaEpisodesRouter = router({
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
         mixDeltas: z.object({
-          dialogueDb: z.number(),
-          foleyDb: z.number(),
-          ambienceDb: z.number(),
+          dialogueDb: z.number().min(-12).max(6),
+          foleyDb: z.number().min(-18).max(6),
+          ambienceDb: z.number().min(-24).max(3),
         }),
       })
     )
@@ -28449,7 +28555,7 @@ export const verticalDramaEpisodesRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
 
-      const [row] = await db
+      const [episode] = await db
         .select({ id: verticalDramaEpisodes.id })
         .from(verticalDramaEpisodes)
         .where(
@@ -28462,20 +28568,30 @@ export const verticalDramaEpisodesRouter = router({
         )
         .limit(1);
 
-      if (!row) {
+      if (!episode) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Episode not found",
         });
       }
 
+      const { manifest } = await appendVerticalDramaShotAudioManifestVersion({
+        tenantId,
+        seriesId,
+        episodeId,
+        shotNumber: input.shotNumber,
+        action: "mix_delta_update",
+        mixDeltas: input.mixDeltas,
+      });
+
       return {
         success: true,
         seriesId: input.seriesId,
         episodeId: input.episodeId,
         shotNumber: input.shotNumber,
-        mixDeltas: input.mixDeltas,
-        updatedAt: new Date().toISOString(),
+        mixDeltas: manifest.mixDeltas,
+        version: manifest.version,
+        updatedAt: manifest.updatedAt.toISOString(),
       };
     }),
 
@@ -28515,46 +28631,16 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      const idempotencyKey =
-        input.idempotencyKey ??
-        `surg_repair_${episodeId}_s${input.shotNumber}_${Date.now()}`;
-
-      const [job] = await db
-        .insert(workerJobs)
-        .values(withSafeWorkerJobDeadline({
-          tenantId,
-          runtimeType: "remotion_executor",
-          requestedByUserId: ctx.user.id,
-          jobType: VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE,
-          status: "queued",
-          resourceProfile: "gpu_required",
-          capabilityRequirementsJson: {
-            capabilityFamilies: VERTICAL_DRAMA_AUDIO_CAPABILITY_FAMILIES,
-            contractVersion: VERTICAL_DRAMA_AUDIO_CONTRACT_VERSION,
-            seriesId: input.seriesId,
-            episodeId: input.episodeId,
-            shotNumber: input.shotNumber,
-          },
-          inputJson: {
-            seriesId: input.seriesId,
-            episodeId: input.episodeId,
-            shotNumber: input.shotNumber,
-            targetIssue: input.targetIssue,
-          },
-          idempotencyKey,
-        }))
-        .onConflictDoNothing()
-        .returning({ id: workerJobs.id, status: workerJobs.status });
-
-      const resolvedJobId = job?.id ?? idempotencyKey;
-
-      return {
-        success: true,
-        jobId: resolvedJobId,
-        shotNumber: input.shotNumber,
-        creditsCharged: 5,
-        estimatedDurationSec: 4.5,
-      };
+      // Feature 175's legacy submit path did not bind a source clip or a
+      // matching TTS artifact, did not use the canonical outbox, and claimed
+      // a 5-credit charge without a reservation. Keep this optional action
+      // unavailable until those contracts and artifact writeback are wired;
+      // never enqueue a doomed GPU job or report a charge that did not occur.
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "การซ่อมเสียงยังไม่พร้อม: ยังไม่มีการผูกไฟล์เสียงต้นฉบับ/เสียงพูดกับงานและระบบบันทึกผลแบบปลอดภัย งานสร้างภาพและวิดีโอยังใช้งานต่อได้ตามปกติ",
+      });
     }),
 
   /** Feature 175 — Get shot audio QC evaluation report */
@@ -28571,89 +28657,65 @@ export const verticalDramaEpisodesRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
 
+      const [episode] = await db
+        .select({ id: verticalDramaEpisodes.id })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, ctx.user.id),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .limit(1);
+
+      if (!episode) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+      }
+
       const [dbReport] = await db
         .select()
         .from(verticalDramaAudioQcReports)
         .where(
           and(
             eq(verticalDramaAudioQcReports.tenantId, tenantId),
+            eq(verticalDramaAudioQcReports.seriesId, seriesId),
             eq(verticalDramaAudioQcReports.episodeId, episodeId),
             eq(verticalDramaAudioQcReports.shotNumber, input.shotNumber)
           )
         )
+        .orderBy(desc(verticalDramaAudioQcReports.createdAt))
         .limit(1);
 
-      if (dbReport) {
-        return {
-          reportId: `qcrep_${dbReport.id}`,
-          seriesId: input.seriesId,
-          episodeId: input.episodeId,
-          shotNumber: input.shotNumber,
-          overallScore: dbReport.overallScore / 10,
-          status: (dbReport.overallScore >= 80 ? "PASS" : "WARN") as
-            | "PASS"
-            | "WARN"
-            | "FAIL",
-          speechQc: {
-            hasSpeech: parseFloat(dbReport.vadSpeechRatio ?? "0") > 0.05,
-            speechDurationSec: 4.2,
-            asrTranscribedText: "ส้มอยากให้พี่ แกะกล่องอันใหม่ให้น้อง",
-            canonicalExpectedText: "ส้มอยากให้พี่ แกะกล่องอันใหม่ให้น้อง",
-            characterErrorRate: parseFloat(dbReport.asrCer ?? "0"),
-            passesCerThreshold: parseFloat(dbReport.asrCer ?? "0") <= 0.15,
-            meanF0Hz: 215,
-            f0IdentityDrift: false,
-          },
-          syncQc: {
-            avSyncOffsetMs: dbReport.avSyncOffsetMs ?? 12,
-            syncScore: 0.96,
-            passesSyncThreshold: (dbReport.avSyncOffsetMs ?? 0) < 45,
-          },
-          acousticQc: {
-            integratedLufs: parseFloat(dbReport.integratedLufs ?? "-14.0"),
-            truePeakDbfs: parseFloat(dbReport.truePeakDb ?? "-1.0"),
-            loudnessRangeLu: 4.5,
-            phaseCorrelation: parseFloat(dbReport.phaseCorrelation ?? "0.85"),
-            clippingDetected: false,
-            dcOffsetDetected: false,
-            bgmBleedDetected: dbReport.bgmBleedDetected,
-          },
-          suggestedAction: "NONE" as const,
-        };
-      }
-
       return {
-        reportId: `qcrep_${input.episodeId}_s${input.shotNumber}`,
+        reportId: dbReport ? `qcrep_${dbReport.id}` : null,
         seriesId: input.seriesId,
         episodeId: input.episodeId,
         shotNumber: input.shotNumber,
-        overallScore: 9.2,
-        status: "PASS" as const,
-        speechQc: {
-          hasSpeech: true,
-          speechDurationSec: 4.2,
-          asrTranscribedText: "ส้มอยากให้พี่ แกะกล่องอันใหม่ให้น้อง",
-          canonicalExpectedText: "ส้มอยากให้พี่ แกะกล่องอันใหม่ให้น้อง",
-          characterErrorRate: 0.0,
-          passesCerThreshold: true,
-          meanF0Hz: 215,
-          f0IdentityDrift: false,
-        },
-        syncQc: {
-          avSyncOffsetMs: 12,
-          syncScore: 0.96,
-          passesSyncThreshold: true,
-        },
-        acousticQc: {
-          integratedLufs: -14.0,
-          truePeakDbfs: -1.2,
-          loudnessRangeLu: 4.5,
-          phaseCorrelation: 0.88,
-          clippingDetected: false,
-          dcOffsetDetected: false,
-          bgmBleedDetected: false,
-        },
-        suggestedAction: "NONE" as const,
+        available: Boolean(dbReport),
+        overallScore: dbReport ? dbReport.overallScore / 10 : null,
+        status: dbReport
+          ? dbReport.overallScore >= 80
+            ? "PASS"
+            : dbReport.overallScore >= 60
+              ? "WARN"
+              : "FAIL"
+          : "UNAVAILABLE",
+        metrics: dbReport
+          ? {
+              asrCer: finiteAudioMetric(dbReport.asrCer),
+              vadSpeechRatio:
+                finiteAudioMetric(dbReport.vadSpeechRatio),
+              avSyncOffsetMs: dbReport.avSyncOffsetMs,
+              integratedLufs: finiteAudioMetric(dbReport.integratedLufs),
+              truePeakDb: finiteAudioMetric(dbReport.truePeakDb),
+              phaseCorrelation: finiteAudioMetric(dbReport.phaseCorrelation),
+              bgmBleedDetected: dbReport.bgmBleedDetected,
+              flags: dbReport.flags,
+            }
+          : null,
+        createdAt: dbReport?.createdAt.toISOString() ?? null,
       };
     }),
 
@@ -34088,6 +34150,46 @@ export const verticalDramaEpisodesRouter = router({
       // available through the resolver's fallback.
       const usableDialoguePlan =
         dialogueAudioSourceStatus === "stale" ? null : dialoguePlan;
+      const dialogueGainDbByShot = new Map<number, number>();
+      try {
+        const manifestRows = await db
+          .select({
+            shotNumber: verticalDramaAudioManifests.shotNumber,
+            version: verticalDramaAudioManifests.version,
+            mixDeltas: verticalDramaAudioManifests.mixDeltas,
+          })
+          .from(verticalDramaAudioManifests)
+          .where(
+            and(
+              eq(verticalDramaAudioManifests.tenantId, tenantId),
+              eq(verticalDramaAudioManifests.seriesId, seriesId),
+              eq(verticalDramaAudioManifests.episodeId, episodeId)
+            )
+          )
+          .orderBy(desc(verticalDramaAudioManifests.version));
+        for (const manifest of manifestRows) {
+          if (dialogueGainDbByShot.has(manifest.shotNumber)) continue;
+          const deltas = manifest.mixDeltas as
+            | { dialogueDb?: unknown }
+            | null;
+          const gainDb = deltas?.dialogueDb;
+          if (
+            typeof gainDb === "number" &&
+            Number.isFinite(gainDb) &&
+            gainDb >= -12 &&
+            gainDb <= 6
+          ) {
+            dialogueGainDbByShot.set(manifest.shotNumber, gainDb);
+          }
+        }
+      } catch (error) {
+        // Mix controls are optional. A manifest read outage must never stop
+        // otherwise valid video assembly or the clip's baked-in audio.
+        console.warn("[vertical-drama-audio] optional mix settings unavailable", {
+          episodeId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       // Phase A render-options quick win — only queried when this render
       // actually requests the badge (see `loadSeriesAudienceAgeRating`'s own
       // doc comment), so every pre-existing caller pays zero extra DB cost.
@@ -34112,6 +34214,7 @@ export const verticalDramaEpisodesRouter = router({
             })
           ),
           includedClipNumbers: resolved.ordered.map(c => c.clipNumber),
+          dialogueGainDbByShot,
           // Subtitle source of last resort — the dialogue the user actually
           // sees on the storyboard shot cards. Used only when the dialogue
           // plan has no lines (see the resolver's own doc comment; field

@@ -437,6 +437,8 @@ export interface VerticalDramaFinalRenderOptionsPanelData {
 export interface VerticalDramaStoryboardPanelData {
   /** Used only for download filenames (`series-{seriesId}-ep-{episodeNumber}-...`). */
   seriesId?: string;
+  /** Persisted episode ID used by owner-scoped audio manifest/QC queries. */
+  episodeId?: string;
   episodeNumber?: number;
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
@@ -1697,6 +1699,7 @@ export function VerticalDramaEpisodeWorkspace({
           assemblyTimelineSlot={storyboardPanel?.assemblyTimelineSlot}
           locale={locale}
           seriesId={storyboardPanel?.seriesId}
+          episodeId={storyboardPanel?.episodeId}
           episodeNumber={storyboardPanel?.episodeNumber}
           storyboard={storyboardPanel?.storyboard}
           startFramePlan={storyboardPanel?.startFramePlan}
@@ -2691,6 +2694,9 @@ export function VerticalDramaEpisodeWorkspace({
                       // are intentionally inert here and only the primary mount forwards them.
                       <VerticalDramaStoryboardPanel
                         locale={locale}
+                        seriesId={storyboardPanel?.seriesId}
+                        episodeId={storyboardPanel?.episodeId}
+                        episodeNumber={storyboardPanel?.episodeNumber}
                         storyboard={storyboardPanel?.storyboard}
                         startFramePlan={storyboardPanel?.startFramePlan}
                         motionPromptPack={storyboardPanel?.motionPromptPack}

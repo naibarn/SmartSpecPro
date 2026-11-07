@@ -103,6 +103,11 @@ beforeEach(() => {
   dbState.episode.assemblyManifest = null;
   vi.clearAllMocks();
   storageStreamFileMock.mockResolvedValue(null);
+  vi.mocked(fetch).mockReset().mockImplementation(async () => ({
+    ok: true,
+    body: {},
+    arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+  }) as Response);
 });
 
 /**
@@ -820,7 +825,9 @@ describe("runAssemblyJob — final render integration-lite (banners/dialogueAudi
     expect(manifest.compiledVideo.status).toBe("completed");
     expect(manifest.finalRender).toEqual({
       bannerCount: 1,
+      dialogueAudioSegmentsRequested: 1,
       dialogueAudioSegmentCount: 1,
+      dialogueAudioSegmentsMissing: [],
       loudnessNormalize: true,
       subtitlePreset: "classic_box",
       subtitleLineCount: 1,
@@ -828,6 +835,54 @@ describe("runAssemblyJob — final render integration-lite (banners/dialogueAudi
       watermarkIncluded: false,
       watermarkCount: 0,
       renderedAt: expect.any(String),
+    });
+  });
+
+  it("keeps the video render available when an optional dialogue-audio download fails", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation(async input => {
+      if (String(input).includes("missing-line.mp3")) {
+        return { ok: false, status: 404, statusText: "Not Found" } as Response;
+      }
+      return {
+        ok: true,
+        body: {},
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      } as Response;
+    });
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-final-render-audio-download-failure",
+      clips: [{ clipNumber: 1, videoUrl: "https://cdn.example.com/clip.mp4" }],
+      internalBaseUrl: "http://localhost:3000",
+      filename: "series-x-ep-1-compiled.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: async () => 12,
+      dialogueAudio: {
+        segments: [
+          { audioUrl: "https://cdn.example.com/missing-line.mp3", startSec: 1 },
+        ],
+        loudnessNormalize: true,
+      },
+    });
+
+    expect(getJobStatus("job-final-render-audio-download-failure")?.status).toBe("completed");
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const manifest = dbState.episode.assemblyManifest as any;
+    expect(manifest.compiledVideo.status).toBe("completed");
+    expect(manifest.finalRender).toMatchObject({
+      dialogueAudioSegmentsRequested: 1,
+      dialogueAudioSegmentCount: 0,
+      dialogueAudioSegmentsMissing: [
+        { segmentIndex: 0, reason: "download_failed" },
+      ],
+      loudnessNormalize: false,
     });
   });
 
@@ -1957,6 +2012,33 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     });
     expect(result.dialogueAudio).toBeUndefined();
     expect(result.dialogueAudioSegmentsIncluded).toBe(0);
+  });
+
+  it("applies the persisted dialogue mix delta to the matching shot's TTS segment", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan({
+        separateTtsPlan: {
+          strategy: "separate_tts_voiceover",
+          items: [
+            ttsItem({
+              audioTask: { audioUrl: "https://cdn.example.com/line.mp3" },
+            }),
+          ],
+          injectsIntoVideoPrompts: false,
+          blockedLineIds: [],
+        },
+      }),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      dialogueGainDbByShot: new Map([[1, 3.5]]),
+      includeDialogueAudio: true,
+      subtitlePreset: undefined,
+      loudnessNormalize: false,
+    });
+
+    expect(result.dialogueAudio?.segments).toEqual([
+      expect.objectContaining({ gainDb: 3.5 }),
+    ]);
   });
 
   it("narration lines omit the speakerName chip; named dialogue lines include it", () => {

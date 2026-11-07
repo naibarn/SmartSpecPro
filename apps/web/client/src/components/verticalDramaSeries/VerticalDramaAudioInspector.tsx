@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export interface AudioMixDeltas {
   dialogueDb: number;
@@ -31,9 +32,10 @@ export interface AudioInspectorProps {
   videoUrl?: string;
   audioUrl?: string;
   isRepairing?: boolean;
+  repairEnabled?: boolean;
   mixDeltas?: AudioMixDeltas;
   qcScore?: number;
-  qcStatus?: "PASS" | "WARNING_MINOR" | "FAIL_RETRY";
+  qcStatus?: "PASS" | "WARN" | "FAIL" | "UNAVAILABLE";
   currentTake?: number;
   takesCount?: number;
   onUpdateMixDeltas?: (deltas: AudioMixDeltas) => void;
@@ -43,21 +45,43 @@ export interface AudioInspectorProps {
 }
 
 export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
+  seriesId,
+  episodeId,
   shotNumber,
   nativeAudioEnabled,
   videoUrl,
   audioUrl,
   isRepairing = false,
+  repairEnabled = false,
   mixDeltas = { dialogueDb: 0, foleyDb: -2, ambienceDb: -6 },
-  qcScore = 9.2,
-  qcStatus = "PASS",
-  currentTake = 1,
-  takesCount = 1,
+  qcScore,
+  qcStatus,
+  currentTake,
+  takesCount,
   onUpdateMixDeltas,
   onTriggerRepair,
   onRollbackTake,
   onClose,
 }) => {
+  const manifestQuery = trpc.verticalDramaEpisodes.getShotAudioManifest.useQuery(
+    { seriesId, episodeId, shotNumber },
+    { enabled: Boolean(seriesId && episodeId) },
+  );
+  const qcQuery = trpc.verticalDramaEpisodes.getShotAudioQcReport.useQuery(
+    { seriesId, episodeId, shotNumber },
+    { enabled: Boolean(seriesId && episodeId) },
+  );
+  const manifestMix = manifestQuery.data?.mixDeltas as
+    | Partial<AudioMixDeltas>
+    | null
+    | undefined;
+  const hasManifestMix =
+    typeof manifestMix?.dialogueDb === "number" &&
+    Number.isFinite(manifestMix.dialogueDb) &&
+    typeof manifestMix.foleyDb === "number" &&
+    Number.isFinite(manifestMix.foleyDb) &&
+    typeof manifestMix.ambienceDb === "number" &&
+    Number.isFinite(manifestMix.ambienceDb);
   const [dialogueDb, setDialogueDb] = useState(mixDeltas.dialogueDb);
   const [foleyDb, setFoleyDb] = useState(mixDeltas.foleyDb);
   const [ambienceDb, setAmbienceDb] = useState(mixDeltas.ambienceDb);
@@ -69,10 +93,33 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
 
   const audioSourceUrl = audioUrl || videoUrl;
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // The final-render graph currently overlays separate TTS segments only;
+  // native Foley/ambience tracks remain baked into each source video clip.
+  const hasFoleyStem = false;
+  const hasAmbienceStem = false;
+  const resolvedCurrentTake = manifestQuery.data?.version ?? currentTake ?? 0;
+  const resolvedTakesCount = Math.max(
+    takesCount ?? 0,
+    manifestQuery.data?.version ?? 0,
+  );
+  const resolvedQcScore = qcQuery.data?.overallScore ?? qcScore;
+  const resolvedQcStatus = qcQuery.data?.status ?? qcStatus ?? "UNAVAILABLE";
+
+  useEffect(() => {
+    if (!hasManifestMix || !manifestMix) return;
+    setDialogueDb(manifestMix.dialogueDb!);
+    setFoleyDb(manifestMix.foleyDb!);
+    setAmbienceDb(manifestMix.ambienceDb!);
+  }, [
+    hasManifestMix,
+    manifestMix?.dialogueDb,
+    manifestMix?.foleyDb,
+    manifestMix?.ambienceDb,
+  ]);
 
   // Synchronize audio volume / mute with the faders
   useEffect(() => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioUrl) return;
     const isMuted = dialogueMuted || (soloStem !== null && soloStem !== "dialogue");
     if (isMuted) {
       audioRef.current.volume = 0;
@@ -80,7 +127,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
       const linearGain = Math.min(1.0, Math.max(0.0, Math.pow(10, dialogueDb / 20)));
       audioRef.current.volume = linearGain;
     }
-  }, [dialogueDb, dialogueMuted, soloStem]);
+  }, [audioUrl, dialogueDb, dialogueMuted, soloStem]);
 
   // Pause audio on unmount or URL change
   useEffect(() => {
@@ -126,19 +173,40 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
   const handleDialogueChange = (vals: number[]) => {
     const val = vals[0];
     setDialogueDb(val);
-    onUpdateMixDeltas?.({ dialogueDb: val, foleyDb, ambienceDb });
   };
 
   const handleFoleyChange = (vals: number[]) => {
     const val = vals[0];
     setFoleyDb(val);
-    onUpdateMixDeltas?.({ dialogueDb, foleyDb: val, ambienceDb });
   };
 
   const handleAmbienceChange = (vals: number[]) => {
     const val = vals[0];
     setAmbienceDb(val);
-    onUpdateMixDeltas?.({ dialogueDb, foleyDb, ambienceDb: val });
+  };
+
+  const persistDialogueChange = (vals: number[]) => {
+    onUpdateMixDeltas?.({
+      dialogueDb: vals[0],
+      foleyDb,
+      ambienceDb,
+    });
+  };
+
+  const persistFoleyChange = (vals: number[]) => {
+    onUpdateMixDeltas?.({
+      dialogueDb,
+      foleyDb: vals[0],
+      ambienceDb,
+    });
+  };
+
+  const persistAmbienceChange = (vals: number[]) => {
+    onUpdateMixDeltas?.({
+      dialogueDb,
+      foleyDb,
+      ambienceDb: vals[0],
+    });
   };
 
   const handleResetFaders = () => {
@@ -188,17 +256,21 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
               </>
             )}
           </Button>
-          {qcStatus === "PASS" ? (
+          {resolvedQcStatus === "PASS" && resolvedQcScore != null ? (
             <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
               <CheckCircle className="h-3 w-3" />
-              QC ผ่าน ({qcScore.toFixed(1)}/10)
+              QC ผ่าน ({resolvedQcScore.toFixed(1)}/10)
             </Badge>
-          ) : (
+          ) : resolvedQcStatus === "UNAVAILABLE" ? (
+            <Badge variant="outline" className="gap-1">
+              {qcQuery.isError ? "โหลดผล QC ไม่สำเร็จ" : "ยังไม่มีผล QC"}
+            </Badge>
+          ) : resolvedQcScore != null ? (
             <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="h-3 w-3" />
-              QC ต้องตรวจสอบ ({qcScore.toFixed(1)}/10)
+              QC ต้องตรวจสอบ ({resolvedQcScore.toFixed(1)}/10)
             </Badge>
-          )}
+          ) : null}
           {onClose ? (
             <Button variant="ghost" size="sm" onClick={onClose}>
               ปิด
@@ -211,16 +283,16 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
       <div className="rounded-md bg-muted/50 p-2 text-xs">
         <span className="font-medium">โหมดเสียงปัจจุบัน: </span>
         {nativeAudioEnabled ? (
-          <span className="text-primary font-medium">เสียงสมจริงภาพยนตร์ (Cinematic Dialogue + Foley + Ambience)</span>
+          <span className="text-primary font-medium">เปิดคำขอเสียงต้นฉบับจากโมเดลวิดีโอ</span>
         ) : (
-          <span className="text-muted-foreground font-medium">เสียงพูดอย่างเดียว (Spoken Dialogue Only)</span>
+          <span className="text-muted-foreground font-medium">ไม่ได้เปิดคำขอเสียงต้นฉบับจากโมเดลวิดีโอ</span>
         )}
       </div>
 
       {/* 3-Stem Fader Console */}
       <div className="flex flex-col gap-3 py-1">
         <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-          <span>ระดับความดัง 3 แทร็ก (Stems Faders)</span>
+          <span>ระดับเสียงและสถานะ stem</span>
           <button
             type="button"
             onClick={handleResetFaders}
@@ -236,7 +308,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
           <div className="flex justify-between items-center text-xs">
             <span className="flex items-center gap-1.5">
               <Mic className="h-3.5 w-3.5 text-blue-500" />
-              <span>เสียงพูด (Dialogue)</span>
+              <span>เสียงพูดแยก (TTS Dialogue)</span>
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -265,6 +337,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
             disabled={!isDialogueActive}
             value={[dialogueDb]}
             onValueChange={handleDialogueChange}
+            onValueCommit={persistDialogueChange}
             data-testid="vd-audio-fader-dialogue"
           />
           {/* Mini LED Level Indicator */}
@@ -289,6 +362,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
+                  disabled={!hasFoleyStem}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${soloStem === "foley" ? "bg-amber-500/20 text-amber-500 border-amber-500/50" : "text-muted-foreground border-border hover:bg-muted"}`}
                   onClick={() => setSoloStem(soloStem === "foley" ? null : "foley")}
                   data-testid="vd-audio-solo-foley"
@@ -297,6 +371,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
                 </button>
                 <button
                   type="button"
+                  disabled={!hasFoleyStem}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${foleyMuted ? "bg-red-500/20 text-red-500 border-red-500/50" : "text-muted-foreground border-border hover:bg-muted"}`}
                   onClick={() => setFoleyMuted(!foleyMuted)}
                   data-testid="vd-audio-mute-foley"
@@ -310,11 +385,15 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
               min={-18}
               max={6}
               step={0.5}
-              disabled={!isFoleyActive}
+              disabled={!hasFoleyStem || !isFoleyActive}
               value={[foleyDb]}
               onValueChange={handleFoleyChange}
+              onValueCommit={persistFoleyChange}
               data-testid="vd-audio-fader-foley"
             />
+            {!hasFoleyStem ? (
+              <span className="text-[10px] text-muted-foreground">สายประกอบวิดีโอยังไม่รองรับการปรับ Foley แยก</span>
+            ) : null}
             {/* Mini LED Level Indicator */}
             <div className="flex items-center gap-1 h-1 w-full bg-muted/70 rounded-full overflow-hidden">
               <div
@@ -338,6 +417,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
+                  disabled={!hasAmbienceStem}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${soloStem === "ambience" ? "bg-amber-500/20 text-amber-500 border-amber-500/50" : "text-muted-foreground border-border hover:bg-muted"}`}
                   onClick={() => setSoloStem(soloStem === "ambience" ? null : "ambience")}
                   data-testid="vd-audio-solo-ambience"
@@ -346,6 +426,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
                 </button>
                 <button
                   type="button"
+                  disabled={!hasAmbienceStem}
                   className={`text-[10px] px-1.5 py-0.5 rounded border ${ambienceMuted ? "bg-red-500/20 text-red-500 border-red-500/50" : "text-muted-foreground border-border hover:bg-muted"}`}
                   onClick={() => setAmbienceMuted(!ambienceMuted)}
                   data-testid="vd-audio-mute-ambience"
@@ -359,11 +440,15 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
               min={-24}
               max={3}
               step={0.5}
-              disabled={!isAmbienceActive}
+              disabled={!hasAmbienceStem || !isAmbienceActive}
               value={[ambienceDb]}
               onValueChange={handleAmbienceChange}
+              onValueCommit={persistAmbienceChange}
               data-testid="vd-audio-fader-ambience"
             />
+            {!hasAmbienceStem ? (
+              <span className="text-[10px] text-muted-foreground">สายประกอบวิดีโอยังไม่รองรับการปรับ Ambience แยก</span>
+            ) : null}
             {/* Mini LED Level Indicator */}
             <div className="flex items-center gap-1 h-1 w-full bg-muted/70 rounded-full overflow-hidden">
               <div
@@ -378,25 +463,19 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
 
         {/* Acoustic Ducking Notice */}
         <p className="text-[10px] text-muted-foreground/80 italic pt-1">
-          💡 เสียงประกอบและเสียงบรรยากาศจะถูกลดความดังอัตโนมัติ (Sidechain Ducking -12dB) ขณะตัวละครพูด เพื่อให้เสียงบทสนทนาคมชัด
+          ค่า Dialogue dB จะใช้กับเสียง TTS ที่แยกไฟล์ในงานประกอบครั้งถัดไป เสียงที่ฝังอยู่ในคลิปจะไม่ถูกแทนที่
         </p>
       </div>
 
       {/* Studio Metering Indicator */}
       <div className="flex items-center justify-between rounded-md border border-border/70 bg-background/50 px-3 py-2 text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">มาตรฐาน EBU R128:</span>
-          <Badge variant="secondary" className="font-mono text-[10px]">-14.0 LUFS</Badge>
+          <span className="text-muted-foreground">Integrated loudness:</span>
+          <Badge variant="secondary" className="font-mono text-[10px]">ยังไม่มีผลวัด</Badge>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">True Peak:</span>
-          {dialogueDb > 3 || foleyDb > 3 || ambienceDb > 0 ? (
-            <Badge variant="outline" className="font-mono text-[10px] border-amber-500/50 text-amber-500" data-testid="vd-audio-clipping-warning">
-              &gt; -1.0 dBFS (ระวังเสียงแตก)
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="font-mono text-[10px]">&le; -1.0 dBFS</Badge>
-          )}
+          <Badge variant="secondary" className="font-mono text-[10px]">ยังไม่มีผลวัด</Badge>
         </div>
       </div>
 
@@ -404,26 +483,30 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">เวอร์ชันเสียง (Take):</span>
-          <span className="font-medium">Take #{currentTake} จาก {takesCount}</span>
-          {takesCount > 1 && onRollbackTake ? (
+          <span className="font-medium">
+            {resolvedTakesCount > 0
+              ? `Take #${resolvedCurrentTake} จาก ${resolvedTakesCount}`
+              : "ยังไม่มีเวอร์ชันเสียงที่บันทึก"}
+          </span>
+          {resolvedTakesCount > 1 && onRollbackTake ? (
             <div className="flex items-center gap-1.5">
               <select
                 aria-label="เลือกเวอร์ชันเสียง"
-                value={currentTake}
+                value={resolvedCurrentTake}
                 onChange={e => onRollbackTake(Number(e.target.value))}
                 className="h-7 rounded border border-border bg-background px-2 text-xs"
                 data-testid="vd-audio-take-select"
               >
-                {Array.from({ length: takesCount }, (_, i) => i + 1).map(tNum => (
+                {Array.from({ length: resolvedTakesCount }, (_, i) => i + 1).map(tNum => (
                   <option key={tNum} value={tNum}>
-                    Take #{tNum} {tNum === currentTake ? "(ปัจจุบัน)" : ""}
+                    Take #{tNum} {tNum === resolvedCurrentTake ? "(ปัจจุบัน)" : ""}
                   </option>
                 ))}
               </select>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onRollbackTake(Math.max(1, currentTake - 1))}
+                onClick={() => onRollbackTake(Math.max(1, resolvedCurrentTake - 1))}
                 className="h-7 text-xs gap-1"
                 data-testid="vd-audio-rollback-btn"
               >
@@ -439,12 +522,12 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
             variant="secondary"
             size="sm"
             onClick={onTriggerRepair}
-            disabled={isRepairing}
+            disabled={isRepairing || !repairEnabled}
             className="h-7 text-xs gap-1"
             data-testid="vd-audio-trigger-repair-btn"
           >
             <Wrench className="h-3.5 w-3.5" />
-            {isRepairing ? "กำลังซ่อมเสียง..." : "ซ่อมเฉพาะเสียงพูด (5 เครดิต)"}
+            {isRepairing ? "กำลังซ่อมเสียง..." : repairEnabled ? "ซ่อมเสียง" : "ซ่อมเสียง (ยังไม่พร้อมใช้งาน)"}
           </Button>
         ) : null}
       </div>

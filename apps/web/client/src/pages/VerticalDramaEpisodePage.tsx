@@ -8535,7 +8535,12 @@ function EpisodeWorkspaceShell({
 
   const updateShotAudioMixDeltasMutation =
     trpc.verticalDramaEpisodes.updateShotAudioMixDeltas.useMutation({
-      onSuccess: () => {
+      onSuccess: data => {
+        void utils.verticalDramaEpisodes.getShotAudioManifest.invalidate({
+          seriesId: data.seriesId,
+          episodeId: data.episodeId,
+          shotNumber: data.shotNumber,
+        });
         void episodeDetailQuery.refetch();
       },
       onError: err => {
@@ -8549,6 +8554,11 @@ function EpisodeWorkspaceShell({
         toast.success(
           `ย้อนกลับไปยัง Take #${data.activeTakeVersion} เรียบร้อย (0 เครดิต)`
         );
+        void utils.verticalDramaEpisodes.getShotAudioManifest.invalidate({
+          seriesId: data.seriesId,
+          episodeId: data.episodeId,
+          shotNumber: data.shotNumber,
+        });
         void episodeDetailQuery.refetch();
       },
       onError: err => {
@@ -10468,6 +10478,7 @@ function EpisodeWorkspaceShell({
           }}
           storyboardPanel={{
             seriesId,
+            episodeId,
             episodeNumber: episode?.episodeNumber,
             storyboard: unifiedStoryboardData.storyboard,
             startFramePlan: episodeDetailQuery.data?.startFramePlan as
