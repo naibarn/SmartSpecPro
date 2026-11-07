@@ -445,15 +445,17 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
       soldCount: cleanText(product.soldCountText, 128) || undefined,
       description: cleanText(product.descriptionText, TEXT_LIMITS.description) || undefined,
       category: cleanText(product.categoryText, 300) || undefined,
-      productCategory: normalizeProductReferenceCategory(
-        product.productCategory
-        || inferProductReferenceCategory({
+      productCategory: (() => {
+        const inferredCategory = inferProductReferenceCategory({
           title: product.productName || product.pageTitle,
           categoryText: product.categoryText,
           categoryPath: product.categoryPath,
           description: product.descriptionText,
-        }),
-      ),
+        });
+        return inferredCategory !== "auto"
+          ? inferredCategory
+          : normalizeProductReferenceCategory(product.productCategory);
+      })(),
       categoryPath: Array.isArray((product as any).categoryPath) ? (product as any).categoryPath.map((part: unknown) => cleanText(part, 120)).filter(Boolean).slice(0, 8) : undefined,
       variants: cleanText(product.variantsText, 1000) || undefined,
       stock: cleanText(product.stockText, 300) || undefined,
@@ -605,7 +607,7 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
     status: productBrief.evidenceIds.length > 0 ? "supported" as const : "needs_review" as const,
     confidence: productBrief.confidence,
   }));
-  const storyOptions = buildStoryOptions(productBrief, videoBrief, claims);
+  const storyOptions = buildStoryOptions(productBrief, videoBrief, claims, source);
   const storyQuality = storyOptionsQuality(storyOptions);
   const blockers = [
     ...(selectedImages.length === 0 ? ["missing_selected_product_image"] : []),
@@ -694,7 +696,7 @@ function storyOptionsQuality(options: MarketplaceStorytellingHandoff["storyOptio
   };
 }
 
-function inferStoryOptionDetails(productBrief: ProductBrief) {
+function inferStoryOptionDetails(productBrief: ProductBrief, source: SanitizedLocalAIInput) {
   const text = [
     productBrief.productName,
     productBrief.shortSummary,
@@ -704,19 +706,23 @@ function inferStoryOptionDetails(productBrief: ProductBrief) {
     ...productBrief.trustSignals,
     ...productBrief.contentAngles,
   ].join(" ");
-  const isBasket = includesAny(text, [/ตะกร้า|basket|laundry basket|เก็บของ|storage|container/i]);
-  const isApparel = includesAny(text, [/เสื้อ|กางเกง|ชุด|แฟชั่น|สวมใส่|ใส่สบาย|ผ้า|รองเท้า|apparel|fashion|pants|shirt|dress|shoe/i]);
-  const isBeauty = includesAny(text, [/ครีม|เซรั่ม|สกินแคร์|ผิว|สิว|กันแดด|เครื่องสำอาง|beauty|skincare|serum|cream|makeup|sunscreen/i]);
-  const isElectronics = includesAny(text, [/ไฟฟ้า|เครื่อง|แบต|ชาร์จ|ไร้สาย|usb|power|electric|wireless|charger|battery|device/i]);
-  const isFoodSupplement = includesAny(text, [/อาหาร|ขนม|เครื่องดื่ม|วิตามิน|เสริม|สมุนไพร|สุขภาพ|food|snack|drink|supplement|vitamin/i]);
-  const isFitness = includesAny(text, [/ออกกำลังกาย|ฟิตเนส|บริหาร|กล้ามเนื้อ|stepper|ลู่วิ่ง|จักรยาน|fitness|exercise|workout|gym/i]);
-  const isHomeDecor = includesAny(text, [/วอลเปเปอร์|แผ่นปู|แต่งห้อง|ตกแต่ง|บ้าน|ห้องน้ำ|ห้องนอน|kitchen|home|decor|wallpaper|mat|tile/i]);
-  const hasFold = includesAny(text, [/พับ|fold|ประหยัดพื้นที่|พื้นที่จำกัด|คอนโด|หอพัก/i]);
-  const hasWheel = includesAny(text, [/ล้อ|ลาก|เข็น|เคลื่อนย้าย|wheel|caster/i]);
-  const hasVent = includesAny(text, [/ระบาย|อากาศ|โปร่ง|อับ|กลิ่น|vent/i]);
-  const hasPP = includesAny(text, [/polypropylene|\bPP\b|พลาสติก|วัสดุ/i]);
-  const hasSize = includesAny(text, [/\b(M|L|XL|2808)\b|หลายขนาด|ขนาด|size/i]);
-  const hasNeutralColor = includesAny(text, [/ขาว|ครีม|มินิมอล|white|cream|minimal/i]);
+  const productCategory = productBrief.productCategory ?? source.product.productCategory ?? "auto";
+  const sourceIdentity = [source.product.title, source.product.description, source.product.category, ...(source.product.categoryPath ?? [])].filter(Boolean).join(" ");
+  const isBasket = productCategory === "household_product" && includesAny(sourceIdentity, [/ตะกร้า|basket|laundry basket/i]);
+  const isApparel = productCategory === "fashion_clothing" || productCategory === "shoes";
+  const isBeauty = productCategory === "cosmetics";
+  const isElectronics = ["computer_laptop", "electrical_appliance", "electronics", "mobile_tablet", "camera_photography", "gaming_accessories"].includes(productCategory);
+  const isFoodSupplement = productCategory === "food_beverage";
+  const isFitness = productCategory === "sports_equipment";
+  const isHomeDecor = productCategory === "furniture";
+  // Product-specific features must come from captured listing text, never from
+  // generic AI-generated buyer pains such as “limited space” or “size”.
+  const hasFold = isBasket && includesAny(sourceIdentity, [/พับ|fold|ประหยัดพื้นที่/i]);
+  const hasWheel = isBasket && includesAny(sourceIdentity, [/ล้อ|ลาก|เข็น|เคลื่อนย้าย|wheel|caster/i]);
+  const hasVent = isBasket && includesAny(sourceIdentity, [/ระบาย|โปร่ง|vent/i]);
+  const hasPP = isBasket && includesAny(sourceIdentity, [/polypropylene|\bPP\b|พลาสติก/i]);
+  const hasSize = isApparel && includesAny(sourceIdentity, [/\b(M|L|XL)\b|หลายขนาด|size/i]);
+  const hasNeutralColor = isBasket && includesAny(sourceIdentity, [/ขาว|ครีม|มินิมอล|white|cream|minimal/i]);
   const hasSocialProof = productBrief.trustSignals.some((item) => /rating|รีวิว|ขายแล้ว|sold|คะแนน|\d/i.test(item))
     || includesAny(text, [/rating|รีวิว|ขายแล้ว|sold|คะแนน/i]);
 
@@ -995,6 +1001,7 @@ function buildStoryOptions(
   productBrief: ProductBrief,
   videoBrief: VideoBrief,
   claims: MarketplaceStorytellingHandoff["claims"],
+  source: SanitizedLocalAIInput,
 ): MarketplaceStorytellingHandoff["storyOptions"] {
   const claimIds = claims.map((claim) => claim.id).slice(0, 4);
   const evidenceIds = productBrief.evidenceIds.slice(0, 20);
@@ -1004,7 +1011,7 @@ function buildStoryOptions(
   const sellingPoint = productBrief.keySellingPoints[0] || productBrief.shortSummary || productBrief.productName;
   const secondarySellingPoint = productBrief.keySellingPoints[1] || productBrief.contentAngles[1] || sellingPoint;
   const trust = productBrief.trustSignals[0] || "มีข้อมูลจากหน้าสินค้าเป็นหลักฐาน";
-  const inferred = inferStoryOptionDetails(productBrief);
+  const inferred = inferStoryOptionDetails(productBrief, source);
   const hooks = productBrief.suggestedHooks.length > 0
     ? productBrief.suggestedHooks
     : [videoBrief.hook, `ทำไม ${productBrief.productName} ถึงน่าสนใจ`].filter(Boolean);
@@ -1239,12 +1246,20 @@ export function applyUserStoryInsightDraft(
 
 export function normalizeProductBrief(value: any, source: SanitizedLocalAIInput): ProductBrief {
   const evidenceIds = new Set(source.evidence.map((item) => item.id));
+  const sourceCategory = inferProductReferenceCategory({
+    title: source.product.title,
+    categoryText: source.product.category,
+    categoryPath: source.product.categoryPath,
+    description: source.product.description,
+  });
   const brief: ProductBrief = {
     schemaVersion: "1.0",
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
     productName: cleanText(value?.productName || source.product.title, 300) || "Untitled product",
     category: cleanText(value?.category || source.product.category, 200) || undefined,
-    productCategory: normalizeProductReferenceCategory(value?.productCategory || source.product.productCategory),
+    productCategory: sourceCategory !== "auto"
+      ? sourceCategory
+      : normalizeProductReferenceCategory(source.product.productCategory || value?.productCategory),
     shortSummary: cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300),
     keySellingPoints: normalizePriceSensitiveList(toStringList(value?.keySellingPoints, 12), source),
     targetAudiences: toStringList(value?.targetAudiences, 12),

@@ -80,6 +80,17 @@ export function inferProductReferenceCategory(input: {
   ].filter(Boolean).join(" "));
   if (!text) return "auto";
 
+  // Marketplace breadcrumb paths often contain “coffee” for coffee machines.
+  // Resolve clear machine wording before the broader food/beverage signals below.
+  const productIdentity = normalizeSearchText([input.title, ...(input.categoryPath ?? [])].filter(Boolean).join(" "));
+  if (
+    /เครื่องชงกาแฟ|เครื่องบดกาแฟ/.test(productIdentity)
+    || /\b(?:espresso|coffee)\s+(?:machine|maker|grinder)\b/.test(productIdentity)
+    || /coffee\s*(?:&|and)\s*tea\s+machines?/.test(productIdentity)
+  ) {
+    return "electrical_appliance";
+  }
+
   let best: ProductReferenceCategory = "auto";
   let bestScore = 0;
   for (const rule of PRODUCT_REFERENCE_CATEGORY_SIGNALS) {
