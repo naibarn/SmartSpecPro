@@ -25,8 +25,10 @@
       "merged_main_sha": "58cfe90c556974499302458c895c009fc1909800"
     },
     "section-03-partial-assembly-and-truthful-fallback": {
-      "status": "in_progress",
-      "next_action": "Inspect assembly readiness, partial export, and fallback labels; add proof that ready media stays usable while unavailable clips are omitted and clearly labeled."
+      "status": "checkpointed",
+      "next_action": "Start P3 section-01-dialogue-audio-contracts; inspect current voice settings and media-mode contracts, then implement only missing non-blocking controls.",
+      "checkpoint_sha": "8daadbde5490e09778df2aabeb12a376fa26b977",
+      "merged_main_sha": "8daadbde5490e09778df2aabeb12a376fa26b977"
     }
   },
   "pre_commit": {
@@ -38,11 +40,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T07:52:58.823236+00:00",
-  "generation": 7,
-  "updated_at": "2026-11-07T08:36:48.116065+00:00",
+  "generation": 9,
+  "updated_at": "2026-11-07T08:59:22.817624+00:00",
   "progress": {
     "active_section": "section-03-partial-assembly-and-truthful-fallback",
-    "next_action": "Inspect assembly readiness, partial export, and fallback labels; add proof that ready media stays usable while unavailable clips are omitted and clearly labeled.",
-    "merged_main_sha": "58cfe90c556974499302458c895c009fc1909800"
+    "next_action": "Start P3 section-01-dialogue-audio-contracts; inspect current voice settings and media-mode contracts, then implement only missing non-blocking controls.",
+    "merged_main_sha": "8daadbde5490e09778df2aabeb12a376fa26b977"
   }
 }
