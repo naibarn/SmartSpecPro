@@ -11612,9 +11612,6 @@ function buildProductReferenceStoryboardSkillInputs(input: {
       productReferenceExactRecreationLock,
       productDriftGuard,
       `Product category rule: ${productCategory}`,
-      input.plan.productTruth.price
-        ? `Price signal for context only: ${input.plan.productTruth.price}`
-        : "",
       input.plan.productTruth.rating
         ? `Rating signal for context only: ${input.plan.productTruth.rating}`
         : "",
@@ -13648,7 +13645,8 @@ async function loadMarketplaceAutoReviewNoveltyMemory(params: {
 }
 
 function buildProductDetailText(productTruth: ProductTruth): string {
-  const specs = Object.entries(productTruth.specs)
+  const creativeTruth = productTruthForCreativePrompt(productTruth);
+  const specs = Object.entries(creativeTruth.specs)
     .slice(0, 12)
     .map(
       ([key, value]) =>
@@ -13656,24 +13654,23 @@ function buildProductDetailText(productTruth: ProductTruth): string {
     )
     .join("; ");
   return [
-    `PRODUCT FACTS LOCK: ${productTruth.productName}.`,
-    productTruth.brand ? `Brand: ${productTruth.brand}.` : "",
-    productTruth.price ? `Price signal: ${productTruth.price}.` : "",
-    productTruth.rating ? `Rating signal: ${productTruth.rating}.` : "",
-    productTruth.sold ? `Sold signal: ${productTruth.sold}.` : "",
-    productTruth.shopName ? `Shop: ${productTruth.shopName}.` : "",
-    productTruth.productCategory
-      ? `Main storyboard category: ${productTruth.productCategory}.`
+    `PRODUCT FACTS LOCK: ${creativeTruth.productName}.`,
+    creativeTruth.brand ? `Brand: ${creativeTruth.brand}.` : "",
+    creativeTruth.rating ? `Rating signal: ${creativeTruth.rating}.` : "",
+    creativeTruth.sold ? `Sold signal: ${creativeTruth.sold}.` : "",
+    creativeTruth.shopName ? `Shop: ${creativeTruth.shopName}.` : "",
+    creativeTruth.productCategory
+      ? `Main storyboard category: ${creativeTruth.productCategory}.`
       : "",
-    productTruth.categoryText
-      ? `Captured marketplace category: ${productTruth.categoryText}.`
+    creativeTruth.categoryText
+      ? `Captured marketplace category: ${creativeTruth.categoryText}.`
       : "",
-    productTruth.categoryPath.length > 0
-      ? `Marketplace category path: ${productTruth.categoryPath.join(" > ")}.`
+    creativeTruth.categoryPath.length > 0
+      ? `Marketplace category path: ${creativeTruth.categoryPath.join(" > ")}.`
       : "",
     specs ? `Specs: ${specs}.` : "",
-    productTruth.description
-      ? `Description: ${productTruth.description.slice(0, 1200)}.`
+    creativeTruth.description
+      ? `Description: ${creativeTruth.description.slice(0, 1200)}.`
       : "",
     "Do not alter the product category, shape, proportions, material, visible construction, label/logo placement, or real-world usage beyond what the product references and facts support.",
   ]
@@ -13880,6 +13877,22 @@ function stringifyMarketplaceAutoReviewVoiceoverContext(
   }
 }
 
+function productTruthForCreativePrompt(productTruth: ProductTruth): Omit<ProductTruth, "price"> {
+  const { price: _price, ...creativeTruth } = productTruth;
+  return removeVolatilePriceData(creativeTruth) as Omit<ProductTruth, "price">;
+}
+
+function removeVolatilePriceData(value: unknown): unknown {
+  if (typeof value === "string") return /(ราคา|price|฿|\$|€|£|¥|บาท|\bthb\b|\busd\b)/i.test(value) ? "" : value;
+  if (Array.isArray(value)) return value.map(removeVolatilePriceData).filter((item) => item !== "");
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).flatMap(([key, item]) => {
+    if (/price|discount|coupon/i.test(key)) return [];
+    const cleaned = removeVolatilePriceData(item);
+    return cleaned === "" || cleaned == null ? [] : [[key, cleaned]];
+  }));
+}
+
 function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
   plan: AutoReviewPlan;
   outputMode: MarketplaceAutoReviewOutputMode;
@@ -13952,7 +13965,9 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
     plan.productDetail,
     "",
     "Product truth JSON:",
-    stringifyMarketplaceAutoReviewVoiceoverContext(plan.productTruth),
+    stringifyMarketplaceAutoReviewVoiceoverContext(
+      productTruthForCreativePrompt(plan.productTruth)
+    ),
     "",
     "Selected video concept:",
     stringifyMarketplaceAutoReviewVoiceoverContext({
@@ -16226,7 +16241,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
   const insightDigest = params.insights.map(row => ({
     id: row.id,
     type: row.insightType,
-    payload: compactRecord(asRecord(row.payloadJson)),
+    payload: compactRecord(asRecord(removeVolatilePriceData(row.payloadJson))),
   }));
   const describedCharacterDirective =
     buildMarketplaceAutoReviewDescribedCharacterDirective(
@@ -16294,7 +16309,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
             .join(" ")
         : "",
       "",
-      `Product truth JSON: ${JSON.stringify(productTruth)}`,
+      `Product truth JSON: ${JSON.stringify(productTruthForCreativePrompt(productTruth))}`,
       `Reference anchors JSON: ${JSON.stringify(params.referenceAnchors)}`,
       `Insight digest JSON: ${JSON.stringify(insightDigest).slice(0, 6000)}`,
       `Tenant-safe novelty memory JSON: ${JSON.stringify(asRecord(params.noveltyMemory)).slice(0, 4000)}`,

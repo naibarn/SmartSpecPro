@@ -21,6 +21,9 @@ import {
   detectChromePromptAPI,
   generateProductBriefWithPromptAPI,
   generateProductBriefWithServerAI,
+  removePriceMentionsFromProductBrief,
+  removePriceMentionsFromStorytellingHandoff,
+  removePriceMentionsFromVideoBrief,
   sanitizeCaptureForLocalAI,
   validateProductBrief,
   type LocalAICapability,
@@ -416,10 +419,10 @@ const LOCAL_AI_SETTINGS_KEY = "localAISettings";
 const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
 const DIAGNOSTIC_LOG_KEY = "smartaihubDiagnosticLogs";
 const DIAGNOSTIC_LOG_LIMIT = 200;
-const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
+const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.4";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.151";
+const EXTENSION_VERSION = "0.1.152";
 const EXTENSION_BUILD_LABEL = "2026-11-07 07:44 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
@@ -3896,17 +3899,22 @@ export default function App() {
         next = { ...next, contentAngles: addUnique(next.contentAngles, addition.values) };
       }
     }
-    return { ...next, confidence: Math.min(0.95, next.confidence + 0.04) };
+    return removePriceMentionsFromProductBrief({
+      ...next,
+      confidence: Math.min(0.95, next.confidence + 0.04),
+    });
   }
 
   function confirmUserAddedInsight() {
     if (!storytellingHandoff || !userInsightDraft) return;
-    const nextHandoff = applyUserStoryInsightDraft(storytellingHandoff, userInsightDraft);
+    const nextHandoff = removePriceMentionsFromStorytellingHandoff(
+      applyUserStoryInsightDraft(storytellingHandoff, userInsightDraft),
+    );
     setStorytellingHandoff(nextHandoff);
     if (productBrief) setProductBrief(mergeUserDraftIntoProductBrief(productBrief, userInsightDraft));
     if (videoBrief) {
       const hook = userInsightDraft.additions.find((item) => item.category === "hooks")?.values[0];
-      if (hook) setVideoBrief({ ...videoBrief, hook, captions: [hook, ...videoBrief.captions.filter((item) => item !== hook)].slice(0, 20) });
+      if (hook) setVideoBrief(removePriceMentionsFromVideoBrief({ ...videoBrief, hook, captions: [hook, ...videoBrief.captions.filter((item) => item !== hook)].slice(0, 20) }));
     }
     setUserInsightDraft(null);
     setUserInsightText("");
@@ -4520,6 +4528,7 @@ export default function App() {
   }
 
   function buildSupplementalInsightPayloads(source: SanitizedLocalAIInput, brief: ProductBrief) {
+    brief = removePriceMentionsFromProductBrief(brief);
     const evidenceIds = source.evidence.map((item) => item.id).slice(0, 20);
     const boundedText = (value: string, max = 220) => compactAskText(value, max);
     const boundedList = (values: string[], maxItems = 12, maxChars = 220) => values.map((value) => boundedText(value, maxChars)).filter(Boolean).slice(0, maxItems);

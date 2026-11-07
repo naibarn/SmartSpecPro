@@ -154,27 +154,27 @@ function clampConfidence(value: unknown, fallback = 0.55): number {
   return Math.max(0, Math.min(1, n));
 }
 
-function parseMoneyFromText(value: string | undefined) {
-  if (!value) return null;
-  const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
-  const parsed = match ? Number(match[0]) : NaN;
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null;
-}
-
 function textHasPriceSignal(value: string) {
-  return /(ราคา|฿|บาท|thb)/i.test(value);
+  return /(ราคา|price|฿|\$|€|£|¥|บาท|\bthb\b|\busd\b)/i.test(value);
 }
 
-function priceClaimMatchesSource(value: string, sourcePrice: number | null) {
-  if (!textHasPriceSignal(value) || sourcePrice == null) return true;
-  const claimPrice = parseMoneyFromText(value);
-  if (claimPrice == null) return true;
-  return Math.abs(claimPrice - sourcePrice) < 0.01;
+function withoutPriceMentions(values: string[]) {
+  return values.filter((value) => !textHasPriceSignal(value));
 }
 
-function normalizePriceSensitiveList(values: string[], source: SanitizedLocalAIInput) {
-  const sourcePrice = parseMoneyFromText(source.product.price);
-  return values.filter((value) => priceClaimMatchesSource(value, sourcePrice));
+function withoutPriceMention(value: string) {
+  return textHasPriceSignal(value) ? "" : value;
+}
+
+function removeVolatilePriceData(value: unknown): unknown {
+  if (typeof value === "string") return textHasPriceSignal(value) ? "" : value;
+  if (Array.isArray(value)) return value.map(removeVolatilePriceData).filter((item) => item !== "");
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).flatMap(([key, item]) => {
+    if (/price|discount|coupon|promotion|voucher/i.test(key)) return [];
+    const cleaned = removeVolatilePriceData(item);
+    return cleaned === "" || cleaned == null ? [] : [[key, cleaned]];
+  }));
 }
 
 function parseLlmJson(content: string): Record<string, unknown> {
@@ -199,30 +199,27 @@ function normalizeProductBriefFromServer(value: unknown, source: SanitizedLocalA
   const normalized = productBriefSchema.parse({
     schemaVersion: "1.0",
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
-    productName: cleanText(raw.productName || source.product.title || source.pageTitle, 300) || "Untitled product",
+    productName: withoutPriceMention(cleanText(source.product.title || raw.productName || source.pageTitle, 300)) || "สินค้านี้",
     category: cleanText(raw.category || source.product.category, 200) || undefined,
     productCategory,
-    shortSummary: cleanText(raw.shortSummary, 800) || cleanText(source.product.description || source.product.title, 500),
-    keySellingPoints: normalizePriceSensitiveList(arrayOfStrings(raw.keySellingPoints, 12), source),
-    targetAudiences: arrayOfStrings(raw.targetAudiences, 12),
-    buyerPainPoints: arrayOfStrings(raw.buyerPainPoints, 12),
-    buyerObjections: arrayOfStrings(raw.buyerObjections, 12),
-    trustSignals: normalizePriceSensitiveList(arrayOfStrings(raw.trustSignals, 12), source),
-    contentAngles: arrayOfStrings(raw.contentAngles, 12),
-    suggestedHooks: arrayOfStrings(raw.suggestedHooks, 12),
-    suggestedCTAs: arrayOfStrings(raw.suggestedCTAs, 12),
+    shortSummary: withoutPriceMention(cleanText(raw.shortSummary, 800) || cleanText(source.product.description || source.product.title, 500))
+      || cleanText(source.product.title || source.pageTitle, 300),
+    keySellingPoints: withoutPriceMentions(arrayOfStrings(raw.keySellingPoints, 12)),
+    targetAudiences: withoutPriceMentions(arrayOfStrings(raw.targetAudiences, 12)),
+    buyerPainPoints: withoutPriceMentions(arrayOfStrings(raw.buyerPainPoints, 12)),
+    buyerObjections: withoutPriceMentions(arrayOfStrings(raw.buyerObjections, 12)),
+    trustSignals: withoutPriceMentions(arrayOfStrings(raw.trustSignals, 12)),
+    contentAngles: withoutPriceMentions(arrayOfStrings(raw.contentAngles, 12)),
+    suggestedHooks: withoutPriceMentions(arrayOfStrings(raw.suggestedHooks, 12)),
+    suggestedCTAs: withoutPriceMentions(arrayOfStrings(raw.suggestedCTAs, 12)),
     confidence: clampConfidence(raw.confidence),
     evidenceIds: arrayOfStrings(raw.evidenceIds, 80).filter((id) => evidenceIds.has(id)),
   });
-  if (source.product.price && !normalized.keySellingPoints.some((item) => item.includes(source.product.price ?? ""))) {
-    return { ...normalized, keySellingPoints: [`ราคา ${source.product.price}`, ...normalized.keySellingPoints].slice(0, 12) };
-  }
   return normalized;
 }
 
 function createServerDeterministicProductBrief(source: SanitizedLocalAIInput): ProductBrief {
   const sellingPoints = [
-    source.product.price ? `ราคา ${source.product.price}` : "",
     source.product.soldCount ? `มีสัญญาณยอดขาย ${source.product.soldCount}` : "",
     source.product.rating ? `มี rating ${source.product.rating}` : "",
     source.shop?.name ? `ร้าน ${source.shop.name}` : "",
@@ -232,7 +229,7 @@ function createServerDeterministicProductBrief(source: SanitizedLocalAIInput): P
     shortSummary: source.product.description || source.product.title || "Marketplace product captured for SmartSpecPro.",
     keySellingPoints: sellingPoints,
     targetAudiences: ["ผู้ซื้อที่กำลังเปรียบเทียบสินค้าใน marketplace"],
-    buyerPainPoints: ["ต้องการเห็นจุดเด่น ราคา และความน่าเชื่อถืออย่างรวดเร็ว"],
+    buyerPainPoints: ["ต้องการเห็นจุดเด่นและความน่าเชื่อถืออย่างรวดเร็ว"],
     buyerObjections: ["ยังต้องตรวจสอบ claims และภาพสินค้าก่อนใช้ในงานโฆษณา"],
     trustSignals: [source.product.rating, source.product.soldCount, source.shop?.name].filter(Boolean),
     contentAngles: ["สรุปจุดเด่นจากหน้าสินค้า", "ทำคลิปสั้นแบบ product demo"],
@@ -425,14 +422,15 @@ async function executeMarketplaceJsonLlm(input: {
 }
 
 function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePreference: string) {
+  const promptSource = removeVolatilePriceData(source);
   return [
     "You are SmartSpecPro server AI fallback for marketplace capture insights.",
     "Task: create a ProductBrief JSON object from sanitized marketplace evidence.",
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
-    "Rules: use only provided data, do not invent claims, return JSON only, include evidenceIds that exist in the evidence list.",
-    "Price rule: if you mention price, use only source.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
+    "Rules: use only provided product data, do not invent claims, return JSON only, include evidenceIds that exist in the evidence list.",
+    "Do not use or mention current price, original price, discounts, coupons, or savings in the product brief, hooks, demos, reviews, voiceover, or storyboard. Prices change over time and are excluded from this input.",
     "Choose productCategory from the product-reference-storyboard enum only. Use source.product.category and source.product.categoryPath as marketplace subcategory evidence. Keep category as the captured marketplace subcategory text.",
-    `Sanitized input:\n${JSON.stringify(source, null, 2).slice(0, 25_000)}`,
+    `Sanitized input:\n${JSON.stringify(promptSource, null, 2).slice(0, 25_000)}`,
   ].join("\n\n");
 }
 

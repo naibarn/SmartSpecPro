@@ -512,6 +512,18 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
     expect(details).toContain("not image description");
   });
 
+  it("keeps changing product prices out of voiceover generation context", () => {
+    const details = buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest({
+      plan: {
+        ...reviewPlan,
+        productTruth: { ...reviewPlan.productTruth, price: "฿5,790" },
+      },
+    });
+
+    expect(details).not.toContain("฿5,790");
+    expect(details).not.toContain("Price signal");
+  });
+
   it("keeps voiceover rewrite instructions in English while selecting Thai speech", () => {
     const details =
       buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest({

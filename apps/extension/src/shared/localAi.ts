@@ -552,37 +552,39 @@ export async function detectChromePromptAPI(): Promise<LocalAICapability> {
 }
 
 export function buildProductBriefPrompt(payload: SanitizedLocalAIInput, languagePreference: AnalysisLanguagePreference) {
+  const promptPayload = removeVolatilePriceData(payload);
   return [
     "You are analyzing a marketplace product page for SmartSpecPro.",
     "Task: Create a structured product marketing brief from the captured page data.",
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
-    "Rules: use only the provided data; do not invent claims; return JSON only; include evidenceIds whenever possible.",
-    "Price rule: if you mention price, use only Captured data.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
+    "Rules: use only the provided product data; do not invent claims; return JSON only; include evidenceIds whenever possible.",
+    "Do not use or mention current price, original price, discounts, coupons, or savings in the product brief, hooks, demos, reviews, voiceover, or storyboard. These change over time and are excluded from the input by design.",
     `Choose productCategory from this exact enum only: ${PRODUCT_REFERENCE_CATEGORY_OPTIONS.map((option) => option.value).join(", ")}.`,
     "Use product.category and product.categoryPath as marketplace subcategory evidence when choosing productCategory. Keep category as the captured marketplace subcategory text.",
     "Return a ProductBrief JSON object with schemaVersion 1.0.",
-    `Captured data:\n${JSON.stringify(payload, null, 2).slice(0, TEXT_LIMITS.promptPayload)}`,
+    `Captured data:\n${JSON.stringify(promptPayload, null, 2).slice(0, TEXT_LIMITS.promptPayload)}`,
   ].join("\n\n");
 }
 
 export function buildVideoBriefFromProduct(productBrief: ProductBrief, source: SanitizedLocalAIInput): VideoBrief {
-  const hook = productBrief.suggestedHooks[0] || productBrief.shortSummary;
+  const safeBrief = removePriceMentionsFromProductBrief(productBrief);
+  const hook = safeBrief.suggestedHooks[0] || safeBrief.shortSummary;
   return {
     schemaVersion: "1.0",
     sourceCaptureIds: source.captureId ? [source.captureId] : [],
     targetFormat: source.platform === "tiktok_shop" ? "tiktok_short" : "shopee_video",
     durationSec: 30,
     aspectRatio: "9:16",
-    language: /[\u0E00-\u0E7F]/.test(productBrief.shortSummary) ? "th" : "mixed",
-    title: `${productBrief.productName} brief`,
+    language: /[\u0E00-\u0E7F]/.test(safeBrief.shortSummary) ? "th" : "mixed",
+    title: `${safeBrief.productName} brief`,
     hook: hook.slice(0, 300),
     scenes: [
       { order: 1, startSec: 0, endSec: 4, sceneGoal: "Stop scroll", visualSuggestion: "Show product hero image", onScreenText: hook.slice(0, 80), assetRole: "product_image" },
-      { order: 2, startSec: 4, endSec: 18, sceneGoal: "Explain value", visualSuggestion: "Show product details and key benefits", onScreenText: (productBrief.keySellingPoints[0] || productBrief.shortSummary).slice(0, 80), assetRole: "product_image" },
-      { order: 3, startSec: 18, endSec: 30, sceneGoal: "Convert", visualSuggestion: "Show trust signal and CTA", onScreenText: (productBrief.suggestedCTAs[0] || "ดูรายละเอียดสินค้า").slice(0, 80), assetRole: "text_only" },
+      { order: 2, startSec: 4, endSec: 18, sceneGoal: "Explain value", visualSuggestion: "Show product details and key benefits", onScreenText: (safeBrief.keySellingPoints[0] || safeBrief.shortSummary).slice(0, 80), assetRole: "product_image" },
+      { order: 3, startSec: 18, endSec: 30, sceneGoal: "Convert", visualSuggestion: "Show trust signal and CTA", onScreenText: (safeBrief.suggestedCTAs[0] || "ดูรายละเอียดสินค้า").slice(0, 80), assetRole: "text_only" },
     ],
-    captions: productBrief.suggestedHooks.slice(0, 3),
-    cta: productBrief.suggestedCTAs[0] || "ดูรายละเอียดสินค้า",
+    captions: safeBrief.suggestedHooks.slice(0, 3),
+    cta: safeBrief.suggestedCTAs[0] || "ดูรายละเอียดสินค้า",
     assetsNeeded: ["product_image"],
     hyperframesHint: { visualStyle: "marketplace product clean", transitionStyle: "quick cuts", textOverlayStyle: "bold readable captions", pacing: "fast" },
     confidence: Math.min(productBrief.confidence, 0.8),
@@ -590,6 +592,8 @@ export function buildVideoBriefFromProduct(productBrief: ProductBrief, source: S
 }
 
 export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief: VideoBrief, source: SanitizedLocalAIInput): MarketplaceStorytellingHandoff {
+  productBrief = removePriceMentionsFromProductBrief(productBrief);
+  videoBrief = removePriceMentionsFromVideoBrief(videoBrief);
   const imageMeta = Array.isArray((source.product as any).selectedImages) ? (source.product as any).selectedImages as Array<{ url: string; role?: string; kind?: string; quality?: string }> : [];
   const fallbackImages: Array<{ url: string; role?: string; kind?: string; quality?: string }> = source.product.selectedImageUrls.map((url, index) => ({ url, role: index === 0 ? "hero" : "detail", kind: index === 0 ? "main" : "description", quality: "unknown" }));
   const selectedImages = Array.from(new Map((imageMeta.length > 0 ? imageMeta : fallbackImages)
@@ -1046,7 +1050,7 @@ function buildStoryOptions(
       audience,
       customerNeed: inferred.objectionsTrust[0] || `ต้องการมั่นใจก่อนซื้อ: ${objection}`,
       problemToSolve: objection,
-      useCase: "ใช้เมื่อลูกค้าลังเลเรื่องราคา คุณภาพ รีวิว หรือความน่าเชื่อถือ",
+      useCase: "ใช้เมื่อลูกค้ายังมีข้อกังวลเรื่องคุณภาพ รีวิว หรือความน่าเชื่อถือ",
       angle: trust,
       storyFormat: "product_review" as const,
       journeyStages: ["awareness", "objection_handling", "trust_building", "conversion_cta"] as MarketplaceStorytellingHandoff["customerJourneyStages"],
@@ -1255,26 +1259,24 @@ export function normalizeProductBrief(value: any, source: SanitizedLocalAIInput)
   const brief: ProductBrief = {
     schemaVersion: "1.0",
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
-    productName: cleanText(value?.productName || source.product.title, 300) || "Untitled product",
+    productName: removePriceMention(cleanText(source.product.title || value?.productName, 300)) || "สินค้านี้",
     category: cleanText(value?.category || source.product.category, 200) || undefined,
     productCategory: sourceCategory !== "auto"
       ? sourceCategory
       : normalizeProductReferenceCategory(source.product.productCategory || value?.productCategory),
-    shortSummary: cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300),
-    keySellingPoints: normalizePriceSensitiveList(toStringList(value?.keySellingPoints, 12), source),
-    targetAudiences: toStringList(value?.targetAudiences, 12),
-    buyerPainPoints: toStringList(value?.buyerPainPoints, 12),
-    buyerObjections: toStringList(value?.buyerObjections, 12),
-    trustSignals: normalizePriceSensitiveList(toStringList(value?.trustSignals, 12), source),
-    contentAngles: toStringList(value?.contentAngles, 12),
-    suggestedHooks: toStringList(value?.suggestedHooks, 12),
-    suggestedCTAs: toStringList(value?.suggestedCTAs, 12),
+    shortSummary: removePriceMention(cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300))
+      || cleanText(source.product.title, 300),
+    keySellingPoints: withoutPriceMentions(toStringList(value?.keySellingPoints, 12)),
+    targetAudiences: withoutPriceMentions(toStringList(value?.targetAudiences, 12)),
+    buyerPainPoints: withoutPriceMentions(toStringList(value?.buyerPainPoints, 12)),
+    buyerObjections: withoutPriceMentions(toStringList(value?.buyerObjections, 12)),
+    trustSignals: withoutPriceMentions(toStringList(value?.trustSignals, 12)),
+    contentAngles: withoutPriceMentions(toStringList(value?.contentAngles, 12)),
+    suggestedHooks: withoutPriceMentions(toStringList(value?.suggestedHooks, 12)),
+    suggestedCTAs: withoutPriceMentions(toStringList(value?.suggestedCTAs, 12)),
     confidence: clamp01(value?.confidence ?? 0.55),
     evidenceIds: toStringList(value?.evidenceIds, 80).filter((id) => evidenceIds.has(id)),
   };
-  if (source.product.price && !brief.keySellingPoints.some((item) => item.includes(source.product.price ?? ""))) {
-    brief.keySellingPoints = [`ราคา ${source.product.price}`, ...brief.keySellingPoints].slice(0, 12);
-  }
   if (brief.evidenceIds.length === 0 && source.evidence[0]) brief.evidenceIds = [source.evidence[0].id];
   return brief;
 }
@@ -1320,27 +1322,67 @@ function toStringList(value: unknown, max: number) {
   return (Array.isArray(value) ? value : []).map((item) => cleanText(item, 220)).filter(Boolean).slice(0, max);
 }
 
-function parseMoneyFromText(value: string | undefined) {
-  if (!value) return null;
-  const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
-  const parsed = match ? Number(match[0]) : NaN;
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null;
-}
-
 function textHasPriceSignal(value: string) {
-  return /(ราคา|฿|บาท|thb)/i.test(value);
+  return /(ราคา|price|฿|\$|€|£|¥|บาท|\bthb\b|\busd\b)/i.test(value);
 }
 
-function priceClaimMatchesSource(value: string, sourcePrice: number | null) {
-  if (!textHasPriceSignal(value) || sourcePrice == null) return true;
-  const claimPrice = parseMoneyFromText(value);
-  if (claimPrice == null) return true;
-  return Math.abs(claimPrice - sourcePrice) < 0.01;
+function removeVolatilePriceData(value: unknown): unknown {
+  if (typeof value === "string") return textHasPriceSignal(value) ? "" : value;
+  if (Array.isArray(value)) return value.map(removeVolatilePriceData).filter((item) => item !== "");
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).flatMap(([key, item]) => {
+    if (/price|discount|coupon|promotion|voucher/i.test(key)) return [];
+    const cleaned = removeVolatilePriceData(item);
+    return cleaned === "" || cleaned == null ? [] : [[key, cleaned]];
+  }));
 }
 
-function normalizePriceSensitiveList(values: string[], source: SanitizedLocalAIInput) {
-  const sourcePrice = parseMoneyFromText(source.product.price);
-  return values.filter((value) => priceClaimMatchesSource(value, sourcePrice));
+function removePriceMention(value: string) {
+  return textHasPriceSignal(value) ? "" : value;
+}
+
+function withoutPriceMentions(values: string[]) {
+  return values.map(removePriceMention).filter(Boolean);
+}
+
+export function removePriceMentionsFromProductBrief(brief: ProductBrief): ProductBrief {
+  const productName = removePriceMention(brief.productName) || "สินค้านี้";
+  return {
+    ...brief,
+    productName,
+    shortSummary: removePriceMention(brief.shortSummary) || productName,
+    keySellingPoints: withoutPriceMentions(brief.keySellingPoints),
+    targetAudiences: withoutPriceMentions(brief.targetAudiences),
+    buyerPainPoints: withoutPriceMentions(brief.buyerPainPoints),
+    buyerObjections: withoutPriceMentions(brief.buyerObjections),
+    trustSignals: withoutPriceMentions(brief.trustSignals),
+    contentAngles: withoutPriceMentions(brief.contentAngles),
+    suggestedHooks: withoutPriceMentions(brief.suggestedHooks),
+    suggestedCTAs: withoutPriceMentions(brief.suggestedCTAs),
+  };
+}
+
+export function removePriceMentionsFromVideoBrief(brief: VideoBrief): VideoBrief {
+  const safeText = (value: string, fallback = "") => removePriceMention(value) || fallback;
+  return {
+    ...brief,
+    title: safeText(brief.title, "เดโมการใช้งานสินค้า"),
+    hook: safeText(brief.hook, "ชมการใช้งานจริงของสินค้า"),
+    scenes: brief.scenes.map((scene) => ({
+      ...scene,
+      sceneGoal: safeText(scene.sceneGoal),
+      visualSuggestion: safeText(scene.visualSuggestion),
+      onScreenText: safeText(scene.onScreenText),
+      voiceover: scene.voiceover ? safeText(scene.voiceover) : undefined,
+    })),
+    captions: withoutPriceMentions(brief.captions),
+    cta: safeText(brief.cta, "ดูรายละเอียดสินค้า"),
+    assetsNeeded: withoutPriceMentions(brief.assetsNeeded),
+  };
+}
+
+export function removePriceMentionsFromStorytellingHandoff(handoff: MarketplaceStorytellingHandoff): MarketplaceStorytellingHandoff {
+  return removeVolatilePriceData(handoff) as MarketplaceStorytellingHandoff;
 }
 
 function clamp01(value: unknown) {
@@ -1570,7 +1612,6 @@ export async function generateProductBriefWithPromptAPI(input: {
 
 export function createDeterministicProductBrief(source: SanitizedLocalAIInput): ProductBrief {
   const sellingPoints = [
-    source.product.price ? `ราคา ${source.product.price}` : "",
     source.product.soldCount ? `มีสัญญาณยอดขาย ${source.product.soldCount}` : "",
     source.product.rating ? `มี rating ${source.product.rating}` : "",
     source.shop?.name ? `ร้าน ${source.shop.name}` : "",
@@ -1580,7 +1621,7 @@ export function createDeterministicProductBrief(source: SanitizedLocalAIInput): 
     shortSummary: source.product.description || source.product.title || "Marketplace product captured for SmartSpecPro.",
     keySellingPoints: sellingPoints,
     targetAudiences: ["ผู้ซื้อที่กำลังเปรียบเทียบสินค้าใน marketplace"],
-    buyerPainPoints: ["ต้องการเห็นจุดเด่น ราคา และความน่าเชื่อถืออย่างรวดเร็ว"],
+    buyerPainPoints: ["ต้องการเห็นจุดเด่นและความน่าเชื่อถืออย่างรวดเร็ว"],
     buyerObjections: ["ยังต้องตรวจสอบ claims และภาพสินค้าก่อนใช้ในงานโฆษณา"],
     trustSignals: [source.product.rating, source.product.soldCount, source.shop?.name].filter(Boolean),
     contentAngles: ["สรุปจุดเด่นจากหน้าสินค้า", "ทำคลิปสั้นแบบ product demo"],

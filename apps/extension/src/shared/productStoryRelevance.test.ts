@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   buildStorytellingHandoff,
+  buildProductBriefPrompt,
   buildVideoBriefFromProduct,
+  createDeterministicProductBrief,
   normalizeProductBrief,
   sanitizeCaptureForLocalAI,
 } from "./localAi";
@@ -46,6 +48,11 @@ test("story templates follow captured product category, not broad AI wording", a
     htmlBlocks: [],
   } as ProductCapturePayload;
   const source = await sanitizeCaptureForLocalAI(capture);
+  const prompt = buildProductBriefPrompt(source, "th");
+  assert.equal(source.product.price, "฿5,790", "captured price remains available in product data");
+  assert.doesNotMatch(prompt, /฿5,790|5,790 THB|originalPrice|price evidence/i);
+  assert.doesNotMatch(JSON.stringify(createDeterministicProductBrief(source)), /ราคา|฿5,790|บาท/i);
+
   const brief = normalizeProductBrief({
     schemaVersion: "1.0",
     productName: coffeeMachineTitle,
@@ -67,8 +74,17 @@ test("story templates follow captured product category, not broad AI wording", a
   assert.equal(source.product.productCategory, "electrical_appliance");
   assert.equal(brief.productCategory, "electrical_appliance");
 
-  const handoff = buildStorytellingHandoff(brief, buildVideoBriefFromProduct(brief, source), source);
-  const storyText = JSON.stringify(handoff.storyOptions);
+  const oldCachedBrief = {
+    ...brief,
+    shortSummary: "เครื่องชงกาแฟรุ่นนี้ ราคา ฿5,790",
+    keySellingPoints: ["ราคา ฿5,790", "เครื่องบดกาแฟในตัว"],
+    buyerPainPoints: ["ต้องการเปรียบเทียบราคา 5,790 บาทก่อนซื้อ"],
+    suggestedHooks: ["ซื้อวันนี้ราคา ฿5,790"],
+  };
+  const video = buildVideoBriefFromProduct(oldCachedBrief, source);
+  const handoff = buildStorytellingHandoff(oldCachedBrief, video, source);
+  const storyText = JSON.stringify({ video, handoff });
   assert.doesNotMatch(storyText, /ตะกร้าผ้า|ตะกร้าพับเก็บ|ห้องซักผ้า|สกินแคร์|วอลเปเปอร์/i);
+  assert.doesNotMatch(storyText, /ราคา|price|฿5,790|5,790 บาท/i);
   assert.match(storyText, /เครื่องชงกาแฟ|บดกาแฟ|1550W/);
 });
