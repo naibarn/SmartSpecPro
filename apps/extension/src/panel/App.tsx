@@ -688,6 +688,10 @@ async function loadReviewDraft(sourceUrl: string): Promise<ReviewDraft | null> {
   return draft && typeof draft === "object" ? draft as ReviewDraft : null;
 }
 
+function isMarketplaceProductNameNoise(value: string) {
+  return /^(?:free\s+shipping|free\s+delivery|shipping\s+included|delivery\s+included|จัดส่งฟรี|ส่งฟรี)$/i.test(value.trim());
+}
+
 async function saveReviewDraft(sourceUrl: string, draft: ReviewDraft) {
   await chrome.storage.local.set({ [reviewDraftKey(sourceUrl)]: draft });
 }
@@ -2522,7 +2526,13 @@ export default function App() {
     loadReviewDraft(nextProduct.sourceUrl)
       .then((draft) => {
         if (!draft || productSourceRef.current !== nextProduct.sourceUrl) return;
-        setEditable({ ...baseEditable, ...draft.editable });
+        const restoredEditable = { ...baseEditable, ...draft.editable };
+        const detectedNameConfidence = nextProduct.fieldEvidence?.productName?.confidence ?? 0;
+        const draftNameIsStale = isMarketplaceProductNameNoise(restoredEditable.productName);
+        if (draftNameIsStale && nextProduct.productName && detectedNameConfidence > 0.68) {
+          restoredEditable.productName = nextProduct.productName;
+        }
+        setEditable(restoredEditable);
         setEvidence(draft.evidence);
         const restoredSelection = selectedImagesForProduct(nextProduct, { ...nextSelectedImages, ...draft.selectedImages });
         setSelectedImages(restoredSelection);
