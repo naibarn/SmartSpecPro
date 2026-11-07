@@ -77,6 +77,7 @@ vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  VerticalDramaStoryboardPolicyRecoveryError: class extends Error {},
 }));
 vi.mock("../verticalDramaDialogueAudio", () => ({
   generateEpisodeDialogueAudioPlan: vi.fn(),
@@ -377,7 +378,9 @@ function insertChain(rows: unknown[]) {
 function updateChain(rows: unknown[] = []) {
   const chain: any = {
     set: vi.fn(() => chain),
-    where: vi.fn(() => Promise.resolve(rows)),
+    where: vi.fn(() => chain),
+    returning: vi.fn(() => Promise.resolve(rows)),
+    then: (resolve: any) => Promise.resolve(rows).then(resolve),
   };
   return chain;
 }
@@ -551,7 +554,7 @@ function queueRunStageSelects() {
 }
 
 function setupWritePath() {
-  mockDb.update.mockReturnValue(updateChain());
+  mockDb.update.mockReturnValue(updateChain([{ id: owner.episodeId }]));
   mockDb.insert.mockReturnValue(insertChain([{ id: 1 }]));
 }
 
@@ -632,6 +635,105 @@ describe("runStage — storyboard_shotgrid real-generation branch calls reconcil
       location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
     });
     expect(outcome.result.status).toBe("succeeded");
+  });
+
+  it("keeps a newer user storyboard draft when generation finishes from an older snapshot", async () => {
+    queueRunStageSelects();
+    const latestStoryboard = {
+      shots: NINE_SHOTS,
+      editor_note: "saved while the planner was running",
+    };
+    mockDb.select.mockImplementation(() =>
+      selectChain([{ storyboard: latestStoryboard }])
+    );
+    setupWritePath();
+    mockDb.update.mockReturnValueOnce(updateChain());
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: { shots: NINE_SHOTS, distinct_locations: [STORE_GROUP] },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+    });
+
+    const outcome = await pipeline.runStage(owner, "storyboard_shotgrid", {
+      mode: "full",
+    });
+
+    expect(outcome.result.status).toBe("succeeded");
+    expect(outcome.result.errors).toEqual([]);
+    expect(outcome.result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "VD_STORYBOARD_GENERATION_STALE",
+          severity: "warning",
+        }),
+      ]),
+    );
+    expect(mockReconcileEpisodeLocations).not.toHaveBeenCalled();
+    const storyboardArtifact = mockDb.insert.mock.results
+      .flatMap(({ value }: { value: any }) => value.values.mock.calls)
+      .map(([values]: [{ jsonPayload?: Record<string, unknown> }]) => values)
+      .find(values => values.jsonPayload?.editor_note);
+    expect(storyboardArtifact?.jsonPayload?.editor_note).toBe(
+      latestStoryboard.editor_note,
+    );
+  });
+
+  it("does not overwrite a user edit made during location reconciliation", async () => {
+    queueRunStageSelects();
+    const latestStoryboard = {
+      shots: NINE_SHOTS,
+      editor_note: "changed during reconciliation",
+    };
+    mockDb.select.mockImplementation(() =>
+      selectChain([{ storyboard: latestStoryboard }])
+    );
+    setupWritePath();
+    mockDb.update
+      .mockReturnValueOnce(updateChain([{ id: owner.episodeId }]))
+      .mockReturnValueOnce(updateChain());
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: NINE_SHOTS,
+        distinct_locations: [
+          {
+            ...STORE_GROUP,
+            location_key: "legacy_store_key",
+            shot_numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          },
+        ],
+      },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+    });
+    mockReconcileEpisodeLocations.mockResolvedValueOnce({
+      createdLocations: [],
+      reusedLocations: [],
+      locationBindings: [
+        {
+          incomingLocationKey: "legacy_store_key",
+          incomingLocationName: STORE_GROUP.location_name,
+          canonicalLocationKey: "canonical_store_key",
+        },
+      ],
+    });
+
+    const outcome = await pipeline.runStage(owner, "storyboard_shotgrid", {
+      mode: "full",
+    });
+
+    expect(outcome.result.status).toBe("succeeded");
+    expect(outcome.result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "VD_STORYBOARD_GENERATION_STALE" }),
+      ]),
+    );
+    const storyboardArtifact = mockDb.insert.mock.results
+      .flatMap(({ value }: { value: any }) => value.values.mock.calls)
+      .map(([values]: [{ jsonPayload?: Record<string, unknown> }]) => values)
+      .find(values => values.jsonPayload?.editor_note);
+    expect(storyboardArtifact?.jsonPayload?.editor_note).toBe(
+      latestStoryboard.editor_note,
+    );
   });
 
   it("calls reconcileEpisodeLocations with an empty array when the storyboard has no distinct_locations", async () => {

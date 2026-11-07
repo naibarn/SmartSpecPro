@@ -87,6 +87,7 @@ vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  VerticalDramaStoryboardPolicyRecoveryError: class extends Error {},
 }));
 const { mockGenerateEpisodeDialogueAudioPlan, mockBuildDialogueAudioPlan } = vi.hoisted(() => ({
   mockGenerateEpisodeDialogueAudioPlan: vi.fn(),
@@ -370,7 +371,7 @@ describe("repairStage — storyboard_shotgrid (real repair)", () => {
     // also reuses that helper and must stay at exactly 4 queued selects.
     mockDb.select.mockReturnValueOnce(selectChain([])).mockReturnValueOnce(selectChain([]));
 
-    const episodeUpdateChain = updateChain();
+    const episodeUpdateChain = updateChain([{ id: owner.episodeId }]);
     const runUpdateChain = updateChain();
     mockDb.update.mockReturnValueOnce(episodeUpdateChain).mockReturnValueOnce(runUpdateChain);
     mockDb.insert

@@ -195,6 +195,50 @@ describe("vertical-drama-shot-scene-intent", () => {
     ).toThrowError(/scene intent/i);
   });
 
+  it("rejects director location keys that are absent from the current storyboard facts", () => {
+    expect(() =>
+      applyVerticalDramaShotSceneIntent({
+        storyboard: { shots: [{ shot_number: 1 }] } as any,
+        intents: [
+          intent(1, {
+            physical_character_refs: ["alice", "bob"],
+            communication_mode: "separate_locations",
+            visual_plan: {
+              mode: "dual_view",
+              reason_codes: ["cross_cut_dialogue"],
+              primary_character_refs: ["alice"],
+              secondary_character_refs: ["bob"],
+              primary_location_key: "office",
+              secondary_location_key: "invented-location",
+            },
+          }),
+        ],
+        validCharacterIds: ["alice", "bob"],
+        validLocationKeys: ["office", "station"],
+      })
+    ).toThrowError(/unknown secondary location/i);
+  });
+
+  it("rejects duplicate, unknown, and missing shot IDs before projection", () => {
+    const storyboard = { shots: [{ shot_number: 1 }] } as any;
+    const validIntent = intent(1);
+
+    expect(() =>
+      applyVerticalDramaShotSceneIntent({
+        storyboard,
+        intents: [validIntent, validIntent],
+        validCharacterIds: [],
+      })
+    ).toThrowError(/duplicate intent/i);
+    expect(() =>
+      applyVerticalDramaShotSceneIntent({
+        storyboard,
+        intents: [intent(2)],
+        validCharacterIds: [],
+      })
+    ).toThrowError(/missing intent.*unknown shot/i);
+  });
+
   it("gives the model previous-shot context and explicit mention-only rules", () => {
     const prompt = buildVerticalDramaShotSceneIntentPrompt({
       episodeTitle: "Episode 28",

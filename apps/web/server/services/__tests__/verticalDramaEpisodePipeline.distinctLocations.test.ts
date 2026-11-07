@@ -139,6 +139,7 @@ import {
   rewriteVerticalDramaStartFramePolicyRisk,
   validateStagePayload,
 } from "../verticalDramaEpisodePipeline";
+import { applyVerticalDramaShotSceneIntent } from "../verticalDramaShotSceneIntent";
 
 const pipeline = new VerticalDramaEpisodePipeline() as any;
 
@@ -432,6 +433,80 @@ describe("generateRealStartFramePlan — location threading (Phase 1 location vi
     const shots = callArgs.storyboardShots as Array<{ shotNumber: number; location?: unknown }>;
     expect(shots.find(s => s.shotNumber === 1)!.location).toBeDefined();
     expect(shots.find(s => s.shotNumber === 4)!.location).toBeUndefined();
+  });
+});
+
+describe("generateRealStartFramePlan — accepted director intent reaches render prompt inputs", () => {
+  it("projects validated dual-view intent into the existing start-frame prompt contract", async () => {
+    const sourceShots = Array.from({ length: 9 }, (_, index) => ({
+      shot_number: index + 1,
+      visual_description: `Shot ${index + 1} description`,
+      camera: { shot_type: "medium", angle: "eye_level", movement: "static" },
+      characters: ["alice"],
+      required_character_refs: ["alice"],
+      duration_seconds: 6,
+    }));
+    const baseIntent = {
+      contract_version: "vd-shot-scene-intent-v1" as const,
+      physical_character_refs: ["alice"],
+      screen_caller_refs: [],
+      offscreen_speaker_refs: [],
+      mentioned_only_refs: [],
+      supporting_presence: [],
+      communication_mode: "none" as const,
+      visual_plan: {
+        mode: "single_view" as const,
+        reason_codes: [],
+        primary_character_refs: ["alice"],
+        secondary_character_refs: [],
+      },
+      dialogue_routing: [],
+      confidence: "high" as const,
+      needs_review: false,
+      reason_codes: [],
+    };
+    const intents = sourceShots.map((shot, index) => ({
+      shot_number: shot.shot_number,
+      scene_intent:
+        index === 0
+          ? {
+              ...baseIntent,
+              physical_character_refs: ["alice", "bob"],
+              communication_mode: "separate_locations" as const,
+              visual_plan: {
+                mode: "dual_view" as const,
+                reason_codes: ["cross_cut_dialogue"],
+                primary_character_refs: ["alice"],
+                secondary_character_refs: ["bob"],
+                primary_location_key: "office",
+                secondary_location_key: "station",
+              },
+            }
+          : baseIntent,
+    }));
+    const projected = applyVerticalDramaShotSceneIntent({
+      storyboard: { shots: sourceShots },
+      intents,
+      validCharacterIds: ["alice", "bob"],
+      validLocationKeys: ["office", "station"],
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow()]))
+      .mockReturnValueOnce(selectChain([]));
+    await pipeline.generateRealStartFramePlan(
+      owner,
+      baseEpisode({ storyboard: { shots: projected.shots } }),
+    );
+
+    const startFrameArgs = mockGenerateStartFrameRenderPlan.mock.calls[0][0];
+    const firstShot = startFrameArgs.storyboardShots[0];
+    expect(firstShot.characterIds).toEqual(["alice"]);
+    expect(firstShot.barrierMultiView).toMatchObject({
+      scenario: "separate_locations",
+      startView: { characterRefs: ["alice"] },
+      referenceView: { characterRefs: ["bob"] },
+    });
   });
 });
 

@@ -15,7 +15,7 @@
  * provider credentials.
  */
 
-import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -3866,6 +3866,23 @@ async function isStoryboardShotgridRunStillActive(
   return Boolean(run);
 }
 
+function currentStoryboardOrEmpty(value: unknown): StoryboardShotgridOutput {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as StoryboardShotgridOutput)
+    : ({ shots: [] } as unknown as StoryboardShotgridOutput);
+}
+
+function staleStoryboardGenerationWarning(): VerticalDramaWarning {
+  return {
+    code: "VD_STORYBOARD_GENERATION_STALE",
+    severity: "warning",
+    message:
+      "A newer storyboard draft was saved while planning was running; it was kept, and the pipeline will continue from that saved draft after its normal structural checks.",
+    targetStage: "storyboard_shotgrid",
+    repairable: false,
+  };
+}
+
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
@@ -4005,6 +4022,99 @@ export class VerticalDramaEpisodePipeline {
       .limit(1);
     if (!row) throw new Error("vertical_drama_episode_not_found");
     return row;
+  }
+
+  /**
+   * Atomically persist generated storyboard data only while the source
+   * storyboard still matches the snapshot used by the generation call. A
+   * user draft save during a slow provider call wins; callers then use that
+   * latest draft and keep the stage advisory instead of replacing it.
+   */
+  private async persistStoryboardIfCurrent(
+    owner: EpisodeRunOwner,
+    expectedStoryboard: unknown,
+    nextStoryboard: StoryboardShotgridOutput
+  ): Promise<{ persisted: boolean; currentStoryboard: unknown }> {
+    const ownerWhere = and(
+      eq(verticalDramaEpisodes.id, owner.episodeId),
+      eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+      eq(verticalDramaEpisodes.userId, owner.userId),
+      eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+    );
+    const expectedStoryboardWhere =
+      expectedStoryboard === null || expectedStoryboard === undefined
+        ? isNull(verticalDramaEpisodes.storyboard)
+        : eq(verticalDramaEpisodes.storyboard, expectedStoryboard);
+    const [updated] = await db
+      .update(verticalDramaEpisodes)
+      .set({ storyboard: nextStoryboard, updatedAt: new Date() })
+      .where(and(ownerWhere, expectedStoryboardWhere))
+      .returning({ id: verticalDramaEpisodes.id });
+    if (updated) {
+      return { persisted: true, currentStoryboard: nextStoryboard };
+    }
+
+    const [current] = await db
+      .select({ storyboard: verticalDramaEpisodes.storyboard })
+      .from(verticalDramaEpisodes)
+      .where(ownerWhere)
+      .limit(1);
+    if (!current) throw new Error("vertical_drama_episode_not_found");
+    return { persisted: false, currentStoryboard: current.storyboard };
+  }
+
+  private async reconcileAndPersistCanonicalStoryboard(
+    owner: EpisodeRunOwner,
+    storyboard: StoryboardShotgridOutput
+  ): Promise<{ storyboard: StoryboardShotgridOutput; stale: boolean }> {
+    const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] =
+      (storyboard.distinct_locations ?? []).map(group => ({
+        locationKey: group.location_key,
+        locationName: group.location_name,
+        description: group.description,
+        shotNumbers: group.shot_numbers,
+      }));
+    const reconciliation = await reconcileEpisodeLocations(
+      owner,
+      distinctLocationGroups
+    );
+    const bindingByIncomingIdentity = new Map(
+      (reconciliation.locationBindings ?? []).map(binding => [
+        `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
+        binding.canonicalLocationKey,
+      ])
+    );
+    const canonicalDistinctLocations = (storyboard.distinct_locations ?? []).map(
+      group => {
+        const canonicalLocationKey = bindingByIncomingIdentity.get(
+          `${group.location_key}\u0000${group.location_name}`
+        );
+        return canonicalLocationKey &&
+          canonicalLocationKey !== group.location_key
+          ? { ...group, location_key: canonicalLocationKey }
+          : group;
+      }
+    );
+    const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
+      (group, index) => group !== storyboard.distinct_locations?.[index]
+    );
+    if (!hasCanonicalKeyChanges) return { storyboard, stale: false };
+
+    const canonicalStoryboard = {
+      ...storyboard,
+      distinct_locations: canonicalDistinctLocations,
+    };
+    const persisted = await this.persistStoryboardIfCurrent(
+      owner,
+      storyboard,
+      canonicalStoryboard
+    );
+    return persisted.persisted
+      ? { storyboard: canonicalStoryboard, stale: false }
+      : {
+          storyboard: currentStoryboardOrEmpty(persisted.currentStoryboard),
+          stale: true,
+        };
   }
 
   /** Resolve the durable wardrobe boundary for a normal episode. */
@@ -5426,6 +5536,9 @@ export class VerticalDramaEpisodePipeline {
         intents: sceneIntentResult.intent.shots,
         validCharacterIds: sceneIntentCharacters.map(
           (character: { characterId: string }) => character.characterId,
+        ),
+        validLocationKeys: (generated.storyboard.distinct_locations ?? []).map(
+          location => location.location_key,
         ),
       });
       storyboardWithSceneIntent = {
@@ -7597,22 +7710,24 @@ export class VerticalDramaEpisodePipeline {
           opts.retentionHooksEnabled ?? false,
           opts.motionContractsEnabled ?? false
         );
-        payload = { stage, ...generated.storyboard };
         stageQcWarnings.push(...generated.warnings);
-        // Persist to the episode's own `storyboard` jsonb column (not
-        // `script`), same tenant/user/series-scoped update pattern used by
-        // the router's `updateEpisodeDraft` procedure.
-        await db
-          .update(verticalDramaEpisodes)
-          .set({ storyboard: generated.storyboard, updatedAt: new Date() })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, owner.episodeId),
-              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-              eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-            )
+        // Compare-and-set against the storyboard snapshot loaded before the
+        // provider calls. A user edit made while planning was in flight must
+        // remain authoritative and available to downstream image/video stages.
+        const storyboardPersist = await this.persistStoryboardIfCurrent(
+          owner,
+          episode.storyboard,
+          generated.storyboard
+        );
+        if (!storyboardPersist.persisted) {
+          generated.storyboard = currentStoryboardOrEmpty(
+            storyboardPersist.currentStoryboard
           );
+          payload = { stage, ...generated.storyboard };
+          stageQcWarnings.push(staleStoryboardGenerationWarning());
+        } else {
+          payload = { stage, ...generated.storyboard };
+        }
 
         // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
         // bible) — idempotently materialize the just-persisted storyboard's
@@ -7630,70 +7745,25 @@ export class VerticalDramaEpisodePipeline {
         // (e.g. a transient DB error) must never surface as a
         // storyboard-generation failure to the user, since the storyboard
         // itself already generated and persisted successfully.
-        try {
-          // `generated.storyboard.distinct_locations` is already
-          // Zod-validated by `distinctLocationSchema` when present
-          // (non-empty `location_key`/`location_name`/`description`, a
-          // non-empty 1-9 `shot_numbers` array) — a straight snake_case ->
-          // camelCase field-name mapping is all that's needed here, no
-          // additional defensive parsing.
-          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] =
-            (generated.storyboard.distinct_locations ?? []).map(g => ({
-              locationKey: g.location_key,
-              locationName: g.location_name,
-              description: g.description,
-              shotNumbers: g.shot_numbers,
-            }));
-          const reconciliation = await reconcileEpisodeLocations(
-            owner,
-            distinctLocationGroups
-          );
-          const bindingByIncomingIdentity = new Map(
-            (reconciliation.locationBindings ?? []).map(binding => [
-              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
-              binding.canonicalLocationKey,
-            ])
-          );
-          const canonicalDistinctLocations = (
-            generated.storyboard.distinct_locations ?? []
-          ).map(group => {
-            const canonicalLocationKey = bindingByIncomingIdentity.get(
-              `${group.location_key}\u0000${group.location_name}`
-            );
-            return canonicalLocationKey &&
-              canonicalLocationKey !== group.location_key
-              ? { ...group, location_key: canonicalLocationKey }
-              : group;
-          });
-          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
-            (group, index) =>
-              group !== generated.storyboard.distinct_locations?.[index]
-          );
-          if (hasCanonicalKeyChanges) {
-            const canonicalStoryboard = {
-              ...generated.storyboard,
-              distinct_locations: canonicalDistinctLocations,
-            };
-            await db
-              .update(verticalDramaEpisodes)
-              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
-              .where(
-                and(
-                  eq(verticalDramaEpisodes.id, owner.episodeId),
-                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-                  eq(verticalDramaEpisodes.userId, owner.userId),
-                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-                )
+        if (storyboardPersist.persisted) {
+          try {
+            const reconciled =
+              await this.reconcileAndPersistCanonicalStoryboard(
+                owner,
+                generated.storyboard
               );
-            generated.storyboard = canonicalStoryboard;
-            payload = { stage, ...canonicalStoryboard };
+            generated.storyboard = reconciled.storyboard;
+            payload = { stage, ...generated.storyboard };
+            if (reconciled.stale) {
+              stageQcWarnings.push(staleStoryboardGenerationWarning());
+            }
+          } catch (reconcileError) {
+            debugError(
+              "vd_location_reconciliation",
+              `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+              reconcileError
+            );
           }
-        } catch (reconcileError) {
-          debugError(
-            "vd_location_reconciliation",
-            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
-            reconcileError
-          );
         }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
@@ -8960,84 +9030,44 @@ export class VerticalDramaEpisodePipeline {
           );
           return;
         }
-        payload = { stage, ...generated.storyboard };
         continuityWarnings.push(...generated.warnings);
-        // Persist to the episode's own `storyboard` jsonb column — same
-        // tenant/user/series-scoped update pattern as `runStage`'s
-        // synchronous override.
-        await db
-          .update(verticalDramaEpisodes)
-          .set({ storyboard: generated.storyboard, updatedAt: new Date() })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, owner.episodeId),
-              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-              eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-            )
+        const storyboardPersist = await this.persistStoryboardIfCurrent(
+          owner,
+          episode.storyboard,
+          generated.storyboard
+        );
+        if (!storyboardPersist.persisted) {
+          generated.storyboard = currentStoryboardOrEmpty(
+            storyboardPersist.currentStoryboard
           );
+          payload = { stage, ...generated.storyboard };
+          continuityWarnings.push(staleStoryboardGenerationWarning());
+        } else {
+          payload = { stage, ...generated.storyboard };
+        }
 
         // Same best-effort location reconciliation as `runStage`'s
         // synchronous override — see that block's doc comment for why a
         // reconciliation failure must never fail the storyboard stage.
-        try {
-          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] =
-            (generated.storyboard.distinct_locations ?? []).map(g => ({
-              locationKey: g.location_key,
-              locationName: g.location_name,
-              description: g.description,
-              shotNumbers: g.shot_numbers,
-            }));
-          const reconciliation = await reconcileEpisodeLocations(
-            owner,
-            distinctLocationGroups
-          );
-          const bindingByIncomingIdentity = new Map(
-            (reconciliation.locationBindings ?? []).map(binding => [
-              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
-              binding.canonicalLocationKey,
-            ])
-          );
-          const canonicalDistinctLocations = (
-            generated.storyboard.distinct_locations ?? []
-          ).map(group => {
-            const canonicalLocationKey = bindingByIncomingIdentity.get(
-              `${group.location_key}\u0000${group.location_name}`
-            );
-            return canonicalLocationKey &&
-              canonicalLocationKey !== group.location_key
-              ? { ...group, location_key: canonicalLocationKey }
-              : group;
-          });
-          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
-            (group, index) =>
-              group !== generated.storyboard.distinct_locations?.[index]
-          );
-          if (hasCanonicalKeyChanges) {
-            const canonicalStoryboard = {
-              ...generated.storyboard,
-              distinct_locations: canonicalDistinctLocations,
-            };
-            await db
-              .update(verticalDramaEpisodes)
-              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
-              .where(
-                and(
-                  eq(verticalDramaEpisodes.id, owner.episodeId),
-                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-                  eq(verticalDramaEpisodes.userId, owner.userId),
-                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-                )
+        if (storyboardPersist.persisted) {
+          try {
+            const reconciled =
+              await this.reconcileAndPersistCanonicalStoryboard(
+                owner,
+                generated.storyboard
               );
-            generated.storyboard = canonicalStoryboard;
-            payload = { stage, ...canonicalStoryboard };
+            generated.storyboard = reconciled.storyboard;
+            payload = { stage, ...generated.storyboard };
+            if (reconciled.stale) {
+              continuityWarnings.push(staleStoryboardGenerationWarning());
+            }
+          } catch (reconcileError) {
+            debugError(
+              "vd_location_reconciliation",
+              `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+              reconcileError
+            );
           }
-        } catch (reconcileError) {
-          debugError(
-            "vd_location_reconciliation",
-            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
-            reconcileError
-          );
         }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
@@ -9392,14 +9422,21 @@ export class VerticalDramaEpisodePipeline {
             args.retentionHooksEnabled ?? false,
             args.motionContractsEnabled ?? false
           );
-          payload = { stage, ...generated.storyboard };
           // Wardrobe continuity is advisory: retain the warning on the
           // repaired run while allowing the generated storyboard through.
           generatedWarnings.push(...generated.warnings);
-          await db
-            .update(verticalDramaEpisodes)
-            .set({ storyboard: generated.storyboard, updatedAt: new Date() })
-            .where(episodeWhereClause);
+          const storyboardPersist = await this.persistStoryboardIfCurrent(
+            owner,
+            episode.storyboard,
+            generated.storyboard
+          );
+          if (!storyboardPersist.persisted) {
+            generated.storyboard = currentStoryboardOrEmpty(
+              storyboardPersist.currentStoryboard
+            );
+            generatedWarnings.push(staleStoryboardGenerationWarning());
+          }
+          payload = { stage, ...generated.storyboard };
         } else {
           const generated = await this.generateRealDialogueAudioPlan(
             owner,

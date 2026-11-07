@@ -701,7 +701,8 @@ function addIssue(issues: string[], message: string): void {
 function validateSceneIntent(
   shotNumber: number,
   scene: VerticalDramaShotSceneIntent,
-  validIds: Set<string>
+  validIds: Set<string>,
+  validLocationKeys?: Set<string>
 ): string[] {
   const issues: string[] = [];
   const groups = [
@@ -773,6 +774,19 @@ function validateSceneIntent(
       );
     }
   }
+  if (validLocationKeys) {
+    for (const [label, key] of [
+      ["primary", scene.visual_plan.primary_location_key],
+      ["secondary", scene.visual_plan.secondary_location_key],
+    ] as const) {
+      if (key && !validLocationKeys.has(key)) {
+        addIssue(
+          issues,
+          `shot ${shotNumber}: visual plan has unknown ${label} location ${key}`
+        );
+      }
+    }
+  }
   const refsByRole = new Map<
     VerticalDramaShotSceneIntent["dialogue_routing"][number]["role"],
     Set<string>
@@ -823,8 +837,12 @@ export function applyVerticalDramaShotSceneIntent(params: {
   storyboard: { shots: Array<Record<string, any>> };
   intents: VerticalDramaShotSceneIntentOutput["shots"];
   validCharacterIds: string[];
+  validLocationKeys?: string[];
 }): { shots: Array<Record<string, any>> } {
   const validIds = new Set(params.validCharacterIds);
+  const validLocationKeys = params.validLocationKeys?.length
+    ? new Set(params.validLocationKeys)
+    : undefined;
   const issues: string[] = [];
   const byShot = new Map<
     number,
@@ -845,7 +863,12 @@ export function applyVerticalDramaShotSceneIntent(params: {
       return shot;
     }
     issues.push(
-      ...validateSceneIntent(shotNumber, entry.scene_intent, validIds)
+      ...validateSceneIntent(
+        shotNumber,
+        entry.scene_intent,
+        validIds,
+        validLocationKeys
+      )
     );
     const scene = entry.scene_intent;
     const physical = Array.from(new Set(scene.physical_character_refs));
