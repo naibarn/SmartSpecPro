@@ -20,9 +20,9 @@
     },
     "section-02-audio-qc-editing-and-assembly": {
       "status": "checkpointed",
-      "next_action": "Audit canonical audio repair job contracts, worker_jobs/outbox, credit reservation, and artifact writeback; implement source-bound repair without blocking video.",
-      "checkpoint_sha": "017916574fe175490357a7d816af27a08af25cad",
-      "merged_main_sha": "6e2f2ed404731273a51b9d3585205b99c4a2b765"
+      "next_action": "Provision or select an approved audio worker runtime with Demucs v4/PyTorch and codecs; then implement tenant-bound source/TTS artifacts, canonical outbox admission, idempotent billing, and manifest/QC writeback.",
+      "checkpoint_sha": "36ecd9e3d50f3681283994a0ab291af4fc6034a9",
+      "merged_main_sha": "36ecd9e3d50f3681283994a0ab291af4fc6034a9"
     },
     "section-03-cross-episode-continuity": {
       "status": "checkpointed",
@@ -40,12 +40,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T09:00:12.205654+00:00",
-  "generation": 10,
-  "updated_at": "2026-11-07T10:14:33.958288+00:00",
+  "generation": 12,
+  "updated_at": "2026-11-07T10:31:16.224105+00:00",
   "progress": {
     "active_section": "section-02-audio-qc-editing-and-assembly",
-    "next_action": "Audit canonical audio repair job contracts, worker_jobs/outbox, credit reservation, and artifact writeback; implement source-bound repair without blocking video.",
-    "merged_main_sha": "747109a597ac49e0e30ad30a65a2d559292193d8",
+    "next_action": "Provision or select an approved audio worker runtime with Demucs v4/PyTorch and codecs; then implement tenant-bound source/TTS artifacts, canonical outbox admission, idempotent billing, and manifest/QC writeback.",
+    "merged_main_sha": "36ecd9e3d50f3681283994a0ab291af4fc6034a9",
     "gaps": [
       "Feature 175 surgical repair is unavailable until a validated source clip and matching TTS asset are bound to a canonical outbox job, credit reservation is idempotent, and the completed artifact is persisted back to the episode manifest.",
       "Foley/ambience stem mixing, mastering/QC worker generation and measurement persistence remain unsupported; controls stay disabled and QC reports unavailable until real outputs exist."
