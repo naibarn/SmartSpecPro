@@ -98,6 +98,12 @@ const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
 vi.mock("../tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
+const { mockCaptureSeriesVisualSourceSnapshot } = vi.hoisted(() => ({
+  mockCaptureSeriesVisualSourceSnapshot: vi.fn(),
+}));
+vi.mock("../verticalDramaVisualSourceSnapshotService", () => ({
+  captureSeriesVisualSourceSnapshot: mockCaptureSeriesVisualSourceSnapshot,
+}));
 vi.mock("../verticalDramaVideoMotionPromptGeneration", () => ({
   generateVideoMotionPromptPack: vi.fn(),
   syncDialogueOntoMotionPromptClips: vi.fn(),
@@ -807,4 +813,58 @@ describe("runStage — storyboard_shotgrid real-generation branch calls reconcil
     expect(mockGenerateStoryboardShotgrid).not.toHaveBeenCalled();
     expect(mockReconcileEpisodeLocations).not.toHaveBeenCalled();
   });
+});
+
+describe("runStage — optional assurance remains advisory", () => {
+  it.each([
+    { name: "context unavailable", failsDuringCapture: false },
+    { name: "snapshot timeout", failsDuringCapture: true },
+  ])(
+    "preserves the succeeded stage and persists a warning when assurance has $name",
+    async ({ failsDuringCapture }) => {
+      mockDb.select.mockReturnValueOnce(selectChain([episode]));
+      setupWritePath();
+      mockGetTenantFeatureFlags.mockResolvedValueOnce({
+        verticalDramaPromptQcOrchestraActive: true,
+        verticalDramaAssuranceKillSwitch: false,
+      });
+      if (failsDuringCapture) {
+        mockCaptureSeriesVisualSourceSnapshot.mockRejectedValueOnce(
+          new Error("snapshot timed out")
+        );
+      } else {
+        mockCaptureSeriesVisualSourceSnapshot.mockResolvedValueOnce(null);
+      }
+
+      const outcome = await pipeline.runStage(owner, "start_frame_render_plan", {
+        mode: "dry_run",
+      });
+
+      expect(outcome.result.status).toBe("succeeded");
+      expect(outcome.result.next_action).toBe("resume_next_stage");
+      expect(outcome.result.errors).toEqual([]);
+      expect(outcome.result.warnings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "VD_ASSURANCE_ADVISORY_UNAVAILABLE",
+            severity: "warning",
+            repairable: false,
+          }),
+        ])
+      );
+      const runUpdate = mockDb.update.mock.results.at(-1)?.value;
+      expect(runUpdate?.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "succeeded",
+          nextAction: "resume_next_stage",
+          warnings: expect.arrayContaining([
+            expect.objectContaining({
+              code: "VD_ASSURANCE_ADVISORY_UNAVAILABLE",
+            }),
+          ]),
+          errors: [],
+        })
+      );
+    }
+  );
 });

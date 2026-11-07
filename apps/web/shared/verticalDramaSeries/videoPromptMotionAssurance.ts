@@ -83,14 +83,14 @@ export interface VideoPromptMotionAssuranceResult {
 }
 
 /**
- * Only these findings are genuine source-frame blockers.  All other findings
- * are prompt-contract problems that the orchestra can repair without asking
- * the user to spend another credit or manually rewrite the prompt.
+ * Face observability is an advisory quality finding, not a generation
+ * prerequisite. Keep this selector for compatibility with existing callers;
+ * hard submission checks live at the media/provider boundary.
  */
 export function isVideoPromptSourceBlockingFinding(
-  finding: VideoPromptAssuranceFinding,
+  _finding: VideoPromptAssuranceFinding,
 ): boolean {
-  return finding.code === "face_observability_risk";
+  return false;
 }
 
 /**
@@ -295,12 +295,12 @@ export function assureVideoPromptMotion(
   }
   // A global `faces_separated=false` result is common when one of the
   // detected faces belongs to a small/soft phone or video-call display. It
-  // must not block those shots; per-person physical-scene findings below
-  // remain blocking when the vision model identifies them explicitly.
+  // remains advisory for every shot; per-person findings below provide the
+  // more useful warning when the vision model identifies a speaking face.
   if (input.frameAnalysis?.facesSeparated === false && screenCallerNames.size === 0) {
     findings.push({
       code: "face_observability_risk",
-      severity: "blocking",
+      severity: "warning",
       message: "Attached frame analysis reports overlapping/ambiguous faces.",
       repair: "Ask the user to replace or repair the reference frame, or create a Video-Safe frame with separated readable faces.",
     });
@@ -312,7 +312,7 @@ export function assureVideoPromptMotion(
     if (person.eyesVisible === false || /^(?:false|no|hidden|not visible)$/iu.test(String(person.eyesVisible ?? "")) || person.overlappedByOtherFace === true || /tiny|small|hidden|occluded/iu.test(person.faceSize ?? "") || /occluded|covered|hidden/iu.test(person.occlusion ?? "")) {
       findings.push({
         code: "face_observability_risk",
-        severity: "blocking",
+        severity: "warning",
         message: `Speaking face for ${person.name} is not sufficiently observable in the attached frame.`,
         repair: `Keep ${person.name}'s eyes, mouth, and jawline readable, or ask the user to replace/repair the reference frame before rendering.`,
       });

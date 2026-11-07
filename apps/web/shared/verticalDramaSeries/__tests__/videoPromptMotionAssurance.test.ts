@@ -88,7 +88,7 @@ describe("video prompt motion assurance", () => {
     expect(repaired).toContain("faces remain readable");
   });
 
-  it("reserves user action for genuinely ambiguous source frames", () => {
+  it("reports ambiguous source frames as advisory without making them render blockers", () => {
     const result = assureVideoPromptMotion({
       prompt: "Exactly one established face, preserve identity and readable eyes.",
       family: "grok",
@@ -96,7 +96,16 @@ describe("video prompt motion assurance", () => {
       dialogueSpeakerNames: ["A"],
       frameAnalysis: { facesSeparated: false },
     });
-    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(true);
+    expect(
+      result.findings.some(finding => finding.code === "face_observability_risk")
+    ).toBe(true);
+    expect(
+      result.warnings.some(finding => finding.code === "face_observability_risk")
+    ).toBe(true);
+    expect(
+      result.blocking.some(finding => finding.code === "face_observability_risk")
+    ).toBe(false);
+    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(false);
   });
 
   it("does not block a naturally soft or overlapping screen-only caller", () => {
@@ -122,7 +131,7 @@ describe("video prompt motion assurance", () => {
     expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(false);
   });
 
-  it("still blocks an explicitly ambiguous physical-scene speaker when a screen caller is present", () => {
+  it("keeps an ambiguous physical-scene speaker advisory when a screen caller is present", () => {
     const result = assureVideoPromptMotion({
       prompt: "The physical speaker and the screen caller keep their identities.",
       family: "grok",
@@ -147,6 +156,6 @@ describe("video prompt motion assurance", () => {
         ],
       },
     });
-    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(true);
+    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(false);
   });
 });

@@ -4187,7 +4187,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       );
     }
   }
-  const assuranceWarnings = assurance.warnings.map(
+  const assuranceWarnings = [...assurance.warnings, ...assurance.blocking].map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
   );
   finalPrompt = applyShotLocalSpeakerVisualAnchors(
@@ -5230,7 +5230,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       );
     }
   }
-  const assuranceWarnings = assurance.warnings.map(
+  const assuranceWarnings = [...assurance.warnings, ...assurance.blocking].map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
   );
   finalPrompt = applyShotLocalSpeakerVisualAnchors(

@@ -29,7 +29,7 @@ describe("evaluateVideoSafetyGate", () => {
     ).toEqual({ allowed: true, reason: "not_required" });
   });
 
-  it("requires QC for a multi-character I2V anchor", () => {
+  it("reports missing QC for a multi-character frame as a quality finding", () => {
     expect(
       evaluateVideoSafetyGate({
         requiredCharacterRefs,
@@ -38,7 +38,7 @@ describe("evaluateVideoSafetyGate", () => {
     ).toMatchObject({ allowed: false, reason: "missing_qc" });
   });
 
-  it("rejects QC for a different asset", () => {
+  it("reports QC for a different asset as stale", () => {
     expect(
       evaluateVideoSafetyGate({
         requiredCharacterRefs,
@@ -58,7 +58,7 @@ describe("evaluateVideoSafetyGate", () => {
     ).toEqual({ allowed: true, reason: "verified" });
   });
 
-  it("rejects a back-facing or occluded character even when the verdict says safe", () => {
+  it("reports incomplete face evidence even when the verdict says safe", () => {
     expect(
       evaluateVideoSafetyGate({
         requiredCharacterRefs,

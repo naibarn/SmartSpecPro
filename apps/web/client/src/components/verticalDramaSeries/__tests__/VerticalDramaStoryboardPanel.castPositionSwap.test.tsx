@@ -79,6 +79,16 @@ describe("VerticalDramaStoryboardPanel — detected speaker mapping", () => {
       selectedVideoModelId: "video-model",
       enhancedVideoPromptUiEnabled: true,
       onGenerateShotVideoPrompt: vi.fn(),
+      motionPromptPack: {
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "A conversation continues.",
+          },
+        ],
+      },
+      onGenerateVideoClip: vi.fn(),
       onGenerateEnhancedShotVideoPrompt: onGenerateEnhanced,
       enhancedReadinessByShot: { 1: { ready: false, reasons: ["SHOT_PRECONDITION_FAILED"] } },
       enhancedGeneratingForShot: new Set(),
@@ -91,9 +101,15 @@ describe("VerticalDramaStoryboardPanel — detected speaker mapping", () => {
       "vd-storyboard-generate-enhanced-video-prompt-1"
     );
     expect(enhancedButton).toBeDisabled();
+    expect(
+      screen.getByTestId("vd-storyboard-generate-shot-video-prompt-1")
+    ).toBeEnabled();
+    expect(screen.getByTestId("vd-storyboard-generate-video-1")).toBeEnabled();
+    expect(
+      screen.getByTestId("vd-storyboard-speaker-mapping-review-1")
+    ).toHaveTextContent("คำแนะนำ: ตรวจการจับคู่ผู้พูด");
     const status = document.getElementById("vd-storyboard-enhanced-status-1")!;
-    expect(status).toHaveTextContent("จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน");
-    expect(status).not.toHaveTextContent("ยังไม่มีภาพ");
+    expect(status).toHaveTextContent("Enhanced ยังไม่พร้อม");
 
     rerender(
       <VerticalDramaStoryboardPanel

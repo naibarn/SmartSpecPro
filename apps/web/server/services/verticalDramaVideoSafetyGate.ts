@@ -1,8 +1,8 @@
 /**
- * Pure precondition for selecting a Vertical Drama start frame as an I2V
- * anchor. The storyboard/emotional frame remains independently usable; this
- * gate only protects paid video generation from an unverified or visibly
- * unstable multi-character anchor.
+ * Pure quality assessment for a Vertical Drama start frame. `allowed` reports
+ * whether the QC evidence passes; it is used in the advisory report only and
+ * must not be treated as paid-render eligibility. The actual image asset,
+ * provider capability, authorization, and billing checks remain at dispatch.
  */
 
 export type VideoSafetyCharacterEvidence = {

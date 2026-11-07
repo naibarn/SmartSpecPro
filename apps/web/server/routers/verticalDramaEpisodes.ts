@@ -9429,7 +9429,22 @@ async function resolveVerticalDramaQualityLoopFlags(tenantId: string): Promise<{
    */
   storyLockEnabled: boolean;
 }> {
-  const flags = await getTenantFeatureFlags(tenantId);
+  let flags: Awaited<ReturnType<typeof getTenantFeatureFlags>> | null;
+  try {
+    flags = await getTenantFeatureFlags(tenantId);
+  } catch (error) {
+    // These flags control optional quality/style enrichments. A lookup failure
+    // must leave the configured generation path usable; optional features
+    // fall back to off for this request.
+    flags = null;
+    console.warn(
+      "[vd_quality] optional quality flags unavailable; continuing without enrichments",
+      {
+        tenantId,
+        errorType: error instanceof Error ? error.name.slice(0, 64) : "unknown",
+      }
+    );
+  }
   const speechBudgetEnabled = flags?.verticalDramaSeriesSpeechBudget === true;
   const qualityLoopV2Enabled = flags?.verticalDramaSeriesQualityLoopV2 === true;
   return {
@@ -9504,24 +9519,35 @@ async function loadEffectiveSeriesVisualIdentity(
   seriesId: number,
   flags?: { presetMixV2Enabled: boolean; seriesLookLockEnabled: boolean }
 ) {
-  const [row] = await db
-    .select({ bible: verticalDramaSeries.bible })
-    .from(verticalDramaSeries)
-    .where(
-      and(
-        eq(verticalDramaSeries.id, seriesId),
-        eq(verticalDramaSeries.tenantId, tenantId),
-        eq(verticalDramaSeries.userId, userId)
+  try {
+    const [row] = await db
+      .select({ bible: verticalDramaSeries.bible })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, seriesId),
+          eq(verticalDramaSeries.tenantId, tenantId),
+          eq(verticalDramaSeries.userId, userId)
+        )
       )
-    )
-    .limit(1);
-  const resolvedFlags =
-    flags ?? (await resolveVerticalDramaQualityLoopFlags(tenantId));
-  return resolveEffectiveSeriesVisualIdentity({
-    bible: row?.bible,
-    presetMixEnabled: resolvedFlags.presetMixV2Enabled,
-    lookLockEnabled: resolvedFlags.seriesLookLockEnabled,
-  });
+      .limit(1);
+    const resolvedFlags =
+      flags ?? (await resolveVerticalDramaQualityLoopFlags(tenantId));
+    return resolveEffectiveSeriesVisualIdentity({
+      bible: row?.bible,
+      presetMixEnabled: resolvedFlags.presetMixV2Enabled,
+      lookLockEnabled: resolvedFlags.seriesLookLockEnabled,
+    });
+  } catch (error) {
+    console.warn(
+      "[vd_visual_identity] optional series style unavailable; continuing with the current prompt",
+      {
+        seriesId,
+        errorType: error instanceof Error ? error.name.slice(0, 64) : "unknown",
+      }
+    );
+    return undefined;
+  }
 }
 
 /**
@@ -10246,6 +10272,34 @@ async function maybeRecordQualityFloorOverrideAudit(params: {
       "vd_quality_floor_override",
       "Failed to record quality-floor override audit (non-blocking)",
       { message: err instanceof Error ? err.message : String(err) }
+    );
+  }
+}
+
+async function maybeAuditQualityFloorOverrideBestEffort(params: {
+  owner: EpisodeRunOwner;
+  source: string;
+}): Promise<void> {
+  try {
+    const policy = await loadVerticalDramaQualityPolicy(
+      params.owner.tenantId,
+      params.owner.userId,
+      params.owner.seriesId
+    );
+    await maybeRecordQualityFloorOverrideAudit({
+      owner: params.owner,
+      policy,
+      source: params.source,
+    });
+  } catch (error) {
+    console.warn(
+      "[vd_quality] optional floor-audit policy unavailable; generation continues",
+      {
+        episodeId: params.owner.episodeId,
+        seriesId: params.owner.seriesId,
+        source: params.source,
+        errorType: error instanceof Error ? error.name.slice(0, 64) : "unknown",
+      }
     );
   }
 }
@@ -21246,14 +21300,8 @@ export const verticalDramaEpisodesRouter = router({
         // floor-override audit record; never blocks. See
         // `maybeRecordQualityFloorOverrideAudit`'s doc comment.
         if (qualityLoopV2Enabled) {
-          const startFrameQualityPolicy = await loadVerticalDramaQualityPolicy(
-            tenantId,
-            userId,
-            seriesId
-          );
-          await maybeRecordQualityFloorOverrideAudit({
+          await maybeAuditQualityFloorOverrideBestEffort({
             owner: { tenantId, userId, seriesId, episodeId },
-            policy: startFrameQualityPolicy,
             source: "trpc.verticalDramaEpisodes.generateStartFrameImage",
           });
         }
@@ -24102,14 +24150,8 @@ export const verticalDramaEpisodesRouter = router({
       // floor-override audit record; never blocks. See
       // `maybeRecordQualityFloorOverrideAudit`'s doc comment.
       if (qualityLoopV2Enabled) {
-        const videoClipQualityPolicy = await loadVerticalDramaQualityPolicy(
-          tenantId,
-          userId,
-          seriesId
-        );
-        await maybeRecordQualityFloorOverrideAudit({
+        await maybeAuditQualityFloorOverrideBestEffort({
           owner: { tenantId, userId, seriesId, episodeId },
-          policy: videoClipQualityPolicy,
           source: "trpc.verticalDramaEpisodes.generateVideoClip",
         });
       }
@@ -24242,12 +24284,9 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      // A storyboard frame may remain emotionally useful even when one of its
-      // faces is turned away. It must not silently become a paid I2V anchor.
-      // Require fresh, current-asset categorical face evidence only for
-      // multi-character clips; legacy fixtures without a start-frame plan stay
-      // backward compatible because there is no authoritative character roster
-      // to validate here.
+      // Face observability is an advisory CPE assessment. Keep the current
+      // asset/QC match visible in diagnostics, but do not turn missing, stale,
+      // or low-confidence face evidence into a paid-render prerequisite.
       const startFramePlan =
         row.startFramePlan as VerticalDramaStartFramePlan | null;
       const videoSafetySourceShotNumbers = Array.from(
@@ -24266,10 +24305,24 @@ export const verticalDramaEpisodesRouter = router({
           )
         )
       );
-      const videoSafetyFeatureEnabled =
-        videoSafetyCharacterRefs.length >= 2 &&
-        (await getTenantFeatureFlags(tenantId))
-          ?.verticalDramaVideoSafeStartFrames === true;
+      let videoSafetyFeatureEnabled = false;
+      if (videoSafetyCharacterRefs.length >= 2) {
+        try {
+          videoSafetyFeatureEnabled =
+            (await getTenantFeatureFlags(tenantId))
+              ?.verticalDramaVideoSafeStartFrames === true;
+        } catch (error) {
+          console.warn(
+            "[vd_video_render] face-observability flag unavailable; continuing",
+            {
+              episodeId,
+              clipNumber: input.clipNumber,
+              errorType:
+                error instanceof Error ? error.name.slice(0, 64) : "unknown",
+            }
+          );
+        }
+      }
       const videoSafetyGate =
         startFramePlan && videoSafetyFeatureEnabled
           ? evaluateVideoSafetyGate({
@@ -24279,10 +24332,14 @@ export const verticalDramaEpisodesRouter = router({
             })
           : { allowed: true as const, reason: "not_required" as const };
       if (!videoSafetyGate.allowed) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `ยังสร้างวิดีโอไม่ได้สำหรับ clip ${input.clipNumber}: ${videoSafetyGate.message} กด “ตรวจความพร้อมวิดีโอ” ที่ภาพ start frame หรือสร้าง Video-Safe frame ก่อน`,
-        });
+        console.warn(
+          "[vd_video_render] face-observability advisory; continuing with the selected video path",
+          {
+            episodeId,
+            clipNumber: input.clipNumber,
+            reason: videoSafetyGate.reason,
+          }
+        );
       }
       // Reference-mapping fix Phase 5b (`vd-start-frame-reference-mapping/
       // plan.md`) — WHY this budget is `maxReferenceImages - 1` (not
@@ -24954,6 +25011,21 @@ export const verticalDramaEpisodesRouter = router({
         formatted.prompt = applyVideoPromptMotionSafetyFallback(
           formatted.prompt,
           providerMotionAssurance.blocking
+        );
+      }
+      const providerMotionAdvisories = [
+        ...providerMotionAssurance.warnings,
+        ...providerMotionAssurance.blocking,
+      ];
+      if (providerMotionAdvisories.length > 0) {
+        console.warn(
+          "[vd_video_render] motion assurance advisory; continuing",
+          {
+            seriesId,
+            episodeId,
+            clipNumber: input.clipNumber,
+            findingCodes: providerMotionAdvisories.map(finding => finding.code),
+          }
         );
       }
 

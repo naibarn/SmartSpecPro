@@ -21,17 +21,23 @@ vi.mock("../skillFiles", () => ({
 vi.mock("@smartspec/skills", () => ({
   parseSkillFile: vi.fn(),
 }));
-vi.mock("fs", async () => {
-  const actual = await vi.importActual<typeof import("fs")>("fs");
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
+  const mockExistsSync = vi.fn();
+  const mockReadFileSync = vi.fn((path: unknown) =>
+    String(path).includes("deployment-targets.json")
+      ? "{\"targets\":{}}"
+      : undefined
+  );
   return {
     ...actual,
     default: {
       ...actual,
-      existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      existsSync: mockExistsSync,
+      readFileSync: mockReadFileSync,
     },
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
   };
 });
 vi.mock("../enabledLlmModels", () => ({
@@ -83,7 +89,7 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
   ),
 }));
 
-import fs from "fs";
+import fs from "node:fs";
 import { parseSkillFile } from "@smartspec/skills";
 import {
   generateVerticalDramaShotVideoPrompt,
@@ -196,7 +202,10 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       "/fake/skills/vertical-drama-shot-video-prompt/skill.md",
     );
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockReadFileSync.mockImplementation((path =>
+      String(path).includes("deployment-targets.json")
+        ? "{\"targets\":{}}"
+        : "---\nname: test\n---\nSystem prompt body") as any);
     mockParseSkillFile.mockReturnValue({
       metadata: {} as any,
       content: "System prompt body",
@@ -308,6 +317,50 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     ).rejects.toBeInstanceOf(VdVisionRequiredError);
     expect(mockExecute).not.toHaveBeenCalled();
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("returns the video prompt with an advisory when the speaking face is hard to observe", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "A keeps the same identity while speaking in the corridor.",
+        dialogue: [{ lineTh: "อย่าไป", characterKey: "a" }],
+        frame_analysis: {
+          people: [
+            {
+              name: "A",
+              position: "center",
+              eyes_visible: "false",
+              face_size: "small",
+              overlapped_by_other_face: true,
+            },
+          ],
+          faces_separated: false,
+        },
+      }),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        characterReferenceImages: [
+          { characterKey: "a", name: "A", url: "https://example.com/a.png" },
+        ],
+        shotContext: {
+          description: "A speaks while standing in the corridor.",
+          camera: "steady vertical frame",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "อย่าไป", characterKey: "a" }],
+        },
+      }),
+    );
+
+    expect(result.prompt).toContain("keeps the same identity");
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("overlapping/ambiguous faces"),
+      ]),
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("embeds Thai dialogue verbatim instruction when the selected model has native audio and the shot has dialogue", async () => {

@@ -4848,21 +4848,15 @@ export function VerticalDramaStoryboardPanel({
           const enhancedReadiness = enhancedReadinessByShot[shotNumber];
           const enhancedButtonTitle = !asset?.url
             ? t2.generateShotVideoPromptNeedsImage
-            : speakerVisualBindingsNeedReview
-              ? t(
-                  locale,
-                  "เลือกคนที่ตรวจพบหรือบันทึกลักษณะคนพูดในภาพปัจจุบันให้ครบก่อน",
-                  "Select a detected person or save a visual description for every speaker in the current image first"
-                )
-              : enhancedReadiness?.ready === false
-                ? enhancedReadiness.reasons.join("; ")
-                : enhancedReadiness
-                  ? undefined
-                  : t(
-                      locale,
-                      "กำลังตรวจสอบความพร้อมของ Enhanced…",
-                      "Checking Enhanced readiness…"
-                    );
+            : enhancedReadiness?.ready === false
+              ? enhancedReadiness.reasons.join("; ")
+              : enhancedReadiness
+                ? undefined
+                : t(
+                    locale,
+                    "กำลังตรวจสอบความพร้อมของ Enhanced…",
+                    "Checking Enhanced readiness…"
+                  );
 
           return (
             <div
@@ -5672,15 +5666,15 @@ export function VerticalDramaStoryboardPanel({
                           className="gap-1 border-amber-400/70 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
                           title={t(
                             locale,
-                            "ต้องตรวจภาพปัจจุบันก่อนนำไปสร้างวิดีโอ",
-                            "The current video anchor must be checked before video generation"
+                            "ผลตรวจใบหน้าเป็นคำแนะนำด้านคุณภาพเท่านั้น สร้างวิดีโอต่อได้",
+                            "Face QC is an advisory quality signal; video generation can continue"
                           )}
                           data-testid={`vd-storyboard-video-safety-review-${shotNumber}`}
                         >
                           {t(
                             locale,
-                            "ต้องตรวจภาพก่อนทำวิดีโอ",
-                            "Review before video"
+                            "คำแนะนำ: ตรวจภาพใบหน้า",
+                            "Advisory: review faces"
                           )}
                         </Badge>
                       ) : null}
@@ -5692,8 +5686,8 @@ export function VerticalDramaStoryboardPanel({
                         >
                           {t(
                             locale,
-                            "ต้องระบุผู้พูดในภาพให้ครบ",
-                            "Map every speaker to a person in the image"
+                            "คำแนะนำ: ตรวจการจับคู่ผู้พูด",
+                            "Advisory: review speaker mapping"
                           )}
                         </Badge>
                       ) : null}
@@ -9020,19 +9014,12 @@ export function VerticalDramaStoryboardPanel({
                               }}
                               disabled={
                                 !asset?.url ||
-                                speakerVisualBindingsNeedReview ||
                                 generatingShotVideoPromptForShot.has(shotNumber)
                               }
                               title={
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
-                                  : speakerVisualBindingsNeedReview
-                                    ? t(
-                                        locale,
-                                        "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
-                                        "Map every speaker to a detected person in the current image first"
-                                      )
-                                    : !selectedVideoModelId
+                                  : !selectedVideoModelId
                                       ? t2.selectVideoModelFirst
                                       : undefined
                               }
@@ -9091,7 +9078,6 @@ export function VerticalDramaStoryboardPanel({
                                 }}
                                 disabled={
                                   !asset?.url ||
-                                  speakerVisualBindingsNeedReview ||
                                   enhancedGeneratingForShot.has(shotNumber) ||
                                   enhancedReadinessByShot[shotNumber]?.ready !==
                                     true
@@ -9139,10 +9125,7 @@ export function VerticalDramaStoryboardPanel({
                             >
                               {enhancedJobErrorByShot[shotNumber] ??
                                 (() => {
-                                  if (
-                                    !asset?.url ||
-                                    speakerVisualBindingsNeedReview
-                                  ) {
+                                  if (!asset?.url) {
                                     return enhancedButtonTitle;
                                   }
                                   const readiness =
@@ -9357,21 +9340,14 @@ export function VerticalDramaStoryboardPanel({
                                 }}
                                 disabled={
                                   !clip.prompt?.trim() ||
-                                  speakerVisualBindingsNeedReview ||
                                   generatingVideoClipForClip.has(
                                     clip.clipNumber
                                   )
                                 }
                                 title={
-                                  speakerVisualBindingsNeedReview
-                                    ? t(
-                                        locale,
-                                        "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
-                                        "Map every speaker to a detected person in the current image first"
-                                      )
-                                    : !selectedVideoModelId
-                                      ? t2.selectVideoModelFirst
-                                      : undefined
+                                  !selectedVideoModelId
+                                    ? t2.selectVideoModelFirst
+                                    : undefined
                                 }
                                 data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
                               >

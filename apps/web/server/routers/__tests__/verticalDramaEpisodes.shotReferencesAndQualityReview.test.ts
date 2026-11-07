@@ -111,6 +111,7 @@ vi.mock("../../services/creditService", () => ({
 
 vi.mock("../../_core/tokens", () => ({
   signBearerToken: vi.fn(() => "token"),
+  createInternalTokenFromAuth: vi.fn(() => "internal-token"),
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
@@ -539,6 +540,7 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
 
 vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: vi.fn(),
+  resolveScreenCallerCharacterNames: vi.fn((refs: string[] = []) => refs),
 }));
 
 // `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
@@ -557,6 +559,7 @@ const { mockEnsurePromptWithinLimit } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/verticalDramaPromptQc", () => ({
   ensurePromptWithinLimit: mockEnsurePromptWithinLimit,
+  extractCustomCharacterIdentityLockFragments: vi.fn(() => []),
   mergeImageNegativePromptIntoPrompt: vi.fn(
     (prompt: string, negativePrompt?: string) =>
       negativePrompt?.trim() ? `${prompt}\n${negativePrompt.trim()}` : prompt,
@@ -4452,6 +4455,227 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 
+  const multiCharacterFaceAdvisoryCases = [
+    {
+      name: "missing_qc",
+      enabled: true,
+      flagsUnavailable: false,
+      videoSafety: undefined,
+      advisoryReason: "missing_qc",
+    },
+    {
+      name: "stale_qc",
+      enabled: true,
+      flagsUnavailable: false,
+      videoSafety: {
+        analyzedAssetId: "899",
+        video_safe_verdict: "safe" as const,
+        faces_separated: true,
+        characters: [],
+      },
+      advisoryReason: "stale_qc",
+    },
+    {
+      name: "risky_qc",
+      enabled: true,
+      flagsUnavailable: false,
+      videoSafety: {
+        analyzedAssetId: "900",
+        video_safe_verdict: "risky" as const,
+        faces_separated: true,
+        characters: [],
+      },
+      advisoryReason: "unsafe_verdict",
+    },
+    {
+      name: "incomplete_qc",
+      enabled: true,
+      flagsUnavailable: false,
+      videoSafety: {
+        analyzedAssetId: "900",
+        video_safe_verdict: "safe" as const,
+        faces_separated: false,
+        characters: [],
+      },
+      advisoryReason: "incomplete_evidence",
+    },
+    {
+      name: "feature_off",
+      enabled: false,
+      flagsUnavailable: false,
+      videoSafety: undefined,
+      advisoryReason: null,
+    },
+    {
+      name: "feature_flag_unavailable",
+      enabled: true,
+      flagsUnavailable: true,
+      videoSafety: undefined,
+      advisoryReason: null,
+    },
+  ] as const;
+
+  it.each(multiCharacterFaceAdvisoryCases)(
+    "continues paid video generation with multi-character face QC $name",
+    async ({ enabled, flagsUnavailable, videoSafety, advisoryReason }) => {
+      if (flagsUnavailable) {
+        mockGetTenantFeatureFlags.mockRejectedValue(
+          new Error("feature flags temporarily unavailable")
+        );
+      } else {
+        mockGetTenantFeatureFlags.mockResolvedValue({
+          verticalDramaVideoSafeStartFrames: enabled,
+        } as any);
+      }
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const row = {
+        ...episodeRowWithPack(),
+        startFramePlan: {
+          frames: [
+            {
+              shotNumber: 1,
+              requiredCharacterRefs: ["character-a", "character-b"],
+              approvedMediaAssetId: "900",
+              ...(videoSafety ? { videoSafety } : {}),
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ title: "Series 10" }])) // loadOwnedSeriesTitle
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolve current start-frame asset
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 900,
+              mimeType: "image/png",
+              originalUrl: "https://cdn/900.png",
+              storageKey: null,
+              checksumSha256: null,
+              updatedAt: null,
+            },
+          ])
+        ) // resolve current start-frame media metadata
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 1,
+              characterKey: "character-a",
+              name: "Character A",
+              role: null,
+              data: null,
+              sharesFaceWithCharacterId: null,
+              parentCharacterId: null,
+            },
+            {
+              id: 2,
+              characterKey: "character-b",
+              name: "Character B",
+              role: null,
+              data: null,
+              sharesFaceWithCharacterId: null,
+              parentCharacterId: null,
+            },
+          ])
+        ) // resolve selected character identity sources
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const result = await router.generateVideoClip({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+        });
+
+        expect(result.taskId).toBe("task-1");
+        expect(mockGenerateVideoAsync).toHaveBeenCalled();
+        const advisoryWarning = warn.mock.calls.find(
+          ([message]) =>
+            message ===
+            "[vd_video_render] face-observability advisory; continuing with the selected video path"
+        );
+        if (advisoryReason) {
+          expect(advisoryWarning?.[1]).toEqual(
+            expect.objectContaining({ reason: advisoryReason, clipNumber: 1 })
+          );
+      } else {
+        expect(advisoryWarning).toBeUndefined();
+      }
+      if (flagsUnavailable) {
+        expect(
+          warn.mock.calls.some(
+            ([message]) =>
+              message ===
+              "[vd_video_render] face-observability flag unavailable; continuing"
+          )
+        ).toBe(true);
+      }
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
+
+  it("still rejects an unverified start-frame asset after treating missing face QC as advisory", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaVideoSafeStartFrames: true,
+    } as any);
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 1,
+      nativeAudioDialogue: false,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...episodeRowWithPack(),
+            startFramePlan: {
+              frames: [
+                {
+                  shotNumber: 1,
+                  requiredCharacterRefs: ["character-a", "character-b"],
+                  approvedMediaAssetId: "900",
+                },
+              ],
+            },
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ title: "Series 10" }])) // loadOwnedSeriesTitle
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolve current start-frame asset URL
+      .mockReturnValueOnce(selectChain([])); // verified media metadata missing
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await expect(
+        router.generateVideoClip({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: "ไม่พบภาพ Start frame ที่พร้อมใช้งานจริง",
+      });
+      expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("keeps all references and reports trimmedReferenceCount 0 when within the model's maxReferenceImages", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,
@@ -4730,9 +4954,22 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     mockShotReferencesService.listForShot.mockResolvedValue([]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ title: "Series 10" }])) // loadOwnedSeriesTitle
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
       ) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 900,
+            mimeType: "image/png",
+            originalUrl: "https://cdn/900.png",
+            storageKey: null,
+            checksumSha256: null,
+            updatedAt: null,
+          },
+        ])
+      ) // resolve start-frame media metadata
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
     await router.generateVideoClip({

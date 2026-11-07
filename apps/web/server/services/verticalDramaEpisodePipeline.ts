@@ -8466,21 +8466,34 @@ export class VerticalDramaEpisodePipeline {
           .where(eq(verticalDramaRunArtifacts.id, artifact.id));
       }
     } catch (error) {
-      status = "failed";
-      nextAction = "repair";
-      errors.push({
-        code: "VD_ASSURANCE_ROUTE_FINAL_GATE_FAILED",
+      // This assurance pass only adds optional lineage to an artifact that
+      // has already been persisted and passed the stage's actual domain/QC
+      // checks. Its availability cannot change the media-stage result.
+      warnings.push({
+        code: "VD_ASSURANCE_ADVISORY_UNAVAILABLE",
+        severity: "warning",
         message:
-          error instanceof Error
-            ? error.message
-            : "Route assurance final gate failed",
-        repairable: true,
+          "Optional production assurance was unavailable; the persisted stage output remains available.",
+        targetStage: stage,
+        repairable: false,
+      });
+      console.warn("[vd_pipeline] optional assurance unavailable", {
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        stage,
+        errorType: error instanceof Error ? error.name.slice(0, 64) : "unknown",
       });
     }
     const artifactIds = [String(artifact.id)];
     await db
       .update(verticalDramaEpisodeRuns)
-      .set({ artifactIds })
+      .set({
+        artifactIds,
+        status,
+        nextAction,
+        warnings,
+        errors,
+      })
       .where(eq(verticalDramaEpisodeRuns.id, runId));
 
     // Manual approval was removed from the product workflow (2026-07-07):
