@@ -24,6 +24,12 @@
       "next_action": "Start section-03-provider-capability-routing: close duration/resolution capability validation gaps and prove authorized fallback behavior against current registry facts.",
       "checkpoint_sha": "c431c4110732b985de195504e6e4dfb627a2ed27",
       "merged_main_sha": "c431c4110732b985de195504e6e4dfb627a2ed27"
+    },
+    "section-03-provider-capability-routing": {
+      "status": "checkpointed",
+      "next_action": "Finish section-04-preview-presets-and-approvals, then begin P2 advisory QC and asset-preservation sections.",
+      "checkpoint_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1",
+      "merged_main_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1"
     }
   },
   "pre_commit": {
@@ -35,12 +41,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T06:39:04.323681+00:00",
-  "generation": 5,
-  "updated_at": "2026-11-07T07:43:15.714673+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-07T07:49:18.262391+00:00",
   "progress": {
-    "active_section": "section-02-visual-canon-and-frame-planning",
-    "next_action": "Start section-03-provider-capability-routing: close duration/resolution capability validation gaps and prove authorized fallback behavior against current registry facts.",
-    "merged_main_sha": "c431c4110732b985de195504e6e4dfb627a2ed27",
+    "active_section": "section-03-provider-capability-routing",
+    "next_action": "Finish section-04-preview-presets-and-approvals, then begin P2 advisory QC and asset-preservation sections.",
+    "merged_main_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1",
     "gaps": [
       "Live browser/provider E2E for the end-to-end optional CPE chain remains unverified and belongs to later acceptance."
     ]
