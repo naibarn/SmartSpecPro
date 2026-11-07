@@ -17,6 +17,16 @@
       "next_action": "Start section-02-successful-asset-version-preservation: trace manual repair candidate promotion, failed provider outcomes, and owner-scoped asset version/readability semantics.",
       "checkpoint_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e",
       "merged_main_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e"
+    },
+    "section-02-successful-asset-version-preservation": {
+      "status": "checkpointed",
+      "next_action": "Start section-03-partial-assembly-and-truthful-fallback: verify partial assembly includes only ready clips, accurately labels the result, and does not block existing media output.",
+      "checkpoint_sha": "58cfe90c556974499302458c895c009fc1909800",
+      "merged_main_sha": "58cfe90c556974499302458c895c009fc1909800"
+    },
+    "section-03-partial-assembly-and-truthful-fallback": {
+      "status": "in_progress",
+      "next_action": "Inspect assembly readiness, partial export, and fallback labels; add proof that ready media stays usable while unavailable clips are omitted and clearly labeled."
     }
   },
   "pre_commit": {
@@ -28,11 +38,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T07:52:58.823236+00:00",
-  "generation": 3,
-  "updated_at": "2026-11-07T08:07:09.822264+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-07T08:36:48.116065+00:00",
   "progress": {
-    "active_section": "section-01-advisory-qc-status-and-ui",
-    "next_action": "Start section-02-successful-asset-version-preservation: trace manual repair candidate promotion, failed provider outcomes, and owner-scoped asset version/readability semantics.",
-    "merged_main_sha": "2f35972b04813ddf6507b5f3c9a6df76b0b82c3e"
+    "active_section": "section-03-partial-assembly-and-truthful-fallback",
+    "next_action": "Inspect assembly readiness, partial export, and fallback labels; add proof that ready media stays usable while unavailable clips are omitted and clearly labeled.",
+    "merged_main_sha": "58cfe90c556974499302458c895c009fc1909800"
   }
 }
