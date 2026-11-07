@@ -3947,6 +3947,12 @@ export default function MarketplaceCaptureProductDetail() {
   }, [historyTimeline]);
   const health = productData?.health;
   const insights = [...((productInsights.data as any[] | undefined) ?? [])];
+  const combinedOpportunityInsights = insights.filter(
+    insight => insight.insightType === "combined_opportunity"
+  );
+  const otherInsights = insights.filter(
+    insight => insight.insightType !== "combined_opportunity"
+  );
   const autoReviewRunItems = (autoReviewRuns.data ?? []) as any[];
   const stagedAutoReviewRunItems = autoReviewRunItems.filter(
     run =>
@@ -7648,6 +7654,392 @@ export default function MarketplaceCaptureProductDetail() {
             </dl>
           </section>
 
+          <section
+            className={`rounded-lg border bg-white p-6 shadow-sm transition ${isDropActive ? "border-sky-400 ring-4 ring-sky-100" : ""}`}
+            onDragOver={event => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "copy";
+              setIsDropActive(true);
+            }}
+            onDragLeave={() => setIsDropActive(false)}
+            onDrop={handleDropImage}
+          >
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+              multiple
+              className="hidden"
+              onChange={handleUploadProductImages}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Product Images</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Drag an image from the right panel here or upload files to
+                  attach them to this product. ใช้ไฟล์เดียวแบบ multi-view sheet
+                  ได้ ถ้าทุกมุมเป็นสินค้าชิ้น/รุ่น/สีเดียวกัน
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => uploadInputRef.current?.click()}
+                  disabled={isUploadingProductImage}
+                >
+                  {uploadMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Upload images
+                </Button>
+                <div className="rounded-full border bg-slate-50 px-3 py-1 text-xs text-slate-600">
+                  {images.length} images
+                </div>
+              </div>
+            </div>
+            {productImageOptions.length > 0 ? (
+              <div className="mt-4 max-h-[32rem] overflow-y-auto">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {productImageOptions.map((image, index) => {
+                    const imageId = image.id;
+                    const isSelected = selectedProductImageId === imageId;
+                    const isHero = Boolean(image.isHero);
+                    // Feature 136 (selection redesign, 2026-07-23) —
+                    // sequential-mode-only checkbox overlay.
+                    // `isAutoReviewAnchor` is the locked @Image1 anchor
+                    // (never a toggle); `isAutoReviewAngleAttached` reflects
+                    // real enrollment in `autoReviewProductAngleLabels`
+                    // (checkbox state), never a phantom default.
+                    const sequentialPickerActive =
+                      sequentialStrategyEnabled && sequentialStrategySelected;
+                    const isAutoReviewAnchor = Boolean(
+                      resolvedProductAnchorImage &&
+                      resolvedProductAnchorImage.id === imageId
+                    );
+                    const isAutoReviewAngleAttached =
+                      sequentialPickerActive &&
+                      !isAutoReviewAnchor &&
+                      autoReviewSelectedProductAngleImageIds.has(imageId);
+                    const currentAutoReviewAngleLabel =
+                      autoReviewProductAngleLabelsByImageId[imageId];
+                    // Bugfix (2026-07-23 follow-up to the checkbox redesign)
+                    // — clicking the image itself must toggle sequential
+                    // reference selection, not reassign the anchor
+                    // (`selectProductAnchor`, which is 3x3-mode-only now).
+                    // The locked anchor image is never toggle-able from the
+                    // card click; it only ever changes via "Set as Hero
+                    // image".
+                    const canToggleAutoReviewSelection =
+                      sequentialPickerActive && !isAutoReviewAnchor;
+                    const cardAriaLabel = sequentialPickerActive
+                      ? isAutoReviewAnchor
+                        ? hyperframesCopy.referenceAnchorAriaLabel(index + 1)
+                        : isAutoReviewAngleAttached
+                          ? hyperframesCopy.referenceDeselectAriaLabel(
+                              index + 1
+                            )
+                          : hyperframesCopy.referenceSelectAriaLabel(index + 1)
+                      : `Select product anchor image ${index + 1}. ${isSelected ? "Currently selected." : "Not selected."}`;
+                    return (
+                      <figure
+                        key={imageId}
+                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isHero ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : isAutoReviewAngleAttached ? "border-violet-500 bg-violet-50 ring-2 ring-violet-100" : "border-slate-200"}`}
+                      >
+                        <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                            onClick={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setPreviewAutoReviewImage({
+                                url: image.url,
+                                title: `Product image ${index + 1}`,
+                              });
+                            }}
+                            aria-label={`ดู product image ${index + 1} แบบเต็มจอ`}
+                            title="ดูภาพเต็มจอ"
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </button>
+                          <a
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                            href={image.url}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={event => event.stopPropagation()}
+                            aria-label={`ดาวน์โหลด product image ${index + 1}`}
+                            title="ดาวน์โหลดภาพ"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </div>
+                        <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1">
+                          {sequentialPickerActive ? (
+                            isAutoReviewAnchor ? (
+                              <span
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm"
+                                aria-hidden="true"
+                                title={hyperframesCopy.referenceAnchorBadge}
+                              >
+                                <CheckCircle2 className="h-5 w-5" />
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  toggleAutoReviewReferenceSelect(imageId);
+                                }}
+                                aria-pressed={isAutoReviewAngleAttached}
+                                aria-label={
+                                  isAutoReviewAngleAttached
+                                    ? hyperframesCopy.referenceDeselectAriaLabel(
+                                        index + 1
+                                      )
+                                    : hyperframesCopy.referenceSelectAriaLabel(
+                                        index + 1
+                                      )
+                                }
+                                title={
+                                  isAutoReviewAngleAttached
+                                    ? hyperframesCopy.referenceDeselectAriaLabel(
+                                        index + 1
+                                      )
+                                    : hyperframesCopy.referenceSelectAriaLabel(
+                                        index + 1
+                                      )
+                                }
+                                // Corner control was slate-400-on-white
+                                // (nearly invisible); now a bordered status
+                                // indicator that reads as "clickable to
+                                // select" even before hover, since the whole
+                                // card is also clickable in sequential mode.
+                                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1 ${isAutoReviewAngleAttached ? "border-violet-600 bg-violet-600 text-white hover:bg-violet-700" : "border-slate-300 bg-white text-slate-600 hover:border-violet-500 hover:text-violet-600"}`}
+                              >
+                                {isAutoReviewAngleAttached ? (
+                                  <CheckCircle2 className="h-5 w-5" />
+                                ) : (
+                                  <Circle className="h-5 w-5" />
+                                )}
+                              </button>
+                            )
+                          ) : null}
+                          {image.removableId ? (
+                            <button
+                              type="button"
+                              className="flex h-8 items-center justify-center rounded-full bg-white/95 px-2 text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
+                              onClick={event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                removeProductImage(image.removableId);
+                              }}
+                              disabled={removeProductImageMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">
+                                Remove product image {index + 1}
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (canToggleAutoReviewSelection) {
+                              toggleAutoReviewReferenceSelect(imageId);
+                              return;
+                            }
+                            if (!sequentialPickerActive) {
+                              selectProductAnchor(imageId);
+                            }
+                            // sequentialPickerActive && isAutoReviewAnchor:
+                            // locked anchor, no-op — change it via "Set as
+                            // Hero image" below instead.
+                          }}
+                          aria-pressed={
+                            sequentialPickerActive
+                              ? isAutoReviewAnchor
+                                ? undefined
+                                : isAutoReviewAngleAttached
+                              : isSelected
+                          }
+                          aria-label={cardAriaLabel}
+                          title={
+                            sequentialPickerActive ? cardAriaLabel : undefined
+                          }
+                          className={`block w-full rounded text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${sequentialPickerActive && isAutoReviewAnchor ? "cursor-default" : ""}`}
+                        >
+                          <div className="relative">
+                            <AuthenticatedMediaImage
+                              src={image.url}
+                              alt={`Product image ${index + 1}`}
+                              className="h-44 w-full object-contain"
+                              loading="lazy"
+                              onLoad={event =>
+                                rememberImageDimensions(image.id, event)
+                              }
+                            />
+                            {sequentialPickerActive &&
+                            isAutoReviewAngleAttached ? (
+                              <span className="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded bg-violet-600/95 px-2 py-1 text-xs font-semibold text-white shadow">
+                                <CheckCircle2
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden="true"
+                                />
+                                {hyperframesCopy.referenceSelectedBadge}
+                              </span>
+                            ) : null}
+                          </div>
+                          <figcaption className="mt-2 space-y-1 text-xs text-slate-500">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-slate-700">
+                                {productImageTypeLabel(image.type)}
+                              </span>
+                              <span className="shrink-0">
+                                {formatImageDimensions(
+                                  imageDimensions[image.id]
+                                )}
+                              </span>
+                            </div>
+                            {image.source ? (
+                              <span className="block truncate">
+                                {productImageSourceLabel(image.source)}
+                              </span>
+                            ) : null}
+                          </figcaption>
+                          {isSelected ? (
+                            <span className="mt-1 inline-block rounded bg-sky-700 px-2 py-0.5 text-xs text-white">
+                              Selected Anchor
+                            </span>
+                          ) : null}
+                          {isHero ? (
+                            <span className="ml-1 mt-1 inline-block rounded bg-emerald-700 px-2 py-0.5 text-xs text-white">
+                              Hero / Default
+                            </span>
+                          ) : null}
+                          {sequentialPickerActive && isAutoReviewAnchor ? (
+                            <>
+                              <span className="ml-1 mt-1 inline-block rounded bg-violet-600 px-2 py-0.5 text-xs text-white">
+                                {hyperframesCopy.referenceAnchorBadge}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-slate-500">
+                                {hyperframesCopy.referenceAnchorLockedHint}
+                              </span>
+                            </>
+                          ) : null}
+                        </button>
+                        {sequentialPickerActive && isAutoReviewAngleAttached ? (
+                          <div className="mt-2">
+                            <label
+                              className="sr-only"
+                              htmlFor={`auto-review-angle-${imageId}`}
+                            >
+                              {hyperframesCopy.referenceAngleSelectLabel}
+                            </label>
+                            <select
+                              id={`auto-review-angle-${imageId}`}
+                              value={currentAutoReviewAngleLabel ?? ""}
+                              onChange={event => {
+                                const value = event.target.value;
+                                handleAutoReviewAngleLabelChange(
+                                  imageId,
+                                  value
+                                    ? (value as SequentialAngleLabel)
+                                    : undefined
+                                );
+                              }}
+                              className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            >
+                              <option value="">
+                                {hyperframesCopy.referenceAutoAngleOption}
+                              </option>
+                              {SEQUENTIAL_ANGLE_LABELS.map(label => (
+                                <option key={label} value={label}>
+                                  {hyperframesCopy.angleChipLabels[label]}
+                                </option>
+                              ))}
+                            </select>
+                            {currentAutoReviewAngleLabel &&
+                            isSequentialEvidenceOnlyAngleLabel(
+                              currentAutoReviewAngleLabel
+                            ) ? (
+                              <span className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                {hyperframesCopy.referenceEvidenceOnly}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {image.removableId ? (
+                          <button
+                            type="button"
+                            className="mt-2 w-full rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-90"
+                            onClick={() =>
+                              setProductImageAsHero(image.removableId)
+                            }
+                            disabled={
+                              isHero || setProductHeroImageMutation.isPending
+                            }
+                          >
+                            {isHero
+                              ? "Hero image selected"
+                              : "Set as Hero image"}
+                          </button>
+                        ) : null}
+                      </figure>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg border border-dashed bg-slate-50 p-8 text-center text-sm text-slate-500">
+                Drop generated or library images here, or use Upload images to
+                add local product photos.
+              </div>
+            )}
+
+            {/* Feature 136 (section 11, selection redesign) — capacity meter
+                + trim warning + discoverability hint header strip, mounted
+                on the Product Images surface. The per-image checkbox +
+                optional angle select now live directly on each card above
+                (`toggleAutoReviewReferenceSelect` / `SEQUENTIAL_ANGLE_LABELS`
+                select wired to `handleAutoReviewAngleLabelChange`).
+                `capacity.modelCap` always comes from the server
+                (`plan.referenceCapacity`); this component never consults
+                the model registry. */}
+            <div className="mt-4">
+              <SequentialProductAngleChips
+                enabled={
+                  sequentialStrategyEnabled && sequentialStrategySelected
+                }
+                capacity={autoReviewReferenceCapacityMeter}
+                modelLabel={
+                  autoStoryboardOverrides.imageModel ||
+                  autoStoryboardPlan?.defaults.imageModel ||
+                  ""
+                }
+                showDiscoverabilityHint={
+                  productImageOptions.length > 1 &&
+                  autoReviewProductAngleLabels.length === 0
+                }
+              />
+            </div>
+          </section>
+          {combinedOpportunityInsights.length > 0 ? (
+            <MarketplaceInsightsSection
+              insights={combinedOpportunityInsights}
+              isLoading={productInsights.isLoading}
+              title="Video Opportunity"
+              emptyText="No combined opportunity insight has been generated for this product yet."
+            />
+          ) : null}
+
           {marketplaceIntelligenceEnabled ? (
             <section
               className="rounded-lg border border-sky-200 bg-white p-6 shadow-sm"
@@ -10050,383 +10442,7 @@ export default function MarketplaceCaptureProductDetail() {
             </section>
           ) : null}
 
-          <section
-            className={`rounded-lg border bg-white p-6 shadow-sm transition ${isDropActive ? "border-sky-400 ring-4 ring-sky-100" : ""}`}
-            onDragOver={event => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "copy";
-              setIsDropActive(true);
-            }}
-            onDragLeave={() => setIsDropActive(false)}
-            onDrop={handleDropImage}
-          >
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-              multiple
-              className="hidden"
-              onChange={handleUploadProductImages}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Product Images</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Drag an image from the right panel here or upload files to
-                  attach them to this product. ใช้ไฟล์เดียวแบบ multi-view sheet
-                  ได้ ถ้าทุกมุมเป็นสินค้าชิ้น/รุ่น/สีเดียวกัน
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => uploadInputRef.current?.click()}
-                  disabled={isUploadingProductImage}
-                >
-                  {uploadMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="mr-2 h-4 w-4" />
-                  )}
-                  Upload images
-                </Button>
-                <div className="rounded-full border bg-slate-50 px-3 py-1 text-xs text-slate-600">
-                  {images.length} images
-                </div>
-              </div>
-            </div>
-            {productImageOptions.length > 0 ? (
-              <div className="mt-4 max-h-[32rem] overflow-y-auto">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {productImageOptions.map((image, index) => {
-                    const imageId = image.id;
-                    const isSelected = selectedProductImageId === imageId;
-                    const isHero = Boolean(image.isHero);
-                    // Feature 136 (selection redesign, 2026-07-23) —
-                    // sequential-mode-only checkbox overlay.
-                    // `isAutoReviewAnchor` is the locked @Image1 anchor
-                    // (never a toggle); `isAutoReviewAngleAttached` reflects
-                    // real enrollment in `autoReviewProductAngleLabels`
-                    // (checkbox state), never a phantom default.
-                    const sequentialPickerActive =
-                      sequentialStrategyEnabled && sequentialStrategySelected;
-                    const isAutoReviewAnchor = Boolean(
-                      resolvedProductAnchorImage &&
-                      resolvedProductAnchorImage.id === imageId
-                    );
-                    const isAutoReviewAngleAttached =
-                      sequentialPickerActive &&
-                      !isAutoReviewAnchor &&
-                      autoReviewSelectedProductAngleImageIds.has(imageId);
-                    const currentAutoReviewAngleLabel =
-                      autoReviewProductAngleLabelsByImageId[imageId];
-                    // Bugfix (2026-07-23 follow-up to the checkbox redesign)
-                    // — clicking the image itself must toggle sequential
-                    // reference selection, not reassign the anchor
-                    // (`selectProductAnchor`, which is 3x3-mode-only now).
-                    // The locked anchor image is never toggle-able from the
-                    // card click; it only ever changes via "Set as Hero
-                    // image".
-                    const canToggleAutoReviewSelection =
-                      sequentialPickerActive && !isAutoReviewAnchor;
-                    const cardAriaLabel = sequentialPickerActive
-                      ? isAutoReviewAnchor
-                        ? hyperframesCopy.referenceAnchorAriaLabel(index + 1)
-                        : isAutoReviewAngleAttached
-                          ? hyperframesCopy.referenceDeselectAriaLabel(
-                              index + 1
-                            )
-                          : hyperframesCopy.referenceSelectAriaLabel(index + 1)
-                      : `Select product anchor image ${index + 1}. ${isSelected ? "Currently selected." : "Not selected."}`;
-                    return (
-                      <figure
-                        key={imageId}
-                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isHero ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : isAutoReviewAngleAttached ? "border-violet-500 bg-violet-50 ring-2 ring-violet-100" : "border-slate-200"}`}
-                      >
-                        <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
-                          <button
-                            type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
-                            onClick={event => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              setPreviewAutoReviewImage({
-                                url: image.url,
-                                title: `Product image ${index + 1}`,
-                              });
-                            }}
-                            aria-label={`ดู product image ${index + 1} แบบเต็มจอ`}
-                            title="ดูภาพเต็มจอ"
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                          </button>
-                          <a
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
-                            href={image.url}
-                            download
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={event => event.stopPropagation()}
-                            aria-label={`ดาวน์โหลด product image ${index + 1}`}
-                            title="ดาวน์โหลดภาพ"
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </div>
-                        <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1">
-                          {sequentialPickerActive ? (
-                            isAutoReviewAnchor ? (
-                              <span
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm"
-                                aria-hidden="true"
-                                title={hyperframesCopy.referenceAnchorBadge}
-                              >
-                                <CheckCircle2 className="h-5 w-5" />
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={event => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  toggleAutoReviewReferenceSelect(imageId);
-                                }}
-                                aria-pressed={isAutoReviewAngleAttached}
-                                aria-label={
-                                  isAutoReviewAngleAttached
-                                    ? hyperframesCopy.referenceDeselectAriaLabel(
-                                        index + 1
-                                      )
-                                    : hyperframesCopy.referenceSelectAriaLabel(
-                                        index + 1
-                                      )
-                                }
-                                title={
-                                  isAutoReviewAngleAttached
-                                    ? hyperframesCopy.referenceDeselectAriaLabel(
-                                        index + 1
-                                      )
-                                    : hyperframesCopy.referenceSelectAriaLabel(
-                                        index + 1
-                                      )
-                                }
-                                // Corner control was slate-400-on-white
-                                // (nearly invisible); now a bordered status
-                                // indicator that reads as "clickable to
-                                // select" even before hover, since the whole
-                                // card is also clickable in sequential mode.
-                                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1 ${isAutoReviewAngleAttached ? "border-violet-600 bg-violet-600 text-white hover:bg-violet-700" : "border-slate-300 bg-white text-slate-600 hover:border-violet-500 hover:text-violet-600"}`}
-                              >
-                                {isAutoReviewAngleAttached ? (
-                                  <CheckCircle2 className="h-5 w-5" />
-                                ) : (
-                                  <Circle className="h-5 w-5" />
-                                )}
-                              </button>
-                            )
-                          ) : null}
-                          {image.removableId ? (
-                            <button
-                              type="button"
-                              className="flex h-8 items-center justify-center rounded-full bg-white/95 px-2 text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
-                              onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                removeProductImage(image.removableId);
-                              }}
-                              disabled={removeProductImageMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">
-                                Remove product image {index + 1}
-                              </span>
-                            </button>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (canToggleAutoReviewSelection) {
-                              toggleAutoReviewReferenceSelect(imageId);
-                              return;
-                            }
-                            if (!sequentialPickerActive) {
-                              selectProductAnchor(imageId);
-                            }
-                            // sequentialPickerActive && isAutoReviewAnchor:
-                            // locked anchor, no-op — change it via "Set as
-                            // Hero image" below instead.
-                          }}
-                          aria-pressed={
-                            sequentialPickerActive
-                              ? isAutoReviewAnchor
-                                ? undefined
-                                : isAutoReviewAngleAttached
-                              : isSelected
-                          }
-                          aria-label={cardAriaLabel}
-                          title={
-                            sequentialPickerActive ? cardAriaLabel : undefined
-                          }
-                          className={`block w-full rounded text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${sequentialPickerActive && isAutoReviewAnchor ? "cursor-default" : ""}`}
-                        >
-                          <div className="relative">
-                            <AuthenticatedMediaImage
-                              src={image.url}
-                              alt={`Product image ${index + 1}`}
-                              className="h-44 w-full object-contain"
-                              loading="lazy"
-                              onLoad={event =>
-                                rememberImageDimensions(image.id, event)
-                              }
-                            />
-                            {sequentialPickerActive &&
-                            isAutoReviewAngleAttached ? (
-                              <span className="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded bg-violet-600/95 px-2 py-1 text-xs font-semibold text-white shadow">
-                                <CheckCircle2
-                                  className="h-3.5 w-3.5"
-                                  aria-hidden="true"
-                                />
-                                {hyperframesCopy.referenceSelectedBadge}
-                              </span>
-                            ) : null}
-                          </div>
-                          <figcaption className="mt-2 space-y-1 text-xs text-slate-500">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-slate-700">
-                                {productImageTypeLabel(image.type)}
-                              </span>
-                              <span className="shrink-0">
-                                {formatImageDimensions(
-                                  imageDimensions[image.id]
-                                )}
-                              </span>
-                            </div>
-                            {image.source ? (
-                              <span className="block truncate">
-                                {productImageSourceLabel(image.source)}
-                              </span>
-                            ) : null}
-                          </figcaption>
-                          {isSelected ? (
-                            <span className="mt-1 inline-block rounded bg-sky-700 px-2 py-0.5 text-xs text-white">
-                              Selected Anchor
-                            </span>
-                          ) : null}
-                          {isHero ? (
-                            <span className="ml-1 mt-1 inline-block rounded bg-emerald-700 px-2 py-0.5 text-xs text-white">
-                              Hero / Default
-                            </span>
-                          ) : null}
-                          {sequentialPickerActive && isAutoReviewAnchor ? (
-                            <>
-                              <span className="ml-1 mt-1 inline-block rounded bg-violet-600 px-2 py-0.5 text-xs text-white">
-                                {hyperframesCopy.referenceAnchorBadge}
-                              </span>
-                              <span className="mt-1 block text-[11px] text-slate-500">
-                                {hyperframesCopy.referenceAnchorLockedHint}
-                              </span>
-                            </>
-                          ) : null}
-                        </button>
-                        {sequentialPickerActive && isAutoReviewAngleAttached ? (
-                          <div className="mt-2">
-                            <label
-                              className="sr-only"
-                              htmlFor={`auto-review-angle-${imageId}`}
-                            >
-                              {hyperframesCopy.referenceAngleSelectLabel}
-                            </label>
-                            <select
-                              id={`auto-review-angle-${imageId}`}
-                              value={currentAutoReviewAngleLabel ?? ""}
-                              onChange={event => {
-                                const value = event.target.value;
-                                handleAutoReviewAngleLabelChange(
-                                  imageId,
-                                  value
-                                    ? (value as SequentialAngleLabel)
-                                    : undefined
-                                );
-                              }}
-                              className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                            >
-                              <option value="">
-                                {hyperframesCopy.referenceAutoAngleOption}
-                              </option>
-                              {SEQUENTIAL_ANGLE_LABELS.map(label => (
-                                <option key={label} value={label}>
-                                  {hyperframesCopy.angleChipLabels[label]}
-                                </option>
-                              ))}
-                            </select>
-                            {currentAutoReviewAngleLabel &&
-                            isSequentialEvidenceOnlyAngleLabel(
-                              currentAutoReviewAngleLabel
-                            ) ? (
-                              <span className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                {hyperframesCopy.referenceEvidenceOnly}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {image.removableId ? (
-                          <button
-                            type="button"
-                            className="mt-2 w-full rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-90"
-                            onClick={() =>
-                              setProductImageAsHero(image.removableId)
-                            }
-                            disabled={
-                              isHero || setProductHeroImageMutation.isPending
-                            }
-                          >
-                            {isHero
-                              ? "Hero image selected"
-                              : "Set as Hero image"}
-                          </button>
-                        ) : null}
-                      </figure>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="mt-4 rounded-lg border border-dashed bg-slate-50 p-8 text-center text-sm text-slate-500">
-                Drop generated or library images here, or use Upload images to
-                add local product photos.
-              </div>
-            )}
-
-            {/* Feature 136 (section 11, selection redesign) — capacity meter
-                + trim warning + discoverability hint header strip, mounted
-                on the Product Images surface. The per-image checkbox +
-                optional angle select now live directly on each card above
-                (`toggleAutoReviewReferenceSelect` / `SEQUENTIAL_ANGLE_LABELS`
-                select wired to `handleAutoReviewAngleLabelChange`).
-                `capacity.modelCap` always comes from the server
-                (`plan.referenceCapacity`); this component never consults
-                the model registry. */}
-            <div className="mt-4">
-              <SequentialProductAngleChips
-                enabled={
-                  sequentialStrategyEnabled && sequentialStrategySelected
-                }
-                capacity={autoReviewReferenceCapacityMeter}
-                modelLabel={
-                  autoStoryboardOverrides.imageModel ||
-                  autoStoryboardPlan?.defaults.imageModel ||
-                  ""
-                }
-                showDiscoverabilityHint={
-                  productImageOptions.length > 1 &&
-                  autoReviewProductAngleLabels.length === 0
-                }
-              />
-            </div>
-
+          <section className="rounded-lg border bg-white p-6 shadow-sm">
             {history.length > 0 ? (
               <>
                 <h2 className="mt-8 text-lg font-semibold">Update History</h2>
@@ -10616,7 +10632,7 @@ export default function MarketplaceCaptureProductDetail() {
             </details>
           </section>
           <MarketplaceInsightsSection
-            insights={insights}
+            insights={otherInsights}
             isLoading={productInsights.isLoading}
             emptyText="No AI insights have been synced for this product or its source capture yet."
             allowStorytellingAction
