@@ -5,7 +5,7 @@ Feature 175 — Vertical Drama Native Audio & Cinematic Sound Design Pipeline
 
 This script performs:
 1. Audio extraction from MP4 video
-2. Stem separation via Demucs v4 (vocals vs. no_vocals / foley+ambience)
+2. Stem separation via Demucs v4 (vocals vs. no_vocals combined accompaniment)
 3. Dialogue replacement with clean synthesized TTS audio
 4. Remuxing with original video stream (-c:v copy) to preserve original video frames 100%
 """
@@ -40,7 +40,7 @@ def check_demucs_available():
 
 def separate_stems_demucs(input_wav: Path, output_dir: Path, model_name="htdemucs"):
     """
-    Separates input_wav into vocals and no_vocals using Demucs v4.
+    Separates input_wav into vocals and combined non-vocal accompaniment using Demucs v4.
     """
     demucs_cmd = [
         sys.executable,
@@ -128,7 +128,7 @@ def main():
     except RuntimeError as exc:
         fail("DEMUCS_SEPARATION_FAILED", str(exc))
 
-    # Step 3: Mix new speech with the separated ambience / Foley bed.
+    # Step 3: Mix new speech with the combined non-vocal accompaniment bed.
     final_audio = workspace / "final_mixed_audio.wav"
     mix_cmd = [
         "ffmpeg", "-y",

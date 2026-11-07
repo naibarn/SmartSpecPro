@@ -1,163 +1,66 @@
-import { useState, useEffect } from "react";
-
-export interface DemucsStatus {
-  demucsInstalled: boolean;
-  engine: string;
-  pythonVersion?: string;
-}
-
 export function AudioStudioSettingsCard({ locale }: { locale: "th" | "en" }) {
-  const [status, setStatus] = useState<DemucsStatus>({
-    demucsInstalled: false,
-    engine: "ffmpeg_direct_fallback",
-    pythonVersion: "3.13.5",
-  });
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [message, setMessage] = useState<string>("");
-
-  useEffect(() => {
-    // In production desktop worker app, queries status from local backend or python runner
-    // Default simulated detection or real status
-    try {
-      const stored = localStorage.getItem("smartspec_demucs_installed");
-      if (stored === "true") {
-        setStatus({
-          demucsInstalled: true,
-          engine: "demucs_v4_htdemucs",
-          pythonVersion: "3.13.5",
-        });
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const handleInstallDemucs = async () => {
-    setIsInstalling(true);
-    setMessage(
-      locale === "th"
-        ? "กำลังดาวน์โหลดและติดตั้ง Demucs v4 ด้วย uv (กำลังจัดเตรียมโมเดล htdemucs)..."
-        : "Downloading and installing Demucs v4 via uv (staging htdemucs model)..."
-    );
-
-    // Simulate / execute installation process
-    setTimeout(() => {
-      setIsInstalling(false);
-      setStatus({
-        demucsInstalled: true,
-        engine: "demucs_v4_htdemucs",
-        pythonVersion: "3.13.5",
-      });
-      localStorage.setItem("smartspec_demucs_installed", "true");
-      setMessage(
-        locale === "th"
-          ? "ติดตั้ง Demucs v4 สำเร็จ พร้อมใช้งานแยกแทร็กเสียงพูดและเสียงบรรยากาศแล้ว"
-          : "Demucs v4 installed successfully. Ready for vocal and ambience stem separation."
-      );
-    }, 2500);
-  };
-
-  const handleTestSeparation = () => {
-    setMessage(
-      locale === "th"
-        ? "ทดสอบแยกแทร็กเสียงสำเร็จ: Vocals (-0.8 dB) / Foley & Ambience (-14 LUFS) พร้อมใช้งาน"
-        : "Test separation succeeded: Vocals (-0.8 dB) / Foley & Ambience (-14 LUFS) ready"
-    );
-  };
+  const isThai = locale === "th";
 
   return (
     <article className="panel wide settings-panel" data-testid="audio-studio-settings-card">
-      <div className="panel-heading">
-        <p className="eyebrow">{locale === "th" ? "AI Audio Engine" : "AI Audio Engine"}</p>
+      <header className="panel-heading">
+        <p className="eyebrow">AI Audio Engine</p>
         <h2>
-          {locale === "th"
+          {isThai
             ? "ระบบแยกแทร็กเสียงภาพยนตร์ (Demucs v4 Stem Separation)"
             : "Cinematic Audio Stem Separation (Demucs v4)"}
         </h2>
         <p className="subtle">
-          {locale === "th"
-            ? "โมเดล AI สำหรับแยกเสียงพูดตัวละครออกจากเสียงสิ่งแวดล้อม (Foley/Ambience) เพื่อใช้ในการซ่อมเสียงเฉพาะจุดใน Vertical Drama"
-            : "AI model to isolate dialogue vocals from background Foley & Ambience for surgical repairs in Vertical Drama"}
+          {isThai
+            ? "Demucs แยกเสียงร้องออกจากเสียงประกอบรวม ไม่ได้แยก Foley และ Ambience เป็นคนละแทร็ก"
+            : "Demucs separates vocals from combined accompaniment; it does not split Foley and ambience into separate stems."}
         </p>
-      </div>
+      </header>
 
-      {message ? (
-        <p className={`connect-message ${status.demucsInstalled ? "success" : "info"}`}>
-          {message}
-        </p>
-      ) : null}
+      <p className="connect-message pending" role="status" data-testid="demucs-runtime-unverified">
+        {isThai
+          ? "หน้านี้ยังตรวจ ติดตั้ง หรือทดสอบ Demucs ในเครื่องไม่ได้ ระบบต้องตรวจ runtime บน audio worker เมื่อเริ่มงานซ่อมเสียง"
+          : "This screen cannot currently check, install, or test Demucs. The audio worker checks its runtime when an audio repair job starts."}
+      </p>
 
-      <div className="settings-grid">
+      <section className="settings-grid" aria-label={isThai ? "สถานะ Demucs" : "Demucs status"}>
         <label>
-          {locale === "th" ? "สถานะโมเดลในเครื่อง" : "Local Model Status"}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "3px 8px",
-                borderRadius: "4px",
-                fontSize: "12px",
-                fontWeight: 600,
-                backgroundColor: status.demucsInstalled ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                color: status.demucsInstalled ? "#10b981" : "#f59e0b",
-                border: `1px solid ${status.demucsInstalled ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
-              }}
-            >
-              {status.demucsInstalled
-                ? locale === "th"
-                  ? "พร้อมใช้งาน (Demucs v4 Active)"
-                  : "Ready (Demucs v4 Active)"
-                : locale === "th"
-                ? "ยังไม่ได้ติดตั้ง (ใช้โหมด Direct Fallback)"
-                : "Not Installed (Using Direct Fallback)"}
-            </span>
-            <span style={{ fontSize: "11px", color: "var(--muted, #888)" }}>
-              {status.demucsInstalled ? "htdemucs (Meta AI)" : "FFmpeg Stream Copy"}
-            </span>
-          </div>
-        </label>
-
-        <label>
-          {locale === "th" ? "สเปกที่รองรับ" : "Hardware Acceleration"}
+          {isThai ? "สถานะ runtime" : "Runtime status"}
           <input
             readOnly
-            value={
-              status.demucsInstalled
-                ? "PyTorch GPU / Apple Silicon MPS / Fast CPU"
-                : "Standard CPU (FFmpeg Direct Mux)"
-            }
+            value={isThai ? "ยังไม่ได้ตรวจสอบจากหน้านี้" : "Not verified from this screen"}
+            data-testid="demucs-runtime-status"
           />
         </label>
+        <label>
+          {isThai ? "เครื่องที่ใช้ประมวลผล" : "Execution host"}
+          <input
+            readOnly
+            value={isThai ? "ตรวจโดย audio worker เมื่อเริ่มงาน" : "Checked by the audio worker at job start"}
+          />
+        </label>
+      </section>
 
-        <div className="button-row" style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-          {!status.demucsInstalled ? (
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => void handleInstallDemucs()}
-              disabled={isInstalling}
-              data-testid="install-demucs-btn"
-            >
-              {isInstalling
-                ? locale === "th"
-                  ? "กำลังติดตั้ง..."
-                  : "Installing..."
-                : locale === "th"
-                ? "ติดตั้งโมเดล Demucs v4 (AI แยกเสียง)"
-                : "Install Demucs v4 (Stem Separation)"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleTestSeparation}
-              data-testid="test-demucs-btn"
-            >
-              {locale === "th" ? "ทดสอบแยกแทร็กเสียง" : "Test Stem Separation"}
-            </button>
-          )}
-        </div>
-      </div>
+      <section className="button-row" aria-label={isThai ? "การจัดการ Demucs" : "Demucs actions"}>
+        <button
+          type="button"
+          className="primary-button"
+          disabled
+          title={isThai ? "ยังไม่มีตัวติดตั้งเชื่อมกับ Worker App" : "No installer is connected to Worker App yet"}
+          data-testid="install-demucs-btn"
+        >
+          {isThai ? "ติดตั้ง Demucs v4 (ยังไม่พร้อม)" : "Install Demucs v4 (unavailable)"}
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled
+          title={isThai ? "ยังไม่มีการทดสอบแยกเสียงจริงจากหน้านี้" : "A real stem-separation test is not available from this screen"}
+          data-testid="test-demucs-btn"
+        >
+          {isThai ? "ทดสอบแยกแทร็กเสียง (ยังไม่พร้อม)" : "Test stem separation (unavailable)"}
+        </button>
+      </section>
     </article>
   );
 }
