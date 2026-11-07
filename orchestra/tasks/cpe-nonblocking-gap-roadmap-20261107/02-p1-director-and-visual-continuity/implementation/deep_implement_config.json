@@ -30,6 +30,12 @@
       "next_action": "Finish section-04-preview-presets-and-approvals, then begin P2 advisory QC and asset-preservation sections.",
       "checkpoint_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1",
       "merged_main_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1"
+    },
+    "section-04-preview-presets-and-approvals": {
+      "status": "checkpointed",
+      "next_action": "Start P2 section 01 advisory QC status and UI: inspect existing QC status/read paths and prove completed media remains available on advisory warning or QC failure.",
+      "checkpoint_sha": "7aec50c5c892c45dd10fc113f6c67b881ea60abe",
+      "merged_main_sha": "7aec50c5c892c45dd10fc113f6c67b881ea60abe"
     }
   },
   "pre_commit": {
@@ -41,12 +47,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-07T06:39:04.323681+00:00",
-  "generation": 7,
-  "updated_at": "2026-11-07T07:49:18.262391+00:00",
+  "generation": 9,
+  "updated_at": "2026-11-07T07:52:10.700834+00:00",
   "progress": {
-    "active_section": "section-03-provider-capability-routing",
-    "next_action": "Finish section-04-preview-presets-and-approvals, then begin P2 advisory QC and asset-preservation sections.",
-    "merged_main_sha": "dc4654c31e86dd64a9a0e4be7f6eb8d40c314bd1",
+    "active_section": "section-04-preview-presets-and-approvals",
+    "next_action": "Start P2 section 01 advisory QC status and UI: inspect existing QC status/read paths and prove completed media remains available on advisory warning or QC failure.",
+    "merged_main_sha": "7aec50c5c892c45dd10fc113f6c67b881ea60abe",
     "gaps": [
       "Live browser/provider E2E for the end-to-end optional CPE chain remains unverified and belongs to later acceptance."
     ]
