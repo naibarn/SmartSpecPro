@@ -424,6 +424,8 @@ export interface VerticalDramaMotionPromptClipDialogueLine {
 export interface VideoMotionPromptPackProjection {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** Source revision/fingerprint for the optional series visual canon used to author this pack. */
+  seriesVisualCanon?: { revision?: number; fingerprint: string };
   /** The language the video-clip prompt TEXT is written in — echoed straight through from the caller-supplied language plan (see `projectMotionPromptPack`'s `languagePlan` param). Absent when the caller supplied none (defaults are applied downstream, never baked in here). */
   promptLanguage?: VerticalDramaPromptLanguage;
   /** The language the character(s) SPEAK in the video — echoed straight through from the caller-supplied language plan. */
@@ -856,6 +858,18 @@ export interface GenerateVideoMotionPromptPackParams {
    * DIRECTION fact, no `audio_direction` requested).
    */
   nativeAudioEnabled?: boolean;
+  /** Optional, tenant-resolved series visual identity. Omitted when flags are off or identity is unavailable. */
+  seriesLookRegister?: {
+    styleName: string;
+    palette: string[];
+    lighting: string;
+    cameraGrammar: string;
+    environmentMotifs?: string[];
+    wardrobeGrammar?: string[];
+    signaturePropsAndCompanions?: string[];
+    revision?: number;
+    fingerprint: string;
+  };
   /**
    * Pack-parity follow-up — OPTIONAL best-effort start-frame images, one per
    * shot, so the LLM can read actual on-screen speaker position the same way
@@ -1084,6 +1098,10 @@ function buildUserPrompt(
   const episodePlanContextBlock = params.episodePlanContext
     ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
     : null;
+  const seriesLookRegister = params.seriesLookRegister;
+  const seriesLookBlock = seriesLookRegister
+    ? `SERIES LOOK REGISTER (secondary continuity baseline; the approved start-frame image and explicit shot/user edits remain authoritative; do not introduce an unrequested prop, wardrobe change, or location): revision=${seriesLookRegister.revision ?? "fingerprint-only"} style="${seriesLookRegister.styleName}" palette=[${seriesLookRegister.palette.join(", ")}] lighting="${seriesLookRegister.lighting}" camera="${seriesLookRegister.cameraGrammar}"${seriesLookRegister.environmentMotifs?.length ? ` environment=[${seriesLookRegister.environmentMotifs.join(", ")}]` : ""}${seriesLookRegister.wardrobeGrammar?.length ? ` wardrobe=[${seriesLookRegister.wardrobeGrammar.join(", ")}]` : ""}${seriesLookRegister.signaturePropsAndCompanions?.length ? ` signature_props=[${seriesLookRegister.signaturePropsAndCompanions.join(", ")}]` : ""}`
+    : null;
   const storySafety = analyzeVerticalDramaStorySafety({
     episodeTitle: params.episodeTitle,
     episodePlanContext: params.episodePlanContext,
@@ -1095,6 +1113,7 @@ function buildUserPrompt(
     `Episode duration: ${params.durationSeconds} seconds`,
     `Duration profile: ${params.durationProfileId}`,
     episodePlanContextBlock,
+    seriesLookBlock,
     storySafety.level === "medium"
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${storySafety.instruction}`
       : null,
@@ -1402,6 +1421,14 @@ export async function generateVideoMotionPromptPack(
       thaiAccent: params.thaiAccent,
     },
   );
+  if (params.seriesLookRegister) {
+    pack.seriesVisualCanon = {
+      ...(params.seriesLookRegister.revision !== undefined
+        ? { revision: params.seriesLookRegister.revision }
+        : {}),
+      fingerprint: params.seriesLookRegister.fingerprint,
+    };
+  }
 
   if (safetyWarnings.length > 0) {
     pack.warnings = safetyWarnings.map(message => ({

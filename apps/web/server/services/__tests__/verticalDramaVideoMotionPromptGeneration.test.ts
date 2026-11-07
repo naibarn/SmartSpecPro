@@ -28,10 +28,18 @@ vi.mock("fs", async () => {
     default: {
       ...actual,
       existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      readFileSync: vi.fn((filePath: unknown) =>
+        String(filePath).endsWith("deployment-targets.json")
+          ? JSON.stringify({ targets: {} })
+          : undefined,
+      ),
     },
     existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync: vi.fn((filePath: unknown) =>
+      String(filePath).endsWith("deployment-targets.json")
+        ? JSON.stringify({ targets: {} })
+        : undefined,
+    ),
   };
 });
 vi.mock("../verticalDramaStoryBible", async () => {
@@ -135,6 +143,7 @@ function baseParams(
     episodeTitle: "Episode 1",
     durationSeconds: 90,
     durationProfileId: "profile-90s",
+    episodeGenerationSettings: {},
     selectedVideoModelId: "kling-2.0",
     storyboardShots: Array.from({ length: 9 }, (_, i) => ({
       shotNumber: i + 1,
@@ -288,6 +297,53 @@ describe("generateVideoMotionPromptPack", () => {
     expect(userMessage.content).toContain("speak in English in this video");
     expect(result.pack.promptLanguage).toBe("ja");
     expect(result.pack.dialogueLanguage).toBe("en");
+  });
+
+  it("passes the optional revision-bound series look into video authoring and persists its fingerprint", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+    const result = await generateVideoMotionPromptPack(
+      baseParams({
+        seriesLookRegister: {
+          styleName: "Controlled atmospheric thriller",
+          palette: ["charcoal", "cold green", "aged amber"],
+          lighting: "motivated low-key light",
+          cameraGrammar: "precise tense composition",
+          environmentMotifs: ["weathered surfaces"],
+          wardrobeGrammar: ["subdued practical layers"],
+          signaturePropsAndCompanions: ["worn evidence objects"],
+          revision: 4,
+          fingerprint: "series-look-sha256",
+        },
+      }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    );
+    expect(userMessage.content).toContain("revision=4");
+    expect(userMessage.content).toContain("charcoal, cold green, aged amber");
+    expect(userMessage.content).toContain("motivated low-key light");
+    expect(userMessage.content).toContain("wardrobe=[subdued practical layers]");
+    expect(userMessage.content).toContain("approved start-frame image");
+    expect(result.pack.seriesVisualCanon).toEqual({
+      revision: 4,
+      fingerprint: "series-look-sha256",
+    });
+  });
+
+  it("omits visual canon entirely for legacy and feature-off calls", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+    const result = await generateVideoMotionPromptPack(baseParams());
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    );
+    expect(userMessage.content).not.toContain("SERIES LOOK REGISTER");
+    expect(result.pack).not.toHaveProperty("seriesVisualCanon");
   });
 
   it("supports the wider dialogueLanguage set (e.g. Hindi) beyond just th/en", async () => {

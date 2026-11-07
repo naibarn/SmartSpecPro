@@ -558,6 +558,64 @@ function setupWritePath() {
   mockDb.insert.mockReturnValue(insertChain([{ id: 1 }]));
 }
 
+describe("generated visual-plan compare-and-set persistence", () => {
+  it("keeps a start-frame plan changed while its prompt call was running", async () => {
+    const latestPlan = {
+      frames: [{ shotNumber: 1, imagePrompt: "user-edited prompt" }],
+    };
+    mockDb.update.mockReturnValueOnce(updateChain([]));
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ startFramePlan: latestPlan }]),
+    );
+
+    const result = await pipeline.persistStartFramePlanIfCurrent(
+      owner,
+      { shots: [{ shot_number: 1, visual_description: "original" }] },
+      { frames: [{ shotNumber: 1, imagePrompt: "prior prompt" }] },
+      { frames: [{ shotNumber: 1, imagePrompt: "new generated prompt" }] },
+    );
+
+    expect(result).toEqual({ persisted: false, currentPlan: latestPlan });
+    expect(mockDb.update.mock.results[0].value.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startFramePlan: expect.objectContaining({
+          frames: [{ shotNumber: 1, imagePrompt: "new generated prompt" }],
+        }),
+      }),
+    );
+  });
+
+  it("keeps newer video prompt and source edits instead of persisting a stale pack", async () => {
+    const latestPack = {
+      clips: [{ clipNumber: 1, prompt: "user-edited motion" }],
+    };
+    mockDb.update.mockReturnValueOnce(updateChain([]));
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ motionPromptPack: latestPack }]),
+    );
+
+    const result = await pipeline.persistMotionPromptPackIfCurrent(
+      owner,
+      {
+        storyboard: { shots: [{ shot_number: 1 }] },
+        startFramePlan: { frames: [{ shotNumber: 1 }] },
+        dialogueAudioPlan: { dialogueLines: [] },
+        motionPromptPack: { clips: [{ clipNumber: 1, prompt: "old" }] },
+      },
+      { clips: [{ clipNumber: 1, prompt: "generated from the old snapshot" }] },
+    );
+
+    expect(result).toEqual({ persisted: false, currentPack: latestPack });
+    expect(mockDb.update.mock.results[0].value.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        motionPromptPack: {
+          clips: [{ clipNumber: 1, prompt: "generated from the old snapshot" }],
+        },
+      }),
+    );
+  });
+});
+
 describe("runStage — storyboard_shotgrid real-generation branch calls reconcileEpisodeLocations after persist (Phase 2 location visual bible)", () => {
   it("calls reconcileEpisodeLocations(owner, distinctLocations) with the camelCase-mapped groups right after the storyboard persists, and the stage still succeeds", async () => {
     queueRunStageSelects();

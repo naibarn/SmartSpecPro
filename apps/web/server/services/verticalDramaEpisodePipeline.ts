@@ -16,6 +16,7 @@
  */
 
 import { and, asc, desc, eq, inArray, isNull, lt } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -68,7 +69,10 @@ import {
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
-import { resolveEffectiveSeriesVisualIdentity } from "@shared/verticalDramaSeries/seriesLookLock";
+import {
+  readSeriesLookLockControl,
+  resolveEffectiveSeriesVisualIdentity,
+} from "@shared/verticalDramaSeries/seriesLookLock";
 import { normalizeVerticalDramaBarrierDialogue } from "@shared/verticalDramaSeries/barrierDialogue";
 import {
   detectVerticalDramaDualViewIntent,
@@ -208,7 +212,10 @@ import {
   type CrossEpisodeWardrobeContext,
   type CrossEpisodeWardrobeHandoff,
 } from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
-import { stampArtifactForStoryboard } from "./verticalDramaStoryboardRevision";
+import {
+  computeStoryboardRevision,
+  stampArtifactForStoryboard,
+} from "./verticalDramaStoryboardRevision";
 import {
   generateEpisodeDialogueAudioPlan,
   buildDialogueAudioPlan,
@@ -3883,6 +3890,50 @@ function staleStoryboardGenerationWarning(): VerticalDramaWarning {
   };
 }
 
+function staleStartFrameGenerationWarning(): VerticalDramaWarning {
+  return {
+    code: "VD_START_FRAME_GENERATION_STALE",
+    severity: "warning",
+    message:
+      "A newer storyboard or start-frame edit was saved while planning was running; it was kept, and image/video stages can continue from that saved plan.",
+    targetStage: "start_frame_render_plan",
+    repairable: false,
+  };
+}
+
+function staleMotionPromptGenerationWarning(): VerticalDramaWarning {
+  return {
+    code: "VD_VIDEO_PROMPT_GENERATION_STALE",
+    severity: "warning",
+    message:
+      "A newer storyboard, start-frame, dialogue, or video-prompt edit was saved while planning was running; it was kept, and video work can continue from that saved prompt pack.",
+    targetStage: "video_motion_prompt_pack",
+    repairable: false,
+  };
+}
+
+function buildSeriesLookRegister(
+  identity: NonNullable<ReturnType<typeof resolveEffectiveSeriesVisualIdentity>>,
+  bible: unknown
+) {
+  const control = readSeriesLookLockControl(
+    (bible as Record<string, unknown> | null)?.lookLockControl
+  );
+  return {
+    styleName: identity.styleName,
+    palette: identity.palette,
+    lighting: identity.lighting,
+    cameraGrammar: identity.cameraGrammar,
+    environmentMotifs: identity.environmentMotifs,
+    wardrobeGrammar: identity.wardrobeGrammar,
+    signaturePropsAndCompanions: identity.signaturePropsAndCompanions,
+    ...(control ? { revision: control.revision } : {}),
+    fingerprint: createHash("sha256")
+      .update(JSON.stringify(identity))
+      .digest("hex"),
+  };
+}
+
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
@@ -4022,6 +4073,97 @@ export class VerticalDramaEpisodePipeline {
       .limit(1);
     if (!row) throw new Error("vertical_drama_episode_not_found");
     return row;
+  }
+
+  private async persistStartFramePlanIfCurrent(
+    owner: EpisodeRunOwner,
+    expectedStoryboard: unknown,
+    expectedStartFramePlan: unknown,
+    nextPlan: StartFrameRenderPlanProjection
+  ): Promise<{ persisted: boolean; currentPlan: unknown }> {
+    const ownerWhere = and(
+      eq(verticalDramaEpisodes.id, owner.episodeId),
+      eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+      eq(verticalDramaEpisodes.userId, owner.userId),
+      eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+    );
+    const expectedStoryboardWhere =
+      expectedStoryboard === null || expectedStoryboard === undefined
+        ? isNull(verticalDramaEpisodes.storyboard)
+        : eq(verticalDramaEpisodes.storyboard, expectedStoryboard);
+    const expectedPlanWhere =
+      expectedStartFramePlan === null || expectedStartFramePlan === undefined
+        ? isNull(verticalDramaEpisodes.startFramePlan)
+        : eq(verticalDramaEpisodes.startFramePlan, expectedStartFramePlan);
+    const [updated] = await db
+      .update(verticalDramaEpisodes)
+      .set({ startFramePlan: nextPlan, updatedAt: new Date() })
+      .where(and(ownerWhere, expectedStoryboardWhere, expectedPlanWhere))
+      .returning({ id: verticalDramaEpisodes.id });
+    if (updated) return { persisted: true, currentPlan: nextPlan };
+
+    const [current] = await db
+      .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+      .from(verticalDramaEpisodes)
+      .where(ownerWhere)
+      .limit(1);
+    if (!current) throw new Error("vertical_drama_episode_not_found");
+    return { persisted: false, currentPlan: current.startFramePlan };
+  }
+
+  private async persistMotionPromptPackIfCurrent(
+    owner: EpisodeRunOwner,
+    expected: Pick<
+      VerticalDramaEpisodeRow,
+      "storyboard" | "startFramePlan" | "dialogueAudioPlan" | "motionPromptPack"
+    >,
+    nextPack: Record<string, unknown>
+  ): Promise<{ persisted: boolean; currentPack: unknown }> {
+    const ownerWhere = and(
+      eq(verticalDramaEpisodes.id, owner.episodeId),
+      eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+      eq(verticalDramaEpisodes.userId, owner.userId),
+      eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+    );
+    const [updated] = await db
+      .update(verticalDramaEpisodes)
+      .set({ motionPromptPack: nextPack, updatedAt: new Date() })
+      .where(
+        and(
+          ownerWhere,
+          expected.storyboard === null || expected.storyboard === undefined
+            ? isNull(verticalDramaEpisodes.storyboard)
+            : eq(verticalDramaEpisodes.storyboard, expected.storyboard),
+          expected.startFramePlan === null ||
+          expected.startFramePlan === undefined
+            ? isNull(verticalDramaEpisodes.startFramePlan)
+            : eq(verticalDramaEpisodes.startFramePlan, expected.startFramePlan),
+          expected.dialogueAudioPlan === null ||
+          expected.dialogueAudioPlan === undefined
+            ? isNull(verticalDramaEpisodes.dialogueAudioPlan)
+            : eq(
+                verticalDramaEpisodes.dialogueAudioPlan,
+                expected.dialogueAudioPlan
+              ),
+          expected.motionPromptPack === null ||
+          expected.motionPromptPack === undefined
+            ? isNull(verticalDramaEpisodes.motionPromptPack)
+            : eq(
+                verticalDramaEpisodes.motionPromptPack,
+                expected.motionPromptPack
+              )
+        )
+      )
+      .returning({ id: verticalDramaEpisodes.id });
+    if (updated) return { persisted: true, currentPack: nextPack };
+
+    const [current] = await db
+      .select({ motionPromptPack: verticalDramaEpisodes.motionPromptPack })
+      .from(verticalDramaEpisodes)
+      .where(ownerWhere)
+      .limit(1);
+    if (!current) throw new Error("vertical_drama_episode_not_found");
+    return { persisted: false, currentPack: current.motionPromptPack };
   }
 
   /**
@@ -5534,6 +5676,7 @@ export class VerticalDramaEpisodePipeline {
           shots: Array<Record<string, any>>;
         },
         intents: sceneIntentResult.intent.shots,
+        sourceRevision: computeStoryboardRevision(generated.storyboard),
         validCharacterIds: sceneIntentCharacters.map(
           (character: { characterId: string }) => character.characterId,
         ),
@@ -6213,24 +6356,24 @@ export class VerticalDramaEpisodePipeline {
         };
       });
 
-    const sceneContinuityFlags =
-      sceneShotGroups.length > 0
-        ? await import("./tenantFeatureFlagService")
-            .then(({ getTenantFeatureFlags }) =>
-              getTenantFeatureFlags(owner.tenantId)
-            )
-            .catch(() => undefined)
-        : undefined;
+    const sceneContinuityFlags = await import("./tenantFeatureFlagService")
+      .then(({ getTenantFeatureFlags }) => getTenantFeatureFlags(owner.tenantId))
+      .catch(() => undefined);
     const sceneContinuityEnabled =
+      sceneShotGroups.length > 0 &&
       sceneContinuityFlags?.verticalDramaSceneContinuity === true;
+    const effectiveSeriesVisualIdentity = resolveEffectiveSeriesVisualIdentity({
+      bible,
+      presetMixEnabled:
+        sceneContinuityFlags?.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled:
+        sceneContinuityFlags?.verticalDramaSeriesLookLock === true,
+    });
+    const seriesLookRegister = effectiveSeriesVisualIdentity
+      ? buildSeriesLookRegister(effectiveSeriesVisualIdentity, bible)
+      : undefined;
     const sceneContinuitySeriesLook = sceneContinuityEnabled
-      ? resolveEffectiveSeriesVisualIdentity({
-          bible,
-          presetMixEnabled:
-            sceneContinuityFlags?.verticalDramaSeriesPresetMixV2 === true,
-          lookLockEnabled:
-            sceneContinuityFlags?.verticalDramaSeriesLookLock === true,
-        })
+      ? effectiveSeriesVisualIdentity
       : undefined;
     let sceneContinuityResolution:
       | Awaited<ReturnType<typeof resolveSceneContinuityLocks>>
@@ -6299,6 +6442,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
       imagePromptMaxChars,
+      seriesLookRegister,
       targetAudienceRegion,
       promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
@@ -6781,6 +6925,20 @@ export class VerticalDramaEpisodePipeline {
         )
       : undefined;
 
+    const motionFeatureFlags = await import("./tenantFeatureFlagService")
+      .then(({ getTenantFeatureFlags }) => getTenantFeatureFlags(owner.tenantId))
+      .catch(() => undefined);
+    const seriesVisualIdentity = resolveEffectiveSeriesVisualIdentity({
+      bible: episodePlanSeriesRow?.bible,
+      presetMixEnabled:
+        motionFeatureFlags?.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled:
+        motionFeatureFlags?.verticalDramaSeriesLookLock === true,
+    });
+    const seriesLookRegister = seriesVisualIdentity
+      ? buildSeriesLookRegister(seriesVisualIdentity, episodePlanSeriesRow?.bible)
+      : undefined;
+
     // Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
     // plan.md`, "pack bulk generator — out of scope" item, closed
     // 2026-07-22) — resolve the full video-model catalog row, the tenant's
@@ -6829,21 +6987,9 @@ export class VerticalDramaEpisodePipeline {
     const priorPersistedPack = episode.motionPromptPack as {
       nativeAudioEnabled?: boolean;
     } | null;
-    const nativeAudioEnabled = await (async () => {
-      try {
-        const { getTenantFeatureFlags } =
-          await import("./tenantFeatureFlagService");
-        const flags = await getTenantFeatureFlags(owner.tenantId).catch(
-          () => null
-        );
-        return (
-          flags?.verticalDramaSeriesNativeAudioPrompts === true &&
-          priorPersistedPack?.nativeAudioEnabled === true
-        );
-      } catch {
-        return false;
-      }
-    })();
+    const nativeAudioEnabled =
+      motionFeatureFlags?.verticalDramaSeriesNativeAudioPrompts === true &&
+      priorPersistedPack?.nativeAudioEnabled === true;
 
     // Optional start-frame vision — only shots with an APPROVED start-frame
     // render (ground truth, same "approved asset over free-text claim"
@@ -7190,6 +7336,7 @@ export class VerticalDramaEpisodePipeline {
       selectedVideoModelId: existingSelectedVideoModelId,
       selectedVideoModel,
       nativeAudioEnabled,
+      seriesLookRegister,
       startFrameImages,
       promptLanguage: existingLanguagePlan?.promptLanguage,
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
@@ -7999,19 +8146,23 @@ export class VerticalDramaEpisodePipeline {
           });
         }
 
-        payload = { stage, ...generated.plan };
-        // Persist to the episode's own `startFramePlan` jsonb column.
-        await db
-          .update(verticalDramaEpisodes)
-          .set({ startFramePlan: generated.plan, updatedAt: new Date() })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, owner.episodeId),
-              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-              eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-            )
-          );
+        const planPersist = await this.persistStartFramePlanIfCurrent(
+          owner,
+          episode.storyboard,
+          episode.startFramePlan,
+          generated.plan
+        );
+        if (planPersist.persisted) {
+          payload = { stage, ...generated.plan };
+        } else {
+          stageQcWarnings.push(staleStartFrameGenerationWarning());
+          payload =
+            planPersist.currentPlan &&
+            typeof planPersist.currentPlan === "object" &&
+            !Array.isArray(planPersist.currentPlan)
+              ? { stage, ...(planPersist.currentPlan as Record<string, unknown>) }
+              : { stage, staleGenerationDiscarded: true };
+        }
       } catch (error) {
         const genError = mapStartFrameGenerationError(error);
         const runId = await this.writeRunForStage(owner, stage, mode, opts, {
@@ -8171,29 +8322,36 @@ export class VerticalDramaEpisodePipeline {
         // image has already passed image safety/provider acceptance. They are
         // persisted for review, but must not turn an otherwise valid prompt
         // pack into a failed stage.
-        payload = {
-          stage,
-          ...generated.pack,
-          warnings: generated.pack.warnings ?? [],
-        };
-        // Persist to the episode's own `motionPromptPack` jsonb column.
-        await db
-          .update(verticalDramaEpisodes)
-          .set({
-            motionPromptPack: stampArtifactForStoryboard(
-              generated.pack as unknown as Record<string, unknown>,
-              episode.storyboard
-            ),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, owner.episodeId),
-              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-              eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-            )
-          );
+        const stampedPack = stampArtifactForStoryboard(
+          generated.pack as unknown as Record<string, unknown>,
+          episode.storyboard
+        );
+        const packPersist = await this.persistMotionPromptPackIfCurrent(
+          owner,
+          episode,
+          stampedPack
+        );
+        if (packPersist.persisted) {
+          payload = {
+            stage,
+            ...generated.pack,
+            warnings: generated.pack.warnings ?? [],
+          };
+        } else {
+          stageQcWarnings.push(staleMotionPromptGenerationWarning());
+          payload =
+            packPersist.currentPack &&
+            typeof packPersist.currentPack === "object" &&
+            !Array.isArray(packPersist.currentPack)
+              ? {
+                  stage,
+                  ...(packPersist.currentPack as Record<string, unknown>),
+                  warnings:
+                    (packPersist.currentPack as { warnings?: unknown }).warnings ??
+                    [],
+                }
+              : { stage, staleGenerationDiscarded: true, warnings: [] };
+        }
       } catch (error) {
         const genError = mapMotionPromptGenerationError(error);
         const runId = await this.writeRunForStage(owner, stage, mode, opts, {

@@ -51,10 +51,18 @@ vi.mock("fs", async () => {
     default: {
       ...actual,
       existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      readFileSync: vi.fn((filePath: unknown) =>
+        String(filePath).endsWith("deployment-targets.json")
+          ? JSON.stringify({ targets: {} })
+          : undefined,
+      ),
     },
     existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync: vi.fn((filePath: unknown) =>
+      String(filePath).endsWith("deployment-targets.json")
+        ? JSON.stringify({ targets: {} })
+        : undefined,
+    ),
   };
 });
 vi.mock("../verticalDramaImproveScript", () => ({

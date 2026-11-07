@@ -532,6 +532,8 @@ export type VerticalDramaShotgrid = {
 export type VerticalDramaStartFramePlan = {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /** Provenance for the optional series visual identity used to author this plan. */
+  seriesVisualCanon?: { revision?: number; fingerprint: string };
   /** Additive scene-anchor compatibility revision for generated-shot provenance. */
   planRevision?: string | number;
   /**
@@ -1120,6 +1122,8 @@ export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
 export type VerticalDramaMotionPromptPack = {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** Provenance for the optional series visual identity used to author this pack. */
+  seriesVisualCanon?: { revision?: number; fingerprint: string };
   /** Optional Feature 157 lineage for the accepted motion-prompt pack. */
   assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
   /** The language the video-clip prompt TEXT is written in — see `VerticalDramaPromptLanguage`. Defaults to `"en"` when absent. */

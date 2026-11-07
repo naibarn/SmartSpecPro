@@ -342,6 +342,8 @@ export type VerticalDramaStartFramePlanFrame =
 export interface StartFrameRenderPlanProjection {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /** Source revision/fingerprint for the optional series visual canon used to author this plan. */
+  seriesVisualCanon?: { revision?: number; fingerprint: string };
   imagePromptLanguage?: VerticalDramaPromptLanguage;
   /** See `VerticalDramaStartFramePlan.sceneVisualStates` in the shared contract. */
   sceneVisualStates?: Record<string, VdSceneVisualState>;
@@ -1082,6 +1084,18 @@ export interface GenerateStartFrameRenderPlanParams {
   selectedImageModelId?: string;
   /** Effective image-prompt budget for the selected provider/model. */
   imagePromptMaxChars?: number;
+  /** Optional tenant-resolved series look. Omitted when flags are off or the identity is unavailable. */
+  seriesLookRegister?: {
+    styleName: string;
+    palette: string[];
+    lighting: string;
+    cameraGrammar: string;
+    environmentMotifs?: string[];
+    wardrobeGrammar?: string[];
+    signaturePropsAndCompanions?: string[];
+    revision?: number;
+    fingerprint: string;
+  };
   storyboardShots: Array<{
     shotNumber: number;
     description: string;
@@ -1474,6 +1488,10 @@ export function buildStartFrameRenderPlanUserPrompt(
   const episodePlanContextBlock = params.episodePlanContext
     ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
     : null;
+  const seriesLookRegister = params.seriesLookRegister;
+  const seriesLookBlock = seriesLookRegister
+    ? `SERIES LOOK REGISTER (secondary aesthetic baseline; approved character/location/start-frame references and explicit shot/user edits remain authoritative; do not add unrequested people, props, wardrobe changes, or locations): revision=${seriesLookRegister.revision ?? "fingerprint-only"} style="${seriesLookRegister.styleName}" palette=[${seriesLookRegister.palette.join(", ")}] lighting="${seriesLookRegister.lighting}" camera="${seriesLookRegister.cameraGrammar}"${seriesLookRegister.environmentMotifs?.length ? ` environment=[${seriesLookRegister.environmentMotifs.join(", ")}]` : ""}${seriesLookRegister.wardrobeGrammar?.length ? ` wardrobe=[${seriesLookRegister.wardrobeGrammar.join(", ")}]` : ""}${seriesLookRegister.signaturePropsAndCompanions?.length ? ` signature_props=[${seriesLookRegister.signaturePropsAndCompanions.join(", ")}]` : ""}`
+    : null;
   const crossEpisodeWardrobeInstruction = renderCrossEpisodeWardrobeHandoff(
     params.crossEpisodeWardrobeHandoff
   );
@@ -1484,6 +1502,7 @@ export function buildStartFrameRenderPlanUserPrompt(
     renderCriteriaVersionMarker(),
     `Episode duration: ${params.durationSeconds} seconds`,
     episodePlanContextBlock,
+    seriesLookBlock,
     crossEpisodeWardrobeInstruction,
     policySafetyContext
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${policySafetyContext}`
@@ -1985,6 +2004,14 @@ export async function generateStartFrameRenderPlan(
         )
     )
   );
+  if (params.seriesLookRegister) {
+    plan.seriesVisualCanon = {
+      ...(params.seriesLookRegister.revision !== undefined
+        ? { revision: params.seriesLookRegister.revision }
+        : {}),
+      fingerprint: params.seriesLookRegister.fingerprint,
+    };
+  }
 
   return {
     plan,

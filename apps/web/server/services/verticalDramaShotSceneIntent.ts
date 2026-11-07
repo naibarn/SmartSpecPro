@@ -138,6 +138,8 @@ const sceneIntentSchema = z
     confidence: z.enum(["high", "medium", "low"]),
     needs_review: z.boolean(),
     reason_codes: z.array(z.string().min(1)).max(12),
+    /** Set by the server to bind this optional interpretation to its storyboard source. */
+    source_revision: z.string().trim().min(1).max(128).optional(),
   })
   .passthrough();
 
@@ -838,6 +840,7 @@ export function applyVerticalDramaShotSceneIntent(params: {
   intents: VerticalDramaShotSceneIntentOutput["shots"];
   validCharacterIds: string[];
   validLocationKeys?: string[];
+  sourceRevision?: string;
 }): { shots: Array<Record<string, any>> } {
   const validIds = new Set(params.validCharacterIds);
   const validLocationKeys = params.validLocationKeys?.length
@@ -870,7 +873,12 @@ export function applyVerticalDramaShotSceneIntent(params: {
         validLocationKeys
       )
     );
-    const scene = entry.scene_intent;
+    const scene = {
+      ...entry.scene_intent,
+      ...(params.sourceRevision
+        ? { source_revision: params.sourceRevision }
+        : {}),
+    };
     const physical = Array.from(new Set(scene.physical_character_refs));
     const callers = Array.from(new Set(scene.screen_caller_refs));
     const next: Record<string, any> = {

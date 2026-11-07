@@ -78,6 +78,16 @@ describe("vertical-drama-shot-scene-intent", () => {
     expect(result.shots[0].scene_intent.mentioned_only_refs).toEqual(["bob"]);
   });
 
+  it("binds a projected intent preview to the storyboard source revision", () => {
+    const result = applyVerticalDramaShotSceneIntent({
+      storyboard: { shots: [{ shot_number: 1 }] },
+      intents: [intent(1)],
+      validCharacterIds: [],
+      sourceRevision: "a".repeat(64),
+    });
+    expect(result.shots[0].scene_intent.source_revision).toBe("a".repeat(64));
+  });
+
   it("models a video caller as a screen reference, never a physical character", () => {
     const storyboard = { shots: [{ shot_number: 1 }] } as any;
 
