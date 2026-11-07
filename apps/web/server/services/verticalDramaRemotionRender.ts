@@ -41,6 +41,9 @@ import { db } from "../db";
 import { contentProtectionAssets, verticalDramaEpisodes } from "../../drizzle/schema";
 import {
   downloadClipToFile,
+  detectClipEdgeSilenceTrim,
+  buildTrimmedClipTimelineWindows,
+  retimeDialogueSegmentsToTrimmedClipWindows,
   inferDownloadExtension,
   probeDurationSeconds,
   persistCompiledVideoState,
@@ -195,11 +198,10 @@ export function mapVdSubtitlePresetToRemotion(
  * further with every clip.
  *
  * Placement rule (the only one that stays correct when clips differ in how
- * much they overran): a line in clip N starts at the sum of the REAL durations
- * of clips 1..N-1 — the same cumulative cursor `buildVdRemotionTemplate` uses
- * to lay out the video layers — plus its own fractional position inside clip
- * N, scaled to clip N's real length. Per-clip, so one clip running long never
- * shifts a later clip's captions by the wrong amount.
+ * much they overran): a line in clip N starts at the sum of the REAL trimmed
+ * durations of clips 1..N-1 — the same cumulative cursor
+ * `buildVdRemotionTemplate` uses — plus its source-relative position inside
+ * clip N after subtracting any detected leading silence.
  *
  * A line without clip attribution (`clipNumber`/fractions absent — e.g. a
  * planned line whose clip could not be resolved, placed by the timing
@@ -207,38 +209,56 @@ export function mapVdSubtitlePresetToRemotion(
  */
 export function retimeSubtitleLinesToProbedClips(
   lines: AssSubtitleLine[],
-  clips: Array<{ clipNumber: number; durationSec: number }>
+  clips: Array<{
+    clipNumber: number;
+    durationSec: number;
+    sourceDurationSec?: number;
+    trimStartSec?: number;
+  }>
 ): AssSubtitleLine[] {
   const realWindows = new Map<
     number,
-    { offsetSec: number; durationSec: number }
+    {
+      offsetSec: number;
+      durationSec: number;
+      sourceDurationSec: number;
+      trimStartSec: number;
+    }
   >();
   let cumulativeSec = 0;
   for (const clip of clips) {
     const durationSec = Math.max(0, clip.durationSec);
-    realWindows.set(clip.clipNumber, { offsetSec: cumulativeSec, durationSec });
+    realWindows.set(clip.clipNumber, {
+      offsetSec: cumulativeSec,
+      durationSec,
+      sourceDurationSec: Math.max(0, clip.sourceDurationSec ?? durationSec),
+      trimStartSec: Math.max(0, clip.trimStartSec ?? 0),
+    });
     cumulativeSec += durationSec;
   }
 
-  return lines.map(line => {
+  return lines.flatMap(line => {
     if (
       line.clipNumber == null ||
       line.clipLocalStartFrac == null ||
       line.clipLocalEndFrac == null
     ) {
-      return line;
+      return [line];
     }
     const window = realWindows.get(line.clipNumber);
-    if (!window || window.durationSec <= 0) return line;
+    if (!window || window.durationSec <= 0) return [line];
 
+    const sourceStartSec =
+      line.clipLocalStartFrac * window.sourceDurationSec - window.trimStartSec;
+    const sourceEndSec =
+      line.clipLocalEndFrac * window.sourceDurationSec - window.trimStartSec;
     const startSec =
-      window.offsetSec + line.clipLocalStartFrac * window.durationSec;
+      window.offsetSec + Math.max(0, Math.min(window.durationSec, sourceStartSec));
     const endSec =
-      window.offsetSec + line.clipLocalEndFrac * window.durationSec;
-    // A degenerate window (both fractions equal) would produce a zero-length
-    // caption that never paints — keep the original rather than emit one.
-    if (!(endSec > startSec)) return line;
-    return { ...line, startSec, endSec };
+      window.offsetSec + Math.max(0, Math.min(window.durationSec, sourceEndSec));
+    // A caption fully inside trimmed silence has no visible source window.
+    if (!(endSec > startSec)) return [];
+    return [{ ...line, startSec, endSec }];
   });
 }
 
@@ -341,6 +361,9 @@ export interface VdRemotionResolvedClip {
   clipNumber: number;
   url: string;
   durationSec: number;
+  sourceDurationSec?: number;
+  trimStartSec?: number;
+  trimEndSec?: number;
   sourceShotNumbers?: number[];
   parentShotNumber?: number;
 }
@@ -548,7 +571,7 @@ export function buildVdRemotionTemplate(
       opacity: 1,
       zIndex: 0,
       src: clip.url,
-      trimStartSec: 0,
+      trimStartSec: Math.max(0, clip.trimStartSec ?? 0),
       volume: 1,
       muted: false,
     });
@@ -1071,6 +1094,8 @@ export function buildVdRemotionTemplate(
 
 interface StagedAssetProbeResult {
   durationSec?: number;
+  trimStartSec?: number;
+  trimEndSec?: number;
   sha256: string;
   error?: string;
 }
@@ -1089,7 +1114,8 @@ function throwIfStagedAssetFailed(
 async function defaultStageAsset(
   url: string,
   internalBaseUrl: string,
-  wantDuration: boolean
+  wantDuration: boolean,
+  detectDeadAir = false,
 ): Promise<StagedAssetProbeResult> {
   const os = await import("os");
   const path = await import("path");
@@ -1109,7 +1135,17 @@ async function defaultStageAsset(
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (!wantDuration) return { sha256 };
     const durationSec = await probeDurationSeconds(dest);
-    return { durationSec: durationSec ?? undefined, sha256 };
+    const trim =
+      detectDeadAir && durationSec
+        ? await detectClipEdgeSilenceTrim(dest, durationSec)
+        : null;
+    return {
+      durationSec: durationSec ?? undefined,
+      ...(trim
+        ? { trimStartSec: trim.trimStartSec, trimEndSec: trim.trimEndSec }
+        : {}),
+      sha256,
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);
@@ -1178,6 +1214,8 @@ export function absoluteVdAssetUrl(url: string, baseUrl: string): string {
 export interface SubmitVdRemotionAssemblyInput {
   owner: AssembleEpisodeVideoOwner;
   clips: EpisodeClipSource[];
+  /** Trims detected silent heads/tails before joining compound clips. */
+  removeDeadAir?: boolean;
   /** Optional main-track footage segments. Their order already includes the
    *  split-before/compound/split-after expansion; absent means the original
    *  clip-only assembly path. */
@@ -1210,7 +1248,8 @@ export interface VdRemotionRenderDeps {
   stageAsset?: (
     url: string,
     internalBaseUrl: string,
-    wantDuration: boolean
+    wantDuration: boolean,
+    detectDeadAir?: boolean,
   ) => Promise<StagedAssetProbeResult>;
   queueJob?: (
     input: QueueRemotionRenderVideoJobInput
@@ -1306,11 +1345,28 @@ export async function submitVdRemotionAssembly(
     );
   }
 
-  const probedClips = await Promise.all(
-    orderedClips.map(clip =>
-      stageAsset(clip.videoUrl!, input.internalBaseUrl, true)
-    )
-  );
+  let probedClips: StagedAssetProbeResult[];
+  if (input.removeDeadAir === true) {
+    // Silence analysis invokes FFmpeg. Keep concurrency low so a nine-shot
+    // assembly does not launch nine decoders at once on the web process.
+    probedClips = [];
+    for (let index = 0; index < orderedClips.length; index += 2) {
+      const batch = orderedClips.slice(index, index + 2);
+      probedClips.push(
+        ...(await Promise.all(
+          batch.map(clip =>
+            stageAsset(clip.videoUrl!, input.internalBaseUrl, true, true),
+          ),
+        )),
+      );
+    }
+  } else {
+    probedClips = await Promise.all(
+      orderedClips.map(clip =>
+        stageAsset(clip.videoUrl!, input.internalBaseUrl, true),
+      ),
+    );
+  }
   const missingDurationIndex = probedClips.findIndex(
     c => !c.durationSec || c.durationSec <= 0
   );
@@ -1349,14 +1405,39 @@ export async function submitVdRemotionAssembly(
     assetBaseUrl,
     "video clips"
   );
+  const clipTrims = probedClips.map(staged =>
+    staged.trimStartSec || staged.trimEndSec
+      ? {
+          sourceDurationSec: staged.durationSec!,
+          trimStartSec: staged.trimStartSec ?? 0,
+          trimEndSec: staged.trimEndSec ?? 0,
+        }
+      : null,
+  );
+  const clipTimelineWindows = buildTrimmedClipTimelineWindows(
+    orderedClips,
+    probedClips.map(staged => staged.durationSec),
+    clipTrims,
+  );
   const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
-    (clip, index) => ({
-      clipNumber: clip.clipNumber,
-      url: workerClipUrls[index],
-      durationSec: probedClips[index].durationSec!,
-      sourceShotNumbers: clip.sourceShotNumbers,
-      parentShotNumber: clip.parentShotNumber,
-    })
+    (clip, index) => {
+      const staged = probedClips[index];
+      const trimStartSec = staged.trimStartSec ?? 0;
+      const trimEndSec = staged.trimEndSec ?? 0;
+      return {
+        clipNumber: clip.clipNumber,
+        url: workerClipUrls[index],
+        durationSec: Math.max(
+          0.1,
+          staged.durationSec! - trimStartSec - trimEndSec,
+        ),
+        sourceDurationSec: staged.durationSec!,
+        trimStartSec,
+        trimEndSec,
+        sourceShotNumbers: clip.sourceShotNumbers,
+        parentShotNumber: clip.parentShotNumber,
+      };
+    },
   );
   const clipHashes: string[] = probedClips.map(c => c.sha256);
   let resolvedFootage: Array<
@@ -1535,6 +1616,13 @@ export async function submitVdRemotionAssembly(
     }
     resolvedDialogueAudio = {
       ...input.dialogueAudio,
+      segments:
+        input.removeDeadAir === true
+          ? retimeDialogueSegmentsToTrimmedClipWindows(
+              input.dialogueAudio.segments,
+              clipTimelineWindows,
+            )
+          : input.dialogueAudio.segments,
       resolvedSegmentUrls: input.dialogueAudio.segments.map(segment =>
         absoluteVdAssetUrl(segment.audioUrl, assetBaseUrl)
       ),

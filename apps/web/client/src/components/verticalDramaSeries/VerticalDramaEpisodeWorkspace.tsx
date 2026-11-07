@@ -351,6 +351,13 @@ export interface VerticalDramaTextOverlayPlanPanelData {
  * ad banner plan's `onSave` payload.
  */
 export interface VerticalDramaFinalRenderOptionsView {
+  /** Compound concatenation keeps the episode's shot sequence and may trim
+   *  edge silence from each rendered clip before joining them. Optional for
+   *  older callers; the episode page defaults to `compound`. */
+  assemblyMode?: "standard" | "compound";
+  /** Remove detected leading/trailing dead air from each clip in Compound
+   *  mode. Defaults on; analysis failures keep the original clip. */
+  removeDeadAir?: boolean;
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: VdFinalRenderSubtitlePresetValue;
@@ -4173,6 +4180,8 @@ function VerticalDramaFinalRenderOptionsSection({
 }) {
   const t = useMemo(() => vdCopy(locale), [locale]);
   const includeDialogueAudio = value?.includeDialogueAudio ?? false;
+  const assemblyMode = value?.assemblyMode ?? "compound";
+  const removeDeadAir = value?.removeDeadAir ?? true;
   const loudnessNormalize = value?.loudnessNormalize ?? false;
   const subtitlePreset = value?.subtitlePreset ?? "classic_box";
   const includeWatermark = value?.includeWatermark ?? true;
@@ -4188,6 +4197,8 @@ function VerticalDramaFinalRenderOptionsSection({
 
   function emit(patch: Partial<VerticalDramaFinalRenderOptionsView>) {
     onChange?.({
+      assemblyMode,
+      removeDeadAir,
       includeDialogueAudio,
       loudnessNormalize,
       subtitlePreset,
@@ -4217,6 +4228,62 @@ function VerticalDramaFinalRenderOptionsSection({
       data-testid="vd-final-render-options-section"
     >
       <h3 className="text-sm font-medium">{t.finalRenderOptionsTitle}</h3>
+
+      <div className="space-y-2 rounded-md border p-2">
+        <label
+          className="text-xs font-medium"
+          htmlFor="vd-final-render-assembly-mode"
+        >
+          {locale === "th" ? "โหมดรวมช็อต" : "Shot assembly mode"}
+        </label>
+        <Select
+          value={assemblyMode}
+          onValueChange={next =>
+            emit({ assemblyMode: next as "standard" | "compound" })
+          }
+        >
+          <SelectTrigger
+            id="vd-final-render-assembly-mode"
+            className="w-full sm:w-80"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="standard">
+              {locale === "th" ? "ต่อคลิปตามปกติ" : "Standard concatenation"}
+            </SelectItem>
+            <SelectItem value="compound">
+              {locale === "th" ? "Compound รวมช็อต" : "Compound assembly"}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vd-final-render-remove-dead-air"
+              checked={removeDeadAir}
+              disabled={assemblyMode !== "compound"}
+              onCheckedChange={checked =>
+                emit({ removeDeadAir: Boolean(checked) })
+              }
+              data-testid="vd-final-render-remove-dead-air"
+            />
+            <label
+              htmlFor="vd-final-render-remove-dead-air"
+              className="text-sm"
+            >
+              {locale === "th"
+                ? "ตัดช่วงเงียบระหว่างคลิปอัตโนมัติ"
+                : "Automatically trim dead air between clips"}
+            </label>
+          </div>
+          <p className="pl-6 text-[11px] text-muted-foreground">
+            {locale === "th"
+              ? "ค่าเริ่มต้นเปิด ตัดเฉพาะช่วงเงียบต้นและท้ายคลิป ไม่ตัดช่วงหยุดกลางคลิป หากไม่มีเสียงหรือวิเคราะห์ไม่ได้จะใช้คลิปเดิม"
+              : "On by default. Trims only silence at clip edges, preserves pauses inside clips, and keeps the source clip if audio analysis is unavailable."}
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-1">
         <div className="flex items-center gap-2">

@@ -33532,6 +33532,8 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         allowPartial: z.boolean().optional(),
+        assemblyMode: z.enum(["standard", "compound"]).optional(),
+        removeDeadAir: z.boolean().optional(),
         includeDialogueAudio: z.boolean().optional(),
         loudnessNormalize: z.boolean().optional(),
         subtitlePreset: z
@@ -33913,6 +33915,8 @@ export const verticalDramaEpisodesRouter = router({
       const renderFeed = {
         owner,
         clips: resolved.ordered,
+        removeDeadAir:
+          input.assemblyMode === "compound" && input.removeDeadAir !== false,
         internalBaseUrl,
         filename,
         ...(adBannerRunInputs.length > 0 ? { banners: adBannerRunInputs } : {}),
@@ -33961,6 +33965,7 @@ export const verticalDramaEpisodesRouter = router({
           const submitted = await submitVdRemotionAssembly({
             owner,
             clips: renderFeed.clips,
+            removeDeadAir: renderFeed.removeDeadAir,
             footage: footageSegments.length > 0 ? footageSegments : undefined,
             timelineRevision: footageTimeline.revision,
             internalBaseUrl,

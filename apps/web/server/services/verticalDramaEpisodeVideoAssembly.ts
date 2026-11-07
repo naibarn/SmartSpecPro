@@ -470,11 +470,133 @@ export interface ConcatCommandSpec {
 }
 
 /** Build the concat-demuxer list-file CONTENT (ffmpeg `-f concat` format). */
-export function buildConcatListFileContent(inputPaths: string[]): string {
+export function buildConcatListFileContent(
+  inputPaths: string[],
+  trims?: Array<ClipEdgeSilenceTrim | null>,
+): string {
   return (
-    inputPaths.map(p => `file '${p.replace(/'/g, "'\\''")}'`).join("\n") +
+    inputPaths
+      .map((p, index) => {
+        const lines = [`file '${p.replace(/'/g, "'\\''")}'`];
+        const trim = trims?.[index];
+        if (trim && (trim.trimStartSec > 0 || trim.trimEndSec > 0)) {
+          const outPoint = Math.max(
+            trim.trimStartSec + 0.1,
+            trim.sourceDurationSec - trim.trimEndSec,
+          );
+          lines.push(`inpoint ${trim.trimStartSec.toFixed(6)}`);
+          lines.push(`outpoint ${outPoint.toFixed(6)}`);
+        }
+        return lines.join("\n");
+      })
+      .join("\n") +
     (inputPaths.length ? "\n" : "")
   );
+}
+
+export interface TrimmedClipTimelineWindow {
+  clipNumber: number;
+  sourceDurationSec: number;
+  offsetSec: number;
+  durationSec: number;
+  trimStartSec: number;
+}
+
+export function buildTrimmedClipTimelineWindows(
+  clips: EpisodeClipSource[],
+  sourceDurations: Array<number | undefined>,
+  trims: Array<ClipEdgeSilenceTrim | null>,
+): TrimmedClipTimelineWindow[] {
+  let offsetSec = 0;
+  return clips.map((clip, index) => {
+    const sourceDurationSec = Math.max(0, sourceDurations[index] ?? 0);
+    const trim = trims[index];
+    const trimStartSec = Math.min(
+      sourceDurationSec,
+      Math.max(0, trim?.trimStartSec ?? 0),
+    );
+    const trimEndSec = Math.min(
+      Math.max(0, sourceDurationSec - trimStartSec),
+      Math.max(0, trim?.trimEndSec ?? 0),
+    );
+    const durationSec = Math.max(
+      0,
+      sourceDurationSec - trimStartSec - trimEndSec,
+    );
+    const window = {
+      clipNumber: clip.clipNumber,
+      sourceDurationSec,
+      offsetSec,
+      durationSec,
+      trimStartSec,
+    };
+    offsetSec += durationSec;
+    return window;
+  });
+}
+
+function positionInTrimmedClip(
+  clipNumber: number,
+  localFraction: number,
+  windows: TrimmedClipTimelineWindow[],
+): number | undefined {
+  const window = windows.find(item => item.clipNumber === clipNumber);
+  if (!window || window.sourceDurationSec <= 0 || window.durationSec <= 0) {
+    return undefined;
+  }
+  const fraction = Math.max(0, Math.min(1, localFraction));
+  const sourceSec = fraction * window.sourceDurationSec;
+  const localSec = Math.max(
+    0,
+    Math.min(window.durationSec, sourceSec - window.trimStartSec),
+  );
+  return window.offsetSec + localSec;
+}
+
+export function retimeSubtitlesToTrimmedClipWindows(
+  lines: AssSubtitleLine[],
+  windows: TrimmedClipTimelineWindow[],
+): AssSubtitleLine[] {
+  return lines.flatMap(line => {
+    if (
+      line.clipNumber == null ||
+      line.clipLocalStartFrac == null ||
+      line.clipLocalEndFrac == null
+    ) {
+      return [line];
+    }
+    const startSec = positionInTrimmedClip(
+      line.clipNumber,
+      line.clipLocalStartFrac,
+      windows,
+    );
+    const endSec = positionInTrimmedClip(
+      line.clipNumber,
+      line.clipLocalEndFrac,
+      windows,
+    );
+    if (startSec == null || endSec == null || endSec <= startSec) return [];
+    return [{ ...line, startSec, endSec }];
+  });
+}
+
+export function retimeDialogueSegmentsToTrimmedClipWindows<
+  T extends RunAssemblyJobDialogueAudioSegmentInput,
+>(
+  segments: T[],
+  windows: TrimmedClipTimelineWindow[],
+): T[] {
+  return segments.map(segment => {
+    if (segment.clipNumber == null || segment.clipLocalStartFrac == null) {
+      return segment;
+    }
+    const startSec = positionInTrimmedClip(
+      segment.clipNumber,
+      segment.clipLocalStartFrac,
+      windows,
+    );
+    return startSec == null ? segment : { ...segment, startSec };
+  });
 }
 
 /**
@@ -546,6 +668,111 @@ export function resolveFfBinary(binaryName: "ffmpeg" | "ffprobe"): string {
     if (fs.existsSync(candidate)) return candidate;
   }
   return binaryName;
+}
+
+export interface ClipEdgeSilenceTrim {
+  sourceDurationSec: number;
+  trimStartSec: number;
+  trimEndSec: number;
+}
+
+/** Detects only leading/trailing silence. Internal pauses are preserved.
+ * Missing audio tracks, unsupported media, or FFmpeg errors are non-fatal. */
+export async function detectClipEdgeSilenceTrim(
+  filePath: string,
+  sourceDurationSec: number,
+): Promise<ClipEdgeSilenceTrim | null> {
+  if (!Number.isFinite(sourceDurationSec) || sourceDurationSec <= 0.8) return null;
+
+  let stderr: string | null;
+  try {
+    stderr = await new Promise<string | null>(resolve => {
+      const child = spawn(
+        resolveFfBinary("ffmpeg"),
+        [
+          "-hide_banner",
+          "-nostats",
+          "-i",
+          filePath,
+          "-vn",
+          "-af",
+          "silencedetect=noise=-38dB:d=0.45",
+          "-f",
+          "null",
+          "-",
+        ],
+        { stdio: ["ignore", "ignore", "pipe"] },
+      );
+      let output = "";
+      let settled = false;
+      let timeout: ReturnType<typeof setTimeout>;
+      const finish = (value: string | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve(value);
+      };
+      timeout = setTimeout(() => {
+        child.kill("SIGKILL");
+        finish(null);
+      }, 15_000);
+      child.stderr?.on("data", chunk => {
+        output += chunk.toString();
+        if (output.length > 64_000) output = output.slice(-64_000);
+      });
+      child.on("error", () => finish(null));
+      child.on("close", code => finish(code === 0 ? output : null));
+    });
+  } catch {
+    return null;
+  }
+  if (!stderr) return null;
+
+  const starts = [...stderr.matchAll(/silence_start:\s*([\d.]+)/g)].map(
+    match => Number(match[1]),
+  );
+  const ends = [...stderr.matchAll(/silence_end:\s*([\d.]+)/g)].map(
+    match => Number(match[1]),
+  );
+  const minimumSilenceSec = 0.45;
+  const retainedPaddingSec = 0.16;
+  let trimStartSec = 0;
+  let trimEndSec = 0;
+
+  const leadingStart = starts.find(start => start <= 0.12);
+  if (leadingStart != null) {
+    const leadingEnd = ends.find(end => end > leadingStart);
+    if (leadingEnd != null && leadingEnd - leadingStart >= minimumSilenceSec) {
+      trimStartSec = Math.max(0, leadingEnd - retainedPaddingSec);
+    }
+  }
+
+  const trailingStart = [...starts]
+    .reverse()
+    .find(start => start < sourceDurationSec - minimumSilenceSec);
+  const trailingEnd =
+    trailingStart == null
+      ? undefined
+      : ends.find(end => end > trailingStart);
+  if (
+    trailingStart != null &&
+    (trailingEnd == null || trailingEnd >= sourceDurationSec - 0.12) &&
+    sourceDurationSec - trailingStart >= minimumSilenceSec
+  ) {
+    trimEndSec = Math.max(
+      0,
+      sourceDurationSec - trailingStart - retainedPaddingSec,
+    );
+  }
+
+  const minimumContentSec = Math.min(0.8, sourceDurationSec * 0.4);
+  if (
+    trimStartSec + trimEndSec < 0.08 ||
+    sourceDurationSec - trimStartSec - trimEndSec < minimumContentSec
+  ) {
+    return null;
+  }
+  return { sourceDurationSec, trimStartSec, trimEndSec };
 }
 
 /**
@@ -1055,6 +1282,10 @@ export interface RunAssemblyJobDialogueAudioSegmentInput {
   audioUrl: string;
   startSec: number;
   gainDb?: number;
+  /** Optional clip-local timing keeps generated dialogue aligned after
+   *  Compound mode trims silence from earlier parts of the episode. */
+  clipNumber?: number;
+  clipLocalStartFrac?: number;
 }
 
 export interface RunAssemblyJobDialogueAudioInput {
@@ -1143,6 +1374,9 @@ export interface RunAssemblyJobArgs {
   owner: AssembleEpisodeVideoOwner;
   jobId: string;
   clips: EpisodeClipSource[];
+  /** Best-effort edge-silence trimming for Compound assembly. Detection
+   *  failures leave each source clip unchanged and never fail the job. */
+  removeDeadAir?: boolean;
   internalBaseUrl: string;
   filename: string;
   storageKeyPrefix?: string;
@@ -1201,11 +1435,33 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       inputPaths.push(dest);
     }
 
+    let clipSourceDurations: Array<number | undefined> | undefined;
+    const clipTrims: Array<ClipEdgeSilenceTrim | null> = clips.map(() => null);
+    let trimmedTimelineWindows: TrimmedClipTimelineWindow[] | undefined;
+    if (args.removeDeadAir === true) {
+      clipSourceDurations = [];
+      for (const [index, clipPath] of inputPaths.entries()) {
+        const duration = await probeDuration(clipPath);
+        clipSourceDurations.push(duration);
+        if (duration && duration > 0) {
+          clipTrims[index] = await detectClipEdgeSilenceTrim(clipPath, duration);
+        }
+      }
+      trimmedTimelineWindows = buildTrimmedClipTimelineWindows(
+        clips,
+        clipSourceDurations,
+        clipTrims,
+      );
+    }
+
     const concatListPath = path.join(workDir, "concat.txt");
     failureTargetPath = concatListPath;
     await fsp.writeFile(
       concatListPath,
-      buildConcatListFileContent(inputPaths),
+      buildConcatListFileContent(
+        inputPaths,
+        args.removeDeadAir === true ? clipTrims : undefined,
+      ),
       "utf8"
     );
 
@@ -1260,7 +1516,12 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         await downloadClipToFile(segment.audioUrl, dest, internalBaseUrl);
         resolvedDialogueSegments.push({
           localPath: dest,
-          startSec: segment.startSec,
+          startSec: trimmedTimelineWindows
+            ? retimeDialogueSegmentsToTrimmedClipWindows(
+                [segment],
+                trimmedTimelineWindows,
+              )[0].startSec
+            : segment.startSec,
           gainDb: segment.gainDb,
         });
       }
@@ -1296,18 +1557,25 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       // AFTER subtitle generation, back when subtitle timing never needed
       // the total duration) so `entireClip`/`endAnchored` overlay events can
       // be resolved to real seconds before the `.ass` file is written.
-      const perClipDurations = await Promise.all(
-        inputPaths.map(p => probeDuration(p))
-      );
+      const perClipDurations =
+        clipSourceDurations ??
+        (await Promise.all(inputPaths.map(p => probeDuration(p))));
       const missingProbeIndex = perClipDurations.findIndex(d => d == null);
       if (missingProbeIndex !== -1) {
         throw new Error(
           `vertical_drama_final_render_duration_probe_failed: could not determine duration of source clip ${missingProbeIndex + 1}/${inputPaths.length}.`
         );
       }
-      const videoDurationSeconds = perClipDurations.reduce(
-        (sum: number, d) => sum + (d as number),
-        0
+      const clipTimelineWindows =
+        trimmedTimelineWindows ??
+        buildTrimmedClipTimelineWindows(
+          clips,
+          perClipDurations,
+          clips.map(() => null),
+        );
+      const videoDurationSeconds = clipTimelineWindows.reduce(
+        (sum, clip) => sum + clip.durationSec,
+        0,
       );
 
       // Task #34 — re-resolve `entireClip`/`endAnchored` overlay events to
@@ -1345,8 +1613,14 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         (args.subtitles.lines.length > 0 || resolvedOverlayEvents.length > 0)
       ) {
         const fontsDir = args.subtitles.fontsDir ?? resolveVdSubtitleFontsDir();
+        const subtitleLines = trimmedTimelineWindows
+          ? retimeSubtitlesToTrimmedClipWindows(
+              args.subtitles.lines,
+              clipTimelineWindows,
+            )
+          : args.subtitles.lines;
         const assContent = buildAssSubtitleFile(
-          args.subtitles.lines,
+          subtitleLines,
           args.subtitles.preset,
           {
             fontsDir,
@@ -1865,18 +2139,22 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   }
 
   for (const timing of timings) {
+    const window =
+      timing.resolvedClipNumber != null
+        ? plannedClipWindows.get(timing.resolvedClipNumber)
+        : undefined;
+    const clipLocalStartFrac =
+      window && window.durationSec > 0
+        ? clamp01(
+            (timing.absoluteStartSec - window.offsetSec) / window.durationSec,
+          )
+        : undefined;
     if (wantsSubtitles && timing.text.trim()) {
-      const window =
-        timing.resolvedClipNumber != null
-          ? plannedClipWindows.get(timing.resolvedClipNumber)
-          : undefined;
       const clipAttribution =
         window && window.durationSec > 0
           ? {
               clipNumber: timing.resolvedClipNumber,
-              clipLocalStartFrac: clamp01(
-                (timing.absoluteStartSec - window.offsetSec) / window.durationSec
-              ),
+              clipLocalStartFrac,
               clipLocalEndFrac: clamp01(
                 (timing.absoluteEndSec - window.offsetSec) / window.durationSec
               ),
@@ -1897,7 +2175,16 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     if (params.includeDialogueAudio) {
       const audioUrl = audioUrlByLineId.get(timing.lineId);
       if (audioUrl) {
-        segments.push({ audioUrl, startSec: timing.absoluteStartSec });
+        segments.push({
+          audioUrl,
+          startSec: timing.absoluteStartSec,
+          ...(timing.resolvedClipNumber != null && clipLocalStartFrac != null
+            ? {
+                clipNumber: timing.resolvedClipNumber,
+                clipLocalStartFrac,
+              }
+            : {}),
+        });
       }
     }
   }

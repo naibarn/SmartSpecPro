@@ -8291,6 +8291,8 @@ function EpisodeWorkspaceShell({
   const [finalRenderOptions, setFinalRenderOptions] =
     useState<VerticalDramaFinalRenderOptionsView>(() => {
       const defaults: VerticalDramaFinalRenderOptionsView = {
+        assemblyMode: "compound",
+        removeDeadAir: true,
         includeDialogueAudio: false,
         loudnessNormalize: false,
         subtitlePreset: "classic_box",
@@ -8431,6 +8433,10 @@ function EpisodeWorkspaceShell({
       seriesId,
       episodeId,
       allowPartial: opts?.allowPartial,
+      assemblyMode: finalRenderOptions.assemblyMode ?? "compound",
+      removeDeadAir:
+        (finalRenderOptions.assemblyMode ?? "compound") === "compound" &&
+        (finalRenderOptions.removeDeadAir ?? true),
       // `voiceChainFlagEnabled` re-check mirrors the server's own
       // `voiceChainEnabled && input.includeDialogueAudio === true` guard
       // (`assembleEpisodeVideo`, server/routers/verticalDramaEpisodes.ts) —
