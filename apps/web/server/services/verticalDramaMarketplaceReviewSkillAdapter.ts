@@ -51,6 +51,33 @@ const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
 
 const SPECIAL_DIALOGUE_COMPLIANCE_FALLBACK =
   "เราลองดูข้อมูลที่มีให้ครบก่อน แล้วค่อยตัดสินใจกันนะ";
+const thaiWordSegmenter = new Intl.Segmenter("th", { granularity: "word" });
+
+function tokenizeWords(value: string): string[] {
+  return Array.from(thaiWordSegmenter.segment(value.normalize("NFC")))
+    .filter(segment => segment.isWordLike)
+    .map(segment => segment.segment.toLocaleLowerCase());
+}
+
+function collectText(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(collectText);
+  if (value && typeof value === "object") {
+    return Object.values(value).flatMap(collectText);
+  }
+  return [];
+}
+
+function containsExcludedCharacterReference(
+  renderedWords: readonly string[],
+  characterName: string,
+): boolean {
+  const nameWords = tokenizeWords(characterName);
+  if (nameWords.length === 0) return false;
+  return renderedWords.some((_, start) =>
+    nameWords.every((word, offset) => renderedWords[start + offset] === word)
+  );
+}
 
 const MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT = {
   type: "json_schema",
@@ -813,7 +840,7 @@ export function validateMarketplaceReviewIdeaOutput(
   if (compliance.hasViolations) {
     throw new Error(`MARKETPLACE_REVIEW_OUTPUT_INVALID: advertising dialogue compliance failed (${compliance.violations.map(item => item.matchedPattern).join(", ")})`);
   }
-  const rendered = JSON.stringify(
+  const rendered = collectText(
     output.ideas.map(idea => ({
       title: idea.title,
       logline: idea.logline,
@@ -830,11 +857,11 @@ export function validateMarketplaceReviewIdeaOutput(
       lookSlotRequests: idea.lookSlotRequests,
       sceneSlotRequests: idea.sceneSlotRequests,
     }))
-  ).toLowerCase();
-  const excludedCharacterName = (options.excludedCharacterNames ?? []).find(name => {
-    const normalizedName = name.trim().toLocaleLowerCase();
-    return normalizedName.length >= 2 && rendered.includes(normalizedName);
-  });
+  ).join("\n").toLocaleLowerCase();
+  const renderedWords = tokenizeWords(rendered);
+  const excludedCharacterName = (options.excludedCharacterNames ?? []).find(name =>
+    containsExcludedCharacterReference(renderedWords, name.trim())
+  );
   if (excludedCharacterName) {
     throw new Error(
       `MARKETPLACE_REVIEW_OUTPUT_INVALID: unselected character "${excludedCharacterName}" was used`
@@ -872,15 +899,20 @@ export function removeMarketplacePriceReferences(value: unknown): unknown {
   );
 }
 
-function buildUserPrompt(
+export function buildMarketplaceReviewIdeaUserPrompt(
   input: MarketplaceReviewIdeaInput,
   repairFeedback?: string,
 ): string {
   const exampleAdultSpeaker = input.dialogueSpeakerCharacterNames[0] ?? "";
+  const promptSafeInput = { ...input };
+  // Excluded names are a server-side validation aid. Sending them to the model
+  // primes it with unused cast names and can make incidental Thai word parts
+  // such as "ภูมิ" in "ภูมิใจ" look like a character reference.
+  delete promptSafeInput.excludedCharacterNames;
   const promptInput =
     input.productSource === "marketplace_capture"
-      ? removeMarketplacePriceReferences(input)
-      : input;
+      ? removeMarketplacePriceReferences(promptSafeInput)
+      : promptSafeInput;
   return JSON.stringify({
     task: "สร้างไอเดียรีวิวหรือเล่าเรื่องแบบซีรีย์ 3 ใบ โดยแต่ละใบต้องระบุรูปแบบการนำเสนอและโครงสร้างเรื่องให้ตรงกับประเภทหัวข้อที่ผู้ใช้เลือก",
     reviewSubjectType: input.reviewSubjectType,
@@ -1494,7 +1526,7 @@ export async function generateMarketplaceReviewIdeas(input: {
         : await executeJsonPlanningCallWithRetry({
             model,
             systemPrompt,
-            userPrompt: buildUserPrompt(parsed, repairFeedback),
+            userPrompt: buildMarketplaceReviewIdeaUserPrompt(parsed, repairFeedback),
             temperature: attempt === 1 ? 0.75 : 0.2,
             userId: input.actor.userId,
             maxTokens: 12_000,
@@ -1515,7 +1547,7 @@ export async function generateMarketplaceReviewIdeas(input: {
       const rawOutput = input.execute
         ? await input.execute({
             systemPrompt,
-            userPrompt: buildUserPrompt(parsed, repairFeedback),
+            userPrompt: buildMarketplaceReviewIdeaUserPrompt(parsed, repairFeedback),
             model,
           })
         : planningResult!.data;
@@ -1534,7 +1566,7 @@ export async function generateMarketplaceReviewIdeas(input: {
       lastFailureCode = marketplaceReviewFailureCode(error);
       const repairGuidance = marketplaceReviewRepairGuidance(errorMessage);
       repairFeedback =
-        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${errorMessage}. ${repairGuidance} สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
+        `การตรวจรอบที่ ${attempt} ไม่ผ่าน: ${repairGuidance} สร้าง JSON ใหม่ทั้งชุดให้ครบตาม schema และกฎบทพูด ห้ามส่งผลลัพธ์บางส่วน`;
     }
   }
   if (!output && lastFailureCode === "AD_DIALOGUE_COMPLIANCE" && lastRawOutput) {

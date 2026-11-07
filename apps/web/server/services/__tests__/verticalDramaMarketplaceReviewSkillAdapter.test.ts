@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { marketplaceReviewIdeaInputSchema } from "../../../shared/marketplaceReviewIdeas/contracts";
 import {
+  buildMarketplaceReviewIdeaUserPrompt,
   buildMarketplaceReviewIdeaResumeSnapshot,
   removeMarketplacePriceReferences,
   validateMarketplaceReviewIdeaOutput,
@@ -54,6 +56,24 @@ const paragraphs = [
 ].join("\n\n");
 
 describe("Marketplace review idea output gate", () => {
+  it("does not prime the model with excluded character names", () => {
+    const prompt = buildMarketplaceReviewIdeaUserPrompt(
+      marketplaceReviewIdeaInputSchema.parse({
+        product: { productId: "espresso-1", name: "เครื่องชงกาแฟ" },
+        productImages: [{ url: "https://example.test/product.jpg" }],
+        series: { seriesId: "53" },
+        dialogueMode: "none",
+        selectedCharacterIds: ["1"],
+        excludedCharacterNames: ["ภูมิ"],
+        characters: [{ characterId: "1", name: "พิมพ์ชนก" }],
+        variationSeed: "excluded-name-prompt-test",
+      }),
+    );
+
+    expect(JSON.parse(prompt).input).not.toHaveProperty("excludedCharacterNames");
+    expect(prompt).not.toContain("ภูมิ");
+  });
+
   it("removes volatile price and promotion data from saved creative context", () => {
     expect(
       removeMarketplacePriceReferences({
@@ -165,7 +185,7 @@ describe("Marketplace review idea output gate", () => {
         idea("idea-3", paragraphs, "แม่: เราค่อย ๆ ดูกันนะลูก วันนี้เราจะลองทำความเข้าใจไปด้วยกัน\nลุง: ลองชิ้นนี้ดูไหม เราจะค่อย ๆ สังเกตวิธีเล่นของภูมิด้วยกัน"),
       ],
     };
-    output.ideas[0].dialogue[0].speaker = "ธีร์";
+    output.ideas[0].shotDialogues[0]!.lines[0]!.speaker = "ธีร์";
     expect(() =>
       validateMarketplaceReviewIdeaOutput(output, {
         allowedCharacterIds: ["1", "2", "3"],
@@ -173,7 +193,7 @@ describe("Marketplace review idea output gate", () => {
         excludedCharacterNames: ["ธีร์"],
       })
     ).toThrow("dialogue speaker is not selected");
-    output.ideas[0].dialogue[0].speaker = "แม่";
+    output.ideas[0].shotDialogues[0]!.lines[0]!.speaker = "แม่";
     output.ideas[1].lookSlotRequests = [
       {
         characterId: "99",
@@ -207,6 +227,24 @@ describe("Marketplace review idea output gate", () => {
         excludedCharacterNames: ["ธีร์"],
       })
     ).toThrow('unselected character "ธีร์" was used');
+  });
+
+  it("does not treat an excluded Thai name as a substring inside an ordinary word", () => {
+    const output = {
+      schemaVersion: 1,
+      ideas: [
+        idea("idea-1", paragraphs.replaceAll("ภูมิ", "เด็ก"), "แม่: ลองชิ้นนี้กันไหม เราค่อย ๆ สังเกตไปด้วยกัน\nลุง: ได้เลย ค่อย ๆ ทำตามจังหวะของเด็กก็พอ"),
+        idea("idea-2", paragraphs.replaceAll("ภูมิ", "เด็ก"), "แม่: ลองชิ้นนี้กันไหม เราค่อย ๆ สังเกตไปด้วยกัน\nลุง: ได้เลย ค่อย ๆ ทำตามจังหวะของเด็กก็พอ"),
+        idea("idea-3", paragraphs.replaceAll("ภูมิ", "เด็ก"), "แม่: เก่งมากเลยลูก วันนี้เราลองเรียนรู้ไปพร้อมกัน\nลุง: ใช่แล้ว เรามาดูด้วยกันว่าชิ้นไหนเหมาะกับเขา"),
+      ],
+    };
+    output.ideas[0]!.episodeStory += "\n\nพิมพ์ชนกภูมิใจที่ทุกคนค่อย ๆ ช่วยกัน";
+
+    expect(
+      validateMarketplaceReviewIdeaOutput(output, {
+        excludedCharacterNames: ["ภูมิ"],
+      }).ideas,
+    ).toHaveLength(3);
   });
 
   it("requires every speaking idea to carry dialogue for all nine shots", () => {
