@@ -47,14 +47,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "c16177865f91641170346051c23d99fb53c37c81",
+    "expected_canonical_sha": "ba8435d411b66d5491824477856668c20ddb9cc0",
     "expected_spec_digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254"
   },
   "continuation": {
-    "next_action": "Run authenticated UI acceptance on series 53: verify the draft revision loads, write all episodes as a novel, see/select one of 3 cover images, save the cover, then confirm delete behavior; then run isolated _dev DB acceptance for owner scope, active-job deletion guard, retries/cancellation, exports and private storage readback. Preserve the shared smartspec database guard.",
+    "next_action": "Retry novelization for the failed episode in Book Studio on the deployed revision and verify blocks/qualityReview are saved; then confirm writing all episodes completes sequentially. Continue authenticated UI and isolated _dev DB acceptance, preserving the shared smartspec database guard.",
     "next_ready_workunit": "section-04-book-studio-ui-and-acceptance",
     "reactivation_predicate": "An isolated authenticated _dev UAT database and representative series fixture are available.",
-    "resume_point": "Book Studio API revision omission fixed and deployed at c16177865f91641170346051c23d99fb53c37c81, release generation 403. Authenticated create/novelize/cover/select/delete/EPUB/PDF workflow remains to be confirmed.",
+    "resume_point": "Novelizer schema mismatch fixed and deployed at ba8435d411b66d5491824477856668c20ddb9cc0, release generation 414. The reported failed job was not re-run to avoid an unrequested LLM call/credit charge. Retry its episode in Book Studio and verify valid prose, quality rubric, and sequential all-episode completion; authenticated workflow and isolated _dev database acceptance remain pending.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -102,7 +102,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:ba3f43b330d2a5946b176724ae7a3ec4e1e280853f260b38a9dbdb4a8ee440b3",
+    "artifact_digest": "sha256:734aae67b5e19e8ff92473495243ff1e68b217526ea9e5423ac85d97eb45ee1d",
     "environment": "legacy-debian-dev (development, smartaihub.app)",
     "evidence": [
       "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-02eb25241224a9da11d7594951e1b2cd09a9a936-00222f4229f9-401.json",
@@ -110,11 +110,13 @@
       "release:status confirms frontend/backend/runtime SHA match and target_matches_release=true; web and Node worker healthy.",
       "https://smartaihub.app/healthz HTTP 200; /login HTTP 200; /drama-series/53?tab=books HTTP 200 (SPA route response only; authenticated UI acceptance remains pending).",
       "47214ad841c599abfe0993272a6fe2711bcdc521: removed archived-series readOnly gating from the Book Studio so derived book authoring, novelization and cover tools remain available; added owner-scoped book deletion with running-job guard and exported-file cleanup.\nDeploy generation 402: target legacy-debian-dev (smartaihub.app), release smartspec-web-47214ad841c599abfe0993272a6fe2711bcdc521-645735752eb6, artifact sha256:536799d61d41d6b3eae2b19ca084763927dd02692b9054135d33f77e6cfcb450; runtime HEALTHY, service and worker revision 47214ad841c599abfe0993272a6fe2711bcdc521, health HTTP 200.\nPublic UI bundle verification: served VerticalDramaSeriesDetailPage-BfTIUU9T.js contains “เขียนนิยายครบทุกตอน”, “สุ่มสร้างปก 3 แบบ”, and “ลบหนังสือ”. Authenticated browser workflow remains unverified.",
-      "c16177865f91641170346051c23d99fb53c37c81: Book Studio get endpoint now returns the revision list consumed by the UI. Before this fix the UI defaulted its status label to “draft” when revisions were absent from the response, silently hiding novelization and cover panels. Focused esbuild syntax check and git diff --check passed; no tests/typecheck run. Deployment generation 403 on legacy-debian-dev is DEPLOYED_VERIFIED; service/worker revision c16177865f91641170346051c23d99fb53c37c81, health HTTP 200, Book Studio page HTTP 200, served bundle includes novelization, cover generation, selected cover preview and delete labels. Authenticated functional browser acceptance remains pending."
+      "c16177865f91641170346051c23d99fb53c37c81: Book Studio get endpoint now returns the revision list consumed by the UI. Before this fix the UI defaulted its status label to “draft” when revisions were absent from the response, silently hiding novelization and cover panels. Focused esbuild syntax check and git diff --check passed; no tests/typecheck run. Deployment generation 403 on legacy-debian-dev is DEPLOYED_VERIFIED; service/worker revision c16177865f91641170346051c23d99fb53c37c81, health HTTP 200, Book Studio page HTTP 200, served bundle includes novelization, cover generation, selected cover preview and delete labels. Authenticated functional browser acceptance remains pending.",
+      "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ba8435d411b66d5491824477856668c20ddb9cc0-48995073abf5-414.json",
+      "ba8435d411b66d5491824477856668c20ddb9cc0: deployment generation 414 to legacy-debian-dev (smartaihub.app), artifact sha256:734aae67b5e19e8ff92473495243ff1e68b217526ea9e5423ac85d97eb45ee1d; web and Node worker runtime revision match, HEALTHY; public /healthz HTTP 200."
     ],
-    "release_id": "smartspec-web-c16177865f91641170346051c23d99fb53c37c81-bbfcdaf644aa",
+    "release_id": "smartspec-web-ba8435d411b66d5491824477856668c20ddb9cc0-48995073abf5",
     "required": false,
-    "source_sha": "c16177865f91641170346051c23d99fb53c37c81",
+    "source_sha": "ba8435d411b66d5491824477856668c20ddb9cc0",
     "status": "PASS"
   },
   "disposition": {
@@ -134,7 +136,7 @@
     "rationale": "The owner explicitly directed implementation of Feature 326 and the work is integrated on the canonical development branch; production activation is not requested.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 39,
+  "generation": 40,
   "identity": {
     "canonical_path": "specs/feature/326-smartaihub-vertical-drama-story-to-book-export/spec.md",
     "digest": "a5cc752b04b2f42cbe7fb9253300b7136cc5a63eae4f7c58e82c6d2c088c4254",
@@ -186,9 +188,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "c16177865f91641170346051c23d99fb53c37c81",
+    "canonical_sha": "ba8435d411b66d5491824477856668c20ddb9cc0",
     "integrated": true,
-    "integrated_at": "2026-11-07T01:16:48+07:00"
+    "integrated_at": "2026-11-07T13:42:15+07:00"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -857,7 +859,7 @@
     "unresolved": 47
   },
   "schema_version": 1,
-  "updated_at": "2026-11-06T19:14:15.592958Z",
+  "updated_at": "2026-11-07T06:44:02.888556Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -875,13 +877,14 @@
       "746509021b72c5959096122eb07bb5fac91fd659: focused esbuild syntax compilation passed for the Book Document schema, novelizer service and Book Studio; git diff --check passed; no tests or typecheck run.",
       "47214ad841c599abfe0993272a6fe2711bcdc521: focused esbuild syntax compilation for Book Studio, series detail and Book router passed; git diff --check passed; no tests or repository-wide typecheck run.",
       "Deployment generation 402 to legacy-debian-dev verified healthy; public health HTTP 200; served page bundle contains novelization, cover generation and delete actions. Authenticated UI acceptance remains pending.",
-      "c16177865f91641170346051c23d99fb53c37c81: Book Studio get endpoint now returns the revision list consumed by the UI. Before this fix the UI defaulted its status label to “draft” when revisions were absent from the response, silently hiding novelization and cover panels. Focused esbuild syntax check and git diff --check passed; no tests/typecheck run. Deployment generation 403 on legacy-debian-dev is DEPLOYED_VERIFIED; service/worker revision c16177865f91641170346051c23d99fb53c37c81, health HTTP 200, Book Studio page HTTP 200, served bundle includes novelization, cover generation, selected cover preview and delete labels. Authenticated functional browser acceptance remains pending."
+      "c16177865f91641170346051c23d99fb53c37c81: Book Studio get endpoint now returns the revision list consumed by the UI. Before this fix the UI defaulted its status label to “draft” when revisions were absent from the response, silently hiding novelization and cover panels. Focused esbuild syntax check and git diff --check passed; no tests/typecheck run. Deployment generation 403 on legacy-debian-dev is DEPLOYED_VERIFIED; service/worker revision c16177865f91641170346051c23d99fb53c37c81, health HTTP 200, Book Studio page HTTP 200, served bundle includes novelization, cover generation, selected cover preview and delete labels. Authenticated functional browser acceptance remains pending.",
+      "ba8435d411b66d5491824477856668c20ddb9cc0: novelizer skill now requires the exact blocks/qualityReview JSON contract accepted by chapterOutputSchema; installed skill mirror publish/verify passed. The failed job 40f2e81b-65a3-411a-8816-df2a19cc7fe3 confirmed a root-level novel/rubric shape mismatch. Focused diff check passed; full build and legacy-debian-dev deployment generation 414 verified healthy, public /healthz HTTP 200. Authenticated retry and generated chapter quality remain pending."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "c16177865f91641170346051c23d99fb53c37c81",
+    "sha": "ba8435d411b66d5491824477856668c20ddb9cc0",
     "status": "VALIDATION_PENDING",
     "task_regressions": []
   }
