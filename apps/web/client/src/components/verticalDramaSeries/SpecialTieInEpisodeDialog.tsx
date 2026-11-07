@@ -6,8 +6,10 @@ import {
   ImagePlus,
   Loader2,
   MapPin,
+  Plus,
   Search,
   Sparkles,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -85,13 +87,53 @@ import {
 
 type ReferenceType = "product" | "location" | "store" | "mixed";
 type ShotDialogueDraft = NonNullable<SpecialTieInInput["shotDialogues"]>;
+type DialogueSpeakerCharacter = {
+  characterId?: string | number;
+  id?: string | number;
+  name?: string;
+  characterName?: string;
+};
 
-function formatShotDialogueDrafts(drafts: ShotDialogueDraft): string {
+function dialogueSpeakerLabel(
+  speakerCharacterId: string,
+  characters: readonly DialogueSpeakerCharacter[]
+): string {
+  const character = characters.find(
+    option => resolveSpecialTieInCharacterId(option) === speakerCharacterId
+  );
+  return character?.name ?? character?.characterName ?? speakerCharacterId;
+}
+
+function formatShotDialogueDrafts(
+  drafts: ShotDialogueDraft,
+  characters: readonly DialogueSpeakerCharacter[] = []
+): string {
   return drafts
     .flatMap(shot =>
-      shot.dialogueLines.map(line => `${line.speakerCharacterId}: ${line.line}`)
+      shot.dialogueLines.map(
+        line =>
+          `${dialogueSpeakerLabel(line.speakerCharacterId, characters)}: ${line.line}`
+      )
     )
     .join("\n");
+}
+
+function updateShotDialogueLine(
+  drafts: ShotDialogueDraft,
+  shotIndex: number,
+  lineIndex: number,
+  value: string
+): ShotDialogueDraft {
+  return drafts.map((shot, currentShotIndex) =>
+    currentShotIndex !== shotIndex
+      ? shot
+      : {
+          ...shot,
+          dialogueLines: shot.dialogueLines.map((line, currentLineIndex) =>
+            currentLineIndex === lineIndex ? { ...line, line: value } : line
+          ),
+        }
+  );
 }
 
 function hasCompleteShotDialogueDrafts(drafts: ShotDialogueDraft): boolean {
@@ -100,7 +142,7 @@ function hasCompleteShotDialogueDrafts(drafts: ShotDialogueDraft): boolean {
     drafts.every(
       (shot, index) =>
         shot.shotNumber === index + 1 &&
-        shot.dialogueLines.length >= 2 &&
+        shot.dialogueLines.length >= 1 &&
         shot.dialogueLines.length <= 3 &&
         shot.dialogueLines.every(line => line.line.trim().length > 0)
     )
@@ -1452,8 +1494,8 @@ export function SpecialTieInEpisodeDialog({
     selectedMarketplaceIdea &&
     !hasCompleteShotDialogueDrafts(shotDialogueDrafts)
       ? lang === "th"
-        ? "ตรวจบทพูดให้ครบทั้ง 9 ช็อต (อย่างน้อย 2 บรรทัดต่อช็อต)"
-        : "Complete dialogue for all 9 shots (at least 2 lines per shot)"
+        ? "ตรวจบทพูดให้ครบทั้ง 9 ช็อต (ช็อตละ 1–3 บรรทัด)"
+        : "Complete dialogue for all 9 shots (1–3 lines per shot)"
       : null,
     dialogueMode === "character_dialogue" &&
     !shotDialogueSpeakersAreSelected &&
@@ -1638,7 +1680,7 @@ export function SpecialTieInEpisodeDialog({
       setShotDialogueDrafts(shotDrafts);
       setDialogueBrief(
         shotDrafts.some(shot => shot.dialogueLines.length > 0)
-          ? formatShotDialogueDrafts(shotDrafts)
+          ? formatShotDialogueDrafts(shotDrafts, characters)
           : selectedIdea.dialogueScript
       );
     }
@@ -2270,7 +2312,7 @@ export function SpecialTieInEpisodeDialog({
       setShotDialogueDrafts(shotDrafts);
       setDialogueBrief(
         candidateShotLines.length > 0
-          ? formatShotDialogueDrafts(shotDrafts)
+          ? formatShotDialogueDrafts(shotDrafts, characters)
           : candidate.dialogueScript
       );
       toast.success(
@@ -2441,8 +2483,8 @@ export function SpecialTieInEpisodeDialog({
     ) {
       toast.error(
         lang === "th"
-          ? "บทพูดต้องครบ 9 ช็อต และมีอย่างน้อย 2 บรรทัดต่อช็อต"
-          : "Dialogue must cover all 9 shots with at least 2 lines per shot"
+          ? "บทพูดต้องครบ 9 ช็อต โดยแต่ละช็อตมี 1–3 บรรทัด"
+          : "Dialogue must cover all 9 shots with 1–3 lines per shot"
       );
       return;
     }
@@ -2452,7 +2494,7 @@ export function SpecialTieInEpisodeDialog({
           episodeStory: idea.trim(),
           dialogueScript:
             dialogueMode === "character_dialogue"
-              ? formatShotDialogueDrafts(shotDialogueDrafts)
+              ? formatShotDialogueDrafts(shotDialogueDrafts, characters)
               : "",
           dialogue:
             dialogueMode === "character_dialogue"
@@ -2510,7 +2552,7 @@ export function SpecialTieInEpisodeDialog({
       dialogueMode,
       dialogueBrief:
         dialogueMode === "character_dialogue"
-          ? formatShotDialogueDrafts(shotDialogueDrafts)
+          ? formatShotDialogueDrafts(shotDialogueDrafts, characters)
           : undefined,
       speakerCharacterIds,
       shotDialogues: submittedShotDialogues,
@@ -3314,13 +3356,13 @@ export function SpecialTieInEpisodeDialog({
               <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
                 <Label htmlFor="special-tie-in-dialogue-script">
                   {lang === "th"
-                    ? "บทพูดและท่าทาง (แก้ไขได้ก่อนสร้าง 9 ช็อต)"
-                    : "Dialogue and actions (edit before creating 9 shots)"}
+                    ? "บทสนทนารวมทั้ง 9 ช็อต (อ่านต่อเนื่องก่อนสร้าง storyboard)"
+                    : "Complete dialogue across all nine shots (review before storyboard creation)"}
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   {lang === "th"
-                    ? "ชุดบทพูดหลักอยู่ในตัวแก้ไขรายช็อตด้านล่าง เพื่อให้ตรวจครบทั้ง 9 ช็อต ช่องนี้เป็นภาพรวมสำหรับอ่านเท่านั้น"
-                    : "The shot editor below is canonical; this field is a read-only overview of all nine shots."}
+                    ? "AI จะอ่านบททั้ง 9 ช็อตต่อเนื่องก่อนแสดงให้ตรวจ คุณแก้ข้อความในช่องของแต่ละช็อตด้านล่างได้ บทที่แก้จะอัปเดตภาพรวมและถูกใช้สร้าง storyboard โดยตรง ไม่มีคะแนนความเป็นธรรมชาติมาขวางการสร้าง"
+                    : "AI reviews all nine shots as one scene before showing the draft. Edit any line in its shot field below; the overview updates and the edited dialogue goes directly into the storyboard. No naturalness score blocks creation."}
                 </p>
                 <Textarea
                   id="special-tie-in-dialogue-script"
@@ -3345,16 +3387,16 @@ export function SpecialTieInEpisodeDialog({
                 <div>
                   <Label>
                     {lang === "th"
-                      ? "บทพูดรายช็อต (ต้องครบ 9 ช็อตก่อนสร้าง)"
-                      : "Shot-by-shot dialogue (required for all 9 shots)"}
+                      ? "แก้ไขบทพูดรายช็อตก่อนสร้าง storyboard"
+                      : "Edit dialogue by shot before storyboard creation"}
                   </Label>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {lang === "th"
-                      ? "ตรวจและแก้บทพูดได้ทุกช็อต ระบบจะบันทึกชุดนี้เป็นบทพูดหลักเพื่อส่งต่อ flow ปกติ ห้ามใช้ถ้อยคำโอ้อวดหรือให้เด็กพูด"
-                      : "Review every shot before creation. This structured set becomes the canonical dialogue for the normal flow; no overclaims and no child speakers."}
+                      ? "ตรวจลำดับและบริบทของทั้งฉาก แล้วแก้รายละเอียดรายช็อตได้ บทฉบับล่าสุดจะถูกส่งต่อโดยตรง"
+                      : "Review the full scene flow, then fine-tune any shot. The latest dialogue is sent directly to storyboard creation."}
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3">
                   {shotDialogueDrafts.map((shot, shotIndex) => (
                     <div key={shot.shotNumber} className="space-y-2 rounded-md border bg-background p-3">
                       <p className="text-sm font-medium">
@@ -3363,40 +3405,115 @@ export function SpecialTieInEpisodeDialog({
                       {shot.dialogueLines.map((line, lineIndex) => (
                         <div key={`${shot.shotNumber}-${lineIndex}`} className="space-y-1">
                           <p className="text-xs text-muted-foreground">
-                            {line.speakerCharacterId}
+                            {dialogueSpeakerLabel(
+                              line.speakerCharacterId,
+                              characters
+                            )}
                           </p>
                           <Textarea
                             value={line.line}
                             rows={2}
                             maxLength={2000}
-                            onChange={event =>
-                              setShotDialogueDrafts(current =>
-                                current.map((currentShot, currentShotIndex) =>
-                                  currentShotIndex !== shotIndex
-                                    ? currentShot
-                                    : {
-                                        ...currentShot,
-                                        dialogueLines: currentShot.dialogueLines.map(
-                                          (currentLine, currentLineIndex) =>
-                                            currentLineIndex === lineIndex
-                                              ? { ...currentLine, line: event.target.value }
-                                              : currentLine
-                                        ),
-                                      }
+                            onChange={event => {
+                              const updatedDrafts = updateShotDialogueLine(
+                                shotDialogueDrafts,
+                                shotIndex,
+                                lineIndex,
+                                event.target.value
+                              );
+                              setShotDialogueDrafts(updatedDrafts);
+                              setDialogueBrief(
+                                formatShotDialogueDrafts(
+                                  updatedDrafts,
+                                  characters
                                 )
-                              )
-                            }
+                              );
+                            }}
                           />
+                          {shot.dialogueLines.length > 1 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const updatedDrafts = shotDialogueDrafts.map(
+                                  (currentShot, currentShotIndex) =>
+                                    currentShotIndex !== shotIndex
+                                      ? currentShot
+                                      : {
+                                          ...currentShot,
+                                          dialogueLines:
+                                            currentShot.dialogueLines.filter(
+                                              (_, currentLineIndex) =>
+                                                currentLineIndex !== lineIndex
+                                            ),
+                                        }
+                                );
+                                setShotDialogueDrafts(updatedDrafts);
+                                setDialogueBrief(
+                                  formatShotDialogueDrafts(
+                                    updatedDrafts,
+                                    characters
+                                  )
+                                );
+                              }}
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              {lang === "th" ? "ลบบรรทัด" : "Remove line"}
+                            </Button>
+                          ) : null}
                         </div>
                       ))}
+                      {shot.dialogueLines.length < 3 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const lastSpeakerId =
+                              shot.dialogueLines.at(-1)?.speakerCharacterId ??
+                              speakerCharacterIds[0] ??
+                              "";
+                            const nextSpeakerId =
+                              speakerCharacterIds.find(
+                                speakerId => speakerId !== lastSpeakerId
+                              ) ?? lastSpeakerId;
+                            const updatedDrafts = shotDialogueDrafts.map(
+                              (currentShot, currentShotIndex) =>
+                                currentShotIndex !== shotIndex
+                                  ? currentShot
+                                  : {
+                                      ...currentShot,
+                                      dialogueLines: [
+                                        ...currentShot.dialogueLines,
+                                        {
+                                          speakerCharacterId: nextSpeakerId,
+                                          line: "",
+                                        },
+                                      ],
+                                    }
+                            );
+                            setShotDialogueDrafts(updatedDrafts);
+                            setDialogueBrief(
+                              formatShotDialogueDrafts(
+                                updatedDrafts,
+                                characters
+                              )
+                            );
+                          }}
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" />
+                          {lang === "th" ? "เพิ่มบรรทัด" : "Add line"}
+                        </Button>
+                      ) : null}
                     </div>
                   ))}
                 </div>
                 {!hasCompleteShotDialogueDrafts(shotDialogueDrafts) ? (
                   <p className="text-xs font-medium text-destructive">
                     {lang === "th"
-                      ? "บทพูดยังไม่ครบ 9 ช็อต หรือมีช็อตที่น้อยกว่า 2 บรรทัด"
-                      : "Dialogue is incomplete: all 9 shots need at least 2 lines."}
+                      ? "บทพูดยังไม่ครบทั้ง 9 ช็อต หรือมีบรรทัดที่ยังว่าง"
+                      : "Dialogue is incomplete: fill every line across all 9 shots."}
                   </p>
                 ) : null}
               </div>

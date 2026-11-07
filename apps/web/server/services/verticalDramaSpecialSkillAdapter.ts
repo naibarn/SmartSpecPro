@@ -711,13 +711,6 @@ function buildFallbackDialogueTurns(
       "SPECIAL_FALLBACK_PRECONDITION: character dialogue has no resolved selected speaker"
     );
   }
-  const connectiveLines = [
-    "ค่อย ๆ ดูการกระทำตรงหน้าไปด้วยกันนะ",
-    "ลองทำต่ออีกขั้นอย่างใจเย็นนะ",
-    "ตอนนี้เราเห็นการใช้งานชัดเจนแล้ว",
-    "เราอยู่ตรงนี้และทำต่อไปด้วยกัน",
-    "จบช่วงนี้ด้วยการเก็บของให้เรียบร้อยนะ",
-  ];
   const speakerByCharacterId = new Map(
     bindings
       .filter(binding => binding.role === "person")
@@ -745,17 +738,7 @@ function buildFallbackDialogueTurns(
       exact_dialogue: line,
     }));
   });
-  return grouped.map((turns, shotIndex) => {
-    const padded = [...turns];
-    while (padded.length < 2) {
-      padded.push({
-        speaker_reference_id:
-          speakerReferenceIds[(shotIndex + padded.length) % speakerReferenceIds.length]!,
-        exact_dialogue: connectiveLines[(shotIndex + padded.length) % connectiveLines.length]!,
-      });
-    }
-    return padded.slice(0, 3);
-  });
+  return grouped.map(turns => turns.slice(0, 3));
 }
 
 /**
@@ -1256,7 +1239,7 @@ export function buildSpecialPrompt(
     }),
   };
   prompt.systemPrompt +=
-    "\n\nDIALOGUE OVERRIDE: In character_dialogue mode, follow dialogue_shot_plan shot by shot and preserve every reviewed line verbatim in its assigned shot. Use one to three speaking_turns per shot as the reviewed dialogue requires; add only a short natural bridge when a shot has fewer than two reviewed lines. Use only selected eligible speakers. This is an advertising video: never use overclaim, medical/cure/guarantee/absolute/hard-sell language, and never let a child or age-unknown character speak. In none mode, every shot must be silent.";
+    "\n\nDIALOGUE OVERRIDE: In character_dialogue mode, follow dialogue_shot_plan shot by shot and preserve every reviewed line verbatim in its assigned shot. Use the reviewed one to three speaking_turns per shot as they are; do not add dialogue to fill a fixed line count or pad a short shot. Use only selected eligible speakers. This is an advertising video: never use overclaim, medical/cure/guarantee/absolute/hard-sell language, and never let a child or age-unknown character speak. In none mode, every shot must be silent.";
   return prompt;
 }
 

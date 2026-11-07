@@ -44,7 +44,7 @@ import {
 const SKILL_SLUG = "vertical-drama-marketplace-review-story-planner";
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE =
-  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai review/story episode in at least 3 connected paragraphs with setup, an observation or character need, a review subject experience that follows the selected presentation style, and scene resolution; allow factual reviews and documentary-style stories, not only product tie-ins. Use input.reviewSubjectType and the written subject description, specifications, claims, and direction as source context when thinking up all 3 ideas. Let relevant details shape the story naturally without forcing exact wording or repeated mentions. Treat attached images as downstream visual references, including multiple angles of one product, object, restaurant, or place. This text-only idea planner receives image URLs and labels rather than image pixels, so do not claim visual observations from them; preserve all references for the later image-generation flow. Do not infer facts such as price, hours, services, software features, performance, or claims. If input.productSource is upload, treat input.product.description and input.direction as the user-provided review-subject brief and story direction; if either is empty, keep the idea general to the selected review-subject type and avoid unsupported factual claims because this text-only planner cannot inspect image pixels. Do not invent brand, specifications, benefits, features, services, safety, efficacy, or claims. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries, each with 2 short natural named dialogue lines suitable for one video shot; let dialogue refer to relevant review-subject details when supported and when they fit what a character sees, does, or needs; other shots should advance the story naturally and need not mention the subject. Do not force exact wording or repeat mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 18-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the selected review subject clearly but must stay factual, modest, and non-pressuring. Keep references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear subject-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
+  'Return exactly one complete JSON object with schemaVersion: 1 and exactly 3 items in ideas. Every idea must include these exact keys: ideaId, title, presentationStyle, storyStructure, logline, episodeStory, dialogueScript, dialogue, shotDialogues, storyFunction, scene, productMentionReason, actions, benefitsMentioned, claimsGuard, continuity, lookSlotRequests, sceneSlotRequests. episodeStory is the primary deliverable: write a coherent human-readable Thai review/story episode in at least 3 connected paragraphs with setup, an observation or character need, a review subject experience that follows the selected presentation style, and scene resolution; allow factual reviews and documentary-style stories, not only product tie-ins. Use input.reviewSubjectType and the written subject description, specifications, claims, and direction as source context when thinking up all 3 ideas. Let relevant details shape the story naturally without forcing exact wording or repeated mentions. Treat attached images as downstream visual references, including multiple angles of one product, object, restaurant, or place. This text-only idea planner receives image URLs and labels rather than image pixels, so do not claim visual observations from them; preserve all references for the later image-generation flow. Do not infer facts such as price, hours, services, software features, performance, or claims. If input.productSource is upload, treat input.product.description and input.direction as the user-provided review-subject brief and story direction; if either is empty, keep the idea general to the selected review-subject type and avoid unsupported factual claims because this text-only planner cannot inspect image pixels. Do not invent brand, specifications, benefits, features, services, safety, efficacy, or claims. If input.footageGuide is present, keep the story compatible with its transcript, scene ranges, speech/silence ranges, and semanticGuide; do not invent actions or spoken content that contradicts known footage evidence, and explicitly keep uncertain facts conservative. Follow input.dialogueMode exactly: when it is character_dialogue, return exactly 9 ordered shotDialogues entries with 1-3 short natural named dialogue lines per shot, choosing the count that fits the moment; let dialogue refer to relevant review-subject details when supported and when they fit what a character sees, does, or needs; other shots should advance the story naturally and need not mention the subject. After drafting all 9 shots, reread their lines together in order as one continuous scene and revise speech that sounds staged, repetitive, overly explanatory, or disconnected from the preceding line or action. Let replies react to what was just said, use each character’s established voice and relationship, vary sentence length and conversational rhythm, and mention the review subject only when it fits the moment. Do not make every shot a matching question-and-answer pair or repeat cautious product disclaimers. This is a creative quality review, not a pass/fail score: never block or omit an otherwise valid idea because of a naturalness judgment. Do not force exact wording or repeat mentions across shots. The dialogue array is only a summary of up to 12 representative lines; shotDialogues is the authoritative full 9-shot script. Do not duplicate all 9-27 shot lines into dialogue. When dialogueMode is none, return 9 ordered shotDialogues entries with empty lines and no spoken text. Keep every speaker 18+; selected children may appear visually but must never speak. Never use medical, cure, treatment, prevention, guaranteed, absolute, miracle, best, or 100% claims. A direct_product_pitch may describe and recommend the selected review subject clearly but must stay factual, modest, and non-pressuring. Keep references evidence-based and match the selected presentation style; natural tie-ins should remain modest while direct pitches may use clear subject-focused dialogue. scene must include location, atmosphere, and at least 2 beats. Each dialogue item must include speaker and line. claimsGuard must include allowed, prohibited, and notes. continuity must include dnaKept, relationshipBeat, and toneFit. Use only the characters in the selectedCharacterIds/characters input. Never introduce, name, or give dialogue to an excluded or dialogue-prohibited character. Every dialogue speaker must be one of the selected adult speaker names, and every lookSlotRequests.characterId must be one of the selectedCharacterIds. Return all arrays even when empty. Never rename keys, omit required keys, return null for an object, return shot prompts, or return markdown/prose outside the JSON object.';
 
 const MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT =
   `${MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT_BASE} In every spoken line and dialogueScript, never use absolute superlatives or urgent purchase commands, even as a joke, quotation, or negation. Replace superlatives with a modest, verifiable observation from the input; replace purchase commands with a calm, optional suggestion to review the available information. shotDialogues is the single source of truth for speech; dialogue is only its first 12 representative lines, and dialogueScript must restate its spoken lines without adding different speech.`;
@@ -417,7 +417,7 @@ function marketplaceReviewRepairGuidance(errorMessage: string): string {
     return "มีคำกล่าวอ้างที่ไม่มีหลักฐาน: ลบหรือเขียนใหม่ในทุกช่องให้เหลือเฉพาะข้อเท็จจริงจากข้อมูลสินค้า ห้ามอนุมานประสิทธิภาพ ความปลอดภัย หรือผลลัพธ์";
   }
   if (errorMessage.includes("episode story or dialogue script is not usable")) {
-    return "โครงเรื่องหรือบทพูดยังไม่ครบ: เขียน episodeStory ภาษาไทยอย่างน้อย 3 ย่อหน้าที่ต่อเนื่อง และ dialogueScript จากบทพูดของ shotDialogues ทั้ง 9 ช็อต โดยแต่ละช็อตมี 2-3 บรรทัดจากผู้ใหญ่ที่เลือก";
+    return "โครงเรื่องหรือบทพูดยังไม่ครบ: เขียน episodeStory ภาษาไทยอย่างน้อย 3 ย่อหน้าที่ต่อเนื่อง และ dialogueScript จากบทพูดของ shotDialogues ทั้ง 9 ช็อต โดยแต่ละช็อตมี 1-3 บรรทัดจากผู้ใหญ่ที่เลือก";
   }
   return "ปรับเฉพาะส่วนที่ validator ระบุให้ตรงกับ schema และข้อมูลที่ยืนยันได้ โดยรักษาข้อเท็จจริงและใช้ชื่อผู้พูดที่เลือกแบบตรงตัว";
 }
@@ -506,14 +506,14 @@ function marketplaceReviewIdeaLlmOutputSchema(
           idea.shotDialogues.some(
             (shot, shotIndex) =>
               shot.shotNumber !== shotIndex + 1 ||
-              shot.lines.length < 2 ||
+              shot.lines.length < 1 ||
               shot.lines.length > 3
           )
         ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["ideas", index, "shotDialogues"],
-            message: "character_dialogue ideas must contain 2-3 lines for each of 9 ordered shots",
+            message: "character_dialogue ideas must contain 1-3 lines for each of 9 ordered shots",
           });
         }
       } else if (idea.dialogue.length > 0 || idea.dialogueScript.trim().length > 0) {
@@ -753,7 +753,7 @@ export function validateMarketplaceReviewIdeaOutput(
           idea.shotDialogues.some(
             (shot, shotIndex) =>
               shot.shotNumber !== shotIndex + 1 ||
-              shot.lines.length < 2 ||
+              shot.lines.length < 1 ||
               shot.lines.length > 3
           )))
     )
@@ -1009,7 +1009,14 @@ export function buildMarketplaceReviewIdeaUserPrompt(
               input.dialogueMode === "character_dialogue"
                 ? [
                     { speaker: exampleAdultSpeaker, line: "ประโยคสั้นที่เป็นธรรมชาติ" },
-                    { speaker: exampleAdultSpeaker, line: "ประโยคตอบรับหรือพาเรื่องต่อ" },
+                    ...(index % 3 === 1
+                      ? [
+                          {
+                            speaker: exampleAdultSpeaker,
+                            line: "ประโยคตอบรับหรือพาเรื่องต่อ",
+                          },
+                        ]
+                      : []),
                   ]
                 : [],
           })),
@@ -1042,6 +1049,10 @@ export function buildMarketplaceReviewIdeaUserPrompt(
       prohibitedSpeakerNames: input.dialogueProhibitedCharacterNames,
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
+      wholeSceneNaturalnessReview:
+        input.dialogueMode === "character_dialogue"
+          ? "หลังร่างบทครบ 9 ช็อต ให้อ่านบททั้งหมดต่อเนื่องตามลำดับเพื่อทบทวนความเป็นธรรมชาติ แล้วแก้ประโยคที่ฟังเหมือนสคริปต์ขายของ ซ้ำรูปประโยค อธิบายข้อมูลโดยไม่มีเหตุผลจากตัวละคร หรือไม่ต่อกับสิ่งที่เพิ่งพูด/ทำ ให้ตัวละครโต้ตอบตามเสียงและความสัมพันธ์ที่กำหนด สลับจังหวะและความยาวประโยค และพูดถึงหัวข้อรีวิวเฉพาะเมื่อเข้ากับเหตุการณ์ การทบทวนนี้เป็นคำแนะนำเชิงสร้างสรรค์ ไม่มีคะแนนผ่าน/ไม่ผ่านและห้ามใช้ขวางการสร้างผลลัพธ์"
+          : undefined,
       advertisingCompliance:
         "ห้ามกล่าวอ้างเกินจริง ใช้คำยกย่องแบบเด็ดขาด หรือใช้คำสั่งเร่งซื้อ รวมถึงห้ามให้เด็กพูด; direct_product_pitch สามารถแนะนำหัวข้อรีวิวอย่างชัดเจนด้วยข้อมูลจริงได้ แต่ให้ใช้ประโยคสุภาพที่ไม่กดดัน ไม่ชวนซื้อ และไม่เปรียบเทียบว่าเหนือกว่าทุกอย่าง",
       productTieIn:
