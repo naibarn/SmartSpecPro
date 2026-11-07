@@ -31,6 +31,81 @@ const baseProps = {
 };
 
 describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
+  it("previews scene intent and visual source revisions without hiding render actions", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        locale="en"
+        storyboard={{
+          canonical_style_bible: { overall_style: "Warm, grounded drama" },
+          shots: [
+            {
+              shot_number: 1,
+              visual_description: "A woman enters the hall",
+              characters: ["alice"],
+              scene_intent: {
+                contract_version: "vd-shot-scene-intent-v1",
+                source_revision: "a".repeat(64),
+                physical_character_refs: ["alice"],
+                screen_caller_refs: [],
+                offscreen_speaker_refs: [],
+                mentioned_only_refs: ["bob"],
+                communication_mode: "none",
+                visual_plan: {
+                  mode: "single_view",
+                  reason_codes: [],
+                },
+                confidence: "low",
+                needs_review: true,
+                reason_codes: ["ambiguous_presence"],
+              },
+            },
+          ],
+        }}
+        startFramePlan={{
+          seriesVisualCanon: {
+            revision: 4,
+            fingerprint: "b".repeat(64),
+          },
+          frames: [{ shotNumber: 1, imagePrompt: "Warm hall" }],
+        }}
+        motionPromptPack={{
+          selectedVideoModelId: "video-model",
+          durationProfileId: "single-shot",
+          clips: [
+            {
+              clipNumber: 1,
+              sourceShotNumbers: [1],
+              prompt: "She turns toward the light",
+              durationSeconds: 8,
+            },
+          ],
+        }}
+        selectedImageModelId="image-model"
+        selectedVideoModelId="video-model"
+        onGenerateAllStartFrameImages={vi.fn()}
+        onGenerateVideoClip={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId("vd-storyboard-series-look-preview")).toHaveTextContent(
+      "Warm, grounded drama"
+    );
+    expect(screen.getByTestId("vd-storyboard-series-look-revision")).toHaveTextContent(
+      "Revision 4"
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-intent-preview-1")).toHaveTextContent(
+      "ambiguous_presence"
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-intent-review-1")).toHaveTextContent(
+      "Review suggested"
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-intent-source-1")).toHaveTextContent(
+      "aaaaaaaaaaaa"
+    );
+    expect(screen.getByTestId("vd-storyboard-generate-all-images")).toBeEnabled();
+    expect(screen.getByTestId("vd-storyboard-generate-video-1")).toBeEnabled();
+  });
+
   it("renders the special tie-in scene track before the product track", () => {
     render(
       <VerticalDramaStoryboardPanel
@@ -314,7 +389,7 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
 
     expect(
       screen.getByTestId("vd-storyboard-image-status-1")
-    ).toHaveTextContent("สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ");
+    ).toHaveTextContent("สร้างพรอมต์แล้ว แต่สร้างภาพไม่สำเร็จ");
     fireEvent.click(screen.getByRole("button", { name: "สร้างภาพใหม่" }));
     expect(onRetryStartFrameImage).toHaveBeenCalledWith(1, "Provider timeout");
     expect(

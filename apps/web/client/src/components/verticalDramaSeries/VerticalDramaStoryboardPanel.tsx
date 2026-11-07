@@ -724,6 +724,19 @@ interface StoryboardShotView {
   screen_caller_refs?: string[];
   supporting_presence?: unknown[];
   duration_seconds?: number;
+  scene_intent?: {
+    contract_version?: string;
+    source_revision?: string;
+    physical_character_refs?: string[];
+    screen_caller_refs?: string[];
+    offscreen_speaker_refs?: string[];
+    mentioned_only_refs?: string[];
+    communication_mode?: string;
+    visual_plan?: { mode?: string; reason_codes?: string[] };
+    confidence?: "high" | "medium" | "low";
+    needs_review?: boolean;
+    reason_codes?: string[];
+  };
   /** Declared visual-only intent (spec §7.7.2 Layer 3, section-13) — persisted
    *  by the `vertical-drama-storyboard-shotgrid` skill superset when
    *  `verticalDramaSeriesSpeechBudget` is on; absent on legacy/flag-off
@@ -932,6 +945,7 @@ export interface VerticalDramaStartFramePlanFrame {
 export interface VerticalDramaStartFramePlanView {
   mode?: string;
   selectedImageModelId?: string;
+  seriesVisualCanon?: { revision?: number; fingerprint: string };
   sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
   frames?: VerticalDramaStartFramePlanFrame[];
 }
@@ -3958,6 +3972,43 @@ export function VerticalDramaStoryboardPanel({
           the per-shot production grid, and assembly) always renders — never
           gated on the meta disclosure above, exactly as when the wizard flag
           is off. */}
+      {startFramePlan?.seriesVisualCanon ||
+      storyboard?.canonical_style_bible?.overall_style ? (
+        <section
+          className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-3"
+          aria-label={t(locale, "ตัวอย่างลุคของซีรีส์", "Series look preview")}
+          data-testid="vd-storyboard-series-look-preview"
+        >
+          <p className="flex flex-wrap items-center gap-2 font-medium">
+            <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+            {t(locale, "ตัวอย่างลุคที่ใช้กับแผนภาพ", "Look applied to frame planning")}
+            {startFramePlan?.seriesVisualCanon?.revision !== undefined ? (
+              <Badge variant="outline" data-testid="vd-storyboard-series-look-revision">
+                {t(
+                  locale,
+                  `เวอร์ชัน ${startFramePlan.seriesVisualCanon.revision}`,
+                  `Revision ${startFramePlan.seriesVisualCanon.revision}`
+                )}
+              </Badge>
+            ) : null}
+          </p>
+          {storyboard?.canonical_style_bible?.overall_style ? (
+            <p className="text-muted-foreground">
+              {storyboard.canonical_style_bible.overall_style}
+            </p>
+          ) : null}
+          {startFramePlan?.seriesVisualCanon?.fingerprint ? (
+            <p
+              className="break-all text-xs text-muted-foreground"
+              title={startFramePlan.seriesVisualCanon.fingerprint}
+              data-testid="vd-storyboard-series-look-source"
+            >
+              {t(locale, "ต้นฉบับลุค: ", "Look source: ")}
+              {startFramePlan.seriesVisualCanon.fingerprint.slice(0, 12)}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
       {reviewCharacters.length > 0 ? (
         <div
           className="flex flex-wrap gap-3 rounded-md border border-border bg-muted/30 p-3"
@@ -4558,6 +4609,25 @@ export function VerticalDramaStoryboardPanel({
       >
         {shots.map((shot, i) => {
           const shotNumber = shot.shot_number ?? i + 1;
+          const sceneIntent = shot.scene_intent;
+          const sceneIntentNames = (refs?: string[]) =>
+            (refs ?? [])
+              .map(key => formatShotCharacterLabel(characterPortraits[key], key))
+              .join(", ");
+          const sceneIntentVisualMode =
+            sceneIntent?.visual_plan?.mode === "dual_view"
+              ? t(locale, "มุมมองคู่", "Dual view")
+              : sceneIntent?.visual_plan?.mode === "device_screen"
+                ? t(locale, "แสดงผ่านหน้าจออุปกรณ์", "Device screen")
+                : sceneIntent?.visual_plan?.mode === "text_ui"
+                  ? t(locale, "หน้าจอข้อความ", "Text screen")
+                  : sceneIntent?.visual_plan?.mode === "voice_only"
+                    ? t(locale, "เสียงนอกภาพ", "Voice only")
+                    : sceneIntent?.visual_plan?.mode === "no_character"
+                      ? t(locale, "ไม่มีตัวละครในภาพ", "No character in frame")
+                      : sceneIntent?.visual_plan?.mode === "single_view"
+                        ? t(locale, "ภาพมุมเดียว", "Single view")
+                        : undefined;
           const frame = frameByShot.get(shotNumber);
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
           const canonicalDialogueLines = canonicalDialogueByShot.get(shotNumber)?.dialogueLines ?? [];
@@ -6883,8 +6953,107 @@ export function VerticalDramaStoryboardPanel({
                         shot.camera.movement,
                       ]
                         .filter(Boolean)
-                        .join(" · ")}
+                      .join(" · ")}
                     </p>
+                  ) : null}
+                  {sceneIntent ? (
+                    <section
+                      className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 p-2 text-xs"
+                      aria-label={t(
+                        locale,
+                        `ตัวอย่างแผนภาพช็อต ${shotNumber}`,
+                        `Shot ${shotNumber} direction preview`
+                      )}
+                      data-testid={`vd-storyboard-scene-intent-preview-${shotNumber}`}
+                    >
+                      <p className="flex flex-wrap items-center gap-2 font-medium">
+                        <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(locale, "ตัวอย่างแผนภาพ", "Direction preview")}
+                        {sceneIntent.contract_version ? (
+                          <Badge variant="outline">
+                            {sceneIntent.contract_version}
+                          </Badge>
+                        ) : null}
+                        {sceneIntent.needs_review ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500 text-amber-800 dark:text-amber-200"
+                            data-testid={`vd-storyboard-scene-intent-review-${shotNumber}`}
+                          >
+                            {t(locale, "ควรตรวจทาน", "Review suggested")}
+                          </Badge>
+                        ) : null}
+                        {sceneIntent.confidence ? (
+                          <span className="font-normal text-muted-foreground">
+                            {t(locale, "ความมั่นใจ: ", "Confidence: ")}
+                            {sceneIntent.confidence}
+                          </span>
+                        ) : null}
+                      </p>
+                      {sceneIntentVisualMode ? (
+                        <p className="text-muted-foreground">
+                          {t(locale, "องค์ประกอบภาพ: ", "Composition: ")}
+                          {sceneIntentVisualMode}
+                          {sceneIntent.communication_mode &&
+                          sceneIntent.communication_mode !== "none"
+                            ? ` · ${sceneIntent.communication_mode.replaceAll("_", " ")}`
+                            : ""}
+                        </p>
+                      ) : null}
+                      {sceneIntent.physical_character_refs?.length ? (
+                        <p>
+                          <span className="font-medium">
+                            {t(locale, "อยู่ในฉาก: ", "In scene: ")}
+                          </span>
+                          {sceneIntentNames(sceneIntent.physical_character_refs)}
+                        </p>
+                      ) : null}
+                      {sceneIntent.screen_caller_refs?.length ? (
+                        <p>
+                          <span className="font-medium">
+                            {t(locale, "อยู่บนหน้าจอ: ", "On screen: ")}
+                          </span>
+                          {sceneIntentNames(sceneIntent.screen_caller_refs)}
+                        </p>
+                      ) : null}
+                      {sceneIntent.offscreen_speaker_refs?.length ? (
+                        <p>
+                          <span className="font-medium">
+                            {t(locale, "เสียงนอกภาพ: ", "Off-screen: ")}
+                          </span>
+                          {sceneIntentNames(sceneIntent.offscreen_speaker_refs)}
+                        </p>
+                      ) : null}
+                      {sceneIntent.mentioned_only_refs?.length ? (
+                        <p>
+                          <span className="font-medium">
+                            {t(locale, "กล่าวถึงเท่านั้น: ", "Mentioned only: ")}
+                          </span>
+                          {sceneIntentNames(sceneIntent.mentioned_only_refs)}
+                        </p>
+                      ) : null}
+                      {sceneIntent.source_revision ? (
+                        <p
+                          className="break-all text-muted-foreground"
+                          title={sceneIntent.source_revision}
+                          data-testid={`vd-storyboard-scene-intent-source-${shotNumber}`}
+                        >
+                          {t(locale, "ต้นฉบับ storyboard: ", "Storyboard source: ")}
+                          {sceneIntent.source_revision.slice(0, 12)}
+                        </p>
+                      ) : null}
+                      {(sceneIntent.reason_codes?.length ||
+                        sceneIntent.visual_plan?.reason_codes?.length) ? (
+                        <p className="text-muted-foreground">
+                          {Array.from(
+                            new Set([
+                              ...(sceneIntent.reason_codes ?? []),
+                              ...(sceneIntent.visual_plan?.reason_codes ?? []),
+                            ])
+                          ).join(" · ")}
+                        </p>
+                      ) : null}
+                    </section>
                   ) : null}
                   {hasPendingLook ? (
                     <section
