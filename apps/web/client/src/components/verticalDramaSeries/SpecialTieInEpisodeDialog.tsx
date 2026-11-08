@@ -330,6 +330,13 @@ export function resolveSpecialTieInDialogueMode(
   return initialInput?.dialogueMode ?? DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE;
 }
 
+export function hasResolvedSpecialTieInPrimaryScene(input: {
+  hasMarketplaceIdea: boolean;
+  sceneLocationKey?: string | null;
+}): boolean {
+  return !input.hasMarketplaceIdea || Boolean(input.sceneLocationKey?.trim());
+}
+
 type FootageBrollAsset = {
   manifest: MediaSourceManifest;
   previewUrl: string;
@@ -2435,11 +2442,16 @@ export function SpecialTieInEpisodeDialog({
       );
       return;
     }
-    if (sceneSuggestions.length > 0) {
+    if (
+      !hasResolvedSpecialTieInPrimaryScene({
+        hasMarketplaceIdea: Boolean(selectedMarketplaceIdea),
+        sceneLocationKey: selectedSceneLocationKey,
+      })
+    ) {
       toast.error(
         lang === "th"
-          ? "กรุณาเลือกหรือสร้างฉากให้ครบก่อนสร้างตอน"
-          : "Choose an existing scene or add a scene before creating the episode"
+          ? "กรุณาเลือกหรือสร้างฉากหลักก่อนสร้างตอน ส่วนฉากเสริมเป็นตัวเลือก ไม่บังคับ"
+          : "Choose or create the main scene before creating the episode. Extra scenes are optional."
       );
       return;
     }
@@ -2690,11 +2702,16 @@ export function SpecialTieInEpisodeDialog({
       );
       return;
     }
-    if (sceneSuggestions.length > 0) {
+    if (
+      !hasResolvedSpecialTieInPrimaryScene({
+        hasMarketplaceIdea: Boolean(selectedMarketplaceIdea),
+        sceneLocationKey: selectedSceneLocationKey,
+      })
+    ) {
       toast.error(
         lang === "th"
-          ? "กรุณาเลือกหรือสร้างฉากให้ครบก่อนสร้างตอน"
-          : "Choose an existing scene or add a scene before creating the episode"
+          ? "กรุณาเลือกหรือสร้างฉากหลักก่อนสร้างตอน ส่วนฉากเสริมเป็นตัวเลือก ไม่บังคับ"
+          : "Choose or create the main scene before creating the episode. Extra scenes are optional."
       );
       return;
     }
@@ -4183,18 +4200,33 @@ export function SpecialTieInEpisodeDialog({
                   </h3>
                   <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
                     {lang === "th"
-                      ? "เลือกฉากจากคลังเดิมก่อน หรือสร้างฉากเพิ่มได้ ระบบจะไม่สร้างฉากให้อัตโนมัติ"
-                      : "Choose a scene from the existing library, or add one. Scenes are not created automatically."}
+                      ? "เลือกหรือสร้างฉากหลักก่อนสร้างตอน ส่วนฉากเสริมเป็นตัวเลือก ไม่บังคับ"
+                      : "Choose or create the main scene before creating the episode. Extra scenes are optional."}
                   </p>
                 </div>
-                {sceneSuggestions.map(suggestion => (
-                  <div
-                    key={suggestion.sceneLabel}
-                    className="space-y-2 rounded-md border bg-background p-3"
-                  >
-                    <p className="text-sm font-medium">
-                      {suggestion.sceneLabel}
-                    </p>
+                {sceneSuggestions.map(suggestion => {
+                  const isPrimaryScene =
+                    suggestion.sceneLabel.trim().toLocaleLowerCase() ===
+                    selectedMarketplaceIdea?.scene.location
+                      .trim()
+                      .toLocaleLowerCase();
+                  return (
+                    <div
+                      key={suggestion.sceneLabel}
+                      className="space-y-2 rounded-md border bg-background p-3"
+                    >
+                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                        {suggestion.sceneLabel}
+                        <Badge variant={isPrimaryScene ? "default" : "secondary"}>
+                          {isPrimaryScene
+                            ? lang === "th"
+                              ? "ฉากหลัก"
+                              : "Main scene"
+                            : lang === "th"
+                              ? "ฉากเสริม"
+                              : "Extra scene"}
+                        </Badge>
+                      </p>
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <Select
@@ -4318,8 +4350,9 @@ export function SpecialTieInEpisodeDialog({
                     >
                       {lang === "th" ? "สร้างฉากใหม่" : "Create new scene"}
                     </Button>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </section>
             ) : null}
 

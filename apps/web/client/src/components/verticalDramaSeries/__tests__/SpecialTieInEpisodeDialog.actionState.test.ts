@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE,
   areSpecialTieInDialogueSpeakersSelected,
+  hasResolvedSpecialTieInPrimaryScene,
   isUsableSpecialTieInPortrait,
   limitSpecialTieInDialogueLines,
   resolveSpecialTieInActionState,
@@ -11,6 +12,33 @@ import {
 import { shouldLoadSpecialTieInHistory } from "@/lib/specialTieInUi";
 
 describe("special tie-in action state", () => {
+  it("allows creation after the main scene is selected while extra scene suggestions remain", () => {
+    expect(
+      hasResolvedSpecialTieInPrimaryScene({
+        hasMarketplaceIdea: true,
+        sceneLocationKey: "living-room",
+      }),
+    ).toBe(true);
+  });
+
+  it("requires the main scene for a selected marketplace idea", () => {
+    expect(
+      hasResolvedSpecialTieInPrimaryScene({
+        hasMarketplaceIdea: true,
+        sceneLocationKey: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not require a marketplace scene when no marketplace idea is selected", () => {
+    expect(
+      hasResolvedSpecialTieInPrimaryScene({
+        hasMarketplaceIdea: false,
+        sceneLocationKey: null,
+      }),
+    ).toBe(true);
+  });
+
   it("switches away from a stale model when selected references change", () => {
     const models = [
       { modelId: "compatible-model" },
