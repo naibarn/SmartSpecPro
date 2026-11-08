@@ -532,6 +532,24 @@ export type VerticalDramaShotgrid = {
 export type VerticalDramaStartFramePlan = {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /** Episode-scoped visual identity observations used to help map dialogue speakers to visible people. */
+  speakerAppearanceProfiles?: {
+    version: 1;
+    fingerprint: string;
+    createdAt: string;
+    profiles: Array<{
+      characterKey: string;
+      characterName: string;
+      generalAppearance: string;
+      examples: Array<{
+        shotNumber: number;
+        appearance: string;
+        confidence: number;
+      }>;
+    }>;
+    analyzedShotNumbers: number[];
+    skippedShotNumbers: number[];
+  };
   /** Provenance for the optional series visual identity used to author this plan. */
   seriesVisualCanon?: { revision?: number; fingerprint: string };
   /** Additive scene-anchor compatibility revision for generated-shot provenance. */

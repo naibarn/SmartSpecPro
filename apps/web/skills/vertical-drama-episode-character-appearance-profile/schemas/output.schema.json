@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-episode-character-appearance-profile/output",
+  "title": "Vertical Drama Episode Character Appearance Profiles",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["frames", "profiles"],
+  "properties": {
+    "frames": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["shot_number", "characters"],
+        "properties": {
+          "shot_number": { "type": "integer", "minimum": 1 },
+          "characters": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["character_key", "visible", "confidence"],
+              "properties": {
+                "character_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "visible": { "type": "boolean" },
+                "appearance": { "type": "string", "maxLength": 600 },
+                "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["character_key", "general_appearance"],
+        "properties": {
+          "character_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "general_appearance": { "type": "string", "maxLength": 800 }
+        }
+      }
+    }
+  }
+}

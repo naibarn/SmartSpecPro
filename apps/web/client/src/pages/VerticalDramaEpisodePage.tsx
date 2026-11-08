@@ -4809,17 +4809,52 @@ function EpisodeWorkspaceShell({
             suggestions: result.suggestions,
           },
         }));
+        const skippedProfileShotCount = result.appearanceProfileSkippedShotNumbers.length;
+        const skippedProfileText = skippedProfileShotCount > 0
+          ? lang === "en"
+            ? ` ${skippedProfileShotCount} shot(s) skipped because an approved frame was unavailable.`
+            : ` ข้าม ${skippedProfileShotCount} ช็อตเพราะไม่มีภาพที่อนุมัติหรือเข้าถึงได้`
+          : "";
+        const profileText = result.appearanceProfileStatus === "built"
+          ? lang === "en"
+            ? ` Built appearance profiles from ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} episode shots.${skippedProfileText}`
+            : ` วิเคราะห์ลักษณะตัวละครจาก ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} ช็อตในตอนแล้ว${skippedProfileText}`
+          : result.appearanceProfileStatus === "reused"
+            ? lang === "en"
+              ? ` Reused saved appearance profiles from ${result.appearanceProfileShotCount} shots.${skippedProfileText}`
+              : ` ใช้โปรไฟล์รูปลักษณ์ที่บันทึกไว้จาก ${result.appearanceProfileShotCount} ช็อต${skippedProfileText}`
+            : result.appearanceProfileStatus === "no_cast_references"
+              ? lang === "en"
+                ? " Character references are missing from this episode, so automatic matching is unavailable."
+                : " ตอนนี้ไม่มีข้อมูลตัวละครอ้างอิง จึงยังจับคู่อัตโนมัติไม่ได้"
+              : result.attributionIssue === "insufficient_credits"
+                ? lang === "en"
+                  ? " Not enough credits to compare the episode profiles; select people manually."
+                  : " เครดิตไม่พอสำหรับเทียบโปรไฟล์ทั้งตอน เลือกคนเองได้จากช่องเดิม"
+                : result.attributionIssue === "no_independent_profile_evidence"
+                  ? lang === "en"
+                    ? " No other-shot appearance evidence is available; select people manually."
+                    : " ยังไม่มีภาพจากช็อตอื่นไว้เทียบ เลือกคนเองได้จากช่องเดิม"
+                  : result.attributionIssue === "speaker_not_in_visible_cast"
+                    ? lang === "en"
+                      ? " The script speaker is not listed as visible in this shot; select people manually if they are shown."
+                      : " บทระบุผู้พูดคนนี้ แต่ข้อมูลช็อตไม่ได้ระบุว่าอยู่ในภาพ เลือกคนเองได้หากเห็นในภาพ"
+                  : result.attributionIssue
+                    ? lang === "en"
+                      ? " Profile comparison did not finish; detected people remain available for manual selection."
+                      : " เทียบโปรไฟล์ไม่สำเร็จ แต่ยังเลือกคนจากรายการที่ตรวจพบได้"
+                    : "";
         const suggestionText = result.suggestions.length
           ? lang === "en"
-            ? ` Suggested ${result.suggestions.length} speaker match(es).`
+            ? ` Suggested ${result.suggestions.length} speaker match(es). Review before saving.`
             : ` AI เสนอจับคู่ผู้พูด ${result.suggestions.length} คน โปรดตรวจสอบก่อนบันทึก`
           : lang === "en"
             ? " No confident speaker match; select people manually."
             : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
         toast.success(
           lang === "en"
-            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${suggestionText}`
-            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${suggestionText}`
+            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${profileText}${suggestionText}`
+            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${profileText}${suggestionText}`
         );
       },
       onError: err => toast.error(err.message),

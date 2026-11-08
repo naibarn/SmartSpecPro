@@ -1,0 +1,19 @@
+{
+  "name": "vertical_drama_episode_character_appearance_profile",
+  "display_name": "Vertical Drama Episode Character Appearance Profile",
+  "display_name_th": "โปรไฟล์รูปลักษณ์ตัวละครประจำตอน",
+  "version": "1.0.0",
+  "description": "Analyze approved frames across an episode to build reusable character appearance profiles.",
+  "description_th": "วิเคราะห์ภาพที่อนุมัติจากหลายช็อตเพื่อสร้างโปรไฟล์รูปลักษณ์ตัวละครที่ใช้ซ้ำได้ทั้งตอน",
+  "entry_prompt": "Build appearance profiles from visible evidence across the supplied approved episode frames. Use only dynamic cast references provided for each shot and abstain when identity is unclear. Never infer active speech.",
+  "output_schema": "schemas/output.schema.json",
+  "capabilities": [
+    "episode_appearance_profile",
+    "image_grounded_character_observations",
+    "wardrobe_continuity_cues",
+    "abstain_when_uncertain"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-episode-character-appearance-profile",
+  "openai_sora_primary": false
+}
