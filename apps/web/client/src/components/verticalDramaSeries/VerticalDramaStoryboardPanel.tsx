@@ -2918,7 +2918,7 @@ export function VerticalDramaStoryboardPanel({
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] =
     useState(false);
   const [confirmingBulkVideoPromptMode, setConfirmingBulkVideoPromptMode] =
-    useState<"standard" | "enhanced" | null>(null);
+    useState<"missing" | "standard" | "enhanced" | null>(null);
   const [speakerMappingBatchProgress, setSpeakerMappingBatchProgress] =
     useState<{
       currentIndex: number;
@@ -3650,6 +3650,21 @@ export function VerticalDramaStoryboardPanel({
     shotNumber =>
       !generatingShotVideoPromptForShot.has(shotNumber) &&
       !enhancedGeneratingForShot.has(shotNumber)
+  );
+  const shotsMissingVideoPromptNumbers = availableVideoPromptShotNumbers.filter(
+    shotNumber => {
+      const clipsForShot = clipByShot.get(shotNumber) ?? [];
+      return !clipsForShot.some(clip => {
+        const variantRead = readVideoPromptVariantStore(
+          clip.videoPromptVariants,
+          clip as Record<string, unknown>
+        );
+        const activePrompt = variantRead.activeProjection.prompt;
+        return (
+          typeof activePrompt === "string" && activePrompt.trim().length > 0
+        );
+      });
+    }
   );
 
   const storyboardHeaderTitle = (
@@ -4833,11 +4848,17 @@ export function VerticalDramaStoryboardPanel({
                       `ระบบจะตรวจความพร้อมและยืนยันเครดิตของ Enhanced แยกแต่ละช็อตก่อนเริ่ม รวม ${availableVideoPromptShotNumbers.length} ช็อต`,
                       `Enhanced readiness and credit estimate will be checked for each of ${availableVideoPromptShotNumbers.length} shots before starting.`
                     )
-                  : t(
-                      locale,
-                      `สร้างพรอมต์วิดีโอแบบปกติแยกทีละช็อต จำนวน ${availableVideoPromptShotNumbers.length} ช็อต`,
-                      `Generates a standard video prompt for each of ${availableVideoPromptShotNumbers.length} shots.`
-                    )}
+                  : confirmingBulkVideoPromptMode === "missing"
+                    ? t(
+                        locale,
+                        `สร้าง Video Prompt เฉพาะ ${shotsMissingVideoPromptNumbers.length} ช็อตที่ยังไม่มี prompt โดยคุมพร้อมกันไม่เกิน 2 ช็อต และใช้เครดิตตามปกติ`,
+                        `Generates prompts only for the ${shotsMissingVideoPromptNumbers.length} shots without one, with at most two jobs in parallel, using the usual credits.`
+                      )
+                    : t(
+                        locale,
+                        `สร้างพรอมต์วิดีโอแบบปกติแยกทีละช็อต จำนวน ${availableVideoPromptShotNumbers.length} ช็อต`,
+                        `Generates a standard video prompt for each of ${availableVideoPromptShotNumbers.length} shots.`
+                      )}
               </p>
               <div className="mt-2 flex gap-2">
                 <Button
@@ -4856,7 +4877,11 @@ export function VerticalDramaStoryboardPanel({
                     const mode = confirmingBulkVideoPromptMode;
                     setConfirmingBulkVideoPromptMode(null);
                     if (mode === "enhanced") {
-                      onGenerateAllEnhancedShotVideoPrompts?.(availableVideoPromptShotNumbers);
+                      onGenerateAllEnhancedShotVideoPrompts?.(
+                        availableVideoPromptShotNumbers
+                      );
+                    } else if (mode === "missing") {
+                      onGenerateAllShotVideoPrompts?.(shotsMissingVideoPromptNumbers);
                     } else {
                       onGenerateAllShotVideoPrompts?.(availableVideoPromptShotNumbers);
                     }
@@ -4867,13 +4892,69 @@ export function VerticalDramaStoryboardPanel({
                   {generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts
                     ? t(locale, "กำลังสร้าง…", "Generating…")
                     : confirmingBulkVideoPromptMode === "enhanced"
-                      ? t(locale, "สร้าง Enhanced ทุกช็อต", "Generate Enhanced for all shots")
-                      : t(locale, "สร้าง Video Prompt ปกติทุกช็อต", "Generate standard video prompts for all shots")}
+                      ? t(
+                          locale,
+                          "สร้าง Enhanced ทุกช็อต",
+                          "Generate Enhanced for all shots"
+                        )
+                      : confirmingBulkVideoPromptMode === "missing"
+                        ? t(
+                            locale,
+                            "สร้าง Video Prompt เฉพาะช็อตที่ยังไม่มี",
+                            "Generate video prompts for missing shots"
+                          )
+                        : t(
+                            locale,
+                            "สร้าง Video Prompt ปกติทุกช็อต",
+                            "Generate standard video prompts for all shots"
+                          )}
                 </Button>
               </div>
             </div>
           ) : (
             <>
+              {onGenerateAllShotVideoPrompts ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    if (!selectedVideoModelId) {
+                      toast.error(t2.selectVideoModelFirst);
+                      setIsVideoModelDialogOpen(true);
+                      return;
+                    }
+                    setConfirmingBulkVideoPromptMode("missing");
+                  }}
+                  disabled={
+                    generatingAllShotVideoPrompts ||
+                    generatingAllEnhancedShotVideoPrompts ||
+                    shotsMissingVideoPromptNumbers.length === 0
+                  }
+                  data-testid="vd-generate-missing-video-prompts"
+                >
+                  {generatingAllShotVideoPrompts ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 animate-spin"
+                    />
+                  ) : (
+                    <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                  )}
+                  {generatingAllShotVideoPrompts
+                    ? t(
+                        locale,
+                        "กำลังสร้าง Video Prompt…",
+                        "Generating video prompts…"
+                      )
+                    : t(
+                        locale,
+                        `สร้าง Video Prompt เฉพาะช็อตที่ยังไม่มี (${shotsMissingVideoPromptNumbers.length})`,
+                        `Generate prompts for shots without one (${shotsMissingVideoPromptNumbers.length})`
+                      )}
+                </Button>
+              ) : null}
               {onGenerateAllShotVideoPrompts ? (
                 <Button
                   type="button"
