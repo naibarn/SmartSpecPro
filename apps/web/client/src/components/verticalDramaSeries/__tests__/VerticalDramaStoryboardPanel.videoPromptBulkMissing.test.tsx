@@ -94,4 +94,42 @@ describe("VerticalDramaStoryboardPanel — bulk missing video prompts", () => {
       1, 3,
     ]);
   });
+
+  it("shows the missing-only action when the all-shots action is withheld", () => {
+    const onGenerateMissingShotVideoPrompts = vi.fn();
+
+    render(
+      <VerticalDramaStoryboardPanel
+        {...({
+          locale: "th",
+          storyboard: {
+            shots: [
+              { shot_number: 1, visual_description: "Shot 1", characters: [] },
+            ],
+          },
+          startFramePlan: { frames: [] },
+          motionPromptPack: { clips: [] },
+          loading: false,
+          selectedVideoModelId: "video-model",
+          onGenerateMissingShotVideoPrompts,
+        } as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-generate-missing-video-prompts")
+    ).toBeEnabled();
+    expect(
+      screen.queryByTestId("vd-generate-all-standard-video-prompts")
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("vd-generate-missing-video-prompts"));
+    fireEvent.click(
+      screen.getByTestId("vd-confirm-generate-missing-video-prompts")
+    );
+
+    expect(onGenerateMissingShotVideoPrompts).toHaveBeenCalledExactlyOnceWith([
+      1,
+    ]);
+  });
 });

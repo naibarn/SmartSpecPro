@@ -1642,6 +1642,8 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Generates standard video prompts through the individual-shot flow. */
   onGenerateAllShotVideoPrompts?: (shotNumbers: number[]) => void;
+  /** Generates standard prompts only for shots that do not have one yet. */
+  onGenerateMissingShotVideoPrompts?: (shotNumbers: number[]) => void;
   generatingAllShotVideoPrompts?: boolean;
   onGenerateAllEnhancedShotVideoPrompts?: (shotNumbers: number[]) => void;
   generatingAllEnhancedShotVideoPrompts?: boolean;
@@ -2450,6 +2452,7 @@ export function VerticalDramaStoryboardPanel({
   onChangeStopFrame,
   onClearStopFrame,
   onGenerateAllShotVideoPrompts,
+  onGenerateMissingShotVideoPrompts,
   generatingAllShotVideoPrompts = false,
   onGenerateAllEnhancedShotVideoPrompts,
   generatingAllEnhancedShotVideoPrompts = false,
@@ -4834,7 +4837,9 @@ export function VerticalDramaStoryboardPanel({
         </div>
       ) : null}
 
-      {onGenerateAllShotVideoPrompts || onGenerateAllEnhancedShotVideoPrompts ? (
+      {onGenerateMissingShotVideoPrompts ||
+      onGenerateAllShotVideoPrompts ||
+      onGenerateAllEnhancedShotVideoPrompts ? (
         <div className="flex flex-wrap items-center gap-2">
           {confirmingBulkVideoPromptMode ? (
             <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
@@ -4881,7 +4886,15 @@ export function VerticalDramaStoryboardPanel({
                         availableVideoPromptShotNumbers
                       );
                     } else if (mode === "missing") {
-                      onGenerateAllShotVideoPrompts?.(shotsMissingVideoPromptNumbers);
+                      if (onGenerateMissingShotVideoPrompts) {
+                        onGenerateMissingShotVideoPrompts(
+                          shotsMissingVideoPromptNumbers
+                        );
+                      } else {
+                        onGenerateAllShotVideoPrompts?.(
+                          shotsMissingVideoPromptNumbers
+                        );
+                      }
                     } else {
                       onGenerateAllShotVideoPrompts?.(availableVideoPromptShotNumbers);
                     }
@@ -4913,7 +4926,8 @@ export function VerticalDramaStoryboardPanel({
             </div>
           ) : (
             <>
-              {onGenerateAllShotVideoPrompts ? (
+              {onGenerateMissingShotVideoPrompts ||
+              onGenerateAllShotVideoPrompts ? (
                 <Button
                   type="button"
                   size="sm"

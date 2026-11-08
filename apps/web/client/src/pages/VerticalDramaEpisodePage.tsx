@@ -10887,6 +10887,8 @@ function EpisodeWorkspaceShell({
             onGenerateAllShotVideoPrompts: isSpecialTieInEpisode
               ? undefined
               : handleGenerateAllShotVideoPrompts,
+            onGenerateMissingShotVideoPrompts:
+              handleGenerateAllShotVideoPrompts,
             generatingAllShotVideoPrompts,
             onRepairMissingShotCharacters: isSpecialTieInEpisode
               ? undefined
