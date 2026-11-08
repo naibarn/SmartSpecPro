@@ -42,7 +42,10 @@ export function VerticalDramaShotSpeakerBindingEditor({
   onDetectPeople?: () => void;
   locale?: "th" | "en";
   saving?: boolean;
-  onSave: (bindings: VerticalDramaSpeakerVisualBinding[]) => void;
+  onSave: (
+    bindings: VerticalDramaSpeakerVisualBinding[],
+    options?: { automatic?: boolean }
+  ) => void;
 }) {
   const isEnglish = locale === "en";
   const [draft, setDraft] = useState(bindings);
@@ -88,45 +91,44 @@ export function VerticalDramaShotSpeakerBindingEditor({
     lastAppliedSuggestionKeyRef.current = suggestionKey;
     if (isDirtyRef.current) return;
 
-    setDraft(current => {
-      let changed = false;
-      const next = current.slice();
-      for (const suggestion of suggestions) {
-        if (!speakers.some(speaker => speaker.speakerLabel === suggestion.speakerLabel)) continue;
-        const person = detectedPeople.find(candidate => candidate.id === suggestion.personId);
-        if (!person) continue;
-        const existingIndex = next.findIndex(
-          binding => binding.speakerLabel === suggestion.speakerLabel
-        );
-        if (existingIndex >= 0) {
-          const existing = next[existingIndex];
-          // Keep saved selections and any text the user has already entered.
-          if (existing.personId || existing.visualCue.trim()) continue;
-          next[existingIndex] = {
-            ...existing,
-            visualCue: person.appearance,
-            personId: person.id,
-            boundingBox: person.boundingBox,
-            sourceMediaAssetId,
-          };
-        } else {
-          next.push({
-            id: `shot-speaker-${Date.now()}-${next.length + 1}`,
-            speakerLabel: suggestion.speakerLabel,
-            visualCue: person.appearance,
-            personId: person.id,
-            boundingBox: person.boundingBox,
-            sourceMediaAssetId,
-          });
-        }
-        changed = true;
+    const next = draftRef.current.slice();
+    let changed = false;
+    for (const suggestion of suggestions) {
+      if (!speakers.some(speaker => speaker.speakerLabel === suggestion.speakerLabel)) continue;
+      const person = detectedPeople.find(candidate => candidate.id === suggestion.personId);
+      if (!person) continue;
+      const existingIndex = next.findIndex(
+        binding => binding.speakerLabel === suggestion.speakerLabel
+      );
+      if (existingIndex >= 0) {
+        const existing = next[existingIndex];
+        // Keep saved selections and any text the user has already entered.
+        if (existing.personId || existing.visualCue.trim()) continue;
+        next[existingIndex] = {
+          ...existing,
+          visualCue: person.appearance,
+          personId: person.id,
+          boundingBox: person.boundingBox,
+          sourceMediaAssetId,
+        };
+      } else {
+        next.push({
+          id: `shot-speaker-${Date.now()}-${next.length + 1}`,
+          speakerLabel: suggestion.speakerLabel,
+          visualCue: person.appearance,
+          personId: person.id,
+          boundingBox: person.boundingBox,
+          sourceMediaAssetId,
+        });
       }
-      if (!changed) return current;
-      isDirtyRef.current = true;
-      draftRef.current = next;
-      return next;
-    });
-  }, [speakerSuggestionsSignature, sourceMediaAssetId, speakers, detectedPeople]);
+      changed = true;
+    }
+    if (!changed) return;
+    isDirtyRef.current = true;
+    draftRef.current = next;
+    setDraft(next);
+    onSave(next.filter(binding => binding.visualCue.trim()), { automatic: true });
+  }, [speakerSuggestionsSignature, sourceMediaAssetId, speakers, detectedPeople, onSave]);
 
   const updateDraft = (
     updater: (current: VerticalDramaSpeakerVisualBinding[]) => VerticalDramaSpeakerVisualBinding[]
@@ -263,8 +265,8 @@ export function VerticalDramaShotSpeakerBindingEditor({
         </HStack>
         <p>
           {isEnglish
-            ? "AI detects people and suggests a match for each dialogue speaker from the approved Start Frame. Review or change the selections before saving. This does not create permanent characters or phone callers."
-            : "AI ตรวจจับคนและเสนอการจับคู่กับผู้พูดจาก Start frame ที่อนุมัติ ตรวจหรือเปลี่ยนคนที่เลือกได้ก่อนบันทึก ข้อมูลนี้ไม่เพิ่มตัวละครถาวรและไม่ใช่ Caller โทรศัพท์"}
+            ? "AI detects people and automatically saves confident matches from the approved Start Frame. You can change any selection below. This does not create permanent characters or phone callers."
+            : "AI ตรวจจับคนและบันทึกผลจับคู่ที่มั่นใจจาก Start frame ที่อนุมัติให้อัตโนมัติ เปลี่ยนคนที่เลือกได้ด้านล่าง ข้อมูลนี้ไม่เพิ่มตัวละครถาวรและไม่ใช่ Caller โทรศัพท์"}
         </p>
         {bindings.some(binding => binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId) ? (
           <p role="status" className="text-sm text-amber-700">{isEnglish ? "The Start Frame changed. Re-run detection and map speakers to people in the current frame." : "ภาพ Start frame เปลี่ยนแล้ว ให้ตรวจจับและจับคู่คนจากภาพปัจจุบันใหม่"}</p>

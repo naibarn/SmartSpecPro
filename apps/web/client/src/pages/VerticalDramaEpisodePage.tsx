@@ -4763,7 +4763,6 @@ function EpisodeWorkspaceShell({
   const setShotSpeakerVisualBindingsMutation =
     trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
       onSuccess: (_result, variables) => {
-        toast.success("บันทึกผู้พูดเฉพาะช็อตแล้ว ต้องสร้าง prompt วิดีโอใหม่เพื่อใช้ข้อมูลนี้");
         void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
         // A speaker mapping changes the Enhanced prompt gate even when the
         // Start frame and cast lock are unchanged. Clear the cached probe now
@@ -4922,8 +4921,8 @@ function EpisodeWorkspaceShell({
                         : "";
         const suggestionText = result.suggestions.length
           ? lang === "en"
-            ? ` Suggested ${result.suggestions.length} speaker match(es). Review before saving.`
-            : ` AI เสนอจับคู่ผู้พูด ${result.suggestions.length} คน โปรดตรวจสอบก่อนบันทึก`
+            ? ` Automatically matched ${result.suggestions.length} speaker(s) and saving now. Change any selection below if needed.`
+            : ` จับคู่ผู้พูด ${result.suggestions.length} คนแล้ว กำลังบันทึกอัตโนมัติ เปลี่ยนคนที่เลือกได้ด้านล่าง`
           : result.attributionIssue === "provider_error"
             ? lang === "en"
               ? " The profile comparison failed this time; retry or select people manually."
@@ -4955,13 +4954,20 @@ function EpisodeWorkspaceShell({
 
   function handleSetShotSpeakerVisualBindings(
     shotNumber: number,
-    bindings: VerticalDramaSpeakerVisualBinding[]
+    bindings: VerticalDramaSpeakerVisualBinding[],
+    options?: { automatic?: boolean }
   ) {
     setShotSpeakerVisualBindingsMutation.mutate({
       seriesId,
       episodeId,
       shotNumber,
       speakerVisualBindings: bindings,
+    }, {
+      onSuccess: () => {
+        toast.success(options?.automatic
+          ? "AI จับคู่และบันทึกผู้พูดเฉพาะช็อตแล้ว เปลี่ยนคนที่เลือกได้ด้านล่าง"
+          : "บันทึกผู้พูดเฉพาะช็อตแล้ว ต้องสร้าง prompt วิดีโอใหม่เพื่อใช้ข้อมูลนี้");
+      },
     });
   }
 

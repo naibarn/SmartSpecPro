@@ -1,8 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  calculateCreditsForLLMDynamic: vi.fn(),
+  deductCredits: vi.fn(),
+  hasEnoughCredits: vi.fn(),
+  getSkillRunCreditCost: vi.fn(),
+  execute: vi.fn(),
+  resolveModel: vi.fn(),
+}));
+
+vi.mock("../creditService", () => ({
+  calculateCreditsForLLMDynamic: mocks.calculateCreditsForLLMDynamic,
+  deductCredits: mocks.deductCredits,
+  hasEnoughCredits: mocks.hasEnoughCredits,
+}));
+vi.mock("../skillRevenueBilling", () => ({
+  getSkillRunCreditCost: mocks.getSkillRunCreditCost,
+}));
+vi.mock("../verticalDramaStoryBible", () => ({
+  executeVisionAwareJsonCallWithRetry: mocks.execute,
+}));
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mocks.resolveModel,
+}));
+
 import {
   parseVerticalDramaSpeakerAttributionOutput,
   resolveUniqueVisibleSpeakerCharacter,
   selectHighConfidenceVerticalDramaSpeakerSuggestions,
+  suggestVerticalDramaShotSpeakerMappings,
 } from "../verticalDramaSpeakerVisualAttribution";
 import type { VerticalDramaDetectedShotPerson } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
@@ -20,6 +49,108 @@ const people: VerticalDramaDetectedShotPerson[] = [
     confidence: 0.9,
   },
 ];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.calculateCreditsForLLMDynamic.mockResolvedValue(9);
+  mocks.deductCredits.mockResolvedValue({ creditsUsed: 2 });
+  mocks.hasEnoughCredits.mockResolvedValue(true);
+  mocks.getSkillRunCreditCost.mockResolvedValue(2);
+  mocks.resolveModel.mockResolvedValue("test-vision-model");
+});
+
+describe("vertical drama speaker attribution billing", () => {
+  const speakerWithProfile = {
+    speakerLabel: "พิมพ์ชนก",
+    characterKey: "character-1",
+    characterName: "พิมพ์ชนก",
+    generalAppearance: "young woman with long dark hair",
+    appearanceExamples: [
+      { shotNumber: 3, appearance: "young woman in navy", confidence: 0.9 },
+    ],
+  };
+
+  it("checks the configured skill price and reports the settled credit charge", async () => {
+    mocks.execute.mockImplementation(async (input: any) => {
+      input.onUsage(
+        { model: "provider/test-model", usage: { prompt_tokens: 7, completion_tokens: 2 } },
+        "test-vision-model"
+      );
+      return {
+        usedVision: false,
+        data: {
+          speakers: [
+            {
+              speaker_label: "พิมพ์ชนก",
+              candidates: [
+                {
+                  person_id: "person-1",
+                  identity_confidence: 0.99,
+                  evidence: "Matching dark hair and navy clothing.",
+                },
+              ],
+            },
+          ],
+        },
+      };
+    });
+
+    const result = await suggestVerticalDramaShotSpeakerMappings({
+      userId: 7,
+      tenantId: "tenant-a",
+      seriesId: 22,
+      episodeId: 33,
+      shotNumber: 4,
+      sourceMediaAssetId: "media-asset-9",
+      people,
+      speakers: [speakerWithProfile],
+    });
+
+    expect(result.creditsUsed).toBe(2);
+    expect(result.suggestions).toEqual([
+      { speakerLabel: "พิมพ์ชนก", personId: "person-1", confidence: 0.99 },
+    ]);
+    expect(mocks.getSkillRunCreditCost).toHaveBeenCalledWith({
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+      tenantId: "tenant-a",
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(7, 2);
+    expect(mocks.calculateCreditsForLLMDynamic).toHaveBeenCalledWith(
+      7,
+      2,
+      "provider/test-model"
+    );
+    expect(mocks.deductCredits).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 9,
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+      sourceType: "skill",
+    }));
+  });
+
+  it("does not call the attribution model when the configured skill cost is unaffordable", async () => {
+    mocks.hasEnoughCredits.mockResolvedValue(false);
+
+    const result = await suggestVerticalDramaShotSpeakerMappings({
+      userId: 7,
+      tenantId: "tenant-a",
+      seriesId: 22,
+      episodeId: 33,
+      shotNumber: 4,
+      sourceMediaAssetId: "media-asset-9",
+      people,
+      speakers: [speakerWithProfile],
+    });
+
+    expect(result).toMatchObject({
+      suggestions: [],
+      creditsUsed: 0,
+      issue: "insufficient_credits",
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(7, 2);
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.deductCredits).not.toHaveBeenCalled();
+  });
+});
 
 describe("resolveUniqueVisibleSpeakerCharacter", () => {
   it("disambiguates duplicate roster names using the character key visible in this shot", () => {

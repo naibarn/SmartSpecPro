@@ -4,13 +4,17 @@ const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
   hasEnoughCredits: vi.fn(),
   deductCredits: vi.fn(),
-  calculateCreditsForLLM: vi.fn(),
+  calculateCreditsForLLMDynamic: vi.fn(),
+  getSkillRunCreditCost: vi.fn(),
 }));
 
 vi.mock("../creditService", () => ({
-  calculateCreditsForLLM: mocks.calculateCreditsForLLM,
+  calculateCreditsForLLMDynamic: mocks.calculateCreditsForLLMDynamic,
   deductCredits: mocks.deductCredits,
   hasEnoughCredits: mocks.hasEnoughCredits,
+}));
+vi.mock("../skillRevenueBilling", () => ({
+  getSkillRunCreditCost: mocks.getSkillRunCreditCost,
 }));
 vi.mock("../verticalDramaStoryBible", () => ({
   executeVisionAwareJsonCallWithRetry: mocks.execute,
@@ -32,8 +36,9 @@ describe("vertical drama episode appearance profile fingerprint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.hasEnoughCredits.mockResolvedValue(true);
-    mocks.deductCredits.mockResolvedValue(undefined);
-    mocks.calculateCreditsForLLM.mockReturnValue(1);
+    mocks.deductCredits.mockResolvedValue({ creditsUsed: 2 });
+    mocks.getSkillRunCreditCost.mockResolvedValue(2);
+    mocks.calculateCreditsForLLMDynamic.mockResolvedValue(4);
   });
 
   it("is stable when frame and roster inputs arrive in a different order", () => {
@@ -292,6 +297,7 @@ describe("vertical drama episode appearance profile fingerprint", () => {
     });
 
     expect(result.complete).toBe(true);
+    expect(result.creditsUsed).toBe(2);
     expect(result.analyzedShotNumbers).toEqual([1, 2]);
     expect(result.profiles).toEqual([
       {
@@ -313,6 +319,113 @@ describe("vertical drama episode appearance profile fingerprint", () => {
         ],
       },
     ]);
+    expect(mocks.getSkillRunCreditCost).toHaveBeenCalledWith({
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+      tenantId: "tenant-a",
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(11, 2);
     expect(mocks.deductCredits).toHaveBeenCalledOnce();
+    expect(mocks.deductCredits).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 4,
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+      sourceType: "skill",
+    }));
+  });
+
+  it("settles every profile batch separately and totals the actual skill charges", async () => {
+    mocks.execute.mockImplementation(async (args: any) => {
+      args.onUsage?.(
+        { model: "test-vision-model", usage: { prompt_tokens: 100, completion_tokens: 50 } },
+        "test-vision-model"
+      );
+      const frames = (args.images as Array<{ label: string }>).map(image => {
+        const shotNumber = Number(image.label.match(/SHOT (\d+)/)?.[1]);
+        return {
+          shot_number: shotNumber,
+          characters: [
+            {
+              character_key: "character-a",
+              visible: true,
+              appearance: `person in shot ${shotNumber}`,
+              confidence: 0.9,
+            },
+          ],
+        };
+      });
+      const parsed = args.schema.safeParse({
+        frames,
+        profiles: [
+          { character_key: "character-a", general_appearance: "same person" },
+        ],
+      });
+      if (!parsed.success) throw parsed.error;
+      return { usedVision: true, data: parsed.data };
+    });
+
+    const result = await analyzeVerticalDramaEpisodeAppearanceProfiles({
+      userId: 11,
+      tenantId: "tenant-a",
+      seriesId: 5,
+      episodeId: 9,
+      fingerprint: "seven-shot-fingerprint",
+      frames: Array.from({ length: 7 }, (_, index) => ({
+        shotNumber: index + 1,
+        sourceMediaAssetId: `asset-${index + 1}`,
+        imageUrl: `https://media.example/${index + 1}`,
+        characters: [
+          { characterKey: "character-a", characterName: "Character A" },
+        ],
+      })),
+    });
+
+    expect(result.complete).toBe(true);
+    expect(result.creditsUsed).toBe(4);
+    expect(result.analyzedShotNumbers).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(mocks.getSkillRunCreditCost).toHaveBeenCalledOnce();
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledTimes(2);
+    expect(mocks.hasEnoughCredits).toHaveBeenNthCalledWith(1, 11, 2);
+    expect(mocks.hasEnoughCredits).toHaveBeenNthCalledWith(2, 11, 2);
+    expect(mocks.deductCredits).toHaveBeenCalledTimes(2);
+    expect(mocks.deductCredits).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      amount: 4,
+      idempotencyKey: expect.stringContaining(":0:"),
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+    }));
+    expect(mocks.deductCredits).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      amount: 4,
+      idempotencyKey: expect.stringContaining(":6:"),
+      skillSlug: "vertical-drama-speaker-visual-attribution",
+    }));
+  });
+
+  it("does not call the profile model when the configured skill price is unaffordable", async () => {
+    mocks.hasEnoughCredits.mockResolvedValue(false);
+
+    const result = await analyzeVerticalDramaEpisodeAppearanceProfiles({
+      userId: 11,
+      tenantId: "tenant-a",
+      seriesId: 5,
+      episodeId: 9,
+      fingerprint: "unaffordable-fingerprint",
+      frames: [
+        {
+          shotNumber: 1,
+          sourceMediaAssetId: "asset-1",
+          imageUrl: "https://media.example/1",
+          characters: [
+            { characterKey: "character-a", characterName: "Character A" },
+          ],
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      complete: false,
+      issue: "insufficient_credits",
+      creditsUsed: 0,
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(11, 2);
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.deductCredits).not.toHaveBeenCalled();
   });
 });

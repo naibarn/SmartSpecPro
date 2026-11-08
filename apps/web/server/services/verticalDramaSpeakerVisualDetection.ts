@@ -9,10 +9,11 @@ import {
   resolveSkillManifestPath,
 } from "./skillFiles";
 import {
-  calculateCreditsForLLM,
+  calculateCreditsForLLMDynamic,
   deductCredits,
   hasEnoughCredits,
 } from "./creditService";
+import { getSkillRunCreditCost } from "./skillRevenueBilling";
 import {
   executeVisionAwareJsonCallWithRetry,
   InsufficientCreditsError,
@@ -109,7 +110,11 @@ export async function detectVerticalDramaShotPeople(params: {
   creditsUsed: number;
   model: string;
 }> {
-  if (!(await hasEnoughCredits(params.userId, 1)))
+  const skillCreditCost = await getSkillRunCreditCost({
+    skillSlug: "vertical-drama-speaker-visual-detection",
+    tenantId: params.tenantId,
+  });
+  if (!(await hasEnoughCredits(params.userId, skillCreditCost)))
     throw new InsufficientCreditsError();
 
   const model = await resolveVerticalDramaSeriesModel(
@@ -122,18 +127,16 @@ export async function detectVerticalDramaShotPeople(params: {
     { promptTokens: number; completionTokens: number }
   >();
   const chargeActualUsage = async () => {
-    const amount = Array.from(usageByModel.entries()).reduce(
-      (sum, [usedModel, usage]) =>
-        sum +
-        calculateCreditsForLLM(
-          usage.promptTokens,
-          usage.completionTokens,
-          usedModel
-        ),
-      0
-    );
+    let amount = 0;
+    for (const [usedModel, usage] of usageByModel) {
+      amount += await calculateCreditsForLLMDynamic(
+        usage.promptTokens,
+        usage.completionTokens,
+        usedModel
+      );
+    }
     if (!usageByModel.size) return 0;
-    await deductCredits({
+    const billing = await deductCredits({
       userId: params.userId,
       tenantId: params.tenantId,
       amount,
@@ -160,7 +163,7 @@ export async function detectVerticalDramaShotPeople(params: {
         })),
       },
     });
-    return amount;
+    return billing.creditsUsed;
   };
   let outcome: Awaited<
     ReturnType<

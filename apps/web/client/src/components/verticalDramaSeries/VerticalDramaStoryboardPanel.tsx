@@ -1547,7 +1547,8 @@ interface VerticalDramaStoryboardPanelProps {
   onResetShotSupportingPresence?: (shotNumber: number) => void;
   onSetShotSpeakerVisualBindings?: (
     shotNumber: number,
-    bindings: VerticalDramaSpeakerVisualBinding[]
+    bindings: VerticalDramaSpeakerVisualBinding[],
+    options?: { automatic?: boolean }
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
   onDetectShotSpeakerPeople?: (
@@ -7519,7 +7520,7 @@ export function VerticalDramaStoryboardPanel({
                       detectingPeople={detectingShotSpeakerPeopleForShot.has(shotNumber)}
                       onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber, speakerOptionsForShot.map(({ speakerLabel }) => ({ speakerLabel }))) : undefined}
                       saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
-                      onSave={bindings => onSetShotSpeakerVisualBindings(shotNumber, bindings)}
+                      onSave={(bindings, options) => onSetShotSpeakerVisualBindings(shotNumber, bindings, options)}
                     />
                   ) : null}
 

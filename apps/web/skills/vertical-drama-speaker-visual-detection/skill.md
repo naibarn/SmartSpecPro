@@ -1,6 +1,6 @@
 ---
 name: Vertical Drama Speaker Visual Detection
-description: Detect and describe visible people in one approved Vertical Drama start frame, returning viewer-relative normalized regions for user-confirmed dialogue-speaker mapping.
+description: Detect and describe visible people in one approved Vertical Drama start frame, returning viewer-relative normalized regions for episode-profile speaker matching.
 version: 1.0.0
 author: SmartAIHub
 category: video_prompt_generation
@@ -33,9 +33,10 @@ config:
 # Vertical Drama Speaker Visual Detection
 
 Analyze exactly one supplied, approved Start Frame image. Return a structured
-roster of visibly distinct people so the application can let the user map
-dialogue speakers to the correct person in a crowded shot. This skill proposes
-visual instances; it never decides who speaks.
+roster of visibly distinct people so the application can match dialogue speaker
+identities against episode appearance profiles. This skill detects visual
+instances only; a separate attribution skill proposes identity matches, and
+the user can change any saved match.
 
 Return only JSON matching `schemas/output.schema.json`:
 
@@ -69,5 +70,7 @@ Return only JSON matching `schemas/output.schema.json`:
 - `confidence` is a value from 0 to 1. Lower it for overlap, occlusion, tiny
   faces, motion blur, or uncertain person boundaries.
 - Return `{"people": []}` when no person can be identified from the image.
-- Detection is advisory. The application must show the result for user review
-  and must never persist a speaker assignment without explicit user selection.
+- This skill detects people only; it must never assign a dialogue identity.
+  The application may persist a speaker mapping only when the separate
+  episode-profile attribution skill returns a high-confidence, unambiguous
+  match. Keep every saved mapping editable so the user can correct it.

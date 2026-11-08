@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   hasEnoughCredits: vi.fn(),
   deductCredits: vi.fn(),
-  calculateCreditsForLLM: vi.fn(),
+  calculateCreditsForLLMDynamic: vi.fn(),
+  getSkillRunCreditCost: vi.fn(),
   executeVisionAwareJsonCallWithRetry: vi.fn(),
   resolveVerticalDramaSeriesModel: vi.fn(),
 }));
@@ -11,7 +12,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../creditService", () => ({
   hasEnoughCredits: mocks.hasEnoughCredits,
   deductCredits: mocks.deductCredits,
-  calculateCreditsForLLM: mocks.calculateCreditsForLLM,
+  calculateCreditsForLLMDynamic: mocks.calculateCreditsForLLMDynamic,
+}));
+vi.mock("../skillRevenueBilling", () => ({
+  getSkillRunCreditCost: mocks.getSkillRunCreditCost,
 }));
 vi.mock("../verticalDramaStoryBible", () => ({
   executeVisionAwareJsonCallWithRetry: mocks.executeVisionAwareJsonCallWithRetry,
@@ -31,9 +35,10 @@ describe("vertical drama speaker visual detection billing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.hasEnoughCredits.mockResolvedValue(true);
-    mocks.deductCredits.mockResolvedValue(undefined);
+    mocks.deductCredits.mockResolvedValue({ creditsUsed: 2 });
+    mocks.getSkillRunCreditCost.mockResolvedValue(2);
     mocks.resolveVerticalDramaSeriesModel.mockResolvedValue("selected-vision-model");
-    mocks.calculateCreditsForLLM.mockImplementation((prompt: number, completion: number) => prompt + completion);
+    mocks.calculateCreditsForLLMDynamic.mockImplementation(async (prompt: number, completion: number) => prompt + completion);
   });
 
   const params = {
@@ -67,7 +72,12 @@ describe("vertical drama speaker visual detection billing", () => {
     const result = await detectVerticalDramaShotPeople(params);
 
     expect(result.people[0]).toMatchObject({ id: "person-1", boundingBox: { x: 0.1, y: 0.2, width: 0.3, height: 0.6 } });
-    expect(result.creditsUsed).toBe(35);
+    expect(result.creditsUsed).toBe(2);
+    expect(mocks.getSkillRunCreditCost).toHaveBeenCalledWith({
+      skillSlug: "vertical-drama-speaker-visual-detection",
+      tenantId: "tenant-a",
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(7, 2);
     expect(mocks.deductCredits).toHaveBeenCalledWith(expect.objectContaining({
       amount: 35,
       skillSlug: "vertical-drama-speaker-visual-detection",
@@ -96,5 +106,19 @@ describe("vertical drama speaker visual detection billing", () => {
       amount: 10,
       skillSlug: "vertical-drama-speaker-visual-detection",
     }));
+  });
+
+  it("checks the configured skill charge before spending on model calls", async () => {
+    mocks.hasEnoughCredits.mockResolvedValue(false);
+
+    await expect(detectVerticalDramaShotPeople(params)).rejects.toThrow();
+
+    expect(mocks.getSkillRunCreditCost).toHaveBeenCalledWith({
+      skillSlug: "vertical-drama-speaker-visual-detection",
+      tenantId: "tenant-a",
+    });
+    expect(mocks.hasEnoughCredits).toHaveBeenCalledWith(7, 2);
+    expect(mocks.executeVisionAwareJsonCallWithRetry).not.toHaveBeenCalled();
+    expect(mocks.deductCredits).not.toHaveBeenCalled();
   });
 });

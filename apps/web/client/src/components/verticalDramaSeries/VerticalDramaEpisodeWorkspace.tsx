@@ -599,7 +599,8 @@ export interface VerticalDramaStoryboardPanelData {
   onResetShotSupportingPresence?: (shotNumber: number) => void;
   onSetShotSpeakerVisualBindings?: (
     shotNumber: number,
-    bindings: VerticalDramaSpeakerVisualBinding[]
+    bindings: VerticalDramaSpeakerVisualBinding[],
+    options?: { automatic?: boolean }
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
   onDetectShotSpeakerPeople?: (

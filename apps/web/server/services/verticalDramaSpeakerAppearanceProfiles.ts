@@ -6,10 +6,11 @@ import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
 import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries/contracts";
 import {
-  calculateCreditsForLLM,
+  calculateCreditsForLLMDynamic,
   deductCredits,
   hasEnoughCredits,
 } from "./creditService";
+import { getSkillRunCreditCost } from "./skillRevenueBilling";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -290,15 +291,18 @@ function loadSkillSystemPrompt(): string {
   );
 }
 
-function chargeableUsage(
+async function chargeableUsage(
   usageByModel: Map<string, { promptTokens: number; completionTokens: number }>
-): number {
-  return Array.from(usageByModel.entries()).reduce(
-    (sum, [model, usage]) =>
-      sum +
-      calculateCreditsForLLM(usage.promptTokens, usage.completionTokens, model),
-    0
-  );
+): Promise<number> {
+  let amount = 0;
+  for (const [model, usage] of usageByModel) {
+    amount += await calculateCreditsForLLMDynamic(
+      usage.promptTokens,
+      usage.completionTokens,
+      model
+    );
+  }
+  return amount;
 }
 
 function normalizeAppearanceText(value: string): string {
@@ -394,6 +398,10 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
   const analyzedShots = new Set<number>();
   let creditsUsed = 0;
   const runId = params.idempotencyRunId?.trim() || randomUUID();
+  const skillCreditCost = await getSkillRunCreditCost({
+    skillSlug: "vertical-drama-speaker-visual-attribution",
+    tenantId: params.tenantId,
+  });
 
   for (
     let offset = 0;
@@ -404,7 +412,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
       offset,
       offset + MAX_IMAGES_PER_PROFILE_CALL
     );
-    if (!(await hasEnoughCredits(params.userId, 1))) {
+    if (!(await hasEnoughCredits(params.userId, skillCreditCost))) {
       return {
         complete: false,
         profiles: [],
@@ -485,9 +493,9 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
         },
       });
     } catch {
-      const amount = chargeableUsage(usageByModel);
+      const amount = await chargeableUsage(usageByModel);
       if (usageByModel.size) {
-        await deductCredits({
+        const billing = await deductCredits({
           userId: params.userId,
           tenantId: params.tenantId,
           amount,
@@ -509,7 +517,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
             profileBatchStart: offset,
           },
         });
-        creditsUsed += amount;
+        creditsUsed += billing.creditsUsed;
       }
       return {
         complete: false,
@@ -521,9 +529,9 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
       };
     }
 
-    const amount = chargeableUsage(usageByModel);
+    const amount = await chargeableUsage(usageByModel);
     if (usageByModel.size) {
-      await deductCredits({
+      const billing = await deductCredits({
         userId: params.userId,
         tenantId: params.tenantId,
         amount,
@@ -549,7 +557,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
           })),
         },
       });
-      creditsUsed += amount;
+      creditsUsed += billing.creditsUsed;
     }
     if (!outcome.usedVision) {
       return {

@@ -9,10 +9,11 @@ import {
   resolveSkillManifestPath,
 } from "./skillFiles";
 import {
-  calculateCreditsForLLM,
+  calculateCreditsForLLMDynamic,
   deductCredits,
   hasEnoughCredits,
 } from "./creditService";
+import { getSkillRunCreditCost } from "./skillRevenueBilling";
 import { executeVisionAwareJsonCallWithRetry } from "./verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
@@ -269,7 +270,11 @@ export async function suggestVerticalDramaShotSpeakerMappings(params: {
   if (params.people.length === 0 || speakersWithProfiles.length === 0) {
     return { suggestions: [], creditsUsed: 0, model: "" };
   }
-  if (!(await hasEnoughCredits(params.userId, 1))) {
+  const skillCreditCost = await getSkillRunCreditCost({
+    skillSlug: "vertical-drama-speaker-visual-attribution",
+    tenantId: params.tenantId,
+  });
+  if (!(await hasEnoughCredits(params.userId, skillCreditCost))) {
     return {
       suggestions: [],
       creditsUsed: 0,
@@ -288,18 +293,16 @@ export async function suggestVerticalDramaShotSpeakerMappings(params: {
   >();
   const runId = params.idempotencyRunId?.trim() || randomUUID();
   const chargeActualUsage = async () => {
-    const amount = Array.from(usageByModel.entries()).reduce(
-      (sum, [usedModel, usage]) =>
-        sum +
-        calculateCreditsForLLM(
-          usage.promptTokens,
-          usage.completionTokens,
-          usedModel
-        ),
-      0
-    );
+    let amount = 0;
+    for (const [usedModel, usage] of usageByModel) {
+      amount += await calculateCreditsForLLMDynamic(
+        usage.promptTokens,
+        usage.completionTokens,
+        usedModel
+      );
+    }
     if (!usageByModel.size) return 0;
-    await deductCredits({
+    const billing = await deductCredits({
       userId: params.userId,
       tenantId: params.tenantId,
       amount,
@@ -326,7 +329,7 @@ export async function suggestVerticalDramaShotSpeakerMappings(params: {
         })),
       },
     });
-    return amount;
+    return billing.creditsUsed;
   };
 
   let outcome: Awaited<

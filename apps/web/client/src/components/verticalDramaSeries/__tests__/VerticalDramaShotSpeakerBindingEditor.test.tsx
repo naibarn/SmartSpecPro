@@ -74,7 +74,7 @@ describe("VerticalDramaShotSpeakerBindingEditor", () => {
     ]);
   });
 
-  it("prefills a high-confidence suggestion while keeping the existing manual override", () => {
+  it("automatically saves a high-confidence suggestion and lets the user correct it", () => {
     const onSave = vi.fn();
     render(
       <VerticalDramaShotSpeakerBindingEditor
@@ -108,18 +108,75 @@ describe("VerticalDramaShotSpeakerBindingEditor", () => {
 
     const selector = screen.getByLabelText("คนที่ตรงกับผู้พูดในภาพ") as HTMLSelectElement;
     expect(selector.value).toBe("person-4");
-    expect(onSave).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith([
+      expect.objectContaining({
+        speakerLabel: "นักตรวจผนึก",
+        personId: "person-4",
+        boundingBox: { x: 0.62, y: 0.1, width: 0.24, height: 0.72 },
+        sourceMediaAssetId: "asset-10",
+      }),
+    ], { automatic: true });
 
     fireEvent.change(selector, { target: { value: "person-5" } });
     fireEvent.click(
       screen.getByRole("button", { name: "บันทึกการระบุผู้พูด" })
     );
-    expect(onSave).toHaveBeenCalledWith([
+    expect(onSave).toHaveBeenNthCalledWith(2, [
       expect.objectContaining({
         speakerLabel: "นักตรวจผนึก",
         personId: "person-5",
         sourceMediaAssetId: "asset-10",
       }),
     ]);
+  });
+
+  it("does not auto-save a suggestion over edits made while detection was running", () => {
+    const onSave = vi.fn();
+    const view = render(
+      <VerticalDramaShotSpeakerBindingEditor
+        shotNumber={2}
+        speakers={[{ speakerLabel: "นักตรวจผนึก", dialogueLines: ["ห้ามเปิดผนึก"] }]}
+        bindings={[]}
+        sourceMediaAssetId="asset-10"
+        detectedPeople={[
+          {
+            id: "person-4",
+            boundingBox: { x: 0.62, y: 0.1, width: 0.24, height: 0.72 },
+            appearance: "ชายชุดเกราะสีเข้มด้านหลังทางซ้าย",
+            confidence: 0.91,
+          },
+        ]}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("ลักษณะของคนพูดในภาพเริ่มต้น"), {
+      target: { value: "ลุงชาญชุดเชิ้ตสีครีม" },
+    });
+    view.rerender(
+      <VerticalDramaShotSpeakerBindingEditor
+        shotNumber={2}
+        speakers={[{ speakerLabel: "นักตรวจผนึก", dialogueLines: ["ห้ามเปิดผนึก"] }]}
+        bindings={[]}
+        sourceMediaAssetId="asset-10"
+        detectedPeople={[
+          {
+            id: "person-4",
+            boundingBox: { x: 0.62, y: 0.1, width: 0.24, height: 0.72 },
+            appearance: "ชายชุดเกราะสีเข้มด้านหลังทางซ้าย",
+            confidence: 0.91,
+          },
+        ]}
+        speakerSuggestions={[
+          { speakerLabel: "นักตรวจผนึก", personId: "person-4", confidence: 0.91 },
+        ]}
+        onSave={onSave}
+      />
+    );
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("ลักษณะของคนพูดในภาพเริ่มต้น")).toHaveValue(
+      "ลุงชาญชุดเชิ้ตสีครีม"
+    );
   });
 });

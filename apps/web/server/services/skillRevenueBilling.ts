@@ -120,6 +120,32 @@ export type SkillRevenueSettlementResult = {
   duplicate: boolean;
 };
 
+/** Return the maximum per-run price used by settleSkillRun for preflight checks. */
+export async function getSkillRunCreditCost(input: {
+  skillSlug: string;
+  tenantId?: string | null;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const skillSlug = resolveSkillSlugAlias(input.skillSlug.trim());
+  if (!skillSlug) throw new Error("Skill slug is required");
+  const [skill] = await db
+    .select({
+      tenantId: skills.tenantId,
+      tenantCreditCost: skills.tenantCreditCost,
+      skillOwnerCreditCost: skills.skillOwnerCreditCost,
+    })
+    .from(skills)
+    .where(eq(skills.slug, skillSlug))
+    .limit(1);
+  if (!skill) throw new Error(`Skill '${input.skillSlug}' not found`);
+  const effectiveTenantId = input.tenantId?.trim() || null;
+  if (skill.tenantId && skill.tenantId !== effectiveTenantId) {
+    throw new Error("Skill is not available in the active tenant");
+  }
+  return normalizeSkillRevenuePricing(skill).totalCredits;
+}
+
 export function normalizeSkillRevenuePricing(input: {
   tenantCreditCost?: number | null;
   skillOwnerCreditCost?: number | null;
