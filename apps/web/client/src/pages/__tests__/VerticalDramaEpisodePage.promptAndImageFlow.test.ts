@@ -367,6 +367,24 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("frame.imageTask?.pendingTaskId");
   });
 
+  it("keeps the prompt hash on the awaited background task persistence", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const handlerStart = source.indexOf(
+      "async function handleGeneratePromptAndImage("
+    );
+    const branchStart = source.indexOf("if (awaitCompletion) {", handlerStart);
+    const branchEnd = source.indexOf("\n        } else {", branchStart);
+    const branch = source.slice(branchStart, branchEnd);
+
+    expect(branch).toMatch(
+      /await persistStartFrameTask\(\s*shotNumber,\s*\{\s*taskId: data\.taskId,\s*status: "submitted",\s*softenLevel,?\s*\},\s*"start",\s*data\.promptHash\s*\)/
+    );
+    expect(branch).toContain("data.promptHash");
+  });
+
   it("keeps prompt success and image failure independently actionable", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),

@@ -7238,11 +7238,16 @@ function EpisodeWorkspaceShell({
             // before the asynchronous onSuccess persistence callback has
             // finished. The write is idempotent and is guarded server-side
             // by the task id.
-            await persistStartFrameTask(shotNumber, {
-              taskId: data.taskId,
-              status: "submitted",
-              softenLevel,
-            });
+            await persistStartFrameTask(
+              shotNumber,
+              {
+                taskId: data.taskId,
+                status: "submitted",
+                softenLevel,
+              },
+              "start",
+              data.promptHash
+            );
             await pollStartFrameTask(
               data.taskId,
               shotNumber,
