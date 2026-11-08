@@ -160,6 +160,7 @@ import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import type {
   VerticalDramaDetectedShotPerson,
+  VerticalDramaSpeakerDetectionOutcome,
   VerticalDramaShotSpeakerSuggestion,
   VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
@@ -605,8 +606,9 @@ export interface VerticalDramaStoryboardPanelData {
   savingShotSpeakerVisualBindingsForShot?: number | null;
   onDetectShotSpeakerPeople?: (
     shotNumber: number,
-    speakers: Array<{ speakerLabel: string }>
-  ) => void;
+    speakers: Array<{ speakerLabel: string }>,
+    options?: { silent?: boolean }
+  ) => Promise<VerticalDramaSpeakerDetectionOutcome> | VerticalDramaSpeakerDetectionOutcome | void;
   detectingShotSpeakerPeopleForShot?: ReadonlySet<number>;
   detectedShotSpeakerPeopleByShot?: Record<
     number,

@@ -9,7 +9,7 @@
  * `sourceShotNumbers`, `parentShotNumber`, `subShotNumber`, per-clip
  * `dialogue[]`).
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
@@ -33,6 +33,69 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — speaker-aware sub-shots (regression guard)", () => {
+  it("loops over every unmatched shot and skips completed or unapproved frames", async () => {
+    const onDetectShotSpeakerPeople = vi.fn(async () => ({
+      status: "completed" as const,
+      creditsUsed: 5,
+      matchedSpeakerCount: 1,
+      saved: true,
+    }));
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: Array.from({ length: 9 }, (_, index) => index + 1).map(shot_number => ({
+              shot_number,
+              visual_description: `Shot ${shot_number}`,
+              characters: [],
+            })),
+          },
+          canonicalShotDrafts: Array.from({ length: 9 }, (_, index) => ({
+            speaker: `Speaker ${index + 1}`,
+            shotNumber: index + 1,
+            summary: "",
+            dialogueLines: [{ speaker: `Speaker ${index + 1}`, line: "Hello" }],
+          })),
+          startFramePlan: {
+            frames: [
+              ...Array.from({ length: 9 }, (_, index) => {
+                const shotNumber = index + 1;
+                if (shotNumber === 3) return { shotNumber, imagePrompt: "frame 3" };
+                return {
+                  shotNumber,
+                  imagePrompt: `frame ${shotNumber}`,
+                  approvedMediaAssetId: String(100 + shotNumber),
+                  speakerVisualBindings: shotNumber === 2 ? [{
+                    id: "speaker-2",
+                    speakerLabel: "Speaker 2",
+                    visualCue: "Man by door",
+                    personId: "person-2",
+                    boundingBox: { x: 0.5, y: 0.1, width: 0.2, height: 0.6 },
+                    sourceMediaAssetId: "102",
+                  }] : [],
+                };
+              }),
+            ],
+          },
+          onDetectShotSpeakerPeople,
+          onSetShotSpeakerVisualBindings: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    const runButton = screen.getByTestId("vd-storyboard-run-unmatched-speaker-mapping");
+    expect(runButton).toHaveTextContent("(7)");
+    fireEvent.click(runButton);
+    expect(screen.getByTestId("vd-credit-confirm-speaker-mapping-batch")).toHaveTextContent("พร้อมข้าม 1 ช็อตที่ไม่มี Start Frame อนุมัติ");
+    fireEvent.click(screen.getByTestId("vd-credit-confirm-speaker-mapping-batch-confirm"));
+
+    await waitFor(() => expect(onDetectShotSpeakerPeople).toHaveBeenCalledTimes(7));
+    expect(onDetectShotSpeakerPeople.mock.calls.map(([shotNumber]) => shotNumber)).toEqual([1, 4, 5, 6, 7, 8, 9]);
+    for (const [index, shotNumber] of [1, 4, 5, 6, 7, 8, 9].entries()) {
+      expect(onDetectShotSpeakerPeople).toHaveBeenNthCalledWith(index + 1, shotNumber, [{ speakerLabel: `Speaker ${shotNumber}` }], { silent: true });
+    }
+  });
+
   it("prefers the latest Overview shot draft over stale storyboard visual text", () => {
     render(
       <VerticalDramaStoryboardPanel

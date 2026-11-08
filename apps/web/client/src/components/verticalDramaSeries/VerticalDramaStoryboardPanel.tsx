@@ -28,6 +28,10 @@ import {
   type ReactNode,
 } from "react";
 import { Link } from "wouter";
+import { HStack, VStack } from "@astryxdesign/core/Stack";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { Card } from "@astryxdesign/core/Card";
+import { Text } from "@astryxdesign/core/Text";
 import {
   AlertTriangle,
   Award,
@@ -181,6 +185,7 @@ import {
   hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
   type VerticalDramaDetectedShotPerson,
+  type VerticalDramaSpeakerDetectionOutcome,
   type VerticalDramaShotSpeakerSuggestion,
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
@@ -1553,8 +1558,9 @@ interface VerticalDramaStoryboardPanelProps {
   savingShotSpeakerVisualBindingsForShot?: number | null;
   onDetectShotSpeakerPeople?: (
     shotNumber: number,
-    speakers: Array<{ speakerLabel: string }>
-  ) => void;
+    speakers: Array<{ speakerLabel: string }>,
+    options?: { silent?: boolean }
+  ) => Promise<VerticalDramaSpeakerDetectionOutcome> | VerticalDramaSpeakerDetectionOutcome | void;
   detectingShotSpeakerPeopleForShot?: ReadonlySet<number>;
   detectedShotSpeakerPeopleByShot?: Record<number, {
     sourceMediaAssetId: string;
@@ -2913,6 +2919,17 @@ export function VerticalDramaStoryboardPanel({
     useState(false);
   const [confirmingBulkVideoPromptMode, setConfirmingBulkVideoPromptMode] =
     useState<"standard" | "enhanced" | null>(null);
+  const [speakerMappingBatchProgress, setSpeakerMappingBatchProgress] =
+    useState<{
+      currentIndex: number;
+      total: number;
+      shotNumber: number;
+      completed: number;
+      matchedSpeakers: number;
+      creditsUsed: number;
+    } | null>(null);
+  const speakerMappingBatchRunningRef = useRef(false);
+  const stopSpeakerMappingBatchAfterCurrentRef = useRef(false);
   const [choosingGenerateModeForShot, setChoosingGenerateModeForShot] =
     useState<number | null>(null);
   const [confirmingImageForShot, setConfirmingImageForShot] = useState<
@@ -3395,6 +3412,181 @@ export function VerticalDramaStoryboardPanel({
   }
   for (const clips of clipByShot.values()) {
     clips.sort((a, b) => (a.subShotNumber ?? 0) - (b.subShotNumber ?? 0));
+  }
+
+  function resolveSpeakerOptionsForShot(shotNumber: number) {
+    const clipsForShot = clipByShot.get(shotNumber) ?? [];
+    const canonicalDialogueLines =
+      canonicalDialogueByShot.get(shotNumber)?.dialogueLines ?? [];
+    const lines = canonicalDialogueLines.length
+      ? canonicalDialogueLines
+      : clipsForShot.flatMap(clip =>
+          (clip.dialogue ?? []).map(line => ({
+            speaker: line.characterKey ?? "",
+            line: line.lineTh,
+          }))
+        );
+    const grouped = new Map<string, string[]>();
+    for (const line of lines) {
+      const speakerLabel = line.speaker.trim();
+      if (!speakerLabel) continue;
+      grouped.set(speakerLabel, [
+        ...(grouped.get(speakerLabel) ?? []),
+        line.line,
+      ]);
+    }
+    return Array.from(grouped, ([speakerLabel, dialogueLines]) => ({
+      speakerLabel,
+      dialogueLines,
+    }));
+  }
+
+  const speakerMappingCandidates = shots.map((shot, index) => {
+    const shotNumber = shot.shot_number ?? index + 1;
+    const frame = frameByShot.get(shotNumber);
+    const approvedMediaAssetId = String(
+      frame?.approvedMediaAssetId ?? ""
+    ).trim();
+    const speakers = resolveSpeakerOptionsForShot(shotNumber);
+    const missingSpeakers = speakers.filter(
+      speaker =>
+        !hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
+          frame?.speakerVisualBindings,
+          [[speaker.speakerLabel]],
+          frame?.approvedMediaAssetId
+        )
+    );
+    return {
+      shotNumber,
+      speakers: missingSpeakers,
+      hasApprovedStartFrame: /^[1-9]\d{0,17}$/.test(approvedMediaAssetId),
+      hasDialogue: speakers.length > 0,
+    };
+  });
+  const speakerMappingBatchShots = speakerMappingCandidates
+    .filter(
+      candidate =>
+        candidate.speakers.length > 0 &&
+        candidate.hasApprovedStartFrame
+    )
+    .map(candidate => ({
+      shotNumber: candidate.shotNumber,
+      speakers: candidate.speakers,
+    }));
+  const speakerMappingMissingFrameShotCount =
+    speakerMappingCandidates.filter(
+      candidate =>
+        candidate.speakers.length > 0 &&
+        !candidate.hasApprovedStartFrame
+    ).length;
+  const speakerMappingAlreadyCompleteShotCount =
+    speakerMappingCandidates.filter(
+      candidate => candidate.hasDialogue && candidate.speakers.length === 0
+    ).length;
+  const speakerMappingMissingSpeakerCount = speakerMappingBatchShots.reduce(
+    (total, candidate) => total + candidate.speakers.length,
+    0
+  );
+
+  async function runUnmatchedSpeakerMappingBatch() {
+    if (
+      speakerMappingBatchRunningRef.current ||
+      !onDetectShotSpeakerPeople ||
+      speakerMappingBatchShots.length === 0
+    )
+      return;
+
+    speakerMappingBatchRunningRef.current = true;
+    stopSpeakerMappingBatchAfterCurrentRef.current = false;
+    let completed = 0;
+    let matchedSpeakers = 0;
+    let unmatchedSpeakers = 0;
+    let creditsUsed = 0;
+    let failed = 0;
+    let unknownCredits = false;
+    let stoppedForInsufficientCredits = false;
+    let stoppedByUser = false;
+
+    try {
+      for (const [index, candidate] of speakerMappingBatchShots.entries()) {
+        setSpeakerMappingBatchProgress({
+          currentIndex: index + 1,
+          total: speakerMappingBatchShots.length,
+          shotNumber: candidate.shotNumber,
+          completed,
+          matchedSpeakers,
+          creditsUsed,
+        });
+        let outcome: VerticalDramaSpeakerDetectionOutcome | void;
+        try {
+          outcome = await onDetectShotSpeakerPeople(
+            candidate.shotNumber,
+            candidate.speakers.map(({ speakerLabel }) => ({ speakerLabel })),
+            { silent: true }
+          );
+        } catch {
+          outcome = undefined;
+        }
+
+        if (!outcome || outcome.status !== "completed") {
+          failed += 1;
+          unknownCredits = true;
+          break;
+        }
+        creditsUsed += outcome.creditsUsed;
+        matchedSpeakers += outcome.matchedSpeakerCount;
+        unmatchedSpeakers += Math.max(
+          0,
+          candidate.speakers.length - outcome.matchedSpeakerCount
+        );
+
+        if (!outcome.saved) {
+          failed += 1;
+          setSpeakerMappingBatchProgress({
+            currentIndex: index + 1,
+            total: speakerMappingBatchShots.length,
+            shotNumber: candidate.shotNumber,
+            completed,
+            matchedSpeakers,
+            creditsUsed,
+          });
+          break;
+        }
+        completed += 1;
+        setSpeakerMappingBatchProgress({
+          currentIndex: index + 1,
+          total: speakerMappingBatchShots.length,
+          shotNumber: candidate.shotNumber,
+          completed,
+          matchedSpeakers,
+          creditsUsed,
+        });
+        if (outcome.attributionIssue === "insufficient_credits") {
+          stoppedForInsufficientCredits = true;
+          break;
+        }
+        if (stopSpeakerMappingBatchAfterCurrentRef.current) {
+          stoppedByUser = true;
+          break;
+        }
+      }
+    } finally {
+      speakerMappingBatchRunningRef.current = false;
+      stopSpeakerMappingBatchAfterCurrentRef.current = false;
+      setSpeakerMappingBatchProgress(null);
+    }
+
+    const skipped = speakerMappingBatchShots.length - completed - failed;
+    const summary = t(
+      locale,
+      `ทำเสร็จ ${completed}/${speakerMappingBatchShots.length} ช็อต · บันทึก ${matchedSpeakers} คน · ยังจับคู่ไม่ได้ ${unmatchedSpeakers} คน · เครดิตที่งานรายงาน ${creditsUsed}${failed ? ` · ล้มเหลว ${failed} ช็อต` : ""}${skipped ? ` · ยังไม่เริ่ม ${skipped} ช็อต` : ""}${speakerMappingMissingFrameShotCount ? ` · ข้าม ${speakerMappingMissingFrameShotCount} ช็อตที่ไม่มี Start Frame อนุมัติ` : ""}${stoppedForInsufficientCredits ? " · หยุดเพราะเครดิตไม่พอ" : ""}${stoppedByUser ? " · หยุดตามคำขอ" : ""}${unknownCredits ? " · งานที่ล้มเหลว/ยังทำอยู่ไม่มีรายงานเครดิตกลับมา" : ""}`,
+      `Finished ${completed}/${speakerMappingBatchShots.length} shots · saved ${matchedSpeakers} speakers · no match ${unmatchedSpeakers} · credits reported by jobs ${creditsUsed}${failed ? ` · ${failed} failed` : ""}${skipped ? ` · ${skipped} not started` : ""}${speakerMappingMissingFrameShotCount ? ` · skipped ${speakerMappingMissingFrameShotCount} without an approved Start Frame` : ""}${stoppedForInsufficientCredits ? " · stopped for insufficient credits" : ""}${stoppedByUser ? " · stopped by request" : ""}${unknownCredits ? " · failed/running jobs did not return a credit total" : ""}`
+    );
+    if (failed || stoppedForInsufficientCredits || stoppedByUser) {
+      toast.warning(summary);
+    } else {
+      toast.success(summary);
+    }
   }
 
   /** Resolves the display label for a split shot's sub-shot clip — the
@@ -3985,6 +4177,148 @@ export function VerticalDramaStoryboardPanel({
           />
         ) : null}
       </StoryboardMetaSection>
+
+      {onDetectShotSpeakerPeople ? (
+        <Card padding={3}>
+          <VStack
+            as="section"
+            gap={2}
+            aria-label={t(
+              locale,
+              "จับคู่ผู้พูดกับคนในภาพหลายช็อต",
+              "Batch match dialogue speakers to people"
+            )}
+            data-testid="vd-storyboard-speaker-mapping-batch"
+          >
+            <HStack gap={2} wrap="wrap" align="center">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={
+                  speakerMappingBatchShots.length === 0 ||
+                  speakerMappingBatchProgress !== null ||
+                  detectingShotSpeakerPeopleForShot.size > 0 ||
+                  savingShotSpeakerVisualBindingsForShot !== null
+                }
+                onClick={() =>
+                  requestConfirmation({
+                    title: t(
+                      locale,
+                      "ยืนยันจับคู่ผู้พูดที่ยังไม่ครบ",
+                      "Confirm matching unmapped speakers"
+                    ),
+                    description: t(
+                      locale,
+                      `ระบบจะทำทีละช็อต เฉพาะ ${speakerMappingBatchShots.length} ช็อตที่ยังจับคู่ไม่ครบ รวม ${speakerMappingMissingSpeakerCount} คน และข้าม ${speakerMappingAlreadyCompleteShotCount} ช็อตที่จับคู่ครบแล้ว${speakerMappingMissingFrameShotCount ? ` พร้อมข้าม ${speakerMappingMissingFrameShotCount} ช็อตที่ไม่มี Start Frame อนุมัติ` : ""} การใช้เครดิตคิดตามการใช้ skill จริง: ตรวจคนและจับคู่ในแต่ละช็อต ส่วนโปรไฟล์รูปลักษณ์ของทั้งตอนจะสร้างเมื่อจำเป็นและนำกลับมาใช้ได้เมื่อข้อมูลเดิมยังตรงกัน ระบบจะแสดงยอดเครดิตที่งานรายงานหลังแต่ละช็อต`,
+                      `Runs sequentially for only ${speakerMappingBatchShots.length} shots with missing mappings (${speakerMappingMissingSpeakerCount} speakers), skips ${speakerMappingAlreadyCompleteShotCount} already-complete shots${speakerMappingMissingFrameShotCount ? ` and ${speakerMappingMissingFrameShotCount} without an approved Start Frame` : ""}. Credits follow actual skill usage: person detection and matching for each shot, plus an episode appearance profile when needed. Unchanged profiles are reused. The actual reported credit total is shown as jobs finish.`
+                    ),
+                    confirmLabel: t(locale, "เริ่มจับคู่", "Start matching"),
+                    cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                    testId: "vd-credit-confirm-speaker-mapping-batch",
+                    onConfirm: () => {
+                      void runUnmatchedSpeakerMappingBatch();
+                    },
+                  })
+                }
+                title={
+                  speakerMappingBatchShots.length === 0
+                    ? speakerMappingMissingFrameShotCount > 0
+                      ? t(
+                          locale,
+                          "ยังไม่มีช็อตที่มี Start Frame อนุมัติให้ตรวจจับ",
+                          "No unmatched dialogue shot has an approved Start Frame."
+                        )
+                      : t(
+                          locale,
+                          "ทุกช็อตที่มีบทพูดจับคู่ครบแล้ว",
+                          "All dialogue speakers are already mapped."
+                        )
+                    : undefined
+                }
+                data-testid="vd-storyboard-run-unmatched-speaker-mapping"
+              >
+                {speakerMappingBatchProgress ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 animate-spin"
+                  />
+                ) : (
+                  <Mic aria-hidden="true" className="h-3.5 w-3.5" />
+                )}
+                {speakerMappingBatchProgress
+                  ? t(
+                      locale,
+                      `กำลังจับคู่ ${speakerMappingBatchProgress.currentIndex}/${speakerMappingBatchProgress.total} · ช็อต ${speakerMappingBatchProgress.shotNumber}`,
+                      `Matching ${speakerMappingBatchProgress.currentIndex}/${speakerMappingBatchProgress.total} · shot ${speakerMappingBatchProgress.shotNumber}`
+                    )
+                  : t(
+                      locale,
+                      `จับคู่บทพูดในช็อตที่ยังไม่ครบ (${speakerMappingBatchShots.length})`,
+                      `Match unmapped dialogue shots (${speakerMappingBatchShots.length})`
+                    )}
+              </Button>
+              {speakerMappingBatchProgress ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    stopSpeakerMappingBatchAfterCurrentRef.current = true;
+                  }}
+                  data-testid="vd-storyboard-stop-speaker-mapping-batch"
+                >
+                  {t(locale, "หยุดหลังช็อตนี้", "Stop after this shot")}
+                </Button>
+              ) : null}
+            </HStack>
+            {speakerMappingBatchProgress ? (
+              <VStack gap={1}>
+                <ProgressBar
+                  label={t(
+                    locale,
+                    "ความคืบหน้าการจับคู่ผู้พูด",
+                    "Speaker matching progress"
+                  )}
+                  value={speakerMappingBatchProgress.completed}
+                  max={speakerMappingBatchProgress.total}
+                  hasValueLabel
+                  formatValueLabel={(value, max) =>
+                    t(locale, `${value}/${max} ช็อต`, `${value}/${max} shots`)
+                  }
+                  data-testid="vd-storyboard-speaker-mapping-batch-progress"
+                />
+                <Text as="p" type="supporting" role="status">
+                  {t(
+                    locale,
+                    `กำลังตรวจช็อต ${speakerMappingBatchProgress.shotNumber} · บันทึกแล้ว ${speakerMappingBatchProgress.matchedSpeakers} คน · เครดิตที่รายงาน ${speakerMappingBatchProgress.creditsUsed}`,
+                    `Checking shot ${speakerMappingBatchProgress.shotNumber} · ${speakerMappingBatchProgress.matchedSpeakers} speakers saved · ${speakerMappingBatchProgress.creditsUsed} credits reported`
+                  )}
+                </Text>
+              </VStack>
+            ) : (
+              <Text as="p" type="supporting">
+                {speakerMappingBatchShots.length > 0
+                  ? t(
+                      locale,
+                      `จะจับคู่ ${speakerMappingMissingSpeakerCount} คนใน ${speakerMappingBatchShots.length} ช็อตที่ยังไม่ครบ${speakerMappingMissingFrameShotCount ? ` · ข้าม ${speakerMappingMissingFrameShotCount} ช็อตที่ไม่มีภาพอนุมัติ` : ""}`,
+                      `Will match ${speakerMappingMissingSpeakerCount} speakers across ${speakerMappingBatchShots.length} incomplete shots${speakerMappingMissingFrameShotCount ? ` · skipping ${speakerMappingMissingFrameShotCount} without an approved frame` : ""}`
+                    )
+                  : t(
+                      locale,
+                      speakerMappingMissingFrameShotCount
+                        ? `ไม่มีงานที่เริ่มได้ · ยังขาดภาพ Start Frame ที่อนุมัติ ${speakerMappingMissingFrameShotCount} ช็อต`
+                        : "ทุกช็อตที่มีบทพูดจับคู่ครบแล้ว",
+                      speakerMappingMissingFrameShotCount
+                        ? `Nothing can start · ${speakerMappingMissingFrameShotCount} unmatched shots need an approved Start Frame`
+                        : "All dialogue speakers are already mapped."
+                    )}
+              </Text>
+            )}
+          </VStack>
+        </Card>
+      ) : null}
 
       {/* Everything below (character review, one-click "generate all" CTAs,
           the per-shot production grid, and assembly) always renders — never
@@ -4648,25 +4982,8 @@ export function VerticalDramaStoryboardPanel({
                         : undefined;
           const frame = frameByShot.get(shotNumber);
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
-          const canonicalDialogueLines = canonicalDialogueByShot.get(shotNumber)?.dialogueLines ?? [];
-          const speakerOptionsForShot = (() => {
-            const lines = canonicalDialogueLines.length
-              ? canonicalDialogueLines
-              : clipsForShot.flatMap(clip => (clip.dialogue ?? []).map(line => ({
-                  speaker: line.characterKey ?? "",
-                  line: line.lineTh,
-                })));
-            const grouped = new Map<string, string[]>();
-            for (const line of lines) {
-              const speakerLabel = line.speaker.trim();
-              if (!speakerLabel) continue;
-              grouped.set(speakerLabel, [...(grouped.get(speakerLabel) ?? []), line.line]);
-            }
-            return Array.from(grouped, ([speakerLabel, dialogueLines]) => ({
-              speakerLabel,
-              dialogueLines,
-            }));
-          })();
+          const speakerOptionsForShot =
+            resolveSpeakerOptionsForShot(shotNumber);
           const dialogueCharacterKeys = (() => {
             const keys = new Set<string>();
             for (const clip of clipsForShot) {
@@ -7517,10 +7834,33 @@ export function VerticalDramaStoryboardPanel({
                           ? detectedShotSpeakerPeopleByShot[shotNumber].suggestions ?? []
                           : []
                       }
-                      detectingPeople={detectingShotSpeakerPeopleForShot.has(shotNumber)}
-                      onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber, speakerOptionsForShot.map(({ speakerLabel }) => ({ speakerLabel }))) : undefined}
-                      saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
-                      onSave={(bindings, options) => onSetShotSpeakerVisualBindings(shotNumber, bindings, options)}
+                      detectingPeople={detectingShotSpeakerPeopleForShot.has(
+                        shotNumber
+                      )}
+                      disabled={speakerMappingBatchProgress !== null}
+                      autoSaveSuggestions={false}
+                      onDetectPeople={
+                        onDetectShotSpeakerPeople
+                          ? () => {
+                              void onDetectShotSpeakerPeople(
+                                shotNumber,
+                                speakerOptionsForShot.map(
+                                  ({ speakerLabel }) => ({ speakerLabel })
+                                )
+                              );
+                            }
+                          : undefined
+                      }
+                      saving={
+                        savingShotSpeakerVisualBindingsForShot === shotNumber
+                      }
+                      onSave={(bindings, options) =>
+                        onSetShotSpeakerVisualBindings(
+                          shotNumber,
+                          bindings,
+                          options
+                        )
+                      }
                     />
                   ) : null}
 

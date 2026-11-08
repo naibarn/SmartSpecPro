@@ -100,9 +100,11 @@ import type {
 } from "@shared/verticalDramaSeries/audio";
 import type { SpecialTieInInput } from "@shared/verticalDramaSeries/specialTieInContracts";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
-import type {
-  VerticalDramaShotSpeakerSuggestion,
-  VerticalDramaSpeakerVisualBinding,
+import {
+  applyVerticalDramaSpeakerSuggestionsToBindings,
+  type VerticalDramaSpeakerDetectionOutcome,
+  type VerticalDramaShotSpeakerSuggestion,
+  type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 import type {
   VerticalDramaAudioLineStatus,
@@ -4805,9 +4807,17 @@ function EpisodeWorkspaceShell({
 
   async function handleDetectShotSpeakerPeople(
     shotNumber: number,
-    speakers: Array<{ speakerLabel: string }>
-  ) {
-    if (detectingSpeakerPeopleShotsRef.current.has(shotNumber)) return;
+    speakers: Array<{ speakerLabel: string }>,
+    options?: { silent?: boolean }
+  ): Promise<VerticalDramaSpeakerDetectionOutcome> {
+    const silent = options?.silent === true;
+    if (detectingSpeakerPeopleShotsRef.current.has(shotNumber))
+      return {
+        status: "busy",
+        creditsUsed: 0,
+        matchedSpeakerCount: 0,
+        saved: false,
+      };
     detectingSpeakerPeopleShotsRef.current.add(shotNumber);
     setDetectingSpeakerPeopleShots(current => new Set(current).add(shotNumber));
     try {
@@ -4822,14 +4832,20 @@ function EpisodeWorkspaceShell({
           speakers,
         });
       } catch {
-        toast.warning(
-          lang === "en"
-            ? "Could not confirm the request. It may still be running; try again to reconnect."
-            : "ยืนยันการส่งคำขอไม่ได้ งานอาจเริ่มทำแล้ว กดตรวจจับอีกครั้งเพื่อเชื่อมต่องานเดิม"
-        );
-        return;
+        if (!silent)
+          toast.warning(
+            lang === "en"
+              ? "Could not confirm the request. It may still be running; try again to reconnect."
+              : "ยืนยันการส่งคำขอไม่ได้ งานอาจเริ่มทำแล้ว กดตรวจจับอีกครั้งเพื่อเชื่อมต่องานเดิม"
+          );
+        return {
+          status: "uncertain",
+          creditsUsed: 0,
+          matchedSpeakerCount: 0,
+          saved: false,
+        };
       }
-      if (submission.reconnected) {
+      if (submission.reconnected && !silent) {
         toast.info(
           lang === "en"
             ? "Reconnected to the existing people detection job."
@@ -4856,18 +4872,29 @@ function EpisodeWorkspaceShell({
         } catch {
           consecutivePollErrors += 1;
           if (consecutivePollErrors >= 8) {
-            toast.info(
-              lang === "en"
-                ? "Detection is still running in the background. You can retry to reconnect."
-                : "งานยังทำต่ออยู่เบื้องหลัง กดตรวจจับอีกครั้งเพื่อเชื่อมต่อและดูผล"
-            );
-            return;
+            if (!silent)
+              toast.info(
+                lang === "en"
+                  ? "Detection is still running in the background. You can retry to reconnect."
+                  : "งานยังทำต่ออยู่เบื้องหลัง กดตรวจจับอีกครั้งเพื่อเชื่อมต่อและดูผล"
+              );
+            return {
+              status: "uncertain",
+              creditsUsed: 0,
+              matchedSpeakerCount: 0,
+              saved: false,
+            };
           }
           continue;
         }
         if (job.status === "failed") {
-          toast.error(job.error);
-          return;
+          if (!silent) toast.error(job.error);
+          return {
+            status: "failed",
+            creditsUsed: 0,
+            matchedSpeakerCount: 0,
+            saved: false,
+          };
         }
         if (job.status !== "succeeded") continue;
 
@@ -4880,6 +4907,67 @@ function EpisodeWorkspaceShell({
             suggestions: result.suggestions,
           },
         }));
+        let matchedSpeakerCount = 0;
+        let saved = true;
+        if (result.suggestions.length > 0) {
+          let mutationStarted = false;
+          try {
+            // Read the latest saved frame before building the replacement
+            // list, so a detection result cannot erase a manual selection
+            // saved while its durable job was running.
+            const latestEpisode =
+              await utils.verticalDramaEpisodes.getEpisodeDetail.fetch({
+                seriesId,
+                episodeId,
+              });
+            const currentFrame = latestEpisode.startFramePlan?.frames?.find(
+              frame => frame.shotNumber === shotNumber
+            );
+            if (
+              String(currentFrame?.approvedMediaAssetId ?? "") !==
+              result.sourceMediaAssetId
+            ) {
+              throw new Error(
+                "The approved Start Frame changed during detection."
+              );
+            }
+
+            const merged = applyVerticalDramaSpeakerSuggestionsToBindings({
+              bindings: currentFrame?.speakerVisualBindings,
+              requestedSpeakerLabels: speakers.map(
+                speaker => speaker.speakerLabel
+              ),
+              people: result.people,
+              suggestions: result.suggestions,
+              sourceMediaAssetId: result.sourceMediaAssetId,
+              shotNumber,
+            });
+            matchedSpeakerCount = merged.matchedSpeakerCount;
+            if (merged.capacityExceeded)
+              throw new Error(
+                "มีรายการจับคู่ผู้พูดถึงขีดจำกัดแล้ว กรุณาแก้รายการในภาพนี้ด้วยตนเอง"
+              );
+
+            if (matchedSpeakerCount > 0) {
+              mutationStarted = true;
+              await setShotSpeakerVisualBindingsMutation.mutateAsync({
+                seriesId,
+                episodeId,
+                shotNumber,
+                speakerVisualBindings: merged.bindings,
+              });
+            }
+          } catch (error) {
+            saved = false;
+            if (!silent && !mutationStarted) {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "บันทึกผลจับคู่ผู้พูดไม่สำเร็จ"
+              );
+            }
+          }
+        }
         const skippedProfileShotCount =
           result.appearanceProfileSkippedShotNumbers.length;
         const skippedProfileText =
@@ -4919,29 +5007,50 @@ function EpisodeWorkspaceShell({
                           ? " Profile comparison did not finish; detected people remain available for manual selection."
                           : " เทียบโปรไฟล์ไม่สำเร็จ แต่ยังเลือกคนจากรายการที่ตรวจพบได้"
                         : "";
-        const suggestionText = result.suggestions.length
-          ? lang === "en"
-            ? ` Automatically matched ${result.suggestions.length} speaker(s) and saving now. Change any selection below if needed.`
-            : ` จับคู่ผู้พูด ${result.suggestions.length} คนแล้ว กำลังบันทึกอัตโนมัติ เปลี่ยนคนที่เลือกได้ด้านล่าง`
-          : result.attributionIssue === "provider_error"
+        const suggestionText =
+          matchedSpeakerCount > 0 && saved
             ? lang === "en"
-              ? " The profile comparison failed this time; retry or select people manually."
-              : " AI เทียบโปรไฟล์ไม่สำเร็จในรอบนี้ ลองตรวจจับอีกครั้งหรือเลือกคนเองได้จากช่องเดิม"
-            : lang === "en"
-              ? " No confident speaker match; select people manually."
-              : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
-        toast.success(
-          lang === "en"
-            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${profileText}${suggestionText}`
-            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${profileText}${suggestionText}`
-        );
-        return;
+              ? ` Automatically matched and saved ${matchedSpeakerCount} speaker(s). Change any selection below if needed.`
+              : ` จับคู่และบันทึกผู้พูด ${matchedSpeakerCount} คนแล้ว เปลี่ยนคนที่เลือกได้ด้านล่าง`
+            : result.suggestions.length > 0 && !saved
+              ? lang === "en"
+                ? " The suggestions could not be saved. Review and save them manually below."
+                : " บันทึกผลจับคู่อัตโนมัติไม่สำเร็จ ตรวจและบันทึกเองได้ด้านล่าง"
+              : result.attributionIssue === "provider_error"
+                ? lang === "en"
+                  ? " The profile comparison failed this time; retry or select people manually."
+                  : " AI เทียบโปรไฟล์ไม่สำเร็จในรอบนี้ ลองตรวจจับอีกครั้งหรือเลือกคนเองได้จากช่องเดิม"
+                : lang === "en"
+                  ? " No confident speaker match; select people manually."
+                  : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
+        if (!silent) {
+          const message =
+            lang === "en"
+              ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${profileText}${suggestionText}`
+              : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${profileText}${suggestionText}`;
+          if (saved) toast.success(message);
+          else toast.warning(message);
+        }
+        return {
+          status: "completed",
+          creditsUsed: result.creditsUsed,
+          matchedSpeakerCount: saved ? matchedSpeakerCount : 0,
+          saved,
+          attributionIssue: result.attributionIssue,
+        };
       }
-      toast.info(
-        lang === "en"
-          ? "Detection is taking longer than expected and continues in the background. Retry to reconnect."
-          : "งานตรวจจับใช้เวลานานกว่าที่คาด แต่ยังทำต่อเบื้องหลัง กดอีกครั้งเพื่อเชื่อมต่อ"
-      );
+      if (!silent)
+        toast.info(
+          lang === "en"
+            ? "Detection is taking longer than expected and continues in the background. Retry to reconnect."
+            : "งานตรวจจับใช้เวลานานกว่าที่คาด แต่ยังทำต่อเบื้องหลัง กดอีกครั้งเพื่อเชื่อมต่อ"
+        );
+      return {
+        status: "timed_out",
+        creditsUsed: 0,
+        matchedSpeakerCount: 0,
+        saved: false,
+      };
     } finally {
       detectingSpeakerPeopleShotsRef.current.delete(shotNumber);
       setDetectingSpeakerPeopleShots(current => {

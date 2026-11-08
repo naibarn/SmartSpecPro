@@ -18,6 +18,17 @@ export interface VerticalDramaShotSpeakerSuggestion {
   confidence: number;
 }
 
+/** Outcome returned to the storyboard while one durable speaker-detection job runs. */
+export interface VerticalDramaSpeakerDetectionOutcome {
+  status: "completed" | "failed" | "uncertain" | "timed_out" | "busy";
+  /** Actual credits reported by the underlying detection/profile/matching skills. */
+  creditsUsed: number;
+  /** High-confidence suggestions successfully persisted to the current frame. */
+  matchedSpeakerCount: number;
+  saved: boolean;
+  attributionIssue?: string;
+}
+
 export interface VerticalDramaSpeakerVisualBinding {
   /** Stable only within this shot; never a Character Stock key. */
   id: string;
@@ -106,6 +117,80 @@ export function normalizeVerticalDramaSpeakerVisualBindings(
     if (result.length >= VD_SPEAKER_VISUAL_BINDING_MAX) break;
   }
   return result;
+}
+
+/** Merge only requested, high-confidence detections into the saved frame map. */
+export function applyVerticalDramaSpeakerSuggestionsToBindings(input: {
+  bindings: unknown;
+  requestedSpeakerLabels: readonly string[];
+  people: readonly VerticalDramaDetectedShotPerson[];
+  suggestions: readonly VerticalDramaShotSpeakerSuggestion[];
+  sourceMediaAssetId: string;
+  shotNumber: number;
+}): {
+  bindings: VerticalDramaSpeakerVisualBinding[];
+  matchedSpeakerCount: number;
+  capacityExceeded: boolean;
+} {
+  const bindings = normalizeVerticalDramaSpeakerVisualBindings(input.bindings);
+  const normalizeLabel = (label: string) =>
+    label.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+  const requestedLabels = new Set(
+    input.requestedSpeakerLabels.map(normalizeLabel)
+  );
+  const next = bindings.slice();
+  let matchedSpeakerCount = 0;
+  let capacityExceeded = false;
+
+  for (const suggestion of input.suggestions) {
+    const speakerKey = normalizeLabel(suggestion.speakerLabel);
+    if (!requestedLabels.has(speakerKey)) continue;
+    const person = input.people.find(
+      candidate => candidate.id === suggestion.personId
+    );
+    if (!person) continue;
+
+    const bindingIndex = next.findIndex(
+      binding => normalizeLabel(binding.speakerLabel) === speakerKey
+    );
+    const existing = bindingIndex >= 0 ? next[bindingIndex] : undefined;
+    const existingIsCompleteForCurrentFrame = Boolean(
+      existing?.sourceMediaAssetId === input.sourceMediaAssetId &&
+        ((existing.personId && existing.boundingBox) ||
+          (existing.visualCue && !existing.personId && !existing.boundingBox))
+    );
+    if (existingIsCompleteForCurrentFrame) continue;
+
+    const personAlreadyMappedToAnotherSpeaker = next.some(
+      binding =>
+        binding.speakerLabel.trim() &&
+        normalizeLabel(binding.speakerLabel) !== speakerKey &&
+        binding.sourceMediaAssetId === input.sourceMediaAssetId &&
+        binding.personId === person.id
+    );
+    if (personAlreadyMappedToAnotherSpeaker) continue;
+
+    if (bindingIndex < 0 && next.length >= VD_SPEAKER_VISUAL_BINDING_MAX) {
+      capacityExceeded = true;
+      continue;
+    }
+
+    const nextBinding: VerticalDramaSpeakerVisualBinding = {
+      id:
+        existing?.id ??
+        `shot-speaker-${input.shotNumber}-${Date.now()}-${matchedSpeakerCount + 1}`,
+      speakerLabel: suggestion.speakerLabel,
+      visualCue: person.appearance,
+      personId: person.id,
+      boundingBox: person.boundingBox,
+      sourceMediaAssetId: input.sourceMediaAssetId,
+    };
+    if (bindingIndex >= 0) next[bindingIndex] = nextBinding;
+    else next.push(nextBinding);
+    matchedSpeakerCount += 1;
+  }
+
+  return { bindings: next, matchedSpeakerCount, capacityExceeded };
 }
 
 export function findVerticalDramaSpeakerVisualBinding(

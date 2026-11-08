@@ -179,4 +179,23 @@ describe("VerticalDramaShotSpeakerBindingEditor", () => {
       "ลุงชาญชุดเชิ้ตสีครีม"
     );
   });
+
+  it("can show batch suggestions without saving them a second time", () => {
+    const onSave = vi.fn();
+    render(
+      <VerticalDramaShotSpeakerBindingEditor
+        shotNumber={2}
+        speakers={[{ speakerLabel: "นักตรวจผนึก", dialogueLines: ["ห้ามเปิดผนึก"] }]}
+        bindings={[]}
+        sourceMediaAssetId="asset-10"
+        detectedPeople={[{ id: "person-4", boundingBox: { x: 0.62, y: 0.1, width: 0.24, height: 0.72 }, appearance: "ชายชุดเกราะสีเข้มด้านหลังทางซ้าย", confidence: 0.91 }]}
+        speakerSuggestions={[{ speakerLabel: "นักตรวจผนึก", personId: "person-4", confidence: 0.91 }]}
+        autoSaveSuggestions={false}
+        onSave={onSave}
+      />
+    );
+
+    expect(screen.getByLabelText("คนที่ตรงกับผู้พูดในภาพ")).toHaveValue("person-4");
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });

@@ -29,6 +29,8 @@ export function VerticalDramaShotSpeakerBindingEditor({
   onDetectPeople,
   locale = "th",
   saving = false,
+  disabled = false,
+  autoSaveSuggestions = true,
   onSave,
 }: {
   shotNumber: number;
@@ -42,6 +44,9 @@ export function VerticalDramaShotSpeakerBindingEditor({
   onDetectPeople?: () => void;
   locale?: "th" | "en";
   saving?: boolean;
+  disabled?: boolean;
+  /** The parent can persist a completed durable-job result before advancing a batch. */
+  autoSaveSuggestions?: boolean;
   onSave: (
     bindings: VerticalDramaSpeakerVisualBinding[],
     options?: { automatic?: boolean }
@@ -127,8 +132,9 @@ export function VerticalDramaShotSpeakerBindingEditor({
     isDirtyRef.current = true;
     draftRef.current = next;
     setDraft(next);
-    onSave(next.filter(binding => binding.visualCue.trim()), { automatic: true });
-  }, [speakerSuggestionsSignature, sourceMediaAssetId, speakers, detectedPeople, onSave]);
+    if (autoSaveSuggestions)
+      onSave(next.filter(binding => binding.visualCue.trim()), { automatic: true });
+  }, [speakerSuggestionsSignature, sourceMediaAssetId, speakers, detectedPeople, autoSaveSuggestions, onSave]);
 
   const updateDraft = (
     updater: (current: VerticalDramaSpeakerVisualBinding[]) => VerticalDramaSpeakerVisualBinding[]
@@ -272,7 +278,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
           <p role="status" className="text-sm text-amber-700">{isEnglish ? "The Start Frame changed. Re-run detection and map speakers to people in the current frame." : "ภาพ Start frame เปลี่ยนแล้ว ให้ตรวจจับและจับคู่คนจากภาพปัจจุบันใหม่"}</p>
         ) : null}
         {onDetectPeople ? (
-          <Button type="button" variant="outline" size="sm" onClick={onDetectPeople} disabled={detectingPeople || !startFrameImageSrc}>
+          <Button type="button" variant="outline" size="sm" onClick={onDetectPeople} disabled={disabled || detectingPeople || !startFrameImageSrc}>
             {detectingPeople ? <Loader2 aria-hidden="true" className="animate-spin" /> : <ScanSearch aria-hidden="true" />}
             {detectingPeople ? (isEnglish ? "Analyzing frame…" : "กำลังตรวจจับคนในภาพ…") : (isEnglish ? "Detect people in image" : "ตรวจจับคนในภาพด้วย AI")}
           </Button>
@@ -317,6 +323,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
                 maxLength={120}
                 description="กรอกชื่อที่ใช้หน้าบทพูด เช่น นักตรวจผนึก"
                 onChange={value => renameSpeaker(speaker.speakerLabel, value)}
+                disabled={disabled}
               />
             )}
             {speaker.dialogueLines.length ? (
@@ -325,7 +332,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
             {detectedPeople.length > 0 ? (
               <label className="block space-y-1">
                 <span className="text-sm font-medium">{isEnglish ? "Person in the image" : "คนที่ตรงกับผู้พูดในภาพ"}</span>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={(speaker as VerticalDramaSpeakerVisualBinding).personId ?? ""} onChange={event => setPerson(speaker.speakerLabel, event.target.value)}>
+                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={(speaker as VerticalDramaSpeakerVisualBinding).personId ?? ""} onChange={event => setPerson(speaker.speakerLabel, event.target.value)} disabled={disabled}>
                   <option value="">{isEnglish ? "Select a person or enter a description below" : "เลือกคน หรือระบุลักษณะด้านล่าง"}</option>
                   {detectedPeople.map((person, index) => (
                     <option key={person.id} value={person.id} disabled={draft.some(binding => binding.speakerLabel !== speaker.speakerLabel && binding.personId === person.id)}>
@@ -342,6 +349,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
               maxLength={240}
               placeholder={isEnglish ? "For example, the man in dark armor at the back on viewer-left" : "เช่น ชายชุดเกราะสีเข้มที่ยืนอยู่ด้านหลังทางซ้าย"}
               onChange={value => setCue(speaker.speakerLabel, value)}
+              disabled={disabled}
             />
             {!speakers.some(
               option => option.speakerLabel === speaker.speakerLabel
@@ -351,6 +359,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
                 variant="ghost"
                 size="sm"
                 onClick={() => removeSpeaker(speaker.speakerLabel)}
+                disabled={disabled}
               >
                 <Trash2 aria-hidden="true" /> {isEnglish ? "Remove" : "ลบ"}
               </Button>
@@ -363,7 +372,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
             variant="outline"
             size="sm"
             onClick={addSpeaker}
-            disabled={draft.length >= 12}
+            disabled={disabled || draft.length >= 12}
           >
             <Plus aria-hidden="true" /> {isEnglish ? "Add speaker" : "เพิ่มผู้พูด"}
           </Button>
@@ -374,6 +383,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
               onSave(draft.filter(binding => binding.visualCue.trim()))
             }
             disabled={
+              disabled ||
               saving ||
               draft.some(
                 binding =>
@@ -392,7 +402,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
                 updateDraft(() => []);
                 onSave([]);
               }}
-              disabled={saving}
+              disabled={disabled || saving}
             >
               {isEnglish ? "Clear mappings" : "ล้างรายการ"}
             </Button>
