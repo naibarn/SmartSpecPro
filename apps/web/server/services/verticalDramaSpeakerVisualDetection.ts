@@ -103,6 +103,7 @@ export async function detectVerticalDramaShotPeople(params: {
   sourceMediaAssetId: string;
   imageUrl: string;
   publicUrl?: string | null;
+  idempotencyRunId?: string;
 }): Promise<{
   people: VerticalDramaDetectedShotPerson[];
   creditsUsed: number;
@@ -115,7 +116,7 @@ export async function detectVerticalDramaShotPeople(params: {
     params.seriesId,
     resolveQualityLargeContextModelId
   );
-  const runId = randomUUID();
+  const runId = params.idempotencyRunId?.trim() || randomUUID();
   const usageByModel = new Map<
     string,
     { promptTokens: number; completionTokens: number }

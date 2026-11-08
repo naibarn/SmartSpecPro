@@ -10,6 +10,7 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
   it.each([
     ["workspace.authority.safe_action", "feature-186-v1"],
     ["cloudflare.staging.http.image.provision", "cloudflare-staging-http-image-v1"],
+    ["vertical_drama.speaker_people_detection", "feature-186-v1"],
   ])("pulls the registered %s executor instead of leaving published jobs queued", (jobType, contract) => {
     expect(isPostgresNodeJobType(jobType)).toBe(true);
     expect(defaultJobExecutorRegistry.resolve(jobType, contract)).toBeDefined();

@@ -355,6 +355,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
   fingerprint: string;
   frames: VerticalDramaEpisodeAppearanceFrameInput[];
   publicUrl?: string | null;
+  idempotencyRunId?: string;
 }): Promise<{
   complete: boolean;
   profiles: StoredAppearanceProfile[];
@@ -392,7 +393,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
   >();
   const analyzedShots = new Set<number>();
   let creditsUsed = 0;
-  const runId = randomUUID();
+  const runId = params.idempotencyRunId?.trim() || randomUUID();
 
   for (
     let offset = 0;

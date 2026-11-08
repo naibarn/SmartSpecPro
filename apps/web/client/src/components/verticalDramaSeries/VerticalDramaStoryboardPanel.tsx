@@ -1554,7 +1554,7 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     speakers: Array<{ speakerLabel: string }>
   ) => void;
-  detectingShotSpeakerPeopleForShot?: number | null;
+  detectingShotSpeakerPeopleForShot?: ReadonlySet<number>;
   detectedShotSpeakerPeopleByShot?: Record<number, {
     sourceMediaAssetId: string;
     people: VerticalDramaDetectedShotPerson[];
@@ -2420,7 +2420,7 @@ export function VerticalDramaStoryboardPanel({
   onSetShotSpeakerVisualBindings,
   savingShotSpeakerVisualBindingsForShot = null,
   onDetectShotSpeakerPeople,
-  detectingShotSpeakerPeopleForShot = null,
+  detectingShotSpeakerPeopleForShot = new Set<number>(),
   detectedShotSpeakerPeopleByShot = {},
   onSetShotBarrierDialogue,
   onSetShotViewMode,
@@ -7516,7 +7516,7 @@ export function VerticalDramaStoryboardPanel({
                           ? detectedShotSpeakerPeopleByShot[shotNumber].suggestions ?? []
                           : []
                       }
-                      detectingPeople={detectingShotSpeakerPeopleForShot === shotNumber}
+                      detectingPeople={detectingShotSpeakerPeopleForShot.has(shotNumber)}
                       onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber, speakerOptionsForShot.map(({ speakerLabel }) => ({ speakerLabel }))) : undefined}
                       saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
                       onSave={bindings => onSetShotSpeakerVisualBindings(shotNumber, bindings)}

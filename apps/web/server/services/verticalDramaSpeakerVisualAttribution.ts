@@ -192,6 +192,7 @@ export async function suggestVerticalDramaShotSpeakerMappings(params: {
   shotNumber: number;
   sourceMediaAssetId: string;
   publicUrl?: string | null;
+  idempotencyRunId?: string;
   people: VerticalDramaDetectedShotPerson[];
   speakers: VerticalDramaSpeakerAttributionInput[];
 }): Promise<{
@@ -224,7 +225,7 @@ export async function suggestVerticalDramaShotSpeakerMappings(params: {
     string,
     { promptTokens: number; completionTokens: number }
   >();
-  const runId = randomUUID();
+  const runId = params.idempotencyRunId?.trim() || randomUUID();
   const chargeActualUsage = async () => {
     const amount = Array.from(usageByModel.entries()).reduce(
       (sum, [usedModel, usage]) =>

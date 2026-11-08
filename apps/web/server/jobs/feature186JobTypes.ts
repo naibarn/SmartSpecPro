@@ -51,6 +51,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "vertical_drama.draft_quality_qc",
   "vertical_drama.episode_stage",
   "vertical_drama.interactive",
+  "vertical_drama.speaker_people_detection",
   "vertical_drama.shot_prompt",
   "vertical_drama.shot_video_prompt",
   "vertical_drama.story",

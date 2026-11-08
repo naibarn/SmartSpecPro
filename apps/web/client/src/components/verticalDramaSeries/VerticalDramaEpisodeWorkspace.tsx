@@ -606,7 +606,7 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     speakers: Array<{ speakerLabel: string }>
   ) => void;
-  detectingShotSpeakerPeopleForShot?: number | null;
+  detectingShotSpeakerPeopleForShot?: ReadonlySet<number>;
   detectedShotSpeakerPeopleByShot?: Record<
     number,
     {

@@ -4757,6 +4757,9 @@ function EpisodeWorkspaceShell({
       }>;
       suggestions: VerticalDramaShotSpeakerSuggestion[];
     }>>({});
+  const [detectingSpeakerPeopleShots, setDetectingSpeakerPeopleShots] =
+    useState<Set<number>>(() => new Set());
+  const detectingSpeakerPeopleShotsRef = useRef(new Set<number>());
   const setShotSpeakerVisualBindingsMutation =
     trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
       onSuccess: (_result, variables) => {
@@ -4799,51 +4802,124 @@ function EpisodeWorkspaceShell({
     });
 
   const detectShotSpeakerPeopleMutation =
-    trpc.verticalDramaEpisodes.detectShotSpeakerPeople.useMutation({
-      onSuccess: (result, variables) => {
+    trpc.verticalDramaEpisodes.detectShotSpeakerPeople.useMutation();
+
+  async function handleDetectShotSpeakerPeople(
+    shotNumber: number,
+    speakers: Array<{ speakerLabel: string }>
+  ) {
+    if (detectingSpeakerPeopleShotsRef.current.has(shotNumber)) return;
+    detectingSpeakerPeopleShotsRef.current.add(shotNumber);
+    setDetectingSpeakerPeopleShots(current => new Set(current).add(shotNumber));
+    try {
+      let submission: Awaited<
+        ReturnType<typeof detectShotSpeakerPeopleMutation.mutateAsync>
+      >;
+      try {
+        submission = await detectShotSpeakerPeopleMutation.mutateAsync({
+          seriesId,
+          episodeId,
+          shotNumber,
+          speakers,
+        });
+      } catch {
+        toast.warning(
+          lang === "en"
+            ? "Could not confirm the request. It may still be running; try again to reconnect."
+            : "ยืนยันการส่งคำขอไม่ได้ งานอาจเริ่มทำแล้ว กดตรวจจับอีกครั้งเพื่อเชื่อมต่องานเดิม"
+        );
+        return;
+      }
+      if (submission.reconnected) {
+        toast.info(
+          lang === "en"
+            ? "Reconnected to the existing people detection job."
+            : "เชื่อมต่อกับงานตรวจจับที่กำลังทำอยู่แล้ว"
+        );
+      }
+
+      const deadline = Date.now() + 10 * 60_000;
+      let consecutivePollErrors = 0;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 2_000));
+        let job;
+        try {
+          job =
+            await utils.verticalDramaEpisodes.getShotSpeakerPeopleJobStatus.fetch(
+              {
+                jobId: submission.jobId,
+                seriesId,
+                episodeId,
+                shotNumber,
+              }
+            );
+          consecutivePollErrors = 0;
+        } catch {
+          consecutivePollErrors += 1;
+          if (consecutivePollErrors >= 8) {
+            toast.info(
+              lang === "en"
+                ? "Detection is still running in the background. You can retry to reconnect."
+                : "งานยังทำต่ออยู่เบื้องหลัง กดตรวจจับอีกครั้งเพื่อเชื่อมต่อและดูผล"
+            );
+            return;
+          }
+          continue;
+        }
+        if (job.status === "failed") {
+          toast.error(job.error);
+          return;
+        }
+        if (job.status !== "succeeded") continue;
+
+        const result = job.result;
         setDetectedSpeakerPeopleByShot(current => ({
           ...current,
-          [variables.shotNumber]: {
+          [shotNumber]: {
             sourceMediaAssetId: result.sourceMediaAssetId,
             people: result.people,
             suggestions: result.suggestions,
           },
         }));
-        const skippedProfileShotCount = result.appearanceProfileSkippedShotNumbers.length;
-        const skippedProfileText = skippedProfileShotCount > 0
-          ? lang === "en"
-            ? ` ${skippedProfileShotCount} shot(s) skipped because an approved frame was unavailable.`
-            : ` ข้าม ${skippedProfileShotCount} ช็อตเพราะไม่มีภาพที่อนุมัติหรือเข้าถึงได้`
-          : "";
-        const profileText = result.appearanceProfileStatus === "built"
-          ? lang === "en"
-            ? ` Built appearance profiles from ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} episode shots.${skippedProfileText}`
-            : ` วิเคราะห์ลักษณะตัวละครจาก ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} ช็อตในตอนแล้ว${skippedProfileText}`
-          : result.appearanceProfileStatus === "reused"
+        const skippedProfileShotCount =
+          result.appearanceProfileSkippedShotNumbers.length;
+        const skippedProfileText =
+          skippedProfileShotCount > 0
             ? lang === "en"
-              ? ` Reused saved appearance profiles from ${result.appearanceProfileShotCount} shots.${skippedProfileText}`
-              : ` ใช้โปรไฟล์รูปลักษณ์ที่บันทึกไว้จาก ${result.appearanceProfileShotCount} ช็อต${skippedProfileText}`
-            : result.appearanceProfileStatus === "no_cast_references"
+              ? ` ${skippedProfileShotCount} shot(s) skipped because an approved frame was unavailable.`
+              : ` ข้าม ${skippedProfileShotCount} ช็อตเพราะไม่มีภาพที่อนุมัติหรือเข้าถึงได้`
+            : "";
+        const profileText =
+          result.appearanceProfileStatus === "built"
+            ? lang === "en"
+              ? ` Built appearance profiles from ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} episode shots.${skippedProfileText}`
+              : ` วิเคราะห์ลักษณะตัวละครจาก ${result.appearanceProfileShotCount}/${result.appearanceProfileTotalShotCount} ช็อตในตอนแล้ว${skippedProfileText}`
+            : result.appearanceProfileStatus === "reused"
               ? lang === "en"
-                ? " Character references are missing from this episode, so automatic matching is unavailable."
-                : " ตอนนี้ไม่มีข้อมูลตัวละครอ้างอิง จึงยังจับคู่อัตโนมัติไม่ได้"
-              : result.attributionIssue === "insufficient_credits"
+                ? ` Reused saved appearance profiles from ${result.appearanceProfileShotCount} shots.${skippedProfileText}`
+                : ` ใช้โปรไฟล์รูปลักษณ์ที่บันทึกไว้จาก ${result.appearanceProfileShotCount} ช็อต${skippedProfileText}`
+              : result.appearanceProfileStatus === "no_cast_references"
                 ? lang === "en"
-                  ? " Not enough credits to compare the episode profiles; select people manually."
-                  : " เครดิตไม่พอสำหรับเทียบโปรไฟล์ทั้งตอน เลือกคนเองได้จากช่องเดิม"
-                : result.attributionIssue === "no_independent_profile_evidence"
+                  ? " Character references are missing from this episode, so automatic matching is unavailable."
+                  : " ตอนนี้ไม่มีข้อมูลตัวละครอ้างอิง จึงยังจับคู่อัตโนมัติไม่ได้"
+                : result.attributionIssue === "insufficient_credits"
                   ? lang === "en"
-                    ? " No other-shot appearance evidence is available; select people manually."
-                    : " ยังไม่มีภาพจากช็อตอื่นไว้เทียบ เลือกคนเองได้จากช่องเดิม"
-                  : result.attributionIssue === "speaker_not_in_visible_cast"
+                    ? " Not enough credits to compare the episode profiles; select people manually."
+                    : " เครดิตไม่พอสำหรับเทียบโปรไฟล์ทั้งตอน เลือกคนเองได้จากช่องเดิม"
+                  : result.attributionIssue ===
+                      "no_independent_profile_evidence"
                     ? lang === "en"
-                      ? " The script speaker is not listed as visible in this shot; select people manually if they are shown."
-                      : " บทระบุผู้พูดคนนี้ แต่ข้อมูลช็อตไม่ได้ระบุว่าอยู่ในภาพ เลือกคนเองได้หากเห็นในภาพ"
-                  : result.attributionIssue
-                    ? lang === "en"
-                      ? " Profile comparison did not finish; detected people remain available for manual selection."
-                      : " เทียบโปรไฟล์ไม่สำเร็จ แต่ยังเลือกคนจากรายการที่ตรวจพบได้"
-                    : "";
+                      ? " No other-shot appearance evidence is available; select people manually."
+                      : " ยังไม่มีภาพจากช็อตอื่นไว้เทียบ เลือกคนเองได้จากช่องเดิม"
+                    : result.attributionIssue === "speaker_not_in_visible_cast"
+                      ? lang === "en"
+                        ? " The script speaker is not listed as visible in this shot; select people manually if they are shown."
+                        : " บทระบุผู้พูดคนนี้ แต่ข้อมูลช็อตไม่ได้ระบุว่าอยู่ในภาพ เลือกคนเองได้หากเห็นในภาพ"
+                      : result.attributionIssue
+                        ? lang === "en"
+                          ? " Profile comparison did not finish; detected people remain available for manual selection."
+                          : " เทียบโปรไฟล์ไม่สำเร็จ แต่ยังเลือกคนจากรายการที่ตรวจพบได้"
+                        : "";
         const suggestionText = result.suggestions.length
           ? lang === "en"
             ? ` Suggested ${result.suggestions.length} speaker match(es). Review before saving.`
@@ -4856,15 +4932,21 @@ function EpisodeWorkspaceShell({
             ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${profileText}${suggestionText}`
             : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${profileText}${suggestionText}`
         );
-      },
-      onError: err => toast.error(err.message),
-    });
-
-  function handleDetectShotSpeakerPeople(
-    shotNumber: number,
-    speakers: Array<{ speakerLabel: string }>
-  ) {
-    detectShotSpeakerPeopleMutation.mutate({ seriesId, episodeId, shotNumber, speakers });
+        return;
+      }
+      toast.info(
+        lang === "en"
+          ? "Detection is taking longer than expected and continues in the background. Retry to reconnect."
+          : "งานตรวจจับใช้เวลานานกว่าที่คาด แต่ยังทำต่อเบื้องหลัง กดอีกครั้งเพื่อเชื่อมต่อ"
+      );
+    } finally {
+      detectingSpeakerPeopleShotsRef.current.delete(shotNumber);
+      setDetectingSpeakerPeopleShots(current => {
+        const next = new Set(current);
+        next.delete(shotNumber);
+        return next;
+      });
+    }
   }
 
   function handleSetShotSpeakerVisualBindings(
@@ -10748,10 +10830,7 @@ function EpisodeWorkspaceShell({
                 ? (setShotSpeakerVisualBindingsMutation.variables?.shotNumber ?? null)
                 : null,
             onDetectShotSpeakerPeople: handleDetectShotSpeakerPeople,
-            detectingShotSpeakerPeopleForShot:
-              detectShotSpeakerPeopleMutation.isPending
-                ? (detectShotSpeakerPeopleMutation.variables?.shotNumber ?? null)
-                : null,
+            detectingShotSpeakerPeopleForShot: detectingSpeakerPeopleShots,
             detectedShotSpeakerPeopleByShot: detectedSpeakerPeopleByShot,
             onSetShotBarrierDialogue: handleSetShotBarrierDialogue,
             onSetShotViewMode: handleSetShotViewMode,

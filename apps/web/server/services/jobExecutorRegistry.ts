@@ -1230,6 +1230,45 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "vertical_drama.speaker_people_detection",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const {
+      verticalDramaSpeakerPeopleDetectionJobPayloadSchema,
+      verticalDramaSpeakerPeopleDetectionResultSchema,
+    } = await import("./verticalDramaSpeakerPeopleDetectionJob");
+    const payload = verticalDramaSpeakerPeopleDetectionJobPayloadSchema.parse(
+      context.input
+    );
+    const userId = context.requestedByUserId;
+    if (
+      !context.tenantId ||
+      typeof userId !== "number" ||
+      !Number.isSafeInteger(userId) ||
+      userId < 1
+    ) {
+      throw new Error("VD_SPEAKER_PEOPLE_OWNER_CONTEXT_MISSING");
+    }
+    const { executeVerticalDramaSpeakerPeopleDetectionJob } =
+      await import("../routers/verticalDramaEpisodes");
+    await reporter.assertActive(lease);
+    const result = await withLeaseHeartbeat(lease, reporter, () =>
+      executeVerticalDramaSpeakerPeopleDetectionJob({
+        ...payload,
+        tenantId: context.tenantId,
+        userId,
+        idempotencyRunId: context.jobId,
+      })
+    );
+    await reporter.assertActive(lease);
+    return {
+      output: verticalDramaSpeakerPeopleDetectionResultSchema.parse(result),
+    };
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "vertical_drama.shot_prompt",
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),
