@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { selectHighConfidenceVerticalDramaSpeakerSuggestions } from "../verticalDramaSpeakerVisualAttribution";
+import {
+  resolveUniqueVisibleSpeakerCharacter,
+  selectHighConfidenceVerticalDramaSpeakerSuggestions,
+} from "../verticalDramaSpeakerVisualAttribution";
 import type { VerticalDramaDetectedShotPerson } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
 const people: VerticalDramaDetectedShotPerson[] = [
@@ -16,6 +19,35 @@ const people: VerticalDramaDetectedShotPerson[] = [
     confidence: 0.9,
   },
 ];
+
+describe("resolveUniqueVisibleSpeakerCharacter", () => {
+  it("disambiguates duplicate roster names using the character key visible in this shot", () => {
+    const sameNameCandidates = [
+      { characterKey: "character", name: "พิมพ์ชนก" },
+      { characterKey: "character-variant", name: "พิมพ์ชนก" },
+      { characterKey: "character-look-workwear", name: "พิมพ์ชนก" },
+    ];
+
+    expect(
+      resolveUniqueVisibleSpeakerCharacter(
+        sameNameCandidates,
+        new Set(["character-variant", "character-7-look-casual_home"])
+      )
+    ).toEqual(sameNameCandidates[1]);
+  });
+
+  it("keeps same-name ambiguity manual when multiple candidates are visible", () => {
+    expect(
+      resolveUniqueVisibleSpeakerCharacter(
+        [
+          { characterKey: "variant-a", name: "พิมพ์ชนก" },
+          { characterKey: "variant-b", name: "พิมพ์ชนก" },
+        ],
+        new Set(["variant-a", "variant-b"])
+      )
+    ).toBeUndefined();
+  });
+});
 
 describe("selectHighConfidenceVerticalDramaSpeakerSuggestions", () => {
   it("selects a strong, unambiguous person match using dynamic speaker labels", () => {

@@ -433,7 +433,10 @@ import {
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 import { detectVerticalDramaShotPeople } from "../services/verticalDramaSpeakerVisualDetection";
-import { suggestVerticalDramaShotSpeakerMappings } from "../services/verticalDramaSpeakerVisualAttribution";
+import {
+  resolveUniqueVisibleSpeakerCharacter,
+  suggestVerticalDramaShotSpeakerMappings,
+} from "../services/verticalDramaSpeakerVisualAttribution";
 import {
   analyzeVerticalDramaEpisodeAppearanceProfiles,
   createVerticalDramaSpeakerAppearanceFingerprint,
@@ -19040,19 +19043,19 @@ export const verticalDramaEpisodesRouter = router({
           context => context.shotNumber === input.shotNumber
         )?.characterKeys ?? []
       );
-      const hasSpeakerVisibleRef = input.speakers.some(speaker => {
-        const matches = rosterRows.filter(character =>
-          matchesCharacterLabel(character, speaker.speakerLabel)
+      const resolveVisibleSpeakerCharacter = (speakerLabel: string) =>
+        resolveUniqueVisibleSpeakerCharacter(
+          rosterRows.filter(character =>
+            matchesCharacterLabel(character, speakerLabel)
+          ),
+          currentVisibleKeys
         );
-        return matches.length === 1 && currentVisibleKeys.has(matches[0].characterKey);
+      const hasSpeakerVisibleRef = input.speakers.some(speaker => {
+        return Boolean(resolveVisibleSpeakerCharacter(speaker.speakerLabel));
       });
       const matchedSpeakers = input.speakers.flatMap(speaker => {
-        const matches = rosterRows.filter(character =>
-          matchesCharacterLabel(character, speaker.speakerLabel)
-        );
-        if (matches.length !== 1) return [];
-        const character = matches[0];
-        if (!currentVisibleKeys.has(character.characterKey)) return [];
+        const character = resolveVisibleSpeakerCharacter(speaker.speakerLabel);
+        if (!character) return [];
         const profile = appearanceProfiles.find(
           candidate => candidate.characterKey === character.characterKey
         );

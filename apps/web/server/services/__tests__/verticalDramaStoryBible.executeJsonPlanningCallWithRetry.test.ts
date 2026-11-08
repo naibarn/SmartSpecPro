@@ -930,6 +930,60 @@ describe("executeJsonPlanningCallWithRetry", () => {
 });
 
 describe("executeVisionAwareJsonCallWithRetry broker recovery", () => {
+  it("retries a timed-out provider image download with an inline broker image", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "image/png" }),
+      arrayBuffer: async () => Uint8Array.from([137, 80, 78, 71]).buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    mockExecute.mockReset();
+    mockExecute
+      .mockResolvedValueOnce({
+        type: "error",
+        error:
+          "LLM request failed: HTTP 400 from provider: Unable to download content from the provided URL before the timeout",
+        statusCode: 400,
+      } as any)
+      .mockResolvedValueOnce(successWith(VALID_JSON));
+
+    try {
+      const result = await executeVisionAwareJsonCallWithRetry({
+        model: "gpt-5.6-luna",
+        systemPrompt: "system",
+        userPromptText: "Inspect the attached frame",
+        hasVision: true,
+        images: [
+          {
+            url: "https://smartaihub.app/api/mcp/downloads/signed-token/frame.png",
+            label: "start frame",
+          },
+        ],
+        userId: 1,
+        tenantId: "tenant-1",
+        publicUrl: "https://smartaihub.app",
+        schema,
+        firstAttemptMaxTokens: 100,
+        retryMaxTokens: 100,
+      });
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      const retryContent = mockExecute.mock.calls[1][0].messages[1].content;
+      expect(retryContent).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw==", detail: "high" },
+          }),
+        ])
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("retries a provider reference 404 with an inline broker image", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -938,6 +992,7 @@ describe("executeVisionAwareJsonCallWithRetry broker recovery", () => {
       arrayBuffer: async () => Uint8Array.from([137, 80, 78, 71]).buffer,
     });
     vi.stubGlobal("fetch", fetchMock);
+    mockExecute.mockReset();
     try {
       mockExecute
         .mockResolvedValueOnce({

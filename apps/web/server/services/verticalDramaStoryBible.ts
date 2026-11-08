@@ -2358,10 +2358,14 @@ function isProviderUnavailableError(error: unknown): boolean {
   );
 }
 
+const VISION_REFERENCE_DOWNLOAD_FAILURE =
+  /vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?\s*404|unable to download content from (?:the )?provided url before the timeout|(?:image|content) download (?:has )?timed out|timed out while downloading/i;
+
 function isVisionProviderResponseFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /empty_response|no assistant text|vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?\s*404/i.test(
-    message
+  return (
+    /empty_response|no assistant text/i.test(message) ||
+    VISION_REFERENCE_DOWNLOAD_FAILURE.test(message)
   );
 }
 
@@ -2466,9 +2470,7 @@ async function materializeVisionBrokerImagesForRetry(
 
 function isVisionReferenceDownloadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?[ ]?404/i.test(
-    message
-  );
+  return VISION_REFERENCE_DOWNLOAD_FAILURE.test(message);
 }
 
 async function prepareVisionReferenceUrls(args: {

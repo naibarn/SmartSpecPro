@@ -189,6 +189,7 @@ export async function detectVerticalDramaShotPeople(params: {
       retryMaxTokens: 2200,
       maxSchemaRetries: 1,
       disableModelFallback: false,
+      modelFallbackPolicy: "recommended",
       verticalDramaContext: {
         seriesId: params.seriesId,
         episodeId: params.episodeId,

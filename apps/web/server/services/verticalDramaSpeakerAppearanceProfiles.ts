@@ -24,41 +24,244 @@ const SKILL_FOLDER_PATH = path.join(
 );
 const MAX_IMAGES_PER_PROFILE_CALL = 6;
 
-const outputSchema = z
-  .object({
-    frames: z
-      .array(
-        z
-          .object({
-            shot_number: z.number().int().positive(),
-            characters: z
-              .array(
-                z
-                  .object({
+type JsonRecord = Record<string, unknown>;
+
+function asJsonRecord(value: unknown): JsonRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonRecord)
+    : null;
+}
+
+function firstText(record: JsonRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeConfidence(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(
+      0,
+      Math.min(1, value > 1 && value <= 100 ? value / 100 : value)
+    );
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.replace("%", ""));
+    if (Number.isFinite(parsed)) {
+      const fraction = value.includes("%") || parsed > 1 ? parsed / 100 : parsed;
+      return Math.max(0, Math.min(1, fraction));
+    }
+  }
+  // Confidence is only used to order examples, not to decide identity. Keep
+  // qualitative/missing model scores neutral instead of rejecting the frame.
+  return 0.5;
+}
+
+function normalizeFrameEntries(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  const record = asJsonRecord(value);
+  return record
+    ? Object.entries(record).map(([shotNumber, frame]) => ({
+        ...(asJsonRecord(frame) ?? {}),
+        shot_number: asJsonRecord(frame)?.shot_number ?? shotNumber,
+      }))
+    : [];
+}
+
+function normalizeCharacterEntries(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  const record = asJsonRecord(value);
+  if (!record) return [];
+  if (
+    [
+      "character_key",
+      "characterKey",
+      "character_name",
+      "characterName",
+      "key",
+      "id",
+    ].some(key => key in record)
+  ) {
+    return [record];
+  }
+  return Object.entries(record).map(([key, character]) =>
+    typeof character === "string"
+      ? { character_key: key, appearance: character }
+      : {
+          ...(asJsonRecord(character) ?? {}),
+          character_key:
+            asJsonRecord(character)?.character_key ??
+            asJsonRecord(character)?.characterKey ??
+            key,
+        }
+  );
+}
+
+function normalizeProfileEntries(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  const record = asJsonRecord(value);
+  if (!record) return [];
+  return Object.entries(record).map(([characterKey, profile]) =>
+    typeof profile === "string"
+      ? { character_key: characterKey, general_appearance: profile }
+      : {
+          ...(asJsonRecord(profile) ?? {}),
+          character_key:
+            asJsonRecord(profile)?.character_key ??
+            asJsonRecord(profile)?.characterKey ??
+            characterKey,
+        }
+  );
+}
+
+/**
+ * Vision models sometimes express the same observations with nearby field
+ * names (e.g. `description`/`position`, or a character-keyed object). Normalize
+ * those equivalent shapes before strict validation; identity still has to
+ * resolve to one of this frame's supplied character keys below.
+ */
+export function normalizeVerticalDramaEpisodeAppearanceProfileOutput(
+  value: unknown
+): unknown {
+  const root = asJsonRecord(value);
+  if (!root) return value;
+  const frames = normalizeFrameEntries(
+    root.frames ?? root.shots ?? root.frame_appearances ?? root.frameAppearances
+  ).map(rawFrame => {
+    const frame = asJsonRecord(rawFrame) ?? {};
+    const rawShotNumber =
+      frame.shot_number ??
+      frame.shotNumber ??
+      frame.frame_number ??
+      frame.frameNumber;
+    const rawCharacters =
+      frame.characters ??
+      frame.character_appearances ??
+      frame.characterAppearances ??
+      frame.people;
+    const characters = normalizeCharacterEntries(rawCharacters).map(
+      rawCharacter => {
+        const character = asJsonRecord(rawCharacter) ?? {};
+        const appearance = firstText(character, [
+          "appearance",
+          "description",
+          "visual_description",
+          "visualDescription",
+          "general_appearance",
+          "generalAppearance",
+          "summary",
+        ]);
+        const position = firstText(character, [
+          "position",
+          "screen_position",
+          "screenPosition",
+        ]);
+        const combinedAppearance =
+          position &&
+          !appearance.toLocaleLowerCase().includes(position.toLocaleLowerCase())
+            ? `${appearance}${appearance ? "; " : ""}position: ${position}`
+            : appearance;
+        const rawVisible =
+          character.visible ??
+          character.is_visible ??
+          character.isVisible ??
+          character.in_frame;
+        const visible =
+          typeof rawVisible === "boolean"
+            ? rawVisible
+            : Boolean(appearance);
+        return {
+          character_key: firstText(character, [
+            "character_key",
+            "characterKey",
+            "key",
+            "id",
+            "character_name",
+            "characterName",
+          ]),
+          visible,
+          appearance: combinedAppearance.slice(0, 600),
+          confidence: normalizeConfidence(character.confidence),
+        };
+      }
+    );
+    const shotNumber = Number(rawShotNumber);
+    return {
+      shot_number: Number.isInteger(shotNumber) ? shotNumber : rawShotNumber,
+      characters,
+    };
+  });
+  const profiles = normalizeProfileEntries(
+    root.profiles ??
+      root.episode_cues ??
+      root.episodeCues ??
+      root.character_profiles ??
+      root.characterProfiles
+  ).flatMap(rawProfile => {
+    const profile = asJsonRecord(rawProfile);
+    if (!profile) return [];
+    const characterKey = firstText(profile, [
+      "character_key",
+      "characterKey",
+      "key",
+      "id",
+      "character_name",
+      "characterName",
+    ]);
+    if (!characterKey) return [];
+    return [
+      {
+        character_key: characterKey,
+        general_appearance: firstText(profile, [
+          "general_appearance",
+          "generalAppearance",
+          "appearance",
+          "description",
+          "summary",
+        ]).slice(0, 800),
+      },
+    ];
+  });
+
+  return { frames, profiles };
+}
+
+export const verticalDramaEpisodeAppearanceProfileOutputSchema = z.preprocess(
+  normalizeVerticalDramaEpisodeAppearanceProfileOutput,
+  z
+    .object({
+      frames: z
+        .array(
+          z
+            .object({
+              shot_number: z.number().int().positive(),
+              characters: z
+                .array(
+                  z.object({
                     character_key: z.string().trim().min(1).max(64),
                     visible: z.boolean(),
                     appearance: z.string().trim().max(600).default(""),
                     confidence: z.number().min(0).max(1),
-                  })
-                  .strict()
-              )
-              .max(12),
-          })
-          .strict()
-      )
-      .max(MAX_IMAGES_PER_PROFILE_CALL),
-    profiles: z
-      .array(
-        z
-          .object({
+                  }).strict()
+                )
+                .max(12),
+            })
+            .strict()
+        )
+        .max(MAX_IMAGES_PER_PROFILE_CALL),
+      profiles: z
+        .array(
+          z.object({
             character_key: z.string().trim().min(1).max(64),
             general_appearance: z.string().trim().max(800),
-          })
-          .strict()
-      )
-      .max(48),
-  })
-  .strict();
+          }).strict()
+        )
+        .max(48),
+    })
+    .strict()
+);
 
 export interface VerticalDramaEpisodeAppearanceFrameInput {
   shotNumber: number;
@@ -221,12 +424,14 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
     }));
     let outcome: Awaited<
       ReturnType<
-        typeof executeVisionAwareJsonCallWithRetry<z.infer<typeof outputSchema>>
+        typeof executeVisionAwareJsonCallWithRetry<
+          z.infer<typeof verticalDramaEpisodeAppearanceProfileOutputSchema>
+        >
       >
     >;
     try {
       outcome = await executeVisionAwareJsonCallWithRetry<
-        z.infer<typeof outputSchema>
+        z.infer<typeof verticalDramaEpisodeAppearanceProfileOutputSchema>
       >({
         model,
         systemPrompt: loadSkillSystemPrompt(),
@@ -247,6 +452,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
             "Do not match a person just because a character is named in expected_characters; compare visible features with visual_identity_notes and the other supplied images.",
             "Use the exact character_key from expected_characters. Do not invent or translate keys.",
             "General appearance should summarize stable face, hair, age presentation, build, and repeated outfit cues. Mention outfit variation when observations disagree.",
+            "Return exactly `frames` and `profiles` at the top level. Each frame has integer `shot_number` and a `characters` array; each character has exact `character_key`, boolean `visible`, string `appearance`, and numeric `confidence` from 0 to 1. `profiles` is always an array and may be empty.",
             "A still image cannot establish who is actively speaking. Do not infer speech activity.",
           ],
         }),
@@ -255,11 +461,12 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
         userId: params.userId,
         tenantId: params.tenantId,
         publicUrl: params.publicUrl,
-        schema: outputSchema,
+        schema: verticalDramaEpisodeAppearanceProfileOutputSchema,
         firstAttemptMaxTokens: 2200,
         retryMaxTokens: 3400,
         maxSchemaRetries: 1,
         disableModelFallback: false,
+        modelFallbackPolicy: "recommended",
         verticalDramaContext: {
           seriesId: params.seriesId,
           episodeId: params.episodeId,
@@ -370,11 +577,17 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
     for (const frame of batch) {
       const result = framesByShot.get(frame.shotNumber)!;
       analyzedShots.add(frame.shotNumber);
-      const allowedCharacters = new Map(
-        frame.characters.map(character => [character.characterKey, character])
-      );
+      const resolveAllowedCharacter = (modelKey: string) => {
+        const normalizedKey = modelKey.trim().toLocaleLowerCase();
+        const matches = frame.characters.filter(character =>
+          [character.characterKey, character.characterName].some(
+            value => value.trim().toLocaleLowerCase() === normalizedKey
+          )
+        );
+        return matches.length === 1 ? matches[0] : undefined;
+      };
       for (const observed of result.characters) {
-        const character = allowedCharacters.get(observed.character_key);
+        const character = resolveAllowedCharacter(observed.character_key);
         if (!character || !observed.visible || !observed.appearance) continue;
         const profile = profilesByKey.get(character.characterKey) ?? {
           characterName: character.characterName,
@@ -389,12 +602,22 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
         profilesByKey.set(character.characterKey, profile);
       }
     }
-    const expectedCharacterKeys = new Set(
-      batch.flatMap(frame => frame.characters.map(character => character.characterKey))
+    const expectedCharacters = Array.from(
+      new Map(
+        batch
+          .flatMap(frame => frame.characters)
+          .map(character => [character.characterKey, character])
+      ).values()
     );
     for (const summary of outcome.data.profiles) {
-      if (!expectedCharacterKeys.has(summary.character_key)) continue;
-      const profile = profilesByKey.get(summary.character_key);
+      const normalizedKey = summary.character_key.trim().toLocaleLowerCase();
+      const matches = expectedCharacters.filter(character =>
+        [character.characterKey, character.characterName].some(
+          value => value.trim().toLocaleLowerCase() === normalizedKey
+        )
+      );
+      if (matches.length !== 1) continue;
+      const profile = profilesByKey.get(matches[0].characterKey);
       if (profile && summary.general_appearance)
         profile.summaries.push(summary.general_appearance);
     }
@@ -423,7 +646,7 @@ export async function analyzeVerticalDramaEpisodeAppearanceProfiles(params: {
       const generalAppearance = (
         summarySet.length > 0
           ? summarySet.join("; ")
-          : (examples[0]?.appearance ?? "")
+          : examples.map(example => example.appearance).join("; ")
       ).slice(0, 1_200);
       return {
         characterKey,

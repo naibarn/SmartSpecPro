@@ -65,6 +65,20 @@ const MIN_IDENTITY_CONFIDENCE = 0.9;
 const MIN_MATCH_MARGIN = 0.15;
 const MIN_PERSON_BOX_CONFIDENCE = 0.65;
 
+/** Resolve duplicate roster labels only when exactly one candidate is declared
+ * visible in this shot. Ambiguous same-name people remain a manual choice. */
+export function resolveUniqueVisibleSpeakerCharacter<
+  T extends { characterKey: string },
+>(
+  candidates: readonly T[],
+  visibleCharacterKeys: ReadonlySet<string>
+): T | undefined {
+  const visibleCandidates = candidates.filter(candidate =>
+    visibleCharacterKeys.has(candidate.characterKey)
+  );
+  return visibleCandidates.length === 1 ? visibleCandidates[0] : undefined;
+}
+
 function normalizeLabel(value: string): string {
   return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }

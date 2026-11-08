@@ -25,6 +25,7 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
 import {
   analyzeVerticalDramaEpisodeAppearanceProfiles,
   createVerticalDramaSpeakerAppearanceFingerprint,
+  verticalDramaEpisodeAppearanceProfileOutputSchema,
 } from "../verticalDramaSpeakerAppearanceProfiles";
 
 describe("vertical drama episode appearance profile fingerprint", () => {
@@ -135,10 +136,89 @@ describe("vertical drama episode appearance profile fingerprint", () => {
     ).not.toBe(fingerprint);
   });
 
+  it("normalizes observed model variants without weakening character-key validation", () => {
+    const parsed = verticalDramaEpisodeAppearanceProfileOutputSchema.parse({
+      frames: [
+        {
+          shot_number: 1,
+          characters: [
+            {
+              character_key: "dynamic-character-7",
+              description: "older man with gray hair and beige shirt",
+              position: "viewer-right",
+              confidence: "high",
+            },
+          ],
+        },
+      ],
+      episode_cues: {
+        "dynamic-character-7": "older man with gray hair",
+      },
+      provider_debug: "ignored during normalization",
+    });
+
+    expect(parsed).toEqual({
+      frames: [
+        {
+          shot_number: 1,
+          characters: [
+            {
+              character_key: "dynamic-character-7",
+              visible: true,
+              appearance:
+                "older man with gray hair and beige shirt; position: viewer-right",
+              confidence: 0.5,
+            },
+          ],
+        },
+      ],
+      profiles: [
+        {
+          character_key: "dynamic-character-7",
+          general_appearance: "older man with gray hair",
+        },
+      ],
+    });
+  });
+
+  it("accepts character-keyed observations and derives profiles when the model omits them", () => {
+    const parsed = verticalDramaEpisodeAppearanceProfileOutputSchema.parse({
+      frames: {
+        "2": {
+          characters: {
+            "dynamic-character-7": {
+              appearance: "young woman in a dark navy dress",
+              position: "viewer-left",
+              confidence: "92%",
+            },
+          },
+        },
+      },
+      episode_cues: ["recurring navy wardrobe"],
+    });
+
+    expect(parsed.frames).toEqual([
+      {
+        shot_number: 2,
+        characters: [
+          {
+            character_key: "dynamic-character-7",
+            visible: true,
+            appearance:
+              "young woman in a dark navy dress; position: viewer-left",
+            confidence: 0.92,
+          },
+        ],
+      },
+    ]);
+    expect(parsed.profiles).toEqual([]);
+  });
+
   it("builds reusable appearance observations from all analyzed frames using dynamic character keys", async () => {
     mocks.execute.mockImplementation(
       async (args: {
         onUsage?: (response: unknown, requestedModel: string) => void;
+        schema?: { safeParse: (value: unknown) => { success: boolean; data?: unknown; error?: unknown } };
       }) => {
         args.onUsage?.(
           {
@@ -147,44 +227,47 @@ describe("vertical drama episode appearance profile fingerprint", () => {
           },
           "test-vision-model"
         );
+        const rawData = {
+          frames: [
+            {
+              shot_number: 1,
+              characters: [
+                {
+                  character_key: "dynamic-character-7",
+                  visible: true,
+                  appearance:
+                    "young woman with long dark hair in a navy dress",
+                  confidence: 0.94,
+                },
+              ],
+            },
+            {
+              shot_number: 2,
+              characters: [
+                {
+                  character_key: "dynamic-character-7",
+                  visible: true,
+                  appearance:
+                    "young woman with long dark hair, still wearing navy",
+                  confidence: 0.91,
+                },
+              ],
+            },
+          ],
+          profiles: [
+            {
+              character_key: "dynamic-character-7",
+              general_appearance:
+                "young woman, long dark hair, recurring navy clothing",
+            },
+          ],
+        };
+        const parsed = args.schema?.safeParse(rawData);
+        if (!parsed?.success) throw parsed?.error ?? new Error("schema required");
         return {
           usedVision: true,
           response: { model: "test-vision-model" },
-          data: {
-            frames: [
-              {
-                shot_number: 1,
-                characters: [
-                  {
-                    character_key: "dynamic-character-7",
-                    visible: true,
-                    appearance:
-                      "young woman with long dark hair in a navy dress",
-                    confidence: 0.94,
-                  },
-                ],
-              },
-              {
-                shot_number: 2,
-                characters: [
-                  {
-                    character_key: "dynamic-character-7",
-                    visible: true,
-                    appearance:
-                      "young woman with long dark hair, still wearing navy",
-                    confidence: 0.91,
-                  },
-                ],
-              },
-            ],
-            profiles: [
-              {
-                character_key: "dynamic-character-7",
-                general_appearance:
-                  "young woman, long dark hair, recurring navy clothing",
-              },
-            ],
-          },
+          data: parsed.data,
         };
       }
     );
