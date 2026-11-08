@@ -1263,7 +1263,9 @@ defaultJobExecutorRegistry.register({
     );
     await reporter.assertActive(lease);
     return {
-      output: verticalDramaSpeakerPeopleDetectionResultSchema.parse(result),
+      output: omitUndefinedJobPayloadProperties(
+        verticalDramaSpeakerPeopleDetectionResultSchema.parse(result)
+      ) as Record<string, unknown>,
     };
   },
 });
