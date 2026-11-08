@@ -3,6 +3,46 @@ import { describe, expect, it, vi } from "vitest";
 import { VerticalDramaEpisodeWorkspace } from "@/components/verticalDramaSeries/VerticalDramaEpisodeWorkspace";
 
 describe("VerticalDramaEpisodeWorkspace speaker visual detection wiring", () => {
+  it("forwards the missing-video-prompt batch action to the storyboard panel", () => {
+    const onGenerateMissingShotVideoPrompts = vi.fn();
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={{
+          id: "ep-1",
+          episodeNumber: 1,
+          title: "Episode 1",
+          status: "in_progress",
+        }}
+        storyboardPanel={{
+          storyboard: {
+            shots: [
+              {
+                shot_number: 1,
+                visual_description: "A character at a table",
+                characters: [],
+              },
+            ],
+          },
+          startFramePlan: { frames: [] },
+          motionPromptPack: { clips: [] },
+          selectedVideoModelId: "video-model",
+          onGenerateMissingShotVideoPrompts,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-generate-missing-video-prompts")
+    ).toBeEnabled();
+    fireEvent.click(screen.getByTestId("vd-generate-missing-video-prompts"));
+    fireEvent.click(
+      screen.getByTestId("vd-confirm-generate-missing-video-prompts")
+    );
+    expect(onGenerateMissingShotVideoPrompts).toHaveBeenCalledExactlyOnceWith([
+      1,
+    ]);
+  });
+
   it("forwards detection action and detected people through to the shot editor", () => {
     const onDetectShotSpeakerPeople = vi.fn();
     render(

@@ -521,6 +521,8 @@ export interface VerticalDramaStoryboardPanelData {
   ) => Promise<void> | void;
   /** Runs the standard per-shot video prompt job for each selected shot. */
   onGenerateAllShotVideoPrompts?: (shotNumbers: number[]) => void;
+  /** Runs the standard per-shot job only for shots without a prompt yet. */
+  onGenerateMissingShotVideoPrompts?: (shotNumbers: number[]) => void;
   generatingAllShotVideoPrompts?: boolean;
   /** Runs the isolated Enhanced per-shot flow for each selected shot. */
   onGenerateAllEnhancedShotVideoPrompts?: (shotNumbers: number[]) => void;
@@ -1734,6 +1736,7 @@ export function VerticalDramaEpisodeWorkspace({
           generatingStartFramePlan={storyboardPanel?.generatingStartFramePlan}
           onEditStartFramePrompt={storyboardPanel?.onEditStartFramePrompt}
           onGenerateAllShotVideoPrompts={storyboardPanel?.onGenerateAllShotVideoPrompts}
+          onGenerateMissingShotVideoPrompts={storyboardPanel?.onGenerateMissingShotVideoPrompts}
           generatingAllShotVideoPrompts={storyboardPanel?.generatingAllShotVideoPrompts}
           onGenerateAllEnhancedShotVideoPrompts={storyboardPanel?.onGenerateAllEnhancedShotVideoPrompts}
           generatingAllEnhancedShotVideoPrompts={storyboardPanel?.generatingAllEnhancedShotVideoPrompts}
