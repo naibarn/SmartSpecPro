@@ -39,6 +39,7 @@ import {
   verticalDramaRunArtifacts,
   verticalDramaEpisodeRuns,
   verticalDramaCharacters,
+  verticalDramaCharacterAliases,
   verticalDramaLocations,
   verticalDramaMemoryEvents,
   mediaAssets,
@@ -432,6 +433,8 @@ import {
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 import { detectVerticalDramaShotPeople } from "../services/verticalDramaSpeakerVisualDetection";
+import { suggestVerticalDramaShotSpeakerMappings } from "../services/verticalDramaSpeakerVisualAttribution";
+import { normalizeStoryCharacterName } from "../services/verticalDramaCharacterRosterAutoRegister";
 import {
   deriveVerticalDramaStartFrameShotComposition,
   ensureVerticalDramaShotCompositionLock,
@@ -18638,6 +18641,9 @@ export const verticalDramaEpisodesRouter = router({
       seriesId: z.string().min(1),
       episodeId: z.string().min(1),
       shotNumber: z.number().int().positive(),
+      speakers: z.array(z.object({
+        speakerLabel: z.string().trim().min(1).max(120),
+      }).strict()).max(12).optional().default([]),
     }))
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -18686,7 +18692,104 @@ export const verticalDramaEpisodesRouter = router({
         imageUrl,
         publicUrl: ctx.publicUrl,
       });
-      return { ...result, sourceMediaAssetId };
+      let suggestions: Awaited<ReturnType<typeof suggestVerticalDramaShotSpeakerMappings>>["suggestions"] = [];
+      let attributionCreditsUsed = 0;
+      if (input.speakers.length > 0 && result.people.length > 0) {
+        try {
+          const rosterRows = await db
+            .select({
+              id: verticalDramaCharacters.id,
+              characterKey: verticalDramaCharacters.characterKey,
+              name: verticalDramaCharacters.name,
+            })
+            .from(verticalDramaCharacters)
+            .where(and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, ctx.user.id),
+              eq(verticalDramaCharacters.seriesId, seriesId),
+            ));
+          const aliasRows = await db
+            .select({
+              characterId: verticalDramaCharacterAliases.characterId,
+              alias: verticalDramaCharacterAliases.alias,
+            })
+            .from(verticalDramaCharacterAliases)
+            .where(and(
+              eq(verticalDramaCharacterAliases.tenantId, tenantId),
+              eq(verticalDramaCharacterAliases.seriesId, seriesId),
+            ));
+          const aliasesByCharacterId = new Map<number, string[]>();
+          for (const alias of aliasRows) {
+            const current = aliasesByCharacterId.get(alias.characterId) ?? [];
+            current.push(alias.alias);
+            aliasesByCharacterId.set(alias.characterId, current);
+          }
+          const visibleRefs = Array.isArray(frame?.requiredCharacterRefs)
+            ? frame.requiredCharacterRefs
+                .filter((value): value is string => typeof value === "string")
+                .map(normalizeStoryCharacterName)
+            : [];
+          const matchedSpeakers = input.speakers.flatMap(speaker => {
+            const normalizedLabel = normalizeStoryCharacterName(speaker.speakerLabel);
+            const matches = rosterRows.filter(row =>
+              normalizeStoryCharacterName(row.characterKey) === normalizedLabel ||
+              normalizeStoryCharacterName(row.name) === normalizedLabel ||
+              (aliasesByCharacterId.get(row.id) ?? []).some(alias =>
+                normalizeStoryCharacterName(alias) === normalizedLabel
+              )
+            );
+            if (matches.length !== 1) return [];
+            const character = matches[0];
+            if (visibleRefs.length > 0 && !visibleRefs.includes(
+              normalizeStoryCharacterName(character.characterKey)
+            )) return [];
+            return [{ speaker, character }];
+          });
+          const attributionCandidates = (await Promise.all(
+            matchedSpeakers.map(async ({ speaker, character }) => ({
+              speaker,
+              character,
+              referenceImageUrl: await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+                { tenantId, userId: ctx.user.id, seriesId },
+                character.id,
+              ),
+            }))
+          )).filter((candidate): candidate is typeof candidate & { referenceImageUrl: string } =>
+            Boolean(candidate.referenceImageUrl)
+          );
+          if (attributionCandidates.length > 0) {
+            const attribution = await suggestVerticalDramaShotSpeakerMappings({
+              userId: ctx.user.id,
+              tenantId,
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              sourceMediaAssetId,
+              imageUrl,
+              publicUrl: ctx.publicUrl,
+              people: result.people,
+              speakers: attributionCandidates.map(candidate => ({
+                speakerLabel: candidate.speaker.speakerLabel,
+                characterKey: candidate.character.characterKey,
+                characterName: candidate.character.name,
+                referenceImageUrl: candidate.referenceImageUrl,
+              })),
+            });
+            suggestions = attribution.suggestions;
+            attributionCreditsUsed = attribution.creditsUsed;
+          }
+        } catch {
+          // Person detection remains usable when optional speaker attribution
+          // cannot run (e.g. missing portrait, provider issue, or credits).
+          suggestions = [];
+        }
+      }
+      return {
+        ...result,
+        suggestions,
+        creditsUsed: result.creditsUsed + attributionCreditsUsed,
+        sourceMediaAssetId,
+      };
     }),
 
   /**

@@ -11,6 +11,13 @@ export interface VerticalDramaDetectedShotPerson {
   confidence: number;
 }
 
+/** Unpersisted, confidence-gated proposal for the current approved frame. */
+export interface VerticalDramaShotSpeakerSuggestion {
+  speakerLabel: string;
+  personId: string;
+  confidence: number;
+}
+
 export interface VerticalDramaSpeakerVisualBinding {
   /** Stable only within this shot; never a Character Stock key. */
   id: string;

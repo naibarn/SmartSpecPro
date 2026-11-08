@@ -181,6 +181,7 @@ import {
   hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
   type VerticalDramaDetectedShotPerson,
+  type VerticalDramaShotSpeakerSuggestion,
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
@@ -223,7 +224,10 @@ import {
   type VerticalDramaShotSceneAnchorView,
 } from "./VerticalDramaSceneLockRow";
 import { VerticalDramaSupportingPresenceEditor } from "./VerticalDramaSupportingPresenceEditor";
-import { VerticalDramaShotSpeakerBindingEditor } from "./VerticalDramaShotSpeakerBindingEditor";
+import {
+  VerticalDramaShotSpeakerBindingEditor,
+  type VerticalDramaShotSpeakerOption,
+} from "./VerticalDramaShotSpeakerBindingEditor";
 import { VerticalDramaAudioInspector } from "./VerticalDramaAudioInspector";
 
 export type {
@@ -1546,11 +1550,15 @@ interface VerticalDramaStoryboardPanelProps {
     bindings: VerticalDramaSpeakerVisualBinding[]
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
-  onDetectShotSpeakerPeople?: (shotNumber: number) => void;
+  onDetectShotSpeakerPeople?: (
+    shotNumber: number,
+    speakers: Array<{ speakerLabel: string }>
+  ) => void;
   detectingShotSpeakerPeopleForShot?: number | null;
   detectedShotSpeakerPeopleByShot?: Record<number, {
     sourceMediaAssetId: string;
     people: VerticalDramaDetectedShotPerson[];
+    suggestions?: VerticalDramaShotSpeakerSuggestion[];
   }>;
   /** Convert the current physical + Caller assignment into a closed-door shot. */
   onSetShotBarrierDialogue?: (
@@ -7503,8 +7511,13 @@ export function VerticalDramaStoryboardPanel({
                           ? detectedShotSpeakerPeopleByShot[shotNumber].people
                           : []
                       }
+                      speakerSuggestions={
+                        detectedShotSpeakerPeopleByShot[shotNumber]?.sourceMediaAssetId === String(frame?.approvedMediaAssetId ?? "")
+                          ? detectedShotSpeakerPeopleByShot[shotNumber].suggestions ?? []
+                          : []
+                      }
                       detectingPeople={detectingShotSpeakerPeopleForShot === shotNumber}
-                      onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber) : undefined}
+                      onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber, speakerOptionsForShot.map(({ speakerLabel }) => ({ speakerLabel }))) : undefined}
                       saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
                       onSave={bindings => onSetShotSpeakerVisualBindings(shotNumber, bindings)}
                     />

@@ -73,4 +73,53 @@ describe("VerticalDramaShotSpeakerBindingEditor", () => {
       }),
     ]);
   });
+
+  it("prefills a high-confidence suggestion while keeping the existing manual override", () => {
+    const onSave = vi.fn();
+    render(
+      <VerticalDramaShotSpeakerBindingEditor
+        shotNumber={2}
+        speakers={[
+          { speakerLabel: "นักตรวจผนึก", dialogueLines: ["ห้ามเปิดผนึก"] },
+        ]}
+        bindings={[]}
+        startFrameImageSrc="/approved-frame.jpg"
+        sourceMediaAssetId="asset-10"
+        detectedPeople={[
+          {
+            id: "person-4",
+            boundingBox: { x: 0.62, y: 0.1, width: 0.24, height: 0.72 },
+            appearance: "ชายชุดเกราะสีเข้มด้านหลังทางซ้าย",
+            confidence: 0.91,
+          },
+          {
+            id: "person-5",
+            boundingBox: { x: 0.14, y: 0.1, width: 0.24, height: 0.72 },
+            appearance: "หญิงสาวชุดสีอ่อนด้านหน้า",
+            confidence: 0.95,
+          },
+        ]}
+        speakerSuggestions={[
+          { speakerLabel: "นักตรวจผนึก", personId: "person-4", confidence: 0.91 },
+        ]}
+        onSave={onSave}
+      />
+    );
+
+    const selector = screen.getByLabelText("คนที่ตรงกับผู้พูดในภาพ") as HTMLSelectElement;
+    expect(selector.value).toBe("person-4");
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.change(selector, { target: { value: "person-5" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "บันทึกการระบุผู้พูด" })
+    );
+    expect(onSave).toHaveBeenCalledWith([
+      expect.objectContaining({
+        speakerLabel: "นักตรวจผนึก",
+        personId: "person-5",
+        sourceMediaAssetId: "asset-10",
+      }),
+    ]);
+  });
 });

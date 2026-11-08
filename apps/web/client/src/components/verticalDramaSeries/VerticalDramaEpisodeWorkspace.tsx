@@ -160,6 +160,7 @@ import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import type {
   VerticalDramaDetectedShotPerson,
+  VerticalDramaShotSpeakerSuggestion,
   VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 import type {
@@ -601,13 +602,17 @@ export interface VerticalDramaStoryboardPanelData {
     bindings: VerticalDramaSpeakerVisualBinding[]
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
-  onDetectShotSpeakerPeople?: (shotNumber: number) => void;
+  onDetectShotSpeakerPeople?: (
+    shotNumber: number,
+    speakers: Array<{ speakerLabel: string }>
+  ) => void;
   detectingShotSpeakerPeopleForShot?: number | null;
   detectedShotSpeakerPeopleByShot?: Record<
     number,
     {
       sourceMediaAssetId: string;
       people: VerticalDramaDetectedShotPerson[];
+      suggestions?: VerticalDramaShotSpeakerSuggestion[];
     }
   >;
   /** Convert a physical scene + Caller assignment into closed-door dialogue. */

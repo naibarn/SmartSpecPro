@@ -100,7 +100,10 @@ import type {
 } from "@shared/verticalDramaSeries/audio";
 import type { SpecialTieInInput } from "@shared/verticalDramaSeries/specialTieInContracts";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
-import type { VerticalDramaSpeakerVisualBinding } from "@shared/verticalDramaSeries/speakerVisualBinding";
+import type {
+  VerticalDramaShotSpeakerSuggestion,
+  VerticalDramaSpeakerVisualBinding,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
 import type {
   VerticalDramaAudioLineStatus,
   VerticalDramaDialogueAudioBatchData,
@@ -4744,12 +4747,16 @@ function EpisodeWorkspaceShell({
   }
 
   const [detectedSpeakerPeopleByShot, setDetectedSpeakerPeopleByShot] =
-    useState<Record<number, { sourceMediaAssetId: string; people: Array<{
-      id: string;
-      boundingBox: { x: number; y: number; width: number; height: number };
-      appearance: string;
-      confidence: number;
-    }> }>>({});
+    useState<Record<number, {
+      sourceMediaAssetId: string;
+      people: Array<{
+        id: string;
+        boundingBox: { x: number; y: number; width: number; height: number };
+        appearance: string;
+        confidence: number;
+      }>;
+      suggestions: VerticalDramaShotSpeakerSuggestion[];
+    }>>({});
   const setShotSpeakerVisualBindingsMutation =
     trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
       onSuccess: (_result, variables) => {
@@ -4799,19 +4806,30 @@ function EpisodeWorkspaceShell({
           [variables.shotNumber]: {
             sourceMediaAssetId: result.sourceMediaAssetId,
             people: result.people,
+            suggestions: result.suggestions,
           },
         }));
+        const suggestionText = result.suggestions.length
+          ? lang === "en"
+            ? ` Suggested ${result.suggestions.length} speaker match(es).`
+            : ` AI เสนอจับคู่ผู้พูด ${result.suggestions.length} คน โปรดตรวจสอบก่อนบันทึก`
+          : lang === "en"
+            ? " No confident speaker match; select people manually."
+            : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
         toast.success(
           lang === "en"
-            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}. Review and map each speaker before saving.`
-            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต โปรดตรวจและจับคู่ผู้พูดก่อนบันทึก`
+            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${suggestionText}`
+            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต${suggestionText}`
         );
       },
       onError: err => toast.error(err.message),
     });
 
-  function handleDetectShotSpeakerPeople(shotNumber: number) {
-    detectShotSpeakerPeopleMutation.mutate({ seriesId, episodeId, shotNumber });
+  function handleDetectShotSpeakerPeople(
+    shotNumber: number,
+    speakers: Array<{ speakerLabel: string }>
+  ) {
+    detectShotSpeakerPeopleMutation.mutate({ seriesId, episodeId, shotNumber, speakers });
   }
 
   function handleSetShotSpeakerVisualBindings(

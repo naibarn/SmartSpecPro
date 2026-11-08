@@ -74,7 +74,9 @@ describe("VerticalDramaEpisodeWorkspace speaker visual detection wiring", () => 
     });
     expect(detectButton).toBeEnabled();
     fireEvent.click(detectButton);
-    expect(onDetectShotSpeakerPeople).toHaveBeenCalledWith(4);
+    expect(onDetectShotSpeakerPeople).toHaveBeenCalledWith(4, [
+      { speakerLabel: "นักตรวจผนึก" },
+    ]);
     expect(
       screen.getByRole("option", { name: /ชายชุดเข้มด้านหลังทางซ้าย/ })
     ).toBeInTheDocument();

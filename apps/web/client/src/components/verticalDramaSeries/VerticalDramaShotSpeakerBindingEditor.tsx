@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type {
   VerticalDramaDetectedShotPerson,
+  VerticalDramaShotSpeakerSuggestion,
   VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
@@ -23,6 +24,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
   startFrameImageSrc,
   sourceMediaAssetId,
   detectedPeople = [],
+  speakerSuggestions = [],
   detectingPeople = false,
   onDetectPeople,
   locale = "th",
@@ -35,6 +37,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
   startFrameImageSrc?: string;
   sourceMediaAssetId?: string;
   detectedPeople?: VerticalDramaDetectedShotPerson[];
+  speakerSuggestions?: VerticalDramaShotSpeakerSuggestion[];
   detectingPeople?: boolean;
   onDetectPeople?: () => void;
   locale?: "th" | "en";
@@ -46,7 +49,9 @@ export function VerticalDramaShotSpeakerBindingEditor({
   const draftRef = useRef(bindings);
   const isDirtyRef = useRef(false);
   const sourceMediaAssetIdRef = useRef(sourceMediaAssetId);
+  const lastAppliedSuggestionKeyRef = useRef<string | null>(null);
   const bindingsSignature = JSON.stringify(bindings);
+  const speakerSuggestionsSignature = JSON.stringify(speakerSuggestions);
 
   useEffect(() => {
     const sourceChanged = sourceMediaAssetIdRef.current !== sourceMediaAssetId;
@@ -72,6 +77,56 @@ export function VerticalDramaShotSpeakerBindingEditor({
       setDraft(nextBindings);
     }
   }, [bindingsSignature, sourceMediaAssetId]);
+
+  useEffect(() => {
+    const suggestions = JSON.parse(
+      speakerSuggestionsSignature
+    ) as VerticalDramaShotSpeakerSuggestion[];
+    if (!suggestions.length || !sourceMediaAssetId) return;
+    const suggestionKey = `${sourceMediaAssetId}:${speakerSuggestionsSignature}`;
+    if (lastAppliedSuggestionKeyRef.current === suggestionKey) return;
+    lastAppliedSuggestionKeyRef.current = suggestionKey;
+    if (isDirtyRef.current) return;
+
+    setDraft(current => {
+      let changed = false;
+      const next = current.slice();
+      for (const suggestion of suggestions) {
+        if (!speakers.some(speaker => speaker.speakerLabel === suggestion.speakerLabel)) continue;
+        const person = detectedPeople.find(candidate => candidate.id === suggestion.personId);
+        if (!person) continue;
+        const existingIndex = next.findIndex(
+          binding => binding.speakerLabel === suggestion.speakerLabel
+        );
+        if (existingIndex >= 0) {
+          const existing = next[existingIndex];
+          // Keep saved selections and any text the user has already entered.
+          if (existing.personId || existing.visualCue.trim()) continue;
+          next[existingIndex] = {
+            ...existing,
+            visualCue: person.appearance,
+            personId: person.id,
+            boundingBox: person.boundingBox,
+            sourceMediaAssetId,
+          };
+        } else {
+          next.push({
+            id: `shot-speaker-${Date.now()}-${next.length + 1}`,
+            speakerLabel: suggestion.speakerLabel,
+            visualCue: person.appearance,
+            personId: person.id,
+            boundingBox: person.boundingBox,
+            sourceMediaAssetId,
+          });
+        }
+        changed = true;
+      }
+      if (!changed) return current;
+      isDirtyRef.current = true;
+      draftRef.current = next;
+      return next;
+    });
+  }, [speakerSuggestionsSignature, sourceMediaAssetId, speakers, detectedPeople]);
 
   const updateDraft = (
     updater: (current: VerticalDramaSpeakerVisualBinding[]) => VerticalDramaSpeakerVisualBinding[]
@@ -208,8 +263,8 @@ export function VerticalDramaShotSpeakerBindingEditor({
         </HStack>
         <p>
           {isEnglish
-            ? "Detect people from the approved Start Frame, then select the person for each dialogue speaker. Review the boxes before saving. This does not create permanent characters or phone callers."
-            : "ให้ AI เสนอกรอบคนจาก Start frame ที่อนุมัติ แล้วเลือกคนให้ตรงกับผู้พูดแต่ละคน โปรดตรวจกรอบก่อนบันทึก ข้อมูลนี้ไม่เพิ่มตัวละครถาวรและไม่ใช่ Caller โทรศัพท์"}
+            ? "AI detects people and suggests a match for each dialogue speaker from the approved Start Frame. Review or change the selections before saving. This does not create permanent characters or phone callers."
+            : "AI ตรวจจับคนและเสนอการจับคู่กับผู้พูดจาก Start frame ที่อนุมัติ ตรวจหรือเปลี่ยนคนที่เลือกได้ก่อนบันทึก ข้อมูลนี้ไม่เพิ่มตัวละครถาวรและไม่ใช่ Caller โทรศัพท์"}
         </p>
         {bindings.some(binding => binding.sourceMediaAssetId && binding.sourceMediaAssetId !== sourceMediaAssetId) ? (
           <p role="status" className="text-sm text-amber-700">{isEnglish ? "The Start Frame changed. Re-run detection and map speakers to people in the current frame." : "ภาพ Start frame เปลี่ยนแล้ว ให้ตรวจจับและจับคู่คนจากภาพปัจจุบันใหม่"}</p>
