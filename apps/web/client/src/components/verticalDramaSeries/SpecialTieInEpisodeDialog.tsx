@@ -4117,7 +4117,13 @@ export function SpecialTieInEpisodeDialog({
                               </span>
                               {candidate.shotDialogues.length === 9 &&
                               candidate.shotDialogues.every(
-                                shot => shot.lines.length >= 2
+                                (shot, index) =>
+                                  shot.shotNumber === index + 1 &&
+                                  shot.lines.length >= 1 &&
+                                  shot.lines.length <= 3 &&
+                                  shot.lines.every(
+                                    line => line.line.trim().length > 0
+                                  )
                               ) ? (
                                 <Badge variant="secondary" className="mt-2">
                                   {lang === "th"
