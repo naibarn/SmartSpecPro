@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseVerticalDramaSpeakerAttributionOutput,
   resolveUniqueVisibleSpeakerCharacter,
   selectHighConfidenceVerticalDramaSpeakerSuggestions,
 } from "../verticalDramaSpeakerVisualAttribution";
@@ -172,5 +173,78 @@ describe("selectHighConfidenceVerticalDramaSpeakerSuggestions", () => {
       speakerLabel: "Speaker A",
       personId: "person-1",
     });
+  });
+});
+
+describe("parseVerticalDramaSpeakerAttributionOutput", () => {
+  const expectedSpeakers = [
+    { speakerLabel: "พิมพ์ชนก" },
+    { speakerLabel: "ลุงชาญ" },
+  ];
+
+  const modelSpeakerEntries = [
+    {
+      speaker_label: "พิมพ์ชนก",
+      candidates: [{ person_id: "person-1", confidence: 0.99 }],
+    },
+    {
+      speaker_label: "ลุงชาญ",
+      candidates: [{ person_id: "person-2", confidence: 0.99 }],
+    },
+  ];
+
+  it.each([
+    ["a top-level array", modelSpeakerEntries],
+    ["speaker_matches", { speaker_matches: modelSpeakerEntries }],
+    [
+      "speaker_identity_matches",
+      { speaker_identity_matches: modelSpeakerEntries },
+    ],
+    ["speaker_candidates", { speaker_candidates: modelSpeakerEntries }],
+  ])("normalizes %s and returns both clear matches", (_shape, response) => {
+    const output = parseVerticalDramaSpeakerAttributionOutput(response);
+    const suggestions = selectHighConfidenceVerticalDramaSpeakerSuggestions({
+      speakers: expectedSpeakers,
+      people,
+      output,
+    });
+
+    expect(suggestions).toEqual([
+      { speakerLabel: "พิมพ์ชนก", personId: "person-1", confidence: 0.99 },
+      { speakerLabel: "ลุงชาญ", personId: "person-2", confidence: 0.99 },
+    ]);
+  });
+
+  it("normalizes a standalone speaker object and preserves strict confidence validation", () => {
+    expect(
+      parseVerticalDramaSpeakerAttributionOutput({
+        speaker_label: "พิมพ์ชนก",
+        candidates: [{ person_id: "person-1", confidence: 0.99 }],
+      })
+    ).toEqual({
+      speakers: [
+        {
+          speaker_label: "พิมพ์ชนก",
+          candidates: [
+            {
+              person_id: "person-1",
+              identity_confidence: 0.99,
+              evidence: "",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(() =>
+      parseVerticalDramaSpeakerAttributionOutput({
+        speaker_matches: [
+          {
+            speaker_label: "พิมพ์ชนก",
+            candidates: [{ person_id: "person-1", confidence: "high" }],
+          },
+        ],
+      })
+    ).toThrow();
   });
 });

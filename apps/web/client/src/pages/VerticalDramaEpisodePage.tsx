@@ -4924,9 +4924,13 @@ function EpisodeWorkspaceShell({
           ? lang === "en"
             ? ` Suggested ${result.suggestions.length} speaker match(es). Review before saving.`
             : ` AI เสนอจับคู่ผู้พูด ${result.suggestions.length} คน โปรดตรวจสอบก่อนบันทึก`
-          : lang === "en"
-            ? " No confident speaker match; select people manually."
-            : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
+          : result.attributionIssue === "provider_error"
+            ? lang === "en"
+              ? " The profile comparison failed this time; retry or select people manually."
+              : " AI เทียบโปรไฟล์ไม่สำเร็จในรอบนี้ ลองตรวจจับอีกครั้งหรือเลือกคนเองได้จากช่องเดิม"
+            : lang === "en"
+              ? " No confident speaker match; select people manually."
+              : " ยังจับคู่ผู้พูดได้ไม่มั่นใจ เลือกคนเองได้จากช่องเดิม";
         toast.success(
           lang === "en"
             ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}.${profileText}${suggestionText}`
