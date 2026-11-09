@@ -25,12 +25,14 @@
 - Logout revokes JTI before reporting success; on DB failure the response never says revocation succeeded. Cookie clearing is returned without leaking DB details.
 - POST login/2FA/logout rejects missing or mismatched Origin outside approved local test mode. `X-Forwarded-Host`, request `tenantId`, `environmentId` and `NODE_ENV` cannot grant scope.
 - `/me` returns the unchanged user ID and only active canonical membership IDs/roles; no membership or inactive tenant produces no access. A user cannot query another tenant by altering request JSON or URL.
-- Login rate limiter blocks after configured threshold; production behavior fails closed if the distributed capability is missing.
+- Strict Durable Object throttle enforces the 10/60-second IP and 5/15-minute normalized-account sliding windows across concurrent calls; keys are environment-specific HMACs and only timestamps are stored. Expired rows are pruned, throttling behavior does not reveal account existence, and arbitrary `X-Forwarded-For`/`Forwarded` headers cannot choose the IP bucket.
+- Login/2FA fail closed on a missing DO binding, missing throttle key, missing trusted Cloudflare client IP, or DO/storage failure; `/livez` still responds. Local workerd uses the fixed local IP key.
 - `/livez` behavior remains unchanged; unknown wallet/job/admin/payment/mini-app mutation routes do not exist.
 
 ## Section 04 — Worker integration and handoff
 
 - Run `corepack pnpm@10.4.1 test:core`, `typecheck:core`, `build:core`, and a local `dev:core` HTTP smoke check on the actual Worker handler. Keep build output/target attribution honest and do not deploy.
 - Verify package graph/imports for no Express or `apps/web`, and capture the dry-run bundle size for this slice.
+- Exercise the Durable Object on local workerd, including repeated and concurrent requests, and confirm no production namespace/migration/target is configured.
 - If the isolated dev credential is available, run catalog/grant checks and a read-only `SELECT current_database(), current_user` identity check; do not read real user rows or test a production target.
 - Verify the handoff writer preserves canonical generation/spec digest and records the merged SHA and remaining acceptance gaps; do not mark the parent requirement PASS.

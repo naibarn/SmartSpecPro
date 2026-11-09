@@ -10,7 +10,7 @@ This plan covers the earliest R1.6 stateful Core work only. It does not implemen
 
 ### Environment binding
 
-Create a typed `CoreEnvironment` resolved from trusted bindings. It contains an allowlisted target ID, environment-tenant scope ID, expected host set, session-signing secret, shared account-data decryption secret, PostgreSQL binding, and optional rate-limit capability. The local source config identifies `modular-debian-dev` and `modular-development`; `modular-cloudflare-prod` and `modular-production` are recognized types only, with no Wrangler production environment or secret. Missing/unknown target, tenant binding, or signing secret fails closed.
+Create a typed `CoreEnvironment` resolved from trusted bindings. It contains an allowlisted target ID, environment-tenant scope ID, expected host set, separate session-signing and throttle-HMAC secrets, shared account-data decryption secret, PostgreSQL binding, and a typed login-throttle Durable Object namespace. The local source config identifies `modular-debian-dev` and `modular-development`, but local workerd accepts loopback hosts only. `aimarkethubs.com` is not configured or claimed as serving Core until its existing port-3100 replacement is healthy and handover occurs. `modular-cloudflare-prod` / `modular-production` / `smartsihub.com` are recognized types only, with no Wrangler production environment, namespace, or secret. Missing/unknown target, tenant binding, required secret, or throttle binding fails closed for auth routes.
 
 The request Host is checked only against the configured environment's host allowlist and used for origin/cookie safeguards. It never selects the environment or customer tenant. The customer tenant is derived for each authenticated request by joining the verified numeric user ID to active `tenant_users` and active `tenants` rows. `users.currentTenantId` is a hint only and cannot bypass membership.
 
@@ -40,7 +40,7 @@ Issue an HttpOnly, SameSite=Lax, host-only cookie (no Domain). Set Secure for HT
 
 `/me` reads current user status plus all active canonical customer memberships and returns only safe DTO fields. No route accepts a client-provided customer tenant to determine authority. No wallet, payment, entitlement mutation, job/outbox, admin, registration, provider auth or Mini App data routes are present. Since current `worker_jobs` has no environment-tenant column, do not add a job endpoint or write development-only business rows.
 
-Apply a bounded login rate limit. Local development may use a capped in-memory fallback matching the existing Legacy login's 10/minute per trusted client key; a production environment must provide an explicit rate-limit binding or fail closed. Trust client IP headers only when the target ingress proves them; do not treat arbitrary `X-Forwarded-For` as authoritative.
+Use a strict persistent sliding-window login throttle backed by SQLite Durable Objects. `consume` is serialized inside each atom and enforces 10 attempts per 60 seconds per client IP plus 5 attempts per 15 minutes per normalized account; keys are HMACs derived with a dedicated environment-specific throttle key and use separate per-IP/per-account DO IDs. Store timestamps only, with expired-attempt cleanup. The environment-specific namespace binding prevents cross-environment counter sharing; do not route all requests through one global object or use Cloudflare's approximate Rate Limiting API for this security control. In the Cloudflare runtime, accept only the platform-provided `CF-Connecting-IP`; local workerd uses a fixed `local` key. Unknown deployment mode, missing IP in Cloudflare runtime, missing binding/key, or DO error fails closed on login/2FA. Preserve `/livez` during throttle outages.
 
 ## Section sequence and interfaces
 
@@ -54,11 +54,11 @@ Add `src/identity/password.ts`, `src/identity/totp.ts`, and `src/identity/accoun
 
 ### Section 03 — Hono sessions, membership read and safety
 
-Add `src/identity/session.ts`, `src/identity/authRoutes.ts`, `src/tenancy/membershipRoutes.ts`, and any small CSRF/rate-limit helpers. Compose them into the existing Hono app. Enforce per-environment session claims, host-only cookie, current-user state, membership-only authority, fail-closed revocation and generic errors. No business effect routes.
+Add `src/identity/session.ts`, `src/identity/authRoutes.ts`, `src/tenancy/membershipRoutes.ts`, `src/security/loginThrottle.ts`, and `src/security/loginThrottleDO.ts`. Add only the local DO namespace/class migration in `wrangler.jsonc`. Compose them into the existing Hono app. Enforce per-environment session claims, host-only cookie, current-user state, membership-only authority, strict per-IP/per-account throttling, fail-closed revocation and generic errors. No business effect routes.
 
 ### Section 04 — Worker integration and truthful handoff
 
-Add API/repository tests, hash/MFA vectors, environment/host denial tests, revocation/recovery concurrency tests, and one local workerd smoke path. Update package pins and lockfile only as needed; verify Hono-only runtime dependency closure and dry-run bundle. If safe, provision/verify the isolated development database role and test only catalog grants/identity, not real user rows. Append implementation evidence to SPEC-312 through the canonical handoff writer. Preserve the existing target map and do not deploy.
+Add API/repository tests, hash/MFA vectors, environment/host denial tests, revocation/recovery concurrency tests, throttle-window/key-isolation tests, and a local workerd smoke that proves persistent DO binding behavior. Update package pins and lockfile only as needed; verify Hono-only runtime dependency closure and dry-run bundle. If safe, provision/verify the isolated development database role and test only catalog grants/identity, not real user rows. Append implementation evidence to SPEC-312 through the canonical handoff writer. Preserve the existing target map and do not deploy.
 
 ## Requirement map and remaining canonical work
 
@@ -79,5 +79,6 @@ Rollback is a source revert of the Core-only commit(s) plus revocation of the Mo
 
 - Argon2 verification is memory/CPU-heavy; enforce supported PHC parameter bounds, cap login concurrency if local workerd evidence requires it, and report a truthful known gap rather than silently skipping Argon2 accounts.
 - The shared key needed to decrypt current TOTP records is distinct from session signing and DB credentials, but the legacy ciphertext format is keyed by `LLM_ENCRYPTION_KEY`. Narrow the DB role to the `users` MFA columns and use the key only for TOTP decrypt; a future at-rest key separation requires a separately designed canonical re-encryption and rollback path.
+- Strict per-account throttling can temporarily block legitimate retries for 15 minutes; use identical generic `429` behavior for known and unknown accounts, apply the contract consistently across password and MFA endpoints, and cover parallel requests with DO serialization tests.
 - Current canonical schema does not persist environment scope for `worker_jobs`. This plan creates no such records and adds no job route; future writes remain blocked until a canonical environment binding/writer contract exists.
 - Real-user credentials and current target readiness are outside automated source tests. Do not use an unknown user's password, weaken checks, or switch either public domain to validate the code.

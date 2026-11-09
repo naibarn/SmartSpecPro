@@ -12,6 +12,9 @@ Write scope in `smartaihub-platform/apps/saas-core`:
 
 - `src/identity/session.ts`
 - `src/identity/authRoutes.ts`
+- `src/security/loginThrottle.ts`
+- `src/security/loginThrottleDO.ts`
+- `apps/saas-core/wrangler.jsonc` local Durable Object class binding/migration only
 - `src/tenancy/**`
 - `src/security/**`
 - app composition and focused API tests.
@@ -31,11 +34,11 @@ Write scope in `smartaihub-platform/apps/saas-core`:
 - Cookie has no Domain attribute, is HttpOnly and SameSite=Lax, and is Secure on HTTPS/secure origins. Non-local deployments require HTTPS.
 - Login/2FA/logout require same-origin browser requests. Ignore request-provided tenant/environment fields and untrusted forwarded-host headers.
 - `/me` always resolves memberships from `session.sub`; a current-tenant hint or hostname does not grant access.
-- Production config requires a distributed rate-limit binding and fails closed when it is missing. Local development may use bounded in-memory throttling matching the existing 10 requests/minute login baseline; do not trust arbitrary client IP headers.
+- Login and 2FA use a strict sliding-window Durable Object throttle: 10 requests/60 seconds per trusted client IP and 5/15 minutes per normalized account. Use separate per-key objects, keyed names from environment-specific HMACs, timestamp-only persistent rows and expiry cleanup. The Cloudflare runtime accepts only `CF-Connecting-IP`; local workerd uses one fixed local key. Never use a single global DO, approximate Rate Limiting binding, or arbitrary forwarded IP header for this control. Throttle binding/key/identity/storage errors fail closed for auth routes while `/livez` remains healthy.
 
 ## Prerequisites and acceptance
 
-Sections 01–02 are complete. Hono tests prove cookies and claims, host/audience/environment denial, expiry, disabled-account/revocation checks, current membership filtering, exact account/membership IDs, generic errors, origin validation, bounded rate limiting and absence of wallet/job/admin routes. A request with another tenant ID cannot change `/me` or select another tenant.
+Sections 01–02 are complete. Hono tests prove cookies and claims, host/audience/environment denial, expiry, disabled-account/revocation checks, current membership filtering, exact account/membership IDs, generic errors, origin validation, strict throttle windows/key scoping/fail-closed behavior and absence of wallet/job/admin routes. A local workerd smoke exercises the actual DO binding. A request with another tenant ID cannot change `/me` or select another tenant.
 
 ## Exposure, fallback and rollback
 
