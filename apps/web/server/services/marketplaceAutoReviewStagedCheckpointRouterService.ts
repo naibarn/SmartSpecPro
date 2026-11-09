@@ -69,6 +69,11 @@ import { buildShotOrderedReferenceItems } from "../../shared/marketplaceAutoRevi
 
 export type StagedCheckpointAuth = { userId: number; tenantId?: string };
 export type StagedCheckpointRuntime = { publicUrl?: string | null };
+export type StagedAutoReviewGenerationTarget = {
+  shotId: number;
+  stage: "image" | "video";
+  model?: string;
+};
 
 type StagedCheckpointRun = typeof marketplaceAutoReviewRuns.$inferSelect;
 
@@ -805,18 +810,6 @@ async function mutateOwnedCheckpoint(input: {
     assertStagedRunMutable(run);
     assertStagedMetadataPersisted(run);
     const metadata = parseStagedMetadata(run);
-    const currentCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-      checkpoint => checkpoint.checkpointId === input.checkpointId
-    );
-    if (
-      input.mutation.type === "approve" &&
-      currentCheckpoint?.kind === "story_plan"
-    ) {
-      const { assertMarketplaceAutoReviewCreativeQcApproved } = await import(
-        "./marketplaceAutoReviewService"
-      );
-      assertMarketplaceAutoReviewCreativeQcApproved(metadata as any);
-    }
     const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
     const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
       tx,
@@ -1019,6 +1012,474 @@ async function mutateOwnedStagedMetadata(input: {
       },
     });
     return { runId: run.id, operation, status: "queued" as const };
+  });
+}
+
+export async function startStagedAutoReviewBulkGeneration(input: {
+  runId: string;
+  expectedStateDigest: string;
+  idempotencyKey: string;
+  targets: StagedAutoReviewGenerationTarget[];
+  auth: StagedCheckpointAuth;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedRunMutable(run);
+  assertStagedMetadataPersisted(run);
+  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    input.idempotencyKey
+  );
+  if (existingJob) {
+    if (
+      existingJob.jobType !== "marketplace.auto_review.execute" ||
+      record(existingJob.inputJson).operation !== "staged_bulk_generation"
+    ) {
+      throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+    }
+    return {
+      runId: run.id,
+      workerJobId: existingJob.id,
+      operation: "staged_bulk_generation",
+      status: existingJob.status,
+    };
+  }
+
+  const metadata = parseStagedMetadata(run);
+  if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const storyCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+    checkpoint =>
+      checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
+  );
+  if (
+    storyCheckpoint?.state !== "approved" &&
+    metadata.planReview?.status !== "approved"
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_story_plan_not_approved",
+    });
+  }
+  const seenShots = new Set<number>();
+  for (const target of input.targets) {
+    if (seenShots.has(target.shotId)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "staged_bulk_duplicate_shot",
+      });
+    }
+    seenShots.add(target.shotId);
+    const shot = metadata.stagedSequentialStoryboard.shots.find(
+      item => item.shotId === target.shotId
+    );
+    if (!shot) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "staged_invalid_shot_contract",
+      });
+    }
+    const taskKeys =
+      target.stage === "image"
+        ? [`image:${target.shotId}`, `video:${target.shotId}`]
+        : [`video:${target.shotId}`];
+    const hasTaskInFlight = taskKeys.some(key =>
+      ["pending", "processing", "submitted"].includes(
+        stagedTaskStatus(record((metadata as any).stagedPipeline), key) ?? ""
+      )
+    );
+    if (hasTaskInFlight) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "staged_media_task_in_flight",
+      });
+    }
+    if (
+      target.stage === "image" &&
+      (shot.imageArtifactHash || shot.imageArtifactUrl)
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "staged_bulk_target_already_has_image",
+      });
+    }
+    if (
+      target.stage === "video" &&
+      (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
+    ) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_bulk_video_target_not_ready",
+      });
+    }
+    if (
+      target.stage === "video" &&
+      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+        checkpoint =>
+          checkpoint.shotId === target.shotId &&
+          checkpoint.kind === "image_result" &&
+          checkpoint.state !== "superseded"
+      )?.state !== "approved"
+    ) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_image_result_not_approved",
+      });
+    }
+    const promptKind = target.stage === "image" ? "image_prompt" : "video_prompt";
+    const promptCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+      checkpoint =>
+        checkpoint.shotId === target.shotId &&
+        checkpoint.kind === promptKind &&
+        checkpoint.state !== "superseded"
+    );
+    if (!promptCheckpoint || !isStagedCheckpointEditable(promptCheckpoint)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "checkpoint_not_editable",
+      });
+    }
+  }
+
+  const queued = await enqueueMarketplaceAutoReviewWorkerJob({
+    tenantId,
+    userId: run.userId,
+    runId: run.id,
+    operation: {
+      operation: "staged_bulk_generation",
+      runId: run.id,
+      expectedStateDigest: input.expectedStateDigest,
+      requestIdempotencyKey: input.idempotencyKey,
+      targets: input.targets,
+    },
+    idempotencyKey: input.idempotencyKey,
+    priority: 35,
+  });
+  return {
+    runId: run.id,
+    workerJobId: queued.jobId,
+    operation: "staged_bulk_generation",
+    status: "queued",
+    targetCount: input.targets.length,
+  };
+}
+
+/**
+ * Worker-side bulk prompt preparation. The complete target set is committed
+ * in one staged metadata transaction, then one canonical advance job submits
+ * the generated images/videos. Closing or refreshing the browser cannot
+ * interrupt this batch.
+ */
+export async function executeStagedAutoReviewBulkGeneration(input: {
+  runId: string;
+  expectedStateDigest: string;
+  requestIdempotencyKey: string;
+  targets: StagedAutoReviewGenerationTarget[];
+  auth: StagedCheckpointAuth;
+  runtime?: StagedCheckpointRuntime;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedRunMutable(run);
+  assertStagedMetadataPersisted(run);
+  const metadata = parseStagedMetadata(run);
+  const storyCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+    checkpoint =>
+      checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
+  );
+  if (
+    storyCheckpoint?.state !== "approved" &&
+    metadata.planReview?.status !== "approved"
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_story_plan_not_approved",
+    });
+  }
+  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const requestHash = createHash("sha256")
+    .update(input.requestIdempotencyKey)
+    .digest("hex");
+  const stagedPipeline = record((metadata as any).stagedPipeline);
+  const receipts = record(stagedPipeline.bulkGenerationReceipts);
+  if (receipts[requestHash]) {
+    return {
+      runId: run.id,
+      alreadyQueued: true,
+      shotCount: Array.isArray(receipts[requestHash].shotIds)
+        ? receipts[requestHash].shotIds.length
+        : 0,
+    };
+  }
+
+  const promptByShot = new Map<number, string>();
+  for (const target of input.targets) {
+    const shot = metadata.stagedSequentialStoryboard.shots.find(
+      item => item.shotId === target.shotId
+    );
+    if (!shot) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "staged_invalid_shot_contract",
+      });
+    }
+    const taskKeys =
+      target.stage === "image"
+        ? [`image:${target.shotId}`, `video:${target.shotId}`]
+        : [`video:${target.shotId}`];
+    const hasTaskInFlight = taskKeys.some(key =>
+      ["pending", "processing", "submitted"].includes(
+        stagedTaskStatus(stagedPipeline, key) ?? ""
+      )
+    );
+    if (hasTaskInFlight) {
+      continue;
+    }
+    if (target.stage === "image" && (shot.imageArtifactHash || shot.imageArtifactUrl)) {
+      continue;
+    }
+    if (
+      target.stage === "video" &&
+      (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
+    ) {
+      continue;
+    }
+    if (
+      target.stage === "video" &&
+      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+        checkpoint =>
+          checkpoint.shotId === target.shotId &&
+          checkpoint.kind === "image_result" &&
+          checkpoint.state !== "superseded"
+      )?.state !== "approved"
+    ) {
+      continue;
+    }
+    const prompt =
+      target.stage === "image"
+        ? String(shot.imagePrompt ?? "").trim()
+        : String(shot.videoPrompt ?? "").trim();
+    if (prompt) {
+      promptByShot.set(target.shotId, prompt);
+      continue;
+    }
+    const refresh = await refreshSequentialShotPromptWithSkill(
+      buildStagedSingleShotRefreshInput({
+        run,
+        metadata,
+        shotId: target.shotId,
+        publicUrl: input.runtime?.publicUrl,
+        tenantId: input.auth.tenantId,
+        stage: target.stage,
+      })
+    );
+    const generatedPrompt =
+      target.stage === "image"
+        ? refresh.startFrameImagePrompt.trim()
+        : String(refresh.videoPrompt ?? "").trim();
+    if (!generatedPrompt) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_prompt_generation_empty",
+      });
+    }
+    promptByShot.set(target.shotId, generatedPrompt);
+  }
+
+  if (promptByShot.size === 0) {
+    return { runId: run.id, alreadyQueued: true, shotCount: 0 };
+  }
+
+  const expectedStateDigest = stagedMetadataStateDigest(metadata);
+  const applyIdempotencyKey = `marketplace-auto-review-bulk-apply:${requestHash}`;
+  return mutateOwnedStagedMetadata({
+    runId: run.id,
+    expectedStateDigest,
+    idempotencyKey: applyIdempotencyKey,
+    auth: input.auth,
+    mutate(current, operationId) {
+      const nextTargets = input.targets.filter(target =>
+        promptByShot.has(target.shotId)
+      );
+      const replacementByShot = new Map<number, any>();
+      const nextShots = current.stagedSequentialStoryboard.shots.map(shot => {
+        const target = nextTargets.find(item => item.shotId === shot.shotId);
+        if (!target) return shot;
+        const prompt = promptByShot.get(target.shotId) ?? "";
+        const revision = shot.revision + 1;
+        const imagePrompt = target.stage === "image";
+        const kind = imagePrompt ? "image_prompt" : "video_prompt";
+        const checkpoints = current.stagedSequentialStoryboard.reviewCheckpoints.filter(
+          item => item.shotId === target.shotId && item.kind === kind
+        );
+        const previous =
+          checkpoints.find(item => item.state !== "superseded") ??
+          checkpoints[checkpoints.length - 1];
+        const selectedModel = target.model?.trim() ?? "";
+        const resolvedModel =
+          selectedModel || previous?.approvedModel || "internal";
+        const replacement = buildStagedCheckpoint({
+          checkpointId: `${kind}:${run.id}:shot-${target.shotId}:r${revision}:bulk-${operationId}`,
+          kind,
+          shotId: target.shotId,
+          revision,
+          contentHash: imagePrompt
+            ? buildStagedImagePromptContentHash({
+                revision,
+                shotId: target.shotId,
+                prompt,
+                referenceManifestHash:
+                  current.stagedSequentialStoryboard.referenceManifestHash ??
+                  "none",
+              })
+            : buildStagedVideoPromptContentHash({
+                revision,
+                shotId: target.shotId,
+                prompt,
+                imageArtifactHash: shot.imageArtifactHash ?? "",
+              }),
+          model: resolvedModel,
+          provider: selectedModel
+            ? modelProvider(resolvedModel)
+            : (previous?.approvedProvider ?? "internal"),
+          estimatedCredits: selectedModel
+            ? modelCost(resolvedModel)
+            : (previous?.estimatedCredits ?? 0),
+          referenceManifestHash:
+            current.stagedSequentialStoryboard.referenceManifestHash,
+          autoApprove: { userId: input.auth.userId },
+        });
+        replacementByShot.set(target.shotId, replacement);
+        return imagePrompt
+          ? {
+              ...shot,
+              revision,
+              imagePrompt: prompt,
+              imagePromptHash: replacement.contentHash,
+              imageArtifactHash: null,
+              imageArtifactUrl: null,
+              videoPrompt: null,
+              videoPromptHash: null,
+              videoArtifactHash: null,
+              videoArtifactUrl: null,
+              state: "image_prompt_awaiting",
+            }
+          : {
+              ...shot,
+              revision,
+              videoPrompt: prompt,
+              videoPromptHash: replacement.contentHash,
+              videoArtifactHash: null,
+              videoArtifactUrl: null,
+              state: "video_prompt_awaiting",
+            };
+      });
+      const targetByShot = new Map(
+        nextTargets.map(target => [target.shotId, target])
+      );
+      const invalidated = current.stagedSequentialStoryboard.reviewCheckpoints.map(
+        checkpoint => {
+          const target = targetByShot.get(checkpoint.shotId);
+          const invalidatedByImage =
+            target?.stage === "image" &&
+            ["image_prompt", "image_result", "video_prompt", "video_result"].includes(
+              checkpoint.kind
+            );
+          const invalidatedByVideo =
+            target?.stage === "video" &&
+            ["video_prompt", "video_result"].includes(checkpoint.kind);
+          return (invalidatedByImage || invalidatedByVideo) &&
+            checkpoint.state !== "superseded"
+            ? {
+                ...checkpoint,
+                state: "superseded" as const,
+                rejectionReasonCode: "staged_bulk_generation",
+              }
+            : checkpoint;
+        }
+      );
+      const tasks = Object.fromEntries(
+        Object.entries(record((current as any).stagedPipeline).tasks).filter(
+          ([key]) =>
+            !nextTargets.some(
+              target =>
+                key === `${target.stage}:${target.shotId}` ||
+                (target.stage === "image" &&
+                  key === `video:${target.shotId}`)
+            )
+        )
+      );
+      const existingReceipts = record(
+        record((current as any).stagedPipeline).bulkGenerationReceipts
+      );
+      const receiptEntries = Object.entries(existingReceipts).slice(-19);
+      const bulkGenerationReceipts = Object.fromEntries([
+        ...receiptEntries,
+        [requestHash, {
+          queuedAt: new Date().toISOString(),
+          shotIds: nextTargets.map(target => target.shotId),
+        }],
+      ]);
+      const generatedAt = new Date().toISOString();
+      const promptGeneration = {
+        ...record(record((current as any).stagedPipeline).promptGeneration),
+      };
+      for (const target of nextTargets) {
+        const currentPrompt =
+          target.stage === "image"
+            ? current.stagedSequentialStoryboard.shots.find(
+                shot => shot.shotId === target.shotId
+              )?.imagePrompt
+            : current.stagedSequentialStoryboard.shots.find(
+                shot => shot.shotId === target.shotId
+              )?.videoPrompt;
+        if (!String(currentPrompt ?? "").trim()) {
+          promptGeneration[`${target.stage}:${target.shotId}`] = {
+            generatedAt,
+            operationId,
+            source: "product-review-sequential-storyboard-skill",
+          };
+        }
+      }
+      return {
+        metadata: {
+          ...current,
+          stagedPipeline: {
+            ...record((current as any).stagedPipeline),
+            tasks,
+            finalAssembly: null,
+            promptGeneration,
+            bulkGenerationReceipts,
+          },
+          stagedSequentialStoryboard: {
+            ...current.stagedSequentialStoryboard,
+            shots: nextShots,
+            reviewCheckpoints: [
+              ...invalidated,
+              ...nextTargets
+                .map(target => replacementByShot.get(target.shotId))
+                .filter(Boolean),
+            ],
+          },
+        },
+        planRevision: current.planReview.planRevision,
+      };
+    },
   });
 }
 

@@ -70,6 +70,26 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
+        operation: z.literal("staged_bulk_generation"),
+        runId: runIdSchema,
+        expectedStateDigest: z.string().trim().min(1).max(256),
+        requestIdempotencyKey: operationIdempotencySchema,
+        targets: z
+          .array(
+            z
+              .object({
+                shotId: z.number().int().min(1).max(30),
+                stage: z.enum(["image", "video"]),
+                model: z.string().trim().max(200).optional(),
+              })
+              .strict()
+          )
+          .min(1)
+          .max(30),
+      })
+      .strict(),
+    z
+      .object({
         operation: z.literal("sequential_shot_regeneration"),
         runId: runIdSchema,
         shotId: z.number().int().min(1).max(9),
@@ -431,6 +451,28 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         auth,
         runtime: { publicUrl: runtime.publicUrl },
         workerExecution: true,
+      });
+    }
+    case "staged_bulk_generation": {
+      const { executeStagedAutoReviewBulkGeneration } =
+        await import("./marketplaceAutoReviewStagedCheckpointRouterService");
+      const runtimeModule =
+        await import("./marketplaceAutoReviewWorkerRuntime");
+      const runtime =
+        await runtimeModule.createMarketplaceAutoReviewWorkerRuntime({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          runId: input.job.runId,
+          jobId: input.jobId,
+          schedulerSource: "worker_jobs:staged_bulk_generation",
+        });
+      return executeStagedAutoReviewBulkGeneration({
+        runId: input.job.runId,
+        expectedStateDigest: input.job.expectedStateDigest,
+        requestIdempotencyKey: input.job.requestIdempotencyKey,
+        targets: input.job.targets,
+        auth,
+        runtime: { publicUrl: runtime.publicUrl },
       });
     }
     case "sequential_shot_regeneration": {

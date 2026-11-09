@@ -25302,7 +25302,6 @@ export async function approveMarketplaceAutoReviewPlanReview(
   const run = await reloadRun(db, input.runId, auth);
   await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
-  assertMarketplaceAutoReviewCreativeQcApproved(metadata);
   // Content gate BEFORE any stage/metadata write — approve must be a no-op
   // on rejection (no partial state, no queued image_generation stage).
   const approvalBlocker =

@@ -26,7 +26,7 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy.",
+      "next_action": "Finish optional-QC approval and durable single/bulk shot generation flow; run focused syntax gate; integrate owned files to origin/main; deploy legacy-debian-dev and verify web/worker health.",
       "checkpoint_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189",
       "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
     }
@@ -40,11 +40,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 7,
-  "updated_at": "2026-11-09T08:37:25.404690+00:00",
+  "generation": 8,
+  "updated_at": "2026-11-09T09:09:03.004468+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy.",
+    "next_action": "Finish optional-QC approval and durable single/bulk shot generation flow; run focused syntax gate; integrate owned files to origin/main; deploy legacy-debian-dev and verify web/worker health.",
     "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
   }
 }

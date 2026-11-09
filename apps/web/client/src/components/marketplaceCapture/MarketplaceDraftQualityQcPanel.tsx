@@ -82,14 +82,14 @@ export function MarketplaceDraftQualityQcPanel(props: {
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-sky-700" aria-hidden="true" />
             <h3 id="marketplace-draft-qc-heading" className="text-base font-semibold text-slate-900">
-              {isEnglish ? "Creative QC before approval" : "ตรวจคุณภาพ Draft ก่อนยืนยัน"}
+              {isEnglish ? "Optional Creative QC" : "ตรวจคุณภาพ Draft (ทางเลือก)"}
             </h3>
             <Badge variant={report?.pass ? "default" : "secondary"}>{statusLabel}</Badge>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             {isEnglish
-              ? "The system checks the product story against evidence, hook, benefits, progression, proof, CTA, and scroll-stopping quality before media credits are spent."
-              : "ระบบตรวจ Draft กับข้อมูลสินค้า หลักฐาน Hook ประโยชน์ ลำดับรีวิว ความน่าเชื่อถือ CTA และความน่าสนใจ ก่อนเริ่มใช้เครดิตสร้างสื่อ"}
+              ? "Review product evidence, hook, benefits, progression, proof, and CTA. You can skip QC and confirm prompt or media generation at any time."
+              : "ช่วยตรวจข้อมูลสินค้า Hook ประโยชน์ ลำดับเรื่อง หลักฐาน และ CTA ได้ หากไม่ต้องการตรวจ สามารถข้ามแล้วกดยืนยันสร้าง Prompt หรือสื่อได้เลย"}
           </p>
         </div>
         <div className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-right">

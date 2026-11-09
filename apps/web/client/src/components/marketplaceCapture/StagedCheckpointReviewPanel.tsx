@@ -1579,10 +1579,6 @@ export function StagedCheckpointReviewPanel(props: {
       {isThisActionRunning(id) ? "กำลังดำเนินการ…" : label}
     </button>
   );
-  const creativeQcReady =
-    !props.state?.creativeQc?.required ||
-    (props.state.creativeQc.status === "succeeded" &&
-      props.state.creativeQc.report?.pass === true);
   const activeWorkerOperation = props.state?.workerOperations?.find(job =>
     [
       "pending",
@@ -1595,6 +1591,20 @@ export function StagedCheckpointReviewPanel(props: {
       "retry_scheduled",
     ].includes(job.status)
   );
+  const activeBulkGeneration = props.state?.workerOperations?.some(
+    job =>
+      job.operation === "staged_bulk_generation" &&
+      [
+        "pending",
+        "queued",
+        "leased",
+        "claimed",
+        "preparing",
+        "running",
+        "waiting_external",
+        "retry_scheduled",
+      ].includes(job.status)
+  ) ?? false;
   const latestWorkerOperation = props.state?.workerOperations?.[0];
   const failedWorkerOperation =
     !activeWorkerOperation && latestWorkerOperation?.status === "failed"
@@ -1611,6 +1621,7 @@ export function StagedCheckpointReviewPanel(props: {
     sequential_shot_prompt_generation: "สร้าง Prompt รายช็อต",
     sequential_shot_regeneration: "สร้างภาพรายช็อต",
     sequential_image_edit_reconciliation: "ตรวจผลภาพที่สร้าง",
+    staged_bulk_generation: "เตรียม Prompt สำหรับสร้างสื่อทุกช็อต",
   };
 
   return (
@@ -1731,9 +1742,22 @@ export function StagedCheckpointReviewPanel(props: {
                 {bulkGenerateTargets.length > 0 && props.onBulkGenerate
                   ? action(
                       "bulk-generate",
-                      `⚡ สั่งสร้างทุกช็อตที่ยังไม่มีผลลัพธ์ (${bulkGenerateTargets.length} ช็อต)`,
+                      `⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (${bulkGenerateTargets.length} ช็อต)`,
                       () => props.onBulkGenerate!(bulkGenerateTargets),
-                      "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition"
+                      "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
+                      {
+                        disabled:
+                          activeBulkGeneration ||
+                          (props.state?.checkpoints.find(
+                            checkpoint =>
+                              checkpoint.kind === "story_plan" &&
+                              checkpoint.state !== "superseded"
+                          )?.state !== "approved" &&
+                            props.state?.planReview?.status !== "approved"),
+                        title: activeBulkGeneration
+                          ? "กำลังเตรียมงานชุดนี้ใน Worker"
+                          : "ส่งสร้าง Prompt และสื่อที่ยังขาดทั้งหมดเข้า Worker Jobs",
+                      }
                     )
                   : null}
                 <p className="text-xs text-slate-300">
@@ -2909,7 +2933,7 @@ export function StagedCheckpointReviewPanel(props: {
                       ช็อตพร้อมใช้งานแล้ว
                     </p>
                     <p className="mt-0.5 text-xs text-emerald-700">
-                      กดปุ่มยืนยันเพื่ออนุมัติเนื้อเรื่องและเริ่มสร้าง Prompt ภาพ + เฟรมอ้างอิงของแต่ละช็อต
+                      กดยืนยันเพื่ออนุมัติเนื้อเรื่องและเริ่มสร้าง Prompt ภาพของทุกช็อตได้เลย การตรวจ QC เป็นทางเลือกและข้ามได้
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
@@ -2938,14 +2962,11 @@ export function StagedCheckpointReviewPanel(props: {
                       "rounded-md bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 transition",
                       {
                         disabled:
-                          !creativeQcReady ||
                           props.state.metadataInitializationPending === true,
                         title:
                           props.state.metadataInitializationPending === true
                             ? "กำลังเตรียมแผนเนื้อเรื่องใน Worker"
-                            : !creativeQcReady
-                              ? "ต้องตรวจ Creative QC ให้ผ่านก่อนยืนยันเนื้อเรื่อง"
-                              : undefined,
+                            : undefined,
                       }
                     )}
                   </div>

@@ -23,20 +23,7 @@ export function StagedCheckpointReviewSurface(props: {
   const runId = props.runId?.trim() ?? "";
   const enabled = Boolean(runId && props.enabled !== false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Tracks the sequential bulk-generate chain specifically (see
-  // onBulkGenerate below) rather than reusing retryShotMutation.isPending —
-  // that flag can briefly flip false between two awaited calls in the same
-  // chain, which would let other action buttons re-enable mid-chain.
-  const [bulkGeneratePending, setBulkGeneratePending] = useState(false);
-  // Tracks the per-shot "generate prompt then dispatch" chain (see
-  // onGenerateAndDispatch below) for the same reason as bulkGeneratePending
-  // above — generatePromptMutation.isPending / retryShotMutation.isPending
-  // can each briefly read false in the gap between the two awaited calls,
-  // which would flicker other buttons back to enabled mid-chain. Holds the
-  // exact `generate-{stage}-{shotId}` key so the Panel's `action()` helper
-  // can match it to show "กำลังดำเนินการ…" on the ONE button that was
-  // clicked, not every generate button across every shot.
-  const [chainPendingKey, setChainPendingKey] = useState<string | null>(null);
+  // Bulk prompt and media generation is tracked by the durable worker job.
   const stateQuery =
     trpc.marketplaceCapture.getStagedAutoReviewCheckpointState.useQuery(
       { runId },
@@ -75,6 +62,15 @@ export function StagedCheckpointReviewSurface(props: {
     }
     if (message === "staged_media_task_in_flight") {
       return "ช็อตนี้กำลังสร้างอยู่แล้ว กรุณารอให้เสร็จก่อน (สถานะจะอัปเดตอัตโนมัติ)";
+    }
+    if (message === "staged_story_plan_not_approved") {
+      return "กรุณายืนยันเนื้อเรื่องก่อนสั่งสร้าง Prompt และภาพทุกช็อต";
+    }
+    if (message === "staged_bulk_target_already_has_image") {
+      return "บางช็อตมีภาพอยู่แล้ว ระบบรีเฟรชสถานะให้ กรุณาใช้ปุ่มสร้างใหม่เฉพาะช็อตที่ต้องการซ่อม";
+    }
+    if (message === "staged_bulk_video_target_not_ready") {
+      return "บางช็อตยังไม่มีภาพที่พร้อมสร้างวิดีโอ กรุณารีเฟรชสถานะแล้วลองใหม่";
     }
     if (message === "staged_render_clips_incomplete") {
       return "ยังมีช็อตที่วิดีโอไม่ครบ — ต้องมีวิดีโอครบทุกช็อตก่อนจึงจะส่ง render ได้";
@@ -173,6 +169,10 @@ export function StagedCheckpointReviewSurface(props: {
     trpc.marketplaceCapture.retryStagedAutoReviewShot.useMutation(
       mutationOptions
     );
+  const bulkGenerateMutation =
+    trpc.marketplaceCapture.startStagedAutoReviewBulkGeneration.useMutation(
+      mutationOptions
+    );
   const retryAudioMutation =
     trpc.marketplaceCapture.retryStagedAutoReviewAudioPlan.useMutation(
       mutationOptions
@@ -224,12 +224,6 @@ export function StagedCheckpointReviewSurface(props: {
       mutationOptions
     );
   const pendingMutation = useMemo(() => {
-    // The generate-then-dispatch chain owns its own precise pending key
-    // (see chainPendingKey above) — surface that verbatim instead of a
-    // generic category so the Panel's exact-match check on `action()`'s id
-    // only lights up the ONE button the user clicked, not every generate
-    // button across every shot.
-    if (chainPendingKey) return chainPendingKey;
     const entries: Array<[string, boolean]> = [
       ["approve", approveMutation.isPending],
       ["creative-qc", creativeQcMutation.isPending],
@@ -249,14 +243,13 @@ export function StagedCheckpointReviewSurface(props: {
       ["update-manifest", updateManifestMutation.isPending],
       ["save-render-settings", saveRenderSettingsMutation.isPending],
       ["submit-final-render", submitFinalRenderMutation.isPending],
-      ["bulk-generate", bulkGeneratePending],
+      ["bulk-generate", bulkGenerateMutation.isPending],
     ];
     return entries.find(([, pending]) => pending)?.[0] ?? null;
   }, [
     acceptImageMutation.isPending,
     approveMutation.isPending,
-    bulkGeneratePending,
-    chainPendingKey,
+    bulkGenerateMutation.isPending,
     creativeQcMutation.isPending,
     creativeQcRepairMutation.isPending,
     creativeQcSelectRepairMutation.isPending,
@@ -435,59 +428,20 @@ export function StagedCheckpointReviewSurface(props: {
       });
     }
   };
-  // Fires every target's retry sequentially, one await at a time — never
-  // Promise.all / a synchronous forEach. Each mutation is gated on the
-  // ENTIRE run's metadata digest (stagedMetadataStateDigest), not a
-  // per-checkpoint one, so firing several at once would let only the first
-  // land and 409 ("staged_state_drift") every other one — the same bug the
-  // old "approve all images/videos" buttons had. Chaining the fresh
-  // stateDigest from each response into the next call's expectedStateDigest
-  // (instead of the one `stateDigest` captured before the loop started, or
-  // a full stateQuery.refetch() round trip between each shot) is what makes
-  // this safe.
-  const onBulkGenerate = async (targets: StagedBulkGenerateTarget[]) => {
-    if (targets.length === 0) return;
-    // See onGenerateAndDispatch's matching comment (field incident
-    // 2026-07-29) — surface these instead of silently no-opping.
-    if (bulkGeneratePending) {
-      setActionError(
-        "กำลังดำเนินการสร้างหลายช็อตอยู่ กรุณารอให้เสร็จก่อนแล้วลองใหม่"
-      );
-      return;
-    }
-    if (!requireStateDigest()) return;
-    setBulkGeneratePending(true);
-    setActionError(null);
-    let digest = stateDigest;
-    const failedShotIds: number[] = [];
-    for (const target of targets) {
-      try {
-        const response = await retryShotMutation.mutateAsync({
-          runId,
-          shotId: target.shotId,
-          stage: target.stage,
-          autoApprove: true,
-          model: target.model || undefined,
-          expectedStateDigest: digest,
-          idempotencyKey: uiIdempotencyKey(
-            `bulk-generate-${target.stage}`,
-            String(target.shotId)
-          ),
-        });
-        const nextDigest = (
-          response as { operation?: { stateDigest?: string } } | undefined
-        )?.operation?.stateDigest;
-        if (nextDigest) digest = nextDigest;
-      } catch {
-        failedShotIds.push(target.shotId);
-      }
-    }
-    setBulkGeneratePending(false);
-    if (failedShotIds.length > 0) {
-      setActionError(
-        `สั่งสร้างไม่สำเร็จสำหรับช็อตที่ ${failedShotIds.join(", ")} — ลองกด retry เฉพาะช็อตนั้นอีกครั้ง`
-      );
-    }
+  // Enqueue the complete batch once. Prompt preparation and media dispatch
+  // continue through worker_jobs if the browser is refreshed or closed.
+  const onBulkGenerate = (targets: StagedBulkGenerateTarget[]) => {
+    if (targets.length === 0 || !requireStateDigest()) return;
+    bulkGenerateMutation.mutate({
+      runId,
+      expectedStateDigest: stateDigest,
+      idempotencyKey: uiIdempotencyKey("bulk-generation", runId),
+      targets: targets.map(target => ({
+        shotId: target.shotId,
+        stage: target.stage,
+        ...(target.model ? { model: target.model } : {}),
+      })),
+    });
   };
   const onGeneratePrompt = (input: {
     shotId: number;
@@ -511,129 +465,26 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.instruction ? { instruction: input.instruction } : {}),
     });
   };
-  // The consolidated one-click "สร้างภาพ/สร้างวิดีโอ" action submits prompt
-  // authoring to a durable worker job, waits for the refreshed checkpoint to
-  // contain its result, then dispatches with that fresh state digest. The
-  // worker keeps running if the browser is refreshed or closed.
-  const onGenerateAndDispatch = async (input: {
+  // The one-shot action uses the same durable worker path as bulk generation.
+  const onGenerateAndDispatch = (input: {
     shotId: number;
     stage: "image" | "video";
     model?: string;
   }) => {
-    // Field incident 2026-07-29 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
-    // shot 8): this used to be a silent `return` for BOTH guard conditions —
-    // a click that produced no error, no toast, and (confirmed via server
-    // logs) no request reaching the server at all. Distinguish the two
-    // cases so the user always gets an explanation instead of ambiguous
-    // silence: `chainPendingKey` means a generate-and-dispatch chain for
-    // some shot is already mid-flight (this button, or another shot's);
-    // missing `stateDigest` means the run's state hasn't finished loading
-    // yet (first load, or a query error with no prior successful fetch).
-    if (chainPendingKey) {
-      setActionError(
-        "กำลังดำเนินการสร้างช็อตอื่นอยู่ กรุณารอให้เสร็จก่อนแล้วลองใหม่"
-      );
-      return;
-    }
     if (!requireStateDigest()) return;
-    const key = `generate-${input.stage}-${input.shotId}`;
-    setChainPendingKey(key);
-    setActionError(null);
-    try {
-      const promptKind =
-        input.stage === "image" ? "image_prompt" : "video_prompt";
-      const previousRevision =
-        state?.checkpoints.find(
-          checkpoint =>
-            checkpoint.kind === promptKind &&
-            checkpoint.shotId === input.shotId &&
-            checkpoint.state !== "superseded"
-        )?.revision ?? 0;
-      const promptResponse = await generatePromptMutation.mutateAsync({
-        runId,
+    bulkGenerateMutation.mutate({
+      runId,
+      expectedStateDigest: stateDigest,
+      idempotencyKey: uiIdempotencyKey(
+        `single-generation-${input.stage}`,
+        String(input.shotId)
+      ),
+      targets: [{
         shotId: input.shotId,
         stage: input.stage,
-        expectedStateDigest: stateDigest,
-        idempotencyKey: uiIdempotencyKey(
-          `generate-prompt-${input.stage}`,
-          String(input.shotId)
-        ),
-      });
-      const workerJobId = (
-        promptResponse as { workerJobId?: string } | undefined
-      )?.workerJobId;
-      const deadline = Date.now() + 3 * 60_000;
-      let completedState: StagedReviewState | null = null;
-      while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, 3_000));
-        const refreshed = await stateQuery.refetch();
-        const currentState = refreshed.data as StagedReviewState | undefined;
-        if (!currentState) continue;
-        const workerJob = workerJobId
-          ? currentState.workerOperations?.find(job => job.jobId === workerJobId)
-          : undefined;
-        if (workerJob?.status === "failed") {
-          throw new Error("AUTO_REVIEW_PROMPT_WORKER_FAILED");
-        }
-        const currentCheckpoint = currentState.checkpoints.find(
-          checkpoint =>
-            checkpoint.kind === promptKind &&
-            checkpoint.shotId === input.shotId &&
-            checkpoint.state !== "superseded"
-        );
-        const currentShot = currentState.shots.find(
-          shot => shot.shotId === input.shotId
-        );
-        const generatedPrompt =
-          input.stage === "image"
-            ? currentShot?.imagePrompt
-            : currentShot?.videoPrompt;
-        if (
-          currentCheckpoint &&
-          currentCheckpoint.revision > previousRevision &&
-          generatedPrompt?.trim() &&
-          currentState.stateDigest !== stateDigest
-        ) {
-          completedState = currentState;
-          break;
-        }
-      }
-      if (!completedState) {
-        throw new Error("AUTO_REVIEW_PROMPT_WORKER_STILL_QUEUED");
-      }
-      await retryShotMutation.mutateAsync({
-        runId,
-        shotId: input.shotId,
-        stage: input.stage,
-        autoApprove: true,
-        model: input.model || undefined,
-        expectedStateDigest: completedState.stateDigest,
-        idempotencyKey: uiIdempotencyKey(
-          `generate-dispatch-${input.stage}`,
-          String(input.shotId)
-        ),
-      });
-    } catch (error) {
-      // Both mutations share `mutationOptions.onError`, which already ran
-      // and set `actionError` — including the plain-Thai remap of
-      // user-actionable reason codes (see `friendlyActionError` above, which
-      // now owns that mapping for EVERY mutation path rather than only this
-      // one). Nothing further to do here beyond stopping the chain, matching
-      // onBulkGenerate's stop-on-first-failure behavior.
-      if (error instanceof Error) {
-        if (error.message === "AUTO_REVIEW_PROMPT_WORKER_FAILED") {
-          setActionError(
-            "งานสร้าง Prompt ล้มเหลวใน Worker — ลองสั่งสร้าง Prompt อีกครั้งได้"
-          );
-        } else if (error.message === "AUTO_REVIEW_PROMPT_WORKER_STILL_QUEUED") {
-          setActionError(
-            "ส่งงานสร้าง Prompt เข้า Worker แล้ว งานยังทำต่อเบื้องหลังได้ กดรีเฟรชสถานะเพื่อตรวจผลก่อนสั่งสร้างภาพ"
-          );
-        }
-      }
-    } finally {
-      setChainPendingKey(null);
-    }
+        ...(input.model ? { model: input.model } : {}),
+      }],
+    });
   };
   // Manual drag-and-drop / tap-to-browse replacement of a shot's image or
   // video slot with a local file (see the Panel's per-slot drop zones and
