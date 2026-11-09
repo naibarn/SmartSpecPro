@@ -109,6 +109,11 @@ export const marketplaceReviewIdeaInputSchema = z.object({
     .array(boundedText(255))
     .max(4)
     .default([]),
+  /** Explicitly selected speakers that must appear in every generated idea. */
+  requiredDialogueSpeakerCharacterNames: z
+    .array(boundedText(255))
+    .max(3)
+    .default([]),
   /** Selected characters that must remain silent because they are minors or age-unknown. */
   dialogueProhibitedCharacterNames: z
     .array(boundedText(255))

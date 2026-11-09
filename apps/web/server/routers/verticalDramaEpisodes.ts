@@ -12572,6 +12572,10 @@ export const verticalDramaEpisodesRouter = router({
           .array(z.string().trim().min(1).max(128))
           .min(1)
           .max(4),
+        speakerCharacterIds: z
+          .array(z.string().trim().min(1).max(128))
+          .max(3)
+          .optional(),
         customerJourney: z.unknown().optional(),
         footageGuide: z.unknown().optional(),
         direction: z.string().trim().max(2000).optional(),

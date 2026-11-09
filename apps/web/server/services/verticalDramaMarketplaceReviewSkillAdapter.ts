@@ -407,6 +407,9 @@ function marketplaceReviewRepairGuidance(errorMessage: string): string {
   if (errorMessage.includes("age-eligible adult characters may speak")) {
     return "ผู้พูดไม่ผ่านเงื่อนไขอายุ: ให้เฉพาะชื่อใน eligibleAdultSpeakerNames พูดได้ ห้ามให้เด็กหรือตัวละครที่อายุไม่ชัดเจนพูด";
   }
+  if (errorMessage.includes("every selected speaker must speak in each idea")) {
+    return "ผู้พูดที่เลือกยังพูดไม่ครบ: ในแต่ละไอเดีย ให้ทุกคนใน requiredSpeakerNames ได้พูดอย่างน้อยหนึ่งบรรทัดใน shotDialogues ทั้ง 9 ช็อต โดยใช้ชื่อจริงแบบตรงตัว";
+  }
   if (errorMessage.includes("look slot requested for an unselected character")) {
     return "คำขอ look slot อ้างอิงตัวละครที่ไม่ได้เลือก: ลบคำขอนั้นหรือใช้ characterId จริงจาก selectedCharacterIds เท่านั้น";
   }
@@ -431,6 +434,7 @@ function marketplaceReviewFailureCode(error: unknown): string {
     ["look slot requested for an unselected character", "UNSELECTED_LOOK_SLOT"],
     ["dialogue speaker is not selected", "UNSELECTED_DIALOGUE_SPEAKER"],
     ["only age-eligible adult characters may speak", "INELIGIBLE_DIALOGUE_SPEAKER"],
+    ["every selected speaker must speak in each idea", "MISSING_SELECTED_DIALOGUE_SPEAKER"],
     ["minor or age-unknown character", "INELIGIBLE_DIALOGUE_SPEAKER"],
     ["advertising dialogue compliance failed", "AD_DIALOGUE_COMPLIANCE"],
     ["unselected character", "EXCLUDED_CHARACTER_REFERENCE"],
@@ -711,6 +715,7 @@ export type MarketplaceReviewIdeaValidationOptions = {
   allowedCharacterNames?: readonly string[];
   excludedCharacterNames?: readonly string[];
   dialogueSpeakerCharacterNames?: readonly string[];
+  requiredDialogueSpeakerCharacterNames?: readonly string[];
   dialogueProhibitedCharacterNames?: readonly string[];
   dialogueMode?: "none" | "character_dialogue";
 };
@@ -824,6 +829,27 @@ export function validateMarketplaceReviewIdeaOutput(
       "MARKETPLACE_REVIEW_OUTPUT_INVALID: only age-eligible adult characters may speak"
     );
   }
+  const requiredDialogueSpeakerNames = new Set(
+    (options.requiredDialogueSpeakerCharacterNames ?? [])
+      .map(name => name.trim().toLocaleLowerCase())
+      .filter(Boolean)
+  );
+  if (
+    dialogueMode === "character_dialogue" &&
+    requiredDialogueSpeakerNames.size > 0 &&
+    output.ideas.some(idea => {
+      const speakersInIdea = new Set(
+        idea.shotDialogues
+          .flatMap(shot => shot.lines)
+          .map(line => line.speaker.trim().toLocaleLowerCase())
+      );
+      return [...requiredDialogueSpeakerNames].some(name => !speakersInIdea.has(name));
+    })
+  ) {
+    throw new Error(
+      "MARKETPLACE_REVIEW_OUTPUT_INVALID: every selected speaker must speak in each idea"
+    );
+  }
   if (
     dialogueProhibitedNames.size > 0 &&
     allIdeaLines.some(line =>
@@ -903,7 +929,17 @@ export function buildMarketplaceReviewIdeaUserPrompt(
   input: MarketplaceReviewIdeaInput,
   repairFeedback?: string,
 ): string {
-  const exampleAdultSpeaker = input.dialogueSpeakerCharacterNames[0] ?? "";
+  const exampleAdultSpeakers =
+    input.requiredDialogueSpeakerCharacterNames.length > 0
+      ? input.requiredDialogueSpeakerCharacterNames
+      : input.dialogueSpeakerCharacterNames;
+  const exampleAdultSpeaker = exampleAdultSpeakers[0] ?? "";
+  const exampleDialogueLines =
+    exampleAdultSpeakers.length > 1
+      ? exampleAdultSpeakers.slice(0, 2).map((speaker, index) =>
+          `${speaker}: ${index === 0 ? "ประโยคเริ่มบทสนทนาอย่างเป็นธรรมชาติ" : "ประโยคตอบรับที่ต่อเนื่องกับอีกคน"}`
+        )
+      : [`${exampleAdultSpeaker}: ประโยคสั้นที่เป็นธรรมชาติ`];
   const promptSafeInput = { ...input };
   // Excluded names are a server-side validation aid. Sending them to the model
   // primes it with unused cast names and can make incidental Thai word parts
@@ -989,7 +1025,7 @@ export function buildMarketplaceReviewIdeaUserPrompt(
           episodeStory: "เรื่องละครภาษาไทยแบบร้อยแก้วต่อเนื่องอย่างน้อย 3 ย่อหน้า ตั้งแต่เริ่มปัญหาจนจบฉาก",
           dialogueScript:
             input.dialogueMode === "character_dialogue"
-              ? `${exampleAdultSpeaker}: ประโยคสั้นที่เป็นธรรมชาติ\n${exampleAdultSpeaker}: ประโยคตอบรับหรือพาเรื่องต่อ`
+              ? exampleDialogueLines.join("\n")
               : "",
           storyFunction: "หน้าที่ของฉากในเรื่อง",
           scene: {
@@ -1001,22 +1037,24 @@ export function buildMarketplaceReviewIdeaUserPrompt(
           productMentionReason: "เหตุผลที่หัวข้อรีวิวเข้ากับเหตุการณ์นี้",
           dialogue:
             input.dialogueMode === "character_dialogue"
-              ? [{ speaker: exampleAdultSpeaker, line: "ประโยคสั้นที่เป็นธรรมชาติ", delivery: "น้ำเสียง" }]
+              ? exampleAdultSpeakers.slice(0, 2).map((speaker, index) => ({
+                  speaker,
+                  line: index === 0 ? "ประโยคสั้นที่เป็นธรรมชาติ" : "ประโยคตอบรับอย่างเป็นธรรมชาติ",
+                  delivery: "น้ำเสียง",
+                }))
               : [],
           shotDialogues: Array.from({ length: 9 }, (_, index) => ({
             shotNumber: index + 1,
             lines:
               input.dialogueMode === "character_dialogue"
                 ? [
-                    { speaker: exampleAdultSpeaker, line: "ประโยคสั้นที่เป็นธรรมชาติ" },
-                    ...(index % 3 === 1
-                      ? [
-                          {
-                            speaker: exampleAdultSpeaker,
-                            line: "ประโยคตอบรับหรือพาเรื่องต่อ",
-                          },
-                        ]
-                      : []),
+                    {
+                      speaker:
+                        exampleAdultSpeakers[
+                          index % Math.max(exampleAdultSpeakers.length, 1)
+                        ] ?? exampleAdultSpeaker,
+                      line: "ประโยคสั้นที่เป็นธรรมชาติ",
+                    },
                   ]
                 : [],
           })),
@@ -1036,6 +1074,9 @@ export function buildMarketplaceReviewIdeaUserPrompt(
       whenPresentationStyleIsVariedUseDifferentStylesAcrossTheThreeIdeas: true,
       whenStoryStructureIsVariedUseDifferentStructuresAcrossTheThreeIdeas: true,
       whenPreferenceIsSpecificApplyItToAllThreeIdeas: true,
+      everyRequiredSpeakerMustSpeakInEveryIdea:
+        input.dialogueMode === "character_dialogue" &&
+        input.requiredDialogueSpeakerCharacterNames.length > 0,
       preserveDna: true,
       addOnlyMissingLookOrSceneSlots: true,
       noUnsupportedClaims: true,
@@ -1046,7 +1087,13 @@ export function buildMarketplaceReviewIdeaUserPrompt(
         : "Use the Marketplace product record as the authoritative source of product facts; optional direction and saved AI insights are creative guidance only and must never override product facts. Never mention current/original prices, discounts, coupons, vouchers, or promotions in the story, ideas, dialogue, or video concepts.",
     dialogueRules: {
       eligibleAdultSpeakerNames: input.dialogueSpeakerCharacterNames,
+      requiredSpeakerNames: input.requiredDialogueSpeakerCharacterNames,
       prohibitedSpeakerNames: input.dialogueProhibitedCharacterNames,
+      selectedSpeakerCoverage:
+        input.dialogueMode === "character_dialogue" &&
+        input.requiredDialogueSpeakerCharacterNames.length > 0
+          ? "In every idea, every name in requiredSpeakerNames must speak at least one line across that idea's 9 shotDialogues. Use the exact selected names and do not let one selected speaker carry the entire script alone."
+          : undefined,
       everyShotMustHaveDialogue:
         input.dialogueMode === "character_dialogue",
       wholeSceneNaturalnessReview:
@@ -1164,6 +1211,7 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   llmModelId?: string;
   dialogueMode: "none" | "character_dialogue";
   selectedCharacterIds: string[];
+  speakerCharacterIds?: string[];
   variationSeed: string;
 }): Promise<MarketplaceReviewIdeaInput> {
   const reviewSubjectType = input.reviewSubjectType ?? "product";
@@ -1251,6 +1299,26 @@ export async function buildMarketplaceReviewIdeaInput(input: {
   const selectedCharacterIds = Array.from(
     new Set(input.selectedCharacterIds.map(value => String(value).trim()))
   );
+  const hasExplicitSpeakerSelection =
+    input.dialogueMode === "character_dialogue" &&
+    input.speakerCharacterIds !== undefined;
+  const selectedSpeakerCharacterIds =
+    hasExplicitSpeakerSelection
+      ? Array.from(
+          new Set(
+            (input.speakerCharacterIds ?? []).map(value => String(value).trim())
+          )
+        )
+      : [];
+  if (
+    selectedSpeakerCharacterIds.length > 3 ||
+    selectedSpeakerCharacterIds.some(id => !selectedCharacterIds.includes(id))
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "ผู้พูดต้องเป็นตัวละครที่เลือกไว้ และเลือกได้ไม่เกิน 3 คน",
+    });
+  }
   const selectedNumericCharacterIds = selectedCharacterIds.map(Number);
   if (
     selectedCharacterIds.length < 1 ||
@@ -1321,7 +1389,9 @@ export async function buildMarketplaceReviewIdeaInput(input: {
     )
   );
   const dialogueSpeakerCharacterNames: string[] = [];
+  const requiredDialogueSpeakerCharacterNames: string[] = [];
   const dialogueProhibitedCharacterNames: string[] = [];
+  const selectedSpeakerIdSet = new Set(selectedSpeakerCharacterIds);
   for (const character of selectedCharacters) {
     if (!character) continue;
     const eligibility = resolveSpecialDialogueSpeakerEligibility({
@@ -1331,9 +1401,26 @@ export async function buildMarketplaceReviewIdeaInput(input: {
       data: character.data,
     });
     if (eligibility.eligible) {
-      dialogueSpeakerCharacterNames.push(character.name);
+      if (
+        !hasExplicitSpeakerSelection ||
+        selectedSpeakerIdSet.has(String(character.id))
+      ) {
+        dialogueSpeakerCharacterNames.push(character.name);
+      }
+      if (selectedSpeakerIdSet.has(String(character.id))) {
+        requiredDialogueSpeakerCharacterNames.push(character.name);
+      }
     } else {
       dialogueProhibitedCharacterNames.push(character.name);
+      if (
+        hasExplicitSpeakerSelection &&
+        selectedSpeakerIdSet.has(String(character.id))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `ตัวละคร ${character.name} ยังพูดไม่ได้ เพราะต้องยืนยันอายุ 18 ปีขึ้นไปก่อน`,
+        });
+      }
     }
   }
   if (
@@ -1473,6 +1560,7 @@ export async function buildMarketplaceReviewIdeaInput(input: {
     selectedCharacterIds,
     excludedCharacterNames,
     dialogueSpeakerCharacterNames,
+    requiredDialogueSpeakerCharacterNames,
     dialogueProhibitedCharacterNames,
     characters: selectedCharacters.map(character => {
       if (!character) throw new Error("Selected character disappeared during lookup");
@@ -1568,6 +1656,8 @@ export async function generateMarketplaceReviewIdeas(input: {
         allowedCharacterNames: parsed.characters.map(character => character.name),
         excludedCharacterNames: parsed.excludedCharacterNames,
         dialogueSpeakerCharacterNames: parsed.dialogueSpeakerCharacterNames,
+        requiredDialogueSpeakerCharacterNames:
+          parsed.requiredDialogueSpeakerCharacterNames,
         dialogueProhibitedCharacterNames: parsed.dialogueProhibitedCharacterNames,
         dialogueMode: parsed.dialogueMode,
       });
@@ -1589,6 +1679,8 @@ export async function generateMarketplaceReviewIdeas(input: {
           allowedCharacterNames: parsed.characters.map(character => character.name),
           excludedCharacterNames: parsed.excludedCharacterNames,
           dialogueSpeakerCharacterNames: parsed.dialogueSpeakerCharacterNames,
+          requiredDialogueSpeakerCharacterNames:
+            parsed.requiredDialogueSpeakerCharacterNames,
           dialogueProhibitedCharacterNames: parsed.dialogueProhibitedCharacterNames,
           dialogueMode: parsed.dialogueMode,
         }

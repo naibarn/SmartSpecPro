@@ -2197,6 +2197,9 @@ export function SpecialTieInEpisodeDialog({
         reviewSubjectType,
         storyStructure,
         selectedCharacterIds: characterIds.slice(0, 4),
+        ...(dialogueMode === "character_dialogue" && speakerCharacterIds.length > 0
+          ? { speakerCharacterIds: speakerCharacterIds.slice(0, 3) }
+          : {}),
         customerJourney: usingMarketplaceProduct
           ? selectedProduct?.supportingInsights ?? undefined
           : undefined,
