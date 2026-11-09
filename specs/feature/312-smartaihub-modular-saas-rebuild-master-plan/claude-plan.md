@@ -20,17 +20,17 @@ Use pinned `pg@8.16.3` (or a newer version only if official Worker support is re
 
 Keep SQL in small repositories with exact quoted camel-case names for current `users` and `tenants`, and current snake-case columns for `tenant_users` and `revoked_token_jtis`. Select only authentication fields. Perform normalized lookup as `lower(btrim(email)) = lower(btrim($1))`. Membership queries filter `is_active = true` and active customer tenants. Bind all inputs; return narrow DTOs; never return password, MFA, recovery hashes, disabled reason, or internal diagnostics.
 
-The separate `modular_core_dev_auth` role (choose a final name after catalog check) receives only CONNECT/USAGE and needed SELECT column grants on `users`, `tenant_users`, `tenants`, `revoked_token_jtis`, plus only necessary `UPDATE(users.recoveryCodes,lastSignedIn)` and JTI insert/upsert privileges. No DDL, create role/database, password/role changes, wallet/credit, billing, job/outbox, entitlement, or app-business writes. Verify actual grants catalog-only. Do not reuse the Legacy role. Keep the new secret in an owner-only local credential file, ignored by Git, and pass it only through the local Wrangler env variable.
+The provisioned `modular_core_auth_dev` role receives only CONNECT/USAGE and needed SELECT column grants on `users`, `tenant_users`, `tenants`, `revoked_token_jtis`, plus `UPDATE(users.recoveryCodes)` and JTI insert privileges. It does not receive `lastSignedIn` or business-effect writes. No DDL, create role/database, password/role changes, wallet/credit, billing, job/outbox, entitlement, or app-business writes. Verify actual grants catalog-only. Do not reuse the Legacy role. Keep the new secret in an owner-only local credential file, ignored by Git, and pass it only through the local Wrangler env variable.
 
 If exact DML privileges cannot be safely established from the current schema, proceed with mocked adapter/tests and leave the live role check pending; never grant table-wide writes as a workaround.
 
 ### Password and MFA compatibility
 
-Use a maintained Worker-compatible WASM hash verifier for bcrypt and Argon2 (candidate: pinned `hash-wasm`) only after validating fixtures generated with the existing supported formats. Parse/validate encoded hash structure and supported parameters before invoking memory-hard verification. Never rehash or update a stored password. Unknown-user paths perform a fixed dummy verification so the response does not reveal account existence.
+Use a maintained Worker-compatible WASM hash verifier for bcrypt and Argon2 (candidate: pinned `hash-wasm`) only after validating fixtures generated with the existing supported formats. Parse/validate encoded hash structure and supported parameters before invoking memory-hard verification: bcrypt cost 4–16; Argon2id version 19 with m≤65536 KiB, t≤6 and p≤4. Serialize hash verification to one in-flight operation per isolate with at most 8 queued waiters; reject overflow generically. Never rehash or update a stored password. Unknown-user paths perform a fixed dummy verification so the response does not reveal account existence. Cloudflare production auth requires a Paid Workers CPU budget or independently measured equivalent; local workerd does not prove CPU compliance.
 
 Implement TOTP with WebCrypto HMAC-SHA1 and the existing base32 / six-digit / 30-second / ±1-window contract. Decrypt existing MFA secrets using AES-256-GCM with SHA-256-derived bytes from the narrowly scoped shared canonical account-data key. Reject legacy CBC or malformed ciphertext. Compare recovery-code hashes using bcrypt verification and atomically consume one matching code in a transaction (`SELECT ... FOR UPDATE`, then parameterized `UPDATE`) so two concurrent requests cannot redeem it twice.
 
-Handle `isDisabled`, missing password and enabled MFA. Do not sync/create users, auto-promote admin, call OAuth, run credit-inactivity business policy, send notifications, or write other fields. Update `lastSignedIn` only after successful complete authentication and only if the role can grant that column; otherwise omit this non-authoritative bookkeeping and record the difference.
+Handle `isDisabled`, missing password and enabled MFA. Do not sync/create users, auto-promote admin, call OAuth, run credit-inactivity business policy, send notifications, or write other fields. The current least-privilege role deliberately omits `lastSignedIn`; successful Core login therefore does not update this non-authoritative Legacy bookkeeping field.
 
 ### Sessions, routes, tenancy and request safety
 
@@ -50,7 +50,7 @@ Add `src/config/environment.ts`, `src/db/postgres.ts`, and focused `src/db/*Repo
 
 ### Section 02 — Existing password and MFA compatibility
 
-Add `src/identity/password.ts`, `src/identity/totp.ts`, and `src/identity/accountAuthentication.ts`. Verify bcrypt and Argon2 known formats; match legacy email normalization, AES-GCM TOTP ciphertext, TOTP window and one-time recovery-code behavior. Keep account and hash writes absent.
+Add `src/identity/password.ts`, `src/identity/totp.ts`, and `src/identity/accountAuthentication.ts`. Verify bounded bcrypt and Argon2 known formats through a single-flight verifier (one active hash per isolate, at most 8 queued); match legacy email normalization, AES-GCM TOTP ciphertext, TOTP window and one-time recovery-code behavior. Keep account and hash writes absent. Record Cloudflare Paid CPU as a deployment prerequisite; local workerd is not CPU-limit evidence.
 
 ### Section 03 — Hono sessions, membership read and safety
 
@@ -77,7 +77,7 @@ Rollback is a source revert of the Core-only commit(s) plus revocation of the Mo
 
 ## Risk and recovery notes
 
-- Argon2 verification is memory/CPU-heavy; enforce supported PHC parameter bounds, cap login concurrency if local workerd evidence requires it, and report a truthful known gap rather than silently skipping Argon2 accounts.
+- Argon2 verification is memory/CPU-heavy; enforce bcrypt cost 4–16 and Argon2id v19 m≤65536 KiB, t≤6, p≤4, with one in-flight hash and at most 8 queued per isolate. Overload fails closed. Cloudflare Free CPU is not an acceptable production auth budget; require Paid CPU configuration or measured equivalent before production deployment.
 - The shared key needed to decrypt current TOTP records is distinct from session signing and DB credentials, but the legacy ciphertext format is keyed by `LLM_ENCRYPTION_KEY`. Narrow the DB role to the `users` MFA columns and use the key only for TOTP decrypt; a future at-rest key separation requires a separately designed canonical re-encryption and rollback path.
 - Strict per-account throttling can temporarily block legitimate retries for 15 minutes; use identical generic `429` behavior for known and unknown accounts, apply the contract consistently across password and MFA endpoints, and cover parallel requests with DO serialization tests.
 - Current canonical schema does not persist environment scope for `worker_jobs`. This plan creates no such records and adds no job route; future writes remain blocked until a canonical environment binding/writer contract exists.

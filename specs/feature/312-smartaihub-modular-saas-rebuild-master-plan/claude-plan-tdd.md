@@ -13,6 +13,7 @@
 ## Section 02 — Existing password and MFA compatibility
 
 - Known bcrypt and Argon2 fixtures from published/test vectors verify; wrong passwords, malformed hashes, unsupported parameters and passwordless users fail closed.
+- Parameter bounds reject bcrypt costs outside 4–16 and Argon2id hashes outside v19/m≤65536 KiB/t≤6/p≤4 before invoking WASM. Concurrent verifier tests prove one active hash per isolate, at most 8 queued waiters and generic fail-closed overflow.
 - Email normalization exactly trims and lowercases without provider alias rewriting. Unknown-user and wrong-password responses are indistinguishable; dummy verification is called for unknown users.
 - Disabled users cannot receive sessions; no account is created, promoted, rehashed or synchronized.
 - TOTP WebCrypto implementation passes RFC/legacy SHA-1, six-digit, 30-second and ±1-step vectors. AES-GCM decryption accepts the existing hex `iv:tag:ciphertext` format with the correct test key and rejects altered tag, malformed input and old CBC format.
@@ -34,6 +35,7 @@
 
 - Run `corepack pnpm@10.4.1 test:core`, `typecheck:core`, `build:core`, and a local `dev:core` HTTP smoke check on the actual Worker handler. Keep build output/target attribution honest and do not deploy.
 - Verify package graph/imports for no Express or `apps/web`, and capture the dry-run bundle size for this slice.
+- Record that local workerd cannot prove Cloudflare CPU compliance; Cloudflare auth deployment requires a Paid Workers CPU budget or separately measured equivalent.
 - Exercise the Durable Object on local workerd, including repeated and concurrent requests, and confirm no production namespace/migration/target is configured.
 - If the isolated dev credential is available, run catalog/grant checks and a read-only `SELECT current_database(), current_user` identity check; do not read real user rows or test a production target.
 - Verify the handoff writer preserves canonical generation/spec digest and records the merged SHA and remaining acceptance gaps; do not mark the parent requirement PASS.
