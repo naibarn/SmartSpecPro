@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `6`
-- Updated (UTC): `2026-11-09T08:29:19.222547+00:00`
+- State generation: `7`
+- Updated (UTC): `2026-11-09T08:37:25.404690+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `29bf37f576`
+- Latest recorded merged Main SHA: `a0c209ea6001db485f66be42d9dcce69b7ab7189`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision.
+- Next action: Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 29bf37f576 | Worker job contract, executor and Node allowlist are integrated; proceed with queue cutover proof and legacy stuck-job recovery verification. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 29bf37f576 | 29bf37f576 | Auto Review LLM paths and QC now use worker_jobs; complete deployment and runtime health verification on legacy-debian-dev. |
-| section-03-proof-and-deployment | in_progress | — | — | — | — | Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision. |
+| section-03-proof-and-deployment | checkpointed | — | — | a0c209ea6001db485f66be42d9dcce69b7ab7189 | a0c209ea6001db485f66be42d9dcce69b7ab7189 | Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

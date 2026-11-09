@@ -25,8 +25,10 @@
       "merged_main_sha": "29bf37f576"
     },
     "section-03-proof-and-deployment": {
-      "status": "in_progress",
-      "next_action": "Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision."
+      "status": "checkpointed",
+      "next_action": "Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy.",
+      "checkpoint_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189",
+      "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
     }
   },
   "pre_commit": {
@@ -38,11 +40,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 6,
-  "updated_at": "2026-11-09T08:29:19.222547+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-09T08:37:25.404690+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision.",
-    "merged_main_sha": "29bf37f576"
+    "next_action": "Deployed and verified legacy-debian-dev web and Node worker at a0c209ea6001db485f66be42d9dcce69b7ab7189; public hostname health check passed. Focused tests remain unrun per session policy.",
+    "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
   }
 }
