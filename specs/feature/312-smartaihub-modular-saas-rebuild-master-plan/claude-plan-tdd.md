@@ -13,7 +13,7 @@
 ## Section 02 — Existing password and MFA compatibility
 
 - Known bcrypt and Argon2 fixtures from published/test vectors verify; wrong passwords, malformed hashes, unsupported parameters and passwordless users fail closed.
-- Parameter bounds reject bcrypt costs outside 4–16 and Argon2id hashes outside v19/m≤65536 KiB/t≤6/p≤4 before invoking WASM. Concurrent verifier tests prove one active hash per isolate, at most 8 queued waiters and generic fail-closed overflow.
+- Parameter bounds reject bcrypt costs outside 4–16 and Argon2 `i`/`d`/`id` hashes outside v19/m≤65536 KiB/t≤6/p≤4 before invoking WASM. Concurrent verifier tests prove one active hash per isolate, at most 8 queued waiters and generic fail-closed overflow. Keep the actual stored hash distribution explicitly unverified without reading user rows.
 - Email normalization exactly trims and lowercases without provider alias rewriting. Unknown-user and wrong-password responses are indistinguishable; dummy verification is called for unknown users.
 - Disabled users cannot receive sessions; no account is created, promoted, rehashed or synchronized.
 - TOTP WebCrypto implementation passes RFC/legacy SHA-1, six-digit, 30-second and ±1-step vectors. AES-GCM decryption accepts the existing hex `iv:tag:ciphertext` format with the correct test key and rejects altered tag, malformed input and old CBC format.
