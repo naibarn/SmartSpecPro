@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Finish optional-QC approval and durable single/bulk shot generation flow; run focused syntax gate; integrate owned files to origin/main; deploy legacy-debian-dev and verify web/worker health.",
-      "checkpoint_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189",
-      "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
+      "next_action": "Feature release deployed and verified on legacy-debian-dev at b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626; public homepage and main JS asset return 200; web and Node worker are healthy. Optional-QC, per-shot repair and bulk worker workflow UAT plus focused tests remain unrun.",
+      "checkpoint_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626",
+      "merged_main_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626"
     }
   },
   "pre_commit": {
@@ -40,11 +40,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 8,
-  "updated_at": "2026-11-09T09:09:03.004468+00:00",
+  "generation": 9,
+  "updated_at": "2026-11-09T09:20:26.689091+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Finish optional-QC approval and durable single/bulk shot generation flow; run focused syntax gate; integrate owned files to origin/main; deploy legacy-debian-dev and verify web/worker health.",
-    "merged_main_sha": "a0c209ea6001db485f66be42d9dcce69b7ab7189"
+    "next_action": "Feature release deployed and verified on legacy-debian-dev at b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626; public homepage and main JS asset return 200; web and Node worker are healthy. Optional-QC, per-shot repair and bulk worker workflow UAT plus focused tests remain unrun.",
+    "merged_main_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626",
+    "gaps": [
+      "Browser UAT for skipping QC, per-shot image repair, bulk prompt/image generation and worker completion is pending; this session verified syntax, build, deployment and health only."
+    ]
   }
 }
