@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   computeMarketplaceDraftQcReport,
   buildMarketplaceDraftQcRepairPlan,
+  formatMarketplaceDraftQcJudgeNormalizationError,
   fingerprintMarketplaceDraftQcCandidate,
   MARKETPLACE_DRAFT_QC_CRITERIA,
+  normalizeMarketplaceDraftQcJudgeOutput,
   marketplaceDraftQcJudgeOutputSchema,
 } from "../draftQualityQc";
 
@@ -46,6 +48,61 @@ describe("marketplace product Creative QC contract", () => {
     expect(report.overallScore).toBe(6);
     expect(report.status).toBe("blocked");
     expect(report.pass).toBe(false);
+  });
+
+  it("keeps malformed critical fails as blockers and fills omitted summary arrays", () => {
+    const modelResponse = {
+      criteria: MARKETPLACE_DRAFT_QC_CRITERIA.map(item => ({
+        criterionId: item.id,
+        rawScore: 5,
+        evidence: `Evidence for ${item.id}`,
+      })),
+      criticalFails: [
+        {
+          code: "Hook Strength",
+          explanation: "The evaluator used a rubric label instead of a failure code.",
+        },
+      ],
+      weaknesses: [],
+      recommendations: [],
+    };
+
+    const normalized = normalizeMarketplaceDraftQcJudgeOutput(modelResponse);
+
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) return;
+    expect(normalized.data.strengths).toEqual([]);
+    expect(normalized.data.criticalFails[0]?.code).toBe(
+      "unclassified_critical_fail"
+    );
+    const report = computeMarketplaceDraftQcReport(normalized.data);
+    expect(report.pass).toBe(false);
+    expect(report.status).toBe("blocked");
+    expect(report.repairPlan?.available).toBe(false);
+    expect(report.repairPlan?.actions[0]?.autoRunnable).toBe(false);
+  });
+
+  it("does not fabricate missing criterion scores or evidence", () => {
+    const modelResponse = {
+      ...judge(),
+      criteria: MARKETPLACE_DRAFT_QC_CRITERIA.map(item => ({
+        criterionId: item.id,
+        rawScore: 5,
+        evidence: `Evidence for ${item.id}`,
+      })),
+    };
+    modelResponse.criteria[0] = {
+      criterionId: MARKETPLACE_DRAFT_QC_CRITERIA[0].id,
+      rawScore: 5,
+      evidence: "",
+    };
+
+    const normalized = normalizeMarketplaceDraftQcJudgeOutput(modelResponse);
+
+    expect(normalized.ok).toBe(false);
+    expect(formatMarketplaceDraftQcJudgeNormalizationError(modelResponse)).toContain(
+      "criteria[0].evidence"
+    );
   });
 
   it("fingerprints equivalent objects deterministically", () => {

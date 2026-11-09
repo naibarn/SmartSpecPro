@@ -47,6 +47,7 @@ export const MARKETPLACE_DRAFT_QC_CRITICAL_FAIL_CODES = [
   "shot_contract_invalid",
   "dialogue_missing",
   "stale_prompt_plan",
+  "unclassified_critical_fail",
 ] as const;
 export type MarketplaceDraftQcCriticalFailCode =
   (typeof MARKETPLACE_DRAFT_QC_CRITICAL_FAIL_CODES)[number];
@@ -182,10 +183,83 @@ function marketplaceDraftQcCriteriaRows(value: unknown): unknown[] {
   );
 }
 
+function normalizeMarketplaceDraftQcCriticalFails(value: unknown): {
+  criticalFails: MarketplaceDraftQcJudgeOutput["criticalFails"];
+  changed: boolean;
+} {
+  const malformedEntry = (explanation?: string) => ({
+    code: "unclassified_critical_fail" as const,
+    explanation:
+      explanation?.slice(0, 1000) ||
+      "Evaluator returned an incomplete critical-fail item; manual review is required.",
+  });
+  if (!Array.isArray(value)) {
+    return {
+      criticalFails: [
+        malformedEntry(
+          "Evaluator omitted critical-fail classification; manual review is required."
+        ),
+      ],
+      changed: true,
+    };
+  }
+  if (value.length > 10) {
+    return {
+      criticalFails: [
+        malformedEntry(
+          "Evaluator returned too many critical-fail items; manual review is required."
+        ),
+      ],
+      changed: true,
+    };
+  }
+
+  let changed = false;
+  const criticalFails = value.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      changed = true;
+      return malformedEntry();
+    }
+    const row = item as Record<string, unknown>;
+    const rawCode = row.code;
+    const normalizedCode =
+      typeof rawCode === "string"
+        ? rawCode
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+        : "";
+    const parsedCode = marketplaceDraftQcCriticalFailCodeSchema.safeParse(
+      normalizedCode
+    );
+    const explanation = readMarketplaceDraftQcText(
+      row.explanation ?? row.reason ?? row.details
+    );
+    if (!parsedCode.success || !explanation) {
+      changed = true;
+      return malformedEntry(
+        explanation
+          ? `Unrecognized evaluator critical-fail category; manual review is required. ${explanation}`
+          : undefined
+      );
+    }
+    if (normalizedCode !== rawCode || explanation !== row.explanation) {
+      changed = true;
+    }
+    return {
+      ...row,
+      code: parsedCode.data,
+      explanation: explanation.slice(0, 1000),
+    };
+  });
+  return { criticalFails, changed };
+}
+
 /**
- * Recovers harmless LLM drift between a rubric's display label and its
- * canonical criterion id. Scores and evidence remain mandatory and are never
- * inferred; the normalized result still passes the strict judge schema.
+ * Recovers harmless LLM drift between rubric labels and the contract. Scores
+ * and evidence remain mandatory and are never inferred. Malformed critical
+ * fails become unclassified blockers so they cannot accidentally pass QC.
  */
 export function normalizeMarketplaceDraftQcJudgeOutput(
   value: unknown
@@ -323,14 +397,31 @@ export function normalizeMarketplaceDraftQcJudgeOutput(
   });
   if (issues.length) return { ok: false, issues };
 
+  const criticalFails = normalizeMarketplaceDraftQcCriticalFails(
+    payload.criticalFails ?? payload.critical_fails
+  );
+  normalizedModelFields ||= criticalFails.changed;
+  const strengths = payload.strengths ?? payload.pros ?? [];
+  const weaknesses = payload.weaknesses ?? payload.cons ?? [];
+  const recommendations =
+    payload.recommendations ?? payload.improvements ?? payload.nextSteps ?? [];
+  const omittedSummaryArray =
+    (payload.strengths === undefined && payload.pros === undefined) ||
+    (payload.weaknesses === undefined && payload.cons === undefined) ||
+    (payload.recommendations === undefined &&
+      payload.improvements === undefined &&
+      payload.nextSteps === undefined);
+  if (omittedSummaryArray) {
+    normalizedModelFields = true;
+  }
+
   const parsed = marketplaceDraftQcJudgeOutputSchema.safeParse({
     ...payload,
     criteria,
-    criticalFails: payload.criticalFails ?? payload.critical_fails,
-    strengths: payload.strengths ?? payload.pros,
-    weaknesses: payload.weaknesses ?? payload.cons,
-    recommendations:
-      payload.recommendations ?? payload.improvements ?? payload.nextSteps,
+    criticalFails: criticalFails.criticalFails,
+    strengths,
+    weaknesses,
+    recommendations,
   });
   if (!parsed.success) {
     return {
@@ -587,6 +678,11 @@ const MARKETPLACE_CRITICAL_REPAIR_TARGETS: Record<
   stale_prompt_plan: {
     targetPaths: ["plan.shots", "plan.storyboardGuide"],
     action: "ทำให้แผนข้อความสอดคล้องกับ revision และ reference manifest ปัจจุบัน",
+    autoRunnable: false,
+  },
+  unclassified_critical_fail: {
+    targetPaths: [],
+    action: "ตรวจสอบผล QC ด้วยตนเอง เพราะระบบจัดประเภทจุดวิกฤตจากผลประเมินไม่ได้",
     autoRunnable: false,
   },
 };
