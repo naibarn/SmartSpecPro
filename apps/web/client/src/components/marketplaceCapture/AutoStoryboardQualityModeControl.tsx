@@ -137,7 +137,7 @@ export function AutoStoryboardQualityModeControl({
       next.qualityMode =
         nextValue as HyperframesAutoPlanOverrideInput["qualityMode"];
     }
-    onChange(pruneBaseAutoDefaultOverrides(next));
+    onChange(next);
   };
 
   return (

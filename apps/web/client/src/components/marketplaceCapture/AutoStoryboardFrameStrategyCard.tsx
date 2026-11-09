@@ -24,14 +24,9 @@ import {
  * tenants see a byte-identical page.
  *
  * Single source of truth: this writes into the SAME `autoStoryboardOverrides`
- * state as `AutoStoryboardAdvancedOverrides` via the same `onChange`, using
- * byte-identical prune-to-default-shape semantics
- * (`overrideValueString` / `pruneBaseAutoDefaultOverrides` /
- * `baseAutoDefaultValues` below are duplicated from that module, not
- * imported — they are not exported from it, and that module must stay
- * completely unchanged). Keeping the two in lockstep is asserted by this
- * component's own tests and by `AutoStoryboardAdvancedOverrides.test.tsx`
- * staying green.
+ * state as `AutoStoryboardAdvancedOverrides`. The caller supplies the
+ * context-specific default strategy (including Job Workbench's sequential
+ * default), so choosing it removes only this field and preserves preferences.
  */
 
 type OverrideKey = keyof HyperframesAutoPlanOverrideInput;
@@ -54,30 +49,12 @@ const baseAutoDefaultValues: Record<OverrideKey, string> = {
   characterPresenceMode: "auto",
 };
 
-// Mirrors AutoStoryboardAdvancedOverrides.tsx's `pruneBaseAutoDefaultOverrides`
-// byte for byte.
-function pruneBaseAutoDefaultOverrides(
-  value: HyperframesAutoPlanOverrideInput
-): HyperframesAutoPlanOverrideInput {
-  const next = { ...value };
-  (Object.keys(next) as OverrideKey[]).forEach(key => {
-    if (overrideValueString(next[key]) === baseAutoDefaultValues[key]) {
-      delete next[key];
-    }
-  });
-  return next;
-}
-
 export interface AutoStoryboardFrameStrategyCardProps {
   enabled: boolean;
+  defaultFrameStrategy?: FrameStrategyValue;
   /**
-   * Accepted for signature parity with `AutoStoryboardAdvancedOverrides`
-   * (and room for a future "server override diff" affordance). NOT read for
-   * selected-state resolution: `AutoStoryboardAdvancedOverrides`'s own
-   * `selectedValueFor` never reads `plan` either (verified by reading the
-   * source rather than assuming) — both this card and that dropdown resolve
-   * the selected value from `value.frameStrategy ?? <static base default>`
-   * only, which is what keeps them as one true source of truth.
+   * Used as a fallback when the caller does not provide a context-specific
+   * default. Explicit user overrides always take precedence.
    */
   plan?: HyperframesAutoStoryboardReviewPlan | null;
   value: HyperframesAutoPlanOverrideInput;
@@ -87,6 +64,8 @@ export interface AutoStoryboardFrameStrategyCardProps {
 
 export function AutoStoryboardFrameStrategyCard({
   enabled,
+  defaultFrameStrategy,
+  plan,
   value,
   onChange,
   locale,
@@ -119,17 +98,22 @@ export function AutoStoryboardFrameStrategyCard({
     },
   ];
 
-  const selectedValue = overrideValueString(
-    pruneBaseAutoDefaultOverrides(value).frameStrategy ??
-      baseAutoDefaultValues.frameStrategy
-  );
+  const planDefault =
+    defaultFrameStrategy ??
+    plan?.defaults.frameStrategy ??
+    baseAutoDefaultValues.frameStrategy;
+  const selectedValue = overrideValueString(value.frameStrategy ?? planDefault);
 
   const selectStrategy = (nextValue: FrameStrategyValue) => {
     const next: HyperframesAutoPlanOverrideInput = {
       ...value,
-      frameStrategy: nextValue,
     };
-    onChange(pruneBaseAutoDefaultOverrides(next));
+    if (nextValue === planDefault) {
+      delete next.frameStrategy;
+    } else {
+      next.frameStrategy = nextValue;
+    }
+    onChange(next);
   };
 
   return (

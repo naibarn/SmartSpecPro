@@ -394,11 +394,11 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     );
   });
 
-  it("keeps 3x3 as the visible frame default when clearing a frame override", () => {
+  it("clears a frame override when selecting the resolved plan default", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <AutoStoryboardAdvancedOverrides
-        plan={readyPlan({ frameStrategy: "video_shot_start_stop" })}
+        plan={readyPlan()}
         open
         value={{ frameStrategy: "video_shot_start_stop" }}
         onChange={onChange}

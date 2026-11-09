@@ -1,11 +1,43 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHyperframesAutoPlanFromState } from "../hyperframesAutoPlanService";
+import {
+  buildHyperframesAutoPlanFromState,
+  resolveHyperframesAutoReviewWorkflowOverrides,
+} from "../hyperframesAutoPlanService";
 import {
   acceptMarketplaceAutoReviewImageQaWithWarningsAfterStoryboardFramesReadyForTest,
 } from "../marketplaceAutoReviewService";
 
 describe("hyperframesAutoPlanService", () => {
+  it("defaults sequential-enabled flows to sequential frames and preserves explicit strategy choices", () => {
+    expect(
+      resolveHyperframesAutoReviewWorkflowOverrides({
+        workflowMode: "job_workbench",
+      })
+    ).toMatchObject({
+      outputMode: "full_video",
+      frameStrategy: "sequential_shot_storyboard",
+    });
+    expect(
+      resolveHyperframesAutoReviewWorkflowOverrides({
+        workflowMode: "job_workbench",
+        overrides: { frameStrategy: "storyboard_3x3_split" },
+      })
+    ).toMatchObject({
+      outputMode: "full_video",
+      frameStrategy: "storyboard_3x3_split",
+    });
+    expect(
+      resolveHyperframesAutoReviewWorkflowOverrides({
+        workflowMode: "standard",
+        sequentialStoryboardEnabled: true,
+      })
+    ).toEqual({ frameStrategy: "sequential_shot_storyboard" });
+    expect(
+      resolveHyperframesAutoReviewWorkflowOverrides({ workflowMode: "standard" })
+    ).toBeUndefined();
+  });
+
   it("builds an automatic backend-selected plan without caller customization", () => {
     const plan = buildHyperframesAutoPlanFromState({
       auth: { userId: 1, tenantId: "tenant_1" },

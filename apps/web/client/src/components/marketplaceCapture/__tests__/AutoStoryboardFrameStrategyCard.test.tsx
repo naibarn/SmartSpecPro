@@ -112,6 +112,24 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     ).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("uses the resolved sequential plan default when no frame override is saved", () => {
+    render(
+      <AutoStoryboardFrameStrategyCard
+        enabled
+        plan={readyPlan({ frameStrategy: "sequential_shot_storyboard" })}
+        value={{}}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Sequential 9 images/i })
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /3x3 storyboard grid/i })
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("clicking the sequential card calls onChange with the sequential frame strategy", () => {
     const onChange = vi.fn();
     render(
@@ -133,7 +151,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     });
   });
 
-  it("clicking back to the plan default produces the same override shape AutoStoryboardAdvancedOverrides' update() would produce", () => {
+  it("keeps an explicit 3x3 choice when the plan default is sequential", () => {
     const onChange = vi.fn();
     render(
       <AutoStoryboardFrameStrategyCard
@@ -147,10 +165,9 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /3x3 storyboard grid/i })
     );
-    // Matches AutoStoryboardAdvancedOverrides.test.tsx's "keeps 3x3 as the
-    // visible frame default when clearing a frame override": selecting the
-    // base auto default prunes the key away entirely rather than pinning it.
-    expect(onChange).toHaveBeenCalledWith({});
+    expect(onChange).toHaveBeenCalledWith({
+      frameStrategy: "storyboard_3x3_split",
+    });
   });
 
   it("preserves unrelated overrides already present in value when switching strategy", () => {

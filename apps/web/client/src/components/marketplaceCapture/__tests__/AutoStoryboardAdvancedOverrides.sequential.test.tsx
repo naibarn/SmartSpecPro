@@ -43,6 +43,31 @@ function readyPlan(overrides: Record<string, unknown> = {}) {
 }
 
 describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Feature 136 §5.2)", () => {
+  it("uses a sequential plan default and keeps an explicit 3x3 choice", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan({ frameStrategy: "sequential_shot_storyboard" })}
+        defaultFrameStrategy="sequential_shot_storyboard"
+        open
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+        sequentialStrategyEnabled
+      />
+    );
+
+    const frames = screen.getByLabelText("Frames");
+    expect(frames).toHaveValue("sequential_shot_storyboard");
+    fireEvent.change(frames, {
+      target: { value: "storyboard_3x3_split" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      frameStrategy: "storyboard_3x3_split",
+    });
+  });
+
   it("flag off (default): Frames select has exactly the two shipped options", () => {
     render(
       <AutoStoryboardAdvancedOverrides
@@ -95,6 +120,7 @@ describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Featur
     rerender(
       <AutoStoryboardAdvancedOverrides
         plan={readyPlan({ frameStrategy: "sequential_shot_storyboard" })}
+        defaultFrameStrategy="sequential_shot_storyboard"
         open
         value={{ frameStrategy: "sequential_shot_storyboard" }}
         onChange={onChange}
@@ -109,7 +135,9 @@ describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Featur
     fireEvent.change(screen.getByLabelText("เฟรม"), {
       target: { value: "storyboard_3x3_split" },
     });
-    expect(onChange).toHaveBeenLastCalledWith({});
+    expect(onChange).toHaveBeenLastCalledWith({
+      frameStrategy: "storyboard_3x3_split",
+    });
   });
 
   it("flag on with locale=en: the English sequential option label is used", () => {

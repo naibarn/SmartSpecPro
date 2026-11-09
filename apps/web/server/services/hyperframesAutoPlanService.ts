@@ -44,6 +44,36 @@ function compactText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+const MARKETPLACE_AUTO_REVIEW_FRAME_STRATEGIES = new Set([
+  "storyboard_3x3_split",
+  "video_shot_start_stop",
+  "sequential_shot_storyboard",
+]);
+
+export function resolveHyperframesAutoReviewWorkflowOverrides(input: {
+  overrides?: Record<string, unknown> | null;
+  workflowMode?: "standard" | "job_workbench";
+  sequentialStoryboardEnabled?: boolean;
+}): Record<string, unknown> | null | undefined {
+  const isJobWorkbench = input.workflowMode === "job_workbench";
+  if (!isJobWorkbench && !input.sequentialStoryboardEnabled) {
+    return input.overrides;
+  }
+  const requestedOverrides = isRecord(input.overrides) ? input.overrides : {};
+  const requestedFrameStrategy = compactText(requestedOverrides.frameStrategy);
+  return {
+    ...requestedOverrides,
+    ...(isJobWorkbench ? { outputMode: "full_video" } : {}),
+    // Sequential-enabled tenants and Job Workbench default to 9 separate
+    // images while still honoring an explicit strategy selected in the UI.
+    frameStrategy: MARKETPLACE_AUTO_REVIEW_FRAME_STRATEGIES.has(
+      requestedFrameStrategy
+    )
+      ? requestedFrameStrategy
+      : "sequential_shot_storyboard",
+  };
+}
+
 function recordFromJsonLike(value: unknown): Record<string, unknown> | null {
   if (isRecord(value)) return value;
   const text = compactText(value);
@@ -540,14 +570,11 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
   // AUTHORITATIVE decision still happens inside `buildHyperframesAutoPlanFromState`
   // off the fully-resolved `defaults`, so a divergence here can only ever
   // skip the optimization, never cause an incorrect block.
-  const workflowOverrides =
-    input.workflowMode === "job_workbench"
-      ? {
-          ...(isRecord(input.overrides) ? input.overrides : {}),
-          outputMode: "full_video",
-          frameStrategy: "sequential_shot_storyboard",
-        }
-      : input.overrides;
+  const workflowOverrides = resolveHyperframesAutoReviewWorkflowOverrides({
+    overrides: input.overrides,
+    workflowMode: input.workflowMode,
+    sequentialStoryboardEnabled: tenantFlags.marketplaceSequentialStoryboard,
+  });
   const rawOverrides = isRecord(workflowOverrides) ? workflowOverrides : null;
   const requestedFrameStrategyLooksSequential =
     compactText(rawOverrides?.frameStrategy) === "sequential_shot_storyboard";

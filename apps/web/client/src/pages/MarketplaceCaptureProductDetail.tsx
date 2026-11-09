@@ -177,6 +177,69 @@ function persistStoredAutoStoryboardOverrides(
   }
 }
 
+function retainAutoStoryboardModelOverrides(
+  overrides: HyperframesAutoPlanOverrideInput
+): HyperframesAutoPlanOverrideInput {
+  const retained: HyperframesAutoPlanOverrideInput = {};
+  for (const key of [
+    "imageModel",
+    "videoModel",
+    "visionQaModel",
+    "storyPlanningModel",
+  ] as const) {
+    const value = overrides[key];
+    if (typeof value === "string" && value.trim()) {
+      retained[key] = value as never;
+    }
+  }
+  return retained;
+}
+
+type AutoReviewModelPreferences = {
+  imageModel?: string;
+  visionQaModel?: string;
+};
+
+const AUTO_REVIEW_MODEL_PREFERENCES_STORAGE_KEY =
+  "smartSpecPro.marketplaceCapture.autoReviewModelPreferences.v1";
+
+function loadStoredAutoReviewModelPreferences(): AutoReviewModelPreferences {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(
+      AUTO_REVIEW_MODEL_PREFERENCES_STORAGE_KEY
+    );
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      ...(typeof parsed.imageModel === "string" &&
+      parsed.imageModel.trim().length <= 120
+        ? { imageModel: parsed.imageModel.trim() }
+        : {}),
+      ...(typeof parsed.visionQaModel === "string" &&
+      parsed.visionQaModel.trim().length <= 120
+        ? { visionQaModel: parsed.visionQaModel.trim() }
+        : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function persistStoredAutoReviewModelPreferences(
+  preferences: AutoReviewModelPreferences
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      AUTO_REVIEW_MODEL_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(preferences)
+    );
+  } catch {
+    // Keep the model selectors usable when browser storage is unavailable.
+  }
+}
+
 // Standard Order ("flow เดิม") credit-cap selector — round-count display
 // values mirror server/services/marketplaceAutoReviewService.ts
 // buildMarketplaceAutoReviewQualityModePolicy()'s maxRepairAttemptsPerUnit
@@ -883,12 +946,6 @@ function autoStoryboardPlanMatchesOverrides(
     unknown,
   ][];
   if (!plan) return false;
-  if (entries.length === 0) {
-    return (
-      !plan.resetToAutoAvailable &&
-      (plan.overrideDiff.fields ?? []).length === 0
-    );
-  }
   return entries.every(([key, value]) => {
     const planValue = autoStoryboardPlanOverrideValue(plan, key);
     return String(planValue ?? "") === String(value ?? "");
@@ -2559,12 +2616,40 @@ export default function MarketplaceCaptureProductDetail() {
     useState<AutoReviewShotCount>(9);
   const [autoReviewOverlayTextMode, setAutoReviewOverlayTextMode] =
     useState<AutoReviewOverlayTextMode>("no_text");
-  const [autoReviewImageModel, setAutoReviewImageModel] =
-    useState<AutoReviewImageModel>("google-banana-2");
+  const [autoReviewModelPreferences, setAutoReviewModelPreferencesState] =
+    useState<AutoReviewModelPreferences>(() =>
+      loadStoredAutoReviewModelPreferences()
+    );
+  const setAutoReviewModelPreferences = useCallback(
+    (action: Parameters<typeof setAutoReviewModelPreferencesState>[0]) => {
+      setAutoReviewModelPreferencesState(current => {
+        const next = typeof action === "function" ? action(current) : action;
+        persistStoredAutoReviewModelPreferences(next);
+        return next;
+      });
+    },
+    []
+  );
+  const autoReviewImageModel =
+    autoReviewModelPreferences.imageModel ?? "google-banana-2";
+  const setAutoReviewImageModel = useCallback(
+    (imageModel: AutoReviewImageModel) =>
+      setAutoReviewModelPreferences(current => ({ ...current, imageModel })),
+    [setAutoReviewModelPreferences]
+  );
   // Empty string means "auto (follow quality mode)" — the historical
   // fixed mapping of fast_draft/balanced -> gpt-4o-mini, premium_strict_qa
   // -> gpt-4o. Vision-capable models change often, so users can override it.
-  const [autoReviewVisionQaModel, setAutoReviewVisionQaModel] = useState("");
+  const autoReviewVisionQaModel =
+    autoReviewModelPreferences.visionQaModel ?? "";
+  const setAutoReviewVisionQaModel = useCallback(
+    (visionQaModel: string) =>
+      setAutoReviewModelPreferences(current => ({
+        ...current,
+        visionQaModel,
+      })),
+    [setAutoReviewModelPreferences]
+  );
   // Standard Order credit-cap selector (image repair rounds). "" = no
   // selection, which omits the field from startAutoReviewMutation and keeps
   // today's behavior exactly. Persisted per productId (route has no `key`,
@@ -2620,10 +2705,20 @@ export default function MarketplaceCaptureProductDetail() {
     useState<MarketplaceAutoReviewLaunchMode>("auto_storyboard_review");
   const [showAutoStoryboardAdvanced, setShowAutoStoryboardAdvanced] =
     useState(false);
-  const [autoStoryboardOverrides, setAutoStoryboardOverrides] =
+  const [autoStoryboardOverrides, setAutoStoryboardOverridesState] =
     useState<HyperframesAutoPlanOverrideInput>(() =>
       loadStoredAutoStoryboardOverrides()
     );
+  const setAutoStoryboardOverrides = useCallback(
+    (action: Parameters<typeof setAutoStoryboardOverridesState>[0]) => {
+      setAutoStoryboardOverridesState(current => {
+        const next = typeof action === "function" ? action(current) : action;
+        persistStoredAutoStoryboardOverrides(next);
+        return next;
+      });
+    },
+    []
+  );
   // Marketplace two-character-conversation feature (planning/marketplace-
   // two-character-conversation/plan.md §3.6/§3.8) — STAGED pipeline's
   // requested per-shot video duration. `undefined` (the default) omits
@@ -2671,6 +2766,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [optimisticAutoStoryboardStart, setOptimisticAutoStoryboardStart] =
     useState(false);
   const autoStoryboardStartAttemptRef = useRef(0);
+  const autoStoryboardStalePlanRetryKeysRef = useRef(new Set<string>());
   const [collapsedAutoReviewRunIds, setCollapsedAutoReviewRunIds] = useState<
     Set<string>
   >(() => new Set());
@@ -3182,9 +3278,12 @@ export default function MarketplaceCaptureProductDetail() {
   const sequentialStrategyEnabled =
     tenantFeatureFlags.marketplaceSequentialStoryboard === true ||
     isAutoReviewJobSetupRoute;
+  const autoStoryboardDefaultFrameStrategy = sequentialStrategyEnabled
+    ? "sequential_shot_storyboard"
+    : "storyboard_3x3_split";
   const sequentialStrategySelected = isSequentialFrameStrategy(
     autoStoryboardOverrides.frameStrategy ??
-      autoStoryboardPlan?.defaults.frameStrategy
+      autoStoryboardDefaultFrameStrategy
   );
   const autoStoryboardPlanLoading =
     autoStoryboardPlanQuery.isLoading && !autoStoryboardPlan;
@@ -3477,7 +3576,12 @@ export default function MarketplaceCaptureProductDetail() {
     });
   const startAutoStoryboardReviewMutation =
     trpc.marketplaceCapture.startAutoStoryboardReview.useMutation({
-      onSuccess: async result => {
+      onSuccess: async (result, variables) => {
+        if (variables.idempotencyKey) {
+          autoStoryboardStalePlanRetryKeysRef.current.delete(
+            variables.idempotencyKey
+          );
+        }
         const startedRunKeys = autoReviewRunIdentityKeys(result.run);
         if (startedRunKeys.length > 0) {
           setSuppressedAutoReviewRunIds(previous => {
@@ -3516,7 +3620,71 @@ export default function MarketplaceCaptureProductDetail() {
         }
         toast.success("เริ่ม Auto Storyboard Review แล้ว");
       },
-      onError: error => {
+      onError: (error, variables) => {
+        const idempotencyKey = variables.idempotencyKey ?? "";
+        const isStalePlanError =
+          error.data?.code === "PRECONDITION_FAILED" &&
+          error.message.includes("Auto Storyboard Review plan is stale");
+        if (
+          isStalePlanError &&
+          idempotencyKey &&
+          !autoStoryboardStalePlanRetryKeysRef.current.has(idempotencyKey)
+        ) {
+          autoStoryboardStalePlanRetryKeysRef.current.add(idempotencyKey);
+          toast.info(
+            "แผนมีการเปลี่ยนแปลง กำลังโหลดแผนใหม่และเริ่มด้วยค่าที่เลือกไว้"
+          );
+          void (async () => {
+            try {
+              const refreshed =
+                await utils.marketplaceCapture.getAutoStoryboardReviewPlan.fetch(
+                  {
+                    productId: variables.productId,
+                    overrides: variables.overrides,
+                    ...(variables.workflowMode
+                      ? { workflowMode: variables.workflowMode }
+                      : {}),
+                  }
+                );
+              await utils.marketplaceCapture.getAutoStoryboardReviewPlan.invalidate(
+                { productId: variables.productId }
+              );
+              if (!refreshed.plan.canStart && !refreshed.plan.activeRunId) {
+                const blocker = refreshed.plan.blockers.find(
+                  item => item.severity === "blocking"
+                );
+                setOptimisticAutoStoryboardStart(false);
+                toast.error(
+                  blocker?.safeMessage ||
+                    refreshed.plan.primaryAction.label ||
+                    "แผนเปลี่ยนและต้องตรวจสอบก่อนเริ่มงาน"
+                );
+                autoStoryboardStalePlanRetryKeysRef.current.delete(
+                  idempotencyKey
+                );
+                return;
+              }
+              startAutoStoryboardReviewMutation.mutate({
+                ...variables,
+                expectedPlanHash: refreshed.plan.planHash,
+              });
+            } catch (refreshError) {
+              autoStoryboardStalePlanRetryKeysRef.current.delete(
+                idempotencyKey
+              );
+              setOptimisticAutoStoryboardStart(false);
+              toast.error(
+                refreshError instanceof Error
+                  ? refreshError.message
+                  : "โหลดแผน Auto Storyboard Review ล่าสุดไม่สำเร็จ"
+              );
+            }
+          })();
+          return;
+        }
+        if (idempotencyKey) {
+          autoStoryboardStalePlanRetryKeysRef.current.delete(idempotencyKey);
+        }
         if (isLostUpstreamApiErrorMessage(error.message)) {
           const recoveryAttempt = autoStoryboardStartAttemptRef.current;
           toast.warning(
@@ -5462,8 +5630,8 @@ export default function MarketplaceCaptureProductDetail() {
   // (added to `HyperframesAutoPlanOverrideInputSchema` in W2), never through
   // `referenceAnchors` — that field only exists on the legacy top-level
   // mutation input. Deliberately NOT folded into `autoStoryboardOverrides`
-  // state itself so "Use Auto plan" (`setAutoStoryboardOverrides({})`) never
-  // silently drops a cast the user explicitly picked.
+  // state itself so resetting plan overrides never silently drops a cast the
+  // user explicitly picked.
   const autoStoryboardOverridesWithCast =
     autoReviewCharacterCastPayload.length > 0
       ? { ...autoStoryboardOverrides, characterCast: autoReviewCharacterCastPayload }
@@ -6621,7 +6789,7 @@ export default function MarketplaceCaptureProductDetail() {
               showStandardAction={!isAutoReviewJobSetupRoute}
               showActiveRunStatus={!isAutoReviewJobSetupRoute}
               onResetToAuto={() => {
-                setAutoStoryboardOverrides({});
+                setAutoStoryboardOverrides(retainAutoStoryboardModelOverrides);
                 setAutoReviewShotDurationSeconds(undefined);
                 setAutoReviewStagedShotCount(undefined);
                 setShowAutoStoryboardAdvanced(false);
@@ -6636,6 +6804,7 @@ export default function MarketplaceCaptureProductDetail() {
             />
             <AutoStoryboardFrameStrategyCard
               enabled={sequentialStrategyEnabled}
+              defaultFrameStrategy={autoStoryboardDefaultFrameStrategy}
               plan={autoStoryboardPlan}
               value={autoStoryboardOverrides}
               onChange={setAutoStoryboardOverrides}
@@ -6707,8 +6876,9 @@ export default function MarketplaceCaptureProductDetail() {
               value={autoStoryboardOverrides}
               onChange={setAutoStoryboardOverrides}
               sequentialStrategyEnabled={sequentialStrategyEnabled}
+              defaultFrameStrategy={autoStoryboardDefaultFrameStrategy}
               onResetToAuto={() => {
-                setAutoStoryboardOverrides({});
+                setAutoStoryboardOverrides(retainAutoStoryboardModelOverrides);
                 setAutoReviewShotDurationSeconds(undefined);
                 setAutoReviewStagedShotCount(undefined);
                 setShowAutoStoryboardAdvanced(false);

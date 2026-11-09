@@ -26,6 +26,7 @@ interface AutoStoryboardAdvancedOverridesProps {
   /** Recommended-first LLM list for authoring the story / running the
    *  storyboard skill. First entry is the recommended default. */
   storyPlanningModelOptions?: ReadonlyArray<{ value: string; label: string }>;
+  defaultFrameStrategy?: HyperframesAutoPlanOverrideInput["frameStrategy"];
   /**
    * Feature 136 (section 11, §6.6). Flag-gated: `frameStrategyOptions`
    * conditionally appends the sequential option; the array is otherwise
@@ -98,18 +99,6 @@ function overrideValueString(value: unknown): string {
   return typeof value === "number" ? String(value) : String(value ?? "");
 }
 
-function pruneBaseAutoDefaultOverrides(
-  value: HyperframesAutoPlanOverrideInput
-): HyperframesAutoPlanOverrideInput {
-  const next = { ...value };
-  (Object.keys(next) as OverrideKey[]).forEach(key => {
-    if (overrideValueString(next[key]) === baseAutoDefaultValues[key]) {
-      delete next[key];
-    }
-  });
-  return next;
-}
-
 function overridesEqual(
   left: HyperframesAutoPlanOverrideInput,
   right: HyperframesAutoPlanOverrideInput
@@ -165,7 +154,7 @@ export function AutoStoryboardStoryMotionFields({
     } else {
       next[key] = nextValue as never;
     }
-    onChange(pruneBaseAutoDefaultOverrides(next));
+    onChange(next);
   };
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -223,6 +212,7 @@ export function AutoStoryboardAdvancedOverrides({
   videoModelOptions: providedVideoModelOptions,
   visionQaModelOptions: providedVisionQaModelOptions,
   storyPlanningModelOptions,
+  defaultFrameStrategy,
   videoSegmentPreview,
   sequentialStrategyEnabled = false,
   shotDurationSeconds,
@@ -232,9 +222,6 @@ export function AutoStoryboardAdvancedOverrides({
 }: AutoStoryboardAdvancedOverridesProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const fields = plan?.overrideDiff.fields ?? [];
-  const effectiveValue = pruneBaseAutoDefaultOverrides(value);
-  const localOverrideActive = Object.keys(effectiveValue).length > 0;
-  const showResetToAuto = fields.length > 0 || localOverrideActive;
   const thai = copy.locale === "th";
   const labels = {
     format: thai ? "รูปแบบ" : "Format",
@@ -294,7 +281,29 @@ export function AutoStoryboardAdvancedOverrides({
   };
   const describeFields = (fieldNames: string[]) =>
     fieldNames.map(field => fieldLabels[field] ?? field);
-  const localOverrideFields = describeFields(Object.keys(effectiveValue));
+  const defaultValueFor = (key: OverrideKey): string => {
+    if (key === "frameStrategy" && defaultFrameStrategy) {
+      return defaultFrameStrategy;
+    }
+    return baseAutoDefaultValues[key];
+  };
+  const normalizedOverrides = { ...value };
+  (Object.keys(normalizedOverrides) as OverrideKey[]).forEach(key => {
+    if (overrideValueString(normalizedOverrides[key]) === defaultValueFor(key)) {
+      delete normalizedOverrides[key];
+    }
+  });
+  useEffect(() => {
+    if (!overridesEqual(value, normalizedOverrides)) {
+      onChange(normalizedOverrides);
+    }
+  }, [normalizedOverrides, onChange, value]);
+  const localOverrideKeys = (Object.keys(value) as OverrideKey[]).filter(
+    key => overrideValueString(value[key]) !== defaultValueFor(key)
+  );
+  const localOverrideActive = localOverrideKeys.length > 0;
+  const showResetToAuto = fields.length > 0 || localOverrideActive;
+  const localOverrideFields = describeFields(localOverrideKeys);
   const serverOverrideFields = describeFields(fields);
   const platformPresetOptions = [
     {
@@ -483,16 +492,11 @@ export function AutoStoryboardAdvancedOverrides({
         value: modelId,
         label: modelId,
       }));
-  const defaultValueFor = (key: OverrideKey): string =>
-    baseAutoDefaultValues[key];
   const selectedValueFor = (key: OverrideKey): string =>
-    overrideValueString(effectiveValue[key] ?? defaultValueFor(key));
+    overrideValueString(value[key] ?? defaultValueFor(key));
   const update = (key: OverrideKey, nextValue: string) => {
-    const next = { ...effectiveValue };
-    if (
-      nextValue === defaultValueFor(key) ||
-      nextValue === baseAutoDefaultValues[key]
-    ) {
+    const next = { ...value };
+    if (nextValue === defaultValueFor(key)) {
       delete next[key];
     } else if (key === "shotCount" || key === "manualVideoGroupSize") {
       next.shotCount = Number(
@@ -507,14 +511,8 @@ export function AutoStoryboardAdvancedOverrides({
     } else {
       next[key] = nextValue as never;
     }
-    onChange(pruneBaseAutoDefaultOverrides(next));
+    onChange(next);
   };
-
-  useEffect(() => {
-    if (!overridesEqual(value, effectiveValue)) {
-      onChange(effectiveValue);
-    }
-  }, [effectiveValue, onChange, value]);
 
   const fieldClass =
     "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
