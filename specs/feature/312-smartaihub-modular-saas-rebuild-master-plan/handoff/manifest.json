@@ -28,10 +28,10 @@
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
+    "next_action": "Before the first stateful Core slice, define how the aimarkethubs.com development and smartsihub.com production environment tenants bind separately from customer tenant IDs, and provision a least-privilege Modular development DB identity/secret. Then implement the Hono login/session adapter in smartaihub-platform at f271a2b669de97b1ae85788f3233902b47db018b, preserving existing password, 2FA, cookie and revocation behavior. Keep aimarket unavailable until the replacement is healthy and keep smartsihub.com inactive.",
     "next_ready_workunit": "r14-core-p1-first-slice",
     "reactivation_predicate": null,
-    "resume_point": "Last recorded external checkpoint is naibarn/smartaihub-platform at 7456bbe549050473543acbec2b9094d95e5a2e95, per docs/smartsihub-r1.4/FILE-PLACEMENT.md; this checkout has no apps/saas-core source, so verify repository access and current SHA before implementation. Continue the first Hono identity/session/action slice on the shared smartspec database using the aimarkethubs.com development environment tenant. Direct Codex/Claude and optional SPEC-224 are both supported; record the actual path used.",
+    "resume_point": "Canonical source naibarn/smartaihub-platform is present at clean main SHA f271a2b669de97b1ae85788f3233902b47db018b, matching origin/main; apps/saas-core currently contains only /livez. A read-only catalog audit of the active Legacy service verified the smartspec database and relevant users, tenant_users, tenants, worker_jobs/outbox, credits and subscription schema. The current Legacy DB role is superuser and MUST NOT be reused by Core. No explicit environment-tenant field was found on core identity/job tables. See handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md. No DB rows/schema or runtime targets were changed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -39,10 +39,11 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
     ],
-    "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
-    "rationale": "R1.6 now fixes shared PostgreSQL/user authority, distinct dev and production environment tenants, Hono-only new Core, and selectable direct or SPEC-224 development. Implementation remains partial; the canonical external source checkout and live schema/writer still need verification before stateful work.",
+    "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
+    "rationale": "The canonical Core repository and current SHA are verified, and a read-only audit confirmed the existing smartspec identity, membership, ledger and job schema. The Core source is still only a liveness endpoint. The Legacy runtime DB role is overprivileged for reuse, and the current schema does not define an environment-tenant binding for shared Core rows. These are concrete prerequisites for the first stateful adapter; no production or runtime change is claimed.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -75,7 +76,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -93,7 +94,8 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "7456bbe549050473543acbec2b9094d95e5a2e95"
+      "7456bbe549050473543acbec2b9094d95e5a2e95",
+      "f271a2b669de97b1ae85788f3233902b47db018b"
     ],
     "mapping": [],
     "source_paths": [
@@ -149,10 +151,11 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
       ],
-      "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
-      "rationale": "R1.6 now fixes shared PostgreSQL/user authority, distinct dev and production environment tenants, Hono-only new Core, and selectable direct or SPEC-224 development. Implementation remains partial; the canonical external source checkout and live schema/writer still need verification before stateful work.",
+      "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
+      "rationale": "The canonical Core repository and current SHA are verified, and a read-only audit confirmed the existing smartspec identity, membership, ledger and job schema. The Core source is still only a liveness endpoint. The Legacy runtime DB role is overprivileged for reuse, and the current schema does not define an environment-tenant binding for shared Core rows. These are concrete prerequisites for the first stateful adapter; no production or runtime change is claimed.",
       "residual_requirements": []
     },
     "disposition": {
@@ -295,10 +298,12 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-09T03:49:22.083558Z",
+  "updated_at": "2026-11-09T04:23:21.544380Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,

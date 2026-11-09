@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.
-- Manifest generation: 11
+- Next action: Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 

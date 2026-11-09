@@ -3930,7 +3930,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
+      "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
+      "rationale": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },
