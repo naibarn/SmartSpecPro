@@ -3,23 +3,23 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `3`
-- Updated (UTC): `2026-11-09T07:56:57.066173+00:00`
+- State generation: `6`
+- Updated (UTC): `2026-11-09T08:29:19.222547+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `NOT_VERIFIED`
+- Latest recorded merged Main SHA: `29bf37f576`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-auto-review-queue-cutover`
-- Next action: Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation.
+- Active section: `section-03-proof-and-deployment`
+- Next action: Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-canonical-worker-contract | in_progress | — | — | — | — | Implement the canonical Auto Review worker job helper, allowlist and executor, then add admission/execution tests. |
-| section-02-auto-review-queue-cutover | in_progress | — | — | — | — | Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation. |
-| section-03-proof-and-deployment | pending | — | — | — | — | — |
+| section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 29bf37f576 | Worker job contract, executor and Node allowlist are integrated; proceed with queue cutover proof and legacy stuck-job recovery verification. |
+| section-02-auto-review-queue-cutover | checkpointed | — | — | 29bf37f576 | 29bf37f576 | Auto Review LLM paths and QC now use worker_jobs; complete deployment and runtime health verification on legacy-debian-dev. |
+| section-03-proof-and-deployment | in_progress | — | — | — | — | Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

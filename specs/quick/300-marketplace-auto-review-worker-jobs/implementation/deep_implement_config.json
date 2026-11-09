@@ -13,12 +13,20 @@
   ],
   "sections_state": {
     "section-01-canonical-worker-contract": {
-      "status": "in_progress",
-      "next_action": "Implement the canonical Auto Review worker job helper, allowlist and executor, then add admission/execution tests."
+      "status": "checkpointed",
+      "next_action": "Worker job contract, executor and Node allowlist are integrated; proceed with queue cutover proof and legacy stuck-job recovery verification.",
+      "checkpoint_sha": "29bf37f576",
+      "merged_main_sha": "29bf37f576"
     },
     "section-02-auto-review-queue-cutover": {
+      "status": "checkpointed",
+      "next_action": "Auto Review LLM paths and QC now use worker_jobs; complete deployment and runtime health verification on legacy-debian-dev.",
+      "checkpoint_sha": "29bf37f576",
+      "merged_main_sha": "29bf37f576"
+    },
+    "section-03-proof-and-deployment": {
       "status": "in_progress",
-      "next_action": "Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation."
+      "next_action": "Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision."
     }
   },
   "pre_commit": {
@@ -30,10 +38,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 3,
-  "updated_at": "2026-11-09T07:56:57.066173+00:00",
+  "generation": 6,
+  "updated_at": "2026-11-09T08:29:19.222547+00:00",
   "progress": {
-    "active_section": "section-02-auto-review-queue-cutover",
-    "next_action": "Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation."
+    "active_section": "section-03-proof-and-deployment",
+    "next_action": "Run target-safe preflight and release revision 29bf37f576 to legacy-debian-dev; verify web and Node worker health plus public revision.",
+    "merged_main_sha": "29bf37f576"
   }
 }
