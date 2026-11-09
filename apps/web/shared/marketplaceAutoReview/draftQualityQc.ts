@@ -132,6 +132,20 @@ function readMarketplaceDraftQcCriterionId(
   return MARKETPLACE_DRAFT_QC_CRITERION_ALIASES[normalized] ?? null;
 }
 
+function readMarketplaceDraftQcScore(value: unknown): number | null {
+  const score =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
+  return Number.isFinite(score) && score >= 0 && score <= 5 ? score : null;
+}
+
+function readMarketplaceDraftQcText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 /**
  * Recovers harmless LLM drift between a rubric's display label and its
  * canonical criterion id. Scores and evidence remain mandatory and are never
@@ -154,25 +168,58 @@ export function normalizeMarketplaceDraftQcJudgeOutput(
   }
 
   const issues: string[] = [];
-  let normalizedCriterionIds = false;
+  let normalizedModelFields = false;
   const criteria = payload.criteria.map((item, index) => {
     const row =
       item && typeof item === "object" && !Array.isArray(item)
         ? (item as Record<string, unknown>)
         : {};
-    const criterionId = readMarketplaceDraftQcCriterionId(row.criterionId);
+    const rawCriterionId =
+      row.criterionId ??
+      row.criterion_id ??
+      row.criterion ??
+      row.criterionName ??
+      row.criterionLabel ??
+      row.name ??
+      row.label;
+    const criterionId = readMarketplaceDraftQcCriterionId(rawCriterionId);
     if (!criterionId) {
       issues.push(`criteria[${index}].criterionId`);
-    } else if (criterionId !== row.criterionId) {
-      normalizedCriterionIds = true;
     }
-    return { ...row, criterionId };
+    const rawScoreValue =
+      row.rawScore ?? row.raw_score ?? row.score ?? row.rating ?? row.value;
+    const rawScore = readMarketplaceDraftQcScore(rawScoreValue);
+    if (rawScore === null) issues.push(`criteria[${index}].rawScore`);
+    const evidenceValue =
+      row.evidence ??
+      row.reasoning ??
+      row.explanation ??
+      row.justification ??
+      row.rationale ??
+      row.reason ??
+      row.details ??
+      row.comment;
+    const evidence = readMarketplaceDraftQcText(evidenceValue);
+    if (!evidence) issues.push(`criteria[${index}].evidence`);
+    if (
+      criterionId !== rawCriterionId ||
+      rawScore !== rawScoreValue ||
+      evidence !== evidenceValue
+    ) {
+      normalizedModelFields = true;
+    }
+    return { ...row, criterionId, rawScore, evidence };
   });
   if (issues.length) return { ok: false, issues };
 
   const parsed = marketplaceDraftQcJudgeOutputSchema.safeParse({
     ...payload,
     criteria,
+    criticalFails: payload.criticalFails ?? payload.critical_fails,
+    strengths: payload.strengths ?? payload.pros,
+    weaknesses: payload.weaknesses ?? payload.cons,
+    recommendations:
+      payload.recommendations ?? payload.improvements ?? payload.nextSteps,
   });
   if (!parsed.success) {
     return {
@@ -200,8 +247,8 @@ export function normalizeMarketplaceDraftQcJudgeOutput(
     ok: true,
     data: parsed.data,
     issues: [],
-    warnings: normalizedCriterionIds
-      ? ["Normalized rubric display labels to canonical criterion ids."]
+    warnings: normalizedModelFields
+      ? ["Normalized equivalent rubric display labels and scorecard field names."]
       : [],
   };
 }
