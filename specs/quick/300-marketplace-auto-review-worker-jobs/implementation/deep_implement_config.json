@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Focused regression suite passed 14 files / 189 tests. Integrate the Auto Review fixes, deploy the exact main SHA to legacy-debian-dev, and verify public/runtime health. Live provider-backed QC/media and full browser UAT remain unrun; automated tests cover the reported contracts without consuming credits.",
-      "checkpoint_sha": "56b470e51c7fd956176f2718267a3bff8604962f",
-      "merged_main_sha": "1dfeb598f2ef966b09dcee28edd40200a7286b1a",
+      "next_action": "Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks.",
+      "checkpoint_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
+      "merged_main_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-autoreview-finalize"
     }
@@ -42,14 +42,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 32,
-  "updated_at": "2026-11-09T16:54:11.460817+00:00",
+  "generation": 34,
+  "updated_at": "2026-11-09T16:56:57.176488+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Focused regression suite passed 14 files / 189 tests. Integrate the Auto Review fixes, deploy the exact main SHA to legacy-debian-dev, and verify public/runtime health. Live provider-backed QC/media and full browser UAT remain unrun; automated tests cover the reported contracts without consuming credits.",
-    "merged_main_sha": "1dfeb598f2ef966b09dcee28edd40200a7286b1a",
+    "next_action": "Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks.",
+    "merged_main_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
     "gaps": [
-      "Live retry of Creative QC on run mar_670133124534765cf0d36d3637b6ee89 is pending after generation 453; browser UAT for skipping QC, per-shot repair and bulk prompt/image generation also remains pending."
+      "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
