@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-environment-database-boundary",
+    "section-02-password-mfa-compatibility",
+    "section-03-session-membership-routes",
+    "section-04-worker-proof-and-handoff"
+  ],
+  "sections_state": {
+    "section-01-environment-database-boundary": {
+      "status": "checkpointed",
+      "next_action": "Begin section 02 on current smartaihub-platform main: implement Worker-compatible bcrypt/Argon2 verification, legacy TOTP AES-GCM and RFC-compatible codes, and failure-safe MFA challenge handling using synthetic vectors and the account repository. Preserve stored passwords and shared account rows.",
+      "checkpoint_sha": "48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e",
+      "merged_main_sha": "48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e"
+    },
+    "section-02-password-mfa-compatibility": {
+      "status": "checkpointed",
+      "next_action": "Begin section 03: implement Hono login, short-lived MFA challenge, host-only JWT session, logout/JTI revocation, active /me membership, strict sharded SQLite Durable Object throttling, Origin/cookie/host protections, and local DO tests. Keep only loopback local bindings and no public deployment.",
+      "checkpoint_sha": "0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd",
+      "merged_main_sha": "0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd"
+    },
+    "section-03-session-membership-routes": {
+      "status": "checkpointed",
+      "next_action": "Section 03 remains integrated at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Its final ten-pass cross-cutting review is recorded under section 04; retain the latency benchmark and expired session-JTI cleanup as explicit pre-handover/production gaps.",
+      "checkpoint_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
+      "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739"
+    },
+    "section-04-worker-proof-and-handoff": {
+      "status": "checkpointed",
+      "next_action": "All four implementation sections and ten final gap-review passes are complete at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL/OPEN. Before target handover or high-volume production, define and measure a same-database Legacy/Core speed objective and establish a separately bounded expired session-JTI cleanup authority.",
+      "checkpoint_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
+      "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
+      "review_file": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-09T18:41:59.131242+00:00",
+  "generation": 15,
+  "updated_at": "2026-11-09T21:10:07.626414+00:00",
+  "progress": {
+    "active_section": "section-04-worker-proof-and-handoff",
+    "next_action": "All four implementation sections and ten final gap-review passes are complete at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL/OPEN. Before target handover or high-volume production, define and measure a same-database Legacy/Core speed objective and establish a separately bounded expired session-JTI cleanup authority.",
+    "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
+    "gaps": [
+      "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim faster before target handover.",
+      "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production."
+    ]
+  }
+}

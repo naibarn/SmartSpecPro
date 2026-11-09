@@ -22,7 +22,7 @@ Write scope in `smartaihub-platform/apps/saas-core`:
 ## API behavior
 
 - `POST /v1/core/auth/login`: rate-limited email/password verification; returns success or a short-lived MFA challenge. Does not leak account existence.
-- `POST /v1/core/auth/2fa`: validates the environment-bound pending challenge and TOTP or one-time recovery code, then issues the session.
+- `POST /v1/core/auth/2fa`: validates the environment-bound pending challenge and TOTP or one-time recovery code, reserves the challenge JTI once in an existing fixed account-shard Durable Object, then issues the session. A successful recovery code is consumed transactionally only after challenge reservation succeeds.
 - `POST /v1/core/auth/logout`: verify session, persist hashed-JTI revocation, clear cookie; never report a failed revocation as success.
 - `GET /v1/core/me`: verify the current session and read active membership roles from canonical `tenant_users`/`tenants`; return safe user and membership DTOs only.
 - Preserve `GET /livez` exactly as a liveness check. Do not add business-effect routes.
@@ -34,16 +34,19 @@ Write scope in `smartaihub-platform/apps/saas-core`:
 - Cookie has no Domain attribute, is HttpOnly and SameSite=Lax, and is Secure on HTTPS/secure origins. Non-local deployments require HTTPS.
 - Login/2FA/logout require same-origin browser requests. Ignore request-provided tenant/environment fields and untrusted forwarded-host headers.
 - `/me` always resolves memberships from `session.sub`; a current-tenant hint or hostname does not grant access.
-- Login and 2FA use a strict sliding-window Durable Object throttle: 10 requests/60 seconds per trusted client IP and 5/15 minutes per normalized account. Apply the IP bucket before parsing the login/MFA body or token; apply the account bucket after resolving a valid login email or MFA challenge. Use a fixed set of 256 shards per policy, selected by the first byte of an environment-specific HMAC; pass the full HMAC digest as the logical bucket key. SQLite rows contain policy, digest, and timestamp only, with indexed expiry cleanup across each shard. This prevents attacker-controlled email/IP values from creating unbounded objects while preserving independent strict counters. The Cloudflare runtime accepts only `CF-Connecting-IP`; local workerd uses one fixed local key. Never use one global DO, approximate Rate Limiting binding, or arbitrary forwarded IP header for this control. Throttle binding/key/identity/storage errors fail closed for auth routes while `/livez` remains healthy.
+- Login and 2FA use a strict sliding-window Durable Object throttle: 10 requests/60 seconds per trusted client IP and 5/15 minutes per normalized account. Apply the IP bucket before parsing the login/MFA body or token; apply the account bucket after resolving a valid login email or MFA challenge. Use a fixed set of 256 shards per policy, selected by the first byte of an environment-specific HMAC; pass the full HMAC digest as the logical bucket key. SQLite throttle rows contain policy, digest, and timestamp only, with indexed expiry cleanup across each shard. A separate indexed table on the fixed account shards stores SHA-256 challenge-JTI replay markers and removes them after expiry. This prevents attacker-controlled identifiers from creating unbounded objects and avoids accumulating expired MFA markers in the shared PostgreSQL JTI table. The Cloudflare runtime accepts only `CF-Connecting-IP`; local workerd uses one fixed local key. Never use one global DO, approximate Rate Limiting binding, or arbitrary forwarded IP header for this control. Throttle binding/key/identity/storage errors fail closed for auth routes while `/livez` remains healthy. Session logout revocation continues to use the canonical PostgreSQL JTI table.
 
 ## Prerequisites and acceptance
 
-Sections 01–02 are complete. Hono tests prove cookies and claims, host/audience/environment denial, expiry, disabled-account/revocation checks, current membership filtering, exact account/membership IDs, generic errors, origin validation, strict throttle windows/key scoping/fail-closed behavior and absence of wallet/job/admin routes. A local workerd smoke exercises the actual DO binding. A request with another tenant ID cannot change `/me` or select another tenant.
+Sections 01–02 are complete. Hono tests prove cookies and claims, host/audience/environment denial, expiry, disabled-account/revocation checks, current membership filtering, exact account/membership IDs, generic errors, origin validation, strict throttle windows/key scoping/fail-closed behavior, one-time MFA challenge reservation before recovery-code consumption, and absence of wallet/job/admin routes. A local workerd smoke exercises the actual DO binding. A request with another tenant ID cannot change `/me` or select another tenant.
 
 ## Exposure, fallback and rollback
 
 Local worker only. Do not route `aimarkethubs.com` or `smartsihub.com`, and do not replace the current port-3100 process. Preserve existing liveness if auth dependencies are unavailable; auth routes fail closed. Reverting this section restores the liveness-only Worker.
 
 ## Remaining acceptance
+
+- Session JTI revocation rows expire logically but are not deleted by this Core role. A separately bounded cleanup owner is required before high-volume production.
+- Runtime performance remains unmeasured against Legacy. Define a numeric target and compare login, MFA, and `/me` with the same database and representative hashes before target handover.
 
 These API tests do not prove real authorized-user login, full customer-data parity, production credentials or actual environment isolation. Keep those parent SPEC requirements open.

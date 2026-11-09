@@ -1,0 +1,35 @@
+# Deep Implement — Live HandOff
+
+Generated from `deep_implement_config.json`. Read this at any time;
+on resume, reconcile recorded SHA values with Git/PR state.
+
+- State generation: `15`
+- Updated (UTC): `2026-11-09T21:10:07.626414+00:00`
+- Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
+- Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
+- Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
+- Latest recorded merged Main SHA: `5aa98dab9ff2bfac22006b3a1ef89ed08f46c739`
+- Outcome: `NOT_ACCEPTED`
+- Active section: `section-04-worker-proof-and-handoff`
+- Next action: All four implementation sections and ten final gap-review passes are complete at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL/OPEN. Before target handover or high-volume production, define and measure a same-database Legacy/Core speed objective and establish a separately bounded expired session-JTI cleanup authority.
+
+## Sections
+
+| Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| section-01-environment-database-boundary | checkpointed | — | — | 48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e | 48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e | Begin section 02 on current smartaihub-platform main: implement Worker-compatible bcrypt/Argon2 verification, legacy TOTP AES-GCM and RFC-compatible codes, and failure-safe MFA challenge handling using synthetic vectors and the account repository. Preserve stored passwords and shared account rows. |
+| section-02-password-mfa-compatibility | checkpointed | — | — | 0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd | 0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd | Begin section 03: implement Hono login, short-lived MFA challenge, host-only JWT session, logout/JTI revocation, active /me membership, strict sharded SQLite Durable Object throttling, Origin/cookie/host protections, and local DO tests. Keep only loopback local bindings and no public deployment. |
+| section-03-session-membership-routes | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | Section 03 remains integrated at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Its final ten-pass cross-cutting review is recorded under section 04; retain the latency benchmark and expired session-JTI cleanup as explicit pre-handover/production gaps. |
+| section-04-worker-proof-and-handoff | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | All four implementation sections and ten final gap-review passes are complete at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL/OPEN. Before target handover or high-volume production, define and measure a same-database Legacy/Core speed objective and establish a separately bounded expired session-JTI cleanup authority. |
+
+## Open gaps / blockers (not automatic merge blockers)
+
+- No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim faster before target handover.
+- Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.
+
+## Resume
+
+1. Read this file and `deep_implement_config.json`.
+2. Check current Git HEAD, actual commits, worktree ownership and PR merge status.
+3. Recover any committed-but-unrecorded or merged-but-unrecorded work before replaying.
+4. Continue the next incomplete step; do not reset dirty files or re-open merged PRs.

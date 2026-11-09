@@ -21,10 +21,12 @@ Sections 01–03 are implemented and their focused checks pass. Refresh each rep
 - Run `corepack pnpm@10.4.1 test:core`, `corepack pnpm@10.4.1 typecheck:core`, `corepack pnpm@10.4.1 build:core`, and a local `dev:core` HTTP smoke test using `wrangler dev --local`.
 - Pin Wrangler/workers-types to compatible releases and set the compatibility date to a date supported by the bundled Workerd runtime; local workstation timezone may be ahead of the UTC release date.
 - Inspect bundle/import closure for no Express or `apps/web` runtime dependency; preserve liveness JSON.
-- Run a local workerd smoke through the actual Durable Object binding, including persistent counts across repeated calls and restart, verify bounded shard names and expiry cleanup, and confirm only the local Modular development class migration is configured.
+- Run a local workerd smoke through the actual Durable Object binding, including persistent counts across repeated calls and restart, one-time MFA challenge-JTI reservation, replay rejection and expired-marker cleanup; verify bounded shard names and confirm only the local Modular development class migration is configured.
 - If the development DB role exists, verify database/role identity and grants catalog-only, and confirm no DDL. Do not select or print real user data. Otherwise state the exact live credential proof gap.
 - No Cloudflare deploy, remote mode, public target, DNS/resource creation, port-3100 handover or production secret provisioning.
 - Record source SHA, commands, outcome, DB identity/grant evidence if collected, and remaining real-user/target/production acceptance gaps through existing canonical handoff tooling. The parent requirement remains OPEN unless its complete acceptance evidence is actually met.
+- A small dry-run bundle and local Worker smoke do not prove lower user-visible latency; record the absent numeric target and comparison benchmark as an open gap until a same-database Legacy/Core benchmark is measured before domain handover.
+- Keep expired session-JTI row cleanup as an operational gap: the Core DB role cannot delete those rows, and this slice must not broaden its grants or add cleanup DDL. Identify a separately bounded cleanup owner before high-volume production.
 
 ## Integration and rollback
 
