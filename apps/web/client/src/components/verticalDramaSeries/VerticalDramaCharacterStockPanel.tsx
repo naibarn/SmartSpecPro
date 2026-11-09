@@ -2615,6 +2615,60 @@ export interface VerticalDramaCharacterStockPanelProps {
 /* Panel                                                                       */
 /* -------------------------------------------------------------------------- */
 
+type CharacterPortraitUploadButtonProps = {
+  ariaLabel: string;
+  title: string;
+  disabled: boolean;
+  isPending: boolean;
+  onOpen: () => void;
+  className: string;
+  testId: string;
+  variant?: "outline" | "secondary";
+  iconSize?: "sm" | "md" | "lg";
+};
+
+function CharacterPortraitUploadButton({
+  ariaLabel,
+  title,
+  disabled,
+  isPending,
+  onOpen,
+  className,
+  testId,
+  variant = "secondary",
+  iconSize = "md",
+}: CharacterPortraitUploadButtonProps) {
+  const iconClass =
+    iconSize === "lg"
+      ? "h-5 w-5"
+      : iconSize === "sm"
+        ? "h-3 w-3"
+        : "h-3.5 w-3.5";
+
+  return (
+    <Button
+      type="button"
+      size="icon"
+      variant={variant}
+      className={className}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      title={title}
+      onClick={event => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      data-testid={testId}
+    >
+      {isPending ? (
+        <Loader2 aria-hidden="true" className={`${iconClass} animate-spin`} />
+      ) : (
+        <UploadCloud aria-hidden="true" className={iconClass} />
+      )}
+    </Button>
+  );
+}
+
 export function VerticalDramaCharacterStockPanel({
   seriesId,
   readOnly = false,
@@ -5603,9 +5657,16 @@ export function VerticalDramaCharacterStockPanel({
   const [assigningCharacterId, setAssigningCharacterId] = useState<
     string | null
   >(null);
+  const portraitUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const portraitUploadCharacterIdRef = useRef<string | null>(null);
   const cardUploadMutation = trpc.ai.upload.useMutation();
   const cardResolveMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
+  const portraitTransferPending =
+    assigningCharacterId !== null ||
+    cardUploadMutation.isPending ||
+    cardResolveMutation.isPending ||
+    linkMutation.isPending;
   const settleCharacterImageTaskMutation =
     trpc.verticalDramaCharacters.settleCharacterImageTask.useMutation();
 
@@ -5777,6 +5838,76 @@ export function VerticalDramaCharacterStockPanel({
       );
     } finally {
       setAssigningCharacterId(null);
+    }
+  };
+
+  const openPortraitUpload = (characterId: string) => {
+    if (readOnly || portraitTransferPending) return;
+    portraitUploadCharacterIdRef.current = characterId;
+    portraitUploadInputRef.current?.click();
+  };
+
+  const handlePortraitUploadInputChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.currentTarget.files?.[0];
+    const characterId = portraitUploadCharacterIdRef.current;
+    event.currentTarget.value = "";
+    portraitUploadCharacterIdRef.current = null;
+    if (!file || !characterId) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error(t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported"));
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error(
+        t(lang, "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)", "Image is too large (max 15MB)")
+      );
+      return;
+    }
+
+    setAssigningCharacterId(characterId);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const uploaded = await cardUploadMutation.mutateAsync({
+        fileName: file.name || `character-portrait-${Date.now()}.jpg`,
+        fileType: file.type || "image/jpeg",
+        fileBase64: dataUrl,
+      });
+      const resolved = await cardResolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: uploaded.url,
+        mimeType: uploaded.fileType || file.type || "image/jpeg",
+        fileName: file.name,
+      });
+
+      linkMutation.mutate(
+        {
+          seriesId,
+          characterId,
+          mediaAssetId: resolved.mediaAssetId,
+          assetType: "character_reference",
+          role: "primary_portrait",
+          source: "imported",
+        },
+        {
+          onSettled: () =>
+            setAssigningCharacterId(current =>
+              current === characterId ? null : current
+            ),
+        }
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(lang, "อัปโหลดภาพไม่สำเร็จ", "Image upload failed")
+      );
+      setAssigningCharacterId(current =>
+        current === characterId ? null : current
+      );
     }
   };
 
@@ -6364,6 +6495,18 @@ export function VerticalDramaCharacterStockPanel({
       className={cn("flex flex-col gap-4", className)}
     >
       {creditConfirmDialog}
+      {!readOnly && (
+        <input
+          ref={portraitUploadInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={handlePortraitUploadInputChange}
+          data-testid="vd-character-portrait-upload-input"
+        />
+      )}
       {/* Target-audience-region chip (2026-07-06 quality upgrade) — always
           visible so users know which region/ethnicity default is currently
           applied to every generated character image. Changed from the
@@ -6705,6 +6848,29 @@ export function VerticalDramaCharacterStockPanel({
                                       className="aspect-[9/16] w-28 rounded-md border border-border object-cover"
                                     />
                                   </button>
+                                  {!readOnly && (
+                                    <CharacterPortraitUploadButton
+                                      ariaLabel={t(
+                                        lang,
+                                        `อัปโหลดหรือเปลี่ยนภาพตัวละคร ${c.name}`,
+                                        `Upload or replace ${c.name}'s image`
+                                      )}
+                                      title={t(
+                                        lang,
+                                        "อัปโหลดหรือเปลี่ยนภาพตัวละคร",
+                                        "Upload or replace character image"
+                                      )}
+                                      disabled={
+                                        mutating || portraitTransferPending
+                                      }
+                                      isPending={isAssigningThis}
+                                      onOpen={() =>
+                                        openPortraitUpload(c.characterId)
+                                      }
+                                      className="absolute left-1 top-1 h-6 w-6 shadow"
+                                      testId={`vd-character-upload-image-${c.characterId}`}
+                                    />
+                                  )}
                                   {/* Card-level delete (2026-07-11): lets the
                                 user clear the current portrait so the next
                                 "regenerate" no longer identity-locks onto a
@@ -6821,13 +6987,32 @@ export function VerticalDramaCharacterStockPanel({
                                       </Button>
                                     ))}
                                 </div>
-                              ) : (
+                              ) : readOnly ? (
                                 <span className="flex aspect-[9/16] w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-muted-foreground/70">
-                                  <User
-                                    aria-hidden="true"
-                                    className="h-5 w-5"
-                                  />
+                                  <User aria-hidden="true" className="h-5 w-5" />
                                 </span>
+                              ) : (
+                                <CharacterPortraitUploadButton
+                                  ariaLabel={t(
+                                    lang,
+                                    `อัปโหลดภาพตัวละคร ${c.name}`,
+                                    `Upload ${c.name}'s image`
+                                  )}
+                                  title={t(
+                                    lang,
+                                    "อัปโหลดภาพตัวละครจากเครื่อง",
+                                    "Upload a character image from your device"
+                                  )}
+                                  disabled={mutating || portraitTransferPending}
+                                  isPending={isAssigningThis}
+                                  onOpen={() =>
+                                    openPortraitUpload(c.characterId)
+                                  }
+                                  className="flex aspect-[9/16] w-16 shrink-0 items-center justify-center rounded-md border-dashed bg-muted/20 text-muted-foreground/70 hover:text-foreground"
+                                  variant="outline"
+                                  iconSize="lg"
+                                  testId={`vd-character-upload-image-${c.characterId}`}
+                                />
                               )}
                               <button
                                 type="button"
@@ -7091,6 +7276,8 @@ export function VerticalDramaCharacterStockPanel({
                                     v.data?.slotStatus === "pending";
                                   const isVariantDropTarget =
                                     dragOverCharacterId === v.characterId;
+                                  const isAssigningThisVariant =
+                                    assigningCharacterId === v.characterId;
                                   const confirmingThisVariantCharacterDelete =
                                     confirmingDeleteCharacterId ===
                                     v.characterId;
@@ -7274,13 +7461,61 @@ export function VerticalDramaCharacterStockPanel({
                                               className="aspect-[9/16] h-20 w-14 shrink-0 rounded object-cover"
                                             />
                                           </button>
-                                        ) : (
+                                        ) : readOnly ? (
                                           <span className="flex aspect-[9/16] h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
                                             <User
                                               aria-hidden="true"
                                               className="h-5 w-5"
                                             />
                                           </span>
+                                        ) : (
+                                          <CharacterPortraitUploadButton
+                                            ariaLabel={t(
+                                              lang,
+                                              `อัปโหลดภาพลุค ${variantLabel} ของ ${c.name}`,
+                                              `Upload ${c.name}'s ${variantLabel} look image`
+                                            )}
+                                            title={t(
+                                              lang,
+                                              "อัปโหลดภาพลุคนี้จากเครื่อง",
+                                              "Upload this look image from your device"
+                                            )}
+                                            disabled={
+                                              mutating || portraitTransferPending
+                                            }
+                                            isPending={isAssigningThisVariant}
+                                            onOpen={() =>
+                                              openPortraitUpload(v.characterId)
+                                            }
+                                            className="flex aspect-[9/16] h-20 w-14 shrink-0 items-center justify-center rounded border-dashed text-muted-foreground hover:text-foreground"
+                                            variant="outline"
+                                            iconSize="lg"
+                                            testId={`vd-character-upload-image-${v.characterId}`}
+                                          />
+                                        )}
+                                        {variantThumbnailUrl && !readOnly && (
+                                          <CharacterPortraitUploadButton
+                                            ariaLabel={t(
+                                              lang,
+                                              `อัปโหลดหรือเปลี่ยนภาพลุค ${variantLabel} ของ ${c.name}`,
+                                              `Upload or replace ${c.name}'s ${variantLabel} look image`
+                                            )}
+                                            title={t(
+                                              lang,
+                                              "อัปโหลดหรือเปลี่ยนภาพลุคนี้",
+                                              "Upload or replace this look image"
+                                            )}
+                                            disabled={
+                                              mutating || portraitTransferPending
+                                            }
+                                            isPending={isAssigningThisVariant}
+                                            onOpen={() =>
+                                              openPortraitUpload(v.characterId)
+                                            }
+                                            className="absolute left-0 top-0 z-10 h-5 w-5 shadow"
+                                            iconSize="sm"
+                                            testId={`vd-character-upload-image-${v.characterId}`}
+                                          />
                                         )}
                                         {/* Always-visible "edit this look's
                                       image" badge, sitting ON the image where
