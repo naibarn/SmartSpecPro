@@ -14,21 +14,21 @@
   "sections_state": {
     "section-01-canonical-worker-contract": {
       "status": "checkpointed",
-      "next_action": "Worker job contract, executor and Node allowlist are integrated; proceed with queue cutover proof and legacy stuck-job recovery verification.",
+      "next_action": "Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03.",
       "checkpoint_sha": "29bf37f576",
-      "merged_main_sha": "29bf37f576"
+      "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46"
     },
     "section-02-auto-review-queue-cutover": {
       "status": "checkpointed",
-      "next_action": "Deploy 92f7bcd95486e7d36d8f3f27067237389e10b676 to legacy-debian-dev and verify the existing run no longer queues advance while the story review remains awaiting.",
+      "next_action": "Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it.",
       "checkpoint_sha": "92f7bcd95486e7d36d8f3f27067237389e10b676",
-      "merged_main_sha": "92f7bcd95486e7d36d8f3f27067237389e10b676"
+      "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46"
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Feature release deployed and verified on legacy-debian-dev at b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626; public homepage and main JS asset return 200; web and Node worker are healthy. Optional-QC, per-shot repair and bulk worker workflow UAT plus focused tests remain unrun.",
-      "checkpoint_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626",
-      "merged_main_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626"
+      "next_action": "Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun.",
+      "checkpoint_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46",
+      "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46"
     }
   },
   "pre_commit": {
@@ -40,12 +40,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 16,
-  "updated_at": "2026-11-09T10:18:48.123303+00:00",
+  "generation": 20,
+  "updated_at": "2026-11-09T10:34:06.146156+00:00",
   "progress": {
-    "active_section": "section-02-auto-review-queue-cutover",
-    "next_action": "Deploy 92f7bcd95486e7d36d8f3f27067237389e10b676 to legacy-debian-dev and verify the existing run no longer queues advance while the story review remains awaiting.",
-    "merged_main_sha": "92f7bcd95486e7d36d8f3f27067237389e10b676",
+    "active_section": "section-03-proof-and-deployment",
+    "next_action": "Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun.",
+    "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46",
     "gaps": [
       "Browser UAT for skipping QC, per-shot image repair, bulk prompt/image generation and worker completion is pending; this session verified syntax, build, deployment and health only."
     ]

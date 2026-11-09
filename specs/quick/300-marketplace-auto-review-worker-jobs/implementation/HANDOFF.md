@@ -3,23 +3,23 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `16`
-- Updated (UTC): `2026-11-09T10:18:48.123303+00:00`
+- State generation: `20`
+- Updated (UTC): `2026-11-09T10:34:06.146156+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `92f7bcd95486e7d36d8f3f27067237389e10b676`
+- Latest recorded merged Main SHA: `895867ffd0b692f12198afc3fa3d8cfdc4be3a46`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-auto-review-queue-cutover`
-- Next action: Deploy 92f7bcd95486e7d36d8f3f27067237389e10b676 to legacy-debian-dev and verify the existing run no longer queues advance while the story review remains awaiting.
+- Active section: `section-03-proof-and-deployment`
+- Next action: Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 29bf37f576 | Worker job contract, executor and Node allowlist are integrated; proceed with queue cutover proof and legacy stuck-job recovery verification. |
-| section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 92f7bcd95486e7d36d8f3f27067237389e10b676 | Deploy 92f7bcd95486e7d36d8f3f27067237389e10b676 to legacy-debian-dev and verify the existing run no longer queues advance while the story review remains awaiting. |
-| section-03-proof-and-deployment | checkpointed | — | — | b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626 | b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626 | Feature release deployed and verified on legacy-debian-dev at b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626; public homepage and main JS asset return 200; web and Node worker are healthy. Optional-QC, per-shot repair and bulk worker workflow UAT plus focused tests remain unrun. |
+| section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
+| section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
+| section-03-proof-and-deployment | checkpointed | — | — | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
