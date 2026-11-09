@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 8,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -625,26 +625,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L218"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L218",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage."
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Keep PARTIAL/OPEN until an authorized existing Legacy user authenticates, canonical customer membership/data is verified, development/production isolation and the selected development path are proven, a same-database Legacy/Core latency target and benchmark are recorded, a separately bounded expired session-JTI cleanup owner is established, and full acceptance/UAT is complete.",
       "requirement_digest": "0c32e4707fa5b6d5fcff5205c8dcd02fd1788749f96f7bd147b6b62b59dc9d4a",
       "requirement_id": "REQ-46847581892C",
       "requirement_text": "Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.",
       "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+      ],
+      "verification_method": "Exact source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Core typecheck, 10-file/61-test suite, Wrangler dry-run (387.18 KiB, 91.46 KiB gzip), loopback Workerd/DO throttle and replay-expiry smoke, Hono/import and target-boundary review, and read-only PostgreSQL role/catalog/query-shape evidence. Does not prove actual stored-hash distribution, real-user login, authorized customer-data parity, production isolation, quantitative speed, cleanup ownership, UAT or deployment."
     }
   ],
   "schema_version": 1,
