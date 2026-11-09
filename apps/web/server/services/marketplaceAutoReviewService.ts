@@ -19763,6 +19763,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
           immutableConstraints: candidate.immutableConstraints,
           userId: run.userId,
           tenantId: run.tenantId ?? auth.tenantId ?? undefined,
+          billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:repair:${state.repairSourceFingerprint}`,
           onProgress: event => {
             lastProgress = event;
           },
@@ -19834,6 +19835,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
         maxImprovementRounds: state.maxImprovementRounds,
         userId: run.userId,
         tenantId: run.tenantId ?? auth.tenantId ?? undefined,
+        billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:${currentFingerprint}:${state.maxImprovementRounds}`,
         onProgress: event => {
           lastProgress = event;
         },
@@ -24816,6 +24818,42 @@ export async function startMarketplaceAutoReviewRun(
       db,
       run: stagedRun,
     });
+    if (initializationRunId) {
+      const initializedRun = await reloadRun(db, runId, auth);
+      const initializedMetadata = asRecord(
+        initializedRun.metadataJson
+      ) as RunMetadata;
+      const currentInitialization = asRecord(
+        initializedMetadata.initializationControl
+      );
+      if (cleanText(currentInitialization.status) !== "completed") {
+        const now = nowDate();
+        const [updated] = await db
+          .update(marketplaceAutoReviewRuns)
+          .set({
+            metadataJson: {
+              ...initializedMetadata,
+              initializationControl: {
+                ...currentInitialization,
+                schemaVersion: 1,
+                status: "completed",
+                completedAt: now.toISOString(),
+              },
+            },
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.id, runId),
+              eq(marketplaceAutoReviewRuns.updatedAt, initializedRun.updatedAt)
+            )
+          )
+          .returning({ id: marketplaceAutoReviewRuns.id });
+        if (!updated) {
+          return getMarketplaceAutoReviewRun(runId, auth);
+        }
+      }
+    }
     await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
     return getMarketplaceAutoReviewRun(runId, auth);
   }
@@ -37191,8 +37229,9 @@ export async function queueMarketplaceAutoReviewAdvance(
     return;
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
-  const scheduledAt = new Date(Date.now() + Math.max(500, delayMs));
-  const bucket = Math.floor(scheduledAt.getTime() / 60_000);
+  const requestedAtMs = Date.now() + Math.max(500, delayMs);
+  const bucket = Math.ceil(requestedAtMs / 60_000);
+  const scheduledAt = new Date(bucket * 60_000);
   const source = cleanText(runtime.schedulerSource);
   if (!source.startsWith("worker_jobs:")) {
     const [activeRunJob] = await db

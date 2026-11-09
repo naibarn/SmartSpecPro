@@ -170,14 +170,12 @@ export async function runMarketplaceAutoReviewJob(
       .limit(
         Math.min(Math.max(options.outboxLimit ?? DEFAULT_OUTBOX_LIMIT, 1), 50)
       );
-    const runs = options.queueBridgeOnly
-      ? []
-      : await db
-          .select()
-          .from(marketplaceAutoReviewRuns)
-          .where(inArray(marketplaceAutoReviewRuns.status, ACTIVE_STATUSES))
-          .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
-          .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
+    const runs = await db
+      .select()
+      .from(marketplaceAutoReviewRuns)
+      .where(inArray(marketplaceAutoReviewRuns.status, ACTIVE_STATUSES))
+      .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
+      .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
 
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
@@ -340,19 +338,6 @@ export async function runMarketplaceAutoReviewJob(
       }
     }
 
-    if (options.queueBridgeOnly) {
-      return {
-        scannedRuns: 0,
-        advancedRuns: 0,
-        processedOutboxJobs,
-        processedHyperframesJobs: 0,
-        hyperframesRuntimeDeferred: false,
-        hyperframesWorkerDisabled: false,
-        skippedRuns,
-        errors,
-      };
-    }
-
     for (const run of runs) {
       // Yield to the Event Loop between processing runs so HTTP I/O is never blocked
       await new Promise(resolve => setImmediate(resolve));
@@ -383,12 +368,19 @@ export async function runMarketplaceAutoReviewJob(
           ["queued", "running"].includes(String(creativeQc.status)) ||
           ["queued", "running"].includes(String(creativeQc.repairStatus))
         ) {
-          await startMarketplaceAutoReviewDraftQualityQc(
-            { runId: run.id },
-            { userId: run.userId, tenantId }
-          );
-          advancedRuns += 1;
-          continue;
+          try {
+            await startMarketplaceAutoReviewDraftQualityQc(
+              { runId: run.id },
+              { userId: run.userId, tenantId }
+            );
+          } catch (qcError) {
+            const message =
+              qcError instanceof Error ? qcError.message : String(qcError);
+            console.warn(
+              `[marketplace-auto-review] optional QC recovery failed for run ${run.id}; continuing workflow: ${message}`
+            );
+            errors.push({ runId: run.id, message: `optional_qc: ${message}` });
+          }
         }
         if (["queued", "running"].includes(String(initialization.status))) {
           const initializationKey = `marketplace-auto-review:${run.id}:initialize:v1`;
@@ -409,14 +401,69 @@ export async function runMarketplaceAutoReviewJob(
             skippedRuns += 1;
             continue;
           }
-          await enqueueMarketplaceAutoReviewWorkerJob({
-            tenantId,
-            userId: run.userId,
-            runId: run.id,
-            operation: { operation: "initialize_run", runId: run.id },
-            idempotencyKey: initializationKey,
-            priority: 20,
-          });
+          const stagedPipeline = metadata.stagedPipeline;
+          const stagedStoryboard = metadata.stagedSequentialStoryboard;
+          const hasStagedInitializationState =
+            metadata.planningArchitecture === "staged_two_skill_v2" &&
+            stagedPipeline &&
+            typeof stagedPipeline === "object" &&
+            !Array.isArray(stagedPipeline) &&
+            stagedStoryboard &&
+            typeof stagedStoryboard === "object" &&
+            !Array.isArray(stagedStoryboard);
+          if (
+            initializationJob?.status === "succeeded" &&
+            hasStagedInitializationState
+          ) {
+            const nextMetadata = {
+              ...metadata,
+              initializationControl: {
+                ...initialization,
+                schemaVersion: 1,
+                status: "completed",
+                completedAt: new Date().toISOString(),
+              },
+            };
+            const [updatedRun] = await db
+              .update(marketplaceAutoReviewRuns)
+              .set({ metadataJson: nextMetadata, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(marketplaceAutoReviewRuns.id, run.id),
+                  eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+                )
+              )
+              .returning({ id: marketplaceAutoReviewRuns.id });
+            if (!updatedRun) {
+              skippedRuns += 1;
+              continue;
+            }
+            await queueMarketplaceAutoReviewAdvance(
+              run.id,
+              { userId: run.userId, tenantId },
+              {
+                schedulerSource: `marketplace-auto-review-recovery:${getSchedulerMode()}`,
+              },
+              5_000
+            );
+          } else if (initializationJob?.status === "succeeded") {
+            skippedRuns += 1;
+            errors.push({
+              runId: run.id,
+              message:
+                "Initialization job succeeded but the staged review state is missing; refusing to restart initialization automatically.",
+            });
+            continue;
+          } else {
+            await enqueueMarketplaceAutoReviewWorkerJob({
+              tenantId,
+              userId: run.userId,
+              runId: run.id,
+              operation: { operation: "initialize_run", runId: run.id },
+              idempotencyKey: initializationKey,
+              priority: 20,
+            });
+          }
         } else {
           await queueMarketplaceAutoReviewAdvance(
             run.id,
@@ -436,6 +483,19 @@ export async function runMarketplaceAutoReviewJob(
         );
         errors.push({ runId: run.id, message });
       }
+    }
+
+    if (options.queueBridgeOnly) {
+      return {
+        scannedRuns: runs.length,
+        advancedRuns,
+        processedOutboxJobs,
+        processedHyperframesJobs: 0,
+        hyperframesRuntimeDeferred: false,
+        hyperframesWorkerDisabled: false,
+        skippedRuns,
+        errors,
+      };
     }
 
     try {
@@ -532,9 +592,14 @@ async function tickWorkerQueueBridge(): Promise<void> {
   if (!isJobEnabled()) return;
   try {
     const result = await runMarketplaceAutoReviewJob({ queueBridgeOnly: true });
-    if (result.processedOutboxJobs > 0 || result.errors.length > 0) {
+    if (
+      result.scannedRuns > 0 ||
+      result.advancedRuns > 0 ||
+      result.processedOutboxJobs > 0 ||
+      result.errors.length > 0
+    ) {
       console.info(
-        `[marketplace-auto-review] worker queue bridge outbox=${result.processedOutboxJobs} skipped=${result.skippedRuns} errors=${result.errors.length}`
+        `[marketplace-auto-review] worker queue bridge runs=${result.scannedRuns} advanced=${result.advancedRuns} outbox=${result.processedOutboxJobs} skipped=${result.skippedRuns} errors=${result.errors.length}`
       );
     }
   } catch (error) {

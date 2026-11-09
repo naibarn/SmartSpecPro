@@ -20,9 +20,9 @@
     },
     "section-02-auto-review-queue-cutover": {
       "status": "checkpointed",
-      "next_action": "Auto Review LLM paths and QC now use worker_jobs; complete deployment and runtime health verification on legacy-debian-dev.",
-      "checkpoint_sha": "29bf37f576",
-      "merged_main_sha": "29bf37f576"
+      "next_action": "Finish queue-bridge recovery and QC billing fixes, fast-gate and integrate the owned code paths, then deploy the integrated SHA to legacy-debian-dev and verify run mar_670133124534765cf0d36d3637b6ee89 advances without QC blocking.",
+      "checkpoint_sha": "d702cfa7112c6375ce55f5f8570e407399a9bc0d",
+      "merged_main_sha": "d702cfa7112c6375ce55f5f8570e407399a9bc0d"
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
@@ -40,12 +40,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 9,
-  "updated_at": "2026-11-09T09:20:26.689091+00:00",
+  "generation": 13,
+  "updated_at": "2026-11-09T10:06:37.199200+00:00",
   "progress": {
-    "active_section": "section-03-proof-and-deployment",
-    "next_action": "Feature release deployed and verified on legacy-debian-dev at b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626; public homepage and main JS asset return 200; web and Node worker are healthy. Optional-QC, per-shot repair and bulk worker workflow UAT plus focused tests remain unrun.",
-    "merged_main_sha": "b2bf144bf0f7a041ab2876234b1f2f3ee4fc6626",
+    "active_section": "section-02-auto-review-queue-cutover",
+    "next_action": "Finish queue-bridge recovery and QC billing fixes, fast-gate and integrate the owned code paths, then deploy the integrated SHA to legacy-debian-dev and verify run mar_670133124534765cf0d36d3637b6ee89 advances without QC blocking.",
+    "merged_main_sha": "d702cfa7112c6375ce55f5f8570e407399a9bc0d",
     "gaps": [
       "Browser UAT for skipping QC, per-shot image repair, bulk prompt/image generation and worker completion is pending; this session verified syntax, build, deployment and health only."
     ]

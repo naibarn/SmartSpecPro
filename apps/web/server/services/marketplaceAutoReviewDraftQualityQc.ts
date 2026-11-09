@@ -33,6 +33,8 @@ const SKILL_FOLDER_PATH = path.join(
   "skills",
   "marketplace-auto-review-draft-quality-controller"
 );
+const MARKETPLACE_AUTO_REVIEW_DRAFT_QC_SKILL_SLUG =
+  "marketplace-auto-review-draft-quality-controller";
 const MAX_DRAFT_BYTES = 180_000;
 
 const revisedDraftOutputSchema = z.object({
@@ -83,6 +85,7 @@ export interface MarketplaceDraftQcLoopInput {
   maxImprovementRounds?: number;
   userId: number;
   tenantId?: string;
+  billingRunIdempotencyKey?: string;
   isCancelled?: () => Promise<boolean>;
   onProgress?: (event: MarketplaceDraftQcProgressEvent) => void;
 }
@@ -326,6 +329,11 @@ export async function runMarketplaceAutoReviewDraftQualityQc(
         feature: "marketplace_auto_review_creative_qc",
         tenantId: input.tenantId,
         maxImprovementRounds: maxRounds,
+      }, input.billingRunIdempotencyKey, {
+        tenantId: input.tenantId,
+        skillSlug: MARKETPLACE_AUTO_REVIEW_DRAFT_QC_SKILL_SLUG,
+        skillRunId: input.billingRunIdempotencyKey,
+        description: "Marketplace Auto Review creative quality check",
       }));
   const drawReservation =
     dependencies.drawReservation ??
@@ -492,6 +500,7 @@ export interface MarketplaceDraftQcRepairInput {
   immutableConstraints: MarketplaceDraftQcImmutableConstraints;
   userId: number;
   tenantId?: string;
+  billingRunIdempotencyKey?: string;
   isCancelled?: () => Promise<boolean>;
   onProgress?: (event: MarketplaceDraftQcProgressEvent) => void;
 }
@@ -524,6 +533,11 @@ export async function runMarketplaceAutoReviewDraftQualityQcRepair(
         feature: "marketplace_auto_review_creative_qc_repair",
         tenantId: input.tenantId,
         sourceFingerprint: input.sourceFingerprint,
+      }, input.billingRunIdempotencyKey, {
+        tenantId: input.tenantId,
+        skillSlug: MARKETPLACE_AUTO_REVIEW_DRAFT_QC_SKILL_SLUG,
+        skillRunId: input.billingRunIdempotencyKey,
+        description: "Marketplace Auto Review creative quality repair",
       }));
   const drawReservation =
     dependencies.drawReservation ??
