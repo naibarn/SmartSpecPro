@@ -46,12 +46,28 @@ import path from "path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("../../db", () => ({ getDb: vi.fn() }));
+vi.mock("../marketplaceAutoReviewWorkerJob", async importOriginal => {
+  const actual = await importOriginal<
+    typeof import("../marketplaceAutoReviewWorkerJob")
+  >();
+  return {
+    ...actual,
+    enqueueMarketplaceAutoReviewWorkerJob: vi.fn().mockResolvedValue({
+      jobId: "test-marketplace-auto-review-job",
+      created: true,
+    }),
+    enqueueMarketplaceAutoReviewWorkerJobInTransaction: vi
+      .fn()
+      .mockResolvedValue({ jobId: "test-marketplace-auto-review-job", created: true }),
+  };
+});
 
 import { getDb } from "../../db";
 import {
   marketplaceAutoReviewRuns,
   marketplaceAutoReviewStages,
 } from "../../../drizzle/schema";
+import { createMarketplaceDraftQcState } from "../../../shared/marketplaceAutoReview/draftQualityQc";
 import {
   advanceMarketplaceAutoReviewRun,
   approveMarketplaceAutoReviewPlanReview,
@@ -208,7 +224,7 @@ function buildDbMock(params: {
     set: Record<string, unknown>;
   }) => void;
 }) {
-  return {
+  const dbMock: any = {
     select: (_cols?: unknown) => ({
       from: (table: unknown) => ({
         where: (..._args: unknown[]) => ({
@@ -253,7 +269,10 @@ function buildDbMock(params: {
         },
       }),
     }),
-  } as any;
+  };
+  dbMock.transaction = async (callback: (tx: any) => Promise<unknown>) =>
+    callback(dbMock);
+  return dbMock;
 }
 
 const AUTH = { userId: 7, tenantId: "tenant_1" };
@@ -407,6 +426,38 @@ describe("approveMarketplaceAutoReviewPlanReview", () => {
     );
 
     expect((result as any).metadataJson.planReview.status).toBe("approved");
+  });
+
+  it("allows story confirmation while optional Creative QC is queued or running", async () => {
+    for (const status of ["queued", "running"] as const) {
+      const creativeQc = {
+        ...createMarketplaceDraftQcState(),
+        status,
+      };
+      const run = baseRunFixture({
+        metadataJson: awaitingPlanReviewMetadataFixture({ creativeQc }),
+      });
+      const imageGenerationStage = awaitingPlanReviewStageFixture();
+      const updateRunSpy = vi.fn();
+      const upsertStageSpy = vi.fn();
+      mockGetDb.mockResolvedValue(
+        buildDbMock({
+          run,
+          imageGenerationStage,
+          stages: [imageGenerationStage],
+          updateRunSpy,
+          upsertStageSpy,
+        })
+      );
+
+      const result = await approveMarketplaceAutoReviewPlanReview(
+        { runId: "mar_1" },
+        AUTH
+      );
+      expect(updateRunSpy).toHaveBeenCalledTimes(1);
+      expect(upsertStageSpy).toHaveBeenCalledTimes(1);
+      expect((result as any).metadataJson.planReview.status).toBe("approved");
+    }
   });
 
   it("throws BAD_REQUEST and performs zero writes when the run is not awaiting review", async () => {

@@ -951,6 +951,7 @@ describe("StagedCheckpointReviewPanel", () => {
       input.state = {
         ...input.state,
         outputMode: "full_video",
+        planReview: { ...input.state.planReview, status: "approved" },
         shots: [
           { ...input.state.shots[0], shotId: 1, imageArtifactUrl: null },
           {
@@ -966,7 +967,7 @@ describe("StagedCheckpointReviewPanel", () => {
       render(<StagedCheckpointReviewPanel {...input} />);
 
       const bulkButton = screen.getByRole("button", {
-        name: "⚡ สั่งสร้างทุกช็อตที่ยังไม่มีผลลัพธ์ (2 ช็อต)",
+        name: "⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (2 ช็อต)",
       });
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
       fireEvent.click(bulkButton);
@@ -995,7 +996,7 @@ describe("StagedCheckpointReviewPanel", () => {
 
       expect(
         screen.queryByRole("button", {
-          name: /สั่งสร้างทุกช็อตที่ยังไม่มีผลลัพธ์/,
+          name: /สร้าง Prompt \+ ภาพ\/วิดีโอที่ยังขาด/,
         })
       ).toBeNull();
     });
@@ -1009,7 +1010,7 @@ describe("StagedCheckpointReviewPanel", () => {
 
       expect(
         screen.queryByRole("button", {
-          name: /สั่งสร้างทุกช็อตที่ยังไม่มีผลลัพธ์/,
+          name: /สร้าง Prompt \+ ภาพ\/วิดีโอที่ยังขาด/,
         })
       ).toBeNull();
     });

@@ -43,6 +43,10 @@ import {
 import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
+  compileStagedImagePrompt,
+  compileStagedVideoPrompt,
+  isCompleteStagedImagePrompt,
+  isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
@@ -1278,26 +1282,14 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       promptByShot.set(target.shotId, prompt);
       continue;
     }
-    const refresh = await refreshSequentialShotPromptWithSkill(
-      buildStagedSingleShotRefreshInput({
-        run,
-        metadata,
-        shotId: target.shotId,
-        publicUrl: input.runtime?.publicUrl,
-        tenantId: input.auth.tenantId,
-        stage: target.stage,
-      })
-    );
-    const generatedPrompt =
-      target.stage === "image"
-        ? refresh.startFrameImagePrompt.trim()
-        : String(refresh.videoPrompt ?? "").trim();
-    if (!generatedPrompt) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "staged_prompt_generation_empty",
-      });
-    }
+    const generatedPrompt = await generateCompleteStagedShotPrompt({
+      run,
+      metadata,
+      shotId: target.shotId,
+      publicUrl: input.runtime?.publicUrl,
+      tenantId: input.auth.tenantId,
+      stage: target.stage,
+    });
     promptByShot.set(target.shotId, generatedPrompt);
   }
 
@@ -2153,6 +2145,86 @@ export function buildStagedSingleShotRefreshInputForTest(input: {
   return buildStagedSingleShotRefreshInput(input);
 }
 
+async function generateCompleteStagedShotPrompt(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  shotId: number;
+  stage: "image" | "video";
+  publicUrl?: string | null;
+  tenantId?: string;
+  instruction?: string | null;
+}): Promise<string> {
+  const plan = record(record(input.metadata).stagedPipeline).plan as
+    | StagedStoryArcPlan
+    | undefined;
+  const planShot = plan?.shots.find(shot => shot.shotId === input.shotId);
+  if (!plan || !planShot) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_invalid_shot_contract",
+    });
+  }
+
+  let prompt = "";
+  try {
+    const refresh = await refreshSequentialShotPromptWithSkill(
+      buildStagedSingleShotRefreshInput({
+        ...input,
+        stage: input.stage,
+      })
+    );
+    prompt =
+      input.stage === "image"
+        ? refresh.startFrameImagePrompt.trim()
+        : String(refresh.videoPrompt ?? "").trim();
+  } catch (error) {
+    console.warn(
+      `[generateCompleteStagedShotPrompt] skill authoring failed for run=${input.run.id} shot=${input.shotId} stage=${input.stage}: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  const isComplete = () =>
+    input.stage === "image"
+      ? isCompleteStagedImagePrompt(prompt)
+      : isCompleteStagedVideoPrompt(prompt, planShot.dialogue);
+  if (isComplete()) return prompt;
+
+  const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
+    shot => shot.shotId === input.shotId
+  );
+  if (input.stage === "image") {
+    const customManifest = Array.isArray((input.metadata as any).customReferenceManifest)
+      ? (input.metadata as any).customReferenceManifest
+      : Array.isArray(input.metadata.stagedSequentialStoryboard.referenceManifest)
+        ? input.metadata.stagedSequentialStoryboard.referenceManifest
+        : [];
+    prompt = compileStagedImagePrompt({
+      plan,
+      shot: planShot,
+      customManifest,
+    }).prompt;
+    if (isCompleteStagedImagePrompt(prompt)) return prompt;
+  } else {
+    if (!stagedShot?.imageArtifactHash) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_image_artifact_missing",
+      });
+    }
+    prompt = compileStagedVideoPrompt({
+      plan,
+      shot: planShot,
+      imageArtifactHash: stagedShot.imageArtifactHash,
+    }).prompt;
+    if (isCompleteStagedVideoPrompt(prompt, planShot.dialogue)) return prompt;
+  }
+
+  throw new TRPCError({
+    code: "PRECONDITION_FAILED",
+    message: `staged_${input.stage}_prompt_incomplete`,
+  });
+}
+
 /**
  * Generates one shot prompt through the existing single-shot skill seam.
  * This operation never submits an image/video task or queues provider spend;
@@ -2283,27 +2355,15 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     };
   }
 
-  const refresh = await refreshSequentialShotPromptWithSkill(
-    buildStagedSingleShotRefreshInput({
-      run,
-      metadata,
-      shotId: input.shotId,
-      publicUrl: input.runtime?.publicUrl,
-      tenantId: input.auth.tenantId,
-      instruction: input.instruction,
-      stage: input.stage,
-    })
-  );
-  const generatedPrompt =
-    input.stage === "image"
-      ? refresh.startFrameImagePrompt.trim()
-      : String(refresh.videoPrompt ?? "").trim();
-  if (!generatedPrompt) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_prompt_generation_empty",
-    });
-  }
+  const generatedPrompt = await generateCompleteStagedShotPrompt({
+    run,
+    metadata,
+    shotId: input.shotId,
+    publicUrl: input.runtime?.publicUrl,
+    tenantId: input.auth.tenantId,
+    instruction: input.instruction,
+    stage: input.stage,
+  });
 
   return mutateOwnedStagedMetadata({
     runId: input.runId,

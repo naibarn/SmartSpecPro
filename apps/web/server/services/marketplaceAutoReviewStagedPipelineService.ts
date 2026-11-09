@@ -33,6 +33,8 @@ import {
   buildStagedVideoPromptContentHash,
   compileStagedImagePrompt,
   compileStagedVideoPrompt,
+  isCompleteStagedImagePrompt,
+  isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 // Safe as a normal top-level import: `productReviewSequentialStoryboardSkillRunner.ts`
 // does not import anything from this module, so there is no circular edge
@@ -1540,6 +1542,29 @@ async function compileImagePromptCheckpoints(params: {
       )
     ? (params.metadata as any).stagedSequentialStoryboard.referenceManifest
     : [];
+  // Repair pre-auto-approve image-prompt checkpoints before compiling any
+  // missing prompts. The compile pass persists after each LLM call, so this
+  // also makes the legacy checkpoint recovery durable if the worker is
+  // interrupted while it is authoring the rest of the storyboard.
+  for (const shot of params.plan.shots) {
+    const existingPrompt = checkpointFor(next, "image_prompt", shot.shotId);
+    if (existingPrompt?.state !== "awaiting") continue;
+    const healed = selfHealAwaitingCheckpoint(
+      next,
+      existingPrompt,
+      params.auth.userId
+    );
+    if (healed === next) continue;
+    next = healed;
+    await persistRun({
+      db: params.db,
+      run: params.run,
+      metadata: next as any,
+      status: "running",
+      currentStage: "prompt_plan",
+      stageIndex: 4,
+    });
+  }
   // Shots whose skill-authored attempt failed and fell back to the
   // deterministic compiler this pass — surfaced non-blockingly on the
   // `prompt_plan` stage below (`staged_prompt_skill_fallback`).
@@ -1594,8 +1619,8 @@ async function compileImagePromptCheckpoints(params: {
       });
       const refresh = await refreshSequentialShotPromptWithSkill(refreshInput);
       const skillPrompt = String(refresh.startFrameImagePrompt ?? "").trim();
-      if (!skillPrompt) {
-        throw new Error("staged_prompt_skill_authoring_empty");
+      if (!isCompleteStagedImagePrompt(skillPrompt)) {
+        throw new Error("staged_prompt_skill_authoring_incomplete");
       }
       prompt = skillPrompt;
       hash = buildStagedImagePromptContentHash({
@@ -1616,6 +1641,9 @@ async function compileImagePromptCheckpoints(params: {
       });
       prompt = compiled.prompt;
       hash = compiled.contentHash;
+      if (!isCompleteStagedImagePrompt(prompt)) {
+        throw new Error("staged_image_prompt_fallback_incomplete");
+      }
       skillFallbackShotIds.push(shot.shotId);
     }
     console.info(
@@ -1642,6 +1670,40 @@ async function compileImagePromptCheckpoints(params: {
       state: "image_prompt_awaiting",
       imagePromptHash: hash,
       imagePrompt: prompt,
+    });
+    next = {
+      ...next,
+      stagedPipeline: {
+        ...record(next.stagedPipeline),
+        promptGeneration: {
+          ...record(record(next.stagedPipeline).promptGeneration),
+          [`image:${shot.shotId}`]: {
+            generatedAt: new Date().toISOString(),
+            source: authoringSource,
+          },
+        },
+      },
+      stagedSequentialStoryboard: {
+        ...next.stagedSequentialStoryboard,
+        storyPlanStatus: "approved",
+      },
+      planReview: {
+        ...next.planReview,
+        status: "approved",
+        approvedRevision: params.plan.planRevision,
+      },
+    };
+    // Persist each completed shot before starting another LLM call. If a
+    // worker lease expires or the process restarts mid-storyboard, retries
+    // can resume from the first missing shot instead of discarding all
+    // prompts authored earlier in this pass.
+    await persistRun({
+      db: params.db,
+      run: params.run,
+      metadata: next as any,
+      status: "running",
+      currentStage: "prompt_plan",
+      stageIndex: 4,
     });
   }
   next = {
@@ -2043,6 +2105,8 @@ async function reconcileImageProvider(params: {
 async function compileVideoPrompt(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
+  auth: Auth;
+  runtime: Runtime;
   metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>;
   plan: StagedStoryArcPlan;
   shotId: number;
@@ -2054,13 +2118,50 @@ async function compileVideoPrompt(params: {
       item => item.shotId === params.shotId
     )?.imageArtifactHash;
   if (!imageArtifactHash) throw new Error("staged_image_artifact_missing");
-  const compiled = compileStagedVideoPrompt({
-    plan: params.plan,
-    shot,
+  let prompt: string;
+  let authoringSource: "skill" | "deterministic_fallback" = "skill";
+  try {
+    // Generate motion only after the image is approved, so the skill receives
+    // the accepted frame as a visual reference and preserves its composition.
+    const { buildStagedSingleShotRefreshInput } = await import(
+      "./marketplaceAutoReviewStagedCheckpointRouterService"
+    );
+    const refresh = await refreshSequentialShotPromptWithSkill(
+      buildStagedSingleShotRefreshInput({
+        run: params.run as any,
+        metadata: params.metadata as any,
+        shotId: params.shotId,
+        publicUrl: params.runtime.publicUrl,
+        tenantId: params.auth.tenantId,
+        stage: "video",
+      })
+    );
+    const skillPrompt = String(refresh.videoPrompt ?? "").trim();
+    if (!isCompleteStagedVideoPrompt(skillPrompt, shot.dialogue)) {
+      throw new Error("staged_video_prompt_skill_authoring_incomplete");
+    }
+    prompt = skillPrompt;
+  } catch (error) {
+    console.warn(
+      `[compileVideoPrompt] skill authoring failed for run=${params.run.id} shot=${params.shotId}, falling back to deterministic compiler: ${error instanceof Error ? error.message : String(error)}`
+    );
+    const compiled = compileStagedVideoPrompt({
+      plan: params.plan,
+      shot,
+      imageArtifactHash,
+    });
+    prompt = compiled.prompt;
+    authoringSource = "deterministic_fallback";
+    if (!isCompleteStagedVideoPrompt(prompt, shot.dialogue)) {
+      throw new Error("staged_video_prompt_fallback_incomplete");
+    }
+  }
+  const hash = buildStagedVideoPromptContentHash({
+    revision: params.plan.planRevision,
+    shotId: params.shotId,
+    prompt,
     imageArtifactHash,
   });
-  const prompt = compiled.prompt;
-  const hash = compiled.contentHash;
   const model = text(record(params.metadata).videoModel) || STAGED_VIDEO_MODEL;
   const checkpoint = buildStagedCheckpoint({
     checkpointId: `video-prompt:${params.run.id}:shot-${params.shotId}:r${params.plan.planRevision}`,
@@ -2080,6 +2181,19 @@ async function compileVideoPrompt(params: {
     videoPrompt: prompt,
   });
   next = replaceCheckpoint(next, checkpoint);
+  next = {
+    ...next,
+    stagedPipeline: {
+      ...record(next.stagedPipeline),
+      promptGeneration: {
+        ...record(record(next.stagedPipeline).promptGeneration),
+        [`video:${params.shotId}`]: {
+          generatedAt: new Date().toISOString(),
+          source: authoringSource,
+        },
+      },
+    },
+  };
   await persistRun({
     db: params.db,
     run: params.run,
@@ -2098,7 +2212,12 @@ async function compileVideoPrompt(params: {
       statusDetail: {
         state: "awaiting_video_prompt_review",
         severity: "info",
-        reasonCodes: ["video_prompt_approval_required"],
+        reasonCodes: [
+          "video_prompt_approval_required",
+          ...(authoringSource === "deterministic_fallback"
+            ? ["staged_video_prompt_skill_fallback"]
+            : []),
+        ],
         safeMessage: `ยืนยัน Prompt วิดีโอช็อตที่ ${params.shotId} ก่อนใช้เครดิตวิดีโอ`,
         nextAction: `ตรวจ Prompt วิดีโอช็อตที่ ${params.shotId} แล้วกดยืนยัน`,
         userActionRequired: true,
@@ -2567,10 +2686,16 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     });
     return { run: params.run, finalAssemblyApproved: false };
   }
-  if (
-    storyCheckpoint.state === "approved" &&
-    !checkpointFor(metadata, "image_prompt", 1)
-  ) {
+  const hasUncompiledImagePrompt = plan.shots.some(shot => {
+    const shotState = metadata.stagedSequentialStoryboard.shots.find(
+      item => item.shotId === shot.shotId
+    );
+    return (
+      !checkpointFor(metadata, "image_prompt", shot.shotId) ||
+      !String(shotState?.imagePrompt ?? "").trim()
+    );
+  });
+  if (storyCheckpoint.state === "approved" && hasUncompiledImagePrompt) {
     metadata = await compileImagePromptCheckpoints({
       db: params.db,
       run: params.run,
@@ -2727,14 +2852,22 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         shot.shotId
       );
     }
+    const existingVideoPromptCheckpoint = checkpointFor(
+      metadata,
+      "video_prompt",
+      shot.shotId
+    );
     if (
       imageResultCheckpoint?.state === "approved" &&
-      !checkpointFor(metadata, "video_prompt", shot.shotId)
+      (!existingVideoPromptCheckpoint ||
+        !String(shotState?.videoPrompt ?? "").trim())
     ) {
       try {
         metadata = await compileVideoPrompt({
           db: params.db,
           run: params.run,
+          auth: params.auth,
+          runtime: params.runtime,
           metadata,
           plan,
           shotId: shot.shotId,

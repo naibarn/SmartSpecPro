@@ -5,6 +5,8 @@ import {
   buildStagedVideoPromptContentHash,
   compileStagedImagePrompt,
   compileStagedVideoPrompt,
+  isCompleteStagedImagePrompt,
+  isCompleteStagedVideoPrompt,
 } from "../marketplaceAutoReviewStagedPromptCompiler";
 import {
   buildStagedStoryArcPlan,
@@ -73,6 +75,32 @@ describe("Feature 141 staged prompt compiler", () => {
         contentHash: compiled.contentHash,
       })
     ).toBe(false);
+  });
+
+  it("accepts only image prompts with framing, reference, format, and no-text direction", () => {
+    const plan = planFixture();
+    const prompt = compileStagedImagePrompt({ plan, shot: plan.shots[0] }).prompt;
+
+    expect(isCompleteStagedImagePrompt(prompt)).toBe(true);
+    expect(isCompleteStagedImagePrompt("A nice product photo." )).toBe(false);
+  });
+
+  it("requires video prompts to preserve the accepted image and exact approved dialogue", () => {
+    const plan = planFixture();
+    const shot = plan.shots[0];
+    const prompt = compileStagedVideoPrompt({
+      plan,
+      shot,
+      imageArtifactHash: "image-hash-a",
+    }).prompt;
+
+    expect(isCompleteStagedVideoPrompt(prompt, shot.dialogue)).toBe(true);
+    expect(isCompleteStagedVideoPrompt(prompt, "different approved dialogue")).toBe(
+      false
+    );
+    expect(isCompleteStagedVideoPrompt("Create a short vertical video.", shot.dialogue)).toBe(
+      false
+    );
   });
 
   it("exposes a director boundary that keeps the accepted image hash in the compiled evidence", () => {

@@ -100,6 +100,8 @@ async function loadServiceWithMocks(input: {
     return {
       ...actual,
       listMarketplaceAutoReviewRuns: vi.fn(async () => []),
+      getSequentialReferenceImageModelCap: vi.fn(() => 14),
+      marketplaceAutoReviewVideoModelSupportsStartFrame: vi.fn(() => true),
     };
   });
   return import("../hyperframesAutoPlanService");
@@ -110,6 +112,23 @@ describe("getHyperframesAutoStoryboardReviewPlanWithEvidence (§4.3)", () => {
     vi.resetModules();
     vi.restoreAllMocks();
   });
+
+  it("defaults Job Workbench to nine sequential shots even when the tenant flag is off", async () => {
+    const { getHyperframesAutoStoryboardReviewPlanWithEvidence } =
+      await loadServiceWithMocks({ sequentialEnabled: false });
+
+    const result = await getHyperframesAutoStoryboardReviewPlanWithEvidence({
+      productId: "product_1",
+      auth: { userId: 1, tenantId: "tenant_1" },
+      workflowMode: "job_workbench",
+    });
+
+    expect(result.plan.defaults).toMatchObject({
+      frameStrategy: "sequential_shot_storyboard",
+      shotCount: 9,
+    });
+    expect(result.evidencePreview).toBeDefined();
+  }, 15_000);
 
   it("gating: both fields present ONLY when the flag is on AND the resolved strategy is sequential", async () => {
     const { getHyperframesAutoStoryboardReviewPlanWithEvidence } =
@@ -151,7 +170,7 @@ describe("getHyperframesAutoStoryboardReviewPlanWithEvidence (§4.3)", () => {
     );
   });
 
-  it("gating: flag ON but strategy resolves to 3x3 (no override) -> both fields absent", async () => {
+  it("defaults sequential-enabled tenants to nine separate images when no strategy is selected", async () => {
     const { getHyperframesAutoStoryboardReviewPlanWithEvidence } =
       await loadServiceWithMocks({ sequentialEnabled: true });
 
@@ -160,9 +179,12 @@ describe("getHyperframesAutoStoryboardReviewPlanWithEvidence (§4.3)", () => {
       auth: { userId: 1, tenantId: "tenant_1" },
     });
 
-    expect(result.plan.defaults.frameStrategy).toBe("storyboard_3x3_split");
-    expect(result.evidencePreview).toBeUndefined();
-    expect(result.referenceCapacity).toBeUndefined();
+    expect(result.plan.defaults).toMatchObject({
+      frameStrategy: "sequential_shot_storyboard",
+      shotCount: 9,
+    });
+    expect(result.evidencePreview).toBeDefined();
+    expect(result.referenceCapacity).toBeDefined();
   });
 
   it("gating: flag ON with video_shot_start_stop -> both fields absent", async () => {

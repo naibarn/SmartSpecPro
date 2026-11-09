@@ -98,7 +98,7 @@ describe("advanceStagedMarketplaceAutoReviewRun self-heal persistence (bug fix)"
     });
   });
 
-  it("persists a self-healed awaiting image_prompt checkpoint before attempting same-pass dispatch, then dispatches on the next pass", async () => {
+  it("persists a legacy awaiting prompt while completing the 9-shot prompt set, then dispatches images on the next pass", async () => {
     const runId = "run-selfheal-1";
     const plan = buildStagedStoryArcPlan({
       runId,
@@ -241,6 +241,14 @@ describe("advanceStagedMarketplaceAutoReviewRun self-heal persistence (bug fix)"
         (cp: any) => cp.kind === "image_prompt" && cp.shotId === shot1.shotId
       );
     expect(persistedCheckpoint?.state).toBe("approved");
+    expect(
+      persistedAfterPass1.metadataJson.stagedSequentialStoryboard.shots
+        .filter((shot: any) => typeof shot.imagePrompt === "string")
+    ).toHaveLength(9);
+    expect(
+      persistedAfterPass1.metadataJson.stagedSequentialStoryboard.reviewCheckpoints
+        .filter((cp: any) => cp.kind === "image_prompt" && cp.state !== "superseded")
+    ).toHaveLength(9);
 
     // Dispatch must NOT have happened yet in this same pass — that would
     // mean the old same-pass fall-through raced consumeCheckpoint's
@@ -260,7 +268,7 @@ describe("advanceStagedMarketplaceAutoReviewRun self-heal persistence (bug fix)"
     });
 
     expect(pass2.finalAssemblyApproved).toBe(false);
-    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(1);
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(9);
 
     const persistedAfterPass2 = getRunRow();
     const task =

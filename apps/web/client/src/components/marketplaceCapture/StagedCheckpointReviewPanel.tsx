@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
   loadStoredAutoStoryboardOverrides,
+  persistStoredAutoReviewImageModel,
+  persistStoredAutoReviewVideoModel,
   persistStoredStoryPlanningModel,
 } from "@/lib/marketplaceCaptureAutoReviewPreferences";
 import {
@@ -1250,30 +1252,51 @@ export function StagedCheckpointReviewPanel(props: {
   const imageModels = imageModelsQuery.data?.models ?? [];
   const videoModels = videoModelsQuery.data?.models ?? [];
 
-  const [selectedImageModel, setSelectedImageModel] = useState<string>("");
-  const [selectedVideoModel, setSelectedVideoModel] = useState<string>("");
+  const [selectedImageModel, setSelectedImageModel] = useState<string>(
+    () => loadStoredAutoStoryboardOverrides().imageModel ?? ""
+  );
+  const [selectedVideoModel, setSelectedVideoModel] = useState<string>(
+    () => loadStoredAutoStoryboardOverrides().videoModel ?? ""
+  );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxType, setLightboxType] = useState<"image" | "video">("image");
 
   useEffect(() => {
-    if (!selectedImageModel && imageModelsQuery.data) {
-      const defaultId =
-        (imageModelsQuery.data as any)?.defaults?.image ||
-        imageModels[0]?.id ||
-        "google-banana-2";
-      setSelectedImageModel(defaultId);
-    }
+    if (!imageModelsQuery.data) return;
+    const available = new Set(imageModels.map(model => model.id));
+    if (selectedImageModel && available.has(selectedImageModel)) return;
+    const stored = loadStoredAutoStoryboardOverrides().imageModel;
+    const resolved =
+      (stored && available.has(stored) ? stored : null) ||
+      (imageModelsQuery.data as any)?.defaults?.image ||
+      imageModels[0]?.id ||
+      "google-banana-2";
+    setSelectedImageModel(resolved);
+    persistStoredAutoReviewImageModel(resolved);
   }, [imageModelsQuery.data, selectedImageModel, imageModels]);
 
   useEffect(() => {
-    if (!selectedVideoModel && videoModelsQuery.data) {
-      const defaultId =
-        (videoModelsQuery.data as any)?.defaults?.video ||
-        videoModels[0]?.id ||
-        "veo3/generate-veo-3-video-lite";
-      setSelectedVideoModel(defaultId);
-    }
+    if (!videoModelsQuery.data) return;
+    const available = new Set(videoModels.map(model => model.id));
+    if (selectedVideoModel && available.has(selectedVideoModel)) return;
+    const stored = loadStoredAutoStoryboardOverrides().videoModel;
+    const resolved =
+      (stored && available.has(stored) ? stored : null) ||
+      (videoModelsQuery.data as any)?.defaults?.video ||
+      videoModels[0]?.id ||
+      "veo3/generate-veo-3-video-lite";
+    setSelectedVideoModel(resolved);
+    persistStoredAutoReviewVideoModel(resolved);
   }, [videoModelsQuery.data, selectedVideoModel, videoModels]);
+
+  const changeSelectedImageModel = (model: string) => {
+    setSelectedImageModel(model);
+    persistStoredAutoReviewImageModel(model);
+  };
+  const changeSelectedVideoModel = (model: string) => {
+    setSelectedVideoModel(model);
+    persistStoredAutoReviewVideoModel(model);
+  };
 
   useEffect(() => {
     setDrafts({});
@@ -2367,7 +2390,7 @@ export function StagedCheckpointReviewPanel(props: {
                 <select
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedImageModel}
-                  onChange={event => setSelectedImageModel(event.target.value)}
+                  onChange={event => changeSelectedImageModel(event.target.value)}
                   disabled={props.pending || imageModelsQuery.isLoading}
                 >
                   {imageModels.map(model => (
@@ -2388,7 +2411,7 @@ export function StagedCheckpointReviewPanel(props: {
                 <select
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedVideoModel}
-                  onChange={event => setSelectedVideoModel(event.target.value)}
+                  onChange={event => changeSelectedVideoModel(event.target.value)}
                   disabled={props.pending || videoModelsQuery.isLoading}
                 >
                   {videoModels.map(model => (

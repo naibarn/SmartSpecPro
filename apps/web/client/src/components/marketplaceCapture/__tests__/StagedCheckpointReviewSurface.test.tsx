@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // declared purely inline would be a different vi.fn() instance by the time
 // assertions run after a user interaction.
 const mockGeneratePromptMutate = vi.fn();
+const mockBulkGenerateMutate = vi.fn();
 
 // Field incident 2026-07-29 (run mar_341efe636f0e6d11fc938a37dd4b19a1, shot
 // 8) regression coverage: lets one test simulate `stateDigest` being empty
@@ -25,12 +26,8 @@ const mockGeneratePromptMutate = vi.fn();
 let mockStateDigestOverride: Record<string, unknown> | null = null;
 
 // Controllable mutateAsync for generateStagedAutoReviewShotPrompt — backs
-// StagedCheckpointReviewSurface's onGenerateAndDispatch (the former
-// consolidated "สร้างภาพ/สร้างวิดีโอ" one-click chain). No per-shot button
-// reaches this anymore after the consolidation was reversed back into 3
-// explicit steps (see the "per-shot pipeline buttons wiring" describe block
-// below) — kept only because the Surface still defines onGenerateAndDispatch
-// and its mocked mutation shape needs a mutateAsync to satisfy the type.
+// per-shot background prompt authoring. Media generation itself is admitted
+// through startStagedAutoReviewBulkGeneration below.
 const mockGeneratePromptMutateAsync = vi.fn(
   async (input: { shotId: number; stage: string }) => ({
     runId: "run-1",
@@ -210,6 +207,13 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      startStagedAutoReviewBulkGeneration: {
+        useMutation: () => ({
+          mutate: mockBulkGenerateMutate,
+          mutateAsync: vi.fn().mockResolvedValue({ status: "queued" }),
+          isPending: false,
+        }),
+      },
       editStagedAutoReviewAudioPlan: { useMutation: () => genericMutation() },
       editStagedAutoReviewFinalAssembly: {
         useMutation: () => genericMutation(),
@@ -307,45 +311,29 @@ vi.mock("@/lib/trpc", () => ({
 
 import { StagedCheckpointReviewSurface } from "../StagedCheckpointReviewSurface";
 
-describe("StagedCheckpointReviewSurface — bulk generate digest chaining", () => {
-  it("awaits each shot's retry one at a time and threads the FRESH response digest into the next call, never a stale shared digest", async () => {
+describe("StagedCheckpointReviewSurface — bulk background generation", () => {
+  beforeEach(() => mockBulkGenerateMutate.mockClear());
+
+  it("submits every missing shot in one worker job instead of firing per-shot requests", async () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     const bulkButton = screen.getByRole("button", {
-      name: "⚡ สั่งสร้างทุกช็อตที่ยังไม่มีผลลัพธ์ (2 ช็อต)",
+      name: "⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (2 ช็อต)",
     });
     fireEvent.click(bulkButton);
 
-    await waitFor(() =>
-      expect(mockRetryMutateAsync).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1));
+    expect(mockBulkGenerateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-1",
+        expectedStateDigest: "digest-0",
+        targets: [
+          expect.objectContaining({ shotId: 1, stage: "image" }),
+          expect.objectContaining({ shotId: 2, stage: "image" }),
+        ],
+      })
     );
-
-    const [firstCall] = mockRetryMutateAsync.mock.calls[0];
-    const [secondCall] = mockRetryMutateAsync.mock.calls[1];
-
-    // Sequential, not concurrent: shot 1 is dispatched before shot 2, and
-    // the first call still uses the digest the query originally loaded.
-    expect(firstCall).toMatchObject({
-      shotId: 1,
-      stage: "image",
-      expectedStateDigest: "digest-0",
-    });
-
-    // The critical regression assertion — the second call must use the
-    // digest the FIRST call's response just returned
-    // ("digest-after-shot-1"), never the pre-loop "digest-0" and never a
-    // value recomputed some other way. Reusing one shared digest across
-    // both calls is exactly the bug the old approve-all-images/videos
-    // buttons had (only the first of a batch would land; every other call
-    // would 409 with staged_state_drift).
-    expect(secondCall).toMatchObject({
-      shotId: 2,
-      stage: "image",
-      expectedStateDigest: "digest-after-shot-1",
-    });
-    expect(secondCall.expectedStateDigest).not.toBe(
-      firstCall.expectedStateDigest
-    );
+    expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 });
 

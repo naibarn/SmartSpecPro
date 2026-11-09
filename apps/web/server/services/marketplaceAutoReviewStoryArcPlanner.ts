@@ -1101,11 +1101,13 @@ export function buildStagedImagePrompt(input: {
       `เรื่องย่อที่ยืนยันแล้ว: ${input.plan.storySummary}`,
       `เรื่องย่อของช็อต: ${input.shot.storySummary}`,
       `ทิศทางภาพ: ${input.shot.visualSummary}`,
+      "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด",
+      "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
       `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
       ...refLines,
       ...conversationLines,
       "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
-      "ต้องเห็นสินค้าอย่างชัดเจน และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
+      "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
     ].join("\n");
   }
 
@@ -1149,10 +1151,12 @@ export function buildStagedImagePrompt(input: {
     `Approved story summary: ${input.plan.storySummary}`,
     `Approved shot brief: ${input.shot.storySummary}`,
     `Visual direction: ${input.shot.visualSummary}`,
+    "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product.",
+    "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
     `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
     ...refLinesEng,
     ...conversationLinesEng,
-    "Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
+    "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
     "Keep the product clearly visible and do not render the dialogue as on-screen text.",
   ].join("\n");
 }
@@ -1263,7 +1267,9 @@ export function buildStagedVideoPrompt(input: {
       `บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`,
       `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
       ...conversationLinesTH,
-      "การเคลื่อนไหวต้องเป็นธรรมชาติ นุ่มนวล ไม่กระตุก และห้ามเพิ่มคำกล่าวอ้าง ราคา caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
+      `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
+      `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
+      "ใช้เสียงบทพูดที่ยืนยันแล้วตามตัวอักษร ไม่เพิ่มบทพูดอื่น; ห้ามเพิ่มคำกล่าวอ้าง ราคา ข้อความบนจอ caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
     ].join("\n");
   }
   return [
@@ -1272,9 +1278,11 @@ export function buildStagedVideoPrompt(input: {
     `Approved dialogue (must not be rewritten): ${input.shot.dialogue}`,
     `Approved story context: ${input.shot.storySummary}`,
     ...conversationLinesEng,
-    "Motion must feel natural, restrained, and physically coherent while preserving product identity and continuity.",
+    `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
+    `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
+    "Audio: speak only the approved dialogue exactly as written, with natural pacing and relevant room ambience; do not add narration or other lines.",
     "If a person or character reference is supplied, preserve that identity consistently throughout the shot.",
-    "Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
+    "Photorealistic commercial short-form video, vertical 9:16. Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
   ].join("\n");
 }
 

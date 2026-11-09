@@ -116,7 +116,10 @@ import type {
   HyperframesAutoPlanOverrideInput,
   HyperframesAutoStoryboardReviewPlan,
 } from "@shared/hyperframes/autoPlan";
-import { HyperframesAutoPlanOverrideInputSchema } from "@shared/hyperframes/autoPlan";
+import {
+  loadStoredAutoStoryboardOverrides,
+  persistStoredAutoStoryboardOverrides,
+} from "@/lib/marketplaceCaptureAutoReviewPreferences";
 import { type MarketplaceAutoReviewLaunchMode } from "@shared/hyperframes/contracts";
 import { MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS } from "@shared/marketplaceAutoReview/contracts";
 import {
@@ -130,8 +133,6 @@ import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 
 type ProductMediaTab = "image" | "video" | "audio";
 type ProductPanelTab = "history" | "library" | "product";
-const AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY =
-  "smartSpecPro.marketplaceCapture.autoStoryboardOverrides.v1";
 const MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS = [
   "marketplaceConnectorLabEnabled",
   "marketplaceIntelligenceImportsEnabled",
@@ -142,40 +143,6 @@ const MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS = [
   "marketplaceIntelligenceWatchlistsEnabled",
   "marketplaceIntelligenceMcpWritesEnabled",
 ] as const;
-
-function loadStoredAutoStoryboardOverrides(): HyperframesAutoPlanOverrideInput {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(
-      AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY
-    );
-    if (!raw) return {};
-    const parsed = HyperframesAutoPlanOverrideInputSchema.safeParse(
-      JSON.parse(raw)
-    );
-    return parsed.success ? parsed.data : {};
-  } catch {
-    return {};
-  }
-}
-
-function persistStoredAutoStoryboardOverrides(
-  overrides: HyperframesAutoPlanOverrideInput
-) {
-  if (typeof window === "undefined") return;
-  try {
-    if (Object.keys(overrides).length === 0) {
-      window.localStorage.removeItem(AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY);
-      return;
-    }
-    window.localStorage.setItem(
-      AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY,
-      JSON.stringify(overrides)
-    );
-  } catch {
-    // Ignore storage failures so Auto Review controls remain usable.
-  }
-}
 
 function retainAutoStoryboardModelOverrides(
   overrides: HyperframesAutoPlanOverrideInput

@@ -51,6 +51,7 @@ export function MarketplaceDraftQualityQcPanel(props: {
   const statusLabel = useMemo(() => {
     if (state?.status === "succeeded" && report?.pass) return isEnglish ? "Passed" : "ผ่าน QC";
     if (state?.status === "failed") return isEnglish ? "QC failed" : "ตรวจไม่สำเร็จ";
+    if (state?.status === "cancelled") return isEnglish ? "Skipped" : "ข้าม QC แล้ว";
     if (state?.status === "queued") return isEnglish ? "Queued" : "เข้าคิวตรวจ";
     if (state?.status === "running") return isEnglish ? "Reviewing" : "กำลังตรวจ";
     if (report?.status === "blocked") return isEnglish ? "Blocked" : "มีจุดต้องแก้";
@@ -99,7 +100,7 @@ export function MarketplaceDraftQualityQcPanel(props: {
         </div>
       </div>
 
-      {state.status === "not_started" || state.status === "failed" ? (
+      {state.status === "not_started" || state.status === "failed" || state.status === "cancelled" ? (
         <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-dashed border-sky-300 bg-white/80 p-3">
           <label className="text-sm text-slate-700">
             <span className="mb-1 block font-medium">{isEnglish ? "Improvement rounds" : "รอบปรับปรุงอัตโนมัติ"}</span>

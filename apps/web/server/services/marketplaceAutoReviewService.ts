@@ -19723,21 +19723,28 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
     ? state.repairSourceFingerprint
     : state.candidateFingerprint;
   if (expectedFingerprint && expectedFingerprint !== currentFingerprint) {
-    await updateRun({
-      db,
-      runId: run.id,
-      metadataJson: {
-        ...metadata,
-        creativeQc: {
-          ...state,
-          ...(repairMode
-            ? { repairStatus: "failed" as const }
-            : { status: "failed" as const }),
-          error: "creative_qc_candidate_stale",
-          completedAt: new Date().toISOString(),
-        },
+    const failedMetadata: RunMetadata = {
+      ...metadata,
+      creativeQc: {
+        ...state,
+        ...(repairMode
+          ? { repairStatus: "failed" as const }
+          : { status: "failed" as const }),
+        error: "creative_qc_candidate_stale",
+        completedAt: new Date().toISOString(),
       },
-    });
+    };
+    const [updated] = await db
+      .update(marketplaceAutoReviewRuns)
+      .set({ metadataJson: failedMetadata, updatedAt: nowDate() })
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, run.id),
+          eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+        )
+      )
+      .returning({ id: marketplaceAutoReviewRuns.id });
+    if (!updated) return getMarketplaceAutoReviewRun(run.id, auth);
     throw new TRPCError({
       code: "CONFLICT",
       message: "creative_qc_candidate_stale",
@@ -19749,7 +19756,20 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
       ? { ...state, repairStatus: "running", error: null }
       : { ...state, status: "running", error: null },
   };
-  await updateRun({ db, runId: run.id, metadataJson: runningMetadata });
+  const [claimedRun] = await db
+    .update(marketplaceAutoReviewRuns)
+    .set({ metadataJson: runningMetadata, updatedAt: nowDate() })
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, run.id),
+        eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+      )
+    )
+    .returning({ id: marketplaceAutoReviewRuns.id });
+  // Approval is optional while QC runs. Whichever transition commits first
+  // wins; a QC worker must never restore an older awaiting plan over a user
+  // confirmation.
+  if (!claimedRun) return getMarketplaceAutoReviewRun(run.id, auth);
   let lastProgress: MarketplaceDraftQcState["progress"] = state.progress;
   try {
     if (repairMode) {
@@ -19827,11 +19847,22 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
         error: null,
         completedAt: new Date().toISOString(),
       };
-      await updateRun({
-        db,
-        runId: run.id,
-        metadataJson: { ...metadata, creativeQc: nextRepairState },
-      });
+      const latestRun = await reloadRun(db, run.id, auth);
+      const latestMetadata = asRecord(latestRun.metadataJson) as RunMetadata;
+      const [updated] = await db
+        .update(marketplaceAutoReviewRuns)
+        .set({
+          metadataJson: { ...latestMetadata, creativeQc: nextRepairState },
+          updatedAt: nowDate(),
+        })
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, latestRun.id),
+            eq(marketplaceAutoReviewRuns.updatedAt, latestRun.updatedAt)
+          )
+        )
+        .returning({ id: marketplaceAutoReviewRuns.id });
+      if (!updated) return getMarketplaceAutoReviewRun(run.id, auth);
       return getMarketplaceAutoReviewRun(run.id, auth);
     }
     const qcBillingAttempt = state.startedAt ?? "legacy";
@@ -19849,76 +19880,151 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
       },
       {}
     );
-    const appliedMetadata = applyMarketplaceDraftQcCandidate(
-      run,
-      metadata,
-      result.best.draft
-    );
-    const appliedCandidate = buildMarketplaceDraftQcCandidate(
-      run,
-      appliedMetadata
-    );
-    const sourceArtifact = await persistMarketplaceAutoReviewArtifactJson({
-      db,
-      run,
-      stageKey: "prompt_plan",
-      artifactKind: "creative_qc_source_candidate",
-      content: {
-        schemaVersion: 1,
-        operation: "initial_qc_source",
-        candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
-          appliedCandidate.draft
-        ),
-        draft: appliedCandidate.draft,
-        report: result.best.report,
-      },
-    });
-    const nextQcState: MarketplaceDraftQcState = {
-      ...state,
-      status: "succeeded",
-      candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const latestRun = await reloadRun(db, run.id, auth);
+      const latestMetadata = asRecord(latestRun.metadataJson) as RunMetadata;
+      const latestQc = marketplaceDraftQcStateSchema.safeParse(
+        latestMetadata.creativeQc
+      );
+      if (!latestQc.success || latestQc.data.status !== "running") {
+        return getMarketplaceAutoReviewRun(run.id, auth);
+      }
+      const latestCandidate = buildMarketplaceDraftQcCandidate(
+        latestRun,
+        latestMetadata
+      );
+      const latestFingerprint = fingerprintMarketplaceDraftQcCandidate(
+        latestCandidate.draft
+      );
+      const planReviewStillAwaiting =
+        cleanText(asRecord(latestMetadata.planReview).status) === "awaiting";
+      if (latestFingerprint !== currentFingerprint || !planReviewStillAwaiting) {
+        const skipped = latestFingerprint === currentFingerprint;
+        const nextQcState: MarketplaceDraftQcState = {
+          ...latestQc.data,
+          status: skipped ? "cancelled" : "failed",
+          progress: lastProgress,
+          error: skipped ? null : "creative_qc_candidate_stale",
+          completedAt: new Date().toISOString(),
+        };
+        const [updated] = await db
+          .update(marketplaceAutoReviewRuns)
+          .set({
+            metadataJson: { ...latestMetadata, creativeQc: nextQcState },
+            updatedAt: nowDate(),
+          })
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.id, latestRun.id),
+              eq(marketplaceAutoReviewRuns.updatedAt, latestRun.updatedAt)
+            )
+          )
+          .returning({ id: marketplaceAutoReviewRuns.id });
+        if (updated) return getMarketplaceAutoReviewRun(run.id, auth);
+        continue;
+      }
+
+      const appliedMetadata = applyMarketplaceDraftQcCandidate(
+        latestRun,
+        latestMetadata,
+        result.best.draft
+      );
+      const appliedCandidate = buildMarketplaceDraftQcCandidate(
+        latestRun,
+        appliedMetadata
+      );
+      const appliedFingerprint = fingerprintMarketplaceDraftQcCandidate(
         appliedCandidate.draft
-      ),
-      report: result.best.report,
-      history: result.history,
-      progress: lastProgress,
-      creditEstimate: result.creditEstimate,
-      bestRound: result.best.round,
-      repairStatus: "idle",
-      repairAttempted: false,
-      repairSourceFingerprint: null,
-      repairSourceArtifactId: String(sourceArtifact.artifactId),
-      repairCandidateFingerprint: null,
-      repairCandidateArtifactId: null,
-      repairReport: null,
-      repairComparison: null,
-      completedAt: new Date().toISOString(),
-      error: null,
-    };
-    await updateRun({
-      db,
-      runId: run.id,
-      metadataJson: { ...appliedMetadata, creativeQc: nextQcState },
-    });
-    return getMarketplaceAutoReviewRun(run.id, auth);
+      );
+      const sourceArtifact = await persistMarketplaceAutoReviewArtifactJson({
+        db,
+        run: latestRun,
+        stageKey: "prompt_plan",
+        artifactKind: "creative_qc_source_candidate",
+        content: {
+          schemaVersion: 1,
+          operation: "initial_qc_source",
+          candidateFingerprint: appliedFingerprint,
+          draft: appliedCandidate.draft,
+          report: result.best.report,
+        },
+      });
+      const nextQcState: MarketplaceDraftQcState = {
+        ...latestQc.data,
+        status: "succeeded",
+        candidateFingerprint: appliedFingerprint,
+        report: result.best.report,
+        history: result.history,
+        progress: lastProgress,
+        creditEstimate: result.creditEstimate,
+        bestRound: result.best.round,
+        repairStatus: "idle",
+        repairAttempted: false,
+        repairSourceFingerprint: null,
+        repairSourceArtifactId: String(sourceArtifact.artifactId),
+        repairCandidateFingerprint: null,
+        repairCandidateArtifactId: null,
+        repairReport: null,
+        repairComparison: null,
+        completedAt: new Date().toISOString(),
+        error: null,
+      };
+      const [updated] = await db
+        .update(marketplaceAutoReviewRuns)
+        .set({
+          metadataJson: { ...appliedMetadata, creativeQc: nextQcState },
+          updatedAt: nowDate(),
+        })
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, latestRun.id),
+            eq(marketplaceAutoReviewRuns.updatedAt, latestRun.updatedAt)
+          )
+        )
+        .returning({ id: marketplaceAutoReviewRuns.id });
+      if (updated) return getMarketplaceAutoReviewRun(run.id, auth);
+    }
+    throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await updateRun({
-      db,
-      runId: run.id,
-      metadataJson: {
-        ...metadata,
-        creativeQc: {
-          ...state,
-          ...(repairMode
-            ? { repairStatus: "failed" as const }
-            : { status: "failed" as const }),
-          progress: lastProgress,
-          error: message.slice(0, 1000),
-          completedAt: new Date().toISOString(),
-        },
-      },
-    });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const latestRun = await reloadRun(db, run.id, auth);
+      const latestMetadata = asRecord(latestRun.metadataJson) as RunMetadata;
+      const latestQc = marketplaceDraftQcStateSchema.safeParse(
+        latestMetadata.creativeQc
+      );
+      if (!latestQc.success) break;
+      const skippedAfterApproval =
+        cleanText(asRecord(latestMetadata.planReview).status) !== "awaiting";
+      const nextQcState: MarketplaceDraftQcState = {
+        ...latestQc.data,
+        ...(repairMode
+          ? { repairStatus: "failed" as const }
+          : {
+              status: skippedAfterApproval ? ("cancelled" as const) : ("failed" as const),
+            }),
+        progress: lastProgress,
+        error: skippedAfterApproval ? null : message.slice(0, 1000),
+        completedAt: new Date().toISOString(),
+      };
+      const [updated] = await db
+        .update(marketplaceAutoReviewRuns)
+        .set({
+          metadataJson: { ...latestMetadata, creativeQc: nextQcState },
+          updatedAt: nowDate(),
+        })
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, latestRun.id),
+            eq(marketplaceAutoReviewRuns.updatedAt, latestRun.updatedAt)
+          )
+        )
+        .returning({ id: marketplaceAutoReviewRuns.id });
+      if (updated) {
+        if (skippedAfterApproval) return getMarketplaceAutoReviewRun(run.id, auth);
+        break;
+      }
+    }
     throw error;
   }
 }
@@ -25366,19 +25472,35 @@ export async function approveMarketplaceAutoReviewPlanReview(
       approvedAt: nowIso(),
     },
   };
-  await upsertRunStage({
-    db,
-    runId: run.id,
-    stageKey: "image_generation",
-    stageOrder: stageIndex("image_generation", stages),
-    status: "queued",
-    output: {},
-  });
-  await updateRun({
-    db,
-    runId: run.id,
-    metadataJson: nextMetadata,
-    errorMessage: null,
+  await db.transaction(async tx => {
+    const [updated] = await tx
+      .update(marketplaceAutoReviewRuns)
+      .set({
+        metadataJson: nextMetadata,
+        errorMessage: null,
+        updatedAt: nowDate(),
+      })
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, run.id),
+          eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+        )
+      )
+      .returning({ id: marketplaceAutoReviewRuns.id });
+    if (!updated) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "auto_review_state_changed",
+      });
+    }
+    await upsertRunStage({
+      db: tx as Db,
+      runId: run.id,
+      stageKey: "image_generation",
+      stageOrder: stageIndex("image_generation", stages),
+      status: "queued",
+      output: {},
+    });
   });
   await queueMarketplaceAutoReviewAdvance(run.id, auth, runtime, 500);
   return getMarketplaceAutoReviewRun(run.id, auth);
