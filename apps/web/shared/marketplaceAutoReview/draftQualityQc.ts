@@ -396,6 +396,7 @@ export const marketplaceDraftQcStateSchema = z.object({
     })
     .nullable()
     .default(null),
+  repairStartedAt: z.string().datetime().nullable().default(null),
   startedAt: z.string().datetime().nullable(),
   completedAt: z.string().datetime().nullable(),
   error: z.string().max(1000).nullable(),
@@ -694,6 +695,7 @@ export function createMarketplaceDraftQcState(
     repairCandidateArtifactId: null,
     repairReport: null,
     repairComparison: null,
+    repairStartedAt: null,
     startedAt: null,
     completedAt: null,
     error: null,

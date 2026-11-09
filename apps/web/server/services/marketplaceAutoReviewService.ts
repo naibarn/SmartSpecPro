@@ -19548,8 +19548,7 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
     });
   }
   if (
-    current.data.repairStatus === "queued" ||
-    current.data.repairStatus === "running"
+    ["queued", "running", "failed"].includes(current.data.repairStatus)
   ) {
     const sourceFingerprint = current.data.repairSourceFingerprint;
     if (sourceFingerprint) {
@@ -19586,6 +19585,7 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
                 creativeQc: {
                   ...current.data,
                   repairStatus: "queued",
+                  repairStartedAt: recoveryAt.toISOString(),
                   error: null,
                 },
               },
@@ -19652,6 +19652,7 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
   const nextState: MarketplaceDraftQcState = {
     ...current.data,
     repairStatus: "queued",
+    repairStartedAt: new Date().toISOString(),
     repairAttempted: true,
     repairSourceFingerprint: sourceFingerprint,
     repairSourceArtifactId: String(sourceArtifact.artifactId),
@@ -19758,6 +19759,8 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
           message: "creative_qc_repair_source_missing",
         });
       }
+      const repairBillingAttempt =
+        state.repairStartedAt ?? state.startedAt ?? "legacy";
       const result = await runMarketplaceAutoReviewDraftQualityQcRepair(
         {
           draft: candidate.draft,
@@ -19766,7 +19769,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
           immutableConstraints: candidate.immutableConstraints,
           userId: run.userId,
           tenantId: run.tenantId ?? auth.tenantId ?? undefined,
-          billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:repair:${state.repairSourceFingerprint}`,
+          billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:repair:${state.repairSourceFingerprint}:${repairBillingAttempt}`,
           onProgress: event => {
             lastProgress = event;
           },
@@ -19831,6 +19834,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
       });
       return getMarketplaceAutoReviewRun(run.id, auth);
     }
+    const qcBillingAttempt = state.startedAt ?? "legacy";
     const result = await runMarketplaceAutoReviewDraftQualityQc(
       {
         draft: candidate.draft,
@@ -19838,7 +19842,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
         maxImprovementRounds: state.maxImprovementRounds,
         userId: run.userId,
         tenantId: run.tenantId ?? auth.tenantId ?? undefined,
-        billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:${currentFingerprint}:${state.maxImprovementRounds}`,
+        billingRunIdempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:${currentFingerprint}:${state.maxImprovementRounds}:${qcBillingAttempt}`,
         onProgress: event => {
           lastProgress = event;
         },
