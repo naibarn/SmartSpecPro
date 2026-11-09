@@ -39,10 +39,16 @@ const SKILL_FOLDER_PATH = path.join(
 const MARKETPLACE_AUTO_REVIEW_DRAFT_QC_SKILL_SLUG =
   "marketplace-auto-review-draft-quality-controller";
 const MAX_DRAFT_BYTES = 180_000;
-const MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT = [
+const MARKETPLACE_DRAFT_QC_JUDGE_OUTPUT_CONTRACT = [
+  "Return exactly one JSON object with required top-level keys criteria, criticalFails, strengths, weaknesses, and recommendations.",
+  `criteria must be an array with exactly ${MARKETPLACE_DRAFT_QC_CRITERIA.length} entries, one for every rubric item below.`,
+  "Each criteria entry must have criterionId (exact machine key), rawScore (number from 0 to 5), and evidence (specific text evidence or a concrete missing element).",
+  "Use a top-level criteria array of criterion objects; do not return a prose-only rubric or an overall score in place of criteria.",
+  "Do not omit criteria, replace it with a summary/overall score, or return the scorecard nested under another key.",
+  "Use empty arrays only when there are no criticalFails, strengths, weaknesses, or recommendations.",
   "Set each criterionId to its exact machine key from this list:",
   MARKETPLACE_DRAFT_QC_CRITERIA.map(item => item.id).join(", "),
-  "Do not use the rubric's display labels as criterionId.",
+  "Do not use the rubric's display labels as criterionId. Return no markdown or text outside the JSON object.",
 ].join(" ");
 
 const revisedDraftOutputSchema = z.object({
@@ -265,7 +271,7 @@ async function defaultEvaluate(params: {
   const model = await resolveStoryBibleModel();
   const result = await executeJsonPlanningCallWithRetry({
     model,
-    systemPrompt: `${loadSkillPrompt()}\n\nEVALUATE MODE: judge only; never rewrite.\n\n${MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT}`,
+    systemPrompt: `${loadSkillPrompt()}\n\nEVALUATE MODE: judge only; never rewrite.\n\n${MARKETPLACE_DRAFT_QC_JUDGE_OUTPUT_CONTRACT}`,
     userPrompt: buildPromptContext(
       "evaluate",
       params.draft,
@@ -275,7 +281,7 @@ async function defaultEvaluate(params: {
     userId: params.userId,
     maxTokens: 4200,
     schema: marketplaceDraftQcJudgeOutputSchema,
-    schemaRetryContract: MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT,
+    schemaRetryContract: MARKETPLACE_DRAFT_QC_JUDGE_OUTPUT_CONTRACT,
     onSchemaRetriesExhausted: ({ parsedJson }) => {
       const normalized = normalizeMarketplaceDraftQcJudgeOutput(parsedJson);
       if (normalized.ok) {

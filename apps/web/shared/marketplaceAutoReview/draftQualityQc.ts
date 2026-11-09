@@ -117,6 +117,27 @@ const MARKETPLACE_DRAFT_QC_CRITERION_ALIASES: Record<
   originality_scroll_stop_angle: "originality_scroll_stop",
   scroll_stopping_angle: "originality_scroll_stop",
 };
+const MARKETPLACE_DRAFT_QC_CRITERIA_KEYS = [
+  "criteria",
+  "criterionScores",
+  "criterion_scores",
+  "scorecard",
+  "rubric",
+  "rubricScores",
+  "rubric_scores",
+  "criterionEvaluations",
+  "criterion_evaluations",
+  "scores",
+  "evaluations",
+] as const;
+const MARKETPLACE_DRAFT_QC_RESPONSE_WRAPPERS = [
+  "result",
+  "evaluation",
+  "assessment",
+  "qc",
+  "data",
+  "output",
+] as const;
 
 function readMarketplaceDraftQcCriterionId(
   value: unknown
@@ -146,6 +167,21 @@ function readMarketplaceDraftQcText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function marketplaceDraftQcCriteriaRows(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(
+    ([key, row]) => {
+      if (!readMarketplaceDraftQcCriterionId(key)) return [];
+      const rowFields =
+        row && typeof row === "object" && !Array.isArray(row)
+          ? (row as Record<string, unknown>)
+          : { rawScore: row };
+      return [{ criterionId: key, ...rowFields }];
+    }
+  );
+}
+
 /**
  * Recovers harmless LLM drift between a rubric's display label and its
  * canonical criterion id. Scores and evidence remain mandatory and are never
@@ -162,14 +198,89 @@ export function normalizeMarketplaceDraftQcJudgeOutput(
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return { ok: false, issues: ["response"] };
   }
-  const payload = value as Record<string, unknown>;
-  if (!Array.isArray(payload.criteria)) {
+  const originalPayload = value as Record<string, unknown>;
+  type CriteriaSource = {
+    key: string;
+    value: unknown;
+    payload: Record<string, unknown>;
+  };
+  const findCriteria = (record: Record<string, unknown>) => {
+    for (const key of MARKETPLACE_DRAFT_QC_CRITERIA_KEYS) {
+      const candidate = record[key];
+      if (
+        Array.isArray(candidate) ||
+        (candidate !== null && typeof candidate === "object")
+      ) {
+        return { key, value: candidate };
+      }
+    }
+    return null;
+  };
+  const findCriteriaSource = (
+    record: Record<string, unknown>,
+    depth = 0
+  ): CriteriaSource | null => {
+    const direct = findCriteria(record);
+    if (direct) {
+      if (
+        direct.value &&
+        typeof direct.value === "object" &&
+        !Array.isArray(direct.value)
+      ) {
+        const nested = findCriteriaSource(
+          direct.value as Record<string, unknown>,
+          depth + 1
+        );
+        if (nested) {
+          return {
+            ...nested,
+            payload: { ...record, ...nested.payload },
+          };
+        }
+      }
+      return { ...direct, payload: record };
+    }
+    if (depth >= 3) return null;
+    for (const key of MARKETPLACE_DRAFT_QC_RESPONSE_WRAPPERS) {
+      const nested = record[key];
+      if (!nested || typeof nested !== "object" || Array.isArray(nested)) {
+        continue;
+      }
+      const nestedSource = findCriteriaSource(
+        nested as Record<string, unknown>,
+        depth + 1
+      );
+      if (nestedSource) {
+        return {
+          ...nestedSource,
+          payload: { ...record, ...nestedSource.payload },
+        };
+      }
+    }
+    return null;
+  };
+  const criteriaSource = findCriteriaSource(originalPayload);
+  const payload = criteriaSource?.payload ?? originalPayload;
+  const topLevelCriteriaRows = criteriaSource
+    ? []
+    : marketplaceDraftQcCriteriaRows(originalPayload);
+  const criteriaValue = criteriaSource?.value ?? topLevelCriteriaRows;
+  const normalizedCriteriaShape =
+    Boolean(criteriaSource && criteriaSource.key !== "criteria") ||
+    Boolean(criteriaSource && !Array.isArray(criteriaSource.value)) ||
+    payload !== originalPayload ||
+    topLevelCriteriaRows.length > 0;
+  if (
+    !Array.isArray(criteriaValue) &&
+    (!criteriaValue || typeof criteriaValue !== "object")
+  ) {
     return { ok: false, issues: ["criteria"] };
   }
 
   const issues: string[] = [];
-  let normalizedModelFields = false;
-  const criteria = payload.criteria.map((item, index) => {
+  let normalizedModelFields = normalizedCriteriaShape;
+  const criteriaRows = marketplaceDraftQcCriteriaRows(criteriaValue);
+  const criteria = criteriaRows.map((item, index) => {
     const row =
       item && typeof item === "object" && !Array.isArray(item)
         ? (item as Record<string, unknown>)
@@ -248,7 +359,7 @@ export function normalizeMarketplaceDraftQcJudgeOutput(
     data: parsed.data,
     issues: [],
     warnings: normalizedModelFields
-      ? ["Normalized equivalent rubric display labels and scorecard field names."]
+      ? ["Normalized equivalent rubric labels, scorecard fields, or response wrappers."]
       : [],
   };
 }
