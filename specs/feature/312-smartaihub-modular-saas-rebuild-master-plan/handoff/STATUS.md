@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Deep Plan is complete and validated (four implementation sections). Continue with Deep Implement section 01 in canonical smartaihub-platform/main; implement trusted environment binding and least-privilege shared-smartspec adapter before the auth/session routes. Keep the full parent SPEC acceptance open.
-- Manifest generation: 13
+- Next action: Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.
+- Manifest generation: 15
 
 ## Source-declared status and relationship claims
 

@@ -24,14 +24,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "865432176ac75473a90e98576d78a4801edbe029",
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Deep Plan for the SPEC-312 R1.6 first Core identity slice is complete and section validation passes (4/4). Begin Deep Implement from smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b, starting with the environment/database boundary. Use the existing smartspec account authority, provision only a separate least-privilege modular development credential if its exact grants and secret storage are verified, and keep both public targets unchanged.",
+    "next_action": "Deep Plan is complete and validated (4/4). The plan now requires strict sharded SQLite Durable Object throttling for login/MFA; its research and contract are integrated in SmartSpecPro main 865432176ac75473a90e98576d78a4801edbe029. Continue Deep Implement section 01 in canonical smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Use the existing smartspec account authority, keep shared-schema changes at zero, and do not deploy, configure public host routes, or hand over aimarkethubs.com/smartsihub.com.",
     "next_ready_workunit": "r16-core-auth-slice-section-01",
     "reactivation_predicate": null,
-    "resume_point": "Planning artifacts: specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md, claude-plan.md, claude-plan-tdd.md, claude-research.md, and sections/index.md plus section-01 through section-04. check-sections.py reports complete 4/4. Canonical source smartaihub-platform main is f271a2b669de97b1ae85788f3233902b47db018b. Parent REQ-46847581892C remains OPEN. Next action: run Deep Implement section 01; preserve user data and do not deploy or hand over aimarkethubs.com/smartsihub.com.",
+    "resume_point": "Plan artifacts are in specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md, claude-plan.md, claude-plan-tdd.md, claude-research.md, and sections/index.md plus section-01 through section-04. Section validation passes 4/4. Plan checkpoint: SmartSpecPro main 865432176ac75473a90e98576d78a4801edbe029. Source baseline: smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Parent REQ-46847581892C remains OPEN. Next: implement section 01; after all sections, perform the requested ten independent gap-review passes and fix discovered issues. Preserve existing user data. Keep aimarkethubs.com unavailable until intentional healthy handover and smartsihub.com inactive.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -40,10 +40,12 @@
     "evidence": [
       "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
     ],
-    "next_action": "Deep Plan is complete and validated (four implementation sections). Continue with Deep Implement section 01 in canonical smartaihub-platform/main; implement trusted environment binding and least-privilege shared-smartspec adapter before the auth/session routes. Keep the full parent SPEC acceptance open.",
-    "rationale": "R1.6 source/schema discovery is complete and the first implementable slice is now fully sectionized. The plan maps to REQ-46847581892C, preserves the shared canonical identity/customer data contract, avoids job/financial writes without environment columns, and requires a separate dev credential. The production target remains inactive; no deployment or handover is claimed.",
+    "next_action": "Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.",
+    "rationale": "The first Core identity slice is sectionized against the canonical smartspec account store and existing IDs. The rate-limit research now matches Cloudflare accuracy semantics and Durable Object single-thread/storage behavior. Environment binding, Hono/no Express, shared data, separate development/production tenant scopes, domain readiness, no DDL/no business writes, and remaining full SPEC acceptance are explicit. Continue because code implementation is authorized; keep parent REQ-46847581892C open.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -76,7 +78,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 13,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -110,10 +112,10 @@
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "865432176ac75473a90e98576d78a4801edbe029",
+    "integrated": true,
+    "integrated_at": "2026-11-10T01:53:31+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -152,10 +154,12 @@
       "evidence": [
         "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       ],
-      "next_action": "Deep Plan is complete and validated (four implementation sections). Continue with Deep Implement section 01 in canonical smartaihub-platform/main; implement trusted environment binding and least-privilege shared-smartspec adapter before the auth/session routes. Keep the full parent SPEC acceptance open.",
-      "rationale": "R1.6 source/schema discovery is complete and the first implementable slice is now fully sectionized. The plan maps to REQ-46847581892C, preserves the shared canonical identity/customer data contract, avoids job/financial writes without environment columns, and requires a separate dev credential. The production target remains inactive; no deployment or handover is claimed.",
+      "next_action": "Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.",
+      "rationale": "The first Core identity slice is sectionized against the canonical smartspec account store and existing IDs. The rate-limit research now matches Cloudflare accuracy semantics and Durable Object single-thread/storage behavior. Environment binding, Hono/no Express, shared data, separate development/production tenant scopes, domain readiness, no DDL/no business writes, and remaining full SPEC acceptance are explicit. Continue because code implementation is authorized; keep parent REQ-46847581892C open.",
       "residual_requirements": []
     },
     "disposition": {
@@ -298,7 +302,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-09T18:40:54.934499Z",
+  "updated_at": "2026-11-09T18:54:32.963420Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
