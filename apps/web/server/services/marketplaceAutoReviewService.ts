@@ -6251,6 +6251,7 @@ function normalizeSequentialProductAngleImages(
 function resolveMarketplaceAutoReviewReferenceAnchors(params: {
   referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   productTruth: Pick<ProductTruth, "imageUrls">;
+  hasCharacterCastReference?: boolean;
 }): ResolvedMarketplaceAutoReviewReferenceAnchors {
   const imageUrls = params.productTruth.imageUrls.map(url => cleanText(url));
   let productImageUrl =
@@ -6345,7 +6346,9 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     characterMode === "hands_only";
 
   const readyCharacterImageUrl =
-    requiredRoles.includes("character") && !isCharacterMode
+    requiredRoles.includes("character") &&
+    !isCharacterMode &&
+    (Boolean(characterImageUrl) || !params.hasCharacterCastReference)
       ? assertProviderReadyReferenceAnchor(
           "character",
           characterImageUrl,
@@ -6453,6 +6456,7 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
 export function resolveMarketplaceAutoReviewReferenceAnchorsForTest(params: {
   referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   productTruth: Pick<ProductTruth, "imageUrls">;
+  hasCharacterCastReference?: boolean;
 }): ResolvedMarketplaceAutoReviewReferenceAnchors {
   return resolveMarketplaceAutoReviewReferenceAnchors(params);
 }
@@ -23982,6 +23986,35 @@ export async function startMarketplaceAutoReviewRun(
     bundle,
     requestedShotCount
   );
+  // Resolve selected Drama Series portraits before reference-anchor checks.
+  // A server-seeded cast manifest is a valid character reference for staged
+  // Workbench runs even when the user did not upload a separate portrait.
+  const rawCharacterAnchorUrl = (
+    input.referenceAnchors as Record<string, any> | undefined
+  )?.characterImageUrl;
+  const uploadedCharacterAnchorUrl =
+    typeof rawCharacterAnchorUrl === "string" && rawCharacterAnchorUrl.trim()
+      ? rawCharacterAnchorUrl.trim()
+      : undefined;
+  const seededCharacterCastManifest =
+    isStagedArchitecture &&
+    ((Array.isArray(input.characterCast) && input.characterCast.length > 0) ||
+      uploadedCharacterAnchorUrl)
+      ? await buildSeededStagedCharacterCastManifest({
+          db,
+          auth,
+          productImageUrls: baseFallbackPlan.productTruth.imageUrls,
+          characterCast: input.characterCast ?? [],
+          uploadedCharacterAnchorUrl,
+          publicUrl: runtime.publicUrl,
+        })
+      : null;
+  const hasSeededCharacterCastReference = Boolean(
+    input.characterCast?.length &&
+      seededCharacterCastManifest?.some(
+        entry => entry.role === "character" && cleanText(entry.url)
+      )
+  );
   const serverVerifiedProviderEvidence =
     await serverVerifiedProviderEvidenceFromAnchors(
       input.referenceAnchors,
@@ -23997,6 +24030,7 @@ export async function startMarketplaceAutoReviewRun(
       ...(legacyShotCountNeedsClamp ? { shotCount: 9 } : {}),
     },
     productTruth: baseFallbackPlan.productTruth,
+    hasCharacterCastReference: hasSeededCharacterCastReference,
   });
   const fallbackPlan = withMarketplaceAutoReviewReferenceAnchors(
     baseFallbackPlan,
@@ -24048,39 +24082,6 @@ export async function startMarketplaceAutoReviewRun(
       generatedAt: nowIso(),
     },
   };
-  // Creation-time drama casting (planning/marketplace-flexible-shots-and-
-  // creation-casting/plan.md, W2). Staged-architecture only (legacy runs
-  // have no concept of `customReferenceManifest`); no-op for every request
-  // that omits `characterCast` — byte-identical to today.
-  //
-  // An UPLOADED character reference (`referenceAnchors.characterImageUrl`,
-  // the "อัปโหลด reference" mode's own identity image) counts as a cast member
-  // too. It used to be dropped entirely on staged runs: the seeder only ever
-  // read `characterCast`, nothing in the staged pipeline reads
-  // `characterImageUrl`, and `handleImageProvider` falls back to the hero
-  // product image alone when the manifest is empty — so a user who uploaded a
-  // presenter got "0 ภาพแนบ / พูดคนเดียว" in review and no character reference
-  // in any start frame (`planning/marketplace-four-character-cast/plan.md`).
-  const rawCharacterAnchorUrl = (
-    input.referenceAnchors as Record<string, any> | undefined
-  )?.characterImageUrl;
-  const uploadedCharacterAnchorUrl =
-    typeof rawCharacterAnchorUrl === "string" && rawCharacterAnchorUrl.trim()
-      ? rawCharacterAnchorUrl.trim()
-      : undefined;
-  const seededCharacterCastManifest =
-    isStagedArchitecture &&
-    ((Array.isArray(input.characterCast) && input.characterCast.length > 0) ||
-      uploadedCharacterAnchorUrl)
-      ? await buildSeededStagedCharacterCastManifest({
-          db,
-          auth,
-          productImageUrls: plan.productTruth.imageUrls,
-          characterCast: input.characterCast ?? [],
-          uploadedCharacterAnchorUrl,
-          publicUrl: runtime.publicUrl,
-        })
-      : null;
   const buildRunMetadata = (
     metadata: RunMetadata,
     currentPlan: AutoReviewPlan,

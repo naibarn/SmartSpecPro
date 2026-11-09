@@ -113,11 +113,8 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
     );
     expect(startAutoReviewFn).toContain("autoReviewCharacterCastPayload");
 
-    // Hyperframes twin (`startAutoStoryboardReview`) — threaded through
-    // `overrides.characterCast` (W2's addition to
-    // `HyperframesAutoPlanOverrideInputSchema`), via a merged variable so
-    // "Use Auto plan" (`setAutoStoryboardOverrides({})`) never silently
-    // drops a cast the user explicitly picked.
+    // Hyperframes plan + start request share the same merged overrides so
+    // selecting a cast cannot make the fetched plan hash stale at start time.
     expect(source).toContain(
       "const autoStoryboardOverridesWithCast ="
     );
@@ -127,6 +124,18 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
     );
     expect(mergedOverridesDecl).toContain("characterCast: autoReviewCharacterCastPayload");
     expect(mergedOverridesDecl).not.toContain("autoStoryboardOverrides.characterCast");
+    const planQuery = sourceBetween(
+      "const autoStoryboardPlanQuery =",
+      "const autoStoryboardPlan ="
+    );
+    expect(planQuery).toContain("overrides: autoStoryboardOverridesWithCast");
+    const planMatch = sourceBetween(
+      "function autoStoryboardPlanMatchesOverrides(",
+      "function categoryPathParts("
+    );
+    expect(planMatch).toContain(
+      "autoStoryboardPlanOverrideValuesEqual(planValue, value)"
+    );
 
     const hyperframesStartFn = sourceBetween(
       "async function startAutoStoryboardReview() {",
@@ -163,7 +172,7 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
 
     const resetHandlers =
       source.match(
-        /setAutoStoryboardOverrides\(\{\}\);\s*setAutoReviewShotDurationSeconds\(undefined\);\s*setAutoReviewStagedShotCount\(undefined\);/g
+        /setAutoStoryboardOverrides\(retainAutoStoryboardModelOverrides\);\s*setAutoReviewShotDurationSeconds\(undefined\);\s*setAutoReviewStagedShotCount\(undefined\);/g
       ) ?? [];
     expect(resetHandlers.length).toBe(2);
   });

@@ -937,6 +937,45 @@ function autoStoryboardPlanOverrideValue(
   return defaults[key as keyof typeof defaults];
 }
 
+function autoStoryboardPlanOverrideValuesEqual(
+  left: unknown,
+  right: unknown
+): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) =>
+        autoStoryboardPlanOverrideValuesEqual(item, right[index])
+      )
+    );
+  }
+  if (
+    left !== null &&
+    right !== null &&
+    typeof left === "object" &&
+    typeof right === "object"
+  ) {
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const leftKeys = Object.keys(leftRecord).sort();
+    const rightKeys = Object.keys(rightRecord).sort();
+    return (
+      leftKeys.length === rightKeys.length &&
+      leftKeys.every(
+        (key, index) =>
+          key === rightKeys[index] &&
+          autoStoryboardPlanOverrideValuesEqual(
+            leftRecord[key],
+            rightRecord[key]
+          )
+      )
+    );
+  }
+  return String(left ?? "") === String(right ?? "");
+}
+
 function autoStoryboardPlanMatchesOverrides(
   plan: HyperframesAutoStoryboardReviewPlan | null | undefined,
   overrides: HyperframesAutoPlanOverrideInput
@@ -948,7 +987,7 @@ function autoStoryboardPlanMatchesOverrides(
   if (!plan) return false;
   return entries.every(([key, value]) => {
     const planValue = autoStoryboardPlanOverrideValue(plan, key);
-    return String(planValue ?? "") === String(value ?? "");
+    return autoStoryboardPlanOverrideValuesEqual(planValue, value);
   });
 }
 
@@ -2810,6 +2849,48 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewCharacterCast, setAutoReviewCharacterCast] = useState<
     ReferenceManifestItem[]
   >([]);
+  const autoReviewModeUsesCast =
+    autoReviewCharacterMode === "uploaded_reference";
+  // Resolve the selected Drama Series cast before querying the plan so the
+  // plan hash and the eventual start request use the exact same overrides.
+  const autoReviewCharacterCastPayload = useMemo(
+    (): MarketplaceCharacterCastEntryInput[] =>
+      !autoReviewModeUsesCast
+        ? []
+        : autoReviewCharacterCast
+            .slice(0, MARKETPLACE_CHARACTER_CAST_MAX)
+            .map((item, index) => ({
+              characterName:
+                item.characterName || item.label || `Character ${index + 1}`,
+              ...(item.characterRole ? { characterRole: item.characterRole } : {}),
+              ...(item.vdCharacterId ? { vdCharacterId: item.vdCharacterId } : {}),
+              ...(item.vdBaseCharacterId
+                ? { vdBaseCharacterId: item.vdBaseCharacterId }
+                : {}),
+              ...(item.variantLabel ? { variantLabel: item.variantLabel } : {}),
+              ...(typeof item.depictsMinor === "boolean"
+                ? { depictsMinor: item.depictsMinor }
+                : {}),
+              ...(item.vdSeriesId ? { vdSeriesId: item.vdSeriesId } : {}),
+              ...(item.portraitAssetId
+                ? { portraitAssetId: item.portraitAssetId }
+                : {}),
+              ...(item.url ? { url: item.url } : {}),
+              ...(item.ageRange ? { ageRange: item.ageRange } : {}),
+              ...(item.descriptor ? { descriptor: item.descriptor } : {}),
+            })),
+    [autoReviewCharacterCast, autoReviewModeUsesCast]
+  );
+  const autoStoryboardOverridesWithCast = useMemo(
+    () =>
+      autoReviewCharacterCastPayload.length > 0
+        ? {
+            ...autoStoryboardOverrides,
+            characterCast: autoReviewCharacterCastPayload,
+          }
+        : autoStoryboardOverrides,
+    [autoReviewCharacterCastPayload, autoStoryboardOverrides]
+  );
   /** Hidden file input for uploading character images straight into the cast
    *  roster (shares the 4-person cap with Drama Series picks). */
   const autoReviewCastUploadInputRef = useRef<HTMLInputElement>(null);
@@ -3254,7 +3335,7 @@ export default function MarketplaceCaptureProductDetail() {
     trpc.marketplaceCapture.getAutoStoryboardReviewPlan.useQuery(
       {
         productId,
-        overrides: autoStoryboardOverrides,
+        overrides: autoStoryboardOverridesWithCast,
         ...(isAutoReviewJobSetupRoute
           ? { workflowMode: "job_workbench" as const }
           : {}),
@@ -3310,7 +3391,7 @@ export default function MarketplaceCaptureProductDetail() {
   const autoStoryboardPlanMatchesCurrentOverrides =
     autoStoryboardPlanMatchesOverrides(
       autoStoryboardPlan,
-      autoStoryboardOverrides
+      autoStoryboardOverridesWithCast
     );
   const autoStoryboardPlanRefreshingForOverrides = Boolean(
     autoStoryboardPlan && !autoStoryboardPlanMatchesCurrentOverrides
@@ -4981,9 +5062,6 @@ export default function MarketplaceCaptureProductDetail() {
    * picked cast is KEPT in state, so switching modes never destroys casting
    * work (`planning/marketplace-four-character-cast/plan.md`).
    */
-  const autoReviewModeUsesCast =
-    autoReviewCharacterMode === "uploaded_reference";
-
   const hasCharacterReference = Boolean(
     characterAnchorUrl ||
       // Only counts when the mode actually renders people — a cast picked and
@@ -5272,44 +5350,6 @@ export default function MarketplaceCaptureProductDetail() {
     [selectedProductImageId]
   );
 
-  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
-  // flexible-shots-and-creation-casting/plan.md, W3) — maps the picker's
-  // `ReferenceManifestItem[]` (host/guest already assigned by the dialog's
-  // own `handleConfirm`) onto `MarketplaceCharacterCastEntryInput[]`, the
-  // exact shape both run-start mutations accept. `[]` (no cast picked) is
-  // the byte-identical "omit the field" case at both call sites below.
-  const autoReviewCharacterCastPayload = useMemo(
-    (): MarketplaceCharacterCastEntryInput[] =>
-      !autoReviewModeUsesCast
-        ? []
-        : autoReviewCharacterCast
-        .slice(0, MARKETPLACE_CHARACTER_CAST_MAX)
-        .map((item, index) => ({
-        characterName:
-          item.characterName || item.label || `Character ${index + 1}`,
-        ...(item.characterRole ? { characterRole: item.characterRole } : {}),
-        ...(item.vdCharacterId ? { vdCharacterId: item.vdCharacterId } : {}),
-        // Look identity — without these the per-shot look switcher has no
-        // family to switch within
-        // (`planning/marketplace-four-character-cast/plan.md` §4).
-        ...(item.vdBaseCharacterId
-          ? { vdBaseCharacterId: item.vdBaseCharacterId }
-          : {}),
-        ...(item.variantLabel ? { variantLabel: item.variantLabel } : {}),
-        ...(typeof item.depictsMinor === "boolean"
-          ? { depictsMinor: item.depictsMinor }
-          : {}),
-        ...(item.vdSeriesId ? { vdSeriesId: item.vdSeriesId } : {}),
-        ...(item.portraitAssetId
-          ? { portraitAssetId: item.portraitAssetId }
-          : {}),
-        ...(item.url ? { url: item.url } : {}),
-        ...(item.ageRange ? { ageRange: item.ageRange } : {}),
-        // Who the character is — the story planner's `descriptor`.
-        ...(item.descriptor ? { descriptor: item.descriptor } : {}),
-      })),
-    [autoReviewCharacterCast, autoReviewModeUsesCast]
-  );
   const addAutoReviewDramaCharacters = useCallback(
     (items: ReferenceManifestItem[]) => {
       if (items.length === 0) return;
@@ -5632,11 +5672,6 @@ export default function MarketplaceCaptureProductDetail() {
   // mutation input. Deliberately NOT folded into `autoStoryboardOverrides`
   // state itself so resetting plan overrides never silently drops a cast the
   // user explicitly picked.
-  const autoStoryboardOverridesWithCast =
-    autoReviewCharacterCastPayload.length > 0
-      ? { ...autoStoryboardOverrides, characterCast: autoReviewCharacterCastPayload }
-      : autoStoryboardOverrides;
-
   async function startAutoStoryboardReview() {
     if (!productId || !autoStoryboardPlan) return;
     if (autoStoryboardPlanRefreshingForOverrides) {

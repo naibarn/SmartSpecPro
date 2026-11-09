@@ -1656,6 +1656,24 @@ describe("marketplace auto review audio/video planning", () => {
     ).toThrow(/ต้องเลือกรูปอ้างอิงตัวละคร/);
   });
 
+  it("accepts a server-seeded Drama Series cast as the required character reference", () => {
+    const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
+      productTruth: {
+        imageUrls: ["https://cdn.example.test/product.png"],
+      },
+      referenceAnchors: trustedAnchorInput({
+        productImageUrl: "https://cdn.example.test/product.png",
+        characterImageUrl: null,
+        characterMode: "uploaded_reference",
+        requiredRoles: ["product", "character"],
+      }),
+      hasCharacterCastReference: true,
+    });
+
+    expect(anchors.characterImageUrl).toBeNull();
+    expect(anchors.requiredRoles).toContain("character");
+  });
+
   it("requires an environment anchor before starting Auto Review", () => {
     expect(() =>
       resolveMarketplaceAutoReviewReferenceAnchorsForTest({
