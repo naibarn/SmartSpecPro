@@ -27,7 +27,7 @@
 - Logout revokes JTI before reporting success; on DB failure the response never says revocation succeeded. Cookie clearing is returned without leaking DB details.
 - POST login/2FA/logout rejects missing or mismatched Origin outside approved local test mode. `X-Forwarded-Host`, request `tenantId`, `environmentId` and `NODE_ENV` cannot grant scope.
 - `/me` returns the unchanged user ID and only active canonical membership IDs/roles; no membership or inactive tenant produces no access. A user cannot query another tenant by altering request JSON or URL.
-- Strict Durable Object throttle enforces the 10/60-second IP and 5/15-minute normalized-account sliding windows across concurrent calls; keys are environment-specific HMACs and only timestamps are stored. Expired rows are pruned, throttling behavior does not reveal account existence, and arbitrary `X-Forwarded-For`/`Forwarded` headers cannot choose the IP bucket.
+- Strict Durable Object throttle enforces the 10/60-second IP and 5/15-minute normalized-account sliding windows across concurrent calls; keys are environment-specific HMACs routed to a bounded 256-shard namespace per policy, with the full HMAC digest and timestamp stored in SQLite. Expired rows are pruned across each shard, throttling behavior does not reveal account existence, arbitrary `X-Forwarded-For`/`Forwarded` headers cannot choose the IP bucket, and attacker-controlled identifiers cannot create unbounded Durable Objects.
 - Login/2FA fail closed on a missing DO binding, missing throttle key, missing trusted Cloudflare client IP, or DO/storage failure; `/livez` still responds. Local workerd uses the fixed local IP key.
 - `/livez` behavior remains unchanged; unknown wallet/job/admin/payment/mini-app mutation routes do not exist.
 
