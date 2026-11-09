@@ -7,9 +7,12 @@ import {
   computeMarketplaceDraftQcReport,
   estimateMarketplaceDraftQcCredits,
   fingerprintMarketplaceDraftQcCandidate,
+  formatMarketplaceDraftQcJudgeNormalizationError,
+  MARKETPLACE_DRAFT_QC_CRITERIA,
   MARKETPLACE_DRAFT_QC_MAX_IMPROVEMENT_ROUNDS,
   MARKETPLACE_DRAFT_QC_MAX_CHANGED_FIELDS,
   marketplaceDraftQcJudgeOutputSchema,
+  normalizeMarketplaceDraftQcJudgeOutput,
   normalizeMarketplaceDraftQcRoundBudget,
   type MarketplaceDraftQcCreditEstimate,
   type MarketplaceDraftQcHistoryEntry,
@@ -36,6 +39,11 @@ const SKILL_FOLDER_PATH = path.join(
 const MARKETPLACE_AUTO_REVIEW_DRAFT_QC_SKILL_SLUG =
   "marketplace-auto-review-draft-quality-controller";
 const MAX_DRAFT_BYTES = 180_000;
+const MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT = [
+  "Set each criterionId to its exact machine key from this list:",
+  MARKETPLACE_DRAFT_QC_CRITERIA.map(item => item.id).join(", "),
+  "Do not use the rubric's display labels as criterionId.",
+].join(" ");
 
 const revisedDraftOutputSchema = z.object({
   draft: z.record(z.string(), z.unknown()),
@@ -257,7 +265,7 @@ async function defaultEvaluate(params: {
   const model = await resolveStoryBibleModel();
   const result = await executeJsonPlanningCallWithRetry({
     model,
-    systemPrompt: `${loadSkillPrompt()}\n\nEVALUATE MODE: judge only; never rewrite.`,
+    systemPrompt: `${loadSkillPrompt()}\n\nEVALUATE MODE: judge only; never rewrite.\n\n${MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT}`,
     userPrompt: buildPromptContext(
       "evaluate",
       params.draft,
@@ -267,6 +275,16 @@ async function defaultEvaluate(params: {
     userId: params.userId,
     maxTokens: 4200,
     schema: marketplaceDraftQcJudgeOutputSchema,
+    schemaRetryContract: MARKETPLACE_DRAFT_QC_JUDGE_ID_CONTRACT,
+    onSchemaRetriesExhausted: ({ parsedJson }) => {
+      const normalized = normalizeMarketplaceDraftQcJudgeOutput(parsedJson);
+      if (normalized.ok) {
+        return { data: normalized.data, warnings: normalized.warnings };
+      }
+      throw new Error(
+        formatMarketplaceDraftQcJudgeNormalizationError(parsedJson)
+      );
+    },
     label: "Marketplace Auto Review creative QC evaluate",
   });
   return {

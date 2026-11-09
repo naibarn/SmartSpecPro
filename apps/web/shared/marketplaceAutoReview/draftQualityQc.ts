@@ -100,6 +100,121 @@ export type MarketplaceDraftQcJudgeOutput = z.infer<
   typeof marketplaceDraftQcJudgeOutputSchema
 >;
 
+export type MarketplaceDraftQcJudgeNormalization =
+  | {
+      ok: true;
+      data: MarketplaceDraftQcJudgeOutput;
+      issues: [];
+      warnings: string[];
+    }
+  | { ok: false; issues: string[] };
+
+const MARKETPLACE_DRAFT_QC_CRITERION_ALIASES: Record<
+  string,
+  MarketplaceDraftQcCriterionId
+> = {
+  originality_scroll_stopping_angle: "originality_scroll_stop",
+  originality_scroll_stop_angle: "originality_scroll_stop",
+  scroll_stopping_angle: "originality_scroll_stop",
+};
+
+function readMarketplaceDraftQcCriterionId(
+  value: unknown
+): MarketplaceDraftQcCriterionId | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const normalized = value
+    .toLowerCase()
+    .replace(/^[\s]*(?:criterion|criteria)?\s*\d+[.):\-]?\s*/i, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const direct = marketplaceDraftQcCriterionIdSchema.safeParse(normalized);
+  if (direct.success) return direct.data;
+  return MARKETPLACE_DRAFT_QC_CRITERION_ALIASES[normalized] ?? null;
+}
+
+/**
+ * Recovers harmless LLM drift between a rubric's display label and its
+ * canonical criterion id. Scores and evidence remain mandatory and are never
+ * inferred; the normalized result still passes the strict judge schema.
+ */
+export function normalizeMarketplaceDraftQcJudgeOutput(
+  value: unknown
+): MarketplaceDraftQcJudgeNormalization {
+  const direct = marketplaceDraftQcJudgeOutputSchema.safeParse(value);
+  if (direct.success) {
+    return { ok: true, data: direct.data, issues: [], warnings: [] };
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, issues: ["response"] };
+  }
+  const payload = value as Record<string, unknown>;
+  if (!Array.isArray(payload.criteria)) {
+    return { ok: false, issues: ["criteria"] };
+  }
+
+  const issues: string[] = [];
+  let normalizedCriterionIds = false;
+  const criteria = payload.criteria.map((item, index) => {
+    const row =
+      item && typeof item === "object" && !Array.isArray(item)
+        ? (item as Record<string, unknown>)
+        : {};
+    const criterionId = readMarketplaceDraftQcCriterionId(row.criterionId);
+    if (!criterionId) {
+      issues.push(`criteria[${index}].criterionId`);
+    } else if (criterionId !== row.criterionId) {
+      normalizedCriterionIds = true;
+    }
+    return { ...row, criterionId };
+  });
+  if (issues.length) return { ok: false, issues };
+
+  const parsed = marketplaceDraftQcJudgeOutputSchema.safeParse({
+    ...payload,
+    criteria,
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      issues: [
+        ...new Set(
+          parsed.error.issues.map(issue => issue.path.join(".") || "response")
+        ),
+      ],
+    };
+  }
+
+  const seen = new Set<MarketplaceDraftQcCriterionId>();
+  for (const criterion of parsed.data.criteria) {
+    if (seen.has(criterion.criterionId)) {
+      return { ok: false, issues: ["criteria.duplicate_criterionId"] };
+    }
+    seen.add(criterion.criterionId);
+  }
+  if (seen.size !== MARKETPLACE_DRAFT_QC_CRITERIA.length) {
+    return { ok: false, issues: ["criteria.incomplete"] };
+  }
+
+  return {
+    ok: true,
+    data: parsed.data,
+    issues: [],
+    warnings: normalizedCriterionIds
+      ? ["Normalized rubric display labels to canonical criterion ids."]
+      : [],
+  };
+}
+
+export function formatMarketplaceDraftQcJudgeNormalizationError(
+  value: unknown
+): string {
+  const result = normalizeMarketplaceDraftQcJudgeOutput(value);
+  return result.ok
+    ? ""
+    : `Marketplace QC evaluator returned an incomplete scorecard. Invalid fields: ${result.issues.join(", ")}. No score was fabricated.`;
+}
+
 export const marketplaceDraftQcComputedCriterionSchema = z.object({
   criterionId: marketplaceDraftQcCriterionIdSchema,
   rawScore: z.number().min(0).max(5),

@@ -19402,7 +19402,10 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
   const current = metadata.creativeQc
     ? marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc)
     : null;
-  if (current?.success && ["queued", "running"].includes(current.data.status)) {
+  if (
+    current?.success &&
+    ["queued", "running", "failed"].includes(String(current.data.status))
+  ) {
     const candidateFingerprint =
       current.data.candidateFingerprint ||
       fingerprintMarketplaceDraftQcCandidate(candidate.draft);
