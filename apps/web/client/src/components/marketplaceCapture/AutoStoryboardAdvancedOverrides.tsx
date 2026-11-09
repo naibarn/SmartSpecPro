@@ -139,7 +139,9 @@ export function AutoStoryboardStoryMotionFields({
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const thai = copy.locale === "th";
   const labels = {
-    creativeBrief: thai ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม" : "Creative brief",
+    creativeBrief: thai
+      ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม (ไม่บังคับ)"
+      : "Creative brief (optional)",
     motionDirection: thai
       ? "คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)"
       : "Video motion direction (optional)",
@@ -167,14 +169,14 @@ export function AutoStoryboardStoryMotionFields({
           onChange={event => update("creativeBrief", event.target.value)}
           placeholder={
             thai
-              ? "เช่น อยากได้แนวรีวิวอบอุ่น กระชับ เน้นผลลัพธ์จริง"
+              ? "เว้นว่างได้ หรือระบุแนวรีวิวที่ต้องการ เช่น อบอุ่น กระชับ เน้นผลลัพธ์จริง"
               : "Example: warmer pacing, concise proof-first review, practical result emphasis"
           }
         />
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
           {thai
-            ? "กำหนดแนวเรื่อง ตัวละคร หรือสถานการณ์ให้ระบบวางแผนทุก shot ตาม"
-            : "Steers the story/scenario the planner weaves into every shot"}
+            ? "เว้นว่างได้ ระบบจะใช้ชื่อ รายละเอียด Product brief และสเปกสินค้าที่มีเป็นข้อมูลตั้งต้น"
+            : "Leave blank to use the product name, description, Product brief, and available specs as the planning input."}
         </p>
       </label>
       <label className="block space-y-1">
@@ -243,7 +245,9 @@ export function AutoStoryboardAdvancedOverrides({
     videoStructure: thai ? "โครงสร้างวิดีโอ" : "Video structure",
     manualGroupSize: thai ? "กำหนดจำนวนช็อตต่อคลิป" : "Manual group size",
     speechLanguage: thai ? "ภาษาพูด" : "Spoken language",
-    creativeBrief: thai ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม" : "Creative brief",
+    creativeBrief: thai
+      ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม (ไม่บังคับ)"
+      : "Creative brief (optional)",
     motionDirection: thai
       ? "คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)"
       : "Video motion direction (optional)",

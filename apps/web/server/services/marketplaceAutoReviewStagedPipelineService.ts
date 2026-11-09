@@ -26,6 +26,7 @@ import {
   type StagedCastMember,
   type StagedStoryArcLanguagePlan,
   type StagedStoryArcPlan,
+  type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
   buildStagedImagePromptContentHash,
@@ -361,6 +362,7 @@ function buildProductFromMetadata(
     productId: run.productId,
     productName: text(truth.productName) || run.productId,
     description: text(truth.description) || null,
+    specs: record(truth.specs),
     imageUrls: urls.slice(0, 5),
   };
 }
@@ -374,7 +376,7 @@ function buildProductFromMetadata(
 // conversation mode from `cast.length` — passing 0 or 1 cast members here
 // reproduces today's solo-narrator output byte-for-byte, since the planner
 // only switches into `two_person_conversation` at length >= 2.
-function deriveStagedCastFromManifest(
+export function deriveStagedCastFromManifest(
   manifest:
     | Array<{
         url?: unknown;
@@ -500,7 +502,7 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
     sold: null,
     reviews: null,
     description: plan.product.description || "",
-    specs: {},
+    specs: plan.product.specs ?? {},
     imageUrls: plan.product.imageUrls,
   };
   return {
@@ -1238,52 +1240,33 @@ export async function buildStagedPlanAndMetadataForInit(
       };
     }
   }
-  const shouldUseLLM = cast.length >= 1 || shotCount === "auto";
   const product = buildProductFromMetadata(run, base);
   const referenceManifestHash = buildProductionStableHash({
     referenceAnchors: base.referenceAnchors ?? {},
     productImageUrls: base.productImageUrls ?? [],
   });
   const languagePlan = stagedLanguagePlanFromMetadata(base);
-  let plan: StagedStoryArcPlan;
-  if (shouldUseLLM) {
-    plan = await generateStagedStoryArcPlanWithLLM({
-      runId: run.id,
-      userId: run.userId ?? undefined,
-      tenantId: run.tenantId ?? undefined,
-      product,
-      referenceManifestHash,
-      revision: options?.revision,
-      previousStorySummary: options?.previousStorySummary,
-      languagePlan,
-      reviewTone,
-      storytellingStructure,
-      cast,
-      shotDurationSeconds,
-      shotCount,
-      model: storyPlanningModel,
-    });
-  } else {
-    plan = buildStagedStoryArcPlan({
-      runId: run.id,
-      product,
-      referenceManifestHash,
-      revision: options?.revision,
-      previousStorySummary: options?.previousStorySummary ?? undefined,
-      languagePlan,
-      reviewTone,
-      storytellingStructure,
-      cast,
-      shotDurationSeconds,
-      shotCount: typeof shotCount === "number" ? shotCount : undefined,
-    });
-  }
+  const plan = await generateStagedStoryArcPlanWithLLM({
+    runId: run.id,
+    userId: run.userId ?? undefined,
+    tenantId: run.tenantId ?? undefined,
+    product,
+    referenceManifestHash,
+    revision: options?.revision,
+    previousStorySummary: options?.previousStorySummary,
+    languagePlan,
+    reviewTone,
+    storytellingStructure,
+    cast,
+    shotDurationSeconds,
+    shotCount,
+    model: storyPlanningModel,
+  });
   // `generateStagedStoryArcPlanWithLLM` never throws — on any failure it
   // internally falls back to `buildStagedStoryArcPlan` and stamps
   // `source: "bounded_story_arc_fallback"`. That's how we detect the
   // fallback happened without duplicating its try/catch here.
-  const usedSkillFallback =
-    shouldUseLLM && plan.source !== "llm_story_arc";
+  const usedSkillFallback = plan.source !== "llm_story_arc";
   const metadata = buildFreshStagedMetadataFromPlan({
     run,
     base,
@@ -1391,6 +1374,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
   notes?: string | null;
+  selectedConcept?: StagedStoryConceptOption;
 }) {
   const base = record(params.run.metadataJson);
   const {
@@ -1418,28 +1402,18 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     cast,
     shotDurationSeconds: resolvedShotDurationSeconds,
   };
-  // Additive (feature/marketplace-flexible-shots): LLM-first redraft when
-  // cast is present (dialogue is creative content) or shotCount="auto" (shot
-  // count is LLM judgment) — mirrors the init path in
-  // `buildStagedPlanAndMetadataForInit`. `generateStagedStoryArcPlanWithLLM`
-  // falls back to `buildStagedStoryArcPlan` internally on any failure.
-  const shouldUseLLM = cast.length >= 1 || shotCount === "auto";
-  const nextPlan = shouldUseLLM
-    ? await generateStagedStoryArcPlanWithLLM({
-        ...sharedPlanInput,
-        userId: params.run.userId ?? undefined,
-        tenantId: params.run.tenantId ?? undefined,
-        shotCount,
-        // Honor the run's own creation-time model choice on a redraft too, so
-        // a redraft cannot silently fall back to a weaker model than the one
-        // that authored revision 1.
-        model: storyPlanningModel,
-      })
-    : buildStagedStoryArcPlan({
-        ...sharedPlanInput,
-        shotCount: typeof shotCount === "number" ? shotCount : undefined,
-      });
-  const usedSkillFallback = shouldUseLLM && nextPlan.source !== "llm_story_arc";
+  // Keep redrafts on the LLM path so they can honor a selected review idea
+  // and return a fresh set of alternatives. The planner falls back to a
+  // bounded plan if model generation fails.
+  const nextPlan = await generateStagedStoryArcPlanWithLLM({
+    ...sharedPlanInput,
+    userId: params.run.userId ?? undefined,
+    tenantId: params.run.tenantId ?? undefined,
+    shotCount,
+    selectedConcept: params.selectedConcept,
+    model: storyPlanningModel,
+  });
+  const usedSkillFallback = nextPlan.source !== "llm_story_arc";
   const currentRedraftCount = Number(record(base.planReview).redraftCount) || 0;
   const metadata = stagedMetadataForPlan({
     run: params.run,

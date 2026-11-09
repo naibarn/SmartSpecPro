@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { callLLMStructured } from "../callLLMStructured";
 
 import {
   buildStagedCheckpoint,
@@ -16,6 +17,10 @@ import {
   stagedCheckpointExpectationForTest,
 } from "../marketplaceAutoReviewStagedPipelineService";
 import { StagedSequentialStoryboardMetadataV1Schema } from "../../../shared/marketplaceAutoReview/stagedContracts";
+
+vi.mock("../callLLMStructured", () => ({
+  callLLMStructured: vi.fn(),
+}));
 
 describe("marketplace staged storyboard pipeline contracts", () => {
   const plan = buildStagedStoryArcPlan({
@@ -212,18 +217,51 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     );
   });
 
-  /**
-   * `buildStagedPlanAndMetadataForInit` is the async LLM-first path used by
-   * `initializeStagedMarketplaceAutoReviewRun`/`redraftStagedMarketplaceAutoReviewRun`.
-   * With no cast and no shotCount="auto" it must stay deterministic
-   * (`usedSkillFallback: false`, `source: "bounded_story_arc_fallback"`) —
-   * there's no LLM-judgment reason to call the LLM at all in that case.
-   */
-  it("buildStagedPlanAndMetadataForInit stays deterministic (no LLM call) when there is no cast and shotCount is not 'auto'", async () => {
+  it("buildStagedPlanAndMetadataForInit drafts three review ideas from the product brief", async () => {
+    const concepts = [
+      {
+        conceptId: "idea-1",
+        title: "ปัญหาก่อนเลือกซื้อ",
+        angle: "เริ่มจากปัญหาที่สินค้าแก้ได้",
+        storySummary: "เล่าปัญหาและสาธิตหลักฐานจากสินค้า",
+      },
+      {
+        conceptId: "idea-2",
+        title: "ลองใช้ในชีวิตประจำวัน",
+        angle: "ติดตามการใช้งานจริง",
+        storySummary: "พาเห็นการใช้งานและสรุปความเหมาะสม",
+      },
+      {
+        conceptId: "idea-3",
+        title: "ตรวจจุดเด่นตามข้อมูล",
+        angle: "รีวิวตรงไปตรงมาตาม Product brief",
+        storySummary: "ตรวจจุดเด่นที่ยืนยันได้ก่อนแนะนำ",
+      },
+    ];
+    const mockCallLLMStructured = vi.mocked(callLLMStructured);
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: {
+        storySummary: "ร่างรีวิวสินค้าจากข้อมูล brief",
+        conceptOptions: concepts,
+        selectedConceptId: "idea-1",
+        shots: Array.from({ length: 7 }, (_, index) => ({
+          shotId: index + 1,
+          title: `Shot ${index + 1}`,
+          storySummary: `Beat ${index + 1}`,
+          visualSummary: `Visual ${index + 1}`,
+          dialogue: `Line ${index + 1}`,
+        })),
+      },
+    } as never);
     const rawRun = {
       id: "run-init-deterministic",
       productId: "product-demo",
       metadataJson: {
+        productTruth: {
+          productName: "สินค้าเดโม",
+          description: "Product brief ที่ใช้อธิบายสินค้า",
+          specs: { material: "stainless steel" },
+        },
         productImageUrls: ["https://example.test/img.jpg"],
         referenceAnchors: { shotCount: 7 },
       },
@@ -231,8 +269,12 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     const { plan, usedSkillFallback } = await buildStagedPlanAndMetadataForInit(
       rawRun as any
     );
+    mockCallLLMStructured.mockReset();
     expect(plan.shots).toHaveLength(7);
-    expect(plan.source).toBe("bounded_story_arc_fallback");
+    expect(plan.source).toBe("llm_story_arc");
+    expect(plan.conceptOptions).toEqual(concepts);
+    expect(plan.product.description).toBe("Product brief ที่ใช้อธิบายสินค้า");
+    expect(plan.product.specs).toEqual({ material: "stainless steel" });
     expect(usedSkillFallback).toBe(false);
   });
 

@@ -3394,7 +3394,10 @@ export default function MarketplaceCaptureProductDetail() {
       autoStoryboardOverridesWithCast
     );
   const autoStoryboardPlanRefreshingForOverrides = Boolean(
-    autoStoryboardPlan && !autoStoryboardPlanMatchesCurrentOverrides
+    autoStoryboardPlanQuery.isFetching &&
+      autoStoryboardPlanQuery.isFetchedAfterMount &&
+      autoStoryboardPlan &&
+      !autoStoryboardPlanMatchesCurrentOverrides
   );
   const selectedStandardImageModelTransport =
     resolveAutoReviewImageModelTransport(autoReviewImageModel);
@@ -5674,7 +5677,10 @@ export default function MarketplaceCaptureProductDetail() {
   // user explicitly picked.
   async function startAutoStoryboardReview() {
     if (!productId || !autoStoryboardPlan) return;
-    if (autoStoryboardPlanRefreshingForOverrides) {
+    if (
+      autoStoryboardPlanQuery.isFetching &&
+      autoStoryboardPlanRefreshingForOverrides
+    ) {
       toast.info(hyperframesCopy.autoPlanUpdating);
       return;
     }
@@ -5762,9 +5768,12 @@ export default function MarketplaceCaptureProductDetail() {
       return;
     }
     const confirmed = await confirm({
-      title: "ยืนยันเริ่ม Auto Storyboard Review ใหม่?",
-      description:
-        "ระบบจะสร้าง run ใหม่จาก Hero/Product image ปัจจุบัน และซ่อน error จาก run เก่าไว้ระหว่างรอสถานะล่าสุด",
+      title: isAutoReviewJobSetupRoute
+        ? "เริ่มสร้างไอเดียรีวิว 3 แบบ?"
+        : "ยืนยันเริ่ม Auto Storyboard Review ใหม่?",
+      description: isAutoReviewJobSetupRoute
+        ? "ระบบจะอ่านข้อมูลสินค้าและ Product brief เพื่อร่างไอเดียรีวิว 3 แบบใน Job Workbench ขั้นตอนนี้ยังไม่สร้างภาพหรือวิดีโอ คุณจะเลือกแนวทาง ตรวจและแก้ Storyboard ก่อนยืนยันสร้างสื่อได้"
+        : "ระบบจะสร้าง run ใหม่จาก Hero/Product image ปัจจุบัน และซ่อน error จาก run เก่าไว้ระหว่างรอสถานะล่าสุด",
     });
     if (!confirmed) return;
     const startAttemptKey = Date.now().toString(36);
@@ -5785,7 +5794,9 @@ export default function MarketplaceCaptureProductDetail() {
       return next;
     });
     toast.info(
-      "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว กำลังรอ backend สร้าง run ใหม่"
+      isAutoReviewJobSetupRoute
+        ? "กำลังสร้างไอเดียรีวิวจากข้อมูลสินค้า แล้วจะเปิด Job Workbench ให้เลือกและตรวจเนื้อหา"
+        : "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว กำลังรอ backend สร้าง run ใหม่"
     );
     void autoReviewRuns.refetch();
     startAutoStoryboardReviewMutation.mutate({
@@ -6822,6 +6833,7 @@ export default function MarketplaceCaptureProductDetail() {
               onStart={startAutoStoryboardReview}
               onUseStandard={() => setAutoReviewLaunchMode("standard_order")}
               showStandardAction={!isAutoReviewJobSetupRoute}
+              workbenchMode={isAutoReviewJobSetupRoute}
               showActiveRunStatus={!isAutoReviewJobSetupRoute}
               onResetToAuto={() => {
                 setAutoStoryboardOverrides(retainAutoStoryboardModelOverrides);

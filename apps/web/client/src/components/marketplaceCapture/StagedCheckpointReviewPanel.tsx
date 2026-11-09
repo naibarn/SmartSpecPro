@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
+  loadStoredAutoStoryboardOverrides,
+  persistStoredStoryPlanningModel,
+} from "@/lib/marketplaceCaptureAutoReviewPreferences";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,6 +18,10 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharacterPickerDialog";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
+import {
+  StagedStoryConceptPicker,
+  type StagedStoryConceptOption,
+} from "./StagedStoryConceptPicker";
 import {
   StagedShotCharacterRow,
   buildStagedShotLookOptions,
@@ -137,7 +145,14 @@ export type StagedReviewState = {
     dialogueLanguage: "th" | "en";
     promptLanguage: "th" | "en";
   };
-  storyPlan?: { title?: string; storySummary?: string } | null;
+  storyPlan?: {
+    title?: string;
+    storySummary?: string;
+    source?: "llm_story_arc" | "bounded_story_arc_fallback";
+    conceptOptions?: StagedStoryConceptOption[];
+    selectedConceptId?: string | null;
+    planRevision?: number;
+  } | null;
   referenceManifest?: ReferenceManifestItem[];
   audioPlan?: {
     text?: string;
@@ -286,6 +301,7 @@ export type StagedCheckpointRetry = {
   shotId?: number;
   notes?: string;
   model?: string;
+  selectedConcept?: StagedStoryConceptOption;
   // When true, the server both resets the checkpoint AND immediately
   // approves + resubmits generation in the same click — no separate
   // "confirm" step. Only set this for actions recovering/regenerating an
@@ -723,7 +739,13 @@ export function StagedCheckpointReviewPanel(props: {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [failedMediaUrls, setFailedMediaUrls] = useState<Record<string, boolean>>({});
   const [redraftNotes, setRedraftNotes] = useState("");
-  const [selectedModel, setSelectedModel] = useState("__automatic__");
+  const [selectedModel, setSelectedModel] = useState(() =>
+    loadStoredAutoStoryboardOverrides().storyPlanningModel ?? "__automatic__"
+  );
+  const changeSelectedModel = (model: string) => {
+    setSelectedModel(model);
+    persistStoredStoryPlanningModel(model);
+  };
   const [finalOrderDraft, setFinalOrderDraft] = useState("");
   const [includeAudioDraft, setIncludeAudioDraft] = useState<boolean | null>(
     null
@@ -2246,7 +2268,7 @@ export function StagedCheckpointReviewPanel(props: {
                 <select
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedModel}
-                  onChange={event => setSelectedModel(event.target.value)}
+                  onChange={event => changeSelectedModel(event.target.value)}
                   disabled={props.pending || planningModelsQuery.isLoading}
                 >
                   <option value="__automatic__">
@@ -2777,6 +2799,35 @@ export function StagedCheckpointReviewPanel(props: {
                 </ul>
               </div>
             ) : null}
+            {storyCheckpoint?.state === "awaiting" &&
+            props.state.storyPlan?.conceptOptions?.length ? (
+              <StagedStoryConceptPicker
+                options={props.state.storyPlan.conceptOptions}
+                selectedConceptId={
+                  props.state.storyPlan.selectedConceptId ?? null
+                }
+                planRevision={props.state.storyPlan.planRevision ?? 0}
+                disabled={!storyEditAvailable || props.pending}
+                onApply={selectedConcept =>
+                  props.onRetry({
+                    stage: "story",
+                    selectedConcept,
+                    model: selectedModel,
+                  })
+                }
+              />
+            ) : null}
+            {storyCheckpoint?.state === "awaiting" &&
+            props.state.storyPlan?.source === "bounded_story_arc_fallback" &&
+            !props.state.storyPlan.conceptOptions?.length ? (
+              <p
+                className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs leading-5 text-amber-900"
+                role="status"
+              >
+                รอบนี้โมเดลร่างไอเดียไม่สำเร็จ จึงใช้ร่างสำรองและยังไม่มีตัวเลือกหลายแนว
+                คุณสามารถเลือกโมเดล LLM แล้วกด “ร่างเนื้อเรื่องใหม่” ด้านล่าง
+              </p>
+            ) : null}
             <label className="mt-2 block text-sm font-medium text-slate-800">
               เรื่องย่อ
               <textarea
@@ -2887,7 +2938,7 @@ export function StagedCheckpointReviewPanel(props: {
                   <select
                     className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 shadow-2xs focus:border-amber-500 focus:outline-none max-w-xs"
                     value={selectedModel}
-                    onChange={event => setSelectedModel(event.target.value)}
+                    onChange={event => changeSelectedModel(event.target.value)}
                     disabled={props.pending || planningModelsQuery.isLoading}
                   >
                     <option value="__automatic__">

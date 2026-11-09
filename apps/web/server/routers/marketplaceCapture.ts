@@ -1922,6 +1922,14 @@ export const marketplaceCaptureRouter = router({
         idempotencyKey: z.string().min(8).max(200),
         notes: z.string().trim().max(1200).optional(),
         model: z.string().trim().max(128).optional(),
+        selectedConcept: z
+          .object({
+            conceptId: z.string().trim().min(1).max(120),
+            title: z.string().trim().min(1).max(160),
+            angle: z.string().trim().min(1).max(400),
+            storySummary: z.string().trim().min(1).max(500),
+          })
+          .optional(),
       })
     )
     .output(z.any())

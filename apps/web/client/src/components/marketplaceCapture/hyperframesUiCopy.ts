@@ -27,15 +27,20 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
   return resolved === "th"
     ? {
         locale: resolved,
-        autoReviewTitle: "Auto Storyboard Review",
-        autoReviewPlanLabel: "แผน Auto Storyboard Review",
+        autoReviewTitle: "ตั้งค่าการสร้าง Auto Storyboard Review",
+        autoReviewPlanLabel: "การตั้งค่าการสร้าง Auto Storyboard Review",
         autoReviewLoading: "กำลังโหลดแผนอัตโนมัติจากระบบ...",
         autoReviewFallbackSummary:
           "ระบบเลือก template, platform, render engine, storyboard settings และ preview policy ให้อัตโนมัติ",
-        createAutoReview: "สร้าง Auto Storyboard Review",
+        createAutoReview: "สร้างไอเดียรีวิว 3 แบบ",
+        createAutoReviewGeneric: "เริ่ม Auto Storyboard Review",
         resumeAutoReview: "เปิดงาน Auto Storyboard Review ที่กำลังทำอยู่",
         reviewBlockers: "ตรวจสอบสิ่งที่ต้องแก้ก่อนเริ่ม Auto",
-        autoPlanUpdating: "กำลังอัปเดตแผน Auto",
+        autoPlanUpdating: "กำลังโหลดแผนตามค่าที่เลือก",
+        autoPlanPurpose:
+          "แผน Auto นี้เลือกค่าการทำงาน เช่น platform, รูปแบบเฟรม และ engine ไม่ใช่ไอเดียรีวิว เมื่อเริ่ม Job ระบบจะใช้ข้อมูลสินค้าและ Product brief ร่าง 3 แนวคิดให้เลือก จากนั้นตรวจหรือแก้ Storyboard ใน Job Workbench ก่อนยืนยันสร้าง Prompt ภาพและวิดีโอ",
+        autoPlanPurposeGeneric:
+          "แผน Auto นี้เลือกค่าการทำงาน เช่น platform, รูปแบบเฟรม และ engine ส่วนเนื้อหารีวิวจะถูกสร้างตาม workflow ที่เลือก",
         useAutoPlan: "ใช้แผนอัตโนมัติ",
         useStandardOrder: "ใช้ Standard Order",
         retryAutoPlan: "โหลดแผน Auto ใหม่",
@@ -429,15 +434,20 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
       }
     : {
         locale: resolved,
-        autoReviewTitle: "Auto Storyboard Review",
-        autoReviewPlanLabel: "Auto Storyboard Review plan",
+        autoReviewTitle: "Auto Storyboard Review setup",
+        autoReviewPlanLabel: "Auto Storyboard Review setup",
         autoReviewLoading: "Loading backend-selected plan...",
         autoReviewFallbackSummary:
           "Backend selects template, platform, render engine, storyboard settings, and preview policy.",
-        createAutoReview: "Create Auto Storyboard Review",
+        createAutoReview: "Generate 3 review ideas",
+        createAutoReviewGeneric: "Start Auto Storyboard Review",
         resumeAutoReview: "Resume Auto Storyboard Review",
         reviewBlockers: "Review blockers",
-        autoPlanUpdating: "Updating Auto plan",
+        autoPlanUpdating: "Loading the plan for your selected settings",
+        autoPlanPurpose:
+          "This Auto plan chooses production settings such as platform, frame strategy, and render engine; it is not the review idea. After you start a Job, the system uses product data and its Product brief to draft 3 review concepts. Choose an idea, inspect or edit the full storyboard in Job Workbench, then confirm before image and video prompts are generated.",
+        autoPlanPurposeGeneric:
+          "This Auto plan chooses production settings such as platform, frame strategy, and render engine. Review content is generated according to the selected workflow.",
         useAutoPlan: "Use auto plan",
         useStandardOrder: "Use Standard Order",
         retryAutoPlan: "Retry Auto plan",

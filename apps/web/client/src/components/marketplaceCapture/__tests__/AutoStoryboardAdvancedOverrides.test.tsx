@@ -205,7 +205,7 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     const onChange = vi.fn();
     render(<AutoStoryboardStoryMotionFields value={{}} onChange={onChange} />);
 
-    fireEvent.change(screen.getByLabelText("Creative brief"), {
+    fireEvent.change(screen.getByLabelText("Creative brief (optional)"), {
       target: { value: "mother washing her child's hair, warm tone" },
     });
     expect(onChange).toHaveBeenLastCalledWith({
@@ -222,7 +222,9 @@ describe("AutoStoryboardAdvancedOverrides", () => {
       />
     );
 
-    expect(screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม")).toBeTruthy();
+    expect(
+      screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม (ไม่บังคับ)")
+    ).toBeTruthy();
     expect(
       screen.getByLabelText("คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)")
     ).toBeTruthy();

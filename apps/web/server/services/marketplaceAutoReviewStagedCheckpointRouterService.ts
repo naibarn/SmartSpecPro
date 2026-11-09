@@ -20,12 +20,14 @@ import {
 import { createMarketplaceDraftQcState } from "@shared/marketplaceAutoReview/draftQualityQc";
 import { buildProductionStableHash } from "../../shared/mediaProduction";
 import { deriveAssemblyDocumentationFromProductTruth } from "../../shared/marketplaceCapture/sequentialEvidencePreview";
+import { deriveStagedCastFromManifest } from "./marketplaceAutoReviewStagedPipelineService";
 import {
   buildStagedCheckpoint,
   buildStagedPlanView,
   buildStagedStoryArcPlan,
   generateStagedStoryArcPlanWithLLM,
   type StagedStoryArcPlan,
+  type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
   buildCheckpointApprovalMutation,
@@ -1923,6 +1925,7 @@ export async function redraftStagedAutoReviewPlan(input: {
   idempotencyKey: string;
   notes?: string;
   model?: string;
+  selectedConcept?: StagedStoryConceptOption;
   auth: StagedCheckpointAuth;
 }) {
   return mutateOwnedStagedMetadata({
@@ -1947,6 +1950,23 @@ export async function redraftStagedAutoReviewPlan(input: {
         });
       }
       const anchors = record((metadata as Record<string, any>).referenceAnchors);
+      const base = metadata as Record<string, any>;
+      const requestedShotCount = anchors.shotCount;
+      const shotCount =
+        requestedShotCount === "auto"
+          ? "auto"
+          : typeof requestedShotCount === "number"
+            ? requestedShotCount
+            : undefined;
+      const shotDurationSeconds =
+        typeof anchors.shotDurationSeconds === "number"
+          ? anchors.shotDurationSeconds
+          : undefined;
+      const cast = deriveStagedCastFromManifest(base.customReferenceManifest);
+      const storyPlanningModel =
+        typeof anchors.storyPlanningModel === "string"
+          ? anchors.storyPlanningModel
+          : undefined;
       const reviewTone =
         typeof anchors.reviewTone === "string"
           ? anchors.reviewTone
@@ -1968,7 +1988,10 @@ export async function redraftStagedAutoReviewPlan(input: {
         revision: metadata.planReview.planRevision + 1,
         reviewTone,
         storytellingStructure,
-        model: input.model,
+        cast,
+        shotCount,
+        shotDurationSeconds,
+        model: input.model ?? storyPlanningModel,
         languagePlan: {
           summaryLanguage:
             record(
@@ -1995,6 +2018,7 @@ export async function redraftStagedAutoReviewPlan(input: {
         previousStorySummary: input.notes?.trim()
           ? input.notes.trim().slice(0, 500)
           : null,
+        selectedConcept: input.selectedConcept,
       });
       const storyCheckpoint = buildStagedCheckpoint({
         checkpointId: `story-plan:${input.runId}:r${nextPlan.planRevision}:redraft`,

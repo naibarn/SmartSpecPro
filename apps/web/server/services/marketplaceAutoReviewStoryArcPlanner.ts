@@ -19,6 +19,7 @@ export type StagedStoryArcProduct = {
   productId: string;
   productName: string;
   description?: string | null;
+  specs?: Record<string, unknown>;
   imageUrls: string[];
 };
 
@@ -270,6 +271,13 @@ export type StagedStoryArcLanguagePlan = {
 // LLM or the deterministic fallback.
 export type StagedStoryArcPlanSource = "bounded_story_arc_fallback" | "llm_story_arc";
 
+export type StagedStoryConceptOption = {
+  conceptId: string;
+  title: string;
+  angle: string;
+  storySummary: string;
+};
+
 export type StagedStoryArcPlan = {
   planRevision: number;
   title: string;
@@ -280,6 +288,8 @@ export type StagedStoryArcPlan = {
   storyPlanHash: string;
   source: StagedStoryArcPlanSource;
   languagePlan?: StagedStoryArcLanguagePlan;
+  conceptOptions?: StagedStoryConceptOption[];
+  selectedConceptId?: string;
   // Additive (opt-in): only present when at least one cast member was
   // supplied. Absent entirely for every existing product-only/solo caller.
   cast?: StagedCastMember[];
@@ -916,6 +926,7 @@ export function buildStagedStoryArcPlan(input: {
     productId,
     productName,
     description: productDescription || null,
+    ...(input.product.specs ? { specs: input.product.specs } : {}),
     imageUrls: input.product.imageUrls.map(clean).filter(Boolean).slice(0, 5),
   } satisfies StagedStoryArcProduct;
   const referenceManifestHash =
@@ -1329,6 +1340,9 @@ export function buildStagedPlanView(plan: StagedStoryArcPlan) {
   return {
     title: plan.title,
     storySummary: plan.storySummary,
+    source: plan.source,
+    ...(plan.conceptOptions ? { conceptOptions: plan.conceptOptions } : {}),
+    ...(plan.selectedConceptId ? { selectedConceptId: plan.selectedConceptId } : {}),
     planRevision: plan.planRevision,
     storyPlanHash: plan.storyPlanHash,
     shots: plan.shots,
@@ -1409,6 +1423,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   // is LLM judgment, never pre-computed in TS), or omitted (today's default
   // of a fixed 9 shots, byte-identical prompt/schema behavior).
   shotCount?: number | "auto";
+  selectedConcept?: StagedStoryConceptOption;
 }): Promise<StagedStoryArcPlan> {
   let chosenModel = input.model?.trim();
   if (!chosenModel || chosenModel === "__automatic__") {
@@ -1531,23 +1546,31 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
     ? `จำนวนช็อต: ไม่กำหนดตายตัว ให้คุณเป็นผู้ตัดสินใจเองว่าเนื้อหาของสินค้านี้ควรใช้ช็อตทั้งหมดกี่ช็อต โดยเลือกจำนวนระหว่าง 7-30 ช็อต และใช้ "ความยาวต่อช็อต" (${shotDurationSeconds} วินาที/ช็อต) เป็นเกณฑ์หลักในการตัดสินใจ — สินค้าที่มีรายละเอียด/ฟังก์ชันเยอะควรใช้จำนวนช็อตมากขึ้นเพื่อเล่าเรื่องได้ครบถ้วน ส่วนสินค้าที่เรียบง่ายใช้จำนวนช็อตน้อยกว่าได้ ให้ส่งช็อตทั้งหมดที่คุณเลือกกลับมาใน shots array (เรียง shotId ต่อเนื่อง 1 ถึงจำนวนช็อตที่เลือก)`
     : `จำนวนช็อต: วางแผนบทรีวิวทั้งหมด ${fixedShotCount} ช็อต (ช็อตละ ${shotDurationSeconds} วินาที)`;
 
+  const selectedConceptInstruction = input.selectedConcept
+    ? `\nแนวคิดที่ผู้ใช้เลือกไว้ (ต้องใช้เป็นแนวทางหลัก): ${JSON.stringify(input.selectedConcept)}`
+    : "";
+
   const systemPrompt = `คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
 
-หน้าที่ของคุณคือวิเคราะห์ข้อมูลสินค้าที่ได้รับ แล้วสังเคราะห์เรื่องย่อ และวางแผนบทรีวิวตามเงื่อนไขดังนี้:
+หน้าที่ของคุณคือวิเคราะห์ข้อมูลสินค้าและ Product brief ที่ได้รับ แล้วสร้างแนวคิดรีวิว 3 แบบที่แตกต่างกัน จากนั้นเลือกแนวคิดที่เหมาะที่สุด 1 แบบและวางแผนบทรีวิวฉบับเต็มตามแนวคิดนั้น:
 0. ${shotCountInstruction}
-1. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" โดยกำหนดชื่อช็อต (title) และสรุปการถ่ายทำ (visualSummary) ให้เห็นภาพชัดเจน
-2. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
-3. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
-4. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
-5. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${castRosterBlock}${supportingCastBlock}`;
+1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle และ storySummary สั้น ๆ ซึ่งแตกต่างกันจริง
+2. เลือก selectedConceptId จาก conceptOptions แล้วให้ storySummary และ shots ฉบับเต็มตรงกับแนวคิดที่เลือก
+3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" โดยกำหนดชื่อช็อต (title) และสรุปการถ่ายทำ (visualSummary) ให้เห็นภาพชัดเจน
+4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
+5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
+6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
+7. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
 
   const userMessage = JSON.stringify(
     {
       productName,
       productDescription: productDescription || undefined,
+      productSpecs: input.product.specs,
       storytellingStructure: structureKey,
       reviewTone: toneKey,
       revisionNotes: revisionNotes || undefined,
+      selectedConcept: input.selectedConcept,
       // Include the roster for ANY named cast (solo presenter included) —
       // see castRosterBlock's solo branch above.
       ...(activeCast.length > 0
@@ -1590,6 +1613,13 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 
   const ZodLLMPlanSchema = z.object({
     storySummary: z.string(),
+    conceptOptions: z.array(z.object({
+      conceptId: z.string().min(1),
+      title: z.string().min(1),
+      angle: z.string().min(1),
+      storySummary: z.string().min(1),
+    })).length(3),
+    selectedConceptId: z.string().min(1),
     shots: isAutoShotCount
       ? z.array(shotObjectSchema).min(7).max(30)
       : z.array(shotObjectSchema).length(fixedShotCount ?? 9),
@@ -1622,6 +1652,25 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
         });
 
       const storySummary = bounded(llmRes.data.storySummary, 500);
+      const generatedConceptOptions = llmRes.data.conceptOptions.map(option => ({
+        conceptId: bounded(option.conceptId, 120),
+        title: bounded(option.title, 160),
+        angle: bounded(option.angle, 400),
+        storySummary: bounded(option.storySummary, 500),
+      }));
+      const selectedConceptId =
+        input.selectedConcept?.conceptId ?? clean(llmRes.data.selectedConceptId);
+      const conceptOptions = input.selectedConcept
+        ? [
+            input.selectedConcept,
+            ...generatedConceptOptions.filter(
+              option => option.conceptId !== input.selectedConcept?.conceptId
+            ),
+          ].slice(0, 3)
+        : generatedConceptOptions;
+      if (!conceptOptions.some(option => option.conceptId === selectedConceptId)) {
+        throw new Error("Story planner selected a concept outside its options");
+      }
       const castById = new Map(activeCast.map(member => [member.castId, member]));
       const shots = llmRes.data.shots.map((shot, idx) => {
         const shotId = idx + 1;
@@ -1718,6 +1767,8 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
         const storyPlanHash = buildProductionStableHash({
           runId: input.runId,
           planRevision,
+          selectedConceptId,
+          conceptOptions,
           storySummary,
           shots: enforcedShots.map(s => `${s.shotId}:${s.title}:${s.dialogue}`),
         });
@@ -1726,10 +1777,13 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           planRevision,
           title: `Staged Story Arc (LLM: ${chosenModel})`,
           storySummary,
+          conceptOptions,
+          selectedConceptId,
           product: {
             productId: clean(input.product.productId),
             productName,
             description: productDescription || null,
+            ...(input.product.specs ? { specs: input.product.specs } : {}),
             imageUrls: input.product.imageUrls.map(clean).filter(Boolean).slice(0, 5),
           },
           shots: enforcedShots,

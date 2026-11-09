@@ -21,6 +21,7 @@ interface AutoStoryboardReviewPlanSummaryProps {
   onStart: () => void;
   onUseStandard: () => void;
   showStandardAction?: boolean;
+  workbenchMode?: boolean;
   onResetToAuto?: () => void;
   /** Hide legacy active-run polling copy when this card is embedded in the
    * dedicated New Job setup route. Existing jobs are shown in its navigator. */
@@ -55,6 +56,7 @@ export function AutoStoryboardReviewPlanSummary({
   onStart,
   onUseStandard,
   showStandardAction = true,
+  workbenchMode = false,
   onResetToAuto,
   showActiveRunStatus = true,
   locale,
@@ -80,7 +82,9 @@ export function AutoStoryboardReviewPlanSummary({
           : true);
   const primaryLabel =
     primaryActionId === "start_auto_storyboard_review"
-      ? copy.createAutoReview
+      ? workbenchMode
+        ? copy.createAutoReview
+        : copy.createAutoReviewGeneric
       : primaryActionId === "resume_auto_storyboard_review"
         ? copy.resumeAutoReview
         : primaryActionId === "use_standard_order"
@@ -117,6 +121,9 @@ export function AutoStoryboardReviewPlanSummary({
           </div>
           <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
             {summary}
+          </p>
+          <p className="mt-2 max-w-4xl text-xs leading-5 text-sky-800 dark:text-sky-100/80">
+            {workbenchMode ? copy.autoPlanPurpose : copy.autoPlanPurposeGeneric}
           </p>
           {starting ? (
             <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">

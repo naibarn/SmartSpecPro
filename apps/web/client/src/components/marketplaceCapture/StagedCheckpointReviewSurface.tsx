@@ -406,6 +406,7 @@ export function StagedCheckpointReviewSurface(props: {
         idempotencyKey: uiIdempotencyKey("retry-story", runId),
         notes: input.notes || undefined,
         model: input.model || undefined,
+        selectedConcept: input.selectedConcept,
       });
     } else if (input.stage === "audio") {
       retryAudioMutation.mutate({
