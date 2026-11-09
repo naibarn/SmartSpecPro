@@ -48,9 +48,9 @@ pub struct WorkerAppState {
     pub pending_connect_device_proof: Arc<Mutex<Option<WorkerDeviceProofMaterial>>>,
     pub worker_loop: Arc<Mutex<Option<WorkerLoopHandle>>>,
     pub shutdown_in_progress: Arc<AtomicBool>,
-    /// Prevents an app that was killed during startup from immediately
-    /// starting the same background path again on the next launch. The user
-    /// can still start the loop manually after reviewing diagnostics.
+    /// Pauses automatic loop recovery after an unexpected app exit during the
+    /// same OS boot. A machine reboot is a safe recovery boundary because it
+    /// terminates the previous process tree.
     pub startup_recovery_required: AtomicBool,
     pub series_workspace: Arc<Mutex<series_workspace::SeriesWorkspaceState>>,
     pub comfy_interactive_runs: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,

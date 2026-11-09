@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+#[cfg(target_os = "windows")]
+use std::time::{SystemTime, UNIX_EPOCH};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 const DIAGNOSTIC_LOG_FILE_NAME: &str = "worker-diagnostics.jsonl";
@@ -224,18 +226,32 @@ pub fn begin_session(app_data_dir: &Path) -> bool {
         return false;
     }
     let marker_path = app_data_dir.join(ACTIVE_SESSION_FILE_NAME);
+    let boot_identity = current_boot_identity();
     let had_unclean_previous_session = if let Ok(mut previous) = fs::File::open(&marker_path) {
         let mut raw = String::new();
         let _ = previous.read_to_string(&mut raw);
+        let previous_session = serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null);
+        let rebooted =
+            machine_rebooted_since_previous_session(&previous_session, boot_identity.as_deref());
         log_warn(
             app_data_dir,
             "app.previous_run_unclean",
             json!({
-                "previousSession": serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null),
+                "previousSession": previous_session,
                 "markerPath": marker_path.to_string_lossy(),
+                "machineRebootDetected": rebooted,
+                "automaticRecoveryAllowed": rebooted,
             }),
         );
-        true
+        if rebooted {
+            log_event(
+                app_data_dir,
+                LogLevel::Info,
+                "app.previous_run_recovered_after_reboot",
+                json!({ "bootIdentity": boot_identity }),
+            );
+        }
+        !rebooted
     } else {
         false
     };
@@ -243,10 +259,137 @@ pub fn begin_session(app_data_dir: &Path) -> bool {
         "sessionId": session_id(),
         "pid": std::process::id(),
         "startedAt": now_rfc3339(),
+        "bootIdentity": boot_identity,
         "cleanExit": false,
     });
     let _ = write_atomic(&marker_path, marker.to_string().as_bytes());
     had_unclean_previous_session
+}
+
+/// A prior app session only needs the manual recovery pause when it ended
+/// unexpectedly during this same OS boot. A machine restart kills the old
+/// process tree and is a normal Worker recovery boundary.
+fn machine_rebooted_since_previous_session(
+    previous_session: &Value,
+    current_boot_identity: Option<&str>,
+) -> bool {
+    let previous_boot_identity = previous_session.get("bootIdentity").and_then(Value::as_str);
+    if previous_boot_identity.is_some() {
+        return did_machine_reboot(previous_boot_identity, current_boot_identity);
+    }
+
+    // Migrate older session markers that only recorded the app start time.
+    // If that timestamp predates this OS boot, the old process tree is gone.
+    let previous_started_at_ns = previous_session
+        .get("startedAt")
+        .and_then(Value::as_str)
+        .and_then(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
+        .map(|value| value.unix_timestamp_nanos());
+    let current_boot_started_at_ns = current_boot_identity.and_then(boot_identity_started_at_ns);
+    matches!(
+        (previous_started_at_ns, current_boot_started_at_ns),
+        (Some(previous), Some(current)) if current > previous + 120_000_000_000
+    )
+}
+
+fn boot_identity_started_at_ns(boot_identity: &str) -> Option<i128> {
+    if let Some(boot_ms) = boot_identity.strip_prefix("windows:") {
+        return boot_ms
+            .parse::<i128>()
+            .ok()
+            .map(|value| value.saturating_mul(1_000_000));
+    }
+    if let Some(boot_seconds) = boot_identity.strip_prefix("macos:") {
+        return boot_seconds
+            .parse::<i128>()
+            .ok()
+            .map(|value| value.saturating_mul(1_000_000_000));
+    }
+    boot_identity
+        .rsplit_once(':')
+        .filter(|(prefix, _)| prefix.starts_with("linux:"))
+        .and_then(|(_, boot_seconds)| boot_seconds.parse::<i128>().ok())
+        .map(|value| value.saturating_mul(1_000_000_000))
+}
+
+fn did_machine_reboot(
+    previous_boot_identity: Option<&str>,
+    current_boot_identity: Option<&str>,
+) -> bool {
+    let (Some(previous), Some(current)) = (previous_boot_identity, current_boot_identity) else {
+        // Older session markers and unsupported hosts cannot prove that the
+        // old process tree was cleared, so retain the existing safety pause.
+        return false;
+    };
+
+    if let (Some(previous_ms), Some(current_ms)) = (
+        previous
+            .strip_prefix("windows:")
+            .and_then(|value| value.parse::<u128>().ok()),
+        current
+            .strip_prefix("windows:")
+            .and_then(|value| value.parse::<u128>().ok()),
+    ) {
+        // Windows exposes uptime rather than a boot UUID here. Compare the
+        // estimated boot timestamps with tolerance for clock/API resolution.
+        return previous_ms.abs_diff(current_ms) > 120_000;
+    }
+
+    previous != current
+}
+
+#[cfg(target_os = "windows")]
+fn current_boot_identity() -> Option<String> {
+    #[link(name = "kernel32")]
+    extern "system" {
+        #[link_name = "GetTickCount64"]
+        fn get_tick_count64() -> u64;
+    }
+
+    let uptime_ms = unsafe { get_tick_count64() } as u128;
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_millis();
+    Some(format!("windows:{}", now_ms.saturating_sub(uptime_ms)))
+}
+
+#[cfg(target_os = "macos")]
+fn current_boot_identity() -> Option<String> {
+    let output = std::process::Command::new("sysctl")
+        .args(["-n", "kern.boottime"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8(output.stdout).ok()?;
+    let seconds = value.split("sec =").nth(1)?.split(',').next()?.trim();
+    seconds
+        .parse::<u64>()
+        .ok()
+        .map(|seconds| format!("macos:{seconds}"))
+}
+
+#[cfg(target_os = "linux")]
+fn current_boot_identity() -> Option<String> {
+    let value = fs::read_to_string("/proc/sys/kernel/random/boot_id").ok()?;
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    let boot_seconds = fs::read_to_string("/proc/stat")
+        .ok()?
+        .lines()
+        .find_map(|line| line.strip_prefix("btime "))?
+        .parse::<u64>()
+        .ok()?;
+    Some(format!("linux:{value}:{boot_seconds}"))
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+fn current_boot_identity() -> Option<String> {
+    None
 }
 
 /// Removes the active marker only after an intentional exit has been recorded.
