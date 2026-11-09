@@ -170,9 +170,108 @@ function stableValue(value: unknown): string {
 
 function readPath(value: unknown, pathValue: string): unknown {
   return pathValue.split(".").reduce<unknown>((current, key) => {
-    if (!current || typeof current !== "object") return undefined;
+    if (
+      !current ||
+      typeof current !== "object" ||
+      !Object.hasOwn(current, key)
+    ) return undefined;
     return (current as Record<string, unknown>)[key];
   }, value);
+}
+
+function hasOwnPath(value: unknown, segments: string[]): boolean {
+  let current = value;
+  for (const segment of segments) {
+    if (
+      !current ||
+      typeof current !== "object" ||
+      !Object.hasOwn(current, segment)
+    ) {
+      return false;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return true;
+}
+
+function cloneDraftValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(item => cloneDraftValue(item)) as T;
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        cloneDraftValue(nested),
+      ])
+    ) as T;
+  }
+  return value;
+}
+
+function immutableDraftPaths(
+  constraints: MarketplaceDraftQcImmutableConstraints
+): string[] {
+  return [
+    ...new Set([
+      ...(constraints.preservedPaths ?? []),
+      ...Object.keys(constraints.fields ?? {}),
+    ]),
+  ];
+}
+
+function restoreImmutableDraftFields(
+  original: MarketplaceDraftQcDraft,
+  revised: MarketplaceDraftQcDraft,
+  constraints: MarketplaceDraftQcImmutableConstraints
+): MarketplaceDraftQcDraft {
+  const restored = cloneDraftValue(revised);
+  for (const immutablePath of immutableDraftPaths(constraints)) {
+    const segments = immutablePath.split(".");
+    if (
+      segments.some(
+        segment =>
+          !segment ||
+          segment === "__proto__" ||
+          segment === "prototype" ||
+          segment === "constructor"
+      )
+    ) {
+      throw new Error(`Invalid immutable draft path: ${immutablePath}`);
+    }
+
+    const originalValue = readPath(original, immutablePath);
+    const originalHasValue = hasOwnPath(original, segments);
+    let targetParent: unknown = restored;
+    let targetParentFound = true;
+    for (const segment of segments.slice(0, -1)) {
+      if (
+        !targetParent ||
+        typeof targetParent !== "object" ||
+        !Object.hasOwn(targetParent, segment) ||
+        !(targetParent as Record<string, unknown>)[segment] ||
+        typeof (targetParent as Record<string, unknown>)[segment] !== "object"
+      ) {
+        if (!originalHasValue) {
+          targetParentFound = false;
+          break;
+        }
+        throw new Error(
+          `Draft revision omitted immutable field parent: ${immutablePath}`
+        );
+      }
+      targetParent = (targetParent as Record<string, unknown>)[segment];
+    }
+    if (!targetParentFound || !targetParent || typeof targetParent !== "object") continue;
+
+    const leaf = segments[segments.length - 1];
+    if (originalHasValue) {
+      (targetParent as Record<string, unknown>)[leaf] = cloneDraftValue(originalValue);
+    } else {
+      delete (targetParent as Record<string, unknown>)[leaf];
+    }
+  }
+  return restored;
 }
 
 function normalizeChangedFields(changedFields: string[]): string[] {
@@ -308,9 +407,10 @@ async function defaultRevise(params: {
   userId: number;
 }): Promise<MarketplaceDraftQcCallResult> {
   const model = await resolveStoryBibleModel();
+  const protectedPaths = immutableDraftPaths(params.immutableConstraints);
   const result = await executeJsonPlanningCallWithRetry({
     model,
-    systemPrompt: `${loadSkillPrompt()}\n\nREVISE MODE: return a complete draft and changedFields; do not judge or return a score.`,
+    systemPrompt: `${loadSkillPrompt()}\n\nREVISE MODE: return a complete draft and changedFields; do not judge or return a score. Preserve these immutable draft paths exactly: ${protectedPaths.join(", ") || "none"}. Never change product facts or other protected values.`,
     userPrompt: buildPromptContext(
       "revise",
       params.draft,
@@ -452,16 +552,21 @@ export async function runMarketplaceAutoReviewDraftQualityQc(
       });
       await drawActual(revisedCall);
       const parsedRevision = revisedDraftOutputSchema.parse(revisedCall.data);
-      assertBoundedDraft(parsedRevision.draft);
       assertCompleteDraftReplacement(best.draft, parsedRevision.draft);
-      assertImmutableConstraints(
+      const revisedDraft = restoreImmutableDraftFields(
         best.draft,
         parsedRevision.draft,
         input.immutableConstraints
       );
+      assertBoundedDraft(revisedDraft);
+      assertImmutableConstraints(
+        best.draft,
+        revisedDraft,
+        input.immutableConstraints
+      );
       progress("evaluate", round, best.report.overallScore);
       const evaluationCall = await evaluate({
-        draft: parsedRevision.draft,
+        draft: revisedDraft,
         immutableConstraints: input.immutableConstraints,
         userId: input.userId,
       });
@@ -471,10 +576,10 @@ export async function runMarketplaceAutoReviewDraftQualityQc(
         now()
       );
       const candidate = {
-        draft: parsedRevision.draft,
+        draft: revisedDraft,
         report,
         round,
-        fingerprint: fingerprintMarketplaceDraftQcCandidate(parsedRevision.draft),
+        fingerprint: fingerprintMarketplaceDraftQcCandidate(revisedDraft),
       };
       const isBetter = compareMarketplaceDraftQcCandidates(best, candidate) > 0;
       history.push({
@@ -641,16 +746,21 @@ export async function runMarketplaceAutoReviewDraftQualityQcRepair(
         `Marketplace creative QC repair response failed schema validation: ${parsedRevisionResult.success ? "response" : parsedRevisionResult.error.issues.map(issue => issue.path.join(".") || "response").join(", ")}`,
       );
     }
-    assertBoundedDraft(recoveredRevision.data.draft);
     assertCompleteDraftReplacement(input.draft, recoveredRevision.data.draft);
-    assertImmutableConstraints(
+    const revisedDraft = restoreImmutableDraftFields(
       input.draft,
       recoveredRevision.data.draft,
+      input.immutableConstraints
+    );
+    assertBoundedDraft(revisedDraft);
+    assertImmutableConstraints(
+      input.draft,
+      revisedDraft,
       input.immutableConstraints,
     );
     progress("evaluate", 1, input.sourceReport.overallScore);
     const evaluationCall = await evaluate({
-      draft: recoveredRevision.data.draft,
+      draft: revisedDraft,
       immutableConstraints: input.immutableConstraints,
       userId: input.userId,
     });
@@ -660,12 +770,10 @@ export async function runMarketplaceAutoReviewDraftQualityQcRepair(
       now(),
     );
     const repaired: MarketplaceDraftQcCandidateResult = {
-      draft: recoveredRevision.data.draft,
+      draft: revisedDraft,
       report,
       round: 1,
-      fingerprint: fingerprintMarketplaceDraftQcCandidate(
-        recoveredRevision.data.draft,
-      ),
+      fingerprint: fingerprintMarketplaceDraftQcCandidate(revisedDraft),
     };
     const improved = compareMarketplaceDraftQcCandidates(source, repaired) > 0;
     history.push({

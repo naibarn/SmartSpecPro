@@ -93,33 +93,57 @@ describe("marketplace Auto Review Creative QC loop", () => {
     expect(result.history.filter(item => item.kept)).toHaveLength(2);
   });
 
-  it("rejects a revision that changes immutable product truth", async () => {
-    const injected = deps([2]);
-    injected.revise = vi.fn(async () => ({
-      data: {
-        draft: {
-          ...draft,
-          productTruth: { name: "Invented product" },
-        },
-        changedFields: ["productTruth"],
-      },
-      promptTokens: 1,
-      completionTokens: 1,
-    }));
-    await expect(
-      runMarketplaceAutoReviewDraftQualityQc(
-        {
-          draft,
-          immutableConstraints: {
-            fields: { productTruth: draft.productTruth },
-            preservedPaths: ["productTruth"],
+  it("restores immutable product fields when a revision changes them", async () => {
+    const product = {
+      name: "Verified product",
+      supportedClaims: ["easy to use"],
+    };
+    const draftWithPlanProduct = {
+      ...draft,
+      plan: { ...draft.plan, product },
+    };
+    const injected = deps([2, 4]);
+    injected.revise = vi.fn(
+      async ({ draft: current }: { draft: Record<string, unknown> }) => ({
+        data: {
+          draft: {
+            ...current,
+            plan: {
+              ...(current.plan as Record<string, unknown>),
+              title: "A revised review",
+              product: { name: "Invented product" },
+            },
           },
-          userId: 1,
-          maxImprovementRounds: 1,
+          changedFields: ["plan.title", "plan.product"],
         },
-        injected
-      )
-    ).rejects.toThrow("immutable field: productTruth");
+        promptTokens: 1,
+        completionTokens: 1,
+      })
+    );
+    const result = await runMarketplaceAutoReviewDraftQualityQc(
+      {
+        draft: draftWithPlanProduct,
+        immutableConstraints: {
+          fields: { "plan.product": product },
+          preservedPaths: ["plan.product"],
+        },
+        userId: 1,
+        maxImprovementRounds: 1,
+      },
+      injected
+    );
+
+    expect(result.best.draft.plan).toMatchObject({
+      title: "A revised review",
+      product,
+    });
+    expect(injected.evaluate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        draft: expect.objectContaining({
+          plan: expect.objectContaining({ product }),
+        }),
+      })
+    );
   });
 
   it("runs one bounded repair and a fresh QC without mutating the source", async () => {
