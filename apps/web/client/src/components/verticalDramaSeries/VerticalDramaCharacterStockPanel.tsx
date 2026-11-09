@@ -3360,6 +3360,15 @@ export function VerticalDramaCharacterStockPanel({
     );
     const data = (character?.data as Record<string, unknown> | null) ?? null;
     const identity = identityDnaFormFor(characterId);
+    const visualBibleAgeRange = characterVisualBibleFromData(data)?.ageRange;
+    const storedAgeRange = [
+      identity?.ageRange,
+      visualBibleAgeRange,
+      data?.ageRange,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    );
     const persistedDescription = resolveCharacterLookDescription({
       data,
       variantLabel: character?.variantLabel,
@@ -3369,7 +3378,7 @@ export function VerticalDramaCharacterStockPanel({
         role: String(character?.role ?? ""),
         narrativeRole: String(character?.narrativeRole ?? ""),
         roleTier: String(character?.roleTier ?? ""),
-        ageBand: identity?.ageRange ?? "18–20",
+        ageBand: storedAgeRange ?? "18–20",
         qualityGate: qualityGateFromRoleTier(character?.roleTier),
         face: compactFaceText(identity),
         description:
@@ -3395,11 +3404,18 @@ export function VerticalDramaCharacterStockPanel({
 
   const handleSaveUnifiedCharacterPromptProfile = async (characterId: string) => {
     const form = compactCharacterPromptFormFor(characterId);
+    const ageRange = form.ageBand.trim();
     const identity = identityDnaFormFor(characterId);
     const character = characters.find(
       (candidate: VdCharacterListItem) => candidate.characterId === characterId,
     );
     const data = (character?.data as Record<string, unknown> | null) ?? {};
+    const nextData = { ...data, description: form.description };
+    if (ageRange) {
+      nextData.ageRange = ageRange;
+    } else {
+      delete nextData.ageRange;
+    }
     try {
       // Save the wholesale character-data update first. The identity-DNA
       // mutation then writes its revisioned subset last so it cannot be
@@ -3410,7 +3426,7 @@ export function VerticalDramaCharacterStockPanel({
         role: form.role || undefined,
         narrativeRole: (form.narrativeRole || undefined) as NarrativeRole | undefined,
         roleTier: (form.roleTier || undefined) as RoleTier | undefined,
-        data: { ...data, description: form.description },
+        data: nextData,
         castingPreferences: buildVerticalDramaCharacterCastingPreferences(
           castingPreferencesFormFor(characterId),
         ),
@@ -3424,7 +3440,7 @@ export function VerticalDramaCharacterStockPanel({
             expectedRevision: readCharacterIdentityDnaRevision(visualBible),
             identityDna: {
               ...identity,
-              ageRange: form.ageBand,
+              ageRange: ageRange || identity.ageRange,
               faceIdentity: {
                 ...identity.faceIdentity,
                 facialGeometry: form.face,
@@ -6867,7 +6883,7 @@ export function VerticalDramaCharacterStockPanel({
                                       onOpen={() =>
                                         openPortraitUpload(c.characterId)
                                       }
-                                      className="absolute left-1 top-1 h-6 w-6 shadow"
+                                      className="absolute left-1 top-1 z-10 h-6 w-6 shadow"
                                       testId={`vd-character-upload-image-${c.characterId}`}
                                     />
                                   )}
@@ -9097,22 +9113,52 @@ export function VerticalDramaCharacterStockPanel({
                           className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3"
                           data-testid="vd-character-casting-preferences"
                         >
-                          <div>
-                            <p className="text-xs font-medium text-foreground">
-                              {t(
-                                lang,
-                                "Casting และภาพลักษณ์ตัวละคร",
-                                "Casting & character look"
-                              )}
-                            </p>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {t(
-                                lang,
-                                "ใช้บทบาท แกนเรื่อง ภาษา และตลาดของซีรีย์ร่วมกับตัวเลือกนี้เพื่อสร้างหน้าตาที่เหมาะกับตัวละคร ไม่ใช่การสุ่มหน้าตา",
-                                "The Skill combines this with the character role, story spine, language, and series market to cast a coherent face—not a random face."
-                              )}
-                            </p>
-                          </div>
+                          <header className="flex flex-wrap items-start justify-between gap-2">
+                            <section className="flex min-w-0 flex-col gap-1">
+                              <p className="text-xs font-medium text-foreground">
+                                {t(
+                                  lang,
+                                  "Casting และภาพลักษณ์ตัวละคร",
+                                  "Casting & character look"
+                                )}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {t(
+                                  lang,
+                                  "ใช้บทบาท แกนเรื่อง ภาษา และตลาดของซีรีย์ร่วมกับตัวเลือกนี้เพื่อสร้างหน้าตาที่เหมาะกับตัวละคร ไม่ใช่การสุ่มหน้าตา",
+                                  "The Skill combines this with the character role, story spine, language, and series market to cast a coherent face—not a random face."
+                                )}
+                              </p>
+                            </section>
+                            {!readOnly && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 shrink-0 gap-1.5 px-2.5 text-xs"
+                                disabled={mutating || portraitTransferPending}
+                                onClick={() => openPortraitUpload(characterId)}
+                                data-testid="vd-selected-character-upload-image"
+                              >
+                                {assigningCharacterId === characterId ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5 animate-spin"
+                                  />
+                                ) : (
+                                  <UploadCloud
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                  />
+                                )}
+                                {t(
+                                  lang,
+                                  "อัปโหลดภาพตัวละคร",
+                                  "Upload character image"
+                                )}
+                              </Button>
+                            )}
+                          </header>
                           <div
                             className="rounded border border-sky-200 bg-sky-50/50 p-3 dark:border-sky-900 dark:bg-sky-950/20"
                             data-testid="vd-character-prompt-data"
@@ -9170,6 +9216,9 @@ export function VerticalDramaCharacterStockPanel({
                                         updateCompactCharacterPromptForm(characterId, {
                                           [field]: event.target.value,
                                         })
+                                      }
+                                      maxLength={
+                                        field === "ageBand" ? 255 : undefined
                                       }
                                       className="h-8 text-xs"
                                     />

@@ -1184,10 +1184,10 @@ function resolveEffectiveCharacterFactsForPicker(
   return { role, occupation, description };
 }
 
-/** `data.visualBible.ageRange` — free text; there is no dedicated age/gender column. */
+/** Canonical visualBible age, with the editable profile fallback for uncast characters. */
 function extractCharacterAgeRangeForPicker(data: Record<string, unknown> | undefined): string | null {
   const visualBible = asRecord(data?.visualBible);
-  const raw = visualBible?.ageRange;
+  const raw = visualBible?.ageRange ?? data?.ageRange;
   return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }
 
