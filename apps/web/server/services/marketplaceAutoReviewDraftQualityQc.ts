@@ -62,13 +62,6 @@ const revisedDraftOutputSchema = z.object({
     .array(z.string().trim().min(1).max(160))
     .max(MARKETPLACE_DRAFT_QC_MAX_CHANGED_FIELDS),
 });
-const revisedDraftRecoverySchema = z
-  .object({
-    draft: z.record(z.string(), z.unknown()),
-    changedFields: z.unknown().optional(),
-  })
-  .passthrough();
-
 export type MarketplaceDraftQcDraft = Record<string, unknown>;
 export interface MarketplaceDraftQcImmutableConstraints {
   fields?: Record<string, unknown>;
@@ -287,35 +280,66 @@ function normalizeChangedFields(changedFields: string[]): string[] {
   ].slice(0, MARKETPLACE_DRAFT_QC_MAX_CHANGED_FIELDS);
 }
 
-function recoverMarketplaceDraftQcRevisionOutput(
+function isCompleteDraftReplacement(
+  original: MarketplaceDraftQcDraft,
+  revised: MarketplaceDraftQcDraft,
+): boolean {
+  return Object.keys(original).every(key => Object.hasOwn(revised, key));
+}
+
+function deriveChangedDraftFields(
+  original: MarketplaceDraftQcDraft,
+  revised: MarketplaceDraftQcDraft,
+): string[] {
+  return normalizeChangedFields(
+    [...new Set([...Object.keys(original), ...Object.keys(revised)])].filter(
+      key => stableValue(original[key]) !== stableValue(revised[key]),
+    ),
+  );
+}
+
+export function normalizeMarketplaceDraftQcRevisionOutput(
   value: unknown,
   original: MarketplaceDraftQcDraft,
 ): { data: z.infer<typeof revisedDraftOutputSchema>; warnings: string[] } | null {
-  const parsed = revisedDraftRecoverySchema.safeParse(value);
-  if (!parsed.success) return null;
-  if (
-    parsed.data.changedFields !== undefined &&
-    !Array.isArray(parsed.data.changedFields)
-  ) {
+  const parsed = revisedDraftOutputSchema.safeParse(value);
+  const record = z.record(z.string(), z.unknown()).safeParse(value);
+  if (!record.success) return null;
+
+  const hasDraftWrapper = Object.hasOwn(record.data, "draft");
+  const hasChangedFieldsMetadata = Object.hasOwn(record.data, "changedFields");
+  const unwrappedDraft = hasChangedFieldsMetadata
+    ? Object.fromEntries(
+        Object.entries(record.data).filter(([key]) => key !== "changedFields"),
+      )
+    : record.data;
+  const draftResult = hasDraftWrapper
+    ? z.record(z.string(), z.unknown()).safeParse(record.data.draft)
+    : z.record(z.string(), z.unknown()).safeParse(unwrappedDraft);
+  if (!draftResult.success || !isCompleteDraftReplacement(original, draftResult.data)) {
     return null;
   }
-  const supplied = Array.isArray(parsed.data.changedFields)
-    ? parsed.data.changedFields.filter(
-        (field): field is string => typeof field === "string",
-      )
-    : [];
-  const changedFields = normalizeChangedFields(
-    supplied.length > 0
-      ? supplied
-      : [...new Set([...Object.keys(original), ...Object.keys(parsed.data.draft)])]
-          .filter(key => stableValue(original[key]) !== stableValue(parsed.data.draft[key])),
-  );
+
+  if (parsed.success) {
+    return { data: parsed.data, warnings: [] };
+  }
+
+  const changedFieldsResult = hasDraftWrapper || hasChangedFieldsMetadata
+    ? z.array(z.string()).safeParse(record.data.changedFields)
+    : null;
+  const changedFields = changedFieldsResult?.success
+    ? normalizeChangedFields(changedFieldsResult.data)
+    : deriveChangedDraftFields(original, draftResult.data);
+  const warnings = hasDraftWrapper
+    ? ["LLM omitted or malformed changedFields; the server derived it from the Draft diff."]
+    : [
+        hasChangedFieldsMetadata && changedFieldsResult?.success
+          ? "LLM returned complete draft fields without a wrapper; the server normalized the response."
+          : "LLM returned the complete Draft without a wrapper; the server normalized it and derived changedFields.",
+      ];
   return {
-    data: { draft: parsed.data.draft, changedFields },
-    warnings:
-      parsed.data.changedFields === undefined
-        ? ["LLM omitted changedFields; the server derived it from the Draft diff."]
-        : [],
+    data: { draft: draftResult.data, changedFields },
+    warnings,
   };
 }
 
@@ -332,17 +356,6 @@ function assertImmutableConstraints(
   for (const [key, expected] of Object.entries(constraints.fields ?? {})) {
     if (stableValue(readPath(revised, key)) !== stableValue(expected)) {
       throw new Error(`Draft revision violated immutable constraint: ${key}`);
-    }
-  }
-}
-
-function assertCompleteDraftReplacement(
-  original: MarketplaceDraftQcDraft,
-  revised: MarketplaceDraftQcDraft
-): void {
-  for (const key of Object.keys(original)) {
-    if (!(key in revised)) {
-      throw new Error(`Draft revision omitted required draft field: ${key}`);
     }
   }
 }
@@ -426,6 +439,21 @@ async function defaultRevise(params: {
     userId: params.userId,
     maxTokens: 9000,
     schema: revisedDraftOutputSchema,
+    schemaRetryContract: [
+      "Return exactly {\"draft\": <complete revised draft>, \"changedFields\": [<changed field paths>] }.",
+      "The draft must retain every top-level field from the input. Do not return a partial patch or prose.",
+      "If you cannot revise a field, preserve its original value. Never change immutable product facts.",
+    ].join(" "),
+    onSchemaRetriesExhausted: ({ parsedJson }) => {
+      const normalized = normalizeMarketplaceDraftQcRevisionOutput(
+        parsedJson,
+        params.draft,
+      );
+      if (normalized) return normalized;
+      throw new Error(
+        "Marketplace creative QC revise response must contain a complete draft, either wrapped in draft or returned directly.",
+      );
+    },
     label: "Marketplace Auto Review creative QC revise",
   });
   return {
@@ -556,11 +584,18 @@ export async function runMarketplaceAutoReviewDraftQualityQc(
         userId: input.userId,
       });
       await drawActual(revisedCall);
-      const parsedRevision = revisedDraftOutputSchema.parse(revisedCall.data);
-      assertCompleteDraftReplacement(best.draft, parsedRevision.draft);
+      const parsedRevision = normalizeMarketplaceDraftQcRevisionOutput(
+        revisedCall.data,
+        best.draft,
+      );
+      if (!parsedRevision) {
+        throw new Error(
+          "Marketplace creative QC revise response must contain a complete draft, either wrapped in draft or returned directly.",
+        );
+      }
       const revisedDraft = restoreImmutableDraftFields(
         best.draft,
-        parsedRevision.draft,
+        parsedRevision.data.draft,
         input.immutableConstraints
       );
       assertBoundedDraft(revisedDraft);
@@ -740,18 +775,15 @@ export async function runMarketplaceAutoReviewDraftQualityQcRepair(
       userId: input.userId,
     });
     await drawActual(revisedCall);
-    const parsedRevisionResult = revisedDraftOutputSchema.safeParse(
+    const recoveredRevision = normalizeMarketplaceDraftQcRevisionOutput(
       revisedCall.data,
+      input.draft,
     );
-    const recoveredRevision = parsedRevisionResult.success
-      ? { data: parsedRevisionResult.data, warnings: [] as string[] }
-      : recoverMarketplaceDraftQcRevisionOutput(revisedCall.data, input.draft);
     if (!recoveredRevision) {
       throw new Error(
-        `Marketplace creative QC repair response failed schema validation: ${parsedRevisionResult.success ? "response" : parsedRevisionResult.error.issues.map(issue => issue.path.join(".") || "response").join(", ")}`,
+        "Marketplace creative QC repair response must contain a complete draft, either wrapped in draft or returned directly.",
       );
     }
-    assertCompleteDraftReplacement(input.draft, recoveredRevision.data.draft);
     const revisedDraft = restoreImmutableDraftFields(
       input.draft,
       recoveredRevision.data.draft,
