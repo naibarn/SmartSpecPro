@@ -24,14 +24,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "865432176ac75473a90e98576d78a4801edbe029",
+    "expected_canonical_sha": "9420f997b73881ea16f77427f808627c2eeb211f",
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Deep Plan is complete and validated (4/4). The plan now requires strict sharded SQLite Durable Object throttling for login/MFA; its research and contract are integrated in SmartSpecPro main 865432176ac75473a90e98576d78a4801edbe029. Continue Deep Implement section 01 in canonical smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Use the existing smartspec account authority, keep shared-schema changes at zero, and do not deploy, configure public host routes, or hand over aimarkethubs.com/smartsihub.com.",
+    "next_action": "Continue Deep Implement section 01 in canonical smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Local workerd is scoped to loopback and may use only an owner-only ignored CORE_LOCAL_DATABASE_URL targeting smartspec with a separate _dev role; a future Cloudflare Worker must use target-specific Hyperdrive and cannot fall back. Keep shared schema and Cloudflare resources unchanged.",
     "next_ready_workunit": "r16-core-auth-slice-section-01",
     "reactivation_predicate": null,
-    "resume_point": "Plan artifacts are in specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md, claude-plan.md, claude-plan-tdd.md, claude-research.md, and sections/index.md plus section-01 through section-04. Section validation passes 4/4. Plan checkpoint: SmartSpecPro main 865432176ac75473a90e98576d78a4801edbe029. Source baseline: smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Parent REQ-46847581892C remains OPEN. Next: implement section 01; after all sections, perform the requested ten independent gap-review passes and fix discovered issues. Preserve existing user data. Keep aimarkethubs.com unavailable until intentional healthy handover and smartsihub.com inactive.",
+    "resume_point": "Deep Plan is complete and validated 4/4. Cross-section review closed two concrete gaps: Cloudflare Rate Limiting is approximate, so login/MFA use strict per-IP/per-account sharded SQLite Durable Objects; no Hyperdrive binding is provisioned, so local workerd uses an explicitly target-checked private _dev DSN while future Cloudflare runtime requires Hyperdrive. Plan refinement is integrated at SmartSpecPro main 9420f997b73881ea16f77427f808627c2eeb211f. Source baseline remains smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b. Begin section 01. Parent REQ-46847581892C remains OPEN. Preserve DB schema and public targets; do not deploy or hand over aimarkethubs.com or activate smartsihub.com.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -44,8 +44,8 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
     ],
-    "next_action": "Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.",
-    "rationale": "The first Core identity slice is sectionized against the canonical smartspec account store and existing IDs. The rate-limit research now matches Cloudflare accuracy semantics and Durable Object single-thread/storage behavior. Environment binding, Hono/no Express, shared data, separate development/production tenant scopes, domain readiness, no DDL/no business writes, and remaining full SPEC acceptance are explicit. Continue because code implementation is authorized; keep parent REQ-46847581892C open.",
+    "next_action": "Continue Deep Implement section 01 in canonical smartaihub-platform main. Local workerd uses only a private, target-checked DSN for smartspec with a separate _dev role; future Cloudflare runtime uses its explicit Hyperdrive binding. No Hyperdrive resource, public route, schema DDL, or production config is created in this slice.",
+    "rationale": "The first Core identity slice remains sectionized against the canonical smartspec account store and existing IDs. Strict login/MFA throttling uses sharded SQLite Durable Objects rather than approximate Workers Rate Limiting. The local DB connection contract matches available resources and target-safety requirements without creating Cloudflare infrastructure. The plan preserves Hono/no Express, separate environment tenant scopes, the aimarkethubs.com readiness boundary, the inactive smartsihub.com production target, and all remaining full-SPEC acceptance gaps.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -78,7 +78,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 15,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -113,9 +113,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "865432176ac75473a90e98576d78a4801edbe029",
+    "canonical_sha": "9420f997b73881ea16f77427f808627c2eeb211f",
     "integrated": true,
-    "integrated_at": "2026-11-10T01:53:31+07:00"
+    "integrated_at": "2026-11-10T02:01:29+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -158,8 +158,8 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       ],
-      "next_action": "Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.",
-      "rationale": "The first Core identity slice is sectionized against the canonical smartspec account store and existing IDs. The rate-limit research now matches Cloudflare accuracy semantics and Durable Object single-thread/storage behavior. Environment binding, Hono/no Express, shared data, separate development/production tenant scopes, domain readiness, no DDL/no business writes, and remaining full SPEC acceptance are explicit. Continue because code implementation is authorized; keep parent REQ-46847581892C open.",
+      "next_action": "Continue Deep Implement section 01 in canonical smartaihub-platform main. Local workerd uses only a private, target-checked DSN for smartspec with a separate _dev role; future Cloudflare runtime uses its explicit Hyperdrive binding. No Hyperdrive resource, public route, schema DDL, or production config is created in this slice.",
+      "rationale": "The first Core identity slice remains sectionized against the canonical smartspec account store and existing IDs. Strict login/MFA throttling uses sharded SQLite Durable Objects rather than approximate Workers Rate Limiting. The local DB connection contract matches available resources and target-safety requirements without creating Cloudflare infrastructure. The plan preserves Hono/no Express, separate environment tenant scopes, the aimarkethubs.com readiness boundary, the inactive smartsihub.com production target, and all remaining full-SPEC acceptance gaps.",
       "residual_requirements": []
     },
     "disposition": {
@@ -302,7 +302,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-09T18:54:32.963420Z",
+  "updated_at": "2026-11-09T19:02:00.379526Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

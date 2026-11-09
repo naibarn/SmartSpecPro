@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Continue Deep Implement section 01 in smartaihub-platform main. Plan validation passes 4/4; cross-section review resolved the rate-limit approximation gap with per-IP/per-account sharded Durable Objects, explicit fail-closed behavior, loopback-only local hosts and no target deployment. Keep DB/schema and production resources unchanged.
-- Manifest generation: 15
+- Next action: Continue Deep Implement section 01 in canonical smartaihub-platform main. Local workerd uses only a private, target-checked DSN for smartspec with a separate _dev role; future Cloudflare runtime uses its explicit Hyperdrive binding. No Hyperdrive resource, public route, schema DDL, or production config is created in this slice.
+- Manifest generation: 17
 
 ## Source-declared status and relationship claims
 
