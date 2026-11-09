@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun.",
-      "checkpoint_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46",
-      "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46"
+      "next_action": "Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending.",
+      "checkpoint_sha": "1d82dff626005c156d5fe62fefae61631dc7f078",
+      "merged_main_sha": "1d82dff626005c156d5fe62fefae61631dc7f078"
     }
   },
   "pre_commit": {
@@ -40,12 +40,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 20,
-  "updated_at": "2026-11-09T10:34:06.146156+00:00",
+  "generation": 21,
+  "updated_at": "2026-11-09T13:09:58.805709+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed to legacy-debian-dev / smartaihub.app at generation 446; health HTTP 200, homepage HTTP 200, smartspec-web.service and smartspec-node-worker.service active, runtime revision 895867ffd0b692f12198afc3fa3d8cfdc4be3a46. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8-446.json. Browser UAT and optional QC retry remain unrun.",
-    "merged_main_sha": "895867ffd0b692f12198afc3fa3d8cfdc4be3a46",
+    "next_action": "Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending.",
+    "merged_main_sha": "1d82dff626005c156d5fe62fefae61631dc7f078",
     "gaps": [
       "Browser UAT for skipping QC, per-shot image repair, bulk prompt/image generation and worker completion is pending; this session verified syntax, build, deployment and health only."
     ]
