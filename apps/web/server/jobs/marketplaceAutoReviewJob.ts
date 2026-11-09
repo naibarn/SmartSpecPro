@@ -95,6 +95,7 @@ export async function runMarketplaceAutoReviewJob(
     limit?: number;
     outboxLimit?: number;
     hyperframesWorkerLimit?: number;
+    queueBridgeOnly?: boolean;
     runHyperframesWorker?: (
       options?: HyperframesWorkerRunOptions
     ) => Promise<HyperframesWorkerRunResult>;
@@ -169,12 +170,14 @@ export async function runMarketplaceAutoReviewJob(
       .limit(
         Math.min(Math.max(options.outboxLimit ?? DEFAULT_OUTBOX_LIMIT, 1), 50)
       );
-    const runs = await db
-      .select()
-      .from(marketplaceAutoReviewRuns)
-      .where(inArray(marketplaceAutoReviewRuns.status, ACTIVE_STATUSES))
-      .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
-      .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
+    const runs = options.queueBridgeOnly
+      ? []
+      : await db
+          .select()
+          .from(marketplaceAutoReviewRuns)
+          .where(inArray(marketplaceAutoReviewRuns.status, ACTIVE_STATUSES))
+          .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
+          .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
 
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
@@ -335,6 +338,19 @@ export async function runMarketplaceAutoReviewJob(
           .returning({ id: marketplaceAutoReviewOutboxJobs.id });
         errors.push({ runId: run.id, message });
       }
+    }
+
+    if (options.queueBridgeOnly) {
+      return {
+        scannedRuns: 0,
+        advancedRuns: 0,
+        processedOutboxJobs,
+        processedHyperframesJobs: 0,
+        hyperframesRuntimeDeferred: false,
+        hyperframesWorkerDisabled: false,
+        skippedRuns,
+        errors,
+      };
     }
 
     for (const run of runs) {
@@ -512,9 +528,37 @@ async function tick(): Promise<void> {
   }
 }
 
+async function tickWorkerQueueBridge(): Promise<void> {
+  if (!isJobEnabled()) return;
+  try {
+    const result = await runMarketplaceAutoReviewJob({ queueBridgeOnly: true });
+    if (result.processedOutboxJobs > 0 || result.errors.length > 0) {
+      console.info(
+        `[marketplace-auto-review] worker queue bridge outbox=${result.processedOutboxJobs} skipped=${result.skippedRuns} errors=${result.errors.length}`
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[marketplace-auto-review] worker queue bridge failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 export async function initializeMarketplaceAutoReviewJob(): Promise<void> {
   if (intervalId) return;
   if (!shouldUseInProcessInterval()) {
+    if (isFeature186HardCutoverEnabled()) {
+      console.log(
+        "[marketplace-auto-review] Stage execution stays on worker_jobs; starting the legacy outbox queue bridge."
+      );
+      await tickWorkerQueueBridge();
+      intervalId = setInterval(() => {
+        void tickWorkerQueueBridge();
+      }, getIntervalMs());
+      intervalId.unref?.();
+      return;
+    }
     console.log(
       "[marketplace-auto-review] In-process interval disabled; use an external scheduler to advance active auto-review runs."
     );
