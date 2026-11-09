@@ -66,6 +66,7 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
         expectedStateDigest: z.string().trim().min(1).max(256),
         requestIdempotencyKey: operationIdempotencySchema,
         instruction: z.string().trim().max(2000).optional(),
+        model: z.string().trim().max(128).optional(),
       })
       .strict(),
     z
@@ -81,6 +82,9 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
                 shotId: z.number().int().min(1).max(30),
                 stage: z.enum(["image", "video"]),
                 model: z.string().trim().max(200).optional(),
+                promptModel: z.string().trim().max(128).optional(),
+                refreshPrompt: z.boolean().optional(),
+                promptOnly: z.boolean().optional(),
               })
               .strict()
           )
@@ -448,6 +452,7 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         expectedStateDigest: input.job.expectedStateDigest,
         idempotencyKey: input.job.requestIdempotencyKey,
         instruction: input.job.instruction,
+        model: input.job.model,
         auth,
         runtime: { publicUrl: runtime.publicUrl },
         workerExecution: true,

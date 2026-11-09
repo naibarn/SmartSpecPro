@@ -8011,7 +8011,7 @@ function resolveFrameStrategy(
   ) {
     return requested;
   }
-  return "storyboard_3x3_split";
+  return "sequential_shot_storyboard";
 }
 
 // Feature 136 (section 01, §5.6) — thin test-only wrapper over the private,
@@ -19433,31 +19433,29 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
       ? `${idempotencyKey}:recovery:${recoveryAt.getTime()}`
       : idempotencyKey;
     await db.transaction(async tx => {
-      if (existingJob) {
-        const [updated] = await tx
-          .update(marketplaceAutoReviewRuns)
-          .set({
-            metadataJson: {
-              ...metadata,
-              creativeQc: {
-                ...current.data,
-                status: "queued",
-                startedAt: recoveryAt.toISOString(),
-                error: null,
-              },
+      const [updated] = await tx
+        .update(marketplaceAutoReviewRuns)
+        .set({
+          metadataJson: {
+            ...metadata,
+            creativeQc: {
+              ...current.data,
+              status: "queued",
+              startedAt: recoveryAt.toISOString(),
+              error: null,
             },
-            updatedAt: recoveryAt,
-          })
-          .where(
-            and(
-              eq(marketplaceAutoReviewRuns.id, run.id),
-              eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
-            )
+          },
+          updatedAt: recoveryAt,
+        })
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, run.id),
+            eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
           )
-          .returning({ id: marketplaceAutoReviewRuns.id });
-        if (!updated) {
-          throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
-        }
+        )
+        .returning({ id: marketplaceAutoReviewRuns.id });
+      if (!updated) {
+        throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
       }
       await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
         query: tx,

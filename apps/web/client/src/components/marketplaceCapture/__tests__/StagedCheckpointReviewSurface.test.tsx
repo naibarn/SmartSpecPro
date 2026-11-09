@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY } from "@/lib/marketplaceCaptureAutoReviewPreferences";
 
 // Regression coverage for increment 5 of the "remove per-item approval
 // gates" change: the old "approve all images"/"approve all videos" bulk
@@ -108,12 +109,11 @@ function stateFixture() {
         storySummary: "เปิดภาพสินค้า",
         dialogue: "สวัสดี",
         imagePrompt: "สร้างภาพสินค้า 1",
-        // Non-null so the dispatch-only "สร้างวิดีโอช็อตที่ 1" button (only
-        // enabled once the shot actually has a prompt to dispatch with) is
-        // enabled by default in this fixture.
+        // Both video prerequisites are present so the per-shot dispatch
+        // action is enabled by default in this fixture.
         videoPrompt: "วิดีโอพร้อมส่งช็อต 1",
-        imageArtifactUrl: null,
-        imageArtifactHash: null,
+        imageArtifactUrl: "/media/shot-1.png",
+        imageArtifactHash: "shot-1-image-hash",
       },
       {
         shotId: 2,
@@ -127,6 +127,16 @@ function stateFixture() {
       },
     ],
     checkpoints: [
+      {
+        checkpointId: "image-result:run-1:shot-1:r1",
+        kind: "image_result",
+        shotId: 1,
+        state: "approved",
+        revision: 1,
+        contentHash: "image-result-hash-1",
+        estimatedCredits: 0,
+        consumed: true,
+      },
       {
         checkpointId: "image-prompt:run-1:shot-1:r1",
         kind: "image_prompt",
@@ -147,11 +157,8 @@ function stateFixture() {
         estimatedCredits: 3,
         consumed: true,
       },
-      // Present so the dispatch-only "สร้างวิดีโอช็อตที่ 1" button has a
-      // video_prompt checkpoint to key off of (its render gate is
-      // `videoCheckpoint && !isTaskInFlight`, same pattern as the image
-      // button) — otherwise the button wouldn't render at all in this
-      // fixture and the wiring tests below would have nothing to click.
+      // Prompt checkpoint retained for legacy status rendering; the button
+      // itself also renders if this record is absent.
       {
         checkpointId: "video-prompt:run-1:shot-1:r1",
         kind: "video_prompt",
@@ -274,7 +281,10 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
       listQualityPlanningModels: {
-        useQuery: () => ({ data: [], isLoading: false }),
+        useQuery: () => ({
+          data: [{ modelId: "test-story-llm", label: "Test Story LLM" }],
+          isLoading: false,
+        }),
       },
     },
     // Stubbed even though `useTenantFeatureFlag` above always resolves the
@@ -318,7 +328,7 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     const bulkButton = screen.getByRole("button", {
-      name: "⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (2 ช็อต)",
+      name: "⚡ สร้าง Prompt + ภาพทุกช็อต (2 ช็อต)",
     });
     fireEvent.click(bulkButton);
 
@@ -328,8 +338,8 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
         runId: "run-1",
         expectedStateDigest: "digest-0",
         targets: [
-          expect.objectContaining({ shotId: 1, stage: "image" }),
-          expect.objectContaining({ shotId: 2, stage: "image" }),
+          expect.objectContaining({ shotId: 1, stage: "image", refreshPrompt: true }),
+          expect.objectContaining({ shotId: 2, stage: "image", refreshPrompt: true }),
         ],
       })
     );
@@ -430,6 +440,24 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring (pr
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("uses and remembers the selected story LLM when generating a shot prompt", () => {
+    render(<StagedCheckpointReviewSurface runId="run-1" />);
+
+    fireEvent.change(screen.getByLabelText("โมเดล LLM ร่างเรื่อง"), {
+      target: { value: "test-story-llm" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+
+    expect(mockGeneratePromptMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "test-story-llm", stage: "image" })
+    );
+    expect(
+      JSON.parse(localStorage.getItem(AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY) ?? "{}")
+    ).toMatchObject({ storyPlanningModel: "test-story-llm" });
+  });
+
   it("submitting the (relabeled) 'ปรับปรุง Prompt ภาพช็อตที่ 1 ด้วยคำสั่ง' AI-instruction dialog forwards `instruction` into generatePromptMutation.mutate's payload", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
@@ -479,7 +507,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring (pr
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("the dispatch-only 'สร้างวิดีโอช็อตที่ 1' button calls retryShotMutation.mutate directly with stage: video", () => {
+  it("the dispatch-only 'สร้างวิดีโอช็อตที่ 1' button calls retryShotMutation.mutate with the saved video model", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     fireEvent.click(

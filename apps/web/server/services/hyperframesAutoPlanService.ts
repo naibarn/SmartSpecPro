@@ -422,14 +422,27 @@ export function buildHyperframesAutoPlanFromState(input: {
   // `buildHyperframesAutoStoryboardReviewPlan` (which re-applies overrides
   // itself, autoPlan.ts). Passing the raw overrides to either spot would
   // leak the blocked sequential strategy back into `defaults`.
-  const { overrides: sanitizedOverrides, sequentialBlocked } =
+  const {
+    overrides: sanitizedOverrides,
+    sequentialBlocked: sequentialOverrideBlocked,
+  } =
     sanitizeSequentialStoryboardOverrides({
       overrides: input.overrides,
       sequentialStoryboardEnabled: input.sequentialStoryboardEnabled ?? false,
     });
   const autoDefaults = buildDefaultHyperframesAutoPlanDefaults();
+  const sequentialBlocked =
+    sequentialOverrideBlocked ||
+    (input.sequentialStoryboardEnabled === false &&
+      autoDefaults.frameStrategy === "sequential_shot_storyboard");
+  const planDefaults = sequentialBlocked
+    ? {
+        ...autoDefaults,
+        frameStrategy: "storyboard_3x3_split" as const,
+      }
+    : autoDefaults;
   const defaults = applyHyperframesAutoPlanOverrides({
-    defaults: autoDefaults,
+    defaults: planDefaults,
     overrides: sanitizedOverrides,
   });
   const access =
@@ -491,7 +504,9 @@ export function buildHyperframesAutoPlanFromState(input: {
     tenantId: input.auth.tenantId,
     userId: input.auth.userId,
     access,
-    defaults: autoDefaults,
+    // Use the feature-gated base defaults for both the displayed plan and
+    // override diff; the builder applies the sanitized user overrides once.
+    defaults: planDefaults,
     blockers,
     warnings,
     overrides: sanitizedOverrides,

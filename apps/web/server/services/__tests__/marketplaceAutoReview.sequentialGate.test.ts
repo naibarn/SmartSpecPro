@@ -41,13 +41,13 @@ function permissiveAccess() {
 }
 
 describe("Feature 136 — resolveMarketplaceAutoReviewFrameStrategyForTest", () => {
-  it("maps auto to storyboard_3x3_split, passes sequential through, and preserves existing values", () => {
+  it("maps auto to sequential shots, passes explicit strategies through, and preserves existing values", () => {
     expect(
       resolveMarketplaceAutoReviewFrameStrategyForTest(
         "storyboard_images",
         "auto",
       ),
-    ).toBe("storyboard_3x3_split");
+    ).toBe("sequential_shot_storyboard");
     expect(
       resolveMarketplaceAutoReviewFrameStrategyForTest(
         "storyboard_images",
@@ -210,7 +210,7 @@ describe("Feature 136 — plan-service sanitize + warn (buildHyperframesAutoPlan
     ).toBe(false);
   });
 
-  it("leaves the dark path (no overrides, flag off) byte-identical to the call without the new input field", () => {
+  it("uses 3x3 only when the feature flag is explicitly off; legacy callers default to sequential shots", () => {
     const access = permissiveAccess();
     const withField = buildHyperframesAutoPlanFromState({
       auth: FIXED_AUTH,
@@ -230,7 +230,27 @@ describe("Feature 136 — plan-service sanitize + warn (buildHyperframesAutoPlan
       now: FIXED_NOW,
     });
 
-    expect(withField).toEqual(withoutField);
     expect(withField.defaults.frameStrategy).toBe("storyboard_3x3_split");
+    expect(withoutField.defaults.frameStrategy).toBe("sequential_shot_storyboard");
+  });
+
+  it("defaults to nine sequential shots when the feature flag is enabled and no frame override is saved", () => {
+    const plan = buildHyperframesAutoPlanFromState({
+      auth: FIXED_AUTH,
+      productId: "product_1",
+      productBundle: FIXED_PRODUCT_BUNDLE,
+      activeRun: null,
+      access: permissiveAccess(),
+      sequentialStoryboardEnabled: true,
+      now: FIXED_NOW,
+    } as any);
+
+    expect(plan.defaults.frameStrategy).toBe("sequential_shot_storyboard");
+    expect(plan.defaults.shotCount).toBe(9);
+    expect(
+      plan.warnings.some(
+        (warning) => warning.code === "sequential_storyboard_disabled",
+      ),
+    ).toBe(false);
   });
 });

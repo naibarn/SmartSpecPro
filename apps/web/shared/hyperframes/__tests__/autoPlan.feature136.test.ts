@@ -54,9 +54,9 @@ describe("Feature 136 — autoPlan schema/normalize additions", () => {
     ).toBe(false);
   });
 
-  it("keeps HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.frameStrategy at storyboard_3x3_split", () => {
+  it("defaults HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.frameStrategy to sequential shots", () => {
     expect(HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.frameStrategy).toBe(
-      "storyboard_3x3_split",
+      "sequential_shot_storyboard",
     );
   });
 

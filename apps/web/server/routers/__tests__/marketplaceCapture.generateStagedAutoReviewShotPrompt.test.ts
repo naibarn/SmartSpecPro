@@ -136,6 +136,7 @@ describe("generateStagedAutoReviewShotPrompt router mutation — synchronous fix
       ...BASE_INPUT,
       stage: "video",
       instruction: "make the lighting brighter",
+      model: "openai/gpt-5.6-sol",
     });
 
     expect(mockGenerateStagedAutoReviewShotPrompt).toHaveBeenCalledWith(
@@ -144,9 +145,30 @@ describe("generateStagedAutoReviewShotPrompt router mutation — synchronous fix
         shotId: 3,
         stage: "video",
         instruction: "make the lighting brighter",
+        model: "openai/gpt-5.6-sol",
         auth: expect.objectContaining({ userId: 42 }),
         runtime: expect.objectContaining({ publicUrl: "https://example.test" }),
       })
+    );
+  });
+
+  it("accepts prompt repair for shots 10 through 30 even when legacy runs have no checkpoint", async () => {
+    mockGenerateStagedAutoReviewShotPrompt.mockResolvedValueOnce({
+      runId: "run-1",
+      status: "queued",
+    });
+    const caller = marketplaceCaptureRouter.createCaller(
+      createContext({ id: 42, currentTenantId: "tenant_router" })
+    );
+
+    await caller.generateStagedAutoReviewShotPrompt({
+      ...BASE_INPUT,
+      shotId: 30,
+      stage: "video",
+    });
+
+    expect(mockGenerateStagedAutoReviewShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ shotId: 30, stage: "video" })
     );
   });
 

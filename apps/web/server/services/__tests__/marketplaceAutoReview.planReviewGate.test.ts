@@ -73,6 +73,7 @@ import {
   approveMarketplaceAutoReviewPlanReview,
   marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest,
   redraftNotesDirectiveForTest,
+  startMarketplaceAutoReviewDraftQualityQc,
   requestMarketplaceAutoReviewPlanRedraft,
   updateMarketplaceAutoReviewPlanShotDialogue,
 } from "../marketplaceAutoReviewService";
@@ -528,6 +529,56 @@ describe("approveMarketplaceAutoReviewPlanReview", () => {
       approveMarketplaceAutoReviewPlanReview({ runId: "mar_missing" }, AUTH)
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("startMarketplaceAutoReviewDraftQualityQc retry recovery", () => {
+  it("requeues a failed QC run and resets its attempt identity when the old worker row is missing", async () => {
+    const failedQc = {
+      ...createMarketplaceDraftQcState(),
+      status: "failed" as const,
+      error: "temporary worker failure",
+      startedAt: "2026-07-23T00:00:00.000Z",
+    };
+    const run = baseRunFixture({
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        planReview: { required: true, status: "awaiting" },
+        stagedPipeline: {
+          plan: {
+            title: "A product review",
+            product: { name: "Verified product" },
+            referenceManifestHash: "ref-1",
+            shots: [
+              {
+                shotId: 1,
+                durationSeconds: 8,
+                storySummary: "Show the product in use.",
+                dialogue: "This is the product benefit.",
+              },
+            ],
+          },
+        },
+        creativeQc: failedQc,
+      },
+    });
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({ run, updateRunSpy, stages: [] })
+    );
+
+    await startMarketplaceAutoReviewDraftQualityQc(
+      { runId: "mar_1", maxImprovementRounds: 3 },
+      AUTH
+    );
+
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    const [update] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(update.metadataJson.creativeQc).toMatchObject({
+      status: "queued",
+      error: null,
+    });
+    expect(update.metadataJson.creativeQc.startedAt).not.toBe(failedQc.startedAt);
   });
 });
 

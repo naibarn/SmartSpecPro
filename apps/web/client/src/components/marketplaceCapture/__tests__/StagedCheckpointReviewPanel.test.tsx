@@ -342,6 +342,110 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 
+  it("shows that image prompts are queued after the story is approved", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+      shots: [{ ...input.state.shots[0], imagePrompt: "" }],
+      workerOperations: [
+        {
+          jobId: "worker-1",
+          operation: "advance_run",
+          status: "queued",
+          progress: 0,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const status = screen.getByTestId("story-image-prompt-status");
+    expect(status.textContent).toContain("ส่งงานสร้าง Prompt ภาพ 1 ช็อตเข้าคิว Worker แล้ว");
+    expect(status.textContent).toContain("กำลังรอเริ่มทำงาน");
+    expect(status.textContent).toContain(
+      "สถานะอัปเดตอัตโนมัติทุก 4 วินาที ไม่ต้อง refresh"
+    );
+  });
+
+  it("shows image prompt generation progress while its worker is running", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+      shots: [{ ...input.state.shots[0], imagePrompt: "" }],
+      workerOperations: [
+        {
+          jobId: "worker-1",
+          operation: "advance_run",
+          status: "running",
+          progress: 42,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const status = screen.getByTestId("story-image-prompt-status");
+    expect(status.textContent).toContain("Worker กำลังสร้าง Prompt ภาพ (0/1 ช็อตเสร็จ)");
+    expect(status.textContent).toContain("42%");
+  });
+
+  it("shows completion when every shot has an image prompt", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByTestId("story-image-prompt-status").textContent).toContain(
+      "สร้าง Prompt ภาพครบ 1/1 ช็อต"
+    );
+  });
+
+  it("always exposes image and video prompt repair actions when a shot has no prompt checkpoint", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [1, 2, 3].map(shotId => ({
+        ...input.state.shots[0],
+        shotId,
+        imagePrompt: null,
+        videoPrompt: null,
+      })),
+      checkpoints: [],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    for (const shotId of [1, 2, 3]) {
+      expect(
+        screen.getByRole("button", { name: `สร้าง Prompt ภาพช็อตที่ ${shotId}` })
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: `สร้าง Prompt วิดีโอช็อตที่ ${shotId}` })
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: `สร้างภาพช็อตที่ ${shotId}` })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: `สร้างวิดีโอช็อตที่ ${shotId}` })
+      ).toBeDisabled();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" }));
+    expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(1, {
+      shotId: 1,
+      stage: "image",
+    });
+    expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(2, {
+      shotId: 1,
+      stage: "video",
+    });
+  });
+
   it("allows editing the rejected image prompt for its shot and dispatch-only generation (onRetry, current prompt) for it", () => {
     const input = props();
     input.state = {
@@ -476,7 +580,7 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
   });
 
-  it("renders the dispatch video-generate button even when the shot's image result isn't approved yet — the two buttons are fully independent, the backend enforces the image-first precondition", () => {
+  it("keeps video generation visible but disabled until the shot image is approved", () => {
     const input = props();
     input.state = {
       ...input.state,
@@ -503,14 +607,12 @@ describe("StagedCheckpointReviewPanel", () => {
     const videoButton = screen.getByRole("button", {
       name: "สร้างวิดีโอช็อตที่ 1",
     });
-    fireEvent.click(videoButton);
-    expect(input.onRetry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shotId: 1,
-        stage: "video",
-        autoApprove: true,
-      })
+    expect(videoButton).toBeDisabled();
+    expect(videoButton).toHaveAttribute(
+      "title",
+      "ต้องสร้างและอนุมัติภาพของช็อตนี้ก่อน"
     );
+    expect(input.onRetry).not.toHaveBeenCalled();
   });
 
   /**
@@ -523,7 +625,7 @@ describe("StagedCheckpointReviewPanel", () => {
    * dispatch with `staged_image_prompt_missing`, which the Surface maps to
    * a plain-Thai message).
    */
-  it("keeps the dispatch-only generate-image button CLICKABLE even when the shot has no image prompt yet, showing the hint as guidance rather than a block", () => {
+  it("keeps image generation visible but disabled until its prompt exists", () => {
     const input = props();
     input.state = {
       ...input.state,
@@ -534,20 +636,12 @@ describe("StagedCheckpointReviewPanel", () => {
     const dispatchButton = screen.getByRole("button", {
       name: "สร้างภาพช็อตที่ 1",
     });
-    // Never blocked — this is the whole point of the fix.
-    expect(dispatchButton).not.toBeDisabled();
-    // Guidance is still surfaced, both as a tooltip and as visible text.
-    expect(dispatchButton).toHaveAttribute(
-      "title",
-      'แนะนำให้กด "สร้าง Prompt ภาพ" ก่อน'
-    );
+    expect(dispatchButton).toBeDisabled();
+    expect(dispatchButton).toHaveAttribute("title", "สร้าง Prompt ภาพก่อน");
     expect(screen.getByText("สร้าง Prompt ภาพก่อน")).toBeTruthy();
 
-    // Clicking actually reaches the handler instead of doing nothing.
     fireEvent.click(dispatchButton);
-    expect(input.onRetry).toHaveBeenCalledWith(
-      expect.objectContaining({ shotId: 1, stage: "image" })
-    );
+    expect(input.onRetry).not.toHaveBeenCalled();
 
     // The other two steps stay fully available regardless.
     expect(
@@ -854,7 +948,7 @@ describe("StagedCheckpointReviewPanel", () => {
       expect(textarea.value.length).toBeGreaterThan(0);
     });
 
-    it("video section: the plain 'สร้าง Prompt วิดีโอช็อตที่ N' and relabeled 'ปรับปรุง Prompt วิดีโอ...' instruction buttons both call onGeneratePrompt (stage: video), gated on the image already being approved", () => {
+    it("video prompt repair actions remain available before an image is approved", () => {
       const input = props();
       input.state = {
         ...input.state,
@@ -914,9 +1008,19 @@ describe("StagedCheckpointReviewPanel", () => {
       input.state = {
         ...input.state,
         shots: [
-          { ...input.state.shots[0], videoPrompt: "ขยับกล้องช้า ๆ" },
+          {
+            ...input.state.shots[0],
+            videoPrompt: "ขยับกล้องช้า ๆ",
+            imageArtifactHash: "image-hash",
+          },
         ],
         checkpoints: [
+          {
+            ...baseCheckpoint,
+            kind: "image_result",
+            checkpointId: "image-result:run-1:shot-1:r1",
+            state: "approved",
+          },
           {
             ...baseCheckpoint,
             kind: "video_prompt",
@@ -944,8 +1048,8 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 
-  describe("bulk generate (replaces the old approve-all-images/approve-all-videos buttons)", () => {
-    it("renders one bulk action covering every shot missing a result and calls onBulkGenerate once with the full target list", () => {
+  describe("bulk generate actions", () => {
+    it("creates fresh image prompts and images for every shot, including shots with existing images", () => {
       const input = props();
       input.onBulkGenerate = vi.fn();
       input.state = {
@@ -967,21 +1071,43 @@ describe("StagedCheckpointReviewPanel", () => {
       render(<StagedCheckpointReviewPanel {...input} />);
 
       const bulkButton = screen.getByRole("button", {
-        name: "⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (2 ช็อต)",
+        name: "⚡ สร้าง Prompt + ภาพทุกช็อต (2 ช็อต)",
       });
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
       fireEvent.click(bulkButton);
 
-      // One call with the whole list — never one call per shot (that
-      // forEach-of-onApprove pattern is exactly the bug this replaces).
       expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
       expect(input.onBulkGenerate).toHaveBeenCalledWith([
-        expect.objectContaining({ shotId: 1, stage: "image" }),
-        expect.objectContaining({ shotId: 2, stage: "video" }),
+        expect.objectContaining({ shotId: 1, stage: "image", refreshPrompt: true }),
+        expect.objectContaining({ shotId: 2, stage: "image", refreshPrompt: true }),
       ]);
     });
 
-    it("does not render the bulk action once every shot already has its required result", () => {
+    it("creates video prompts for all shots without dispatching video generation", () => {
+      const input = props();
+      input.onBulkGenerate = vi.fn();
+      input.state = {
+        ...input.state,
+        planReview: { ...input.state.planReview, status: "approved" },
+        shots: [
+          { ...input.state.shots[0], shotId: 1, imageArtifactHash: null },
+          { ...input.state.shots[0], shotId: 2, imageArtifactHash: "image-2" },
+        ],
+      };
+      render(<StagedCheckpointReviewPanel {...input} />);
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "สร้าง Prompt วิดีโอทุกช็อต (2)" })
+      );
+
+      expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
+      expect(input.onBulkGenerate).toHaveBeenCalledWith([
+        expect.objectContaining({ shotId: 1, stage: "video", promptOnly: true }),
+        expect.objectContaining({ shotId: 2, stage: "video", promptOnly: true }),
+      ]);
+    });
+
+    it("keeps prompt refresh batches available even when every shot already has an image", () => {
       const input = props();
       input.onBulkGenerate = vi.fn();
       input.state = {
@@ -995,10 +1121,8 @@ describe("StagedCheckpointReviewPanel", () => {
       render(<StagedCheckpointReviewPanel {...input} />);
 
       expect(
-        screen.queryByRole("button", {
-          name: /สร้าง Prompt \+ ภาพ\/วิดีโอที่ยังขาด/,
-        })
-      ).toBeNull();
+        screen.getByRole("button", { name: /สร้าง Prompt \+ ภาพทุกช็อต/ })
+      ).toBeTruthy();
     });
 
     it("does not render the bulk action when onBulkGenerate is not provided", () => {

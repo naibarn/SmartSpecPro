@@ -77,6 +77,9 @@ export type StagedAutoReviewGenerationTarget = {
   shotId: number;
   stage: "image" | "video";
   model?: string;
+  promptModel?: string;
+  refreshPrompt?: boolean;
+  promptOnly?: boolean;
 };
 
 type StagedCheckpointRun = typeof marketplaceAutoReviewRuns.$inferSelect;
@@ -615,15 +618,33 @@ export async function getStagedAutoReviewCheckpointState(
         sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
       )
     )
-    .orderBy(desc(workerJobs.createdAt))
-    .limit(8);
+    .orderBy(
+      sql`case when ${workerJobs.status} in ('pending', 'queued', 'leased', 'claimed', 'preparing', 'running', 'waiting_external', 'retry_scheduled') then 0 else 1 end`,
+      desc(workerJobs.createdAt)
+    )
+    .limit(32);
   const workerOperations = workerOperationRows.map(job => {
     const input = (job.inputJson ?? {}) as Record<string, unknown>;
+    const operationInput = record(input.operationInput ?? input);
     const progress = (job.progressJson ?? {}) as Record<string, unknown>;
+    const targets = Array.isArray(operationInput.targets)
+      ? operationInput.targets
+      : [];
     return {
       jobId: job.id,
       operation: typeof input.operation === "string" ? input.operation : "unknown",
       status: job.status,
+      shotId:
+        Number.isInteger(Number(operationInput.shotId))
+          ? Number(operationInput.shotId)
+          : null,
+      targetShotIds: targets
+        .map(target => Number(record(target).shotId))
+        .filter(shotId => Number.isInteger(shotId) && shotId > 0),
+      targetStage:
+        operationInput.stage === "image" || operationInput.stage === "video"
+          ? operationInput.stage
+          : null,
       stage: typeof progress.stage === "string" ? progress.stage : null,
       progress: Number.isFinite(Number(progress.progress))
         ? Number(progress.progress)
@@ -901,6 +922,7 @@ async function mutateOwnedStagedMetadata(input: {
   expectedStateDigest: string;
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
+  queueAdvance?: boolean;
   mutate: (
     metadata: ReturnType<typeof parseStagedMetadata>,
     operationId: string
@@ -1000,22 +1022,28 @@ async function mutateOwnedStagedMetadata(input: {
       .returning({ id: marketplaceAutoReviewRuns.id });
     if (!updated)
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
-    await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
-      query: tx,
-      admission: {
-        tenantId,
-        userId: input.auth.userId,
-        runId: run.id,
-        operation: {
-          operation: "advance_run",
+    if (input.queueAdvance !== false) {
+      await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+        query: tx,
+        admission: {
+          tenantId,
+          userId: input.auth.userId,
           runId: run.id,
-          operationId,
+          operation: {
+            operation: "advance_run",
+            runId: run.id,
+            operationId,
+          },
+          idempotencyKey: input.idempotencyKey,
+          priority: 40,
         },
-        idempotencyKey: input.idempotencyKey,
-        priority: 40,
-      },
-    });
-    return { runId: run.id, operation, status: "queued" as const };
+      });
+    }
+    return {
+      runId: run.id,
+      operation,
+      status: input.queueAdvance === false ? ("completed" as const) : ("queued" as const),
+    };
   });
 }
 
@@ -1095,7 +1123,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     const taskKeys =
       target.stage === "image"
         ? [`image:${target.shotId}`, `video:${target.shotId}`]
-        : [`video:${target.shotId}`];
+        : [`image:${target.shotId}`, `video:${target.shotId}`];
     const hasTaskInFlight = taskKeys.some(key =>
       ["pending", "processing", "submitted"].includes(
         stagedTaskStatus(record((metadata as any).stagedPipeline), key) ?? ""
@@ -1109,6 +1137,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     }
     if (
       target.stage === "image" &&
+      !target.refreshPrompt &&
       (shot.imageArtifactHash || shot.imageArtifactUrl)
     ) {
       throw new TRPCError({
@@ -1118,6 +1147,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     }
     if (
       target.stage === "video" &&
+      !target.promptOnly &&
       (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
     ) {
       throw new TRPCError({
@@ -1127,6 +1157,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     }
     if (
       target.stage === "video" &&
+      !target.promptOnly &&
       metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
         checkpoint =>
           checkpoint.shotId === target.shotId &&
@@ -1137,19 +1168,6 @@ export async function startStagedAutoReviewBulkGeneration(input: {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "staged_image_result_not_approved",
-      });
-    }
-    const promptKind = target.stage === "image" ? "image_prompt" : "video_prompt";
-    const promptCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-      checkpoint =>
-        checkpoint.shotId === target.shotId &&
-        checkpoint.kind === promptKind &&
-        checkpoint.state !== "superseded"
-    );
-    if (!promptCheckpoint || !isStagedCheckpointEditable(promptCheckpoint)) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "checkpoint_not_editable",
       });
     }
   }
@@ -1245,7 +1263,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     const taskKeys =
       target.stage === "image"
         ? [`image:${target.shotId}`, `video:${target.shotId}`]
-        : [`video:${target.shotId}`];
+        : [`image:${target.shotId}`, `video:${target.shotId}`];
     const hasTaskInFlight = taskKeys.some(key =>
       ["pending", "processing", "submitted"].includes(
         stagedTaskStatus(stagedPipeline, key) ?? ""
@@ -1254,17 +1272,23 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     if (hasTaskInFlight) {
       continue;
     }
-    if (target.stage === "image" && (shot.imageArtifactHash || shot.imageArtifactUrl)) {
+    if (
+      target.stage === "image" &&
+      !target.refreshPrompt &&
+      (shot.imageArtifactHash || shot.imageArtifactUrl)
+    ) {
       continue;
     }
     if (
       target.stage === "video" &&
+      !target.promptOnly &&
       (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
     ) {
       continue;
     }
     if (
       target.stage === "video" &&
+      !target.promptOnly &&
       metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
         checkpoint =>
           checkpoint.shotId === target.shotId &&
@@ -1274,12 +1298,12 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     ) {
       continue;
     }
-    const prompt =
+    const currentPrompt =
       target.stage === "image"
         ? String(shot.imagePrompt ?? "").trim()
         : String(shot.videoPrompt ?? "").trim();
-    if (prompt) {
-      promptByShot.set(target.shotId, prompt);
+    if (currentPrompt && !target.refreshPrompt) {
+      promptByShot.set(target.shotId, currentPrompt);
       continue;
     }
     const generatedPrompt = await generateCompleteStagedShotPrompt({
@@ -1289,6 +1313,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       publicUrl: input.runtime?.publicUrl,
       tenantId: input.auth.tenantId,
       stage: target.stage,
+      model: target.promptModel,
     });
     promptByShot.set(target.shotId, generatedPrompt);
   }
@@ -1304,6 +1329,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     expectedStateDigest,
     idempotencyKey: applyIdempotencyKey,
     auth: input.auth,
+    queueAdvance: input.targets.some(target => !target.promptOnly),
     mutate(current, operationId) {
       const nextTargets = input.targets.filter(target =>
         promptByShot.has(target.shotId)
@@ -1440,7 +1466,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
             : current.stagedSequentialStoryboard.shots.find(
                 shot => shot.shotId === target.shotId
               )?.videoPrompt;
-        if (!String(currentPrompt ?? "").trim()) {
+        if (target.refreshPrompt || !String(currentPrompt ?? "").trim()) {
           promptGeneration[`${target.stage}:${target.shotId}`] = {
             generatedAt,
             operationId,
@@ -1729,15 +1755,6 @@ export async function editStagedAutoReviewShot(input: {
             checkpoint.kind === kind &&
             checkpoint.state !== "superseded"
         );
-      if (
-        !currentPromptCheckpoint ||
-        !isStagedCheckpointEditable(currentPromptCheckpoint)
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "checkpoint_not_editable",
-        });
-      }
       const revision = shot.revision + 1;
       const content = (input.imagePrompt ?? input.videoPrompt ?? "").trim();
       const imagePrompt = input.imagePrompt !== undefined;
@@ -1761,9 +1778,9 @@ export async function editStagedAutoReviewShot(input: {
               prompt: content,
               imageArtifactHash: shot.imageArtifactHash ?? "",
             }),
-        model: currentPromptCheckpoint.approvedModel ?? "internal",
-        provider: currentPromptCheckpoint.approvedProvider ?? "internal",
-        estimatedCredits: currentPromptCheckpoint.estimatedCredits ?? 0,
+        model: currentPromptCheckpoint?.approvedModel ?? "internal",
+        provider: currentPromptCheckpoint?.approvedProvider ?? "internal",
+        estimatedCredits: currentPromptCheckpoint?.estimatedCredits ?? 0,
         referenceManifestHash:
           metadata.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
@@ -1944,6 +1961,7 @@ export function buildStagedSingleShotRefreshInput(input: {
   /** New capability — free-text per-shot instruction for AI-assisted prompt
    *  adjustment (see `userInstruction` on `SequentialSingleShotRefreshInput`). */
   instruction?: string | null;
+  model?: string | null;
   /** Which prompt half is being (re)generated. Defaults to `"image"` for
    *  every pre-existing caller/test that never passed this. Only `"video"`
    *  changes behavior: the shot's own already-approved `imageArtifactUrl`
@@ -2093,6 +2111,7 @@ export function buildStagedSingleShotRefreshInput(input: {
     tenantId: input.tenantId || input.run.tenantId || "",
     userId: input.run.userId,
     runId: input.run.id,
+    model: input.model ?? null,
     publicUrl: input.publicUrl,
     originSurface: "marketplace_capture" as const,
     targetShotId: input.shotId,
@@ -2140,6 +2159,7 @@ export function buildStagedSingleShotRefreshInputForTest(input: {
   publicUrl?: string | null;
   tenantId?: string;
   instruction?: string | null;
+  model?: string | null;
   stage?: "image" | "video";
 }) {
   return buildStagedSingleShotRefreshInput(input);
@@ -2153,6 +2173,7 @@ async function generateCompleteStagedShotPrompt(input: {
   publicUrl?: string | null;
   tenantId?: string;
   instruction?: string | null;
+  model?: string | null;
 }): Promise<string> {
   const plan = record(record(input.metadata).stagedPipeline).plan as
     | StagedStoryArcPlan
@@ -2205,16 +2226,10 @@ async function generateCompleteStagedShotPrompt(input: {
     }).prompt;
     if (isCompleteStagedImagePrompt(prompt)) return prompt;
   } else {
-    if (!stagedShot?.imageArtifactHash) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "staged_image_artifact_missing",
-      });
-    }
     prompt = compileStagedVideoPrompt({
       plan,
       shot: planShot,
-      imageArtifactHash: stagedShot.imageArtifactHash,
+      imageArtifactHash: stagedShot?.imageArtifactHash ?? "",
     }).prompt;
     if (isCompleteStagedVideoPrompt(prompt, planShot.dialogue)) return prompt;
   }
@@ -2246,6 +2261,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
    *  clearly-delimited section; never merged into the base story/dialogue
    *  content. */
   instruction?: string;
+  model?: string;
 }) {
   const db = await getDb();
   if (!db) {
@@ -2279,14 +2295,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   const shot = metadata.stagedSequentialStoryboard.shots.find(
     item => item.shotId === input.shotId
   );
-  const checkpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-    item =>
-      item.shotId === input.shotId &&
-      item.kind ===
-        (input.stage === "image" ? "image_prompt" : "video_prompt") &&
-      item.state !== "superseded"
-  );
-  if (!shot || !checkpoint || !isStagedCheckpointEditable(checkpoint)) {
+  if (!shot) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "checkpoint_not_editable",
@@ -2295,7 +2304,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   const taskKeys =
     input.stage === "image"
       ? [`image:${input.shotId}`, `video:${input.shotId}`]
-      : [`video:${input.shotId}`];
+      : [`image:${input.shotId}`, `video:${input.shotId}`];
   const stagedPipeline = record((metadata as any).stagedPipeline);
   const mediaTaskInFlight = taskKeys.some(taskKey =>
     ["pending", "processing", "submitted"].includes(
@@ -2307,27 +2316,6 @@ export async function generateStagedAutoReviewShotPrompt(input: {
       code: "CONFLICT",
       message: "staged_media_task_in_flight",
     });
-  }
-  if (input.stage === "video" && !shot.imageArtifactHash) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_image_artifact_missing",
-    });
-  }
-  if (input.stage === "video") {
-    const imageResultCheckpoint =
-      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-        item =>
-          item.shotId === input.shotId &&
-          item.kind === "image_result" &&
-          item.state !== "superseded"
-      );
-    if (imageResultCheckpoint?.state !== "approved") {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "staged_image_result_not_approved",
-      });
-    }
   }
 
   if (!input.workerExecution) {
@@ -2343,6 +2331,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         expectedStateDigest: input.expectedStateDigest,
         requestIdempotencyKey: input.idempotencyKey,
         instruction: input.instruction,
+        model: input.model,
       },
       idempotencyKey: input.idempotencyKey,
       priority: 35,
@@ -2362,6 +2351,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     publicUrl: input.runtime?.publicUrl,
     tenantId: input.auth.tenantId,
     instruction: input.instruction,
+    model: input.model,
     stage: input.stage,
   });
 
@@ -2370,6 +2360,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
+    queueAdvance: false,
     mutate(current, operationId) {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId
@@ -2382,11 +2373,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
               (input.stage === "image" ? "image_prompt" : "video_prompt") &&
             item.state !== "superseded"
         );
-      if (
-        !currentShot ||
-        !currentCheckpoint ||
-        !isStagedCheckpointEditable(currentCheckpoint)
-      ) {
+      if (!currentShot) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "staged_state_drift",
@@ -2415,9 +2402,9 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         shotId: input.shotId,
         revision,
         contentHash,
-        model: currentCheckpoint.approvedModel ?? "internal",
-        provider: currentCheckpoint.approvedProvider ?? "internal",
-        estimatedCredits: currentCheckpoint.estimatedCredits ?? 0,
+        model: currentCheckpoint?.approvedModel ?? "internal",
+        provider: currentCheckpoint?.approvedProvider ?? "internal",
+        estimatedCredits: currentCheckpoint?.estimatedCredits ?? 0,
         referenceManifestHash:
           current.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
@@ -2524,6 +2511,7 @@ export async function editStagedAutoReviewAudioPlan(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
+    queueAdvance: input.storySummary !== undefined || input.dialogue !== undefined,
     mutate(metadata, operationId) {
       const current =
         metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
@@ -3147,11 +3135,13 @@ export async function retryStagedAutoReviewShot(input: {
       const retryableCheckpointAvailable =
         input.stage === "image"
           ? isStagedCheckpointRetryable(currentImagePrompt) ||
-            isStagedCheckpointRetryable(currentImageResult)
+            isStagedCheckpointRetryable(currentImageResult) ||
+            (!currentImagePrompt && !currentImageResult)
           : isStagedCheckpointRetryable(currentVideoPrompt) &&
             (!currentVideoResult ||
               currentVideoResult.state === "approved" ||
-              isStagedCheckpointRetryable(currentVideoResult));
+              isStagedCheckpointRetryable(currentVideoResult)) ||
+            !currentVideoPrompt;
       if (!retryableCheckpointAvailable && !providerCorrectionMatches) {
         throw new TRPCError({
           code: "BAD_REQUEST",

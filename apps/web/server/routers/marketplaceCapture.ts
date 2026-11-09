@@ -1372,7 +1372,7 @@ export const marketplaceCaptureRouter = router({
     .input(
       z.object({
         runId: z.string().min(1).max(64),
-        shotId: z.number().int().min(1).max(9),
+        shotId: z.number().int().min(1).max(30),
         refreshPrompt: z.boolean().optional().default(false),
       })
     )
@@ -1704,7 +1704,7 @@ export const marketplaceCaptureRouter = router({
     .input(
       z.object({
         runId: z.string().min(1).max(64),
-        shotId: z.number().int().min(1).max(9),
+        shotId: z.number().int().min(1).max(30),
         stage: z.enum(["image", "video"]),
         expectedStateDigest: z.string().min(1).max(256),
         idempotencyKey: z.string().min(8).max(200),
@@ -1712,6 +1712,7 @@ export const marketplaceCaptureRouter = router({
         // AI-assisted prompt adjustment. Frontend dialog wiring is a
         // separate task; the backend accepts and threads it through now.
         instruction: z.string().trim().max(2000).optional(),
+        model: z.string().trim().max(128).optional(),
       })
     )
     .output(z.any())
@@ -1775,6 +1776,9 @@ export const marketplaceCaptureRouter = router({
               shotId: z.number().int().min(1).max(30),
               stage: z.enum(["image", "video"]),
               model: z.string().trim().max(200).optional(),
+              promptModel: z.string().trim().max(128).optional(),
+              refreshPrompt: z.boolean().optional(),
+              promptOnly: z.boolean().optional(),
             }).strict()
           )
           .min(1)

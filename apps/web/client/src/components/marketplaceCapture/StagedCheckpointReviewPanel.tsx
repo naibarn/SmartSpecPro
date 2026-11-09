@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Banner } from "@astryxdesign/core/Banner";
 import { trpc } from "@/lib/trpc";
 import {
   loadStoredAutoStoryboardOverrides,
@@ -147,6 +148,9 @@ export type StagedReviewState = {
     jobId: string;
     operation: string;
     status: string;
+    shotId?: number | null;
+    targetShotIds?: number[];
+    targetStage?: "image" | "video" | null;
     stage?: string | null;
     progress?: number | null;
     createdAt?: string | null;
@@ -332,6 +336,9 @@ export type StagedBulkGenerateTarget = {
   shotId: number;
   stage: "image" | "video";
   model?: string;
+  promptModel?: string;
+  refreshPrompt?: boolean;
+  promptOnly?: boolean;
 };
 
 function checkpointLabel(checkpoint: StagedCheckpoint): string {
@@ -665,6 +672,7 @@ export function StagedCheckpointReviewPanel(props: {
   onGeneratePrompt: (input: {
     shotId: number;
     stage: "image" | "video";
+    model?: string;
     // Optional free-text instruction from the "AI ปรับแต่งด้วยคำสั่งเพิ่มเติม"
     // dialog — threaded straight through to the backend mutation's own
     // `instruction` field (server/routers/marketplaceCapture.ts). Omitted
@@ -673,17 +681,9 @@ export function StagedCheckpointReviewPanel(props: {
     // existed.
     instruction?: string;
   }) => void;
-  // The former consolidated one-click "สร้างภาพช็อตที่ N" / "สร้างวิดีโอช็อตที่ N"
-  // action — writes a fresh prompt AND dispatches generation with it in one
-  // click. No per-shot button in this Panel calls this anymore: per an
-  // explicit user directive, that consolidation was reversed back into 3
-  // separate steps (สร้าง Prompt → ปรับปรุงด้วยคำสั่ง → สร้างภาพ/วิดีโอ), the
-  // last of which now goes through onRetry (dispatch-only, using the
-  // CURRENT prompt) instead of this handler. The prop is kept only because
-  // StagedCheckpointReviewSurface still provides it; do not wire it back
-  // into a per-shot button without another explicit user request. See
-  // onGeneratePrompt (prompt-only) and onRetry (dispatch-only, also used by
-  // the hover "🔄 สร้างใหม่" overlay on an already-rendered image/video).
+  // Optional one-shot convenience action. Bulk generation uses the same
+  // worker-backed target contract, while each shot still exposes the three
+  // independent prompt, edit, and media actions below.
   onGenerateAndDispatch: (input: {
     shotId: number;
     stage: "image" | "video";
@@ -1487,45 +1487,67 @@ export function StagedCheckpointReviewPanel(props: {
     workflowSteps.find(
       step => step.status === "current" || step.status === "needs_review"
     ) ?? workflowSteps.find(step => step.status === "locked");
-  // "Doesn't have a result yet" is judged from the shot's own artifacts, not
-  // from checkpoint state — image/video-prompt checkpoints auto-approve at
-  // construction now, so waiting for a specific "awaiting" state would miss
-  // almost every shot. Image is preferred over video per shot: video can't
-  // be generated before its image exists, so a shot only ever needs one of
-  // the two next. Shots with a task already in flight are left alone so the
-  // bulk action can't pile a second dispatch on top of one already running.
-  const bulkGenerateTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
+  const promptModel = selectedModel === "__automatic__" ? undefined : selectedModel;
+  const bulkImageGenerationTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
     if (!props.state || !isRunEditable(props.state)) return [];
-    const needsVideo = props.state.outputMode !== "storyboard_images";
-    const targets: StagedBulkGenerateTarget[] = [];
-    for (const shot of props.state?.shots ?? []) {
-      if (!shot.imageArtifactUrl && !isTaskInFlight(shot.imageTaskStatus)) {
-        targets.push({
-          shotId: shot.shotId,
-          stage: "image",
-          model: selectedImageModel,
-        });
-      } else if (
-        needsVideo &&
-        shot.imageArtifactUrl &&
-        !shot.videoArtifactUrl &&
-        !isTaskInFlight(shot.videoTaskStatus)
-      ) {
-        targets.push({
-          shotId: shot.shotId,
-          stage: "video",
-          model: selectedVideoModel,
-        });
-      }
-    }
-    return targets;
+    return props.state.shots
+      .filter(
+        shot =>
+          !isTaskInFlight(shot.imageTaskStatus) &&
+          !isTaskInFlight(shot.videoTaskStatus)
+      )
+      .map(shot => ({
+        shotId: shot.shotId,
+        stage: "image" as const,
+        model: selectedImageModel,
+        promptModel,
+        refreshPrompt: true,
+      }));
   }, [
     props.state?.shots,
-    props.state?.outputMode,
     props.state?.runStatus,
     selectedImageModel,
-    selectedVideoModel,
+    promptModel,
   ]);
+  const bulkVideoPromptTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
+    if (!props.state || !isRunEditable(props.state)) return [];
+    return props.state.shots
+      .filter(
+        shot =>
+          !isTaskInFlight(shot.imageTaskStatus) &&
+          !isTaskInFlight(shot.videoTaskStatus)
+      )
+      .map(shot => ({
+        shotId: shot.shotId,
+        stage: "video" as const,
+        promptModel,
+        refreshPrompt: true,
+        promptOnly: true,
+      }));
+  }, [props.state?.shots, props.state?.runStatus, promptModel]);
+  const isPromptPipelineBusy = () =>
+    props.state?.workerOperations?.some(job => {
+      if (
+        ![
+          "pending",
+          "queued",
+          "leased",
+          "claimed",
+          "preparing",
+          "running",
+          "waiting_external",
+          "retry_scheduled",
+        ].includes(job.status)
+      ) {
+        return false;
+      }
+      return [
+        "advance_run",
+        "staged_prompt_generation",
+        "sequential_shot_prompt_generation",
+        "staged_bulk_generation",
+      ].includes(job.operation);
+    }) ?? false;
 
   if (!props.state && !props.loading && !props.error) return null;
 
@@ -1614,6 +1636,34 @@ export function StagedCheckpointReviewPanel(props: {
       "retry_scheduled",
     ].includes(job.status)
   );
+  const imagePromptWorkerOperations = props.state?.workerOperations?.filter(job =>
+    [
+      "advance_run",
+      "staged_prompt_generation",
+      "sequential_shot_prompt_generation",
+    ].includes(job.operation)
+  ) ?? [];
+  const activeImagePromptWorkerOperation = imagePromptWorkerOperations.find(job =>
+    [
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ].includes(job.status)
+  );
+  const latestImagePromptWorkerOperation = imagePromptWorkerOperations[0];
+  const failedImagePromptWorkerOperation =
+    !activeImagePromptWorkerOperation &&
+    latestImagePromptWorkerOperation?.status === "failed"
+      ? latestImagePromptWorkerOperation
+      : null;
+  const imagePromptShotsCompleted =
+    props.state?.shots.filter(shot => Boolean(shot.imagePrompt?.trim())).length ?? 0;
+  const imagePromptShotsExpected = props.state?.shots.length ?? 9;
   const activeBulkGeneration = props.state?.workerOperations?.some(
     job =>
       job.operation === "staged_bulk_generation" &&
@@ -1636,7 +1686,7 @@ export function StagedCheckpointReviewPanel(props: {
   const workerOperationLabels: Record<string, string> = {
     initialize_run: "เริ่มสร้างรีวิว",
     initialize_staged_metadata: "กู้คืนแนวเรื่องรีวิว",
-    advance_run: "สร้างขั้นตอนรีวิว",
+    advance_run: "สร้าง Prompt ภาพ",
     draft_quality_qc: "ตรวจคุณภาพเนื้อหา",
     staged_story_redraft: "ร่างแนวเรื่องใหม่",
     plan_redraft: "ร่างแนวเรื่องใหม่",
@@ -1762,15 +1812,16 @@ export function StagedCheckpointReviewPanel(props: {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {bulkGenerateTargets.length > 0 && props.onBulkGenerate
+                {bulkImageGenerationTargets.length > 0 && props.onBulkGenerate
                   ? action(
                       "bulk-generate",
-                      `⚡ สร้าง Prompt + ภาพ/วิดีโอที่ยังขาด (${bulkGenerateTargets.length} ช็อต)`,
-                      () => props.onBulkGenerate!(bulkGenerateTargets),
+                      `⚡ สร้าง Prompt + ภาพทุกช็อต (${bulkImageGenerationTargets.length} ช็อต)`,
+                      () => props.onBulkGenerate!(bulkImageGenerationTargets),
                       "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
                       {
                         disabled:
                           activeBulkGeneration ||
+                          Boolean(activeImagePromptWorkerOperation) ||
                           (props.state?.checkpoints.find(
                             checkpoint =>
                               checkpoint.kind === "story_plan" &&
@@ -1779,7 +1830,23 @@ export function StagedCheckpointReviewPanel(props: {
                             props.state?.planReview?.status !== "approved"),
                         title: activeBulkGeneration
                           ? "กำลังเตรียมงานชุดนี้ใน Worker"
-                          : "ส่งสร้าง Prompt และสื่อที่ยังขาดทั้งหมดเข้า Worker Jobs",
+                          : "สร้าง Prompt ใหม่และส่งสร้างภาพทุกช็อตเข้า Worker Jobs",
+                      }
+                    )
+                  : null}
+                {bulkVideoPromptTargets.length > 0 && props.onBulkGenerate
+                  ? action(
+                      "bulk-video-prompt-generate",
+                      `สร้าง Prompt วิดีโอทุกช็อต (${bulkVideoPromptTargets.length})`,
+                      () => props.onBulkGenerate!(bulkVideoPromptTargets),
+                      "rounded-lg border border-sky-400 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-sky-100 shadow-xs transition",
+                      {
+                        disabled:
+                          activeBulkGeneration ||
+                          Boolean(activeImagePromptWorkerOperation),
+                        title: activeBulkGeneration
+                          ? "กำลังเตรียมงานชุดนี้ใน Worker"
+                          : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
                       }
                     )
                   : null}
@@ -2367,6 +2434,7 @@ export function StagedCheckpointReviewPanel(props: {
                   <span>🤖 โมเดล LLM ร่างเรื่อง</span>
                 </label>
                 <select
+                  aria-label="โมเดล LLM ร่างเรื่อง"
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedModel}
                   onChange={event => changeSelectedModel(event.target.value)}
@@ -2388,6 +2456,7 @@ export function StagedCheckpointReviewPanel(props: {
                   <span>🎨 โมเดล AI สร้างภาพ</span>
                 </label>
                 <select
+                  aria-label="โมเดล AI สร้างภาพ"
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedImageModel}
                   onChange={event => changeSelectedImageModel(event.target.value)}
@@ -2409,6 +2478,7 @@ export function StagedCheckpointReviewPanel(props: {
                   <span>🎬 โมเดล AI สร้างวิดีโอ</span>
                 </label>
                 <select
+                  aria-label="โมเดล AI สร้างวิดีโอ"
                   className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
                   value={selectedVideoModel}
                   onChange={event => changeSelectedVideoModel(event.target.value)}
@@ -2996,9 +3066,41 @@ export function StagedCheckpointReviewPanel(props: {
                 </div>
               </div>
             ) : storyCheckpoint?.state === "approved" || props.state.planReview?.status === "approved" ? (
-              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs font-medium text-blue-800 flex items-center gap-2">
-                <span>✅ ยืนยันเนื้อเรื่องเรียบร้อยแล้ว — ระบบกำลังประมวลผลสร้าง Prompt ภาพสำหรับแต่ละช็อต (กรุณารอประมาณ 3-5 วินาทีแล้วโหลดซ้ำ)</span>
-              </div>
+              <Banner
+                status={
+                  imagePromptShotsCompleted >= imagePromptShotsExpected
+                    ? "success"
+                    : failedImagePromptWorkerOperation
+                      ? "error"
+                      : "info"
+                }
+                title={
+                  imagePromptShotsCompleted >= imagePromptShotsExpected
+                    ? `ยืนยันเนื้อเรื่องแล้ว — สร้าง Prompt ภาพครบ ${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต`
+                    : failedImagePromptWorkerOperation
+                      ? `สร้าง Prompt ภาพไม่สำเร็จ (${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต)`
+                      : activeImagePromptWorkerOperation?.status === "queued" ||
+                          activeImagePromptWorkerOperation?.status === "pending" ||
+                          activeImagePromptWorkerOperation?.status === "retry_scheduled"
+                        ? `ส่งงานสร้าง Prompt ภาพ ${imagePromptShotsExpected} ช็อตเข้าคิว Worker แล้ว — กำลังรอเริ่มทำงาน (${imagePromptShotsCompleted}/${imagePromptShotsExpected} เสร็จ)`
+                        : activeImagePromptWorkerOperation
+                          ? `Worker กำลังสร้าง Prompt ภาพ (${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อตเสร็จ)`
+                          : `ยืนยันเนื้อเรื่องแล้ว — กำลังตรวจสอบคิวสร้าง Prompt ภาพ (${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต)`
+                }
+                description={
+                  imagePromptShotsCompleted >= imagePromptShotsExpected
+                    ? "ตรวจแก้ Prompt ภาพของแต่ละช็อตได้ด้านล่าง"
+                    : failedImagePromptWorkerOperation
+                      ? "ลองสร้าง Prompt ใหม่หรือ retry งานเดิมได้"
+                      : `สถานะอัปเดตอัตโนมัติทุก 4 วินาที ไม่ต้อง refresh${
+                          activeImagePromptWorkerOperation?.progress !== null &&
+                          activeImagePromptWorkerOperation?.progress !== undefined
+                            ? ` · ความคืบหน้า ${Math.round(activeImagePromptWorkerOperation.progress)}%`
+                            : ""
+                        }`
+                }
+                data-testid="story-image-prompt-status"
+              />
             ) : null}
             <div className="mt-2 flex flex-wrap gap-2">
               {storyEditAvailable &&
@@ -3329,7 +3431,10 @@ export function StagedCheckpointReviewPanel(props: {
                             [imageDraftKey]: event.target.value,
                           }))
                         }
-                        disabled={!isEditable(imageCheckpoint) || props.pending}
+                        disabled={
+                          Boolean(imageCheckpoint && !isEditable(imageCheckpoint)) ||
+                          props.pending
+                        }
                       />
                     </label>
                     <label className="block text-sm font-medium text-slate-800">
@@ -3352,7 +3457,10 @@ export function StagedCheckpointReviewPanel(props: {
                             [videoDraftKey]: event.target.value,
                           }))
                         }
-                        disabled={!isEditable(videoCheckpoint) || props.pending}
+                        disabled={
+                          Boolean(videoCheckpoint && !isEditable(videoCheckpoint)) ||
+                          props.pending
+                        }
                       />
                     </label>
                   </div>
@@ -3752,52 +3860,53 @@ export function StagedCheckpointReviewPanel(props: {
                         กดสร้างภาพเพื่อใช้เครดิต
                       </p>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {/* Split back out into 3 explicit steps per explicit
-                            user directive reversing the earlier one-click
-                            consolidation (see onGenerateAndDispatch's doc
-                            comment on the props type above — no per-shot
-                            button calls it anymore; the prop stays only
-                            because the Surface still provides it). Mirrors
-                            the Vertical Drama Series workflow's step-by-step
-                            philosophy: every pipeline step is its own
-                            explicit user choice. */}
-                        {/* Step 1/3 — prompt-only, never dispatches
-                            generation or spends image credits. */}
-                        {imageCheckpoint &&
-                        isEditable(imageCheckpoint) &&
-                        !isTaskInFlight(shot.imageTaskStatus) &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
-                              `generate-prompt-image-${shot.shotId}`,
-                              `สร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
-                              () =>
-                                props.onGeneratePrompt({
-                                  shotId: shot.shotId,
-                                  stage: "image",
-                                }),
-                              "rounded border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800"
-                            )
-                          : null}
+                        {/* Prompt authoring is available even when a legacy
+                            run has no prompt checkpoint yet. */}
+                        {action(
+                          `generate-prompt-image-${shot.shotId}`,
+                          `สร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
+                          () =>
+                            props.onGeneratePrompt({
+                              shotId: shot.shotId,
+                              stage: "image",
+                              ...(promptModel ? { model: promptModel } : {}),
+                            }),
+                          "rounded border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800",
+                          {
+                            disabled:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus) ||
+                              isPromptPipelineBusy(),
+                            title:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus)
+                                ? "รอให้งานสร้างสื่อของช็อตนี้เสร็จก่อน"
+                                : isPromptPipelineBusy()
+                                  ? "Worker กำลังสร้าง Prompt ภาพของช็อตนี้"
+                                : undefined,
+                          }
+                        )}
                         {/* Step 2/3 — same AI-instruction dialog as before
                             (mechanics/data-testids unchanged), relabeled per
                             the user's requested wording. */}
-                        {imageCheckpoint &&
-                        isEditable(imageCheckpoint) &&
-                        !isTaskInFlight(shot.imageTaskStatus) &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
-                              `ai-instruction-image-${shot.shotId}`,
-                              `ปรับปรุง Prompt ภาพช็อตที่ ${shot.shotId} ด้วยคำสั่ง`,
-                              () => {
-                                setAiInstructionText("");
-                                setAiInstructionDialog({
-                                  shotId: shot.shotId,
-                                  stage: "image",
-                                });
-                              },
-                              "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800"
-                            )
-                          : null}
+                        {action(
+                          `ai-instruction-image-${shot.shotId}`,
+                          `ปรับปรุง Prompt ภาพช็อตที่ ${shot.shotId} ด้วยคำสั่ง`,
+                          () => {
+                            setAiInstructionText("");
+                            setAiInstructionDialog({
+                              shotId: shot.shotId,
+                              stage: "image",
+                            });
+                          },
+                          "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800",
+                          {
+                            disabled:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus) ||
+                              isPromptPipelineBusy(),
+                          }
+                        )}
                         {/* Step 3/3 — dispatch-only, using the CURRENT
                             approved prompt (never rewriting it); the
                             credit-spending step. Same mutation call shape as
@@ -3806,10 +3915,7 @@ export function StagedCheckpointReviewPanel(props: {
                             Disabled (never hidden) until the shot actually
                             has an image prompt, so the required order stays
                             visible instead of silently doing nothing. */}
-                        {imageCheckpoint &&
-                        !isTaskInFlight(shot.imageTaskStatus) &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
+                        {action(
                               `dispatch-image-${shot.shotId}`,
                               `สร้างภาพช็อตที่ ${shot.shotId}`,
                               () =>
@@ -3821,25 +3927,20 @@ export function StagedCheckpointReviewPanel(props: {
                                 }),
                               "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-2 text-sm font-semibold text-white shadow-xs transition",
                               {
-                                // Deliberately NOT disabled on
-                                // `!shot.imagePrompt` (2026-07-30 incident):
-                                // a client-derived precondition on a
-                                // credit-spending button turns any state
-                                // mismatch into a silently dead button. The
-                                // hint below stays visible as guidance, and
-                                // the server is the authority — it rejects a
-                                // promptless dispatch with a clear reason
-                                // code that surfaces as a plain-Thai error.
-                                title: !shot.imagePrompt
-                                  ? "แนะนำให้กด \"สร้าง Prompt ภาพ\" ก่อน"
-                                  : undefined,
+                                disabled:
+                                  !shot.imagePrompt?.trim() ||
+                                  isTaskInFlight(shot.imageTaskStatus) ||
+                                  isTaskInFlight(shot.videoTaskStatus) ||
+                                  isPromptPipelineBusy(),
+                                title: !shot.imagePrompt?.trim()
+                                  ? "สร้าง Prompt ภาพก่อน"
+                                  : isTaskInFlight(shot.imageTaskStatus) ||
+                                      isTaskInFlight(shot.videoTaskStatus)
+                                    ? "รอให้งานของช็อตนี้เสร็จก่อน"
+                                    : undefined,
                               }
-                            )
-                          : null}
-                        {imageCheckpoint &&
-                        !isTaskInFlight(shot.imageTaskStatus) &&
-                        !isTaskInFlight(shot.videoTaskStatus) &&
-                        !shot.imagePrompt ? (
+                            )}
+                        {!shot.imagePrompt ? (
                           <span className="text-[11px] text-slate-500">
                             สร้าง Prompt ภาพก่อน
                           </span>
@@ -3853,8 +3954,7 @@ export function StagedCheckpointReviewPanel(props: {
                               () => props.onReject(imageCheckpoint)
                             )
                           : null}
-                        {imageCheckpoint &&
-                        isEditable(imageCheckpoint) &&
+                        {(!imageCheckpoint || isEditable(imageCheckpoint)) &&
                         (drafts[imageDraftKey] ?? shot.imagePrompt ?? "") !==
                           (shot.imagePrompt ?? "")
                           ? action(
@@ -3893,46 +3993,53 @@ export function StagedCheckpointReviewPanel(props: {
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {/* Split back out into 3 explicit steps, mirroring
                             the image section above — same user directive. */}
-                        {/* Step 1/3 — prompt-only. Same precondition as the
-                            AI-instruction dialog below (approved image
-                            required server-side for a video prompt to make
-                            sense). */}
-                        {videoCheckpoint &&
-                        shot.imageArtifactHash &&
-                        imageResultCheckpoint?.state === "approved" &&
-                        isEditable(videoCheckpoint) &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
-                              `generate-prompt-video-${shot.shotId}`,
-                              `สร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
-                              () =>
-                                props.onGeneratePrompt({
-                                  shotId: shot.shotId,
-                                  stage: "video",
-                                }),
-                              "rounded border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800"
-                            )
-                          : null}
+                        {/* Video prompts can be drafted from the shot brief
+                            before an image is rendered; only video creation
+                            itself needs an approved image. */}
+                        {action(
+                          `generate-prompt-video-${shot.shotId}`,
+                          `สร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
+                          () =>
+                            props.onGeneratePrompt({
+                              shotId: shot.shotId,
+                              stage: "video",
+                              ...(promptModel ? { model: promptModel } : {}),
+                            }),
+                          "rounded border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800",
+                          {
+                            disabled:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus) ||
+                              isPromptPipelineBusy(),
+                            title:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus)
+                              ? "รอให้งานวิดีโอของช็อตนี้เสร็จก่อน"
+                              : isPromptPipelineBusy()
+                                ? "Worker กำลังสร้าง Prompt วิดีโอของช็อตนี้"
+                                : undefined,
+                          }
+                        )}
                         {/* Step 2/3 — existing AI-instruction dialog,
                             relabeled per the user's requested wording. */}
-                        {videoCheckpoint &&
-                        shot.imageArtifactHash &&
-                        imageResultCheckpoint?.state === "approved" &&
-                        isEditable(videoCheckpoint) &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
-                              `ai-instruction-video-${shot.shotId}`,
-                              `ปรับปรุง Prompt วิดีโอช็อตที่ ${shot.shotId} ด้วยคำสั่ง`,
-                              () => {
-                                setAiInstructionText("");
-                                setAiInstructionDialog({
-                                  shotId: shot.shotId,
-                                  stage: "video",
-                                });
-                              },
-                              "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800"
-                            )
-                          : null}
+                        {action(
+                          `ai-instruction-video-${shot.shotId}`,
+                          `ปรับปรุง Prompt วิดีโอช็อตที่ ${shot.shotId} ด้วยคำสั่ง`,
+                          () => {
+                            setAiInstructionText("");
+                            setAiInstructionDialog({
+                              shotId: shot.shotId,
+                              stage: "video",
+                            });
+                          },
+                          "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800",
+                          {
+                            disabled:
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus) ||
+                              isPromptPipelineBusy(),
+                          }
+                        )}
                         {/* Step 3/3 — dispatch-only, same shape as the image
                             section. Intentionally NOT gated client-side on
                             the shot already having an approved image: the
@@ -3945,9 +4052,7 @@ export function StagedCheckpointReviewPanel(props: {
                             plain-Thai staged_image_result_not_approved
                             mapping via mutationOptions.onError on the
                             Surface; no client-side duplication needed. */}
-                        {videoCheckpoint &&
-                        !isTaskInFlight(shot.videoTaskStatus)
-                          ? action(
+                        {action(
                               `dispatch-video-${shot.shotId}`,
                               `สร้างวิดีโอช็อตที่ ${shot.shotId}`,
                               () =>
@@ -3959,20 +4064,25 @@ export function StagedCheckpointReviewPanel(props: {
                                 }),
                               "rounded-lg bg-sky-700 hover:bg-sky-800 px-3.5 py-2 text-sm font-semibold text-white shadow-xs transition",
                               {
-                                // Not disabled — same reasoning as the image
-                                // dispatch button above (2026-07-30). The
-                                // real precondition (an approved image) is
-                                // enforced server-side and surfaced through
-                                // the shared friendlyActionError mapping.
-                                title: !shot.videoPrompt
-                                  ? "แนะนำให้กด \"สร้าง Prompt วิดีโอ\" ก่อน"
-                                  : undefined,
+                                disabled:
+                                  !shot.videoPrompt?.trim() ||
+                                  !shot.imageArtifactHash ||
+                                  imageResultCheckpoint?.state !== "approved" ||
+                                  isTaskInFlight(shot.imageTaskStatus) ||
+                                  isTaskInFlight(shot.videoTaskStatus) ||
+                                  isPromptPipelineBusy(),
+                                title: !shot.videoPrompt?.trim()
+                                  ? "สร้าง Prompt วิดีโอก่อน"
+                                  : !shot.imageArtifactHash ||
+                                      imageResultCheckpoint?.state !== "approved"
+                                    ? "ต้องสร้างและอนุมัติภาพของช็อตนี้ก่อน"
+                                    : isTaskInFlight(shot.imageTaskStatus) ||
+                                        isTaskInFlight(shot.videoTaskStatus)
+                                      ? "รอให้งานวิดีโอของช็อตนี้เสร็จก่อน"
+                                      : undefined,
                               }
-                            )
-                          : null}
-                        {videoCheckpoint &&
-                        !isTaskInFlight(shot.videoTaskStatus) &&
-                        !shot.videoPrompt ? (
+                            )}
+                        {!shot.videoPrompt ? (
                           <span className="text-[11px] text-slate-500">
                             สร้าง Prompt วิดีโอก่อน
                           </span>
@@ -3986,8 +4096,7 @@ export function StagedCheckpointReviewPanel(props: {
                               () => props.onReject(videoCheckpoint)
                             )
                           : null}
-                        {videoCheckpoint &&
-                        isEditable(videoCheckpoint) &&
+                        {(!videoCheckpoint || isEditable(videoCheckpoint)) &&
                         (drafts[videoDraftKey] ?? shot.videoPrompt ?? "") !==
                           (shot.videoPrompt ?? "")
                           ? action(
@@ -4174,6 +4283,7 @@ export function StagedCheckpointReviewPanel(props: {
               props.onGeneratePrompt({
                 shotId: aiInstructionDialog.shotId,
                 stage: aiInstructionDialog.stage,
+                ...(promptModel ? { model: promptModel } : {}),
                 instruction: aiInstructionText.trim(),
               });
               setAiInstructionDialog(null);

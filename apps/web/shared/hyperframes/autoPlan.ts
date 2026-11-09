@@ -269,7 +269,7 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   // Feature 136 section 09 (§5.2) — see the schema comment above.
   outputMode: "storyboard_images",
   platformPresetId: "generic_vertical_9_16",
-  frameStrategy: "storyboard_3x3_split",
+  frameStrategy: "sequential_shot_storyboard",
   audioStrategy: "native_video_audio",
   shotCount: "9",
   overlayTextMode: "no_text",

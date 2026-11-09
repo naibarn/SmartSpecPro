@@ -224,6 +224,14 @@ export function StagedCheckpointReviewSurface(props: {
       mutationOptions
     );
   const pendingMutation = useMemo(() => {
+    if (generatePromptMutation.isPending && generatePromptMutation.variables) {
+      const variables = generatePromptMutation.variables;
+      return `generate-prompt-${variables.stage}-${variables.shotId}`;
+    }
+    if (retryShotMutation.isPending && retryShotMutation.variables) {
+      const variables = retryShotMutation.variables;
+      return `dispatch-${variables.stage}-${variables.shotId}`;
+    }
     const entries: Array<[string, boolean]> = [
       ["approve", approveMutation.isPending],
       ["creative-qc", creativeQcMutation.isPending],
@@ -257,11 +265,13 @@ export function StagedCheckpointReviewSurface(props: {
     editFinalMutation.isPending,
     editShotMutation.isPending,
     generatePromptMutation.isPending,
+    generatePromptMutation.variables,
     redraftMutation.isPending,
     rejectMutation.isPending,
     retryAudioMutation.isPending,
     retryFinalMutation.isPending,
     retryShotMutation.isPending,
+    retryShotMutation.variables,
     saveLanguagePlanMutation.isPending,
     saveRenderSettingsMutation.isPending,
     submitFinalRenderMutation.isPending,
@@ -440,12 +450,16 @@ export function StagedCheckpointReviewSurface(props: {
         shotId: target.shotId,
         stage: target.stage,
         ...(target.model ? { model: target.model } : {}),
+        ...(target.promptModel ? { promptModel: target.promptModel } : {}),
+        ...(target.refreshPrompt ? { refreshPrompt: true } : {}),
+        ...(target.promptOnly ? { promptOnly: true } : {}),
       })),
     });
   };
   const onGeneratePrompt = (input: {
     shotId: number;
     stage: "image" | "video";
+    model?: string;
     // Optional free-text instruction from the panel's "AI ปรับแต่งด้วย
     // คำสั่งเพิ่มเติม" dialog — forwarded as-is to the mutation's own
     // optional `instruction` field. Omitted for the plain regenerate
@@ -457,6 +471,7 @@ export function StagedCheckpointReviewSurface(props: {
       runId,
       shotId: input.shotId,
       stage: input.stage,
+      ...(input.model ? { model: input.model } : {}),
       expectedStateDigest: stateDigest,
       idempotencyKey: uiIdempotencyKey(
         `generate-prompt-${input.stage}`,

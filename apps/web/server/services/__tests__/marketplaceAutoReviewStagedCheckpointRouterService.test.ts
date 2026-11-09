@@ -272,6 +272,23 @@ describe("buildStagedSingleShotRefreshInput — staged single-shot regenerate co
     expect(withoutInstruction.userInstruction).toBeNull();
   });
 
+  it("passes the selected LLM model through to the single-shot skill runner", () => {
+    const plan = planFixture();
+    const { run, metadata } = fixture({ plan });
+
+    const refreshInput = buildStagedSingleShotRefreshInputForTest({
+      run,
+      metadata,
+      shotId: 1,
+      stage: "video",
+      model: "openai/gpt-5.6-sol",
+    });
+
+    expect(refreshInput.model).toBe("openai/gpt-5.6-sol");
+    expect(refreshInput.skillVisionUrls).not.toContain("https://example.test/shot-1.png");
+    expect(refreshInput.shotContract.dialogue).toBeTruthy();
+  });
+
   it("ends up in the actual system-prompt contract sent to the skill runner", () => {
     const plan = planFixture();
     const { run, metadata } = fixture({ plan });
