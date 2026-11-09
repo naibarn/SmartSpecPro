@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks.",
+      "next_action": "Deployed and verified generation 454 for source 18be656ba0856522fb49c6cc658bbf8cf56db34a at legacy-debian-dev. Focused regression passed 14 files / 189 tests; public health/API/assets passed. Live provider-backed QC/media execution remains unverified; it was intentionally not run to avoid credit use.",
       "checkpoint_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
-      "merged_main_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
+      "merged_main_sha": "18be656ba0856522fb49c6cc658bbf8cf56db34a",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-autoreview-finalize"
     }
@@ -42,14 +42,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 34,
-  "updated_at": "2026-11-09T16:56:57.176488+00:00",
+  "generation": 35,
+  "updated_at": "2026-11-09T17:02:43.482253+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks.",
-    "merged_main_sha": "8358109f1db98a709de51851fd7952729f2dfdcf",
+    "next_action": "Deployed and verified generation 454 for source 18be656ba0856522fb49c6cc658bbf8cf56db34a at legacy-debian-dev. Focused regression passed 14 files / 189 tests; public health/API/assets passed. Live provider-backed QC/media execution remains unverified; it was intentionally not run to avoid credit use.",
+    "merged_main_sha": "18be656ba0856522fb49c6cc658bbf8cf56db34a",
     "gaps": [
-      "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits."
+      "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
+      "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }

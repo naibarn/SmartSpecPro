@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `34`
-- Updated (UTC): `2026-11-09T16:56:57.176488+00:00`
+- State generation: `35`
+- Updated (UTC): `2026-11-09T17:02:43.482253+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `8358109f1db98a709de51851fd7952729f2dfdcf`
+- Latest recorded merged Main SHA: `18be656ba0856522fb49c6cc658bbf8cf56db34a`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks.
+- Next action: Deployed and verified generation 454 for source 18be656ba0856522fb49c6cc658bbf8cf56db34a at legacy-debian-dev. Focused regression passed 14 files / 189 tests; public health/API/assets passed. Live provider-backed QC/media execution remains unverified; it was intentionally not run to avoid credit use.
 
 ## Sections
 
@@ -19,11 +19,12 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-autoreview-finalize | /mnt/SmartSpecDev/projects/SmartSpecPro | 8358109f1db98a709de51851fd7952729f2dfdcf | 8358109f1db98a709de51851fd7952729f2dfdcf | Deploy verified canonical main to legacy-debian-dev and record release receipt plus public health checks. |
+| section-03-proof-and-deployment | checkpointed | codex-autoreview-finalize | /mnt/SmartSpecDev/projects/SmartSpecPro | 8358109f1db98a709de51851fd7952729f2dfdcf | 18be656ba0856522fb49c6cc658bbf8cf56db34a | Deployed and verified generation 454 for source 18be656ba0856522fb49c6cc658bbf8cf56db34a at legacy-debian-dev. Focused regression passed 14 files / 189 tests; public health/API/assets passed. Live provider-backed QC/media execution remains unverified; it was intentionally not run to avoid credit use. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
 - Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.
+- Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery.
 
 ## Resume
 
