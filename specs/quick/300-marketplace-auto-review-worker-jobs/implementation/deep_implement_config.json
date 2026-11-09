@@ -26,9 +26,10 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending.",
-      "checkpoint_sha": "1d82dff626005c156d5fe62fefae61631dc7f078",
-      "merged_main_sha": "1d82dff626005c156d5fe62fefae61631dc7f078"
+      "next_action": "Fix for refunded skill billing keys is deployed to legacy-debian-dev / smartaihub.app at generation 449 (release smartspec-web-cdba86faa0318bf93e2ced1953f5e9bc348e0be0-ed4d39e486b9); runtime revision cdba86faa0318bf93e2ced1953f5e9bc348e0be0, health and public homepage HTTP 200. QC attempts now persist distinct billing attempt timestamps; a failed repair can be retried. Retry Creative QC on run mar_670133124534765cf0d36d3637b6ee89 from the UI, then finish browser UAT for optional QC, per-shot repair and bulk prompt/image jobs.",
+      "checkpoint_sha": "cdba86faa0318bf93e2ced1953f5e9bc348e0be0",
+      "merged_main_sha": "cdba86faa0318bf93e2ced1953f5e9bc348e0be0",
+      "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
     }
   },
   "pre_commit": {
@@ -40,14 +41,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 21,
-  "updated_at": "2026-11-09T13:09:58.805709+00:00",
+  "generation": 23,
+  "updated_at": "2026-11-09T13:34:20.154737+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending.",
-    "merged_main_sha": "1d82dff626005c156d5fe62fefae61631dc7f078",
+    "next_action": "Fix for refunded skill billing keys is deployed to legacy-debian-dev / smartaihub.app at generation 449 (release smartspec-web-cdba86faa0318bf93e2ced1953f5e9bc348e0be0-ed4d39e486b9); runtime revision cdba86faa0318bf93e2ced1953f5e9bc348e0be0, health and public homepage HTTP 200. QC attempts now persist distinct billing attempt timestamps; a failed repair can be retried. Retry Creative QC on run mar_670133124534765cf0d36d3637b6ee89 from the UI, then finish browser UAT for optional QC, per-shot repair and bulk prompt/image jobs.",
+    "merged_main_sha": "cdba86faa0318bf93e2ced1953f5e9bc348e0be0",
     "gaps": [
       "Browser UAT for skipping QC, per-shot image repair, bulk prompt/image generation and worker completion is pending; this session verified syntax, build, deployment and health only."
-    ]
+    ],
+    "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }

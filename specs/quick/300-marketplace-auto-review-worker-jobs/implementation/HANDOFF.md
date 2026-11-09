@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `21`
-- Updated (UTC): `2026-11-09T13:09:58.805709+00:00`
+- State generation: `23`
+- Updated (UTC): `2026-11-09T13:34:20.154737+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `1d82dff626005c156d5fe62fefae61631dc7f078`
+- Latest recorded merged Main SHA: `cdba86faa0318bf93e2ced1953f5e9bc348e0be0`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending.
+- Next action: Fix for refunded skill billing keys is deployed to legacy-debian-dev / smartaihub.app at generation 449 (release smartspec-web-cdba86faa0318bf93e2ced1953f5e9bc348e0be0-ed4d39e486b9); runtime revision cdba86faa0318bf93e2ced1953f5e9bc348e0be0, health and public homepage HTTP 200. QC attempts now persist distinct billing attempt timestamps; a failed repair can be retried. Retry Creative QC on run mar_670133124534765cf0d36d3637b6ee89 from the UI, then finish browser UAT for optional QC, per-shot repair and bulk prompt/image jobs.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | — | — | 1d82dff626005c156d5fe62fefae61631dc7f078 | 1d82dff626005c156d5fe62fefae61631dc7f078 | Creative QC schema alias normalization and failed-run retry are deployed to legacy-debian-dev / smartaihub.app at generation 448. Health and homepage return HTTP 200; smartspec-web.service and smartspec-node-worker.service are active at runtime revision 1d82dff626005c156d5fe62fefae61631dc7f078. Existing run mar_670133124534765cf0d36d3637b6ee89 retains its previous failed QC result until the user retries. Browser UAT and a post-deploy QC retry remain pending. |
+| section-03-proof-and-deployment | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cdba86faa0318bf93e2ced1953f5e9bc348e0be0 | cdba86faa0318bf93e2ced1953f5e9bc348e0be0 | Fix for refunded skill billing keys is deployed to legacy-debian-dev / smartaihub.app at generation 449 (release smartspec-web-cdba86faa0318bf93e2ced1953f5e9bc348e0be0-ed4d39e486b9); runtime revision cdba86faa0318bf93e2ced1953f5e9bc348e0be0, health and public homepage HTTP 200. QC attempts now persist distinct billing attempt timestamps; a failed repair can be retried. Retry Creative QC on run mar_670133124534765cf0d36d3637b6ee89 from the UI, then finish browser UAT for optional QC, per-shot repair and bulk prompt/image jobs. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
