@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Normalize Creative QC revise outputs when the model returns a full draft without the required draft wrapper; add deterministic recovery/fail-closed tests, integrate, deploy, and verify legacy-debian-dev.",
-      "checkpoint_sha": "c417600a53f6cf077a9307d2736e738dfeaa0b5c",
-      "merged_main_sha": "c417600a53f6cf077a9307d2736e738dfeaa0b5c",
+      "next_action": "Deploy integrated revision 56b470e51c7fd956176f2718267a3bff8604962f to legacy-debian-dev and verify app/worker runtime health; retain live Creative QC retry and browser UAT as open gaps.",
+      "checkpoint_sha": "56b470e51c7fd956176f2718267a3bff8604962f",
+      "merged_main_sha": "56b470e51c7fd956176f2718267a3bff8604962f",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
     }
   },
@@ -41,12 +41,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 27,
-  "updated_at": "2026-11-09T14:44:28.750062+00:00",
+  "generation": 28,
+  "updated_at": "2026-11-09T14:50:20.344125+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Normalize Creative QC revise outputs when the model returns a full draft without the required draft wrapper; add deterministic recovery/fail-closed tests, integrate, deploy, and verify legacy-debian-dev.",
-    "merged_main_sha": "c417600a53f6cf077a9307d2736e738dfeaa0b5c",
+    "next_action": "Deploy integrated revision 56b470e51c7fd956176f2718267a3bff8604962f to legacy-debian-dev and verify app/worker runtime health; retain live Creative QC retry and browser UAT as open gaps.",
+    "merged_main_sha": "56b470e51c7fd956176f2718267a3bff8604962f",
     "gaps": [
       "Live retry of Creative QC on run mar_670133124534765cf0d36d3637b6ee89 is still pending to verify the external evaluator response after generation 452; browser UAT for skipping QC, per-shot repair and bulk prompt/image generation remains pending."
     ],
