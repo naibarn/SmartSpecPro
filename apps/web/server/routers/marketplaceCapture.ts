@@ -45,7 +45,6 @@ import {
   updateMarketplaceProductDetails,
 } from "../services/marketplaceProductService";
 import {
-  advanceMarketplaceAutoReviewRun,
   submitStagedAutoReviewFinalRender,
   approveMarketplaceAutoReviewPlanReview,
   cancelMarketplaceAutoReviewRun,
@@ -62,7 +61,7 @@ import {
   saveMarketplaceAutoReviewSequentialShotOverride,
   selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
   selectMarketplaceAutoReviewSequentialShotAlternate,
-  startMarketplaceAutoReviewRun,
+  enqueueMarketplaceAutoReviewRun,
   deleteMarketplaceAutoReviewRun,
   updateMarketplaceAutoReviewPlanShotDialogue,
   startMarketplaceAutoReviewDraftQualityQc,
@@ -1022,7 +1021,7 @@ export const marketplaceCaptureRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
-      return startMarketplaceAutoReviewRun(
+      return enqueueMarketplaceAutoReviewRun(
         input,
         auth,
         autoReviewRuntimeFromCtx(ctx)
@@ -1339,14 +1338,13 @@ export const marketplaceCaptureRouter = router({
   advanceAutoReviewRun: protectedProcedure
     .input(z.object({ runId: z.string().min(1).max(64) }))
     .mutation(async ({ input, ctx }) => {
-      void advanceMarketplaceAutoReviewRun(
+      await queueMarketplaceAutoReviewAdvance(
         input.runId,
         authFromCtx(ctx),
-        autoReviewRuntimeFromCtx(ctx)
-      ).catch((err) => {
-        console.error("[marketplaceCapture] background advanceAutoReviewRun error", err);
-      });
-      return { success: true, runId: input.runId, status: "running" };
+        autoReviewRuntimeFromCtx(ctx),
+        1_000
+      );
+      return { success: true, runId: input.runId, status: "queued" };
     }),
 
   selectAutoReviewImageAttemptForStoryboardReview: protectedProcedure

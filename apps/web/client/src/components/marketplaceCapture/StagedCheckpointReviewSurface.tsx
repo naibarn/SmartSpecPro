@@ -511,15 +511,10 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.instruction ? { instruction: input.instruction } : {}),
     });
   };
-  // The consolidated one-click "สร้างภาพ/สร้างวิดีโอ" action: writes a fresh
-  // prompt via generatePromptMutation (now synchronous server-side — it
-  // actually awaits the skill/LLM call before resolving), then immediately
-  // dispatches generation with THAT fresh prompt via retryShotMutation,
-  // chaining the fresh stateDigest the first call just returned into the
-  // second call's expectedStateDigest — never the pre-click stale digest
-  // (same digest-chaining pattern as onBulkGenerate above). If the first
-  // step fails, the second step is never attempted, matching
-  // onBulkGenerate's per-target try/catch.
+  // The consolidated one-click "สร้างภาพ/สร้างวิดีโอ" action submits prompt
+  // authoring to a durable worker job, waits for the refreshed checkpoint to
+  // contain its result, then dispatches with that fresh state digest. The
+  // worker keeps running if the browser is refreshed or closed.
   const onGenerateAndDispatch = async (input: {
     shotId: number;
     stage: "image" | "video";
@@ -545,6 +540,15 @@ export function StagedCheckpointReviewSurface(props: {
     setChainPendingKey(key);
     setActionError(null);
     try {
+      const promptKind =
+        input.stage === "image" ? "image_prompt" : "video_prompt";
+      const previousRevision =
+        state?.checkpoints.find(
+          checkpoint =>
+            checkpoint.kind === promptKind &&
+            checkpoint.shotId === input.shotId &&
+            checkpoint.state !== "superseded"
+        )?.revision ?? 0;
       const promptResponse = await generatePromptMutation.mutateAsync({
         runId,
         shotId: input.shotId,
@@ -555,31 +559,78 @@ export function StagedCheckpointReviewSurface(props: {
           String(input.shotId)
         ),
       });
-      const freshDigest =
-        (
-          promptResponse as
-            | { operation?: { stateDigest?: string } }
-            | undefined
-        )?.operation?.stateDigest ?? stateDigest;
+      const workerJobId = (
+        promptResponse as { workerJobId?: string } | undefined
+      )?.workerJobId;
+      const deadline = Date.now() + 3 * 60_000;
+      let completedState: StagedReviewState | null = null;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 3_000));
+        const refreshed = await stateQuery.refetch();
+        const currentState = refreshed.data as StagedReviewState | undefined;
+        if (!currentState) continue;
+        const workerJob = workerJobId
+          ? currentState.workerOperations?.find(job => job.jobId === workerJobId)
+          : undefined;
+        if (workerJob?.status === "failed") {
+          throw new Error("AUTO_REVIEW_PROMPT_WORKER_FAILED");
+        }
+        const currentCheckpoint = currentState.checkpoints.find(
+          checkpoint =>
+            checkpoint.kind === promptKind &&
+            checkpoint.shotId === input.shotId &&
+            checkpoint.state !== "superseded"
+        );
+        const currentShot = currentState.shots.find(
+          shot => shot.shotId === input.shotId
+        );
+        const generatedPrompt =
+          input.stage === "image"
+            ? currentShot?.imagePrompt
+            : currentShot?.videoPrompt;
+        if (
+          currentCheckpoint &&
+          currentCheckpoint.revision > previousRevision &&
+          generatedPrompt?.trim() &&
+          currentState.stateDigest !== stateDigest
+        ) {
+          completedState = currentState;
+          break;
+        }
+      }
+      if (!completedState) {
+        throw new Error("AUTO_REVIEW_PROMPT_WORKER_STILL_QUEUED");
+      }
       await retryShotMutation.mutateAsync({
         runId,
         shotId: input.shotId,
         stage: input.stage,
         autoApprove: true,
         model: input.model || undefined,
-        expectedStateDigest: freshDigest,
+        expectedStateDigest: completedState.stateDigest,
         idempotencyKey: uiIdempotencyKey(
           `generate-dispatch-${input.stage}`,
           String(input.shotId)
         ),
       });
-    } catch {
+    } catch (error) {
       // Both mutations share `mutationOptions.onError`, which already ran
       // and set `actionError` — including the plain-Thai remap of
       // user-actionable reason codes (see `friendlyActionError` above, which
       // now owns that mapping for EVERY mutation path rather than only this
       // one). Nothing further to do here beyond stopping the chain, matching
       // onBulkGenerate's stop-on-first-failure behavior.
+      if (error instanceof Error) {
+        if (error.message === "AUTO_REVIEW_PROMPT_WORKER_FAILED") {
+          setActionError(
+            "งานสร้าง Prompt ล้มเหลวใน Worker — ลองสั่งสร้าง Prompt อีกครั้งได้"
+          );
+        } else if (error.message === "AUTO_REVIEW_PROMPT_WORKER_STILL_QUEUED") {
+          setActionError(
+            "ส่งงานสร้าง Prompt เข้า Worker แล้ว งานยังทำต่อเบื้องหลังได้ กดรีเฟรชสถานะเพื่อตรวจผลก่อนสั่งสร้างภาพ"
+          );
+        }
+      }
     } finally {
       setChainPendingKey(null);
     }

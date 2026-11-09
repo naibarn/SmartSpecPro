@@ -1,0 +1,39 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-canonical-worker-contract",
+    "section-02-auto-review-queue-cutover",
+    "section-03-proof-and-deployment"
+  ],
+  "sections_state": {
+    "section-01-canonical-worker-contract": {
+      "status": "in_progress",
+      "next_action": "Implement the canonical Auto Review worker job helper, allowlist and executor, then add admission/execution tests."
+    },
+    "section-02-auto-review-queue-cutover": {
+      "status": "in_progress",
+      "next_action": "Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-09T07:19:47.208428+00:00",
+  "generation": 3,
+  "updated_at": "2026-11-09T07:56:57.066173+00:00",
+  "progress": {
+    "active_section": "section-02-auto-review-queue-cutover",
+    "next_action": "Finish moving all direct Auto Review LLM requests into worker_jobs, replace the feature scheduler with a legacy-queue bridge, and recover stranded QC states before focused validation."
+  }
+}

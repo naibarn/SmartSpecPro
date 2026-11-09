@@ -53,6 +53,12 @@ import { M3_PARITY_CONTRACT, M3_PARITY_JOB } from "./cloudflareM3ParityJobContra
 import { createM3CreditBillingExecutor } from "./cloudflareM3ParityExecutor";
 import { createM3QueueRecoveryExecutor } from "./cloudflareM3QueueRecoveryExecutor";
 import { MINI_APP_FACTORY_RUN_ANCHOR_CONTRACT, MINI_APP_FACTORY_RUN_ANCHOR_JOB_TYPE, executeMiniAppFactoryRunAnchor } from "./miniAppFactoryRunAnchor";
+import {
+  executeMarketplaceAutoReviewWorkerJob,
+  MARKETPLACE_AUTO_REVIEW_WORKER_CONTRACT_VERSION,
+  MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+  marketplaceAutoReviewWorkerInputSchema,
+} from "./marketplaceAutoReviewWorkerJob";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -1146,6 +1152,47 @@ defaultJobExecutorRegistry.register({
     assertDomainExecutionSucceeded("vertical_drama.draft_quality_qc", record);
     await reporter.assertActive(lease);
     return {};
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+  executionClass: "long",
+  contractVersions: new Set([
+    MARKETPLACE_AUTO_REVIEW_WORKER_CONTRACT_VERSION,
+  ]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = marketplaceAutoReviewWorkerInputSchema.safeParse(
+      context.input
+    );
+    if (
+      !input.success ||
+      !Number.isSafeInteger(context.requestedByUserId) ||
+      Number(context.requestedByUserId) <= 0 ||
+      !context.tenantId
+    ) {
+      throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_INPUT_INVALID");
+    }
+    await reporter.progress(lease, {
+      progress: 1,
+      stage: "marketplace_auto_review",
+    });
+    await withLeaseHeartbeat(lease, reporter, () =>
+      executeMarketplaceAutoReviewWorkerJob({
+        job: input.data,
+        tenantId: context.tenantId,
+        userId: Number(context.requestedByUserId),
+        jobId: context.jobId,
+      })
+    );
+    await reporter.assertActive(lease);
+    return {
+      output: {
+        runId: input.data.runId,
+        operation: input.data.operation,
+        completed: true,
+      },
+    };
   },
 });
 

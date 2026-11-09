@@ -1,4 +1,5 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 
@@ -9,10 +10,14 @@ import {
 
 import { getDb } from "../db";
 import {
-  marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
   workerJobs,
 } from "../../drizzle/schema";
+import {
+  enqueueMarketplaceAutoReviewWorkerJob,
+  enqueueMarketplaceAutoReviewWorkerJobInTransaction,
+  findMarketplaceAutoReviewWorkerJobByIdempotencyKey,
+} from "./marketplaceAutoReviewWorkerJob";
 import {
   StagedSequentialStoryboardMetadataV1Schema,
   type StagedCheckpointApprovalExpectationV1,
@@ -187,35 +192,139 @@ function parseStagedMetadata(run: StagedCheckpointRun) {
   });
 }
 
+function assertStagedMetadataPersisted(run: StagedCheckpointRun) {
+  if (
+    !StagedSequentialStoryboardMetadataV1Schema.safeParse(run.metadataJson)
+      .success
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_metadata_initializing",
+    });
+  }
+}
+
 async function ensureStagedRunMetadata(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   run: StagedCheckpointRun
 ): Promise<{
   run: StagedCheckpointRun;
   metadata: ReturnType<typeof parseStagedMetadata>;
+  persisted: boolean;
 }> {
   const parsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(
     run.metadataJson
   );
   if (parsed.success) {
-    return { run, metadata: parsed.data };
+    return { run, metadata: parsed.data, persisted: true };
   }
-  try {
-    const initializedRun = await initializeStagedMarketplaceAutoReviewRun({
-      db,
-      run,
-    });
-    const reParsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(
-      initializedRun.metadataJson
-    );
-    if (reParsed.success) {
-      return { run: initializedRun, metadata: reParsed.data };
+
+  const base = record(run.metadataJson);
+  const initialization = record(base.initializationControl);
+  const initializationAlreadyQueued =
+    Number(initialization.schemaVersion) === 1 &&
+    ["queued", "running"].includes(String(initialization.status));
+  if (
+    !initializationAlreadyQueued &&
+    !STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))
+  ) {
+    const tenantId = String(run.tenantId ?? "").trim();
+    if (!tenantId) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_run_tenant_missing",
+      });
     }
-  } catch (err) {
-    // If DB initialization encounters a race or constraint, fall back gracefully to synthesized metadata
+    const baseKey = `marketplace-auto-review:${run.id}:staged-metadata-init:v1`;
+    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      db,
+      tenantId,
+      baseKey
+    );
+    const activeStatuses = new Set([
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ]);
+    if (!existingJob || activeStatuses.has(String(existingJob.status))) {
+      await enqueueMarketplaceAutoReviewWorkerJob({
+        tenantId,
+        userId: run.userId,
+        runId: run.id,
+        operation: {
+          operation: "initialize_staged_metadata",
+          runId: run.id,
+        },
+        idempotencyKey: baseKey,
+        priority: 20,
+      });
+    } else {
+      const recoveryKey = `${baseKey}:recovery:${existingJob.id}`;
+      const recoveryJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+        db,
+        tenantId,
+        recoveryKey
+      );
+      if (!recoveryJob) {
+        await enqueueMarketplaceAutoReviewWorkerJob({
+          tenantId,
+          userId: run.userId,
+          runId: run.id,
+          operation: {
+            operation: "initialize_staged_metadata",
+            runId: run.id,
+          },
+          idempotencyKey: recoveryKey,
+          priority: 20,
+        });
+      }
+    }
   }
-  const fallbackMetadata = parseStagedMetadata(run);
-  return { run, metadata: fallbackMetadata };
+
+  // A read request only gets a bounded deterministic projection while the
+  // durable worker writes the LLM-authored plan. Never invoke the story LLM
+  // from a query or mutation request.
+  const fallback = planAndMetadataFromRun(run).metadata;
+  const fallbackParsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(
+    fallback
+  );
+  if (!fallbackParsed.success) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Staged checkpoint state is unavailable for this run",
+    });
+  }
+  return { run, metadata: fallbackParsed.data, persisted: false };
+}
+
+export async function initializeStagedMarketplaceAutoReviewMetadataForWorker(
+  input: { runId: string; auth: StagedCheckpointAuth }
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedRunMutable(run);
+  if (
+    StagedSequentialStoryboardMetadataV1Schema.safeParse(run.metadataJson)
+      .success
+  ) {
+    return { runId: run.id, alreadyInitialized: true };
+  }
+  const initializedRun = await initializeStagedMarketplaceAutoReviewRun({
+    db,
+    run,
+  });
+  return { runId: initializedRun.id, alreadyInitialized: false };
 }
 
 function record(value: unknown): Record<string, any> {
@@ -249,22 +358,26 @@ function stagedTaskStatus(
   return status || null;
 }
 
-function operationFromPayload(value: unknown, fallback: StagedCheckpointRun) {
-  const payload =
-    value && typeof value === "object"
-      ? (value as Record<string, unknown>)
-      : {};
-  const operation = payload.operation;
-  if (operation && typeof operation === "object") {
-    return operation as ReturnType<typeof buildStagedOperationEnvelope>;
-  }
+function operationFromWorkerJob(
+  job: { id: string; inputJson: Record<string, unknown> },
+  fallback: StagedCheckpointRun
+) {
+  const operationId =
+    typeof job.inputJson.operationId === "string"
+      ? job.inputJson.operationId
+      : job.id;
+  const metadata = parseStagedMetadata(fallback);
   return buildStagedOperationEnvelope({
-    operationId: fallback.id,
+    operationId,
     runId: fallback.id,
-    stateDigest: stagedMetadataStateDigest(parseStagedMetadata(fallback)),
-    planRevision:
-      parseStagedMetadata(fallback).stagedSequentialStoryboard.planRevision,
+    stateDigest: stagedMetadataStateDigest(metadata),
+    planRevision: metadata.stagedSequentialStoryboard.planRevision,
   });
+}
+
+function stagedResultIdempotencyKey(requestKey: string): string {
+  const digest = createHash("sha256").update(requestKey).digest("hex");
+  return `marketplace-auto-review-result:${digest}`;
 }
 
 export async function getStagedAutoReviewCheckpointState(
@@ -279,7 +392,10 @@ export async function getStagedAutoReviewCheckpointState(
     });
   }
   const initialRun = await requireOwnedRun(db, runId, auth);
-  let { run, metadata } = await ensureStagedRunMetadata(db, initialRun);
+  let { run, metadata, persisted } = await ensureStagedRunMetadata(
+    db,
+    initialRun
+  );
 
   // Advance automatically on query whenever there is durable work waiting:
   // story plan approved but image prompts not compiled yet (e.g. outbox
@@ -318,16 +434,15 @@ export async function getStagedAutoReviewCheckpointState(
       !metadata.stagedSequentialStoryboard.reviewCheckpoints.some(c => c.kind === "image_prompt")) ||
     hasOutstandingStagedMediaTask
   ) {
-    const { advanceMarketplaceAutoReviewRun } = await import(
+    const { queueMarketplaceAutoReviewAdvance } = await import(
       "./marketplaceAutoReviewService"
     );
-    void advanceMarketplaceAutoReviewRun(
+    await queueMarketplaceAutoReviewAdvance(
       runId,
       { userId: auth.userId, tenantId: auth.tenantId ?? undefined },
-      { userToken: "internal" }
-    ).catch((err) => {
-      console.warn("[getStagedAutoReviewCheckpointState] Auto-advance warning:", err);
-    });
+      {},
+      1_000
+    );
   }
 
   const base = record(run.metadataJson);
@@ -475,6 +590,40 @@ export async function getStagedAutoReviewCheckpointState(
         active: i === 0,
       })).filter((entry: any) => entry.url);
 
+  const workerOperationRows = await db
+    .select({
+      id: workerJobs.id,
+      status: workerJobs.status,
+      inputJson: workerJobs.inputJson,
+      progressJson: workerJobs.progressJson,
+      createdAt: workerJobs.createdAt,
+    })
+    .from(workerJobs)
+    .where(
+      and(
+        eq(workerJobs.tenantId, String(auth.tenantId ?? run.tenantId ?? "")),
+        eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+        sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+      )
+    )
+    .orderBy(desc(workerJobs.createdAt))
+    .limit(8);
+  const workerOperations = workerOperationRows.map(job => {
+    const input = (job.inputJson ?? {}) as Record<string, unknown>;
+    const progress = (job.progressJson ?? {}) as Record<string, unknown>;
+    return {
+      jobId: job.id,
+      operation: typeof input.operation === "string" ? input.operation : "unknown",
+      status: job.status,
+      stage: typeof progress.stage === "string" ? progress.stage : null,
+      progress: Number.isFinite(Number(progress.progress))
+        ? Number(progress.progress)
+        : null,
+      createdAt:
+        job.createdAt instanceof Date ? job.createdAt.toISOString() : null,
+    };
+  });
+
   return {
     runId: run.id,
     runStatus: run.status,
@@ -493,8 +642,10 @@ export async function getStagedAutoReviewCheckpointState(
     },
     planRevision: metadata.stagedSequentialStoryboard.planRevision,
     stateDigest: stagedMetadataStateDigest(metadata),
+    metadataInitializationPending: !persisted,
     planReview: metadata.planReview,
     creativeQc: (metadata as any).creativeQc ?? null,
+    workerOperations,
     audioPlan:
       stagedPipeline?.audioPlan && typeof stagedPipeline.audioPlan === "object"
         ? {
@@ -652,6 +803,7 @@ async function mutateOwnedCheckpoint(input: {
       });
     }
     assertStagedRunMutable(run);
+    assertStagedMetadataPersisted(run);
     const metadata = parseStagedMetadata(run);
     const currentCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
       checkpoint => checkpoint.checkpointId === input.checkpointId
@@ -665,17 +817,19 @@ async function mutateOwnedCheckpoint(input: {
       );
       assertMarketplaceAutoReviewCreativeQcApproved(metadata as any);
     }
-    const [existingJob] = await tx
-      .select()
-      .from(marketplaceAutoReviewOutboxJobs)
-      .where(
-        eq(marketplaceAutoReviewOutboxJobs.idempotencyKey, input.idempotencyKey)
-      )
-      .limit(1);
+    const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      tx,
+      tenantId,
+      input.idempotencyKey
+    );
     if (existingJob) {
+      if (existingJob.jobType !== "marketplace.auto_review.execute") {
+        throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+      }
       return {
         runId: run.id,
-        operation: operationFromPayload(existingJob.payloadJson, run),
+        operation: operationFromWorkerJob(existingJob, run),
         status: existingJob.status,
       };
     }
@@ -726,39 +880,22 @@ async function mutateOwnedCheckpoint(input: {
     if (!updated) {
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
     }
-    await tx.insert(marketplaceAutoReviewOutboxJobs).values({
-      id: operationId,
-      runId: run.id,
-      tenantId: input.auth.tenantId ?? run.tenantId ?? null,
-      userId: input.auth.userId,
-      jobType: input.jobType,
-      idempotencyKey: input.idempotencyKey,
-      status: "queued",
-      priority: 40,
-      attempts: 0,
-      maxAttempts: 3,
-      payloadJson: {
-        operation,
-        checkpointId: input.checkpointId,
-        planningArchitecture: "staged_two_skill_v2",
+    await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+      query: tx,
+      admission: {
+        tenantId,
+        userId: input.auth.userId,
+        runId: run.id,
+        operation: {
+          operation: "advance_run",
+          runId: run.id,
+          operationId,
+        },
+        idempotencyKey: input.idempotencyKey,
+        priority: 40,
       },
-      updatedAt: now,
-    } as any);
-    const res = { runId: run.id, operation, status: "queued" as const };
-    try {
-      const { queueMarketplaceAutoReviewAdvance } = await import(
-        "./marketplaceAutoReviewService"
-      );
-      queueMarketplaceAutoReviewAdvance(
-        run.id,
-        { userId: input.auth.userId, tenantId: input.auth.tenantId ?? undefined },
-        { userToken: "internal" },
-        100
-      );
-    } catch {
-      // Background advance queueing fallback
-    }
-    return res;
+    });
+    return { runId: run.id, operation, status: "queued" as const };
   });
 }
 
@@ -805,18 +942,21 @@ async function mutateOwnedStagedMetadata(input: {
         message: "Auto review run not found",
       });
     assertStagedRunMutable(run);
+    assertStagedMetadataPersisted(run);
     const existingMetadata = parseStagedMetadata(run);
-    const [existingJob] = await tx
-      .select()
-      .from(marketplaceAutoReviewOutboxJobs)
-      .where(
-        eq(marketplaceAutoReviewOutboxJobs.idempotencyKey, input.idempotencyKey)
-      )
-      .limit(1);
+    const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      tx,
+      tenantId,
+      input.idempotencyKey
+    );
     if (existingJob) {
+      if (existingJob.jobType !== "marketplace.auto_review.execute") {
+        throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+      }
       return {
         runId: run.id,
-        operation: operationFromPayload(existingJob.payloadJson, run),
+        operation: operationFromWorkerJob(existingJob, run),
         status: existingJob.status,
       };
     }
@@ -863,20 +1003,21 @@ async function mutateOwnedStagedMetadata(input: {
       .returning({ id: marketplaceAutoReviewRuns.id });
     if (!updated)
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
-    await tx.insert(marketplaceAutoReviewOutboxJobs).values({
-      id: operationId,
-      runId: run.id,
-      tenantId: input.auth.tenantId ?? run.tenantId ?? null,
-      userId: input.auth.userId,
-      jobType: "advance_run",
-      idempotencyKey: input.idempotencyKey,
-      status: "queued",
-      priority: 40,
-      attempts: 0,
-      maxAttempts: 3,
-      payloadJson: { operation, planningArchitecture: "staged_two_skill_v2" },
-      updatedAt: now,
-    } as any);
+    await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+      query: tx,
+      admission: {
+        tenantId,
+        userId: input.auth.userId,
+        runId: run.id,
+        operation: {
+          operation: "advance_run",
+          runId: run.id,
+          operationId,
+        },
+        idempotencyKey: input.idempotencyKey,
+        priority: 40,
+      },
+    });
     return { runId: run.id, operation, status: "queued" as const };
   });
 }
@@ -1564,6 +1705,8 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
   runtime?: StagedCheckpointRuntime;
+  /** Set only by the canonical worker executor after durable admission. */
+  workerExecution?: boolean;
   /** New capability — optional free-text per-shot instruction for
    *  AI-assisted prompt adjustment (e.g. "there's an 8-month-old baby in
    *  the scene"). Threaded through to the skill call as a distinct,
@@ -1580,6 +1723,22 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   }
   const run = await requireOwnedRun(db, input.runId, input.auth);
   assertStagedRunMutable(run);
+  assertStagedMetadataPersisted(run);
+  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const resultIdempotencyKey = stagedResultIdempotencyKey(input.idempotencyKey);
+  const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    input.workerExecution ? resultIdempotencyKey : input.idempotencyKey
+  );
+  if (existingJob) {
+    return {
+      runId: run.id,
+      operation: operationFromWorkerJob(existingJob, run),
+      status: existingJob.status,
+      workerJobId: existingJob.id,
+    };
+  }
   const metadata = parseStagedMetadata(run);
   if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
@@ -1638,18 +1797,28 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     }
   }
 
-  const [existingJob] = await db
-    .select()
-    .from(marketplaceAutoReviewOutboxJobs)
-    .where(
-      eq(marketplaceAutoReviewOutboxJobs.idempotencyKey, input.idempotencyKey)
-    )
-    .limit(1);
-  if (existingJob) {
+  if (!input.workerExecution) {
+    const queued = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: input.auth.userId,
+      runId: run.id,
+      operation: {
+        operation: "staged_prompt_generation",
+        runId: run.id,
+        shotId: input.shotId,
+        stage: input.stage,
+        expectedStateDigest: input.expectedStateDigest,
+        requestIdempotencyKey: input.idempotencyKey,
+        instruction: input.instruction,
+      },
+      idempotencyKey: input.idempotencyKey,
+      priority: 35,
+    });
     return {
       runId: run.id,
-      operation: operationFromPayload(existingJob.payloadJson, run),
-      status: existingJob.status,
+      workerJobId: queued.jobId,
+      operation: "staged_prompt_generation",
+      status: "queued",
     };
   }
 
@@ -1678,7 +1847,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   return mutateOwnedStagedMetadata({
     runId: input.runId,
     expectedStateDigest: input.expectedStateDigest,
-    idempotencyKey: input.idempotencyKey,
+    idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
     mutate(current, operationId) {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
@@ -1927,121 +2096,164 @@ export async function redraftStagedAutoReviewPlan(input: {
   model?: string;
   selectedConcept?: StagedStoryConceptOption;
   auth: StagedCheckpointAuth;
+  /** Set only by the canonical worker executor after durable admission. */
+  workerExecution?: boolean;
 }) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedRunMutable(run);
+  assertStagedMetadataPersisted(run);
+  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const resultIdempotencyKey = stagedResultIdempotencyKey(input.idempotencyKey);
+  const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    input.workerExecution ? resultIdempotencyKey : input.idempotencyKey
+  );
+  if (existingJob) {
+    return {
+      runId: run.id,
+      operation: operationFromWorkerJob(existingJob, run),
+      status: existingJob.status,
+      workerJobId: existingJob.id,
+    };
+  }
+  const metadata = parseStagedMetadata(run);
+  if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const current = ((metadata as any).stagedPipeline?.plan ?? null) as Record<string, any> | null;
+  if (!current || current.state === "superseded") {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "checkpoint_not_awaiting" });
+  }
+  const redraftCount = Number(metadata.planReview.redraftCount) || 0;
+  if (redraftCount >= 3) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "staged_redraft_limit_reached" });
+  }
+
+  if (!input.workerExecution) {
+    const queued = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: input.auth.userId,
+      runId: run.id,
+      operation: {
+        operation: "staged_story_redraft",
+        runId: run.id,
+        expectedStateDigest: input.expectedStateDigest,
+        requestIdempotencyKey: input.idempotencyKey,
+        notes: input.notes?.trim().slice(0, 1200),
+        model: input.model,
+        selectedConcept: input.selectedConcept,
+      },
+      idempotencyKey: input.idempotencyKey,
+      priority: 35,
+    });
+    return {
+      runId: run.id,
+      workerJobId: queued.jobId,
+      operation: "staged_story_redraft",
+      status: "queued",
+    };
+  }
+
+  const anchors = record((metadata as Record<string, any>).referenceAnchors);
+  const base = metadata as Record<string, any>;
+  const requestedShotCount = anchors.shotCount;
+  const shotCount =
+    requestedShotCount === "auto"
+      ? "auto"
+      : typeof requestedShotCount === "number"
+        ? requestedShotCount
+        : undefined;
+  const shotDurationSeconds =
+    typeof anchors.shotDurationSeconds === "number"
+      ? anchors.shotDurationSeconds
+      : undefined;
+  const cast = deriveStagedCastFromManifest(base.customReferenceManifest);
+  const storyPlanningModel =
+    typeof anchors.storyPlanningModel === "string"
+      ? anchors.storyPlanningModel
+      : undefined;
+  const reviewTone =
+    typeof anchors.reviewTone === "string"
+      ? anchors.reviewTone
+      : typeof (metadata as Record<string, any>).reviewTone === "string"
+        ? (metadata as Record<string, any>).reviewTone
+        : undefined;
+  const storytellingStructure =
+    typeof anchors.storytellingStructure === "string"
+      ? anchors.storytellingStructure
+      : typeof (metadata as Record<string, any>).storytellingStructure === "string"
+        ? (metadata as Record<string, any>).storytellingStructure
+        : undefined;
+  const nextPlan = await generateStagedStoryArcPlanWithLLM({
+    runId: input.runId,
+    userId: input.auth.userId,
+    tenantId: tenantId || "system",
+    product: current.product,
+    referenceManifestHash: current.referenceManifestHash,
+    revision: metadata.planReview.planRevision + 1,
+    reviewTone,
+    storytellingStructure,
+    cast,
+    shotCount,
+    shotDurationSeconds,
+    model: input.model ?? storyPlanningModel,
+    languagePlan: {
+      summaryLanguage:
+        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).summaryLanguage === "en"
+          ? "en"
+          : "th",
+      dialogueLanguage:
+        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).dialogueLanguage === "en"
+          ? "en"
+          : "th",
+      promptLanguage:
+        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).promptLanguage === "th"
+          ? "th"
+          : "en",
+    },
+    previousStorySummary: input.notes?.trim()
+      ? input.notes.trim().slice(0, 500)
+      : null,
+    selectedConcept: input.selectedConcept,
+  });
+  const storyCheckpoint = buildStagedCheckpoint({
+    checkpointId: `story-plan:${input.runId}:r${nextPlan.planRevision}:redraft`,
+    kind: "story_plan",
+    revision: nextPlan.planRevision,
+    contentHash: nextPlan.storyPlanHash,
+    model: "story-arc",
+    provider: "internal-bounded",
+    estimatedCredits: 0,
+    referenceManifestHash: nextPlan.referenceManifestHash,
+  });
   return mutateOwnedStagedMetadata({
     runId: input.runId,
     expectedStateDigest: input.expectedStateDigest,
-    idempotencyKey: input.idempotencyKey,
+    idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
-    async mutate(metadata) {
-      const current = ((metadata as any).stagedPipeline?.plan ??
-        null) as Record<string, any> | null;
-      if (!current || current.state === "superseded") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "checkpoint_not_awaiting",
-        });
+    mutate(currentMetadata) {
+      const currentPlan = ((currentMetadata as any).stagedPipeline?.plan ?? null) as Record<string, any> | null;
+      if (!currentPlan || currentPlan.state === "superseded") {
+        throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
       }
-      const redraftCount = Number(metadata.planReview.redraftCount) || 0;
-      if (redraftCount >= 3) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "staged_redraft_limit_reached",
-        });
-      }
-      const anchors = record((metadata as Record<string, any>).referenceAnchors);
-      const base = metadata as Record<string, any>;
-      const requestedShotCount = anchors.shotCount;
-      const shotCount =
-        requestedShotCount === "auto"
-          ? "auto"
-          : typeof requestedShotCount === "number"
-            ? requestedShotCount
-            : undefined;
-      const shotDurationSeconds =
-        typeof anchors.shotDurationSeconds === "number"
-          ? anchors.shotDurationSeconds
-          : undefined;
-      const cast = deriveStagedCastFromManifest(base.customReferenceManifest);
-      const storyPlanningModel =
-        typeof anchors.storyPlanningModel === "string"
-          ? anchors.storyPlanningModel
-          : undefined;
-      const reviewTone =
-        typeof anchors.reviewTone === "string"
-          ? anchors.reviewTone
-          : typeof (metadata as Record<string, any>).reviewTone === "string"
-          ? (metadata as Record<string, any>).reviewTone
-          : undefined;
-      const storytellingStructure =
-        typeof anchors.storytellingStructure === "string"
-          ? anchors.storytellingStructure
-          : typeof (metadata as Record<string, any>).storytellingStructure === "string"
-          ? (metadata as Record<string, any>).storytellingStructure
-          : undefined;
-      const nextPlan = await generateStagedStoryArcPlanWithLLM({
-        runId: input.runId,
-        userId: input.auth.userId,
-        tenantId: input.auth.tenantId ?? "system",
-        product: current.product,
-        referenceManifestHash: current.referenceManifestHash,
-        revision: metadata.planReview.planRevision + 1,
-        reviewTone,
-        storytellingStructure,
-        cast,
-        shotCount,
-        shotDurationSeconds,
-        model: input.model ?? storyPlanningModel,
-        languagePlan: {
-          summaryLanguage:
-            record(
-              record((metadata as Record<string, any>).sequentialStoryboard)
-                .languagePlan
-            ).summaryLanguage === "en"
-              ? "en"
-              : "th",
-          dialogueLanguage:
-            record(
-              record((metadata as Record<string, any>).sequentialStoryboard)
-                .languagePlan
-            ).dialogueLanguage === "en"
-              ? "en"
-              : "th",
-          promptLanguage:
-            record(
-              record((metadata as Record<string, any>).sequentialStoryboard)
-                .languagePlan
-            ).promptLanguage === "th"
-              ? "th"
-              : "en",
-        },
-        previousStorySummary: input.notes?.trim()
-          ? input.notes.trim().slice(0, 500)
-          : null,
-        selectedConcept: input.selectedConcept,
-      });
-      const storyCheckpoint = buildStagedCheckpoint({
-        checkpointId: `story-plan:${input.runId}:r${nextPlan.planRevision}:redraft`,
-        kind: "story_plan",
-        revision: nextPlan.planRevision,
-        contentHash: nextPlan.storyPlanHash,
-        model: "story-arc",
-        provider: "internal-bounded",
-        estimatedCredits: 0,
-        referenceManifestHash: nextPlan.referenceManifestHash,
-      });
+      const currentRedraftCount = Number(currentMetadata.planReview.redraftCount) || 0;
       return {
         metadata: {
-          ...metadata,
+          ...currentMetadata,
           planReview: {
-            ...metadata.planReview,
+            ...currentMetadata.planReview,
             status: "awaiting" as const,
             planRevision: nextPlan.planRevision,
             approvedRevision: null,
-            redraftCount: redraftCount + 1,
+            redraftCount: currentRedraftCount + 1,
           },
           stagedPipeline: {
-            ...((metadata as any).stagedPipeline ?? {}),
+            ...((currentMetadata as any).stagedPipeline ?? {}),
             plan: nextPlan,
             planView: buildStagedPlanView(nextPlan),
             tasks: {},
@@ -2050,7 +2262,7 @@ export async function redraftStagedAutoReviewPlan(input: {
             finalAssembly: null,
           },
           stagedSequentialStoryboard: {
-            ...metadata.stagedSequentialStoryboard,
+            ...currentMetadata.stagedSequentialStoryboard,
             planRevision: nextPlan.planRevision,
             storyPlanStatus: "awaiting" as const,
             storyPlanHash: nextPlan.storyPlanHash,
@@ -2552,24 +2764,6 @@ export async function retryStagedAutoReviewShot(input: {
   // doc-comment above), so the follow-up advance is no longer conditional
   // either — wake the run so the newly-approved checkpoint gets dispatched
   // without waiting for the next poll.
-  try {
-    const { advanceMarketplaceAutoReviewRun } = await import(
-      "./marketplaceAutoReviewService"
-    );
-    void advanceMarketplaceAutoReviewRun(
-      input.runId,
-      { userId: input.auth.userId, tenantId: input.auth.tenantId ?? undefined },
-      { userToken: "internal" }
-    ).catch((err) => {
-      console.error("[retryStagedAutoReviewShot] background advance error:", err);
-    });
-  } catch (err) {
-    console.warn(
-      "[retryStagedAutoReviewShot] Sync advance warning:",
-      err instanceof Error ? err.message : String(err)
-    );
-  }
-
   return result;
 }
 
@@ -2816,27 +3010,6 @@ export async function uploadStagedAutoReviewShotMedia(input: {
   // immediately let the run proceed to compiling a video prompt, and a
   // manually-uploaded video should immediately let the run proceed toward
   // final assembly, same as an AI-generated result would.
-  try {
-    const { advanceMarketplaceAutoReviewRun } = await import(
-      "./marketplaceAutoReviewService"
-    );
-    void advanceMarketplaceAutoReviewRun(
-      input.runId,
-      { userId: input.auth.userId, tenantId: input.auth.tenantId ?? undefined },
-      { userToken: "internal" }
-    ).catch(err => {
-      console.error(
-        "[uploadStagedAutoReviewShotMedia] background advance error:",
-        err
-      );
-    });
-  } catch (err) {
-    console.warn(
-      "[uploadStagedAutoReviewShotMedia] Sync advance warning:",
-      err instanceof Error ? err.message : String(err)
-    );
-  }
-
   return result;
 }
 
@@ -2947,24 +3120,6 @@ export async function approveStagedAutoReviewCheckpoint(input: {
     jobType: "advance_run",
   });
 
-  try {
-    const { advanceMarketplaceAutoReviewRun } = await import(
-      "./marketplaceAutoReviewService"
-    );
-    void advanceMarketplaceAutoReviewRun(
-      input.runId,
-      { userId: input.auth.userId, tenantId: input.auth.tenantId ?? undefined },
-      { userToken: "internal" }
-    ).catch((err) => {
-      console.error("[approveStagedAutoReviewCheckpoint] background advance error:", err);
-    });
-  } catch (err) {
-    console.warn(
-      "[approveStagedAutoReviewCheckpoint] Sync advance warning:",
-      err instanceof Error ? err.message : String(err)
-    );
-  }
-
   return result;
 }
 
@@ -3002,7 +3157,13 @@ export async function updateStagedAutoReviewShotCast(input: {
     });
   }
   const initialRun = await requireOwnedRun(db, input.runId, input.auth);
-  const { run } = await ensureStagedRunMetadata(db, initialRun);
+  const { run, persisted } = await ensureStagedRunMetadata(db, initialRun);
+  if (!persisted) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_metadata_initializing",
+    });
+  }
   const baseRecord = record(run.metadataJson);
   const staged = record(baseRecord.stagedSequentialStoryboard);
   const shots = Array.isArray(staged.shots) ? (staged.shots as Array<any>) : [];
@@ -3071,7 +3232,16 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
     });
   }
   const initialRun = await requireOwnedRun(db, input.runId, input.auth);
-  const { run, metadata } = await ensureStagedRunMetadata(db, initialRun);
+  const { run, metadata, persisted } = await ensureStagedRunMetadata(
+    db,
+    initialRun
+  );
+  if (!persisted) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_metadata_initializing",
+    });
+  }
 
   const baseRecord = record(run.metadataJson);
   const updatedManifest = input.referenceManifest

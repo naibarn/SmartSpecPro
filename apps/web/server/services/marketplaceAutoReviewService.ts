@@ -14,6 +14,12 @@ import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectLlmModelCandidates } from "./intelligentModelSelector";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { createJobControlPlane } from "./jobControlPlane";
+import {
+  enqueueMarketplaceAutoReviewWorkerJob,
+  enqueueMarketplaceAutoReviewWorkerJobInTransaction,
+  findMarketplaceAutoReviewWorkerJobByIdempotencyKey,
+  marketplaceAutoReviewOperationFromLegacyJobType,
+} from "./marketplaceAutoReviewWorkerJob";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { computeRenderHash } from "./renderHash";
 import { routeVideoJob } from "./videoJobRouter";
@@ -70,7 +76,6 @@ import {
   marketplaceAutoReviewRunLeases,
   marketplaceAutoReviewStageAttempts,
   marketplaceAutoReviewProviderEvents,
-  marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewArtifacts,
   marketplaceCaptureInsights,
   mediaModels,
@@ -948,6 +953,7 @@ function shouldPersistAdvanceOutboxJobForSchedulerSource(
   if (!source || source === "manual_or_api") return true;
   if (source === "auto") return false;
   if (source.startsWith("outbox:")) return false;
+  if (source.startsWith("worker_jobs:")) return false;
   return true;
 }
 
@@ -4287,6 +4293,35 @@ function toNumber(value: unknown, fallback = 0): number {
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function hasMarketplaceAutoReviewWorkerReceipt(
+  metadata: RunMetadata,
+  idempotencyKey: string | undefined
+): boolean {
+  if (!idempotencyKey) return false;
+  const receipts = (metadata as Record<string, unknown>)
+    .marketplaceAutoReviewWorkerReceipts;
+  return Array.isArray(receipts) && receipts.includes(idempotencyKey);
+}
+
+function addMarketplaceAutoReviewWorkerReceipt(
+  metadata: RunMetadata,
+  idempotencyKey: string | undefined
+): RunMetadata {
+  if (!idempotencyKey) return metadata;
+  const current = (metadata as Record<string, unknown>)
+    .marketplaceAutoReviewWorkerReceipts;
+  const receipts = Array.isArray(current)
+    ? current.filter((value): value is string => typeof value === "string")
+    : [];
+  return {
+    ...metadata,
+    marketplaceAutoReviewWorkerReceipts: [
+      ...receipts.filter(value => value !== idempotencyKey).slice(-49),
+      idempotencyKey,
+    ],
+  } as RunMetadata;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -19059,41 +19094,25 @@ async function upsertMarketplaceAutoReviewOutboxJob(params: {
   scheduledAt?: Date;
   preserveExistingStatus?: boolean;
 }) {
-  const now = nowDate();
-  const id = `mar-outbox:${buildProductionStableHash({
-    runId: params.run.id,
-    jobType: params.jobType,
-    idempotencyKey: params.idempotencyKey,
-  }).slice(0, 24)}`;
-  const insert = params.db.insert(marketplaceAutoReviewOutboxJobs).values({
-    id,
-    runId: params.run.id,
-    tenantId: params.auth.tenantId ?? params.run.tenantId ?? null,
-    userId: params.auth.userId,
-    jobType: params.jobType,
-    idempotencyKey: params.idempotencyKey,
-    status: "queued",
-    priority: params.priority ?? 100,
-    maxAttempts: params.maxAttempts ?? 3,
-    scheduledAt: params.scheduledAt ?? now,
-    payloadJson: params.payload,
-    updatedAt: now,
-  } as any);
-  if (params.preserveExistingStatus) {
-    await insert.onConflictDoNothing({
-      target: marketplaceAutoReviewOutboxJobs.idempotencyKey,
+  const tenantId = cleanText(params.auth.tenantId ?? params.run.tenantId);
+  const operation = marketplaceAutoReviewOperationFromLegacyJobType(
+    params.jobType,
+    params.payload
+  );
+  if (!tenantId || !operation) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "marketplace_auto_review_job_invalid",
     });
-    return;
   }
-  await insert.onConflictDoUpdate({
-    target: marketplaceAutoReviewOutboxJobs.idempotencyKey,
-    set: {
-      payloadJson: params.payload,
-      status: "queued",
-      priority: params.priority ?? 100,
-      scheduledAt: params.scheduledAt ?? now,
-      updatedAt: now,
-    } as any,
+  await enqueueMarketplaceAutoReviewWorkerJob({
+    tenantId,
+    userId: params.auth.userId,
+    runId: params.run.id,
+    operation,
+    idempotencyKey: params.idempotencyKey,
+    priority: params.priority,
+    scheduledAt: params.scheduledAt,
   });
 }
 
@@ -19384,6 +19403,71 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
     ? marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc)
     : null;
   if (current?.success && ["queued", "running"].includes(current.data.status)) {
+    const candidateFingerprint =
+      current.data.candidateFingerprint ||
+      fingerprintMarketplaceDraftQcCandidate(candidate.draft);
+    const idempotencyKey = `marketplace-auto-review:${run.id}:creative-qc:${candidateFingerprint}:${current.data.maxImprovementRounds}`;
+    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      db,
+      tenantIdForRun(run, auth),
+      idempotencyKey
+    );
+    const activeStatuses = new Set([
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ]);
+    if (existingJob && activeStatuses.has(String(existingJob.status))) {
+      return getMarketplaceAutoReviewRun(run.id, auth);
+    }
+    const recoveryAt = new Date();
+    const recoveryKey = existingJob
+      ? `${idempotencyKey}:recovery:${recoveryAt.getTime()}`
+      : idempotencyKey;
+    await db.transaction(async tx => {
+      if (existingJob) {
+        const [updated] = await tx
+          .update(marketplaceAutoReviewRuns)
+          .set({
+            metadataJson: {
+              ...metadata,
+              creativeQc: {
+                ...current.data,
+                status: "queued",
+                startedAt: recoveryAt.toISOString(),
+                error: null,
+              },
+            },
+            updatedAt: recoveryAt,
+          })
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.id, run.id),
+              eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+            )
+          )
+          .returning({ id: marketplaceAutoReviewRuns.id });
+        if (!updated) {
+          throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+        }
+      }
+      await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+        query: tx,
+        admission: {
+          tenantId: tenantIdForRun(run, auth),
+          userId: run.userId,
+          runId: run.id,
+          operation: { operation: "draft_quality_qc", runId: run.id },
+          idempotencyKey: recoveryKey,
+          priority: 30,
+        },
+      });
+    });
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
   const nextState: MarketplaceDraftQcState = {
@@ -19395,20 +19479,33 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
     startedAt: new Date().toISOString(),
   };
   const nextMetadata: RunMetadata = { ...metadata, creativeQc: nextState };
-  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
-  await upsertMarketplaceAutoReviewOutboxJob({
-    db,
-    run,
-    auth,
-    jobType: "draft_quality_qc",
-    idempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:${nextState.candidateFingerprint}:${maxImprovementRounds}`,
-    priority: 30,
-    maxAttempts: 2,
-    payload: {
-      runId: run.id,
-      candidateFingerprint: nextState.candidateFingerprint,
-      maxImprovementRounds,
-    },
+  const idempotencyKey = `marketplace-auto-review:${run.id}:creative-qc:${nextState.candidateFingerprint}:${maxImprovementRounds}`;
+  await db.transaction(async tx => {
+    const now = new Date();
+    const [updated] = await tx
+      .update(marketplaceAutoReviewRuns)
+      .set({ metadataJson: nextMetadata, updatedAt: now })
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, run.id),
+          eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+        )
+      )
+      .returning({ id: marketplaceAutoReviewRuns.id });
+    if (!updated) {
+      throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+    }
+    await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+      query: tx,
+      admission: {
+        tenantId: tenantIdForRun(run, auth),
+        userId: run.userId,
+        runId: run.id,
+        operation: { operation: "draft_quality_qc", runId: run.id },
+        idempotencyKey,
+        priority: 30,
+      },
+    });
   });
   return getMarketplaceAutoReviewRun(run.id, auth);
 }
@@ -19451,6 +19548,70 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
     current.data.repairStatus === "queued" ||
     current.data.repairStatus === "running"
   ) {
+    const sourceFingerprint = current.data.repairSourceFingerprint;
+    if (sourceFingerprint) {
+      const idempotencyKey = `marketplace-auto-review:${run.id}:creative-qc:repair:${sourceFingerprint}`;
+      const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+        db,
+        tenantIdForRun(run, auth),
+        idempotencyKey
+      );
+      const activeStatuses = new Set([
+        "pending",
+        "queued",
+        "leased",
+        "claimed",
+        "preparing",
+        "running",
+        "waiting_external",
+        "retry_scheduled",
+      ]);
+      if (existingJob && activeStatuses.has(String(existingJob.status))) {
+        return getMarketplaceAutoReviewRun(run.id, auth);
+      }
+      const recoveryAt = new Date();
+      const recoveryKey = existingJob
+        ? `${idempotencyKey}:recovery:${recoveryAt.getTime()}`
+        : idempotencyKey;
+      await db.transaction(async tx => {
+        if (existingJob) {
+          const [updated] = await tx
+            .update(marketplaceAutoReviewRuns)
+            .set({
+              metadataJson: {
+                ...metadata,
+                creativeQc: {
+                  ...current.data,
+                  repairStatus: "queued",
+                  error: null,
+                },
+              },
+              updatedAt: recoveryAt,
+            })
+            .where(
+              and(
+                eq(marketplaceAutoReviewRuns.id, run.id),
+                eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+              )
+            )
+            .returning({ id: marketplaceAutoReviewRuns.id });
+          if (!updated) {
+            throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+          }
+        }
+        await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+          query: tx,
+          admission: {
+            tenantId: tenantIdForRun(run, auth),
+            userId: run.userId,
+            runId: run.id,
+            operation: { operation: "draft_quality_qc", runId: run.id },
+            idempotencyKey: recoveryKey,
+            priority: 30,
+          },
+        });
+      });
+    }
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
   if (current.data.report.pass || !current.data.report.repairPlan?.available) {
@@ -19497,24 +19658,32 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
     repairComparison: null,
     error: null,
   };
-  await updateRun({
-    db,
-    runId: run.id,
-    metadataJson: { ...metadata, creativeQc: nextState },
-  });
-  await upsertMarketplaceAutoReviewOutboxJob({
-    db,
-    run,
-    auth,
-    jobType: "draft_quality_qc",
-    idempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:repair:${sourceFingerprint}`,
-    priority: 30,
-    maxAttempts: 2,
-    payload: {
-      runId: run.id,
-      operation: "repair",
-      sourceFingerprint,
-    },
+  const idempotencyKey = `marketplace-auto-review:${run.id}:creative-qc:repair:${sourceFingerprint}`;
+  await db.transaction(async tx => {
+    const [updated] = await tx
+      .update(marketplaceAutoReviewRuns)
+      .set({ metadataJson: { ...metadata, creativeQc: nextState }, updatedAt: new Date() })
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, run.id),
+          eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+        )
+      )
+      .returning({ id: marketplaceAutoReviewRuns.id });
+    if (!updated) {
+      throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+    }
+    await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+      query: tx,
+      admission: {
+        tenantId: tenantIdForRun(run, auth),
+        userId: run.userId,
+        runId: run.id,
+        operation: { operation: "draft_quality_qc", runId: run.id },
+        idempotencyKey,
+        priority: 30,
+      },
+    });
   });
   return getMarketplaceAutoReviewRun(run.id, auth);
 }
@@ -21965,7 +22134,8 @@ export function resolveSequentialShotRegenerationOutcomeForTest(input: {
 export async function regenerateMarketplaceAutoReviewSequentialShot(
   input: { runId: string; shotId: number; refreshPrompt?: boolean },
   auth: AuthContext,
-  runtime: RuntimeContext = {}
+  runtime: RuntimeContext = {},
+  options: { workerExecution?: boolean; requestIdempotencyKey?: string } = {}
 ) {
   const db = await getDb();
   if (!db)
@@ -21988,13 +22158,86 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
     includeSpendGuards: true,
   });
 
+  if (
+    options.workerExecution &&
+    hasMarketplaceAutoReviewWorkerReceipt(
+      metadata,
+      options.requestIdempotencyKey
+    )
+  ) {
+    return {
+      success: true,
+      runId: run.id,
+      shotId: input.shotId,
+      status: "completed",
+    };
+  }
+  if (!options.workerExecution) {
+    const baseRequestIdempotencyKey = [
+      "marketplace-auto-review",
+      run.id,
+      "sequential-shot-regeneration",
+      input.shotId,
+      input.refreshPrompt === true ? "refresh" : "reuse",
+      String(run.updatedAt instanceof Date ? run.updatedAt.getTime() : run.updatedAt),
+    ].join(":");
+    const previousJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      db,
+      tenantId,
+      baseRequestIdempotencyKey
+    );
+    const activeStatuses = new Set([
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ]);
+    if (previousJob && activeStatuses.has(String(previousJob.status))) {
+      return {
+        success: true,
+        runId: run.id,
+        shotId: input.shotId,
+        status: "queued",
+        workerJobId: previousJob.id,
+      };
+    }
+    const requestIdempotencyKey = previousJob
+      ? `${baseRequestIdempotencyKey}:retry:${Date.now()}`
+      : baseRequestIdempotencyKey;
+    const job = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: run.userId,
+      runId: run.id,
+      operation: {
+        operation: "sequential_shot_regeneration",
+        runId: run.id,
+        shotId: input.shotId,
+        refreshPrompt: input.refreshPrompt === true,
+        requestIdempotencyKey,
+      },
+      idempotencyKey: requestIdempotencyKey,
+      priority: 35,
+    });
+    return {
+      success: true,
+      runId: run.id,
+      shotId: input.shotId,
+      status: "queued",
+      workerJobId: job.jobId,
+    };
+  }
+
   const imageBudget = resolveSequentialImagePromptBudget({
     overrideMaxChars:
       toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
     providerMaxPromptLength: null,
   });
   const requestedAt = nowIso();
-  const outcome = await resolveSequentialShotRegenerationOutcome({
+  let outcome = await resolveSequentialShotRegenerationOutcome({
     metadata,
     plan,
     shotId: input.shotId,
@@ -22012,6 +22255,25 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
     originSurface: "marketplace_capture",
     productCategory: inferProductReferenceStoryboardCategory(plan),
   });
+  outcome = {
+    ...outcome,
+    metadata: addMarketplaceAutoReviewWorkerReceipt(
+      outcome.metadata,
+      options.requestIdempotencyKey
+    ),
+  };
+
+  const [latestRun] = await db
+    .select({ updatedAt: marketplaceAutoReviewRuns.updatedAt })
+    .from(marketplaceAutoReviewRuns)
+    .where(eq(marketplaceAutoReviewRuns.id, run.id))
+    .limit(1);
+  if (
+    latestRun &&
+    new Date(latestRun.updatedAt).getTime() !== new Date(run.updatedAt).getTime()
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+  }
 
   const stages = stageKeysForMode(
     run.outputMode as MarketplaceAutoReviewOutputMode
@@ -22071,16 +22333,7 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
     previousStoryboardReviewId: cleanText(run.storyboardReviewId) || null,
   });
 
-  // Launch pipeline advancement in background (non-blocking async)
-  // so tRPC HTTP request returns immediately without blocking Express thread.
-  void advanceMarketplaceAutoReviewRun(input.runId, auth, runtime).catch(
-    err => {
-      console.error(
-        "[marketplaceAutoReview] background advanceMarketplaceAutoReviewRun error",
-        err
-      );
-    }
-  );
+  await queueMarketplaceAutoReviewAdvance(input.runId, auth, runtime, 1_000);
 
   return {
     success: true,
@@ -22288,7 +22541,8 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
     stage: "image" | "video" | "summary" | "dialogue";
   },
   auth: AuthContext,
-  runtime: RuntimeContext = {}
+  runtime: RuntimeContext = {},
+  options: { workerExecution?: boolean; requestIdempotencyKey?: string } = {}
 ) {
   const db = await getDb();
   if (!db)
@@ -22314,6 +22568,76 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
     tenantFlags,
     includeSpendGuards: false,
   });
+
+  if (
+    options.workerExecution &&
+    hasMarketplaceAutoReviewWorkerReceipt(
+      metadata,
+      options.requestIdempotencyKey
+    )
+  ) {
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  if (!options.workerExecution) {
+    const baseRequestIdempotencyKey = [
+      "marketplace-auto-review",
+      run.id,
+      "sequential-shot-prompt",
+      input.shotId,
+      input.stage,
+      String(run.updatedAt instanceof Date ? run.updatedAt.getTime() : run.updatedAt),
+    ].join(":");
+    const previousJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      db,
+      tenantId,
+      baseRequestIdempotencyKey
+    );
+    const activeStatuses = new Set([
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ]);
+    if (previousJob && activeStatuses.has(String(previousJob.status))) {
+      return {
+        success: true,
+        runId: run.id,
+        shotId: input.shotId,
+        stage: input.stage,
+        status: "queued",
+        workerJobId: previousJob.id,
+      };
+    }
+    const requestIdempotencyKey = previousJob
+      ? `${baseRequestIdempotencyKey}:retry:${Date.now()}`
+      : baseRequestIdempotencyKey;
+    const job = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: run.userId,
+      runId: run.id,
+      operation: {
+        operation: "sequential_shot_prompt_generation",
+        runId: run.id,
+        shotId: input.shotId,
+        stage: input.stage,
+        requestIdempotencyKey,
+      },
+      idempotencyKey: requestIdempotencyKey,
+      priority: 35,
+    });
+    return {
+      success: true,
+      runId: run.id,
+      shotId: input.shotId,
+      stage: input.stage,
+      status: "queued",
+      workerJobId: job.jobId,
+    };
+  }
 
   const sequential = asRecord(metadata.sequentialStoryboard);
   const shots = Array.isArray(sequential.shots) ? sequential.shots : [];
@@ -22358,7 +22682,8 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
       },
       productCategory: inferProductReferenceStoryboardCategory(plan),
     });
-    const nextMetadata = applySequentialShotOverrideToRunMetadata({
+    const nextMetadata = addMarketplaceAutoReviewWorkerReceipt(
+      applySequentialShotOverrideToRunMetadata({
       metadata,
       shotId: input.shotId,
       edit:
@@ -22367,7 +22692,20 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
           : { dialogue: generatedText },
       editedBy: String(auth.userId),
       editedAt: nowIso(),
-    });
+      }),
+      options.requestIdempotencyKey
+    );
+    const [latestRun] = await db
+      .select({ updatedAt: marketplaceAutoReviewRuns.updatedAt })
+      .from(marketplaceAutoReviewRuns)
+      .where(eq(marketplaceAutoReviewRuns.id, run.id))
+      .limit(1);
+    if (
+      latestRun &&
+      new Date(latestRun.updatedAt).getTime() !== new Date(run.updatedAt).getTime()
+    ) {
+      throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+    }
     await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
@@ -22487,7 +22825,8 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
     });
   }
 
-  const nextMetadata = applySequentialShotOverrideToRunMetadata({
+  const nextMetadata = addMarketplaceAutoReviewWorkerReceipt(
+    applySequentialShotOverrideToRunMetadata({
     metadata,
     shotId: input.shotId,
     edit:
@@ -22502,7 +22841,20 @@ export async function generateMarketplaceAutoReviewSequentialShotPrompt(
           },
     editedBy: String(auth.userId),
     editedAt: nowIso(),
-  });
+    }),
+    options.requestIdempotencyKey
+  );
+  const [latestRun] = await db
+    .select({ updatedAt: marketplaceAutoReviewRuns.updatedAt })
+    .from(marketplaceAutoReviewRuns)
+    .where(eq(marketplaceAutoReviewRuns.id, run.id))
+    .limit(1);
+  if (
+    latestRun &&
+    new Date(latestRun.updatedAt).getTime() !== new Date(run.updatedAt).getTime()
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "auto_review_state_changed" });
+  }
   await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
   return getMarketplaceAutoReviewRun(run.id, auth);
 }
@@ -24323,7 +24675,7 @@ export async function startMarketplaceAutoReviewRun(
                 },
               });
             } else {
-              queueMarketplaceAutoReviewAdvance(
+              await queueMarketplaceAutoReviewAdvance(
                 conflictingByIdempotency.id,
                 auth,
                 runtime,
@@ -24464,7 +24816,7 @@ export async function startMarketplaceAutoReviewRun(
       db,
       run: stagedRun,
     });
-    queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
+    await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
     return getMarketplaceAutoReviewRun(runId, auth);
   }
   try {
@@ -24723,7 +25075,7 @@ export async function startMarketplaceAutoReviewRun(
     metadataJson: metadataWithPlanReviewHold,
   });
 
-  queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
+  await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
   return getMarketplaceAutoReviewRun(runId, auth);
 }
 
@@ -24984,7 +25336,7 @@ export async function approveMarketplaceAutoReviewPlanReview(
     metadataJson: nextMetadata,
     errorMessage: null,
   });
-  queueMarketplaceAutoReviewAdvance(run.id, auth, runtime, 500);
+  await queueMarketplaceAutoReviewAdvance(run.id, auth, runtime, 500);
   return getMarketplaceAutoReviewRun(run.id, auth);
 }
 
@@ -25004,7 +25356,8 @@ export async function approveMarketplaceAutoReviewPlanReview(
 export async function requestMarketplaceAutoReviewPlanRedraft(
   input: { runId: string; notes?: string | null },
   auth: AuthContext,
-  runtime: RuntimeContext = {}
+  runtime: RuntimeContext = {},
+  options: { workerExecution?: boolean; requestIdempotencyKey?: string } = {}
 ) {
   const db = await getDb();
   if (!db)
@@ -25013,20 +25366,102 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
       message: "Database unavailable",
     });
   const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const staged = shouldDispatchStagedMarketplaceAutoReview(
+    cleanText(metadata.planningArchitecture)
+  );
+  if (staged) {
+    if (cleanText(asRecord(metadata.planReview).status) !== "awaiting") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "checkpoint_not_awaiting" });
+    }
+  } else {
+    await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+  }
+
+  if (!options.workerExecution) {
+    const baseKey = [
+      "marketplace-auto-review",
+      run.id,
+      "plan-redraft",
+      String(run.updatedAt instanceof Date ? run.updatedAt.getTime() : run.updatedAt),
+    ].join(":");
+    const previous = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+      db,
+      tenantIdForRun(run, auth),
+      baseKey
+    );
+    const activeStatuses = new Set([
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ]);
+    if (previous && activeStatuses.has(String(previous.status))) {
+      return {
+        success: true,
+        runId: run.id,
+        status: "queued",
+        workerJobId: previous.id,
+      };
+    }
+    const requestIdempotencyKey = previous
+      ? `${baseKey}:retry:${Date.now()}`
+      : baseKey;
+    const job = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId: tenantIdForRun(run, auth),
+      userId: run.userId,
+      runId: run.id,
+      operation: {
+        operation: "plan_redraft",
+        runId: run.id,
+        notes: input.notes?.trim().slice(0, 2000),
+        requestIdempotencyKey,
+      },
+      idempotencyKey: requestIdempotencyKey,
+      priority: 35,
+    });
+    return {
+      success: true,
+      runId: run.id,
+      status: "queued",
+      workerJobId: job.jobId,
+    };
+  }
+
   if (
-    shouldDispatchStagedMarketplaceAutoReview(
-      cleanText(asRecord(run.metadataJson).planningArchitecture)
+    hasMarketplaceAutoReviewWorkerReceipt(
+      metadata,
+      options.requestIdempotencyKey
     )
   ) {
-    return redraftStagedMarketplaceAutoReviewRun({
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  if (
+    staged
+  ) {
+    await redraftStagedMarketplaceAutoReviewRun({
       db,
       run,
       notes: input.notes,
     });
+    if (options.requestIdempotencyKey) {
+      const refreshedRun = await reloadRun(db, run.id, auth);
+      await updateRun({
+        db,
+        runId: run.id,
+        metadataJson: addMarketplaceAutoReviewWorkerReceipt(
+          asRecord(refreshedRun.metadataJson) as RunMetadata,
+          options.requestIdempotencyKey
+        ),
+      });
+    }
+    return getMarketplaceAutoReviewRun(run.id, auth);
   }
-  await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
 
-  const metadata = asRecord(run.metadataJson) as RunMetadata;
   const planReview = asRecord(metadata.planReview);
   const notes = cleanText(input.notes).slice(0, 2000);
   const tenantId = tenantIdForRun(run, auth);
@@ -25205,11 +25640,16 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
     },
     creativeQc: createMarketplaceDraftQcState(),
   });
+  const metadataAfterConceptStoryWithReceipt =
+    addMarketplaceAutoReviewWorkerReceipt(
+      metadataAfterConceptStory,
+      options.requestIdempotencyKey
+    );
   await updateRun({
     db,
     runId: run.id,
     selectedConceptId: plan.conceptId,
-    metadataJson: metadataAfterConceptStory,
+    metadataJson: metadataAfterConceptStoryWithReceipt,
   });
 
   // Sequential-only per-shot re-authoring (Feature 136 section 05 §5.0).
@@ -25222,13 +25662,13 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
   // Runner.ts`, `user_requirements:` line) — no new plumbing needed for the
   // sequential path. A no-op for every non-sequential run (step 1 gate).
   const existingSequential = asRecord(
-    metadataAfterConceptStory.sequentialStoryboard
+    metadataAfterConceptStoryWithReceipt.sequentialStoryboard
   );
   const existingSequentialUserInputs = asRecord(existingSequential.userInputs);
   const metadataForSequentialRedraft: RunMetadata =
     frameStrategy === "sequential_shot_storyboard"
       ? {
-          ...metadataAfterConceptStory,
+          ...metadataAfterConceptStoryWithReceipt,
           sequentialStoryboard: {
             ...existingSequential,
             shots: undefined,
@@ -25246,7 +25686,7 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
             },
           },
         }
-      : metadataAfterConceptStory;
+      : metadataAfterConceptStoryWithReceipt;
   const metadataAfterSequentialPromptPlan = await runSequentialPromptPlanStage({
     run,
     metadata: metadataForSequentialRedraft,
@@ -25260,7 +25700,7 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
       runId: run.id,
       metadataJson: metadataAfterSequentialPromptPlan,
     });
-  } else if (metadataForSequentialRedraft !== metadataAfterConceptStory) {
+  } else if (metadataForSequentialRedraft !== metadataAfterConceptStoryWithReceipt) {
     await updateRun({
       db,
       runId: run.id,
@@ -36135,7 +36575,7 @@ export async function advanceMarketplaceAutoReviewRun(
         return getMarketplaceAutoReviewRun(runId, auth);
       }
       if (imageReconciled.attempt.status !== "completed") {
-        queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 15_000);
+        await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 15_000);
         return getMarketplaceAutoReviewRun(runId, auth);
       }
       run = await reloadRun(db, runId, auth);
@@ -36349,7 +36789,7 @@ export async function advanceMarketplaceAutoReviewRun(
         return getMarketplaceAutoReviewRun(runId, auth);
       }
       if (videoReconciled.attempt.status !== "completed") {
-        queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
+        await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
         return getMarketplaceAutoReviewRun(runId, auth);
       }
       run = await reloadRun(db, runId, auth);
@@ -36449,7 +36889,7 @@ export async function advanceMarketplaceAutoReviewRun(
       });
       metadata = audioResult.metadata;
       if (!audioResult.completed) {
-        queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
+        await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
         return getMarketplaceAutoReviewRun(runId, auth);
       }
       run = await reloadRun(db, runId, auth);
@@ -36529,7 +36969,7 @@ export async function advanceMarketplaceAutoReviewRun(
         metadata,
       });
       if (!render.completed) {
-        queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
+        await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 180_000);
       }
       return getMarketplaceAutoReviewRun(runId, auth);
     } catch (error) {
@@ -36728,55 +37168,73 @@ async function refundDirectMediaRefsForCancellation(params: {
   return { refs: reconciled, refundRefs, refundFailures };
 }
 
-function backgroundTimerKey(runId: string, userId: number): string {
-  return `${userId}:${runId}`;
-}
-
-const backgroundTimers = new Map<string, NodeJS.Timeout>();
-
-function clearMarketplaceAutoReviewAdvanceTimer(runId: string, userId: number) {
-  const key = backgroundTimerKey(runId, userId);
-  const timer = backgroundTimers.get(key);
-  if (timer) {
-    clearTimeout(timer);
-    backgroundTimers.delete(key);
-    return true;
-  }
+function clearMarketplaceAutoReviewAdvanceTimer(_runId: string, _userId: number) {
+  // Advance work now lives in worker_jobs; there is no process-local timer to
+  // clear. The run status is checked again by the worker before execution.
   return false;
 }
 
-export function queueMarketplaceAutoReviewAdvance(
+export async function queueMarketplaceAutoReviewAdvance(
   runId: string,
   auth: AuthContext,
   runtime: RuntimeContext = {},
   delayMs = 60_000
 ) {
-  if (!cleanText(runtime.userToken)) {
-    // Provider status polling needs a token. The run remains durable and can be
-    // advanced by the next authenticated query/mutation.
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await reloadRun(db, runId, auth);
+  if (["completed", "failed", "cancelled"].includes(run.status)) {
     return;
   }
-  const key = backgroundTimerKey(runId, auth.userId);
-  const existing = backgroundTimers.get(key);
-  if (existing) {
-    // A timer is already pending for this run/user — let it execute instead of resetting it
-    return;
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const scheduledAt = new Date(Date.now() + Math.max(500, delayMs));
+  const bucket = Math.floor(scheduledAt.getTime() / 60_000);
+  const source = cleanText(runtime.schedulerSource);
+  if (!source.startsWith("worker_jobs:")) {
+    const [activeRunJob] = await db
+      .select({ id: workerJobs.id })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+          eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+          inArray(workerJobs.status, [
+            "pending",
+            "queued",
+            "leased",
+            "claimed",
+            "preparing",
+            "running",
+            "retry_scheduled",
+          ] as any),
+          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+        )
+      )
+      .limit(1);
+    if (activeRunJob) return;
   }
-  const timer = setTimeout(
-    () => {
-      backgroundTimers.delete(key);
-      advanceMarketplaceAutoReviewRun(runId, auth, runtime).catch(error => {
-        console.error("[marketplaceAutoReview] background advance failed", {
-          runId,
-          userId: auth.userId,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      });
-    },
-    Math.max(500, delayMs)
-  );
-  timer.unref?.();
-  backgroundTimers.set(key, timer);
+  await enqueueMarketplaceAutoReviewWorkerJob({
+    tenantId: tenantIdForRun(run, auth),
+    userId: run.userId,
+    runId: run.id,
+    operation: { operation: "advance_run", runId: run.id },
+    idempotencyKey: [
+      "marketplace-auto-review",
+      run.id,
+      "advance",
+      run.currentStage,
+      String(run.stageIndex ?? 0),
+      String(Number(metadata.planReview?.planRevision ?? 0)),
+      String(bucket),
+    ].join(":"),
+    priority: 50,
+    scheduledAt,
+  });
 }
 
 export async function cancelMarketplaceAutoReviewRun(

@@ -1,22 +1,22 @@
-import crypto from "crypto";
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
-import { signBearerToken } from "../_core/tokens";
 import { getDb } from "../db";
 import {
   marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
 } from "../../drizzle/schema";
 import {
-  advanceMarketplaceAutoReviewRun,
   failMarketplaceAutoReviewInitialization,
-  initializeMarketplaceAutoReviewRun,
-  processMarketplaceAutoReviewDraftQualityQc,
-  reconcileMarketplaceAutoReviewSequentialShotImageEdit,
+  queueMarketplaceAutoReviewAdvance,
+  startMarketplaceAutoReviewDraftQualityQc,
   MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE,
   type MarketplaceAutoReviewStatus,
 } from "../services/marketplaceAutoReviewService";
-import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import {
+  enqueueMarketplaceAutoReviewWorkerJob,
+  findMarketplaceAutoReviewWorkerJobByIdempotencyKey,
+  marketplaceAutoReviewOperationFromLegacyJobType,
+} from "../services/marketplaceAutoReviewWorkerJob";
 import {
   runHyperframesRenderWorkerOnce,
   type HyperframesWorkerRunOptions,
@@ -89,25 +89,6 @@ export function isMarketplaceAutoReviewAdvanceOutboxJobType(
   ).includes(jobType);
 }
 
-function createMarketplaceAutoReviewToken(input: {
-  userId: number;
-  tenantId: string;
-  runId: string;
-}): string {
-  return signBearerToken(
-    {
-      sub: String(input.userId),
-      userId: input.userId,
-      tenantId: input.tenantId,
-      type: "access",
-      tokenUse: "marketplace_auto_review_background",
-      scopes: ["media:generate"],
-      jti: `marketplace_auto_review_${input.runId}_${Date.now()}_${crypto.randomBytes(8).toString("hex")}`,
-    },
-    "30m"
-  );
-}
-
 export async function runMarketplaceAutoReviewJob(
   options: {
     db?: any;
@@ -169,7 +150,10 @@ export async function runMarketplaceAutoReviewJob(
             ]),
             and(
               eq(marketplaceAutoReviewOutboxJobs.status, "running"),
-              sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+              or(
+                isNull(marketplaceAutoReviewOutboxJobs.lockedUntil),
+                sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+              )
             )
           ),
           inArray(marketplaceAutoReviewOutboxJobs.jobType, [
@@ -192,7 +176,6 @@ export async function runMarketplaceAutoReviewJob(
       .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
       .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
 
-    const runtimeConfig = await getAppRuntimeConfig();
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
     let processedHyperframesJobs = 0;
@@ -238,8 +221,7 @@ export async function runMarketplaceAutoReviewJob(
         });
         continue;
       }
-      const workerLockId = `marketplace-auto-review-job:${process.pid}`;
-      let heartbeatTimer: NodeJS.Timeout | null = null;
+      const workerLockId = `marketplace-auto-review-job:${process.pid}:${job.id}`;
       try {
         const [claimedJob] = await db
           .update(marketplaceAutoReviewOutboxJobs)
@@ -259,7 +241,10 @@ export async function runMarketplaceAutoReviewJob(
                 ]),
                 and(
                   eq(marketplaceAutoReviewOutboxJobs.status, "running"),
-                  sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+                  or(
+                    isNull(marketplaceAutoReviewOutboxJobs.lockedUntil),
+                    sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+                  )
                 )
               )
             )
@@ -269,11 +254,23 @@ export async function runMarketplaceAutoReviewJob(
           skippedRuns += 1;
           continue;
         }
-        heartbeatTimer = setInterval(() => {
-          void db
+        const payload = {
+          ...((job.payloadJson ?? {}) as Record<string, unknown>),
+          runId: run.id,
+          requestIdempotencyKey: job.idempotencyKey,
+        };
+        const operation = marketplaceAutoReviewOperationFromLegacyJobType(
+          job.jobType,
+          payload
+        );
+        if (!operation) {
+          await db
             .update(marketplaceAutoReviewOutboxJobs)
             .set({
-              lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+              status: "failed",
+              lastError: "unsupported_legacy_job_type",
+              lockedBy: null,
+              lockedUntil: null,
               updatedAt: new Date(),
             })
             .where(
@@ -282,71 +279,19 @@ export async function runMarketplaceAutoReviewJob(
                 eq(marketplaceAutoReviewOutboxJobs.status, "running"),
                 eq(marketplaceAutoReviewOutboxJobs.lockedBy, workerLockId)
               )
-            )
-            .catch((error: unknown) => {
-              console.warn(
-                "[marketplace-auto-review] outbox heartbeat failed",
-                error instanceof Error ? error.message : String(error)
-              );
-            });
-        }, 60_000);
-        heartbeatTimer.unref();
-        const token = createMarketplaceAutoReviewToken({
-          userId: run.userId,
-          tenantId,
-          runId: run.id,
-        });
-        const jobRuntime = {
-          userToken: token,
-          publicUrl: runtimeConfig.publicUrl,
-          automationWorkerId: `marketplace-auto-review-outbox:${process.pid}`,
-          schedulerSource: `outbox:${job.jobType}`,
-        };
-        if (job.jobType === "draft_quality_qc") {
-          await processMarketplaceAutoReviewDraftQualityQc(
-            run.id,
-            {
-              userId: run.userId,
-              tenantId,
-            }
-          );
-        } else if (
-          job.jobType ===
-          MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE
-        ) {
-          const payload = (job.payloadJson ?? {}) as Record<string, unknown>;
-          await reconcileMarketplaceAutoReviewSequentialShotImageEdit(
-            {
-              runId: run.id,
-              shotId: Number(payload.shotId),
-              taskId: String(payload.taskId ?? ""),
-              pollAttempt: Number(payload.pollAttempt ?? 0),
-            },
-            {
-              userId: run.userId,
-              tenantId,
-            },
-            jobRuntime
-          );
-        } else if (job.jobType === "initialize_run") {
-          await initializeMarketplaceAutoReviewRun(
-            run.id,
-            {
-              userId: run.userId,
-              tenantId,
-            },
-            jobRuntime
-          );
-        } else {
-          await advanceMarketplaceAutoReviewRun(
-            run.id,
-            {
-              userId: run.userId,
-              tenantId,
-            },
-            jobRuntime
-          );
+            );
+          skippedRuns += 1;
+          continue;
         }
+        await enqueueMarketplaceAutoReviewWorkerJob({
+          tenantId,
+          userId: run.userId,
+          runId: run.id,
+          operation,
+          idempotencyKey: String(job.idempotencyKey || `legacy:${job.id}`),
+          priority: Number(job.priority ?? 30),
+          scheduledAt: job.scheduledAt ? new Date(job.scheduledAt) : now,
+        });
         await db
           .update(marketplaceAutoReviewOutboxJobs)
           .set({
@@ -368,7 +313,7 @@ export async function runMarketplaceAutoReviewJob(
         const attempts = Number(job.attempts ?? 0) + 1;
         const exhausted = attempts >= Number(job.maxAttempts ?? 3);
         const message = error instanceof Error ? error.message : String(error);
-        const [updatedJob] = await db
+        await db
           .update(marketplaceAutoReviewOutboxJobs)
           .set({
             status: exhausted ? "failed" : "retry",
@@ -388,26 +333,7 @@ export async function runMarketplaceAutoReviewJob(
             )
           )
           .returning({ id: marketplaceAutoReviewOutboxJobs.id });
-        if (
-          updatedJob &&
-          exhausted &&
-          job.jobType === "initialize_run"
-        ) {
-          try {
-            await failMarketplaceAutoReviewInitialization(run.id, {
-              userId: run.userId,
-              tenantId,
-            });
-          } catch (markError) {
-            console.error(
-              "[marketplace-auto-review] failed to persist exhausted initialization",
-              markError instanceof Error ? markError.message : String(markError)
-            );
-          }
-        }
         errors.push({ runId: run.id, message });
-      } finally {
-        if (heartbeatTimer) clearInterval(heartbeatTimer);
       }
     }
 
@@ -424,24 +350,65 @@ export async function runMarketplaceAutoReviewJob(
         continue;
       }
       try {
-        const token = createMarketplaceAutoReviewToken({
-          userId: run.userId,
-          tenantId,
-          runId: run.id,
-        });
-        await advanceMarketplaceAutoReviewRun(
-          run.id,
-          {
-            userId: run.userId,
-            tenantId,
-          },
-          {
-            userToken: token,
-            publicUrl: runtimeConfig.publicUrl,
-            automationWorkerId: `marketplace-auto-review-job:${process.pid}`,
-            schedulerSource: getSchedulerMode(),
+        const metadata =
+          run.metadataJson && typeof run.metadataJson === "object"
+            ? (run.metadataJson as Record<string, any>)
+            : {};
+        const initialization =
+          metadata.initializationControl &&
+          typeof metadata.initializationControl === "object"
+            ? metadata.initializationControl
+            : {};
+        const creativeQc =
+          metadata.creativeQc && typeof metadata.creativeQc === "object"
+            ? metadata.creativeQc
+            : {};
+        if (
+          ["queued", "running"].includes(String(creativeQc.status)) ||
+          ["queued", "running"].includes(String(creativeQc.repairStatus))
+        ) {
+          await startMarketplaceAutoReviewDraftQualityQc(
+            { runId: run.id },
+            { userId: run.userId, tenantId }
+          );
+          advancedRuns += 1;
+          continue;
+        }
+        if (["queued", "running"].includes(String(initialization.status))) {
+          const initializationKey = `marketplace-auto-review:${run.id}:initialize:v1`;
+          const initializationJob =
+            await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+              db,
+              tenantId,
+              initializationKey
+            );
+          if (
+            initializationJob &&
+            ["failed", "cancelled"].includes(String(initializationJob.status))
+          ) {
+            await failMarketplaceAutoReviewInitialization(run.id, {
+              userId: run.userId,
+              tenantId,
+            });
+            skippedRuns += 1;
+            continue;
           }
-        );
+          await enqueueMarketplaceAutoReviewWorkerJob({
+            tenantId,
+            userId: run.userId,
+            runId: run.id,
+            operation: { operation: "initialize_run", runId: run.id },
+            idempotencyKey: initializationKey,
+            priority: 20,
+          });
+        } else {
+          await queueMarketplaceAutoReviewAdvance(
+            run.id,
+            { userId: run.userId, tenantId },
+            { schedulerSource: `marketplace-auto-review-recovery:${getSchedulerMode()}` },
+            5_000
+          );
+        }
         advancedRuns += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

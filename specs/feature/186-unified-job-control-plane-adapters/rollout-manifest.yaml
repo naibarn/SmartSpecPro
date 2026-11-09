@@ -1,5 +1,5 @@
 feature: 186
-status: hard-cutover-waves-1-5-implemented-local-not-production-complete
+status: hard-cutover-waves-1-6-implemented-local-not-production-complete
 canonical_persistence:
   jobs_table: worker_jobs
   events_table: worker_job_events
@@ -25,6 +25,7 @@ selected_job_types:
   - vertical_drama.shot_prompt
   - vertical_drama.shot_video_prompt
   - vertical_drama.story
+  - marketplace.auto_review.execute
   - storyboard.skill.run
   - notification.escalation
   - notification.digest
@@ -78,6 +79,7 @@ producer_inventory:
     - vertical_drama.shot_video_prompt
     - vertical_drama.story
     - video.intelligence
+    - marketplace.auto_review.execute
   compatibility_allowlist:
     - "apps/web/server/jobs/capacityAssessmentJob.ts"
     - "apps/web/server/jobs/databaseBackupJob.ts"
@@ -206,6 +208,19 @@ rollout_waves:
     rollback: unset FEATURE_186_HARD_CUTOVER after draining canonical jobs and preserve terminal history
     evidence:
       - apps/web/server/jobs/feature186SystemScheduler.ts
+      - apps/web/server/services/jobExecutorRegistry.ts
+  - wave: 6
+    name: marketplace-auto-review-background-work
+    status: implemented-local-not-production-complete
+    job_types:
+      - marketplace.auto_review.execute
+    active_adapter: postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true
+    legacy_drain: marketplace_auto_review_outbox_jobs is a compatibility bridge only; execution and recovery use worker_jobs plus its canonical dispatch outbox
+    rollback: unset FEATURE_186_HARD_CUTOVER after draining canonical jobs and preserve legacy queue rows and terminal history
+    evidence:
+      - apps/web/server/services/marketplaceAutoReviewWorkerJob.ts
+      - apps/web/server/jobs/marketplaceAutoReviewJob.ts
       - apps/web/server/services/jobExecutorRegistry.ts
 compatibility_projection:
   legacy_status_aliases: true

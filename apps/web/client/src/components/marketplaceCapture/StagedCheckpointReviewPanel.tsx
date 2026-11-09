@@ -109,6 +109,7 @@ export type ReferenceManifestItem = {
 };
 
 export type StagedReviewState = {
+  metadataInitializationPending?: boolean;
   runStatus?: string;
   currentStage?: string;
   outputMode?: string;
@@ -140,6 +141,14 @@ export type StagedReviewState = {
     maxImprovementRounds?: number;
     creditEstimate?: { estimatedCredits?: number; actualCredits?: number } | null;
   } | null;
+  workerOperations?: Array<{
+    jobId: string;
+    operation: string;
+    status: string;
+    stage?: string | null;
+    progress?: number | null;
+    createdAt?: string | null;
+  }>;
   languagePlan?: {
     summaryLanguage: "th" | "en";
     dialogueLanguage: "th" | "en";
@@ -1296,6 +1305,7 @@ export function StagedCheckpointReviewPanel(props: {
   );
   const storyEditAvailable =
     Boolean(props.state && isRunEditable(props.state)) &&
+    props.state?.metadataInitializationPending !== true &&
     Boolean(storyCheckpoint && storyCheckpoint.state !== "superseded");
   const audioCheckpoint = runCheckpoint("audio_plan");
   const finalCheckpoint = runCheckpoint("final_assembly");
@@ -1573,6 +1583,35 @@ export function StagedCheckpointReviewPanel(props: {
     !props.state?.creativeQc?.required ||
     (props.state.creativeQc.status === "succeeded" &&
       props.state.creativeQc.report?.pass === true);
+  const activeWorkerOperation = props.state?.workerOperations?.find(job =>
+    [
+      "pending",
+      "queued",
+      "leased",
+      "claimed",
+      "preparing",
+      "running",
+      "waiting_external",
+      "retry_scheduled",
+    ].includes(job.status)
+  );
+  const latestWorkerOperation = props.state?.workerOperations?.[0];
+  const failedWorkerOperation =
+    !activeWorkerOperation && latestWorkerOperation?.status === "failed"
+      ? latestWorkerOperation
+      : null;
+  const workerOperationLabels: Record<string, string> = {
+    initialize_run: "เริ่มสร้างรีวิว",
+    initialize_staged_metadata: "กู้คืนแนวเรื่องรีวิว",
+    advance_run: "สร้างขั้นตอนรีวิว",
+    draft_quality_qc: "ตรวจคุณภาพเนื้อหา",
+    staged_story_redraft: "ร่างแนวเรื่องใหม่",
+    plan_redraft: "ร่างแนวเรื่องใหม่",
+    staged_prompt_generation: "สร้าง Prompt รายช็อต",
+    sequential_shot_prompt_generation: "สร้าง Prompt รายช็อต",
+    sequential_shot_regeneration: "สร้างภาพรายช็อต",
+    sequential_image_edit_reconciliation: "ตรวจผลภาพที่สร้าง",
+  };
 
   return (
     <>
@@ -1642,6 +1681,21 @@ export function StagedCheckpointReviewPanel(props: {
       {props.error ? (
         <p className="mt-3 text-sm text-red-700" role="alert">
           {props.error}
+        </p>
+      ) : null}
+      {activeWorkerOperation ? (
+        <p className="mt-3 text-sm text-sky-800" role="status">
+          {workerOperationLabels[activeWorkerOperation.operation] ?? "งาน Auto Review"} กำลังทำงานเบื้องหลัง
+          {activeWorkerOperation.status === "queued" || activeWorkerOperation.status === "pending"
+            ? " (รอคิว Worker)"
+            : ""}
+          {activeWorkerOperation.progress !== null && activeWorkerOperation.progress !== undefined
+            ? ` · ${Math.round(activeWorkerOperation.progress)}%`
+            : ""}
+        </p>
+      ) : failedWorkerOperation ? (
+        <p className="mt-3 text-sm text-amber-800" role="status">
+          {workerOperationLabels[failedWorkerOperation.operation] ?? "งาน Auto Review"} ทำงานไม่สำเร็จใน Worker — กดสั่งรายการเดิมอีกครั้งเพื่อ retry
         </p>
       ) : null}
       {props.state?.creativeQc && props.onStartCreativeQc ? (
@@ -2883,10 +2937,15 @@ export function StagedCheckpointReviewPanel(props: {
                         }),
                       "rounded-md bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 transition",
                       {
-                        disabled: !creativeQcReady,
-                        title: !creativeQcReady
-                          ? "ต้องตรวจ Creative QC ให้ผ่านก่อนยืนยันเนื้อเรื่อง"
-                          : undefined,
+                        disabled:
+                          !creativeQcReady ||
+                          props.state.metadataInitializationPending === true,
+                        title:
+                          props.state.metadataInitializationPending === true
+                            ? "กำลังเตรียมแผนเนื้อเรื่องใน Worker"
+                            : !creativeQcReady
+                              ? "ต้องตรวจ Creative QC ให้ผ่านก่อนยืนยันเนื้อเรื่อง"
+                              : undefined,
                       }
                     )}
                   </div>
@@ -2911,8 +2970,14 @@ export function StagedCheckpointReviewPanel(props: {
                   )
                 : null}
               {storyCheckpoint && storyCheckpoint.state === "awaiting"
-                ? action("reject-story", "ขอแก้เนื้อเรื่อง", () =>
-                    props.onReject(storyCheckpoint)
+                ? action(
+                    "reject-story",
+                    "ขอแก้เนื้อเรื่อง",
+                    () => props.onReject(storyCheckpoint),
+                    "rounded border border-amber-700 px-3 py-2 text-sm text-amber-800",
+                    {
+                    disabled: !storyEditAvailable,
+                    }
                   )
                 : null}
               {storyEditAvailable

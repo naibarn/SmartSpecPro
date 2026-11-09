@@ -74,7 +74,7 @@ export function buildFeature186CallSiteAudit(): Feature186CallSiteAudit {
       return matches;
     });
   });
-  const migratedWave = (process.env.FEATURE_186_MIGRATED_WAVE ?? "webhook.dispatch,webhook.api_delivery,embedding.generate,capacity.assessment,channel.delivery,automation.execute,database.backup,database.backup.maintenance,notification.escalation,notification.digest,notification.retention,notification.webhook_delivery,memory.archive_cleanup,memory.chunk_cleanup,memory.embedding_reconciliation,memory.eviction,python.media,storyboard.skill.run,vertical_drama.character_prompt,vertical_drama.draft_composition,vertical_drama.draft_quality_qc,vertical_drama.episode_stage,vertical_drama.interactive,vertical_drama.shot_prompt,vertical_drama.shot_video_prompt,vertical_drama.story,video.intelligence")
+  const migratedWave = (process.env.FEATURE_186_MIGRATED_WAVE ?? "webhook.dispatch,webhook.api_delivery,embedding.generate,capacity.assessment,channel.delivery,automation.execute,database.backup,database.backup.maintenance,notification.escalation,notification.digest,notification.retention,notification.webhook_delivery,memory.archive_cleanup,memory.chunk_cleanup,memory.embedding_reconciliation,memory.eviction,python.media,storyboard.skill.run,vertical_drama.character_prompt,vertical_drama.draft_composition,vertical_drama.draft_quality_qc,vertical_drama.episode_stage,vertical_drama.interactive,vertical_drama.shot_prompt,vertical_drama.shot_video_prompt,vertical_drama.story,video.intelligence,marketplace.auto_review.execute")
     .split(",")
     .map(value => value.trim())
     .filter(Boolean);
