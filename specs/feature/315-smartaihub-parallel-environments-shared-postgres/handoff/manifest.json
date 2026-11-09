@@ -25,10 +25,10 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176"
+    "expected_spec_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d"
   },
   "continuation": {
-    "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+    "next_action": "Before any handover, verify the selected target, shared smartspec endpoint, separately scoped runtime credential and environment-tenant binding. Keep the current aimarkethubs.com port-3100 service until its replacement is healthy; keep smartsihub.com inactive until its separate production release authority is provisioned.",
     "next_ready_workunit": "SPEC-315 implementation slice",
     "reactivation_predicate": null,
     "resume_point": null,
@@ -38,16 +38,11 @@
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-      {
-        "digest": null,
-        "kind": "R1.5_OWNER_DECISION",
-        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-      }
+      "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+      "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
     ],
-    "next_action": "Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.",
-    "rationale": "R1.5 target mapping preserves the current service, marks modular-debian-dev unavailable, and requires isolated new production database authority to be verified before provisioning.",
+    "next_action": "Before any handover, verify the selected target, shared smartspec endpoint, separately scoped runtime credential and environment-tenant binding. Keep the current aimarkethubs.com port-3100 service until its replacement is healthy; keep smartsihub.com inactive until its separate production release authority is provisioned.",
+    "rationale": "R1.6 defines one shared canonical database with distinct runtime credentials and dev/production environment tenants. Registry readiness is unchanged: modular-debian-dev is unavailable and modular-cloudflare-prod is inactive.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -77,21 +72,21 @@
         "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
       }
     ],
-    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 6,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-    "digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+    "digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-02T01:43:56.021813Z",
+      "last_evidence_at": "2026-11-09T03:48:28.149414Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.5",
+    "revision": "1.6",
     "slug": "315-smartaihub-parallel-environments-shared-postgres",
     "spec_id": "315",
     "title": "SmartSIHub Three-Domain Parallel Development, Production-Parity Access and Canonical Core PostgreSQL"
@@ -144,16 +139,11 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-        {
-          "digest": null,
-          "kind": "R1.5_OWNER_DECISION",
-          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-        }
+        "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+        "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
       ],
-      "next_action": "Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.",
-      "rationale": "R1.5 target mapping preserves the current service, marks modular-debian-dev unavailable, and requires isolated new production database authority to be verified before provisioning.",
+      "next_action": "Before any handover, verify the selected target, shared smartspec endpoint, separately scoped runtime credential and environment-tenant binding. Keep the current aimarkethubs.com port-3100 service until its replacement is healthy; keep smartsihub.com inactive until its separate production release authority is provisioned.",
+      "rationale": "R1.6 defines one shared canonical database with distinct runtime credentials and dev/production environment tenants. Registry readiness is unchanged: modular-debian-dev is unavailable and modular-cloudflare-prod is inactive.",
       "residual_requirements": []
     },
     "disposition": {
@@ -169,7 +159,7 @@
           "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
         }
       ],
-      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
@@ -193,10 +183,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-02T01:43:56.021813Z",
+    "reconciled_at": "2026-11-09T03:48:28.149414Z",
     "sources": [
       {
-        "digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+        "digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
       },
@@ -208,7 +198,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-        "source_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+        "source_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -239,14 +229,14 @@
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-        "source_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+        "source_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+        "digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
       }
@@ -262,11 +252,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 47,
-    "unresolved": 47
+    "total": 51,
+    "unresolved": 51
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T01:43:56.021813Z",
+  "updated_at": "2026-11-09T03:48:28.149414Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

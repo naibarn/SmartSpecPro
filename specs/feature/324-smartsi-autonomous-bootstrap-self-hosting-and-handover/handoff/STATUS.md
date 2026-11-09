@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 11 unresolved of 11
-- Next action: Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.
-- Manifest generation: 5
+- Requirements: 0 pass / 14 unresolved of 14
+- Next action: Bootstrap the Core and Chat path from the canonical source checkout using either direct Codex/Claude or optional existing SPEC-224 facilities. Reuse shared smartspec identity/data under the aimarkethubs.com development tenant; maintain one dispatch owner and record evidence for the path actually used.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

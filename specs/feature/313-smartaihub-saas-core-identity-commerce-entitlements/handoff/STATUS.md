@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 24 unresolved of 24
-- Next action: Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.
-- Manifest generation: 5
+- Requirements: 0 pass / 28 unresolved of 28
+- Next action: Confirm the canonical modular source checkout and inspect live smartspec schema/writer semantics; then implement the next scoped Hono identity/session/tenant adapter using existing user IDs and auth records, with the aimarkethubs.com development environment tenant and zero DDL by default.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

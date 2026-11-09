@@ -1,15 +1,15 @@
 ---
 spec_id: 315
 semantic_id: smartaihub.parallel-environments-debian-first
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-09
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartSIHub Three-Domain Parallel Development, Production-Parity Access and Canonical Core PostgreSQL
 ---
 
 # SPEC-315 — Three Domains, Debian-first Acceptance and Canonical Core PostgreSQL
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 environment, database, domain, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-09):** Earlier proposal text is retained for provenance. The R1.6 owner clarification controls conflicting R1.5 wording about database sharing, data isolation and environment tenants.
 
 ## 0. Owner-approved topology
 
@@ -163,3 +163,13 @@ New development, preview/staging and production use separate Cloudflare identiti
 Preview/test principals and data cannot reach production financial effects, tenant secrets, device grants or real external purchases. Device enrollment is environment-bound and cannot be replayed across dev, preview and production. See SPEC-325 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
 
 Sign and verify Runner endpoint configuration and bind it to an explicit environment and approved hostname. A development device key, session, job envelope, KMS identity or update channel cannot authenticate in production. Production activation remains unavailable until target-map, database authority, Cloudflare account and release identity have been independently verified.
+
+## R1.6 — Shared canonical database with environment-tenant isolation (2026-11-09)
+
+`smartaihub.app`, `aimarkethubs.com` and `smartsihub.com` MUST use the same canonical PostgreSQL `smartspec` database/schema and existing Core identity, customer tenant, entitlement, ledger and job authority. The Modular Core MUST remain compatible with existing Legacy account and data contracts. Implementations MUST NOT create per-environment user/ledger/job copies or a second financial/job writer. New Mini App business data MUST remain outside Core under SPEC-323.
+
+The three hostnames MUST keep distinct runtime/target identities. `aimarkethubs.com` MUST bind to a modular development/test environment tenant and `smartsihub.com` MUST bind to a separate modular production environment tenant; preserve the existing Legacy application context on `smartaihub.app`. Customer tenant IDs and canonical user accounts MUST remain shared according to existing membership and authorization. Environment separation scopes test records, credentials and effects; it MUST NOT be implemented as a separate PostgreSQL database. Each runtime MUST use a separate least-privilege connection credential and deployment identity despite connecting to the same database. The DB credential or hostname MUST NOT grant cross-tenant access.
+
+Before enabling a write path, implementations MUST map the exact existing tables, fields, tenant filters, triggers and authorized writer from live schema evidence. Zero DDL remains the default; shared effects MUST be idempotent and preserve current Legacy users and data. The registered target map remains the routing authority: `aimarkethubs.com` is not available until its replacement is healthy, and `smartsihub.com` remains inactive until its separate production release authority is provisioned.
+
+Acceptance MUST prove the hostname-to-environment-tenant mapping, successful reuse of an existing user and authorized customer data, and denial of dev-to-production effects using the actual scoped credentials/policies. Schema evidence MUST identify every shared table and writer used by the first Core slice; no schema change is permitted without a separately approved migration requirement.

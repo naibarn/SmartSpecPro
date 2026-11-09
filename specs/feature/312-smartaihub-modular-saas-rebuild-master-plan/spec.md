@@ -2,15 +2,15 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-09
 status: PROPOSED_NOT_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
 ---
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier R0.x–R1.4 proposal text is retained for provenance. Where earlier sequencing, runtime, domain, database, or always-on wording conflicts with the final R1.5 section or the current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-09):** Earlier R0.x–R1.5 proposal text is retained for provenance. The R1.6 owner clarification at the end of this Spec and the [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) control conflicting database, tenant, and development-path wording.
 
 ## 0. Owner decision
 
@@ -205,3 +205,14 @@ The new sequence is a usable Core identity and action boundary, then Chat with a
 Chat is the primary post-login workspace. Closing Chat or any companion UI does not cancel an authorized durable run. The OS-boot device Core Connector and its on-demand Executor are distinct from cloud Agent authority. SPEC-325 is the cross-cutting security design. R1.4 remains historical evidence; this R1.5 clause and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) control conflicting claims.
 
 Before remote device execution is enabled, the new product must pass the SPEC-325 enrollment, device proof-of-possession, signed-job-envelope, revoke/reconnect, locked-session and shared-Companion acceptance cases on a non-production environment. Device availability is a workload capability; it is never a prerequisite for cloud Agent identity or browser-closed job durability.
+
+## R1.6 — Shared Core database, environment tenants and direct development (2026-11-09)
+
+- The Legacy `smartaihub.app`, modular development `aimarkethubs.com`, and modular Cloudflare `smartsihub.com` runtimes MUST use the same canonical PostgreSQL `smartspec` database and Core identity, customer-tenant, entitlement, financial and `worker_jobs`/outbox authority. Existing user accounts and IDs MUST remain usable in the Modular product. Implementations MUST NOT clone users, create a second identity/ledger/job authority, copy the database or replace the existing schema. New Mini App business data MUST remain in its independent App data plane under SPEC-323.
+- The new Core MUST use Hono/TypeScript for both local Debian/workerd development and Cloudflare Workers, and MUST remain small and fast for that runtime. Implementations MUST NOT introduce Express or import the Legacy Express runtime into the new Core; `apps/web` remains the Legacy application.
+- Implementations MUST keep customer tenancy separate from deployment environment tenancy. `aimarkethubs.com` MUST bind to the modular development/test environment tenant and `smartsihub.com` MUST bind to a distinct modular production environment tenant. Existing customer tenant IDs and authorized canonical Core data MUST remain shared. Every customer-data request MUST resolve access from the verified account, membership and policy; hostname or request data MUST NOT grant tenant access. Development-only records and effects MUST stay scoped to the development environment tenant.
+- Runtime DB credentials, deployment identities, Worker bindings and secrets MUST be separately scoped per environment where supported while connecting to the same canonical database. Existing authorization and schema semantics MUST be preserved; zero DDL remains the default. A different runtime credential MUST NOT imply a different database, and a shared database MUST NOT grant blanket cross-tenant access.
+- Development MUST be supported directly through Codex or Claude in the canonical source repository and MAY instead use the existing SPEC-224 Job/Run, Runner, Workspace and Harness facilities on `smartaihub.app`. Both paths MUST preserve the same source, focused-check, commit and handoff evidence. Implementations MUST record SPEC-224 receipts only when that path was actually used and MUST NOT create a replacement in-house orchestration system.
+- Implementations MUST preserve current target readiness: `aimarkethubs.com` remains unavailable for Modular traffic until its replacement is healthy, and the current port-3100 service remains in place until intentional handover. `smartsihub.com` remains inactive until its separate production release authority is provisioned. This clarification authorizes no runtime, database, DNS or production change by itself.
+
+Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.

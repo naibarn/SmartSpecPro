@@ -25,10 +25,10 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869"
+    "expected_spec_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5"
   },
   "continuation": {
-    "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
+    "next_action": "Bootstrap the Core and Chat path from the canonical source checkout using either direct Codex/Claude or optional existing SPEC-224 facilities. Reuse shared smartspec identity/data under the aimarkethubs.com development tenant; maintain one dispatch owner and record evidence for the path actually used.",
     "next_ready_workunit": "SPEC-324 implementation slice",
     "reactivation_predicate": null,
     "resume_point": null,
@@ -38,16 +38,11 @@
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-      {
-        "digest": null,
-        "kind": "R1.5_OWNER_DECISION",
-        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-      }
+      "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+      "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
     ],
-    "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
-    "rationale": "R1.5 removes mandatory Legacy UI repair/cutover as a platform-wide prerequisite and requires a single owner for every Goal, with safe device enrollment and automatic reconnect after one-time pairing.",
+    "next_action": "Bootstrap the Core and Chat path from the canonical source checkout using either direct Codex/Claude or optional existing SPEC-224 facilities. Reuse shared smartspec identity/data under the aimarkethubs.com development tenant; maintain one dispatch owner and record evidence for the path actually used.",
+    "rationale": "R1.6 makes direct development a normal path and SPEC-224 an optional path; both preserve the shared user/database authority and one-owner Goal handover. No implementation or deployment is claimed by this Spec update.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -77,21 +72,21 @@
         "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
       }
     ],
-    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 5,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-    "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+    "digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-02T01:43:58.452088Z",
+      "last_evidence_at": "2026-11-09T03:48:29.903982Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.5",
+    "revision": "1.6",
     "slug": "324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
     "spec_id": "324",
     "title": "SPEC-324 — Autonomous Bootstrap, Self-Hosted Development and Control-Plane Handover"
@@ -144,16 +139,11 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-        {
-          "digest": null,
-          "kind": "R1.5_OWNER_DECISION",
-          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-        }
+        "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+        "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
       ],
-      "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
-      "rationale": "R1.5 removes mandatory Legacy UI repair/cutover as a platform-wide prerequisite and requires a single owner for every Goal, with safe device enrollment and automatic reconnect after one-time pairing.",
+      "next_action": "Bootstrap the Core and Chat path from the canonical source checkout using either direct Codex/Claude or optional existing SPEC-224 facilities. Reuse shared smartspec identity/data under the aimarkethubs.com development tenant; maintain one dispatch owner and record evidence for the path actually used.",
+      "rationale": "R1.6 makes direct development a normal path and SPEC-224 an optional path; both preserve the shared user/database authority and one-owner Goal handover. No implementation or deployment is claimed by this Spec update.",
       "residual_requirements": []
     },
     "disposition": {
@@ -169,7 +159,7 @@
           "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
         }
       ],
-      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
@@ -193,10 +183,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-02T01:43:58.452088Z",
+    "reconciled_at": "2026-11-09T03:48:29.903982Z",
     "sources": [
       {
-        "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
       },
@@ -208,7 +198,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-        "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "source_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -239,14 +229,14 @@
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-        "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "source_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+        "digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
       }
@@ -262,11 +252,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 11,
-    "unresolved": 11
+    "total": 14,
+    "unresolved": 14
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T01:43:58.452088Z",
+  "updated_at": "2026-11-09T03:48:29.903982Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

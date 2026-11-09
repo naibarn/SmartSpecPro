@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 24 unresolved of 24
-- Next action: Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.
-- Manifest generation: 5
+- Requirements: 0 pass / 27 unresolved of 27
+- Next action: Continue package-scoped CI and target-bound build/release workflows. Support direct Codex/Claude development in the canonical source repository or optional dispatch through SPEC-224; preserve exact target, DB, tenant, source and release identity. Do not activate the Cloudflare production target.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

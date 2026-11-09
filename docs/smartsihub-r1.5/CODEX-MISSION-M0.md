@@ -4,12 +4,14 @@
 
 ## Goal
 
-Deliver the smallest usable independent SmartAIHub Core and signed-in Chat slice on an isolated development target, with persistent Agent/Goal identity and a durable job contract. Do not make Legacy infrastructure cutover a global prerequisite.
+Deliver the smallest usable SmartAIHub Core and signed-in Chat slice on the `aimarkethubs.com` development/test environment tenant, using existing user accounts and the shared canonical `smartspec` database, with persistent Agent/Goal identity and a durable job contract. Keep environment-tenant access scoped. Do not make Legacy infrastructure cutover a global prerequisite.
 
 ## Required decisions before implementation
 
 - Verify exact target and current availability using `apps/web/scripts/deployment-targets.json`. At this revision, `aimarkethubs.com` is prepared/unavailable and its existing healthy port-3100 service must remain undisturbed until a replacement is healthy. `smartsihub.com` is registered but not activated.
-- Establish and verify a new-platform database authority isolated from Legacy and production. The current logical `smartspec` label is not evidence of a shared database or credentials; update the future mapping only from actual authority evidence.
+- Use the same canonical PostgreSQL `smartspec` database and existing user/tenant/Core records as `smartaihub.app`. Verify the live endpoint, schema, writer and tenant filters before enabling each read/write path. Use a separately scoped Modular development DB credential; do not clone data, reuse broad Legacy credentials or let development-only records/effects enter the production environment tenant.
+- Preserve the separate `aimarkethubs.com` development/test and `smartsihub.com` Cloudflare production environment tenants. Existing customer tenant IDs and authorized shared Core data remain canonical across surfaces; every access still requires verified user membership and role policy.
+- Development may be performed directly with Codex/Claude in the canonical source repository or dispatched through existing SPEC-224 facilities on `smartaihub.app`. Record the actual path and its evidence; SPEC-224 is optional and no new in-house orchestration system is introduced.
 - Preserve existing owners: canonical job/outbox/lease and financial settlement authorities are not duplicated inside Agents, Workflows, Queues, Mini Apps or Runners.
 - Select non-production identity, bindings, deployment credentials, KMS/broker identities, logging/data-class policy and rollback ownership before using them. No real secret is placed in source, `vars`, examples, `.env`, queue payloads or telemetry.
 
@@ -24,4 +26,4 @@ Deliver the smallest usable independent SmartAIHub Core and signed-in Chat slice
 
 ## M0 exit evidence
 
-Record the implementation revision, focused checks, exact development target and DB authority, authenticated Core/Chat user journey, durable continuation after browser closure, idempotency/authorization evidence, negative tenant and credential tests, and rollback path. Do not report production, device enrollment or deployment unless the corresponding target was actually changed and checked. Do not run `npm run typecheck` in a local/shared implementation session.
+Record the implementation revision, focused checks, exact development target and shared DB credential/tenant context, existing-account Core/Chat user journey, durable continuation after browser closure, idempotency/authorization evidence, negative tenant and credential tests, and rollback path. Do not report production, device enrollment or deployment unless the corresponding target was actually changed and checked. Do not run `npm run typecheck` in a local/shared implementation session.

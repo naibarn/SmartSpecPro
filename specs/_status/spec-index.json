@@ -134212,7 +134212,6 @@
         "requirement REQ-29B718963E5E is OPEN",
         "requirement REQ-E13A9E34BFC9 is OPEN",
         "requirement REQ-CF5B579A0168 is OPEN",
-        "requirement REQ-FA42CFF33A89 is OPEN",
         "requirement R1.4 is OPEN",
         "requirement REQ-088EB84317A9 is OPEN",
         "requirement REQ-11BDE28B61A3 is OPEN",
@@ -134220,6 +134219,13 @@
         "requirement REQ-9243A49EB447 is OPEN",
         "requirement REQ-5FDF8CE72332 is OPEN",
         "requirement REQ-306C2EAF8016 is OPEN",
+        "requirement REQ-78BB9E3B7A83 is OPEN",
+        "requirement REQ-83BA6F65A95A is OPEN",
+        "requirement REQ-9352CD8A515B is OPEN",
+        "requirement REQ-078D75C9DFB8 is OPEN",
+        "requirement REQ-C81078458FFE is OPEN",
+        "requirement REQ-61DD767ED6C7 is OPEN",
+        "requirement REQ-46847581892C is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -134239,7 +134245,7 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+          "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -134252,18 +134258,18 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+          "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+      "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:55.196771Z",
+      "last_reconciled": "2026-11-09T03:48:26.504208Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
+      "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "primary_blocker": null,
       "problem": null,
@@ -134288,14 +134294,14 @@
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 7,
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-            "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+            "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+            "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
           }
@@ -134306,11 +134312,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 22,
+        "open": 28,
         "pass": 0,
-        "total": 22
+        "total": 29
       },
-      "revision": "1.5",
+      "revision": "1.6",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
@@ -134355,6 +134361,10 @@
         "requirement REQ-20B8966FB5FA is OPEN",
         "requirement REQ-7053A2E39E2A is OPEN",
         "requirement R1.5 is OPEN",
+        "requirement REQ-B8A484C76F12 is OPEN",
+        "requirement REQ-99B7FC7AAA54 is OPEN",
+        "requirement REQ-246E85E42AB0 is OPEN",
+        "requirement REQ-F0D2073B6157 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -134374,7 +134384,7 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-          "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+          "source_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -134387,18 +134397,18 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-          "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+          "source_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+      "digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:55.475638Z",
+      "last_reconciled": "2026-11-09T03:48:27.359576Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
+      "next_action": "Confirm the canonical modular source checkout and inspect live smartspec schema/writer semantics; then implement the next scoped Hono identity/session/tenant adapter using existing user IDs and auth records, with the aimarkethubs.com development environment tenant and zero DDL by default.",
       "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements",
       "primary_blocker": null,
       "problem": null,
@@ -134423,14 +134433,14 @@
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-            "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+            "source_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+            "digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
           }
@@ -134441,11 +134451,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 24,
+        "open": 28,
         "pass": 0,
-        "total": 24
+        "total": 28
       },
-      "revision": "1.5",
+      "revision": "1.6",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "313-smartaihub-saas-core-identity-commerce-entitlements",
@@ -134652,6 +134662,10 @@
         "requirement REQ-F0D539444A83 is OPEN",
         "requirement REQ-BBBEF13F4C0B is OPEN",
         "requirement REQ-F4C1A3CD6215 is OPEN",
+        "requirement REQ-0E4971344712 is OPEN",
+        "requirement REQ-17A71060BC0B is OPEN",
+        "requirement REQ-2D949AB7BD79 is OPEN",
+        "requirement REQ-1CC96FD1ED6F is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -134671,7 +134685,7 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-          "source_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+          "source_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -134684,18 +134698,18 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-          "source_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+          "source_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+      "digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:56.021813Z",
+      "last_reconciled": "2026-11-09T03:48:28.149414Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.",
+      "next_action": "Before any handover, verify the selected target, shared smartspec endpoint, separately scoped runtime credential and environment-tenant binding. Keep the current aimarkethubs.com port-3100 service until its replacement is healthy; keep smartsihub.com inactive until its separate production release authority is provisioned.",
       "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres",
       "primary_blocker": null,
       "problem": null,
@@ -134720,14 +134734,14 @@
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
-            "source_digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+            "source_digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "d498fd8991524e210ecc35acb8def658e4053671ecb98fdb6d91a04292caa176",
+            "digest": "829751b07fab63aa4472e857976f01b5401bb7ae3e22a28ab6569600ec56359d",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
           }
@@ -134738,11 +134752,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 47,
+        "open": 51,
         "pass": 0,
-        "total": 47
+        "total": 51
       },
-      "revision": "1.5",
+      "revision": "1.6",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "315-smartaihub-parallel-environments-shared-postgres",
@@ -134787,6 +134801,9 @@
         "requirement REQ-28166FFE786C is OPEN",
         "requirement R1.5 is OPEN",
         "requirement REQ-7C691F1FC482 is OPEN",
+        "requirement REQ-6B700646F791 is OPEN",
+        "requirement REQ-3BE057BB57FE is OPEN",
+        "requirement REQ-4813392F4F0C is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -134806,7 +134823,7 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
-          "source_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+          "source_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -134819,18 +134836,18 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
-          "source_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+          "source_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:56.290728Z",
+      "last_reconciled": "2026-11-09T03:48:29.048383Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue SPEC-316 by defining package-scoped CI and target-bound release workflows; do not configure or activate the Cloudflare production target.",
+      "next_action": "Continue package-scoped CI and target-bound build/release workflows. Support direct Codex/Claude development in the canonical source repository or optional dispatch through SPEC-224; preserve exact target, DB, tenant, source and release identity. Do not activate the Cloudflare production target.",
       "path": "specs/feature/316-smartaihub-gitops-independent-build-release",
       "primary_blocker": null,
       "problem": null,
@@ -134855,14 +134872,14 @@
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
-            "source_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+            "source_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+            "digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
           }
@@ -134873,11 +134890,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 24,
+        "open": 27,
         "pass": 0,
-        "total": 24
+        "total": 27
       },
-      "revision": "1.5",
+      "revision": "1.6",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "316-smartaihub-gitops-independent-build-release",
@@ -135838,6 +135855,9 @@
         "requirement REQ-2D5D4A4EA4DD is OPEN",
         "requirement REQ-B9D392FE66BF is OPEN",
         "requirement REQ-08D247217492 is OPEN",
+        "requirement REQ-99B9C56CB5BE is OPEN",
+        "requirement REQ-EE82C92375DB is OPEN",
+        "requirement REQ-8F0624C3B35A is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -135857,7 +135877,7 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-          "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+          "source_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -135870,18 +135890,18 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-          "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+          "source_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+      "digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:58.452088Z",
+      "last_reconciled": "2026-11-09T03:48:29.903982Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Bootstrap the independent Core and Chat path. Use smartaihub.app only as an optional proven development command route; transfer each Goal at a durable checkpoint after revoking the previous dispatch lease.",
+      "next_action": "Bootstrap the Core and Chat path from the canonical source checkout using either direct Codex/Claude or optional existing SPEC-224 facilities. Reuse shared smartspec identity/data under the aimarkethubs.com development tenant; maintain one dispatch owner and record evidence for the path actually used.",
       "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
       "primary_blocker": null,
       "problem": null,
@@ -135906,14 +135926,14 @@
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md",
-            "source_digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+            "source_digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "30414089d7e244ea778f82814b3491fa128a9de80c59f772934a8e40d5e97869",
+            "digest": "c304313230a35009e37de0c781c2a29012f23538e511712614397c6e11ebf0b5",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover/spec.md"
           }
@@ -135924,11 +135944,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 11,
+        "open": 14,
         "pass": 0,
-        "total": 11
+        "total": 14
       },
-      "revision": "1.5",
+      "revision": "1.6",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "324-smartsi-autonomous-bootstrap-self-hosting-and-handover",

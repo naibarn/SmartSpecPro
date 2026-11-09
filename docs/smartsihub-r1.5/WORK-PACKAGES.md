@@ -4,7 +4,7 @@ These are proposed implementation boundaries for future authorized product work.
 
 | Package | Scope and acceptance | Canonical owners |
 |---|---|---|
-| **WP0 — Core identity and action boundary** | New-platform human, tenant, Agent, Service, Module and device principals; WebAuthn/MFA-ready session flows; CSRF; revocation/policy epochs; typed action registry; correct isolated DB authority; no duplicate financial/job writer. | SPEC-312, 313, 315, 325 |
+| **WP0 — Core identity and action boundary** | New-platform human, tenant, Agent, Service, Module and device principals; reuse existing `smartspec` user and Core data authority; environment-tenant-scoped access; WebAuthn/MFA-ready session flows; CSRF; revocation/policy epochs; typed action registry; separately scoped runtime credentials; no duplicate financial/job writer. | SPEC-312, 313, 315, 325 |
 | **WP1 — Durable Chat Agent** | Chat as signed-in home; durable Agent identity and Goal/Run links; Workers/DO/Workflow/Queue event lifecycle; reconnect/replay; truthful `WAITING_*`, pause and revoke states; browser close does not cancel. | SPEC-312, 318, 319, 325 |
 | **WP2 — Secure device foundation** | Local device key; explicit one-time owner pairing; outbound WSS with TLS validation and fresh proof-of-possession; short-lived audience-bound session; signed typed envelopes; dedupe/fencing; live revoke; no public inbound listener. | SPEC-313, 314, 315, 317, 318, 325 |
 | **WP3 — Runner services and Companion** | Windows boot SCM/Linux systemd Core service before login; least-privilege Connector; separate user-session shared WebView Companion; on-demand scoped Executor; signed updates, rollback, low idle cost, locked-session truth and OS-specific recovery. | SPEC-316, 318, 319, 324, 325 |
@@ -20,5 +20,6 @@ Cloud event transport, Agent state, device presence, UI state and per-App data a
 
 - `aimarkethubs.com` is registered prepared/unavailable; keep the existing healthy port-3100 service until a replacement is healthy.
 - `smartsihub.com` is registered-not-activated; future production provisioning and releases use their separate owner and target authority.
-- Current target map's logical `smartspec` production database label must be reconciled to isolated production before provisioning; no host or credentials are inferred here.
+- The target map names the shared canonical `smartspec` database for both Modular environments. Before release, verify the actual endpoint and separately scoped runtime credential; do not infer readiness from the logical mapping or reuse a broad Legacy credential.
+- `aimarkethubs.com` development/test and `smartsihub.com` production use distinct environment-tenant bindings over the shared Core database. Existing customer accounts and authorized canonical data remain shared under membership and role checks.
 - R1.5 documents are `SPECIFIED`, not `IMPLEMENTED` or `DEPLOYED`. Device pairing, KMS setup, Runner installation and security tests remain future implementation evidence.

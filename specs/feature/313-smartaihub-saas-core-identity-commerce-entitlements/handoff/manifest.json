@@ -25,10 +25,10 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80"
+    "expected_spec_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2"
   },
   "continuation": {
-    "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
+    "next_action": "Confirm the canonical modular source checkout and inspect live smartspec schema/writer semantics; then implement the next scoped Hono identity/session/tenant adapter using existing user IDs and auth records, with the aimarkethubs.com development environment tenant and zero DDL by default.",
     "next_ready_workunit": "SPEC-313 next implementation slice",
     "reactivation_predicate": null,
     "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
@@ -38,11 +38,11 @@
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
+      "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+      "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
     ],
-    "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
-    "rationale": "Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented.",
+    "next_action": "Confirm the canonical modular source checkout and inspect live smartspec schema/writer semantics; then implement the next scoped Hono identity/session/tenant adapter using existing user IDs and auth records, with the aimarkethubs.com development environment tenant and zero DDL by default.",
+    "rationale": "R1.6 confirms that Modular Core shares smartspec user, tenant, entitlement, ledger and job authority with smartaihub.app. Identity/session/persistence implementation remains unverified and must reuse the existing schema without cloning users or introducing parallel authorities.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -72,21 +72,21 @@
         "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
       }
     ],
-    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 5,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-    "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+    "digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-02T01:43:55.475638Z",
+      "last_evidence_at": "2026-11-09T03:48:27.359576Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.5",
+    "revision": "1.6",
     "slug": "313-smartaihub-saas-core-identity-commerce-entitlements",
     "spec_id": "313",
     "title": "SmartAIHub Minimal SaaS Core — Identity, Tenancy, Entitlements and Canonical Commerce Integration"
@@ -148,11 +148,11 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95"
+        "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+        "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
       ],
-      "next_action": "Continue the SPEC-313 Core implementation from the liveness baseline; implement only the next scoped identity/tenant contract after confirming the canonical database contract.",
-      "rationale": "Hono Worker Core liveness baseline is implemented and locally checked; identity, tenancy, persistence, and commerce are not implemented.",
+      "next_action": "Confirm the canonical modular source checkout and inspect live smartspec schema/writer semantics; then implement the next scoped Hono identity/session/tenant adapter using existing user IDs and auth records, with the aimarkethubs.com development environment tenant and zero DDL by default.",
+      "rationale": "R1.6 confirms that Modular Core shares smartspec user, tenant, entitlement, ledger and job authority with smartaihub.app. Identity/session/persistence implementation remains unverified and must reuse the existing schema without cloning users or introducing parallel authorities.",
       "residual_requirements": []
     },
     "disposition": {
@@ -168,7 +168,7 @@
           "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
         }
       ],
-      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
@@ -192,10 +192,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-02T01:43:55.475638Z",
+    "reconciled_at": "2026-11-09T03:48:27.359576Z",
     "sources": [
       {
-        "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
       },
@@ -207,7 +207,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-        "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "source_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -238,14 +238,14 @@
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md",
-        "source_digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "source_digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "05aba7c5abc6b8fba9d8c638bf85c20201556653f30b7abe84c11ef055955e80",
+        "digest": "94345ef140d886f2a314e0ff34ff947a9a113887572c1cca3227968f2a9872e2",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements/spec.md"
       }
@@ -261,11 +261,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 24,
-    "unresolved": 24
+    "total": 28,
+    "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T01:43:55.475638Z",
+  "updated_at": "2026-11-09T03:48:27.359576Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

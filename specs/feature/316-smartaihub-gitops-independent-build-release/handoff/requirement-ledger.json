@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "c4694bfce3826235e95adebf4e74642f177c623382745870550fae83993d759f",
       "requirement_id": "REQ-588AD94080A1",
       "requirement_text": "**Proposed default:** keep `naibarn/SmartSpecPro` as existing legacy source AND canonical host for official platform SPEC files. Create a *new* clean `smartaihub-platform` repo for Hono Core, Shell, Public Website, first-party Modules and small shared contracts. Creator/detachable Mini Apps use separate per-product repos according to SPEC-293/261. New repo name/owner/org is provisional until actual repository availability and scoped provisioning credentials are verified; lack of a new repo must not stop local creation/build of the clean workspace or a developer preview. This document does NOT create it.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "ce2952cff2109abf2909090a24da476cba3a0279545b242432e78f59e16b9954",
       "requirement_id": "REQ-EAC9306D3BF4",
       "requirement_text": "Canonical SPEC registry lives in existing `SmartSpecPro/specs/feature`, where numbers/ownership are checked. New repo references `spec_id`, semantic ID and exact approved canonical spec SHA; it MUST NOT maintain divergent second canonical copies. GitHub branch naming or repo location never grants the authority to deploy/modify a tenant.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "687d7580d499c25bbbac60c7e59e64e1a1156ec80f3cedee1f2cd224bd2d9081",
       "requirement_id": "REQ-72EEBEF42F64",
       "requirement_text": "- A change to `packages/saas-contracts` or `packages/module-sdk` SHALL run **affected downstream consumers** plus compatibility suite; a change to one Module SHALL run that Module and its actual impacted dependents, not all by default.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "e4805594c2da26364844318c66e83b95f0c780e1a63f7c9a03978e3098129bdd",
       "requirement_id": "REQ-33E0A3162045",
       "requirement_text": "- Path filtering is an optimization, not sole source of correctness; an always-running lightweight required aggregator avoids GitHub required checks stuck `Pending` when a workflow is path-skipped.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "25edbe6e8727847bc785f29e0b6a13e48c191fc230f10a7d26f27a378288f07c",
       "requirement_id": "REQ-A93465F7ABBC",
       "requirement_text": "| Wrangler CLI | Direct approved Worker/asset staging or production deploy; actual target config required |",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "9d7d5220480de79d9e347ac6991aa208cf681ef34e4fff44eec236f93d1bde24",
       "requirement_id": "REQ-E9E40D693F86",
       "requirement_text": "2. The owner directs an **early, restricted real-user beta** for `smartsihub.com` after a working Core slice exists. Treat this as the program's intent to prepare/execute a bounded Cloudflare launch within existing credentials and target grants; do not automatically introduce a new bureaucratic review board, fixed 24-hour soak or full SPEC-311 route-migration completion gate. Where an infrastructure permission genuinely cannot be delegated, report it precisely once with the required action and continue other work.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "9e08cb3a66d8a9d1b3fc31d9506a39446320542a6a6309f26b952cc4dfdf463e",
       "requirement_id": "REQ-4F1D2674C07F",
       "requirement_text": "4. `required` GitHub check on a path-filtered workflow can remain Pending indefinitely for unrelated changes. Prefer an always-executed lightweight summary required job and conditional targeted jobs, or make per-module checks optional where appropriate; never require a workflow that did not run. Do not leave branch protections that enforce absent checks.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "686374f4ed6e9a4c260db8525bac65555c1b16715b0c582cb2eec2f7fe7c3cb6",
       "requirement_id": "REQ-8BE55046A141",
       "requirement_text": "5. A failed optional UI/polish/performance check is a known-issue annotation, not a denied Deploy. A verified cross-tenant/ledger/secret leak or wrong target is a stop for **only the affected release**. CI must print a direct executable next command and precise issue location, not generic GRANT/APPROVAL_REQUIRED loops.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "860e2ada67cfa3803a15e740eb00a090e1e6c61821e811d5c245c4cde8fc1180",
       "requirement_id": "REQ-939E005373E2",
       "requirement_text": "Existing `.github/workflows/cloudflare-deploy.yml` still builds legacy `apps/web` Vite and asks Node for up to 8192 MiB heap; new pipeline MUST NOT inherit this. Existing 2026-11-01 SPEC-311 decommission record notes migration deployment workflow was disabled; do not re-enable it automatically for new platform. New deployment targets/workflows are separately justified.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "23d35963b37f985288c811bbe81e1c215740124a285c190df656df129dd310e2",
       "requirement_id": "REQ-3A5DB427C9E3",
       "requirement_text": "- New platform standard: Node 22 LTS (build tools only), pnpm 10, Turborepo 2, strict TypeScript ESM, Hono 4.x, React 19, Vite 7, Tailwind CSS 4, Cloudflare Wrangler/workerd pinned by the platform lockfile. TypeScript/Hono/React patch versions MUST be pinned in lockfile after compatibility tests, not dynamically upgraded on deployment. The production request runtime is **workerd, not Node**, and no Node HTTP service is a Core production fallback.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "bf92ecb0e0f1fde8a905a008dac99e837767068b8b86d6ff1fbb46669febe2fb",
       "requirement_id": "REQ-6F1432356CAC",
       "requirement_text": "- `apps/saas-core` and each `modules/<id>` have independent `package.json`, `wrangler.jsonc` where needed, explicit build/test scripts, versioned contract dependencies and generated artifact location. `pnpm-workspace.yaml` MUST include `modules/*`; output paths must not overlap. Support direct `pnpm --filter @smartaihub/saas-core build` and `pnpm --filter @smartaihub/<module> build` without root-wide build.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "1514e6e3085ba7630184449edd994c18ec3389fb18715d74088408386b61a646",
       "requirement_id": "REQ-AC1CB270020D",
       "requirement_text": "Independent per-module CI and Wrangler release shall not require all Agent payment protocols to be ready before shipping native account/plan/quotes to Debian or a scoped Cloudflare Beta. No GitHub Actions production-only release hardcode to legacy domain; `smartsihub.com` is final production. Persist release receipts with SPEC-322 payment adapter version and class-policy version for any money-moving module, without new approval queues.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "644621222db3b9a395be79efac57f7bcb932aaced03984fd481abb9394053323",
       "requirement_id": "REQ-7152E423F426",
       "requirement_text": "For customer-created Mini Apps use independent Git repository and immutable App release. Hosting choices: managed main-domain Worker + App D1, verified custom domain routed to managed App deployment, customer Cloudflare account/zone/Worker/D1, or owner VPS/on-prem/container. Repository credentials, Cloudflare access tokens and DB credentials belong to their **owner** and are stored only as scoped secret references (SPEC-272/293); user BYOC account MUST NOT be treated as a second Core authority. App owner can deploy an independently tested build without rebuilding Core or all Mini Apps. Self-hosted releases have deployment receipts and health/rollback capability without requiring SmartSIHub to own OS credentials. Activation can happen progressively; no global gate outside scope-specific wrong-account/credential/financial/data safety.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
       "requirement_id": "REQ-8D10FA97B47F",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "3efaded8d3da1be016d01513320d05106f8e05fb6010556ec5c82650d5a8fd1c",
       "requirement_id": "REQ-0F7E12C5C1CF",
       "requirement_text": "All new-platform Git operations and deployments MUST be commissioned/observable as tasks from `smartaihub.app`; the execution tool can run git, pnpm, cargo, Playwright and Wrangler natively on its delegated Debian Runner. GitHub is source/version evidence, not a mandatory manual deployment relay. Every autonomous task reports branch, workspace, commit SHA, target, build/test evidence, deployment URL and next action. A browser outage can use emergency local recovery with later receipt reconciliation, not a second orchestrator.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
       "requirement_id": "REQ-A54883A872B7",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
       "requirement_id": "REQ-917BBA643239",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
       "requirement_id": "REQ-AF3F4A149395",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
       "requirement_id": "REQ-003C68207A91",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "82edeccfee6919380ad8e47d364d9b945dc7b66bb116cc55d9b92973a9d9ab24",
       "requirement_id": "REQ-374C93800122",
       "requirement_text": "**Release mechanics:** All migration development Goals originate from old authenticated Autonomous Implements. Dev target builds direct on Debian; Cloudflare deploy is only the *exact* explicitly selected `smartsihub.com` Worker/asset version with bounded target authority, provenance and rollback. GitHub tracks source, contracts and receipts, but is not required to be the sole deploy launcher. No blanket CI pass or all-module build required for scoped UAT; never silently recreate SPEC-311 decommissioned resources.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "2f78af1810accd5660aa7758f1fd94fa8f1bc708244555b26c51e31877184570",
       "requirement_id": "REQ-28166FFE786C",
       "requirement_text": "Release each Worker/module independently through Wrangler or another authorized deployment client; GitHub Actions is not the only valid release authority. Build jobs use per-environment, least-privilege credentials scoped to named Workers and required bindings. Deployment checks assert the exact target ID, domain, application, runtime, database authority, source SHA and release identity before upload or traffic change. A missing or mismatched assertion fails closed.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "b4ccd0e6bebc634d9dbc877b6c4cad27d37afae69b0395622b7eef97ce3483fe",
       "requirement_id": "R1.5",
       "requirement_text": "The release record SHOULD include provenance, dependency lock state, SBOM, build inputs and immutable artifact digest; use signed or otherwise verifiable artifacts where the selected distribution supports it. Review skills, generated code and third-party modules as supply-chain inputs. Restrict production effects to a separate production release identity and require separation of duties for high-impact production mutations. Rollback targets one module/release and does not alter unrelated modules or data. All applicable Worker secrets are declared with Wrangler secrets.required; deploy/version upload must fail when a required binding is absent, and runtime startup/readiness must fail closed if required configuration is unavailable. See SPEC-325 and the [R1.5 credential ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,13 +525,79 @@
       "requirement_digest": "80d2ea4c7df13dcdf929f4d5d5525f71f976a65ff4379cf4e91f7cade39a839d",
       "requirement_id": "REQ-7C691F1FC482",
       "requirement_text": "Runner/Core packages, signed update manifests and shared-WebView client compatibility follow separate release identities and rollback paths from Workers. Windows SCM and Linux systemd lifecycle metadata must be explicit; an update cannot silently re-pair a device, downgrade protocol security, add an undeclared capability or bypass quarantine. Verify installer publisher, artifact digest, signer rotation and anti-downgrade behavior before remote execution is enabled.",
-      "source_spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L180"
+      ],
+      "authority_source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L180",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c3d100bd607691c7825ee65a6cec293c6cdc6becea567cd612d81b44e13a37dd",
+      "requirement_id": "REQ-6B700646F791",
+      "requirement_text": "Direct development by Codex or Claude in the canonical source repository MUST be supported as a normal path. Development MAY instead dispatch the same work through existing SPEC-224 facilities on `smartaihub.app`; this is optional, not a prerequisite. Both paths MUST use the same source ownership, focused checks, commit/push policy, exact deployment target selection and handoff. Only the SPEC-224 route produces SPEC-224 Run/Runner receipts; implementations MUST NOT attribute direct work to a Run that did not execute it or introduce a parallel in-house orchestration system.",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L182"
+      ],
+      "authority_source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L182",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0a1f26cfb70ea940cbfd927aa2302c9df27b8a165791c6b5dee93fc52e691b31",
+      "requirement_id": "REQ-3BE057BB57FE",
+      "requirement_text": "The `legacy-debian-dev`, `modular-debian-dev` and `modular-cloudflare-prod` applications MUST connect to the same canonical PostgreSQL `smartspec` database using separately scoped runtime credentials. `aimarkethubs.com` is for development/test on its environment tenant; `smartsihub.com` is the distinct Cloudflare production environment tenant. Target, database, tenant and release identities MUST remain independently verified. Preserve the current aimarket port-3100 service and keep the Cloudflare production target inactive until its replacement and separate release authority are healthy.",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L184"
+      ],
+      "authority_source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md#L184",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6ad8dacca3b152a950403324c12fd61803999dec8ec05f48c4e7ef4cdec21c86",
+      "requirement_id": "REQ-4813392F4F0C",
+      "requirement_text": "Acceptance MUST show a truthful source/check/handoff record for both the direct development path and the optional SPEC-224 path; SPEC-224 Run receipts are required only for work performed through that path. Release evidence MUST demonstrate that the same canonical database is selected with dev and production credentials scoped to their respective environment tenants and targets.",
+      "source_spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "1daede445e821f062aaafe3f23de93e4b926cd8425b05f87dbfe07ad978ba416",
+  "spec_digest": "e83f78abd1b275bd819330358824bdfbddc51918d23b16e943c64eb86c8425ad",
   "spec_id": "316"
 }

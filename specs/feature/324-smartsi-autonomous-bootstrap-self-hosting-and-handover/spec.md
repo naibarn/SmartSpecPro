@@ -1,8 +1,8 @@
 ---
 spec_id: 324
 semantic_id: smartsi.autonomous-bootstrap-self-hosted-development-handover
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-09
 status: PROPOSED_NOT_IMPLEMENTED
 primary_control_surface: https://smartaihub.app
 new_development_surface: https://aimarkethubs.com
@@ -11,7 +11,7 @@ new_production_surface: https://smartsihub.com
 
 # SPEC-324 — Autonomous Bootstrap, Self-Hosted Development and Control-Plane Handover
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 mandatory Legacy bootstrap, cutover, runtime, database, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-09):** Earlier proposal text is retained for provenance. The R1.6 owner clarification controls conflicting requirements that mandate the Legacy development UI or prohibit shared Core database use; SPEC-224 remains an optional supported path.
 
 ## 0. Binding owner decision
 
@@ -144,3 +144,11 @@ Build a usable new Core, then Chat plus a persistent Agent, then complex control
 Every Goal has one dispatch owner at a time. If the Legacy tool is used, bind the Goal to its current worker_jobs/Runner authority and checkpoint receipts; when handing off, revoke the old dispatch lease before the new authority dispatches. No dual-run and no repeated approvals for ordinary in-grant work. New Goal authority is accepted only after the new platform demonstrates durable continuation after Chat closure, truthful executor-wait states, revocation, device reconnection and rollback. The three R1.4 UI mockups remain design references and are not implementation evidence. See SPEC-325 and the [R1.5 owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md).
 
 The first-time Runner install grants OS-service installation permission and performs one explicit owner pairing. Later boot, network recovery, service restart and routine session renewal happen without a recurring Connect/Login prompt. Pairing after revoke, device transfer, key loss or quarantine always enters a separate authenticated recovery flow; it cannot be triggered by reconnect. R1.5 remote-execution acceptance includes Windows boot before login, Linux systemd boot, Companion closure, lost/recovered network, stale/revoked grant, locked desktop and safe rollback.
+
+## R1.6 — Selectable development path and shared account/data authority (2026-11-09)
+
+New-platform work MUST be supported when developed directly by Codex or Claude in the canonical source repository, and MAY instead be submitted through the existing SPEC-224 facilities on `smartaihub.app`. Direct work is a normal path, not only a break-glass exception. When SPEC-224 is selected, use its existing Job/Run, Runner, Workspace, Harness and release authority and preserve the actual receipts. Both paths MUST preserve one canonical source history and MUST NOT create a new in-house orchestration system.
+
+The Legacy and Modular applications MUST share the canonical PostgreSQL `smartspec` database and existing user accounts. Existing users MUST be able to sign in to the Modular application; the account, customer tenant IDs and eligible canonical Core data are reused. `aimarkethubs.com` MUST bind to the modular development/test environment tenant, while `smartsihub.com` MUST bind to a separate production environment tenant. The environment tenant MUST NOT replace the customer tenant or identity store. Existing membership and role rules MUST be enforced for every shared record and development-only records/effects MUST remain scoped to development. Each runtime MUST use distinct least-privilege credentials over the shared database; implementations MUST NOT clone user, ledger or job state.
+
+`aimarkethubs.com` remains the development/test surface and MUST pass the focused journey before any production release. Preserve the current port-3100 service until its replacement is healthy. `smartsihub.com` remains the Cloudflare production target and requires its separate production release authority; this specification authorizes no activation or live data change.

@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 47 unresolved of 47
-- Next action: Keep the current aimarkethubs.com port-3100 service in place while the registered modular-debian-dev replacement is prepared and unavailable. Verify target, DB authority and health before any handover.
-- Manifest generation: 6
+- Requirements: 0 pass / 51 unresolved of 51
+- Next action: Before any handover, verify the selected target, shared smartspec endpoint, separately scoped runtime credential and environment-tenant binding. Keep the current aimarkethubs.com port-3100 service until its replacement is healthy; keep smartsihub.com inactive until its separate production release authority is provisioned.
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

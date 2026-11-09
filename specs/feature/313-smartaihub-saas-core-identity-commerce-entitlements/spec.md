@@ -1,15 +1,15 @@
 ---
 spec_id: 313
 semantic_id: smartaihub.modular-saas-core
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-09
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Minimal SaaS Core — Identity, Tenancy, Entitlements and Canonical Commerce Integration
 ---
 
 # SPEC-313 — Small Hono SaaS Core
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 identity, database, bootstrap, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-09):** Earlier proposal text is retained for provenance. The R1.6 owner clarification and current owner-decision register control conflicting database-sharing, environment-tenant and development-path assertions.
 
 ## 0. Boundary
 
@@ -225,3 +225,13 @@ Provide passkey/WebAuthn-ready authentication, MFA and recovery, secure short-li
 Each product environment has one canonical authority for its identity, entitlements, finance and job lifecycle. New production and development SHALL use isolated database identities, least-privilege DB roles and separate credentials from Legacy; do not assume the same PostgreSQL host, database credential or direct data access. Do not create a second ledger or job-settlement engine inside the new platform. If continuity with Legacy is required, use an explicit audited API/event bridge with a single writer and reconciliation; this mission changes no user or financial data. See SPEC-325 and the [R1.5 credential authority ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).
 
 Device enrollment is distinct from browser login. Pairing is owner-initiated and tenant-bound; reconnect uses device-key proof-of-possession and a short-lived audience-bound session, independent of the human web cookie. A bounded Goal grant covers ordinary authorized work without repeated prompts. Membership, device, credential and policy-epoch revocation prevent future actions while preserving truthful offline and locked-session outcomes. See SPEC-325.
+
+## R1.6 — Reuse existing Modular and Legacy identity authority (2026-11-09)
+
+The Core MUST connect to the same canonical PostgreSQL `smartspec` database used by `smartaihub.app`. It MUST reuse existing user IDs, password/hash validation, revocation state, customer tenant IDs, memberships, entitlements, canonical credit ledger and `worker_jobs`/outbox contracts. Existing users MUST be able to sign in to `aimarkethubs.com` and `smartsihub.com` with their existing account. Implementations MUST NOT create a replacement users table, copy identity rows, or migrate the database to a second authority. The new server MUST use Hono/TypeScript and remain Cloudflare Worker-compatible; it MUST NOT add Express or import the Legacy Express runtime.
+
+`aimarkethubs.com` and `smartsihub.com` MUST have separate environment-tenant bindings and separately scoped runtime credentials while sharing the same database and canonical customer records. Session cookies MUST remain host-scoped; account reuse does not transfer a browser session between hostnames. Each request MUST resolve its customer tenant from the verified user session and existing membership, then enforce the environment tenant and normal role/financial policy. Development-only records and effects MUST NOT become production data or effects by sharing the database.
+
+The existing schema and writer contracts are authoritative. Implementations MUST verify password/hash, session/revocation, tenant and ledger semantics from the live schema before implementing the corresponding adapter. Zero DDL remains the default; no authentication, ledger or job migration is implied by this clarification.
+
+Acceptance MUST prove login with a pre-existing Legacy account, matching canonical user/customer IDs and authorized customer-data reads, session revocation and host-scoped cookies, environment-tenant enforcement on reads and writes, and no DDL or second identity/ledger/job authority. The test MUST show that dev credentials cannot perform production-scoped effects and that the Hono Worker build contains no Express server runtime.

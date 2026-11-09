@@ -1,23 +1,23 @@
-# SmartAIHub Modular SaaS — R1.5 implementation roadmap
+# SmartAIHub Modular SaaS — R1.5 implementation roadmap with R1.6 owner clarification
 
-**Decision date:** 2026-11-02
+**Decision date:** 2026-11-02; owner clarification 2026-11-09
 **Status:** Proposed sequencing. No implementation or deployment is claimed.
 
 ## Product and environment boundaries
 
 | Target | Current registered role | Current evidence | R1.5 rule |
 |---|---|---|---|
-| `smartaihub.app` | `legacy-debian-dev`, existing Debian SmartAIHub Legacy | Existing app on `smartspec-web.service`, port 3000 | Keep serving Legacy users. It may be an optional development command tool where a specific Goal path is proven. No full Legacy migration gate. |
-| `aimarkethubs.com` | `modular-debian-dev` | Prepared, `applicationAvailable=false`, `deployable=false`; healthy existing port-3100 service remains | Do not claim a Modular deployment or switch traffic until its replacement is healthy and handover is intentional. |
-| `smartsihub.com` | `modular-cloudflare-prod` | Registered, not activated; no current-account zone or deployability proof | Future separate production authority. Do not activate or create resources in this SPEC-only package. |
+| `smartaihub.app` | `legacy-debian-dev`, existing Debian SmartAIHub Legacy | Existing app on `smartspec-web.service`, port 3000 | Keep serving Legacy users. Its existing `smartspec` users and canonical Core data remain shared. SPEC-224 is an optional development route. |
+| `aimarkethubs.com` | `modular-debian-dev` | Prepared, `applicationAvailable=false`, `deployable=false`; healthy existing port-3100 service remains | Modular development/test environment tenant over the shared `smartspec` database; do not claim deployment or switch traffic until its replacement is healthy and handover is intentional. |
+| `smartsihub.com` | `modular-cloudflare-prod` | Registered, not activated; no current-account zone or deployability proof | Separate Cloudflare production environment tenant over the shared `smartspec` database, with separately scoped runtime/release identity. Do not activate or create resources in this SPEC-only package. |
 
 The hostname, `NODE_ENV`, DNS proxy, repository label and account membership do not establish application identity, database authority or permission to deploy. Before any future release, resolve the exact target from `apps/web/scripts/deployment-targets.json` and assert app, runtime, service, port, database authority, deployment identity and traffic effect.
 
-The registry currently names `smartspec` as the logical production database contract but does not prove a live connection or shared credential. Before future production provisioning, verify and reconcile this mapping to the isolated production database authority required by R1.5. Do not infer or migrate user or financial data from this documentation.
+The target map names the same canonical `smartspec` database for Modular development and production. The mapping does not prove a live connection or runtime readiness. Before a release, verify the exact endpoint, scoped environment credential and environment-tenant binding. Share existing account and authorized Core records without copying the database; keep dev-only records and effects in the development environment tenant. This documentation changes no user or financial data.
 
 ## Delivery sequence
 
-1. **Usable Core boundary.** Establish isolated new-platform identity, tenant membership, sessions, scoped actions, canonical job/finance integration and a verified environment-specific database boundary. No parallel ledger, settlement or job authority.
+1. **Usable Core boundary.** Reuse existing user identity, tenant membership and the canonical shared database; establish sessions, environment-tenant context, scoped actions and canonical job/finance integration. Verify the target-specific DB credential and preserve no parallel ledger, settlement or job authority.
 2. **Chat plus persistent Agent.** Make Chat the signed-in home. Persist Agent identity and Goal/Run state with event-driven Workers/DO/Workflow/Queue behavior; show truthful wait, pause and revoke states. Closing the browser must not cancel authorized durable work.
 3. **Complex task surfaces.** Add Task Control, Mission Control, the shared Web Chat/desktop Companion frontend and typed action registry. Preserve the same thread, Goal, job, run, device and artifact IDs across surfaces.
 4. **Mini App Creator and modular services.** Add per-App capability manifests, isolated data planes and BYOC scopes. Treat imported listings, skills and module code as untrusted.

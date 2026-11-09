@@ -25,29 +25,24 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce"
+    "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Continue SPEC-312 P0 by extending the modular Core workspace in smartaihub-platform; keep the legacy app and current aimarkethubs.com runtime unchanged until an intentional handover.",
+    "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
     "next_ready_workunit": "r14-core-p1-first-slice",
     "reactivation_predicate": null,
-    "resume_point": "External implementation checkpoint: https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95; Initial modular platform repository and Core liveness slice integrated at naibarn/smartaihub-platform main. Repository placement and target boundaries: docs/smartsihub-r1.4/FILE-PLACEMENT.md.",
+    "resume_point": "Last recorded external checkpoint is naibarn/smartaihub-platform at 7456bbe549050473543acbec2b9094d95e5a2e95, per docs/smartsihub-r1.4/FILE-PLACEMENT.md; this checkout has no apps/saas-core source, so verify repository access and current SHA before implementation. Continue the first Hono identity/session/action slice on the shared smartspec database using the aimarkethubs.com development environment tenant. Direct Codex/Claude and optional SPEC-224 are both supported; record the actual path used.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95",
-      {
-        "digest": null,
-        "kind": "R1.5_OWNER_DECISION",
-        "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-      }
+      "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
     ],
-    "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
-    "rationale": "The R1.5 owner decision separates the new SmartAIHub product from Legacy and makes the old development tool optional where its path is proven. Durable execution is cloud-first and device execution is optional by workload.",
+    "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
+    "rationale": "R1.6 now fixes shared PostgreSQL/user authority, distinct dev and production environment tenants, Hono-only new Core, and selectable direct or SPEC-224 development. Implementation remains partial; the canonical external source checkout and live schema/writer still need verification before stateful work.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -77,21 +72,21 @@
         "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
       }
     ],
-    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 7,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+    "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-02T01:43:55.196771Z",
+      "last_evidence_at": "2026-11-09T03:48:26.504208Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.5",
+    "revision": "1.6",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -153,16 +148,11 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "https://github.com/naibarn/smartaihub-platform/tree/7456bbe549050473543acbec2b9094d95e5a2e95",
-        {
-          "digest": null,
-          "kind": "R1.5_OWNER_DECISION",
-          "path": "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md"
-        }
+        "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       ],
-      "next_action": "Continue the R1.5 Core identity/action boundary, then Chat with persistent Agent state and durable jobs. Keep the current aimarkethubs.com port-3100 service until a replacement is healthy; Legacy repair or cutover is not a global prerequisite.",
-      "rationale": "The R1.5 owner decision separates the new SmartAIHub product from Legacy and makes the old development tool optional where its path is proven. Durable execution is cloud-first and device execution is optional by workload.",
+      "next_action": "Before the next code slice, confirm and record the accessible canonical modular source repository and its current SHA. Then implement the bounded Core identity/session/action slice against the existing smartspec schema and user records, using the aimarkethubs.com development environment tenant; choose direct Codex/Claude or optional SPEC-224. Preserve the current port-3100 service and do not activate the Cloudflare production target.",
+      "rationale": "R1.6 now fixes shared PostgreSQL/user authority, distinct dev and production environment tenants, Hono-only new Core, and selectable direct or SPEC-224 development. Implementation remains partial; the canonical external source checkout and live schema/writer still need verification before stateful work.",
       "residual_requirements": []
     },
     "disposition": {
@@ -178,7 +168,7 @@
           "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
         }
       ],
-      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
@@ -192,6 +182,36 @@
         }
       ],
       "updated_at": "2026-11-01T07:18:24.333629Z"
+    },
+    "requirements": {
+      "REQ-FA42CFF33A89": {
+        "applicability": "NOT_APPLICABLE",
+        "applicability_rationale": "The prior mandatory-only rule routing all development through the smartaihub.app Autonomous Implements/Creator is superseded by the owner R1.6 decision. Direct Codex/Claude development in the canonical source repository is a normal supported path; existing SPEC-224 facilities remain optional. Record receipts only for the path actually used.",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L151"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L151",
+        "blocker": null,
+        "current_relevance": "SUPERSEDED_BY_R1.6_OWNER_DECISION",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "NOT_APPLICABLE",
+        "implementation_evidence": [],
+        "implementation_status": "SUPERSEDED_BY_OWNER_CLARIFICATION",
+        "next_action": "No implementation required for this superseded requirement. Follow SPEC-312 R1.6 and retain truthful evidence for the selected development path.",
+        "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
+        "requirement_id": "REQ-FA42CFF33A89",
+        "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
+        "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+        "successor_mapping": [
+          "SPEC-312 R1.6 — Shared Core database, environment tenants and direct development"
+        ],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#R1.6",
+          "docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md#R1.6"
+        ],
+        "verification_method": "Compare the superseded mandatory-only directive with the current R1.6 development-path clause and owner decision register."
+      }
     }
   },
   "reconciliation": {
@@ -202,10 +222,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-02T01:43:55.196771Z",
+    "reconciled_at": "2026-11-09T03:48:26.504208Z",
     "sources": [
       {
-        "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -217,7 +237,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -248,14 +268,14 @@
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "415fbf8f859aec508fb2fe5f1aa4fe4b65377af52fbe3ca13759ad770f0accce",
+        "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       }
@@ -269,13 +289,13 @@
     "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
-    "not_applicable": 0,
+    "not_applicable": 1,
     "pass": 0,
-    "total": 22,
-    "unresolved": 22
+    "total": 29,
+    "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T01:43:55.196771Z",
+  "updated_at": "2026-11-09T03:49:22.083558Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -1,15 +1,15 @@
 ---
 spec_id: 316
 semantic_id: smartaihub.module-gitops-independent-delivery
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-09
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub GitHub Repository Federation, Targeted CI, Immutable Per-Module Release and Wrangler Deploy
 ---
 
 # SPEC-316 — GitHub and Independent Delivery
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 deployment, target, database, runtime, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-09):** Earlier proposal text is retained for provenance. The R1.6 owner clarification and current owner-decision register control conflicting development-path and shared-database assertions; all other R1.5 target and release boundaries remain in force.
 
 ## 0. Intent
 
@@ -174,3 +174,11 @@ Release each Worker/module independently through Wrangler or another authorized 
 The release record SHOULD include provenance, dependency lock state, SBOM, build inputs and immutable artifact digest; use signed or otherwise verifiable artifacts where the selected distribution supports it. Review skills, generated code and third-party modules as supply-chain inputs. Restrict production effects to a separate production release identity and require separation of duties for high-impact production mutations. Rollback targets one module/release and does not alter unrelated modules or data. All applicable Worker secrets are declared with Wrangler secrets.required; deploy/version upload must fail when a required binding is absent, and runtime startup/readiness must fail closed if required configuration is unavailable. See SPEC-325 and the [R1.5 credential ADR](../../../docs/architecture/ZERO-TRUST-CREDENTIAL-AND-ACTION-AUTHORITY-ADR.md).
 
 Runner/Core packages, signed update manifests and shared-WebView client compatibility follow separate release identities and rollback paths from Workers. Windows SCM and Linux systemd lifecycle metadata must be explicit; an update cannot silently re-pair a device, downgrade protocol security, add an undeclared capability or bypass quarantine. Verify installer publisher, artifact digest, signer rotation and anti-downgrade behavior before remote execution is enabled.
+
+## R1.6 — Direct Codex/Claude development and shared Core database (2026-11-09)
+
+Direct development by Codex or Claude in the canonical source repository MUST be supported as a normal path. Development MAY instead dispatch the same work through existing SPEC-224 facilities on `smartaihub.app`; this is optional, not a prerequisite. Both paths MUST use the same source ownership, focused checks, commit/push policy, exact deployment target selection and handoff. Only the SPEC-224 route produces SPEC-224 Run/Runner receipts; implementations MUST NOT attribute direct work to a Run that did not execute it or introduce a parallel in-house orchestration system.
+
+The `legacy-debian-dev`, `modular-debian-dev` and `modular-cloudflare-prod` applications MUST connect to the same canonical PostgreSQL `smartspec` database using separately scoped runtime credentials. `aimarkethubs.com` is for development/test on its environment tenant; `smartsihub.com` is the distinct Cloudflare production environment tenant. Target, database, tenant and release identities MUST remain independently verified. Preserve the current aimarket port-3100 service and keep the Cloudflare production target inactive until its replacement and separate release authority are healthy.
+
+Acceptance MUST show a truthful source/check/handoff record for both the direct development path and the optional SPEC-224 path; SPEC-224 Run receipts are required only for work performed through that path. Release evidence MUST demonstrate that the same canonical database is selected with dev and production credentials scoped to their respective environment tenants and targets.
