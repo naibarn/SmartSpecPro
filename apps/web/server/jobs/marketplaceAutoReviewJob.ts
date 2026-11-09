@@ -360,6 +360,11 @@ export async function runMarketplaceAutoReviewJob(
           typeof metadata.initializationControl === "object"
             ? metadata.initializationControl
             : {};
+        const planReview =
+          metadata.planReview && typeof metadata.planReview === "object"
+            ? metadata.planReview
+            : {};
+        const awaitingPlanReview = planReview.status === "awaiting";
         const creativeQc =
           metadata.creativeQc && typeof metadata.creativeQc === "object"
             ? metadata.creativeQc
@@ -438,14 +443,16 @@ export async function runMarketplaceAutoReviewJob(
               skippedRuns += 1;
               continue;
             }
-            await queueMarketplaceAutoReviewAdvance(
-              run.id,
-              { userId: run.userId, tenantId },
-              {
-                schedulerSource: `marketplace-auto-review-recovery:${getSchedulerMode()}`,
-              },
-              5_000
-            );
+            if (!awaitingPlanReview) {
+              await queueMarketplaceAutoReviewAdvance(
+                run.id,
+                { userId: run.userId, tenantId },
+                {
+                  schedulerSource: `marketplace-auto-review-recovery:${getSchedulerMode()}`,
+                },
+                5_000
+              );
+            }
           } else if (initializationJob?.status === "succeeded") {
             skippedRuns += 1;
             errors.push({
@@ -464,6 +471,11 @@ export async function runMarketplaceAutoReviewJob(
               priority: 20,
             });
           }
+        } else if (awaitingPlanReview) {
+          // The text/story checkpoint is intentionally user-driven. Do not
+          // flood worker_jobs with no-op advance jobs while the user reviews it.
+          skippedRuns += 1;
+          continue;
         } else {
           await queueMarketplaceAutoReviewAdvance(
             run.id,
