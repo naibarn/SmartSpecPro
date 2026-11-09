@@ -4,10 +4,11 @@
 
 - Config rejects missing/unknown target ID, environment-tenant ID, signing secret and DB binding.
 - Development and production environment IDs/scope IDs are distinct; Host and request fields cannot choose them. A dev request cannot present a production Host and continue.
-- `pg` factory uses only the provided Hyperdrive connection string, binds parameters, closes the client on success/failure, and does not log the URL.
+- `pg` factory uses only the trusted Cloudflare Hyperdrive binding or the local-only `CORE_LOCAL_DATABASE_URL`, binds parameters, closes the client on success/failure, and does not log the URL. Local configuration rejects any DB other than `smartspec` and any role not ending `_dev`; Cloudflare runtime has no local-DSN fallback.
 - Repository SQL uses existing exact table/column names and normalized trim/lower email lookup; membership query filters inactive memberships and tenants. DTOs do not contain password, MFA secret, recovery hashes or private fields.
 - Recovery-code update transaction locks the account row and cannot consume the same code twice under concurrent calls. JTI rows store only SHA-256 of the raw random JTI and expire no later than the token.
 - A role/grant verification script or catalog query asserts the development role has no write privilege on `worker_jobs`, outbox, credits, transactions, billing, subscriptions, entitlements or Mini App business data and has no CREATE/role/database privilege. Do not select user rows.
+- Verify no DSN is in tracked files/Wrangler config and the ignored `.dev.vars` file, if created, is owner-only and never emitted to command output.
 
 ## Section 02 — Existing password and MFA compatibility
 

@@ -15,12 +15,12 @@ Write scope in `/mnt/SmartSpecDev/projects/smartaihub-platform`:
 - `apps/saas-core/wrangler.jsonc`
 - root and Core package manifest/lock only when required for `pg`.
 
-Any provisioned role/connection secret lives outside Git in an owner-only local secret store; do not include its content in source, test output or evidence.
+Any provisioned role/connection secret lives outside Git in an owner-only local secret store or ignored `.dev.vars` file with mode `0600`; do not include its content in source, test output or evidence.
 
 ## Contracts
 
 - Resolve target ID and environment-tenant scope only from typed runtime bindings. Reject missing/unknown values. Host allowlists are for origin/cookie checks only, not customer-tenant selection.
-- Create a `pg` Client from `HYPERDRIVE.connectionString`, close it per request/transaction, parameterize all values, and expose an injectable client factory.
+- Create a `pg` Client from the future Cloudflare `HYPERDRIVE.connectionString`, or the local-only `CORE_LOCAL_DATABASE_URL`, close it per request/transaction, parameterize all values, and expose an injectable client factory. Local DSNs must resolve to database `smartspec` and a role ending `_dev`; Cloudflare runtime cannot use the local DSN. Do not provision a Cloudflare Hyperdrive resource in this slice.
 - Authenticate against exact current quoted `users` columns; query `tenant_users` and active `tenants` using verified current identifiers; access only the hashed JTI revocation table for session security.
 - Do not use the Legacy service credential. A dedicated dev role can read only needed account/membership columns, update only recovery/session bookkeeping columns, and read/write JTI revocations. It cannot create schema/roles/databases or write financial, job/outbox, entitlement or Mini App business tables.
 - No schema migration, user data seeding or database copy.
