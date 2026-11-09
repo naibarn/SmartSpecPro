@@ -1,0 +1,38 @@
+# SPEC-312 R1.6 first Core slice — research
+
+## Codebase and authority
+
+- Canonical requirements and target authority live in SmartSpecPro. The active source repository is `/mnt/SmartSpecDev/projects/smartaihub-platform`, `main` at `f271a2b669de97b1ae85788f3233902b47db018b`, fetched and equal to `origin/main` on 2026-11-10.
+- The source repository is a small pnpm/Turborepo workspace. `apps/saas-core` currently has Hono 4.9.8, Wrangler 4.156.0, TypeScript 5.5.4 and Vitest 3.2.4; it exposes only `GET /livez`. There is no DB adapter, identity/session code, worker binding, Express runtime, shell UI, or production route.
+- Existing repository scripts are package-scoped (`test:core`, `typecheck:core`, `build:core`, `dev:core`). The root lockfile is `pnpm-lock.yaml`. Do not copy/import `apps/web` into Core.
+- Existing source plan `docs/superpowers/plans/2026-11-01-saas-core-bootstrap.md` confirms Hono/workerd local proof and target-safe deployment boundaries. It is an earlier bootstrap plan, not evidence of auth/database implementation.
+
+## Canonical SPEC and handoff
+
+- SPEC-312 R1.6 requires the same PostgreSQL `smartspec` control-plane DB and existing user/customer IDs, separate immutable environment-tenant bindings, Hono/TypeScript, no Express, and direct Codex/Claude source development with SPEC-224 optional.
+- The active canonical requirement for the R1.6 acceptance clause is `REQ-46847581892C`. It remains OPEN. Its full acceptance spans more than this first code slice; this plan must not mark the entire requirement complete based on unit tests or a local worker.
+- Existing SPEC handoff points to the first Core identity slice and says no live rows/schema or runtime target were changed. The active Legacy DB role is superuser and cannot be reused. `aimarkethubs.com` is unavailable to Modular until intentional healthy handover; `smartsihub.com` is inactive.
+
+## Read-only schema and auth evidence
+
+- The 2026-11-09 audit used catalog-only, read-only PostgreSQL inspection and did not select user/business rows or expose hashes/secrets. It verified PostgreSQL 15.17 and the canonical `smartspec` database.
+- Relevant current account fields include `users.id`, `openId`, `name`, `email`, `password`, `loginMethod`, `role`, `currentTenantId`, `isDisabled`, `normalizedEmail`, `twoFactorEnabled`, encrypted `twoFactorSecret`, hashed `recoveryCodes`, `lastSignedIn` and `sessionRevokedAt`. The physical schema uses quoted camel-case identifiers for these fields.
+- Active customer membership uses `tenant_users` with `tenant_id`, `user_id`, `role` and `is_active`; tenant rows have duplicate schema generations, so the adapter must use catalog-verified current columns and filter inactive membership/tenant records. The customer tenant is never derived from the modular hostname.
+- Legacy email matching is `trim().toLowerCase()` and `lower(btrim(email))`; it intentionally does not strip provider-specific dot/plus aliases. Legacy browser login verifies bcrypt, rejects disabled and passwordless accounts, performs a TOTP challenge when enabled, consumes hashed recovery codes once, and issues a 30-day host-scoped session. Device auth also accepts Argon2 hashes.
+- Legacy session validation checks `sessionRevokedAt` and the SHA-256 JTI revocation table. Logout writes a JTI hash with expiry. New Core cookies must be host-only and environment/audience-bound; do not accept a Legacy cookie on a modular hostname or share signing keys across environments.
+- Legacy TOTP ciphertext uses AES-256-GCM in `iv:authTag:ciphertext` hex form with key material derived as SHA-256 of `LLM_ENCRYPTION_KEY`; legacy CBC values are rejected. Existing TOTP accounts cannot be supported without the matching account-data decryption key. That is a narrowly scoped shared canonical-data key, not a DB/deployment/session credential; do not print, commit, or grant other database columns because of it.
+- Current login also has non-auth business side effects (free-credit lifecycle, role promotion by configured email, OAuth synchronization/registration). These are intentionally outside the first Core slice. Core must never auto-promote an account or create/sync a user. It checks existing `isDisabled` and existing memberships only.
+
+## Runtime research (official primary sources)
+
+- Cloudflare Hyperdrive documents `pg` / node-postgres as the recommended PostgreSQL driver, currently requiring `pg@8.16.3` or later and Node compatibility for Workers; local `wrangler dev` can use `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` without committing a connection string. Hyperdrive connection-string auth is separate from local direct DB credentials. Sources: [Hyperdrive PostgreSQL driver guide](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/) and [Hyperdrive local development](https://developers.cloudflare.com/hyperdrive/configuration/local-development/).
+- Cloudflare Workers WebCrypto supports HMAC/SHA-1 and AES-GCM primitives needed to match the existing TOTP and secret-encryption formats without Node crypto in the request path. Source: [Workers WebCrypto API](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/).
+- `hash-wasm` documents Worker-compatible WASM verification for bcrypt, Argon2 and bcrypt recovery hashes. It is a candidate, not accepted until bundle and known-vector compatibility checks confirm it. Source: [hash-wasm upstream README](https://github.com/Daninet/hash-wasm/blob/master/README.md).
+
+## Design boundaries inferred for this slice
+
+- Bind `environmentId` and `environmentTenantId` from validated runtime configuration, never `Host`, `NODE_ENV`, a request field, or customer membership. Use explicit constants for the development and production scopes. Configure only local modular development; production remains absent/inert until its existing target authority is ready.
+- Shared account and customer membership reads intentionally see canonical records. This first slice exposes only login, session, logout and the caller's active membership projection. It has no wallet, payment, job/outbox, app-business-data or tenant-admin write route. The dev DB role must have no privileges to write those effect tables.
+- Canonical authentication writes are limited to one-time recovery-code consumption, last-sign-in bookkeeping if retained, and hashed-JTI revocation. The credential is separate from Legacy and limited by column/table privileges; no DDL, new identity/session ledger or database copy is planned.
+- No module writes development-only business records in this slice. Any later write endpoint remains unimplemented until its canonical row/effect has an enforceable environment scope in the authoritative data/writer contract; current `worker_jobs` has no explicit environment column.
+- Local focused tests use injected repository/crypto dependencies and synthetic hashes. A real existing user's password and live browser UAT are not available to automated tests and must remain explicitly unverified unless performed with an authorized test account.

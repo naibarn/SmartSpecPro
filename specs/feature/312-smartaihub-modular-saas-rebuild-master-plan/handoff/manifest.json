@@ -28,10 +28,10 @@
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Before the first stateful Core slice, define how the aimarkethubs.com development and smartsihub.com production environment tenants bind separately from customer tenant IDs, and provision a least-privilege Modular development DB identity/secret. Then implement the Hono login/session adapter in smartaihub-platform at f271a2b669de97b1ae85788f3233902b47db018b, preserving existing password, 2FA, cookie and revocation behavior. Keep aimarket unavailable until the replacement is healthy and keep smartsihub.com inactive.",
-    "next_ready_workunit": "r14-core-p1-first-slice",
+    "next_action": "Deep Plan for the SPEC-312 R1.6 first Core identity slice is complete and section validation passes (4/4). Begin Deep Implement from smartaihub-platform main f271a2b669de97b1ae85788f3233902b47db018b, starting with the environment/database boundary. Use the existing smartspec account authority, provision only a separate least-privilege modular development credential if its exact grants and secret storage are verified, and keep both public targets unchanged.",
+    "next_ready_workunit": "r16-core-auth-slice-section-01",
     "reactivation_predicate": null,
-    "resume_point": "Canonical source naibarn/smartaihub-platform is present at clean main SHA f271a2b669de97b1ae85788f3233902b47db018b, matching origin/main; apps/saas-core currently contains only /livez. A read-only catalog audit of the active Legacy service verified the smartspec database and relevant users, tenant_users, tenants, worker_jobs/outbox, credits and subscription schema. The current Legacy DB role is superuser and MUST NOT be reused by Core. No explicit environment-tenant field was found on core identity/job tables. See handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md. No DB rows/schema or runtime targets were changed.",
+    "resume_point": "Planning artifacts: specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md, claude-plan.md, claude-plan-tdd.md, claude-research.md, and sections/index.md plus section-01 through section-04. check-sections.py reports complete 4/4. Canonical source smartaihub-platform main is f271a2b669de97b1ae85788f3233902b47db018b. Parent REQ-46847581892C remains OPEN. Next action: run Deep Implement section 01; preserve user data and do not deploy or hand over aimarkethubs.com/smartsihub.com.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -42,8 +42,8 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
     ],
-    "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
-    "rationale": "The canonical Core repository and current SHA are verified, and a read-only audit confirmed the existing smartspec identity, membership, ledger and job schema. The Core source is still only a liveness endpoint. The Legacy runtime DB role is overprivileged for reuse, and the current schema does not define an environment-tenant binding for shared Core rows. These are concrete prerequisites for the first stateful adapter; no production or runtime change is claimed.",
+    "next_action": "Deep Plan is complete and validated (four implementation sections). Continue with Deep Implement section 01 in canonical smartaihub-platform/main; implement trusted environment binding and least-privilege shared-smartspec adapter before the auth/session routes. Keep the full parent SPEC acceptance open.",
+    "rationale": "R1.6 source/schema discovery is complete and the first implementable slice is now fully sectionized. The plan maps to REQ-46847581892C, preserves the shared canonical identity/customer data contract, avoids job/financial writes without environment columns, and requires a separate dev credential. The production target remains inactive; no deployment or handover is claimed.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -76,7 +76,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -154,8 +154,8 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md"
       ],
-      "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
-      "rationale": "The canonical Core repository and current SHA are verified, and a read-only audit confirmed the existing smartspec identity, membership, ledger and job schema. The Core source is still only a liveness endpoint. The Legacy runtime DB role is overprivileged for reuse, and the current schema does not define an environment-tenant binding for shared Core rows. These are concrete prerequisites for the first stateful adapter; no production or runtime change is claimed.",
+      "next_action": "Deep Plan is complete and validated (four implementation sections). Continue with Deep Implement section 01 in canonical smartaihub-platform/main; implement trusted environment binding and least-privilege shared-smartspec adapter before the auth/session routes. Keep the full parent SPEC acceptance open.",
+      "rationale": "R1.6 source/schema discovery is complete and the first implementable slice is now fully sectionized. The plan maps to REQ-46847581892C, preserves the shared canonical identity/customer data contract, avoids job/financial writes without environment columns, and requires a separate dev credential. The production target remains inactive; no deployment or handover is claimed.",
       "residual_requirements": []
     },
     "disposition": {
@@ -298,7 +298,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-09T04:23:21.544380Z",
+  "updated_at": "2026-11-09T18:40:54.934499Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
