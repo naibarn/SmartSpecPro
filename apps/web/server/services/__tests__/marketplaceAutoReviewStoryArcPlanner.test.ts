@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { isCompleteStagedVideoPrompt } from "../marketplaceAutoReviewStagedPromptCompiler";
 
 import {
   assessStagedPlanAdherence,
@@ -178,7 +179,7 @@ describe("buildStagedStoryArcPlan — two-person conversation end to end (market
     expect(prompt).toContain("@Image3 = Somchai (guest)");
   });
 
-  it("buildStagedVideoPrompt binds each canonical dialogue line to its labeled portrait", () => {
+  it("buildStagedVideoPrompt keeps cast tags out of renderer cues and falls back safely when it cannot inspect the image", () => {
     const plan = buildStagedStoryArcPlan({
       runId: "run-two-person-video",
       product: {
@@ -195,13 +196,48 @@ describe("buildStagedStoryArcPlan — two-person conversation end to end (market
 
     expect(prompt).toContain("Ann");
     expect(prompt).toContain("Somchai");
-    expect(prompt).toContain("Character identity manifest from the labeled portrait references:");
-    expect(prompt).toContain("@Image2 = Ann (host; cast-1)");
-    expect(prompt).toContain("@Image3 = Somchai (guest; cast-2)");
-    expect(prompt).toContain(`1. Ann [cast-1; @Image2; host]: "${turns[0].line}"`);
-    expect(prompt).toContain(`2. Somchai [cast-2; @Image3; guest]: "${turns[1].line}"`);
+    expect(prompt).toContain("SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):");
+    expect(prompt).toContain("- Ann: not visually resolved by this text-only fallback");
+    expect(prompt).toContain("- Somchai: not visually resolved by this text-only fallback");
+    expect(prompt).toContain(`1. Ann (not visually resolved by this text-only fallback`);
+    expect(prompt).toContain(`2. Somchai (not visually resolved by this text-only fallback`);
+    expect(prompt).not.toContain("@Image2 = Ann");
+    expect(prompt).not.toContain("@Image3 = Somchai");
+    expect(prompt).not.toContain("cast-1; @Image2");
+    expect(prompt).not.toContain("cast-2; @Image3");
     expect(prompt).toContain("SPEAKER-TO-FACE LOCK:");
-    expect(prompt).toContain("everyone else stays silent, mouths closed");
+    expect(prompt).toContain("use offscreen voice-over");
+    expect(isCompleteStagedVideoPrompt(prompt, plan.shots[0].dialogue, turns, plan.cast)).toBe(true);
+    expect(
+      isCompleteStagedVideoPrompt(
+        prompt.replace("SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):", "Character identity manifest:"),
+        plan.shots[0].dialogue,
+        turns,
+        plan.cast
+      )
+    ).toBe(false);
+    const annAnchor = "the woman with dark hair tied back and a cream blouse on viewer-left";
+    const somchaiAnchor = "the man with swept-back dark hair and a dark blazer on viewer-right";
+    const visuallyGroundedPrompt = prompt
+      .replace(
+        "- Ann: not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed",
+        `- Ann: ${annAnchor}`
+      )
+      .replace(
+        "- Somchai: not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed",
+        `- Somchai: ${somchaiAnchor}`
+      )
+      .replace(
+        "Ann (not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed):",
+        `Ann (${annAnchor}):`
+      )
+      .replace(
+        "Somchai (not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed):",
+        `Somchai (${somchaiAnchor}):`
+      );
+    expect(
+      isCompleteStagedVideoPrompt(visuallyGroundedPrompt, plan.shots[0].dialogue, turns, plan.cast)
+    ).toBe(true);
     expect(prompt).not.toContain(`Approved dialogue (must not be rewritten): ${plan.shots[0].dialogue}`);
   });
 
@@ -225,8 +261,8 @@ describe("buildStagedStoryArcPlan — two-person conversation end to end (market
       shot: { ...shot, dialogue: editedDialogue, dialogueTurns: staleTurns },
     });
 
-    expect(prompt).toContain('Ann [cast-1; @Image2; host]: "This is the newly approved host line."');
-    expect(prompt).toContain('Somchai [cast-2; @Image3; guest]: "This is the newly approved guest line."');
+    expect(prompt).toContain('Ann (not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed): "This is the newly approved host line."');
+    expect(prompt).toContain('Somchai (not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed): "This is the newly approved guest line."');
     for (const staleTurn of staleTurns) {
       expect(prompt).not.toContain(staleTurn.line);
     }

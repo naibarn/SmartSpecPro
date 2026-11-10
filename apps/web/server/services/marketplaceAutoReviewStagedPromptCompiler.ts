@@ -106,11 +106,45 @@ export function isCompleteStagedVideoPrompt(
   });
   const bindingDirectivePresent =
     /speaker-to-face|speaker.{0,30}face|lip[ -]?sync|mouth|ขยับปาก|ผูกผู้พูดกับใบหน้า/i.test(prompt);
-  const missingSpeakerBinding = requiredSpeakerBindings.some(
-    member =>
+  const visualMapPresent = /SPEAKER VISUAL MAP FOR THIS SHOT/i.test(prompt);
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const speakerAnchorByName = new Map<string, string>();
+  for (const member of requiredSpeakerBindings) {
+    const match = prompt.match(
+      new RegExp(
+        `(?:^|\\n)\\s*[-*]\\s*${escapeRegExp(member.name)}\\s*:\\s*([^\\r\\n]+)`,
+        "i"
+      )
+    );
+    if (match?.[1]?.trim()) {
+      speakerAnchorByName.set(normalizedName(member.name), match[1].trim());
+    }
+  }
+  const missingSpeakerBinding = requiredSpeakerBindings.some(member => {
+    const anchor = speakerAnchorByName.get(normalizedName(member.name));
+    return (
       !prompt.includes(member.name) ||
-      !prompt.includes(`@Image${member.imageIndex}`)
-  );
+      !anchor ||
+      anchor.length < 12 ||
+      /@Image\d+|cast-\d+/i.test(anchor)
+    );
+  });
+  const dialogueHasVisualAnchors = (namedDialogue ?? []).every(line => {
+    const member = castByName.get(normalizedName(line.speakerName));
+    if (!member) return true;
+    const anchor = speakerAnchorByName.get(normalizedName(member.name));
+    const linePosition = prompt.indexOf(line.line);
+    if (!anchor || linePosition < 0) return false;
+    const priorText = prompt.slice(0, linePosition);
+    const anchorPosition = priorText.lastIndexOf(anchor);
+    const speakerPosition = priorText.lastIndexOf(member.name, anchorPosition);
+    return (
+      anchorPosition >= 0 &&
+      speakerPosition >= 0 &&
+      anchorPosition - speakerPosition <= 60
+    );
+  });
   return (
     prompt.length >= STAGED_VIDEO_PROMPT_MIN_CHARS &&
     prompt.length <=
@@ -126,7 +160,10 @@ export function isCompleteStagedVideoPrompt(
     !containsDuplicateApprovedLine &&
     !containsStaleTurn &&
     (requiredSpeakerBindings.length === 0 ||
-      (bindingDirectivePresent && !missingSpeakerBinding))
+      (bindingDirectivePresent &&
+        visualMapPresent &&
+        !missingSpeakerBinding &&
+        dialogueHasVisualAnchors))
   );
 }
 

@@ -526,8 +526,12 @@ describe("buildStagedSingleShotRefreshInput — video-stage grounds in the appro
     expect(contract).toContain("shotContract.dialogue is the ONLY canonical spoken script");
     expect(contract).toContain("@Image2 = Ann (host)");
     expect(contract).toContain("@Image3 = Somchai (guest)");
-    expect(contract).toContain("Only the named speaker moves their mouth");
-    expect(contract).toContain("do not imply those separate portrait files will also be attached");
+    expect(contract).toContain("inspect the approved_shot_image and compare each visible face");
+    expect(contract).toContain("SPEAKER VISUAL MAP FOR THIS SHOT:");
+    expect(contract).toContain("repeat the exact visual anchor from the map");
+    expect(contract).toContain("Do not use cast IDs or @ImageN tags as the final video's identity cue");
+    expect(contract).toContain("Only the matched speaker moves their mouth");
+    expect(contract).toContain("the renderer receives the accepted shot image as its visual source");
   });
 
   it("stage: 'image' does NOT include the approved shot image, even when one already exists (image generation stays independent of video state)", () => {

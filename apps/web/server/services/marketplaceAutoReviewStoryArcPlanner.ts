@@ -1269,44 +1269,57 @@ export function buildStagedVideoPrompt(input: {
   const castByName = new Map(
     cast.map(member => [normalizeName(member.name), member])
   );
-  const renderSpeaker = (speakerName: string) => {
-    const member = castByName.get(normalizeName(speakerName));
-    if (!member) return speakerName;
-    return `${member.name} [${member.castId}; @Image${member.imageIndex}; ${member.role}]`;
-  };
+  const renderSpeaker = (speakerName: string) =>
+    castByName.get(normalizeName(speakerName))?.name ?? speakerName;
 
   const conversationLinesTH: string[] = [];
   const conversationLinesEng: string[] = [];
   if (usesSpeakerBinding) {
-    const identityLines = cast
-      .filter(member => member.role !== "support")
-      .map(member => {
-        const descriptor = clean(member.descriptor).slice(0, 120);
-        return `- @Image${member.imageIndex} = ${member.name} (${member.role}; ${member.castId}${descriptor ? `; ${descriptor}` : ""})`;
-      });
-    if (identityLines.length > 0) {
+    const visibleSpeakerLines = (namedDialogue ?? []).map(line => {
+      const speakerName = renderSpeaker(line.speakerName);
+      const fallbackCueEn =
+        "not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed";
+      const fallbackCueTh =
+        "fallback แบบข้อความไม่สามารถตรวจยืนยันใบหน้าได้; ใช้เสียงบรรยายนอกจอและปิดปากตัวละครทุกคนในภาพ";
+      return { speakerName, fallbackCueEn, fallbackCueTh };
+    });
+    if (visibleSpeakerLines.length > 0) {
       conversationLinesTH.push(
-        "แผนผังยืนยันตัวตนจากภาพอ้างอิงที่ติดป้ายชื่อ:",
-        ...identityLines,
-        "ใช้ป้าย @Image จับคู่ตัวตนตอนเขียน Prompt; ตอน render ให้จับคู่หน้าเดิมในภาพช็อตที่อนุมัติแล้ว (ภาพเดียวที่แนบให้ระบบสร้างวิดีโอ)"
+        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
+        ...visibleSpeakerLines.map(
+          ({ speakerName, fallbackCueTh }) =>
+            `- ${speakerName}: ${fallbackCueTh}`
+        ),
+        "รหัส cast และป้าย @Image เป็นข้อมูลเฉพาะตอนเขียน Prompt เท่านั้น; ห้ามใช้แทนจุดสังเกตของคนในภาพจริง"
       );
       conversationLinesEng.push(
-        "Character identity manifest from the labeled portrait references:",
-        ...identityLines,
-        "Use @Image labels to map identities while authoring; at render, match those same faces in the accepted shot (the only attached image)."
+        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
+        ...visibleSpeakerLines.map(
+          ({ speakerName, fallbackCueEn }) =>
+            `- ${speakerName}: ${fallbackCueEn}`
+        ),
+        "Cast IDs and @Image labels are authoring-only metadata; never use them as visual identifiers in the rendered video prompt."
       );
     }
     if (namedDialogue) {
+      const cueForSpeaker = (speakerName: string, language: "th" | "en") => {
+        const cue = visibleSpeakerLines.find(
+          item => normalizeName(item.speakerName) === normalizeName(speakerName)
+        );
+        return language === "th"
+          ? cue?.fallbackCueTh ?? "ใช้เสียงบรรยายนอกจอเพราะยังจับคู่ใบหน้าไม่ได้"
+          : cue?.fallbackCueEn ?? "not visually resolved by this text-only fallback; use offscreen voice-over";
+      };
       conversationLinesTH.push(
         "บทพูดที่อนุมัติแล้ว (พูดแต่ละบรรทัดครั้งเดียว ตามลำดับและข้อความนี้เท่านั้น):",
         ...namedDialogue.map((line, i) =>
-          `${i + 1}. ${renderSpeaker(line.speakerName)}: "${line.line}"`
+          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "th")}): "${line.line}"`
         )
       );
       conversationLinesEng.push(
         "Approved dialogue (speak each line exactly once, in this order, with no added or rewritten speech):",
         ...namedDialogue.map((line, i) =>
-          `${i + 1}. ${renderSpeaker(line.speakerName)}: "${line.line}"`
+          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "en")}): "${line.line}"`
         )
       );
     } else {
@@ -1320,10 +1333,10 @@ export function buildStagedVideoPrompt(input: {
       );
     }
     conversationLinesTH.push(
-      "ล็อกผู้พูดกับใบหน้า: จับคู่ชื่อกับ portrait และใบหน้าเดียวกันในภาพที่อนุมัติ ขยับปากเฉพาะผู้พูด คนอื่นปิดปาก ห้ามเดาตำแหน่งหรือสลับตัวตน หากไม่มั่นใจให้ใช้เสียงบรรยาย"
+      "ล็อกผู้พูดกับใบหน้า: fallback นี้ไม่มีการตรวจภาพเพื่อจับคู่ใบหน้า จึงห้ามเดาตัวตนหรือสั่งขยับปาก ให้ใช้เสียงบรรยายนอกจอเท่านั้น"
     );
     conversationLinesEng.push(
-      "SPEAKER-TO-FACE LOCK: Match each named speaker to the portrait and same face in the accepted shot. Only that speaker moves their mouth; everyone else stays silent, mouths closed. Never guess positions or swap identities. If unsure, use voice-over."
+      "SPEAKER-TO-FACE LOCK: This text-only fallback has not visually matched the portraits to people in the accepted shot. Do not guess or assign visible lip movement; use offscreen voice-over and keep every visible mouth closed."
     );
   }
 

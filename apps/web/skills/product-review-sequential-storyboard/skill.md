@@ -245,7 +245,10 @@ behavior or output.
 
 **Lead casting is fixed per run; supporting presence is per shot.** Bind each
 character reference's `@ImageN` tag to exactly one `characterName` for the
-entire run. Never render one character's face on the other character's
+entire run while authoring image and storyboard prompts. This portrait mapping
+is prompt-authoring context; it is not the final video's speaker locator. See
+Phase G for the required frame-grounded speaker map in each video prompt.
+Never render one character's face on the other character's
 `@ImageN` tag, never invent a speaker who is not in the manifest, and never
 let a later shot silently swap who is who. The two LEADS (`character_role`
 `host` and `guest`) are the conversation and are fixed for the whole run;
@@ -294,6 +297,10 @@ contact, a small responsive expression — never idle and never mouthing the
 other character's line. Direct two clearly distinct voice qualities (one per
 `characterName`) and hold each one constant across every shot of the run;
 never collapse to a single narrator voice when two characters are present.
+Use the shot-specific speaker map above to bind each line to the visible
+person. The map and repeated cue must describe the accepted image itself; do
+not assume the final video renderer receives the separate portrait images or
+understands cast IDs.
 Use the shot's own `duration_seconds` to pace the exchange across its
 opening/middle/closing thirds — never assume every shot runs the same fixed
 length when timing who speaks when.
@@ -469,14 +476,11 @@ shot, filling only the bracketed nouns from the evidence profile and
 prepending it to every `video_prompt`:
 
 ```text
-Use @Image1 as the absolute product identity reference[ and @Image(K+1) as the
-character identity reference when one character is supplied, or @Image(K+1)
-and @Image(K+2) as the two character identity references — one per
-characterName — in Two-Person Conversation Mode]. Keep the exact same
-[PRODUCT IDENTITY SUMMARY] and the same [CHARACTER IDENTITY SUMMARY]
-consistent in every shot (or, in Two-Person Conversation Mode, the same
-[HOST CHARACTER IDENTITY SUMMARY] and the same [GUEST CHARACTER IDENTITY
-SUMMARY] — never let the two identities blur into one another). Use the
+Use @Image1 as the absolute product identity reference. Keep the exact same
+[PRODUCT IDENTITY SUMMARY] and character identities consistent in every shot
+(or, in Two-Person Conversation Mode, keep the host and guest identities
+distinct). Character portrait labels are for prompt authoring only; the video
+renderer receives the accepted shot image as its visual source. Use the
 additional product angle references only to keep the product accurate from
 every camera direction; never let them override @Image1.
 
@@ -507,6 +511,24 @@ where no character reference was supplied. The Two-Person Conversation Mode
 variant of that bracketed clause, and the bracketed audio-continuity clause
 above, likewise sit entirely after this fixed opening sentence and never
 affect its detection.
+
+**Shot-specific speaker identity for video rendering.** When an approved shot
+image and labeled character portraits are present, inspect the actual approved
+image and compare each visible face with the matching portrait before writing
+the video's speaker cues. The approved image is ground truth for who appears,
+where they are in the frame, and what they visibly look like; never rely on an
+intended layout from the image prompt or on biography text as an appearance
+description. Add this exact heading to `video_prompt`:
+`SPEAKER VISUAL MAP FOR THIS SHOT:`. Under it, add one bullet per speaking
+character with their exact name and a short, observable cue from this image,
+including viewer-relative position when visible (for example, `the woman with
+dark hair tied back in a cream blouse on viewer-left`). Repeat that same cue
+alongside the character's name in that character's dialogue line. Do not use
+`cast-1`, `cast-2`, or `@ImageN` as the renderer's identity cue; those labels
+are only available during prompt authoring. If the speaker is off-screen or
+the portrait cannot be confidently matched to a visible face, say
+`offscreen voice-over; not visible`, keep all visible mouths closed, and do
+not guess. Keep every approved dialogue line exact, once, and in order.
 
 The internal composition fields (`scene`, `camera`, `action`, `dialogue`,
 `performance`, `audio_details`, `continuity_constraints`,

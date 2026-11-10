@@ -3111,8 +3111,10 @@ function buildSequentialSingleShotRefreshContract(
       ...characterReferences.map(
         entry => `@Image${entry.index} = ${entry.characterName} (${entry.characterRole || "character"}${entry.variantLabel ? `; ${entry.variantLabel}` : ""})`
       ),
-      "In video_prompt, bind each spoken line to its exact character name and matching labeled portrait identity. Match that same face in the approved_shot_image; do not guess by left/right placement, name alone, or cast order. Only the named speaker moves their mouth for their line; listeners and all other visible people keep their mouths closed. If a face cannot be matched confidently, do not assign lip movement to the wrong person.",
-      "The approved_shot_image is the final video visual source. Portrait labels are identity anchors from this prompt-authoring call; do not imply those separate portrait files will also be attached to the video renderer."
+      "Before writing video_prompt, inspect the approved_shot_image and compare each visible face with the labeled character portraits. The accepted image is the ground truth for who is actually visible, their viewer-relative screen position, and their observable appearance; never copy a requested layout or infer appearance from biography.",
+      "In video_prompt, add this exact heading: SPEAKER VISUAL MAP FOR THIS SHOT:. Under it add one bullet per spoken character in the form `- Exact Name: short observed appearance plus viewer-relative position from the accepted image`, or explicitly `offscreen voice-over; not visible` when that speaker is absent or cannot be matched confidently. Use only visible, shot-specific cues such as clothing, hair, foreground/background, and viewer-left/center/right; do not invent details.",
+      "In each approved dialogue cue, identify the speaker by exact name and repeat the exact visual anchor from the map before the verbatim line. Do not use cast IDs or @ImageN tags as the final video's identity cue; those labels exist only in this prompt-authoring call and the renderer receives the accepted shot image as its visual source.",
+      "Only the matched speaker moves their mouth for their line; listeners and all other visible people keep their mouths closed. If a face cannot be matched confidently, use offscreen voice-over and do not assign lip movement to the wrong person."
     );
   }
   return lines.join("\n");
