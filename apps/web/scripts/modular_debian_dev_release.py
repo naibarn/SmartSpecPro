@@ -169,21 +169,34 @@ def verify_local_components() -> dict[str, int]:
     return outcomes
 
 
-def verify_public_site() -> dict[str, int]:
+def _verify_public_site_once() -> dict[str, int]:
     outcomes = {}
     for name, path, expected in (
+        ("shell_root", "/", 200),
         ("shell_login", "/login", 200),
         ("chat_health", "/api/chat/livez", 200),
         ("chat_session_without_cookie", "/api/chat/v1/session", 401),
         ("chat_module_manifest", "/modules/chat/current/module.manifest.json", 200),
     ):
-        status, body = http_status(f"https://{DOMAIN}{path}")
+        status, body = http_status(f"https://{DOMAIN}{path}", max_time=4)
         if status != expected:
             raise ReleaseError(f"PUBLIC_SMOKE_FAILED:{name}")
-        if name == "shell_login" and ("/assets/" not in body or "dashboard" in body.lower()):
+        if name in {"shell_root", "shell_login"} and ("/assets/" not in body or "dashboard" in body.lower()):
             raise ReleaseError("PUBLIC_SHELL_CONTENT_MISMATCH")
         outcomes[name] = status
     return outcomes
+
+
+def verify_public_site() -> dict[str, int]:
+    last_error: ReleaseError | None = None
+    for attempt in range(6):
+        try:
+            return _verify_public_site_once()
+        except ReleaseError as exc:
+            last_error = exc
+            if attempt < 5:
+                time.sleep(2)
+    raise last_error or ReleaseError("PUBLIC_SMOKE_FAILED")
 
 
 def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
