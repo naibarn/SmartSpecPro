@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Integrate the shot-generation confirmation dialogs, update the existing checkpoint record, deploy the integrated source to legacy-debian-dev, and verify runtime health.",
-      "checkpoint_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
-      "merged_main_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
+      "next_action": "Release integrated revision f05a5477ca44ec2777ecd7d538ae411c32072795 to legacy-debian-dev and verify runtime health plus the generated app asset.",
+      "checkpoint_sha": "f05a5477ca44ec2777ecd7d538ae411c32072795",
+      "merged_main_sha": "f05a5477ca44ec2777ecd7d538ae411c32072795",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-autoreview-confirm-dialog"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 46,
-  "updated_at": "2026-11-10T06:31:04.432714+00:00",
+  "generation": 47,
+  "updated_at": "2026-11-10T06:33:41.893384+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Integrate the shot-generation confirmation dialogs, update the existing checkpoint record, deploy the integrated source to legacy-debian-dev, and verify runtime health.",
-    "merged_main_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
+    "next_action": "Release integrated revision f05a5477ca44ec2777ecd7d538ae411c32072795 to legacy-debian-dev and verify runtime health plus the generated app asset.",
+    "merged_main_sha": "f05a5477ca44ec2777ecd7d538ae411c32072795",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
       "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
