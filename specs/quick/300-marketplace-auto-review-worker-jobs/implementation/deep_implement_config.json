@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed generation 461 (smartspec-web-eb3d2d4f6f498250823b72bb4e003eaa246afc5f-f07398c9560b) to legacy-debian-dev; health 200 and API smoke 12/12. User should Ctrl+Shift+R and retry a shot to confirm provider-backed image completion; Codex did not spend credits on a live generation.",
+      "next_action": "Integrate the shot-generation confirmation dialogs, update the existing checkpoint record, deploy the integrated source to legacy-debian-dev, and verify runtime health.",
       "checkpoint_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
       "merged_main_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-autoreview-finalize"
+      "session_id": "codex-autoreview-confirm-dialog"
     }
   },
   "pre_commit": {
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 45,
-  "updated_at": "2026-11-10T03:20:16.030899+00:00",
+  "generation": 46,
+  "updated_at": "2026-11-10T06:31:04.432714+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed generation 461 (smartspec-web-eb3d2d4f6f498250823b72bb4e003eaa246afc5f-f07398c9560b) to legacy-debian-dev; health 200 and API smoke 12/12. User should Ctrl+Shift+R and retry a shot to confirm provider-backed image completion; Codex did not spend credits on a live generation.",
+    "next_action": "Integrate the shot-generation confirmation dialogs, update the existing checkpoint record, deploy the integrated source to legacy-debian-dev, and verify runtime health.",
     "merged_main_sha": "eb3d2d4f6f498250823b72bb4e003eaa246afc5f",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",

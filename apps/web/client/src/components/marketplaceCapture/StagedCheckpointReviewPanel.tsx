@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Banner } from "@astryxdesign/core/Banner";
 import { trpc } from "@/lib/trpc";
@@ -832,6 +832,52 @@ export function StagedCheckpointReviewPanel(props: {
     stage: "image" | "video";
   } | null>(null);
   const [aiInstructionText, setAiInstructionText] = useState("");
+  const [generationConfirmation, setGenerationConfirmation] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    callback: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+  const [locallyLockedGenerationActions, setLocallyLockedGenerationActions] =
+    useState<Set<string>>(() => new Set());
+  const confirmedGenerationActionIdsRef = useRef(new Set<string>());
+  const generationActionLockTimersRef = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
+  const releaseGenerationActionLock = useCallback((id: string) => {
+    confirmedGenerationActionIdsRef.current.delete(id);
+    const timer = generationActionLockTimersRef.current.get(id);
+    if (timer) clearTimeout(timer);
+    generationActionLockTimersRef.current.delete(id);
+    setLocallyLockedGenerationActions(current => {
+      if (!current.has(id)) return current;
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    for (const id of confirmedGenerationActionIdsRef.current) {
+      const mutationStarted =
+        props.pendingAction === id ||
+        (props.pendingAction === "generate-prompt" &&
+          id.startsWith("generate-prompt-")) ||
+        (props.pendingAction === "bulk-generate" &&
+          (id === "bulk-generate" || id === "bulk-video-prompt-generate"));
+      if (mutationStarted) releaseGenerationActionLock(id);
+    }
+  }, [props.pendingAction, releaseGenerationActionLock]);
+  useEffect(
+    () => () => {
+      for (const timer of generationActionLockTimersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      generationActionLockTimersRef.current.clear();
+      confirmedGenerationActionIdsRef.current.clear();
+    },
+    []
+  );
   const [isDraggingChar, setIsDraggingChar] = useState(false);
   const [isDraggingProd, setIsDraggingProd] = useState(false);
 
@@ -1610,6 +1656,11 @@ export function StagedCheckpointReviewPanel(props: {
     (props.pendingAction === "retry-shot" &&
       id.startsWith("retry-")) ||
     (props.pendingAction === "retry-audio" && id.startsWith("retry-audio"));
+  const isLocallyLockedGenerationAction = (id: string): boolean =>
+    locallyLockedGenerationActions.has(id) ||
+    ((id === "bulk-generate" || id === "bulk-video-prompt-generate") &&
+      (locallyLockedGenerationActions.has("bulk-generate") ||
+        locallyLockedGenerationActions.has("bulk-video-prompt-generate")));
 
   const action = (
     id: string,
@@ -1619,7 +1670,14 @@ export function StagedCheckpointReviewPanel(props: {
     // Optional gating for server-projected prerequisites plus a title/aria
     // hint. Paid image/video dispatch prerequisites are checked again by the
     // server before a worker job is admitted.
-    options?: { disabled?: boolean; title?: string }
+    options?: {
+      disabled?: boolean;
+      title?: string;
+      confirmation?: {
+        title: string;
+        description: string;
+      };
+    }
   ) => (
     // Field incident 2026-07-30 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
     // shots 2/3 — "กดสร้างภาพแล้วเงียบ"): this used to be
@@ -1655,13 +1713,44 @@ export function StagedCheckpointReviewPanel(props: {
           ? "min-h-11 border border-violet-800 bg-violet-700 text-white hover:bg-violet-800 focus-visible:ring-violet-700 disabled:border-violet-300 disabled:bg-violet-200 disabled:text-violet-950 disabled:opacity-100"
           : ""
       }`}
-      disabled={isThisActionRunning(id) || options?.disabled}
+      disabled={
+        isThisActionRunning(id) ||
+        isLocallyLockedGenerationAction(id) ||
+        options?.disabled
+      }
       aria-label={label}
-      aria-busy={isThisActionRunning(id) || undefined}
+      aria-busy={
+        isThisActionRunning(id) ||
+        isLocallyLockedGenerationAction(id) ||
+        undefined
+      }
       title={options?.title}
-      onClick={callback}
+      onClick={() => {
+        if (!options?.confirmation) {
+          callback();
+          return;
+        }
+        if (
+          isThisActionRunning(id) ||
+          isLocallyLockedGenerationAction(id) ||
+          confirmedGenerationActionIdsRef.current.has(id) ||
+          options.disabled
+        ) {
+          return;
+        }
+        setGenerationConfirmation({
+          id,
+          title: options.confirmation.title,
+          description: options.confirmation.description,
+          callback,
+        });
+      }}
     >
-      {isThisActionRunning(id) ? "กำลังดำเนินการ…" : label}
+      {isThisActionRunning(id)
+        ? "กำลังดำเนินการ…"
+        : isLocallyLockedGenerationAction(id)
+          ? "กำลังส่งงาน…"
+          : label}
     </button>
   );
   const activeWorkerOperation = props.state?.workerOperations?.find(job =>
@@ -1868,6 +1957,10 @@ export function StagedCheckpointReviewPanel(props: {
                           activeBulkGeneration ||
                           Boolean(activeImagePromptWorkerOperation) ||
                           !storyPlanApproved,
+                        confirmation: {
+                          title: "ยืนยันสร้าง Prompt และภาพทุกช็อต",
+                          description: `ระบบจะส่งงานสร้าง Prompt และภาพจำนวน ${bulkImageGenerationTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                        },
                         title: activeBulkGeneration
                           ? "กำลังเตรียมงานชุดนี้ใน Worker"
                           : "สร้าง Prompt ใหม่และส่งสร้างภาพทุกช็อตเข้า Worker Jobs",
@@ -1884,6 +1977,10 @@ export function StagedCheckpointReviewPanel(props: {
                         disabled:
                           activeBulkGeneration ||
                           Boolean(activeImagePromptWorkerOperation),
+                        confirmation: {
+                          title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
+                          description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                        },
                         title: activeBulkGeneration
                           ? "กำลังเตรียมงานชุดนี้ใน Worker"
                           : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
@@ -3665,21 +3762,25 @@ export function StagedCheckpointReviewPanel(props: {
                                   >
                                     ⬇️ ดาวน์โหลด
                                   </a>
-                                  <button
-                                    id={`regen-image-${shot.shotId}`}
-                                    onClick={() =>
+                                  {action(
+                                    `dispatch-image-${shot.shotId}`,
+                                    "🔄 สร้างใหม่",
+                                    () =>
                                       props.onGenerateAndDispatch({
                                         shotId: shot.shotId,
                                         stage: "image",
                                         model: selectedImageModel,
                                         replaceExisting: true,
-                                      })
+                                      }),
+                                    "rounded-lg bg-white/90 hover:bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-lg transition flex items-center gap-1.5 cursor-pointer",
+                                    {
+                                      confirmation: {
+                                        title: `ยืนยันสร้างภาพช็อตที่ ${shot.shotId} ใหม่`,
+                                        description: `ระบบจะส่งงานสร้างภาพช็อตที่ ${shot.shotId} ใหม่เข้า Worker Jobs โดยใช้โมเดล ${selectedImageModel} และอาจใช้เครดิต`,
+                                      },
+                                      title: "สร้างภาพใหม่",
                                     }
-                                    className="rounded-lg bg-white/90 hover:bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                                    title="สร้างภาพใหม่"
-                                  >
-                                    🔄 สร้างใหม่
-                                  </button>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -3997,6 +4098,10 @@ export function StagedCheckpointReviewPanel(props: {
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
                               isShotPromptPipelineBusy(shot.shotId),
+                            confirmation: {
+                              title: `ยืนยันสร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
+                              description: `ระบบจะส่งการสร้าง Prompt ภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
+                            },
                             title:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus)
@@ -4048,6 +4153,10 @@ export function StagedCheckpointReviewPanel(props: {
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
                               isShotPromptPipelineBusy(shot.shotId),
+                            confirmation: {
+                              title: `ยืนยันสร้างภาพช็อตที่ ${shot.shotId}`,
+                              description: `ระบบจะส่งงานสร้างภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${selectedImageModel} และอาจใช้เครดิต`,
+                            },
                             title: !shot.imagePrompt?.trim()
                               ? "สร้าง Prompt ภาพก่อน"
                               : !storyPlanApproved
@@ -4124,6 +4233,10 @@ export function StagedCheckpointReviewPanel(props: {
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
                               isShotPromptPipelineBusy(shot.shotId),
+                            confirmation: {
+                              title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
+                              description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
+                            },
                             title:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus)
@@ -4185,6 +4298,10 @@ export function StagedCheckpointReviewPanel(props: {
                                   isTaskInFlight(shot.imageTaskStatus) ||
                                   isTaskInFlight(shot.videoTaskStatus) ||
                                   isShotPromptPipelineBusy(shot.shotId),
+                                confirmation: {
+                                  title: `ยืนยันสร้างวิดีโอช็อตที่ ${shot.shotId}`,
+                                  description: `ระบบจะส่งงานสร้างวิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${selectedVideoModel} และอาจใช้เครดิต`,
+                                },
                                 title: !shot.videoPrompt?.trim()
                                   ? "สร้าง Prompt วิดีโอก่อน"
                                   : !storyPlanApproved
@@ -4298,6 +4415,81 @@ export function StagedCheckpointReviewPanel(props: {
       </div>
     )}
 
+    <Dialog
+      open={Boolean(generationConfirmation)}
+      onOpenChange={open => {
+        if (!open && generationConfirmation) {
+          const canceledConfirmation = generationConfirmation;
+          setGenerationConfirmation(null);
+          canceledConfirmation.onCancel?.();
+        }
+      }}
+    >
+      <DialogContent
+        aria-describedby="staged-generation-confirmation-desc"
+        data-testid="staged-generation-confirmation-dialog"
+      >
+        <DialogHeader>
+          <DialogTitle>{generationConfirmation?.title}</DialogTitle>
+          <DialogDescription id="staged-generation-confirmation-desc">
+            {generationConfirmation?.description}
+            {" "}ยืนยันแล้วระบบจะส่งงานเข้าคิวเบื้องหลัง
+            และป้องกันการส่งคำสั่งเดิมซ้ำระหว่างเริ่มทำงาน
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <button
+            type="button"
+            className="rounded border px-3 py-2 text-sm"
+            data-testid="staged-generation-confirm-cancel"
+            onClick={() => {
+              if (!generationConfirmation) return;
+              const canceledConfirmation = generationConfirmation;
+              setGenerationConfirmation(null);
+              canceledConfirmation.onCancel?.();
+            }}
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="button"
+            className="rounded bg-violet-700 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-90"
+            data-testid="staged-generation-confirm-submit"
+            disabled={!generationConfirmation}
+            onClick={() => {
+              if (!generationConfirmation) return;
+              const confirmedAction = generationConfirmation;
+              if (
+                confirmedGenerationActionIdsRef.current.has(confirmedAction.id)
+              ) {
+                return;
+              }
+              confirmedGenerationActionIdsRef.current.add(confirmedAction.id);
+              setLocallyLockedGenerationActions(current =>
+                new Set(current).add(confirmedAction.id)
+              );
+              generationActionLockTimersRef.current.set(
+                confirmedAction.id,
+                setTimeout(
+                  () => releaseGenerationActionLock(confirmedAction.id),
+                  10_000
+                )
+              );
+              setGenerationConfirmation(null);
+              try {
+                confirmedAction.callback();
+              } catch (error) {
+                releaseGenerationActionLock(confirmedAction.id);
+                throw error;
+              }
+            }}
+          >
+            ยืนยันและส่งเข้าคิว
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     {/* ── AI ปรับแต่งด้วยคำสั่งเพิ่มเติม ──────────────────────────────────
         Per-shot free-text instruction that threads into the NEXT image/video
         prompt regeneration for that specific shot only (backend field:
@@ -4391,13 +4583,24 @@ export function StagedCheckpointReviewPanel(props: {
             data-testid="staged-ai-instruction-submit"
             onClick={() => {
               if (!aiInstructionDialog || !aiInstructionText.trim()) return;
-              props.onGeneratePrompt({
+              const nextPrompt = {
                 shotId: aiInstructionDialog.shotId,
                 stage: aiInstructionDialog.stage,
                 ...(promptModel ? { model: promptModel } : {}),
                 instruction: aiInstructionText.trim(),
-              });
+              };
+              const returnToInstructionDialog = aiInstructionDialog;
               setAiInstructionDialog(null);
+              setGenerationConfirmation({
+                id: `generate-prompt-${nextPrompt.stage}-${nextPrompt.shotId}`,
+                title: `ยืนยันสร้าง Prompt ${nextPrompt.stage === "image" ? "ภาพ" : "วิดีโอ"}ช็อตที่ ${nextPrompt.shotId}`,
+                description: `ระบบจะส่งการสร้าง Prompt ช็อตที่ ${nextPrompt.shotId} พร้อมคำสั่งเพิ่มเติมเข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
+                callback: () => {
+                  props.onGeneratePrompt(nextPrompt);
+                  setAiInstructionText("");
+                },
+                onCancel: () => setAiInstructionDialog(returnToInstructionDialog),
+              });
             }}
           >
             สร้าง Prompt ใหม่ตามคำสั่ง

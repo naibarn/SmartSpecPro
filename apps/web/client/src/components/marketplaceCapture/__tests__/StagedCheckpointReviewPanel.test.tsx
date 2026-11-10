@@ -115,7 +115,62 @@ function props() {
   };
 }
 
+function clickAndConfirmGeneration(button: HTMLElement) {
+  fireEvent.click(button);
+  expect(screen.getByTestId("staged-generation-confirmation-dialog")).toBeTruthy();
+  fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+}
+
 describe("StagedCheckpointReviewPanel", () => {
+  it("requires confirmation before generation and ignores a duplicate confirm click", () => {
+    const input = props();
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+    expect(input.onGeneratePrompt).not.toHaveBeenCalled();
+    expect(screen.getByText(/ยืนยันสร้าง Prompt ภาพช็อตที่ 1/)).toBeTruthy();
+
+    const cancel = screen.getByTestId("staged-generation-confirm-cancel");
+    fireEvent.click(cancel);
+    expect(input.onGeneratePrompt).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+    const confirm = screen.getByTestId("staged-generation-confirm-submit");
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+
+    expect(input.onGeneratePrompt).toHaveBeenCalledTimes(1);
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+      shotId: 1,
+      stage: "image",
+    });
+    expect(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    ).toBeDisabled();
+  });
+
+  it("does not enqueue image generation until the confirmation dialog is accepted", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" }));
+    expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    expect(screen.getByText(/ยืนยันสร้างภาพช็อตที่ 1/)).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ shotId: 1, stage: "image", replaceExisting: true })
+    );
+  });
+
   it("hides the per-shot image-prompt approve action (auto-approved server-side now) but keeps reject and prompt editing available", () => {
     const input = props();
     render(<StagedCheckpointReviewPanel {...input} />);
@@ -402,7 +457,7 @@ describe("StagedCheckpointReviewPanel", () => {
     ).toBe(false);
     expect(screen.getByText(/Prompt ภาพ รอคิว Worker/)).toBeTruthy();
 
-    fireEvent.click(
+    clickAndConfirmGeneration(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 2" })
     );
     expect(input.onGeneratePrompt).toHaveBeenCalledWith({
@@ -433,7 +488,7 @@ describe("StagedCheckpointReviewPanel", () => {
       name: "สร้างภาพช็อตที่ 1",
     });
     expect(dispatch).not.toBeDisabled();
-    fireEvent.click(dispatch);
+    clickAndConfirmGeneration(dispatch);
     expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: 1,
@@ -545,8 +600,12 @@ describe("StagedCheckpointReviewPanel", () => {
       ).toBeDisabled();
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" }));
+    clickAndConfirmGeneration(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+    clickAndConfirmGeneration(
+      screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" })
+    );
     expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(1, {
       shotId: 1,
       stage: "image",
@@ -580,7 +639,7 @@ describe("StagedCheckpointReviewPanel", () => {
     );
     // Image dispatch reuses the saved prompt and enters the durable worker
     // queue for this shot.
-    fireEvent.click(
+    clickAndConfirmGeneration(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     );
 
@@ -630,7 +689,7 @@ describe("StagedCheckpointReviewPanel", () => {
       screen.getByText(/Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่าง/)
     ).toBeTruthy();
 
-    fireEvent.click(generateButtons[0]);
+    clickAndConfirmGeneration(generateButtons[0]);
 
     expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -766,7 +825,7 @@ describe("StagedCheckpointReviewPanel", () => {
     // The old separate "สร้าง Prompt วิดีโอ...ใหม่" (prompt-only) button is
     // gone from THIS spot (a plain "สร้าง Prompt วิดีโอ..." step-1 button now
     // lives here instead) — "สร้างวิดีโอช็อตที่ N" is dispatch-only.
-    fireEvent.click(
+    clickAndConfirmGeneration(
       screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
     );
     expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
@@ -1075,7 +1134,7 @@ describe("StagedCheckpointReviewPanel", () => {
       const input = props();
       render(<StagedCheckpointReviewPanel {...input} />);
 
-      fireEvent.click(
+      clickAndConfirmGeneration(
         screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
       );
 
@@ -1096,7 +1155,7 @@ describe("StagedCheckpointReviewPanel", () => {
       };
       render(<StagedCheckpointReviewPanel {...input} />);
 
-      fireEvent.click(
+      clickAndConfirmGeneration(
         screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
       );
 
@@ -1152,7 +1211,7 @@ describe("StagedCheckpointReviewPanel", () => {
       expect(firstShot.className).toContain("bg-violet-700");
       expect(firstShot.className).toContain("disabled:bg-violet-200");
 
-      fireEvent.click(secondShot);
+      clickAndConfirmGeneration(secondShot);
       expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
         expect.objectContaining({ shotId: 2, stage: "image", replaceExisting: true })
       );
@@ -1173,6 +1232,18 @@ describe("StagedCheckpointReviewPanel", () => {
         target: { value: "มีเด็กชาวไทยอายุ 8 เดือนในฉาก" },
       });
       fireEvent.click(screen.getByTestId("staged-ai-instruction-submit"));
+
+      expect(input.onGeneratePrompt).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId("staged-ai-instruction-textarea")
+      ).toBeNull();
+      fireEvent.click(screen.getByTestId("staged-generation-confirm-cancel"));
+      expect(input.onGeneratePrompt).not.toHaveBeenCalled();
+      expect(screen.getByTestId("staged-ai-instruction-textarea")).toHaveValue(
+        "มีเด็กชาวไทยอายุ 8 เดือนในฉาก"
+      );
+      fireEvent.click(screen.getByTestId("staged-ai-instruction-submit"));
+      fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
       expect(input.onGeneratePrompt).toHaveBeenCalledTimes(1);
       expect(input.onGeneratePrompt).toHaveBeenCalledWith({
@@ -1239,7 +1310,7 @@ describe("StagedCheckpointReviewPanel", () => {
       };
       render(<StagedCheckpointReviewPanel {...input} />);
 
-      fireEvent.click(
+      clickAndConfirmGeneration(
         screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" })
       );
       expect(input.onGeneratePrompt).toHaveBeenCalledWith({
@@ -1290,7 +1361,7 @@ describe("StagedCheckpointReviewPanel", () => {
       };
       render(<StagedCheckpointReviewPanel {...input} />);
 
-      fireEvent.click(
+      clickAndConfirmGeneration(
         screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
       );
 
@@ -1333,6 +1404,8 @@ describe("StagedCheckpointReviewPanel", () => {
       });
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
       fireEvent.click(bulkButton);
+      expect(input.onBulkGenerate).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
       expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
       expect(input.onBulkGenerate).toHaveBeenCalledWith([
@@ -1357,6 +1430,8 @@ describe("StagedCheckpointReviewPanel", () => {
       fireEvent.click(
         screen.getByRole("button", { name: "สร้าง Prompt วิดีโอทุกช็อต (2)" })
       );
+      expect(input.onBulkGenerate).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
       expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
       expect(input.onBulkGenerate).toHaveBeenCalledWith([
