@@ -243,6 +243,52 @@ export function renderStagedDialogueFromTurns(
   return turns.map(turn => `${turn.speakerName}: ${turn.line}`).join("\n");
 }
 
+function parseSpeakerNamedDialogue(
+  dialogue: string
+): Array<{ speakerName: string; line: string }> | undefined {
+  const lines = dialogue
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return undefined;
+  const parsed = lines.map(line => {
+    const match = line.match(/^([^:\n]{1,100}):\s*(.+)$/);
+    const speakerName = match?.[1]?.trim();
+    const spokenLine = match?.[2]?.trim();
+    return speakerName && spokenLine ? { speakerName, line: spokenLine } : null;
+  });
+  return parsed.every((line): line is { speakerName: string; line: string } => !!line)
+    ? parsed
+    : undefined;
+}
+
+/**
+ * Resolve the editable `Name: line` transcript back to the cast IDs. The
+ * transcript is canonical after a user edit; persisted turns are only a
+ * derived convenience and must never keep an older version alive.
+ */
+export function parseStagedDialogueTurns(
+  dialogue: string,
+  cast: StagedCastMember[] | null | undefined
+): StagedDialogueTurn[] | undefined {
+  const parsed = parseSpeakerNamedDialogue(dialogue);
+  if (!parsed || !cast?.length) return undefined;
+  const normalizedName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const memberByName = new Map(
+    cast.map(member => [normalizedName(member.name), member])
+  );
+  const resolved = parsed.map(line => {
+    const member = memberByName.get(normalizedName(line.speakerName));
+    return member
+      ? { castId: member.castId, speakerName: member.name, line: line.line }
+      : null;
+  });
+  return resolved.every((turn): turn is StagedDialogueTurn => !!turn)
+    ? resolved
+    : undefined;
+}
+
 export type StagedStoryArcShot = {
   shotId: number;
   title: string;
@@ -1209,18 +1255,75 @@ export function buildStagedVideoPrompt(input: {
   const durationSeconds = input.shot.durationSeconds;
 
   const isConversation = input.plan.conversationMode === "two_person_conversation";
-  const turns = input.shot.dialogueTurns;
+  // `dialogue` is the editable, hashed source of truth. `dialogueTurns` is a
+  // derived cache and can be stale on older runs, so never append both forms
+  // to a prompt. Vertical Drama uses the same pattern: resolve each spoken
+  // name against labeled character portraits, then bind it to the matching
+  // face in the accepted start frame.
+  const namedDialogue = parseSpeakerNamedDialogue(input.shot.dialogue);
+  const cast = input.plan.cast ?? [];
+  const usesSpeakerBinding =
+    isConversation || (namedDialogue !== undefined && cast.length > 0);
+  const normalizeName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const castByName = new Map(
+    cast.map(member => [normalizeName(member.name), member])
+  );
+  const renderSpeaker = (speakerName: string) => {
+    const member = castByName.get(normalizeName(speakerName));
+    if (!member) return speakerName;
+    return `${member.name} [${member.castId}; @Image${member.imageIndex}; ${member.role}]`;
+  };
 
   const conversationLinesTH: string[] = [];
   const conversationLinesEng: string[] = [];
-  if (isConversation && turns && turns.length > 0) {
+  if (usesSpeakerBinding) {
+    const identityLines = cast
+      .filter(member => member.role !== "support")
+      .map(member => {
+        const descriptor = clean(member.descriptor).slice(0, 120);
+        return `- @Image${member.imageIndex} = ${member.name} (${member.role}; ${member.castId}${descriptor ? `; ${descriptor}` : ""})`;
+      });
+    if (identityLines.length > 0) {
+      conversationLinesTH.push(
+        "แผนผังยืนยันตัวตนจากภาพอ้างอิงที่ติดป้ายชื่อ:",
+        ...identityLines,
+        "ใช้ป้าย @Image จับคู่ตัวตนตอนเขียน Prompt; ตอน render ให้จับคู่หน้าเดิมในภาพช็อตที่อนุมัติแล้ว (ภาพเดียวที่แนบให้ระบบสร้างวิดีโอ)"
+      );
+      conversationLinesEng.push(
+        "Character identity manifest from the labeled portrait references:",
+        ...identityLines,
+        "Use @Image labels to map identities while authoring; at render, match those same faces in the accepted shot (the only attached image)."
+      );
+    }
+    if (namedDialogue) {
+      conversationLinesTH.push(
+        "บทพูดที่อนุมัติแล้ว (พูดแต่ละบรรทัดครั้งเดียว ตามลำดับและข้อความนี้เท่านั้น):",
+        ...namedDialogue.map((line, i) =>
+          `${i + 1}. ${renderSpeaker(line.speakerName)}: "${line.line}"`
+        )
+      );
+      conversationLinesEng.push(
+        "Approved dialogue (speak each line exactly once, in this order, with no added or rewritten speech):",
+        ...namedDialogue.map((line, i) =>
+          `${i + 1}. ${renderSpeaker(line.speakerName)}: "${line.line}"`
+        )
+      );
+    } else {
+      conversationLinesTH.push(
+        "บทพูดที่อนุมัติแล้ว (พูดข้อความนี้ครั้งเดียวตรงตามต้นฉบับ ห้ามเพิ่มหรือเขียนใหม่):",
+        input.shot.dialogue
+      );
+      conversationLinesEng.push(
+        "Approved dialogue (speak this exact text once; do not add or rewrite speech):",
+        input.shot.dialogue
+      );
+    }
     conversationLinesTH.push(
-      "บทสนทนาตามลำดับผู้พูด (ต้องพูดตามลำดับนี้เป๊ะ ห้ามเขียนใหม่):",
-      ...turns.map((turn, i) => `${i + 1}. ${turn.speakerName}: ${turn.line}`)
+      "ล็อกผู้พูดกับใบหน้า: จับคู่ชื่อกับ portrait และใบหน้าเดียวกันในภาพที่อนุมัติ ขยับปากเฉพาะผู้พูด คนอื่นปิดปาก ห้ามเดาตำแหน่งหรือสลับตัวตน หากไม่มั่นใจให้ใช้เสียงบรรยาย"
     );
     conversationLinesEng.push(
-      "Dialogue in speaking order (must be spoken exactly in this order, do not rewrite):",
-      ...turns.map((turn, i) => `${i + 1}. ${turn.speakerName}: ${turn.line}`)
+      "SPEAKER-TO-FACE LOCK: Match each named speaker to the portrait and same face in the accepted shot. Only that speaker moves their mouth; everyone else stays silent, mouths closed. Never guess positions or swap identities. If unsure, use voice-over."
     );
   }
 
@@ -1264,25 +1367,41 @@ export function buildStagedVideoPrompt(input: {
     return [
       `สร้างวีดีโอรีวิวสินค้าแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีสำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
       `ใช้ภาพที่ยอมรับแล้วของช็อตที่ ${input.shot.shotId} เป็นแหล่งภาพต้นฉบับที่ต้องคงเอกลักษณ์ไว้`,
-      `บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`,
+      ...(usesSpeakerBinding ? [] : [`บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`]),
       `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
       ...conversationLinesTH,
-      `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
-      `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
-      "ใช้เสียงบทพูดที่ยืนยันแล้วตามตัวอักษร ไม่เพิ่มบทพูดอื่น; ห้ามเพิ่มคำกล่าวอ้าง ราคา ข้อความบนจอ caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
+      usesSpeakerBinding
+        ? `กล้อง/การกระทำ: ต่อจากภาพที่อนุมัติและแสดงการกระทำเดียวตามทิศทางนี้: ${input.shot.visualSummary}; คงสินค้าและตำแหน่งให้ต่อเนื่อง`
+        : `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
+      usesSpeakerBinding
+        ? `จังหวะ: เริ่มการกระทำช่วงต้น แสดงชัดช่วงกลาง แล้วหยุดอย่างเป็นธรรมชาติก่อนครบ ${durationSeconds} วินาที`
+        : `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
+      usesSpeakerBinding
+        ? "เสียง: พูดเฉพาะบทที่อนุมัติให้ตรงตามข้อความ ห้ามเพิ่มเสียงบรรยายหรือประโยคอื่น; ห้ามเพิ่มคำกล่าวอ้าง ข้อความ โลโก้ หรือลายน้ำ"
+        : "ใช้เสียงบทพูดที่ยืนยันแล้วตามตัวอักษร ไม่เพิ่มบทพูดอื่น; ห้ามเพิ่มคำกล่าวอ้าง ราคา ข้อความบนจอ caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
     ].join("\n");
   }
   return [
     `Create a ${durationSeconds}-second vertical 9:16 product-review video for shot ${input.shot.shotId}.`,
     `Use the accepted image artifact for shot ${input.shot.shotId} as the exact visual source.`,
-    `Approved dialogue (must not be rewritten): ${input.shot.dialogue}`,
+    ...(usesSpeakerBinding ? [] : [`Approved dialogue (must not be rewritten): ${input.shot.dialogue}`]),
     `Approved story context: ${input.shot.storySummary}`,
     ...conversationLinesEng,
-    `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
-    `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
-    "Audio: speak only the approved dialogue exactly as written, with natural pacing and relevant room ambience; do not add narration or other lines.",
-    "If a person or character reference is supplied, preserve that identity consistently throughout the shot.",
-    "Photorealistic commercial short-form video, vertical 9:16. Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
+    usesSpeakerBinding
+      ? `Camera/action: continue from the accepted image and show one clear action matching: ${input.shot.visualSummary}. Preserve product design and placement.`
+      : `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
+    usesSpeakerBinding
+      ? `Pacing: begin early, show the action clearly mid-shot, then settle naturally before ${durationSeconds} seconds.`
+      : `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
+    usesSpeakerBinding
+      ? "Audio: speak only the approved lines verbatim, naturally; add no narration or other speech."
+      : "Audio: speak only the approved dialogue exactly as written, with natural pacing and relevant room ambience; do not add narration or other lines.",
+    ...(usesSpeakerBinding
+      ? []
+      : ["If a person or character reference is supplied, preserve that identity consistently throughout the shot."]),
+    usesSpeakerBinding
+      ? "Photorealistic vertical 9:16 commercial video. No unsupported claims, on-screen text, captions, logos, watermarks, or marketplace UI."
+      : "Photorealistic commercial short-form video, vertical 9:16. Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
   ].join("\n");
 }
 

@@ -103,6 +103,66 @@ describe("Feature 141 staged prompt compiler", () => {
     );
   });
 
+  it("rejects repeated current dialogue and stale cached lines in a video prompt", () => {
+    const plan = buildStagedStoryArcPlan({
+      runId: "run-dialogue-validator",
+      product: {
+        productId: "product-1",
+        productName: "Demo product",
+        description: "Evidence-grounded description",
+        imageUrls: [],
+      },
+      cast: [
+        {
+          castId: "cast-1",
+          name: "Ann",
+          source: "uploaded",
+          role: "host",
+          imageIndex: 2,
+        },
+        {
+          castId: "cast-2",
+          name: "Somchai",
+          source: "uploaded",
+          role: "guest",
+          imageIndex: 3,
+        },
+      ],
+    });
+    const originalShot = plan.shots[0];
+    const staleTurns = originalShot.dialogueTurns!;
+    const shot = {
+      ...originalShot,
+      dialogue: "Ann: The newly approved line for Ann.\nSomchai: The newly approved line for Somchai.",
+      dialogueTurns: staleTurns,
+    };
+    const prompt = compileStagedVideoPrompt({
+      plan,
+      shot,
+      imageArtifactHash: "image-hash-a",
+    }).prompt;
+
+    expect(
+      isCompleteStagedVideoPrompt(prompt, shot.dialogue, staleTurns, plan.cast)
+    ).toBe(true);
+    expect(
+      isCompleteStagedVideoPrompt(
+        `${prompt}\nEarlier transcript: ${staleTurns[0].line}`,
+        shot.dialogue,
+        staleTurns,
+        plan.cast
+      )
+    ).toBe(false);
+    expect(
+      isCompleteStagedVideoPrompt(
+        `${prompt}\n${"The newly approved line for Ann."}`,
+        shot.dialogue,
+        staleTurns,
+        plan.cast
+      )
+    ).toBe(false);
+  });
+
   it("exposes a director boundary that keeps the accepted image hash in the compiled evidence", () => {
     const plan = planFixture();
     const result = buildStagedShotVideoDirectorPrompt({

@@ -31,6 +31,7 @@ import {
   buildStagedPlanView,
   buildStagedStoryArcPlan,
   generateStagedStoryArcPlanWithLLM,
+  parseStagedDialogueTurns,
   type StagedStoryArcPlan,
   type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
@@ -1697,15 +1698,23 @@ export async function editStagedAutoReviewShot(input: {
         const nextPlan: StagedStoryArcPlan = {
           ...plan,
           planRevision: revision,
-          shots: plan.shots.map((item: any) =>
-            item.shotId === input.shotId
-              ? {
-                  ...item,
-                  storySummary: nextShot.storySummary,
-                  dialogue: nextShot.dialogue,
-                }
-              : item
-          ),
+          shots: plan.shots.map((item: any) => {
+            if (item.shotId !== input.shotId) return item;
+            const updated = {
+              ...item,
+              storySummary: nextShot.storySummary,
+              dialogue: nextShot.dialogue,
+            };
+            if (input.dialogue !== undefined) {
+              const dialogueTurns = parseStagedDialogueTurns(
+                nextShot.dialogue,
+                plan.cast
+              );
+              if (dialogueTurns) updated.dialogueTurns = dialogueTurns;
+              else delete updated.dialogueTurns;
+            }
+            return updated;
+          }),
         };
         nextPlan.storyPlanHash = buildProductionStableHash(nextPlan);
         const replacement = buildStagedCheckpoint({
@@ -2277,7 +2286,12 @@ async function generateCompleteStagedShotPrompt(input: {
   const isComplete = () =>
     input.stage === "image"
       ? isCompleteStagedImagePrompt(prompt)
-      : isCompleteStagedVideoPrompt(prompt, planShot.dialogue);
+      : isCompleteStagedVideoPrompt(
+          prompt,
+          planShot.dialogue,
+          planShot.dialogueTurns,
+          plan.cast
+        );
   if (isComplete()) return prompt;
 
   const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
@@ -2301,7 +2315,14 @@ async function generateCompleteStagedShotPrompt(input: {
       shot: planShot,
       imageArtifactHash: stagedShot?.imageArtifactHash ?? "",
     }).prompt;
-    if (isCompleteStagedVideoPrompt(prompt, planShot.dialogue)) return prompt;
+    if (
+      isCompleteStagedVideoPrompt(
+        prompt,
+        planShot.dialogue,
+        planShot.dialogueTurns,
+        plan.cast
+      )
+    ) return prompt;
   }
 
   throw new TRPCError({

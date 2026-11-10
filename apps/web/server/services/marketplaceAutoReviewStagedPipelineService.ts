@@ -2019,7 +2019,14 @@ async function compileVideoPrompt(params: {
       })
     );
     const skillPrompt = String(refresh.videoPrompt ?? "").trim();
-    if (!isCompleteStagedVideoPrompt(skillPrompt, shot.dialogue)) {
+    if (
+      !isCompleteStagedVideoPrompt(
+        skillPrompt,
+        shot.dialogue,
+        shot.dialogueTurns,
+        params.plan.cast
+      )
+    ) {
       throw new Error("staged_video_prompt_skill_authoring_incomplete");
     }
     prompt = skillPrompt;
@@ -2034,7 +2041,14 @@ async function compileVideoPrompt(params: {
     });
     prompt = compiled.prompt;
     authoringSource = "deterministic_fallback";
-    if (!isCompleteStagedVideoPrompt(prompt, shot.dialogue)) {
+    if (
+      !isCompleteStagedVideoPrompt(
+        prompt,
+        shot.dialogue,
+        shot.dialogueTurns,
+        params.plan.cast
+      )
+    ) {
       throw new Error("staged_video_prompt_fallback_incomplete");
     }
   }

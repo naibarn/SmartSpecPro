@@ -449,6 +449,87 @@ describe("buildStagedSingleShotRefreshInput — video-stage grounds in the appro
     );
   });
 
+  it("adds the Vertical Drama style speaker-to-face contract when video refresh has labeled cast portraits", () => {
+    const plan = buildStagedStoryArcPlan({
+      runId: "run-video-speaker-binding",
+      product: {
+        productId: "product-1",
+        productName: "Demo product",
+        description: "Evidence-grounded description",
+        imageUrls: ["https://example.test/product.png"],
+      },
+      cast: [
+        {
+          castId: "cast-1",
+          name: "Ann",
+          source: "uploaded",
+          role: "host",
+          imageIndex: 2,
+        },
+        {
+          castId: "cast-2",
+          name: "Somchai",
+          source: "uploaded",
+          role: "guest",
+          imageIndex: 3,
+        },
+      ],
+    });
+    const editedDialogue =
+      "Ann: The edited host line is canonical.\nSomchai: The edited guest line is canonical.";
+    const base = fixture({
+      plan,
+      shotOverrides: { 1: { dialogue: editedDialogue } },
+    });
+    const metadata = {
+      ...base.metadata,
+      customReferenceManifest: [
+        { url: "https://example.test/product.png", role: "product", active: true },
+        {
+          url: "https://example.test/ann.png",
+          role: "character",
+          characterName: "Ann",
+          characterRole: "host",
+          active: true,
+        },
+        {
+          url: "https://example.test/somchai.png",
+          role: "character",
+          characterName: "Somchai",
+          characterRole: "guest",
+          active: true,
+        },
+      ],
+    };
+    const withImage = withShotImageArtifactUrl(
+      metadata as any,
+      1,
+      "https://example.test/shots/shot-1-approved.png"
+    );
+    const refreshInput = buildStagedSingleShotRefreshInputForTest({
+      run: base.run,
+      metadata: withImage as any,
+      shotId: 1,
+      stage: "video",
+    });
+    const contract = buildSequentialSingleShotRefreshContractForTest(
+      refreshInput as any
+    );
+
+    expect(refreshInput.shotContract.dialogue).toBe(editedDialogue);
+    expect(contract).toContain("Ann: The edited host line is canonical.");
+    expect(contract).toContain("Somchai: The edited guest line is canonical.");
+    for (const turn of plan.shots[0].dialogueTurns ?? []) {
+      expect(contract).not.toContain(turn.line);
+    }
+    expect(contract).toContain("## Video Dialogue Source and Speaker-to-Face Binding");
+    expect(contract).toContain("shotContract.dialogue is the ONLY canonical spoken script");
+    expect(contract).toContain("@Image2 = Ann (host)");
+    expect(contract).toContain("@Image3 = Somchai (guest)");
+    expect(contract).toContain("Only the named speaker moves their mouth");
+    expect(contract).toContain("do not imply those separate portrait files will also be attached");
+  });
+
   it("stage: 'image' does NOT include the approved shot image, even when one already exists (image generation stays independent of video state)", () => {
     const plan = planFixture();
     const { run, metadata } = fixture({ plan });

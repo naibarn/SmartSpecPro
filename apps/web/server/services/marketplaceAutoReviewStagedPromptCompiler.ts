@@ -4,6 +4,8 @@ import {
   buildStagedVideoPrompt,
   type StagedStoryArcPlan,
   type StagedStoryArcShot,
+  type StagedDialogueTurn,
+  type StagedCastMember,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
@@ -40,11 +42,75 @@ export function isCompleteStagedImagePrompt(value: unknown): value is string {
 
 export function isCompleteStagedVideoPrompt(
   value: unknown,
-  approvedDialogue: string
+  approvedDialogue: string,
+  derivedDialogueTurns?: readonly StagedDialogueTurn[],
+  cast?: readonly StagedCastMember[]
 ): value is string {
   if (typeof value !== "string") return false;
   const prompt = value.trim();
   const dialogue = approvedDialogue.trim();
+  const dialogueLines = dialogue
+    .split(/\r?\n/)
+    .map(line => {
+      const match = line.trim().match(/^([^:\n]{1,100}):\s*(.+)$/);
+      return match
+        ? { speakerName: match[1].trim(), line: match[2].trim() }
+        : null;
+    });
+  const namedDialogue =
+    dialogueLines.length > 0 &&
+    dialogueLines.every(
+      (line): line is { speakerName: string; line: string } => !!line
+    )
+      ? dialogueLines
+      : undefined;
+  const countOccurrences = (text: string) =>
+    text ? prompt.split(text).length - 1 : 0;
+  const containsDuplicateApprovedLine = namedDialogue
+    ? Array.from(
+        namedDialogue.reduce((counts, line) => {
+          counts.set(line.line, (counts.get(line.line) ?? 0) + 1);
+          return counts;
+        }, new Map<string, number>())
+      ).some(([line, expectedCount]) =>
+        line.length >= 8 && countOccurrences(line) > expectedCount
+      )
+    : dialogue.length >= 8 && countOccurrences(dialogue) > 1;
+  const dialogueAppearsInOrder = (() => {
+    if (!namedDialogue) return true;
+    let searchFrom = 0;
+    for (const line of namedDialogue) {
+      const position = prompt.indexOf(line.line, searchFrom);
+      if (position < 0) return false;
+      searchFrom = position + line.line.length;
+    }
+    return true;
+  })();
+  const currentTurnKeys = new Set(
+    (namedDialogue ?? []).map(
+      line => `${line.speakerName.normalize("NFKC").trim().toLocaleLowerCase()}\n${line.line}`
+    )
+  );
+  const containsStaleTurn = (derivedDialogueTurns ?? []).some(turn => {
+    const key = `${turn.speakerName.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`;
+    return !currentTurnKeys.has(key) && turn.line.trim().length >= 4 && prompt.includes(turn.line.trim());
+  });
+  const normalizedName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const castByName = new Map(
+    (cast ?? []).map(member => [normalizedName(member.name), member])
+  );
+  const requiredSpeakerBindings = (namedDialogue ?? []).flatMap(line => {
+    const member = castByName.get(normalizedName(line.speakerName));
+    return member ? [member] : [];
+  });
+  const bindingDirectivePresent =
+    /speaker-to-face|speaker.{0,30}face|lip[ -]?sync|mouth|ขยับปาก|ผูกผู้พูดกับใบหน้า/i.test(prompt);
+  const missingSpeakerBinding = requiredSpeakerBindings.some(
+    member =>
+      !prompt.includes(member.name) ||
+      !prompt.includes(`@Image${member.imageIndex}`)
+  );
   return (
     prompt.length >= STAGED_VIDEO_PROMPT_MIN_CHARS &&
     prompt.length <=
@@ -53,7 +119,14 @@ export function isCompleteStagedVideoPrompt(
     STAGED_ACCEPTED_IMAGE_PATTERN.test(prompt) &&
     STAGED_VIDEO_MOTION_PATTERN.test(prompt) &&
     STAGED_NO_TEXT_PATTERN.test(prompt) &&
-    (!dialogue || prompt.includes(dialogue))
+    (!dialogue || (namedDialogue
+      ? namedDialogue.every(line => prompt.includes(line.speakerName) && prompt.includes(line.line))
+      : prompt.includes(dialogue))) &&
+    dialogueAppearsInOrder &&
+    !containsDuplicateApprovedLine &&
+    !containsStaleTurn &&
+    (requiredSpeakerBindings.length === 0 ||
+      (bindingDirectivePresent && !missingSpeakerBinding))
   );
 }
 

@@ -7,6 +7,7 @@ import {
   buildStagedImagePrompt,
   buildStagedStoryArcPlan,
   buildStagedVideoPrompt,
+  parseStagedDialogueTurns,
   type StagedCastMember,
 } from "../marketplaceAutoReviewStoryArcPlanner";
 
@@ -177,7 +178,7 @@ describe("buildStagedStoryArcPlan — two-person conversation end to end (market
     expect(prompt).toContain("@Image3 = Somchai (guest)");
   });
 
-  it("buildStagedVideoPrompt includes both cast names and the approved dialogue turns in speaking order", () => {
+  it("buildStagedVideoPrompt binds each canonical dialogue line to its labeled portrait", () => {
     const plan = buildStagedStoryArcPlan({
       runId: "run-two-person-video",
       product: {
@@ -194,12 +195,56 @@ describe("buildStagedStoryArcPlan — two-person conversation end to end (market
 
     expect(prompt).toContain("Ann");
     expect(prompt).toContain("Somchai");
-    // Approved dialogue (fact): rendered in speaking order, verbatim.
-    expect(prompt).toContain(
-      "Dialogue in speaking order (must be spoken exactly in this order, do not rewrite):"
+    expect(prompt).toContain("Character identity manifest from the labeled portrait references:");
+    expect(prompt).toContain("@Image2 = Ann (host; cast-1)");
+    expect(prompt).toContain("@Image3 = Somchai (guest; cast-2)");
+    expect(prompt).toContain(`1. Ann [cast-1; @Image2; host]: "${turns[0].line}"`);
+    expect(prompt).toContain(`2. Somchai [cast-2; @Image3; guest]: "${turns[1].line}"`);
+    expect(prompt).toContain("SPEAKER-TO-FACE LOCK:");
+    expect(prompt).toContain("everyone else stays silent, mouths closed");
+    expect(prompt).not.toContain(`Approved dialogue (must not be rewritten): ${plan.shots[0].dialogue}`);
+  });
+
+  it("uses the edited transcript once and ignores stale cached dialogue turns", () => {
+    const plan = buildStagedStoryArcPlan({
+      runId: "run-edited-dialogue-video",
+      product: {
+        productId: "p1",
+        productName: "Demo chair",
+        description: "Evidence-grounded description",
+        imageUrls: [],
+      },
+      cast: [host, guest],
+    });
+    const shot = plan.shots[0];
+    const staleTurns = shot.dialogueTurns!;
+    const editedDialogue =
+      "Ann: This is the newly approved host line.\nSomchai: This is the newly approved guest line.";
+    const prompt = buildStagedVideoPrompt({
+      plan,
+      shot: { ...shot, dialogue: editedDialogue, dialogueTurns: staleTurns },
+    });
+
+    expect(prompt).toContain('Ann [cast-1; @Image2; host]: "This is the newly approved host line."');
+    expect(prompt).toContain('Somchai [cast-2; @Image3; guest]: "This is the newly approved guest line."');
+    for (const staleTurn of staleTurns) {
+      expect(prompt).not.toContain(staleTurn.line);
+    }
+    expect(prompt.match(/This is the newly approved host line\./g)).toHaveLength(1);
+    expect(prompt.match(/This is the newly approved guest line\./g)).toHaveLength(1);
+  });
+
+  it("rebuilds cached turns from edited speaker names and drops unresolved stale turns", () => {
+    const turns = parseStagedDialogueTurns(
+      " Ann: New host line\nSomchai: New guest line ",
+      [host, guest]
     );
-    expect(prompt).toContain(`1. ${turns[0].speakerName}: ${turns[0].line}`);
-    expect(prompt).toContain(`2. ${turns[1].speakerName}: ${turns[1].line}`);
+
+    expect(turns).toEqual([
+      { castId: "cast-1", speakerName: "Ann", line: "New host line" },
+      { castId: "cast-2", speakerName: "Somchai", line: "New guest line" },
+    ]);
+    expect(parseStagedDialogueTurns("Unknown: Unmapped speaker", [host, guest])).toBeUndefined();
   });
 
   /**

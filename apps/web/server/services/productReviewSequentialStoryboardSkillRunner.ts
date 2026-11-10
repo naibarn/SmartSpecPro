@@ -3097,6 +3097,24 @@ function buildSequentialSingleShotRefreshContract(
     '  Return ONLY a JSON object: {"start_frame_image_prompt": string, "video_prompt": string, "camera_beats": [{"beat_id": number, "duration_seconds": number, "camera": string, "movement": string, "action": string, "transition": string}]}.',
     "Rewrite ONLY this one shot. Never reference or alter any other shot. Never emit loopReport, finalQc, claim_trace, or any other shot's fields.",
   ];
+  const hasApprovedShotImage = input.referenceManifest.some(
+    entry => entry.role === "approved_shot_image"
+  );
+  const characterReferences = input.referenceManifest.filter(
+    entry => entry.role === "character" && entry.characterName?.trim()
+  );
+  if (hasApprovedShotImage && characterReferences.length > 0) {
+    lines.push(
+      "## Video Dialogue Source and Speaker-to-Face Binding",
+      "For video_prompt, shotContract.dialogue is the ONLY canonical spoken script. Include its spoken lines once each, verbatim and in the same order. Never add a second copy, stale dialogue turns, a paraphrase, or an earlier version of a line.",
+      "Resolve every `Name: line` speaker only against this labeled character portrait manifest:",
+      ...characterReferences.map(
+        entry => `@Image${entry.index} = ${entry.characterName} (${entry.characterRole || "character"}${entry.variantLabel ? `; ${entry.variantLabel}` : ""})`
+      ),
+      "In video_prompt, bind each spoken line to its exact character name and matching labeled portrait identity. Match that same face in the approved_shot_image; do not guess by left/right placement, name alone, or cast order. Only the named speaker moves their mouth for their line; listeners and all other visible people keep their mouths closed. If a face cannot be matched confidently, do not assign lip movement to the wrong person.",
+      "The approved_shot_image is the final video visual source. Portrait labels are identity anchors from this prompt-authoring call; do not imply those separate portrait files will also be attached to the video renderer."
+    );
+  }
   return lines.join("\n");
 }
 
