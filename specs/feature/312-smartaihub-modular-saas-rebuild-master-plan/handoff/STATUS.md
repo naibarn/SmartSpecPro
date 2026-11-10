@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Continue pre-handover acceptance: have the account owner verify existing-user password login and MFA on aimarkethubs.com, then verify canonical customer membership/data, matched same-database Legacy/Core performance, development/production isolation, and human UAT. The deployment and login UI are verified; successful account authentication is not yet proven.
-- Manifest generation: 30
+- Next action: Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.
+- Manifest generation: 31
 
 ## Source-declared status and relationship claims
 
