@@ -2882,6 +2882,24 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       !shotState?.videoArtifactHash &&
       !videoCheckpointConsumed
     ) {
+      if (!shotState?.imageArtifactUrl) {
+        await upsertStage({
+          db: params.db,
+          runId: params.run.id,
+          stageKey: "video_generation",
+          status: "blocked_needs_user",
+          output: {
+            shotId: shot.shotId,
+            statusDetail: {
+              state: "waiting_for_approved_image",
+              safeMessage: `สร้างและยืนยันภาพของช็อตที่ ${shot.shotId} ก่อน จึงจะเริ่มสร้างวิดีโอได้`,
+              userActionRequired: true,
+              retryable: true,
+            },
+          },
+        });
+        continue;
+      }
       try {
         metadata = (await handleVideoProvider({
           ...params,

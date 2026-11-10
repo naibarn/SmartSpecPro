@@ -4,6 +4,7 @@ vi.mock("../mediaGenerationService", () => ({
   mediaGenerationService: {
     getModel: vi.fn().mockReturnValue(null),
     generateImageAsync: vi.fn(),
+    generateVideoAsync: vi.fn(),
     getTask: vi.fn(),
   },
 }));
@@ -256,6 +257,18 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
     );
     expect(consumedShot3ImagePrompt.ok).toBe(true);
     if (!consumedShot3ImagePrompt.ok) throw new Error("test setup failed");
+    const shot3VideoPromptCheckpoint = buildStagedCheckpoint({
+      checkpointId: `video-prompt:${runId}:shot-${shot3.shotId}:r${plan.planRevision}`,
+      kind: "video_prompt",
+      shotId: shot3.shotId,
+      revision: plan.planRevision,
+      contentHash: "shot3-video-prompt-hash",
+      model: "veo3/generate-veo-3-video-lite",
+      provider: "media-provider",
+      estimatedCredits: 8,
+      referenceManifestHash: plan.referenceManifestHash,
+      autoApprove: { userId: 42, approvedAt: "2026-07-29T00:00:00.000Z" },
+    });
 
     const shots = plan.shots.map(shot => {
       if (shot.shotId === shot1.shotId) {
@@ -352,6 +365,7 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
           shot1VideoPromptCheckpoint,
           shot2ImagePromptCheckpoint,
           consumedShot3ImagePrompt.checkpoint,
+          shot3VideoPromptCheckpoint,
         ],
       },
       stagedPipeline: {
@@ -403,7 +417,7 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       metadataJson: metadata,
     };
 
-    const { db, getRunRow } = makeFakeDb(initialRun);
+    const { db, getRunRow, getStageRows } = makeFakeDb(initialRun);
     const auth = { userId: 42, tenantId: "tenant-1" };
     const runtime = { userToken: "internal", publicUrl: "https://app.test" };
 
@@ -455,6 +469,20 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
     ).toBe("prior-image-provider-handoff");
     expect(persisted.metadataJson.correctionRequired?.reasonCode).not.toBe(
       "checkpoint_consumed"
+    );
+    expect(mediaGenerationService.generateVideoAsync).not.toHaveBeenCalled();
+    expect(getStageRows()).toContainEqual(
+      expect.objectContaining({
+        stageKey: "video_generation",
+        status: "blocked_needs_user",
+        outputJson: expect.objectContaining({
+          shotId: shot3.shotId,
+          statusDetail: expect.objectContaining({
+            state: "waiting_for_approved_image",
+            retryable: true,
+          }),
+        }),
+      })
     );
 
     // Shot 1's spent credit for the now-permanently-failed video task was

@@ -140,10 +140,10 @@ describe("StagedCheckpointReviewPanel", () => {
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     );
     const confirm = screen.getByTestId("staged-generation-confirm-submit");
-    expect(confirm.className).toContain("bg-primary");
-    expect(confirm.className).toContain("text-primary-foreground");
-    expect(confirm.className).toContain("disabled:bg-muted");
-    expect(confirm.className).toContain("disabled:text-muted-foreground");
+    expect(confirm.className).toContain("bg-sky-800");
+    expect(confirm.className).toContain("text-white");
+    expect(confirm.className).toContain("disabled:bg-slate-200");
+    expect(confirm.className).toContain("disabled:text-slate-700");
     expect(confirm.className).not.toContain("bg-violet-");
     fireEvent.click(confirm);
     fireEvent.click(confirm);

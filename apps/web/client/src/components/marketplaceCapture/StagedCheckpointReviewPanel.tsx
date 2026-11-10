@@ -4453,7 +4453,7 @@ export function StagedCheckpointReviewPanel(props: {
           </button>
           <button
             type="button"
-            className="min-h-11 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+            className="min-h-11 rounded bg-sky-800 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100"
             data-testid="staged-generation-confirm-submit"
             disabled={!generationConfirmation}
             onClick={() => {
