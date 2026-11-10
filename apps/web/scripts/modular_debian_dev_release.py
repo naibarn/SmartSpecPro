@@ -231,9 +231,9 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
         raise ReleaseError("LEGACY_ROLLBACK_SERVICE_UNHEALTHY")
 
     local_smoke = verify_local_components()
-    run(["cloudflared", "tunnel", "ingress", "validate", "--config", str(args.candidate_config)])
+    run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "validate"])
     for route in ("/v1/core/auth/login", "/api/chat/livez", "/modules/chat/current/module.manifest.json", "/login", "/"):
-        run(["cloudflared", "tunnel", "ingress", "rule", "--config", str(args.candidate_config), f"https://{DOMAIN}{route}"])
+        run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "rule", f"https://{DOMAIN}{route}"])
 
     backup = artifact_root / "rollback" / "cloudflared.pre-modular.yml"
     backup.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
