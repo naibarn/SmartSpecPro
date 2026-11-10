@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI.",
-      "checkpoint_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
-      "merged_main_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
+      "next_action": "On the existing run mar_670133124534765cf0d36d3637b6ee89, refresh the deployed page and verify every shot can queue prompt work while its media render is active; after the active render settles, confirm the queued video prompt appears and then run a browser-authenticated provider generation check. Inspect worker job progress and runtime logs if the UI or artifact does not update.",
+      "checkpoint_sha": "d239a3806024c24021071abe3243778dc4723f51",
+      "merged_main_sha": "d239a3806024c24021071abe3243778dc4723f51",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-autoreview-speaker-prompt-deploy"
+      "session_id": "codex-marketplace-video-prompt-queue-deploy"
     }
   },
   "pre_commit": {
@@ -42,15 +42,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 53,
-  "updated_at": "2026-11-10T08:38:26.371063+00:00",
+  "generation": 54,
+  "updated_at": "2026-11-10T09:20:52.450051+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI.",
-    "merged_main_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
+    "next_action": "On the existing run mar_670133124534765cf0d36d3637b6ee89, refresh the deployed page and verify every shot can queue prompt work while its media render is active; after the active render settles, confirm the queued video prompt appears and then run a browser-authenticated provider generation check. Inspect worker job progress and runtime logs if the UI or artifact does not update.",
+    "merged_main_sha": "d239a3806024c24021071abe3243778dc4723f51",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
-      "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
+      "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery.",
+      "Authenticated browser UAT and live provider-backed video-prompt generation on the existing Marketplace Auto Review run remain outstanding; focused tests and deployment health pass."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
