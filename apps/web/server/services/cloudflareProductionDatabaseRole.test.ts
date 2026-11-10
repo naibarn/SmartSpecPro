@@ -13,6 +13,8 @@ describe("Cloudflare Production PostgreSQL runtime role plan", () => {
     expect(marker).toBe(`smartspec:cloudflare-production-runtime:v1:${base.planDigest}`);
     expect(statements).toContain('GRANT UPDATE ("status", "updatedAt") ON public."emergency_reports" TO "sah_cf_prod_0123456789ab"');
     expect(statements).toContain('GRANT INSERT ("tenantId", "caseId", "eventIdempotencyKey", "actorType", "actorRef", "eventType", "reason", "revision", "previousHash", "eventHash", "payloadJson", "createdAt") ON public."emergency_case_events" TO "sah_cf_prod_0123456789ab"');
+    expect(statements).toContain('REVOKE ALL PRIVILEGES ON FUNCTION public.cleanup_expired_session_jtis(integer) FROM "sah_cf_prod_0123456789ab"');
+    expect(statements).toContain('GRANT EXECUTE ON FUNCTION public.cleanup_expired_session_jtis(integer) TO "sah_cf_prod_0123456789ab"');
     expect(statements.some(statement => /GRANT (?:INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER).*worker_jobs/.test(statement))).toBe(false);
     expect(statements.some(statement => /GRANT (?:DELETE|TRUNCATE|REFERENCES|TRIGGER)/.test(statement))).toBe(false);
   });

@@ -5,6 +5,9 @@ import type { ProductionDatabaseResourcePlan } from "./cloudflareProductionDatab
 const ROLE_MARKER_PREFIX = "smartspec:cloudflare-production-runtime:v1:";
 const FENCE_FUNCTION = "cloudflare_validate_emergency_intake_v1";
 const FENCE_MARKER_PREFIX = "smartspec:cloudflare-production-fence:v1:";
+const SESSION_JTI_CLEANUP_FUNCTION = "cleanup_expired_session_jtis";
+const SESSION_JTI_CLEANUP_OWNER = "modular_core_jti_cleanup_owner";
+const SESSION_JTI_CLEANUP_MARKER = "smartaihub:session-jti-cleanup:v1";
 const rolePattern = /^sah_cf_prod_[a-f0-9]{12}$/;
 const passwordPattern = /^[A-Za-z0-9_-]{32,1024}$/;
 
@@ -67,6 +70,8 @@ export function buildCloudflareProductionRuntimeRoleStatements(input: {
 
   statements.push(`REVOKE ALL PRIVILEGES ON FUNCTION public.${FENCE_FUNCTION}(text,text,integer,text,integer,text,text,text,jsonb,text) FROM ${role}`);
   statements.push(`GRANT EXECUTE ON FUNCTION public.${FENCE_FUNCTION}(text,text,integer,text,integer,text,text,text,jsonb,text) TO ${role}`);
+  statements.push(`REVOKE ALL PRIVILEGES ON FUNCTION public.${SESSION_JTI_CLEANUP_FUNCTION}(integer) FROM ${role}`);
+  statements.push(`GRANT EXECUTE ON FUNCTION public.${SESSION_JTI_CLEANUP_FUNCTION}(integer) TO ${role}`);
 
   for (const [table, columns] of Object.entries(selectedColumns)) {
     statements.push(`REVOKE ALL PRIVILEGES ON ${tableName(table)} FROM ${role}`);
@@ -170,6 +175,23 @@ export async function prepareCloudflareProductionRuntimeRole(input: {
         $function$`));
         await tx.execute(sql.raw(`COMMENT ON FUNCTION public.${FENCE_FUNCTION}(text,text,integer,text,integer,text,text,text,jsonb,text) IS '${functionMarker}'`));
         await tx.execute(sql.raw(`REVOKE ALL ON FUNCTION public.${FENCE_FUNCTION}(text,text,integer,text,integer,text,text,text,jsonb,text) FROM PUBLIC`));
+      }
+      const cleanupFunctionRows = await tx.execute(sql`SELECT p.prosecdef, p.proargtypes::text AS argument_types,
+        obj_description(p.oid,'pg_proc') AS marker, cleanup_owner.rolname AS owner_name,
+        cleanup_owner.rolcanlogin, cleanup_owner.rolsuper, cleanup_owner.rolcreaterole, cleanup_owner.rolcreatedb,
+        cleanup_owner.rolreplication, cleanup_owner.rolbypassrls,
+        EXISTS(SELECT 1 FROM pg_auth_members m WHERE m.roleid=cleanup_owner.oid OR m.member=cleanup_owner.oid) AS has_memberships
+        FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        JOIN pg_roles cleanup_owner ON cleanup_owner.oid=p.proowner
+        WHERE n.nspname='public' AND p.proname=${SESSION_JTI_CLEANUP_FUNCTION}`);
+      const cleanupFunction = cleanupFunctionRows[0];
+      if (cleanupFunctionRows.length !== 1 || cleanupFunction?.prosecdef !== true ||
+          cleanupFunction.argument_types !== "23" || cleanupFunction.marker !== SESSION_JTI_CLEANUP_MARKER ||
+          cleanupFunction.owner_name !== SESSION_JTI_CLEANUP_OWNER || cleanupFunction.rolcanlogin !== false ||
+          cleanupFunction.rolsuper !== false || cleanupFunction.rolcreaterole !== false ||
+          cleanupFunction.rolcreatedb !== false || cleanupFunction.rolreplication !== false ||
+          cleanupFunction.rolbypassrls !== false || cleanupFunction.has_memberships !== false) {
+        throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_ROLE_JTI_CLEANUP_FUNCTION_UNVERIFIED");
       }
       const { statements } = buildCloudflareProductionRuntimeRoleStatements({ role: plan.databaseUser,
         databaseName: plan.databaseName, databasePassword, planDigest, existing: Boolean(existing) });
