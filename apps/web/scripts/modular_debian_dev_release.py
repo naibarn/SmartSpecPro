@@ -29,6 +29,11 @@ COMPONENTS = {
     "chat": {"service": "smartsihub-chat-dev.service", "port": 3201, "health": "/api/chat/livez", "expected": 200},
     "shell": {"service": "smartsihub-shell-dev.service", "port": 3202, "health": "/login", "expected": 200},
 }
+SERVICE_WORKING_DIRECTORIES = {
+    "core": "apps/saas-core",
+    "chat": "modules/chat",
+    "shell": "apps/saas-shell",
+}
 ACTIVE_TUNNEL_CONFIG = Path("/home/dev/.config/smartspec-dev/cloudflared.yml")
 TUNNEL_SERVICE = "smartspec-dev-tunnel.service"
 
@@ -109,6 +114,26 @@ def run(command: list[str], *, timeout: int = 20) -> subprocess.CompletedProcess
     if result.returncode != 0:
         raise ReleaseError("RELEASE_COMMAND_FAILED:" + Path(command[0]).name)
     return result
+
+
+def verify_service_release_directories(artifact_root: Path, *, proc_root: Path = Path("/proc")) -> None:
+    expected_root = artifact_root.resolve()
+    for name, component in COMPONENTS.items():
+        run(["systemctl", "--user", "is-active", component["service"]])
+        result = run([
+            "systemctl", "--user", "show", component["service"],
+            "--property=MainPID", "--value",
+        ])
+        main_pid = result.stdout.strip()
+        if not main_pid.isdigit() or int(main_pid) == 0:
+            raise ReleaseError(f"SERVICE_PROCESS_UNAVAILABLE:{name}")
+        try:
+            actual_directory = Path(os.readlink(proc_root / main_pid / "cwd")).resolve()
+        except (OSError, RuntimeError) as exc:
+            raise ReleaseError(f"SERVICE_PROCESS_CWD_UNAVAILABLE:{name}") from exc
+        expected_directory = (expected_root / SERVICE_WORKING_DIRECTORIES[name]).resolve()
+        if actual_directory != expected_directory:
+            raise ReleaseError(f"SERVICE_RELEASE_PATH_MISMATCH:{name}")
 
 
 def http_status(url: str, *, host: str | None = None, max_time: int = 8) -> tuple[int, str]:
@@ -243,6 +268,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     if old_status != 200:
         raise ReleaseError("LEGACY_ROLLBACK_SERVICE_UNHEALTHY")
 
+    verify_service_release_directories(artifact_root)
     local_smoke = verify_local_components()
     run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "validate"])
     for route in ("/v1/core/auth/login", "/api/chat/livez", "/modules/chat/current/module.manifest.json", "/login", "/"):

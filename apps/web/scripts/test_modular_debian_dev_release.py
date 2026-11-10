@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
 import unittest
 
 
@@ -77,6 +80,41 @@ class ModularDebianReleasePolicyTests(unittest.TestCase):
                 {"tunnel": "other", "credentials-file": "/private/tunnel.json", "ingress": ingress()},
                 {"tunnel": "dev-tunnel", "credentials-file": "/private/tunnel.json"},
             )
+
+    def test_requires_running_services_to_use_the_candidate_release(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            release_root = root / "candidate"
+            proc_root = root / "proc"
+            responses = []
+            for index, suffix in enumerate(release.SERVICE_WORKING_DIRECTORIES.values(), start=101):
+                working_directory = release_root / suffix
+                working_directory.mkdir(parents=True)
+                process_cwd = proc_root / str(index) / "cwd"
+                process_cwd.parent.mkdir(parents=True)
+                process_cwd.symlink_to(working_directory, target_is_directory=True)
+                responses.extend((SimpleNamespace(stdout="active\n"), SimpleNamespace(stdout=f"{index}\n")))
+
+            with patch.object(release, "run", side_effect=responses):
+                release.verify_service_release_directories(release_root, proc_root=proc_root)
+
+    def test_rejects_active_services_still_running_from_the_previous_release(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            candidate = root / "candidate/apps/saas-core"
+            previous = root / "previous/apps/saas-core"
+            process_cwd = root / "proc/101/cwd"
+            candidate.mkdir(parents=True)
+            previous.mkdir(parents=True)
+            process_cwd.parent.mkdir(parents=True)
+            process_cwd.symlink_to(previous, target_is_directory=True)
+
+            with patch.object(release, "run", side_effect=(
+                SimpleNamespace(stdout="active\n"),
+                SimpleNamespace(stdout="101\n"),
+            )):
+                with self.assertRaisesRegex(release.ReleaseError, "SERVICE_RELEASE_PATH_MISMATCH:core"):
+                    release.verify_service_release_directories(candidate.parent.parent, proc_root=root / "proc")
 
 
 if __name__ == "__main__":

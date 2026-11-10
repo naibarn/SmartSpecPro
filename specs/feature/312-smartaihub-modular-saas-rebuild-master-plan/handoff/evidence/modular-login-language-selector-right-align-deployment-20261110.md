@@ -9,4 +9,4 @@
 - Login scope: the existing `smartaihubapp@gmail.com` account metadata remains present in the shared `smartspec` database, enabled, with a bcrypt `$2b$12$` password hash and MFA enabled. The actual password was not available for verification; successful authentication remains unproven until the account owner signs in with the existing password and completes MFA. No password was changed, no account was created, and MFA was not bypassed.
 - Production scope: `smartsihub.com` was not changed.
 
-The release manifest SHA-256 is `73f176f8dc3c2b6a054caa95ba0006705cea6376c86e87d0ffcba6057cb377ea`.
+The release manifest records the actual systemd activation at `2026-11-10T07:35:04Z` and the post-activation smoke results. Its SHA-256 is `fc8b18a68c238f24887a810d4d7a349ce8ec47b6c5299d718102b95df37ec943`.
