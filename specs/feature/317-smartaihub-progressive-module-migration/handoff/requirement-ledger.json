@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 11,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -11,22 +11,24 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-01-build-matrix-20261110.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Implement small reversible package releases; Shell and Chat code are scaffolds until login, chat, and target-health evidence pass.",
+      "next_action": "Continue independent module releases and record actual target-specific rollback evidence when deployable workloads are enabled; preserve the Legacy site until intentional handover.",
       "requirement_digest": "e4132619d068cb4403e647cb6b06cf141988778ef6b7aa76877987fb78129c15",
       "requirement_id": "REQ-4BB581C90577",
       "requirement_text": "Migration is a **series of small reversible module releases**. The original `apps/web` remains running on `smartaihub.app` while new sources are selectively copied into clean module packages, with dependency pruning, modern UI replacement where appropriate, actual Debian UAT and Cloudflare staging, then production availability. Core login/tenant/Shell minimum viable vertical slice SHALL be usable first; completion of all Core commerce/admin features is **not** a prerequisite for beginning independent module migration or human tests. “Partially migrated” does not mean feature removed or traffic blindly forwarded.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [
-        "handoff/evidence/section-01-build-boundary-20261110.md"
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-2"
       ],
-      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      "verification_method": "Run each named workload build independently and inspect output scope, sizes, and deployment/rollback boundaries; verify no aggregate root build is introduced."
     },
     {
       "applicability": "UNASSESSED",
@@ -45,7 +47,7 @@
       "requirement_digest": "2b3e706c0c1212ebb2c303406db6316eb6da1932c395e5c9a23894623feb0351",
       "requirement_id": "REQ-6F1846B57E8F",
       "requirement_text": "**Actual wave order is informed by ongoing inventory and evolving dependency graph; no `G0 complete` milestone blocks the next small working module. Multiple independent modules MAY migrate in parallel if their write authority/routing is isolated.** Pilot must include one genuine authenticated Core-dependent module, not only an anonymous static webpage.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -67,54 +69,68 @@
       "requirement_digest": "6dab0dcb8033de6730d147f3a12bf237d2c8800842094e499a3e89f9b6151963",
       "requirement_id": "REQ-069F6F822212",
       "requirement_text": "- Read from both old/new only when compatible and approved; mutation routing must have a durable owner/fence and idempotency.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L62"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L62",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-02-front-door-20261110.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Implement or verify the existing deep-link, bookmark, and custom-domain compatibility contract before marking this requirement complete.",
       "requirement_digest": "55ab8241ff3b9a9d5963b684d49e36f8d8cc3f361b2bcdd8d28721849ff57a28",
       "requirement_id": "REQ-2B7D77E6D086",
       "requirement_text": "Modules launched from a consistent Shell under platform routes (`/m/{moduleId}` illustrative). Existing deep links, bookmarks and custom-domain aliases use SPEC-304 compatibility. Avoid iframe for trusted first-party modules. Untrusted third-party source uses isolated origin/context. A disabled module remains installed but unavailable to unentitled users; this must not erase customer data or turn off platform identity/wallet infrastructure.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-02-front-door-20261110.md"
+      ],
+      "verification_method": "Check Chat-first route and dashboard redirect in Shell tests/browser; verify SPEC-304 deep-link and custom-domain compatibility before claiming full route compatibility."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L71"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L71",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": {
+        "class": "TARGET_NOT_AVAILABLE",
+        "description": "The modular-debian-dev target is not deployable/applicationAvailable=false; current port-3100 service must remain until the new Core is healthy and intentional handover occurs.",
+        "next_action": "Resume human UAT after modular-debian-dev is available and hosted health is verified."
+      },
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+      ],
+      "implementation_status": "VALIDATION_PENDING",
+      "next_action": "Do not substitute mocked Playwright for human UAT; run and record authorized UAT after the target is available and healthy.",
       "requirement_digest": "607bc4c2356e637a35ef1cf39162e100a460047a548f374ece93e404b8d7bd7b",
       "requirement_id": "REQ-64CA2E9BC303",
       "requirement_text": "- A real authorized human UAT session SHALL be recorded for each meaningful feature: route/role, steps, observed success/failure, tester feedback, bug owner, fix commit and redeploy outcome. Automated tests are supporting tools, not a substitute for real users.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+      ],
+      "verification_method": "Record a real authorized human UAT session on the actual Modular development target; automated and mocked browser checks are supporting evidence only."
     },
     {
       "applicability": "UNASSESSED",
@@ -133,32 +149,41 @@
       "requirement_digest": "54dfa0855aa481e310e894aea2ae3c04d934f020beb85917c7dd2d30f821bf7c",
       "requirement_id": "REQ-48EFA6340760",
       "requirement_text": "Migration must inventory the **actual pre-existing Legacy-owned tables** in `smartspec` and bind them to canonical App/module IDs in a Legacy Shared-DB Exception registry. Only these explicitly inherited business records may remain in the Core PostgreSQL; they are not a model to follow when creating NEW Mini Apps. A legacy App may later opt to move its business data into an app-owned D1 or PostgreSQL with controlled export, dual-runtime compatibility and verified cutover; do not force a legacy move before useful beta. New Mini Apps start with independent data contracts and storage from day one; no “temporary add tables to Core” shortcut.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "NOT_APPLICABLE",
+      "applicability_rationale": "R1.7 supersedes only this row's former mandatory SPEC-224 entry path. Direct Codex/Claude development and optional SPEC-224 are now both valid; SPEC-224 evidence is recorded only when that route is used. Other R1.1 module priorities and safety requirements remain in force.",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L113"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L113",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
+      "current_relevance": "SUPERSEDED_BY_R1.7",
+      "evidence_freshness": "FRESH",
       "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "final_state": "NOT_APPLICABLE",
+      "implementation_evidence": [
+        "spec.md#R1.7",
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
+      ],
+      "implementation_status": "SUPERSEDED_BY_OWNER_CLARIFICATION",
+      "next_action": "Use the R1.7 successor requirement; retain SPEC-224 as an optional route and record its receipts only when used.",
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
       "requirement_id": "REQ-6BA6E5614490",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+      "successor_mapping": [
+        "REQ-E5EEFB57E176"
+      ],
+      "verification_evidence": [
+        "spec.md#R1.7",
+        "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1"
+      ],
+      "verification_method": "Compare the superseded requirement with R1.7 and confirm the direct development path used for the integrated checkpoint; do not fabricate SPEC-224 Run evidence."
     },
     {
       "applicability": "UNASSESSED",
@@ -177,7 +202,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -185,9 +210,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L143"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L145"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L143",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L145",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -197,9 +222,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
-      "requirement_id": "REQ-AB16939A3F52",
+      "requirement_id": "REQ-F08A9F0ABB58",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -207,9 +232,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L144"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L146"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L144",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L146",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -219,9 +244,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
-      "requirement_id": "REQ-38590D443AC3",
+      "requirement_id": "REQ-B89BDD10E8E0",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -229,9 +254,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L149"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L151"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L149",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L151",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -241,9 +266,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
-      "requirement_id": "REQ-F704F8E6840D",
+      "requirement_id": "REQ-4C483EA0329D",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -251,9 +276,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L150"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L152"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L150",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -263,9 +288,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
-      "requirement_id": "REQ-91CC7880E937",
+      "requirement_id": "REQ-4A6FCC9AB87A",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -273,50 +298,32 @@
     {
       "applicability": "APPLICABLE",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L163"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L163",
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/section-03-worker-contract-20261110.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Finish dependency isolation evidence after implementing the full Shell and Chat behavior; do not claim module stability from scaffolding.",
+      "next_action": "Complete per-module provenance, data authority, release and rollback records as each migrated workload becomes deployable.",
       "requirement_digest": "cb67953120f53072f24c4cf02a48684dbce0c51af34e8ebc4570d9ae5f71d2d4",
-      "requirement_id": "REQ-C8D3AE2138BD",
+      "requirement_id": "REQ-295AD937395C",
       "requirement_text": "Migrate capabilities by bounded module, not by converting the whole Legacy application. Existing code, schemas, screens and UI assets are references only. Each new or reused module must document owner/provenance, permitted source inputs, data authority, capability manifest, tenant boundary, secret placement, target-specific release and rollback before enabling its route. No Legacy server import, worker process or shared all-powerful credential may become a hidden dependency of ordinary Cloudflare Core or Chat paths.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [
-        "handoff/evidence/section-01-build-boundary-20261110.md"
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/section-03-worker-contract-20261110.md",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2"
       ],
-      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L169"
-      ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L169",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b1d970c1ec6188ca9bbe51908e2cbf3627a74af60d1519023200cfbaa5b0ef8",
-      "requirement_id": "REQ-34BA27C1BFAE",
-      "requirement_text": "The new authenticated SaaS experience SHALL open directly to the new Chat workspace. After login, `/` SHALL resolve to `/chat`; the new application SHALL NOT expose or reuse the Legacy dashboard as its home screen. A request to `/dashboard` within the new application resolves to `/chat`. This route behavior applies only to the new Modular application; it does not authorize changing the currently serving `aimarkethubs.com` application before its replacement is healthy and a handover is intentional.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "Inspect independent package boundaries and filtered builds for Legacy/server imports, execution runtime coupling, and module-owned data/capability/rollback declarations."
     },
     {
       "applicability": "APPLICABLE",
@@ -327,47 +334,145 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
-      "final_state": "PARTIAL",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-02-front-door-20261110.md"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Implement functional Shell login and lazy Chat assets, then remeasure package-only builds after those features land.",
-      "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
-      "requirement_id": "REQ-8ACA3DD0FDD4",
-      "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Preserve the Chat-first routing contract; verify real canonical-account login under REQ-B7D16C4F9A3E when the modular development target is available.",
+      "requirement_digest": "4b1d970c1ec6188ca9bbe51908e2cbf3627a74af60d1519023200cfbaa5b0ef8",
+      "requirement_id": "REQ-2E717B8BD3E7",
+      "requirement_text": "The new authenticated SaaS experience SHALL open directly to the new Chat workspace. After login, `/` SHALL resolve to `/chat`; the new application SHALL NOT expose or reuse the Legacy dashboard as its home screen. A request to `/dashboard` within the new application resolves to `/chat`. This route behavior applies only to the new Modular application; it does not authorize changing the currently serving `aimarkethubs.com` application before its replacement is healthy and a handover is intentional.",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
       "verification_evidence": [
-        "handoff/evidence/section-01-build-boundary-20261110.md"
+        "handoff/evidence/section-02-front-door-20261110.md",
+        "handoff/evidence/section-04-chat-ui-20261110.md"
       ],
-      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      "verification_method": "Run Shell route tests and mocked browser flow for successful sign-in and dashboard redirect; keep real-account hosted login tracked separately."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L175"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L173"
       ],
-      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L175",
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L173",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a531c3f97d1766a40e0284e783c1eb7b3c81e0cb8359134f539da5874617247f",
-      "requirement_id": "REQ-07858C20A7E7",
-      "requirement_text": "`aimarkethubs.com` remains the Debian development/UAT target, and `smartsihub.com` remains the separate future Cloudflare production target. Login success on the new dev application SHALL be tested with a pre-existing canonical account; do not create or reset the requested existing account as part of front-door work.",
-      "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-01-build-matrix-20261110.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Keep named filtered builds and package-local outputs; finish independently scoped deploy/rollback evidence and expand modules without an aggregate root build.",
+      "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
+      "requirement_id": "REQ-32CAB23B7018",
+      "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/section-04-chat-ui-20261110.md"
+      ],
+      "verification_method": "Run explicit Shell, Chat, and Core package builds and inspect their output manifests/sizes; confirm a Chat change does not build other apps or Legacy."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L177"
+      ],
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L177",
+      "blocker": {
+        "class": "TARGET_NOT_AVAILABLE",
+        "description": "The modular-debian-dev target is not deployable/applicationAvailable=false; the current site on port 3100/Tunnel remains in service.",
+        "next_action": "Resume existing-account login proof after the Modular target is healthy and handover is intentional."
+      },
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "VALIDATION_PENDING",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-02-front-door-20261110.md"
+      ],
+      "implementation_status": "VALIDATION_PENDING",
+      "next_action": "Keep the existing site and credentials untouched; perform real-account login only after target availability and health are proven.",
+      "requirement_digest": "a531c3f97d1766a40e0284e783c1eb7b3c81e0cb8359134f539da5874617247f",
+      "requirement_id": "REQ-B7D16C4F9A3E",
+      "requirement_text": "`aimarkethubs.com` remains the Debian development/UAT target, and `smartsihub.com` remains the separate future Cloudflare production target. Login success on the new dev application SHALL be tested with a pre-existing canonical account; do not create or reset the requested existing account as part of front-door work.",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/section-02-front-door-20261110.md",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+      ],
+      "verification_method": "Authenticate with a pre-existing canonical account against the actual aimarkethubs.com Modular development target and verify target health; do not create/reset the account or switch service traffic for the test."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L183"
+      ],
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L183",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Continue direct Codex/Claude development or use SPEC-224 optionally; record the actual source SHA and route-specific receipts.",
+      "requirement_digest": "2fc67702d36e7fdf3823c05ebc8868cac507f6106fbbe802fe7f0b687cf86949",
+      "requirement_id": "REQ-E5EEFB57E176",
+      "requirement_text": "1. **Development entry paths.** The Modular SaaS Core SHALL support direct implementation by Codex or Claude in the canonical source repository/workspace, or work routed through the existing SPEC-224 facilities on `smartaihub.app`. Both paths are valid and optional. SPEC-224 remains the existing supported control surface when selected; it is not a mandatory wrapper for every development task. Record SPEC-224 Run/Runner evidence only when that route was actually used. Both paths preserve canonical Spec ownership, focused verification, exact source-SHA receipts, tenant/data/security constraints, and the normal development Git integration path.",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1",
+        "handoff/evidence/section-01-build-matrix-20261110.md"
+      ],
+      "verification_method": "Verify the integrated source SHA and focused package checks from a direct Codex development session; only record SPEC-224 receipts when that route is actually used."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L184"
+      ],
+      "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L184",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Keep every delivered workload independently buildable; add/verify Mini App Creator and future migrated workload packages with their own focused checks, manifests, size records, and deploy/rollback scopes before claiming full coverage.",
+      "requirement_digest": "2ac6b5c0a774a5c69b56945accbdff0482be0ac23ecb98e95d4e9399b0f4a65a",
+      "requirement_id": "REQ-E014BEE5B67C",
+      "requirement_text": "2. **Independent workload modules.** Each separately delivered product workload (including Core, Shell, Chat, Browser Pilot, Mini App Creator, and later migrated areas) SHALL have a bounded package/module, a named package-filtered build and focused verification command, its own output/manifest and size evidence, and an independent deploy/rollback scope when it is deployable. A module change builds that module and only its small, direct contract/SDK dependencies. Shared contracts remain small and versioned. Do not add a root default build that aggregates all applications/modules or require a Legacy-sized site build to change one workload.",
+      "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/section-01-build-matrix-20261110.md",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2",
+        "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-9"
+      ],
+      "verification_method": "Build each workload via its named filter and inspect only that package plus its direct small contracts dependency, output, size, and separate deploy/rollback readiness."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+  "spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
   "spec_id": "317"
 }

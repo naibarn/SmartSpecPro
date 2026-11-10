@@ -1,7 +1,7 @@
 ---
 spec_id: 317
 semantic_id: smartaihub.progressive-modular-migration
-revision: R1.6
+revision: R1.7
 date: 2026-11-10
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover
@@ -9,7 +9,7 @@ title: SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization an
 
 # SPEC-317 — Progressive Module Migration and Independent Legacy Retirement
 
-> **Current-revision note (R1.6, 2026-11-10):** Earlier proposal text is retained for provenance. R1.6 controls the Chat-first front door and independently built package boundary. For other migration, deployment, runtime, database, and always-on conflicts, R1.5 and the current owner-decision register control.
+> **Current-revision note (R1.7, 2026-11-10):** Earlier proposal text is retained for provenance. R1.7 controls development entry paths and independently buildable workload modules; R1.6 controls the Chat-first front door. For other migration, deployment, runtime, database, and always-on conflicts, R1.5 and the current owner-decision register control.
 
 ## 0. Decision
 
@@ -118,6 +118,8 @@ The development loop SHALL be: **Goal entered on old website → durable Run and
 
 **Overrides the tentative waves in §3 for this owner program.** The order is P1 Core, **P2 Chat**, **P3 Mini App Creator**, **P4 Autonomous Implements**, **P5 selective handover**, then Public Portfolio/Marketplace and other modules. Public page design may proceed concurrently but does not overtake the first functional Chat/Creator migrations. Existing Autonomous Implements and Autonomous Creator on `smartaihub.app` remain the tools that actually perform the migration. Never retire or redirect their routes before replacement acceptance; per-feature rollback is mandatory.
 
+> **Historical command-path note (superseded by R1.7):** The R1.1 requirement above that all development be initiated and accepted through `smartaihub.app` is retained as its original proposal record. It no longer mandates the entry path for each task. The R1.7 direct Codex/Claude or optional SPEC-224 paths control; the R1.1 module priorities and nonblocking-progress rules remain context.
+
 
 ## R1.2 — First Chat migration includes interactive response and browser pilot
 
@@ -173,3 +175,12 @@ Build the new experience from small first-party packages: `apps/saas-core` is th
 The Shell resolves first-party modules using versioned manifests and content-hashed assets. It lazy-loads the Chat route from the Chat artifact and keeps module API calls on their scoped Worker routes. No first-party module imports another module's implementation, Legacy runtime source, Express, or a broad shared database schema. Preserve the existing PostgreSQL `smartspec` identity and data authorities; re-use existing Chat records only after verifying their live schema and writer/tenant contract. Do not create a second user/session authority or a new Chat data schema in the shared Core database as a shortcut.
 
 `aimarkethubs.com` remains the Debian development/UAT target, and `smartsihub.com` remains the separate future Cloudflare production target. Login success on the new dev application SHALL be tested with a pre-existing canonical account; do not create or reset the requested existing account as part of front-door work.
+
+## R1.7 — Direct development and independently buildable workload modules (2026-11-10)
+
+This owner clarification controls over conflicting older development-command-path wording, including R1.1's `smartaihub.app` initiation mandate and R1.4's statement that it is the sole initial development-command center. It changes no release authority, runtime, account, database, or traffic state.
+
+1. **Development entry paths.** The Modular SaaS Core SHALL support direct implementation by Codex or Claude in the canonical source repository/workspace, or work routed through the existing SPEC-224 facilities on `smartaihub.app`. Both paths are valid and optional. SPEC-224 remains the existing supported control surface when selected; it is not a mandatory wrapper for every development task. Record SPEC-224 Run/Runner evidence only when that route was actually used. Both paths preserve canonical Spec ownership, focused verification, exact source-SHA receipts, tenant/data/security constraints, and the normal development Git integration path.
+2. **Independent workload modules.** Each separately delivered product workload (including Core, Shell, Chat, Browser Pilot, Mini App Creator, and later migrated areas) SHALL have a bounded package/module, a named package-filtered build and focused verification command, its own output/manifest and size evidence, and an independent deploy/rollback scope when it is deployable. A module change builds that module and only its small, direct contract/SDK dependencies. Shared contracts remain small and versioned. Do not add a root default build that aggregates all applications/modules or require a Legacy-sized site build to change one workload.
+3. **Chat-first user journey.** The new application authenticates against the existing canonical account authority and opens directly to the new Chat workspace. It does not expose or reuse the Legacy dashboard as its home screen.
+4. **Environment boundary.** `aimarkethubs.com` remains the Debian development/UAT target and its currently healthy service stays untouched until the new Core is healthy and handover is intentional. `smartsihub.com` remains a separate future Cloudflare production target. A direct development session or SPEC-224 Run does not authorize a release, DNS change, production resource, database credential broadening, or traffic handover.

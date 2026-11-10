@@ -1,8 +1,8 @@
 {
   "acceptance": {
     "evidence": [],
-    "required": false,
-    "status": "UNKNOWN"
+    "required": true,
+    "status": "PENDING"
   },
   "authority": {
     "confidence": "HIGH",
@@ -22,28 +22,66 @@
     "status": "ACTIVE_CANONICAL",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "MISSING_CONFIGURED_CAPABILITY",
+      "description": "No least-privilege tenant-scoped Chat data adapter/RLS or model provider is configured; Chat reads/writes and generation remain disabled.",
+      "id": "chat-data-provider",
+      "next_action": "Verify/authorize a scoped adapter and provider before enabling persisted data or generation.",
+      "requirements": [
+        "REQ-48EFA6340760",
+        "REQ-B89BDD10E8E0"
+      ]
+    },
+    {
+      "class": "MISSING_CONFIGURED_CAPABILITY",
+      "description": "No approved browser provider/executor, canonical worker_jobs+outbox adapter, or provider-side DNS/redirect/private-address egress controls are configured.",
+      "id": "browser-runtime-job-adapter",
+      "next_action": "Keep Browser Pilot unavailable; integrate only after those authorities and controls are verified.",
+      "requirements": [
+        "REQ-E014BEE5B67C",
+        "REQ-64CA2E9BC303"
+      ]
+    },
+    {
+      "class": "TARGET_NOT_AVAILABLE",
+      "description": "The target map records modular-debian-dev as prepared, applicationAvailable=false, deployable=false; current port-3100 service must remain until Core is healthy.",
+      "id": "modular-dev-uat",
+      "next_action": "Verify real-account login and target health after the target is available; do not hand over traffic yet.",
+      "requirements": [
+        "REQ-B7D16C4F9A3E",
+        "REQ-64CA2E9BC303"
+      ]
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": null,
-    "expected_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4"
+    "expected_canonical_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+    "expected_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc"
   },
   "continuation": {
-    "next_action": "Implement the new Shell sign-in/session flow and route successful users directly to /chat; leave aimarkethubs.com traffic unchanged.",
-    "next_ready_workunit": "section-02-react-shell-login-and-routing",
-    "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "next_action": "Keep Browser Pilot and Chat persistence disabled; perform hosted login/UAT only when the modular development target is available and the authorized real-account session can be used.",
+    "next_ready_workunit": "real-account-login-and-target-health",
+    "reactivation_predicate": "modular-debian-dev applicationAvailable=true, Core health verified, real-account UAT session available, and required Chat/browser providers plus canonical job/data adapters configured.",
+    "resume_point": "Section 05 integrated at smartaihub-platform/main@6c1b97a65f860ba5d9dadb06e188fa53316efbdb; local package checks pass; resume remaining runtime/UAT gaps without replaying completed sections.",
+    "waiting_predicate": "Resume hosted acceptance when modular-debian-dev is available and a real pre-existing account can be exercised without creating/resetting credentials; do not redirect the existing port-3100/Tunnel before Core health and intentional handover."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-      "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+      "specs/feature/317-smartaihub-progressive-module-migration/spec.md#R1.7",
+      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md",
+      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/section-01-build-matrix-20261110.md"
     ],
-    "next_action": "Build the fresh React/Vite Shell login and Chat-first routing; continue with the isolated Chat API and user-facing module.",
-    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
-    "residual_requirements": []
+    "next_action": "Keep Chat persistence and Browser Pilot unavailable. Resume real-account login and target-health proof when modular-debian-dev is available and the authorized UAT session can be exercised; continue independent module work meanwhile.",
+    "rationale": "Sections 01–05 have integrated package-level implementation checkpoints. Remaining work is validation and capability integration: existing-account hosted login, Chat data/provider configuration, authorized browser executor/job adapter, and target health. Keep unsupported actions disabled and continue unrelated safe module work.",
+    "residual_requirements": [
+      "REQ-64CA2E9BC303",
+      "REQ-48EFA6340760",
+      "REQ-B7D16C4F9A3E",
+      "Chat persistence/provider readiness",
+      "Browser provider and canonical worker_jobs+outbox adapter"
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -55,56 +93,104 @@
     "artifact_digest": null,
     "environment": null,
     "evidence": [],
-    "required": false,
+    "required": true,
     "source_sha": null,
-    "status": "UNKNOWN"
+    "status": "NOT_DEPLOYED"
   },
   "disposition": {
     "confidence": "HIGH",
     "evidence": [
       {
-        "digest": "7ea4638884b930558608e0e20fe22461fdb3b6ca9e3eb34746889afdbf5b979f",
+        "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
       },
       {
-        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
-        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        "kind": "IMPLEMENTATION_REVIEW",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md"
       }
     ],
-    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "rationale": "Active canonical SPEC-317. Owner clarification R1.7 supports direct Codex/Claude development or optional SPEC-224; it supersedes only the older mandatory entry path. The new Modular app remains Chat-first and independently built, with aimarkethubs.com and smartsihub.com boundaries unchanged.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 10,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-    "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+    "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-10T01:43:33.649292Z",
+      "last_evidence_at": "2026-11-10T04:24:11.254238Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.6",
+    "revision": "1.7",
     "slug": "317-smartaihub-progressive-module-migration",
     "spec_id": "317",
     "title": "SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover"
   },
   "implementation": {
     "checkpoint_shas": [
-      "ebb264aa0151e97e9e463b7d4ca23290a48569db"
+      "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "266a28ab475256c1cbb5e61ab4517aa67fd8e688",
+      "d0a85bbf46986d2bb164775ef8a9a62b543a8006",
+      "95035695ff3408dfe954594a838e03b98e33ac91",
+      "6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
     ],
     "mapping": [
       {
-        "evidence": "handoff/evidence/section-01-build-boundary-20261110.md",
+        "evidence": "handoff/evidence/section-01-build-matrix-20261110.md",
         "requirements": [
           "REQ-4BB581C90577",
-          "REQ-C8D3AE2138BD",
-          "REQ-8ACA3DD0FDD4"
+          "REQ-32CAB23B7018",
+          "REQ-E014BEE5B67C"
         ],
         "section": "section-01-package-boundaries-and-builds",
-        "source_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "status": "PARTIAL"
+      },
+      {
+        "evidence": "handoff/evidence/section-02-front-door-20261110.md",
+        "requirements": [
+          "REQ-2E717B8BD3E7",
+          "REQ-B7D16C4F9A3E",
+          "REQ-64CA2E9BC303"
+        ],
+        "section": "section-02-react-shell-login-and-routing",
+        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "status": "PARTIAL"
+      },
+      {
+        "evidence": "handoff/evidence/section-03-worker-contract-20261110.md",
+        "requirements": [
+          "REQ-069F6F822212",
+          "REQ-48EFA6340760",
+          "REQ-B89BDD10E8E0"
+        ],
+        "section": "section-03-chat-worker-auth-data-and-provider-contract",
+        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "status": "PARTIAL"
+      },
+      {
+        "evidence": "handoff/evidence/section-04-chat-ui-20261110.md",
+        "requirements": [
+          "REQ-2B7D77E6D086",
+          "REQ-2E717B8BD3E7",
+          "REQ-32CAB23B7018"
+        ],
+        "section": "section-04-chat-independent-ui-and-artifacts",
+        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "status": "PARTIAL"
+      },
+      {
+        "evidence": "handoff/evidence/section-05-gap-review-rounds-20261110.md",
+        "requirements": [
+          "REQ-64CA2E9BC303",
+          "REQ-295AD937395C",
+          "REQ-E014BEE5B67C"
+        ],
+        "section": "section-05-browser-pilot-and-runtime-proof",
+        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
         "status": "PARTIAL"
       }
     ],
@@ -118,19 +204,24 @@
     "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "smartaihub-platform/main",
+    "canonical_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+    "integrated": true,
+    "integrated_at": "2026-11-10T04:15:07Z"
   },
   "lifecycle": {
-    "current_state": "CONTINUATION_REQUIRED",
+    "current_state": "PARTIAL_INTEGRATED",
     "previous_state": null,
     "state_evidence": [
       {
-        "digest": "7ea4638884b930558608e0e20fe22461fdb3b6ca9e3eb34746889afdbf5b979f",
+        "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+      },
+      {
+        "kind": "INTEGRATED_SOURCE",
+        "path": "smartaihub-platform/main",
+        "sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
       }
     ],
     "updated_at": "2026-11-01T07:18:24.581031Z"
@@ -158,42 +249,167 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
-        "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+        "specs/feature/317-smartaihub-progressive-module-migration/spec.md#R1.7",
+        "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md",
+        "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/section-01-build-matrix-20261110.md"
       ],
-      "next_action": "Build the fresh React/Vite Shell login and Chat-first routing; continue with the isolated Chat API and user-facing module.",
-      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
-      "residual_requirements": []
+      "next_action": "Keep Chat persistence and Browser Pilot unavailable. Resume real-account login and target-health proof when modular-debian-dev is available and the authorized UAT session can be exercised; continue independent module work meanwhile.",
+      "rationale": "Sections 01–05 have integrated package-level implementation checkpoints. Remaining work is validation and capability integration: existing-account hosted login, Chat data/provider configuration, authorized browser executor/job adapter, and target health. Keep unsupported actions disabled and continue unrelated safe module work.",
+      "residual_requirements": [
+        "REQ-64CA2E9BC303",
+        "REQ-48EFA6340760",
+        "REQ-B7D16C4F9A3E",
+        "Chat persistence/provider readiness",
+        "Browser provider and canonical worker_jobs+outbox adapter"
+      ]
     },
     "disposition": {
       "confidence": "HIGH",
       "evidence": [
         {
-          "digest": "7ea4638884b930558608e0e20fe22461fdb3b6ca9e3eb34746889afdbf5b979f",
+          "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
         },
         {
-          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
-          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+          "kind": "IMPLEMENTATION_REVIEW",
+          "path": "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md"
         }
       ],
-      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "rationale": "Active canonical SPEC-317. Owner clarification R1.7 supports direct Codex/Claude development or optional SPEC-224; it supersedes only the older mandatory entry path. The new Modular app remains Chat-first and independently built, with aimarkethubs.com and smartsihub.com boundaries unchanged.",
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
-      "current_state": "CONTINUATION_REQUIRED",
+      "current_state": "PARTIAL_INTEGRATED",
       "previous_state": null,
       "state_evidence": [
         {
-          "digest": "7ea4638884b930558608e0e20fe22461fdb3b6ca9e3eb34746889afdbf5b979f",
+          "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+        },
+        {
+          "kind": "INTEGRATED_SOURCE",
+          "path": "smartaihub-platform/main",
+          "sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
         }
       ],
       "updated_at": "2026-11-01T07:18:24.581031Z"
     },
     "requirements": {
+      "REQ-295AD937395C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L163"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L163",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/section-03-worker-contract-20261110.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Complete per-module provenance, data authority, release and rollback records as each migrated workload becomes deployable.",
+        "requirement_digest": "cb67953120f53072f24c4cf02a48684dbce0c51af34e8ebc4570d9ae5f71d2d4",
+        "requirement_id": "REQ-295AD937395C",
+        "requirement_text": "Migrate capabilities by bounded module, not by converting the whole Legacy application. Existing code, schemas, screens and UI assets are references only. Each new or reused module must document owner/provenance, permitted source inputs, data authority, capability manifest, tenant boundary, secret placement, target-specific release and rollback before enabling its route. No Legacy server import, worker process or shared all-powerful credential may become a hidden dependency of ordinary Cloudflare Core or Chat paths.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/section-03-worker-contract-20261110.md",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2"
+        ],
+        "verification_method": "Inspect independent package boundaries and filtered builds for Legacy/server imports, execution runtime coupling, and module-owned data/capability/rollback declarations."
+      },
+      "REQ-2B7D77E6D086": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L62"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L62",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-02-front-door-20261110.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Implement or verify the existing deep-link, bookmark, and custom-domain compatibility contract before marking this requirement complete.",
+        "requirement_digest": "55ab8241ff3b9a9d5963b684d49e36f8d8cc3f361b2bcdd8d28721849ff57a28",
+        "requirement_id": "REQ-2B7D77E6D086",
+        "requirement_text": "Modules launched from a consistent Shell under platform routes (`/m/{moduleId}` illustrative). Existing deep links, bookmarks and custom-domain aliases use SPEC-304 compatibility. Avoid iframe for trusted first-party modules. Untrusted third-party source uses isolated origin/context. A disabled module remains installed but unavailable to unentitled users; this must not erase customer data or turn off platform identity/wallet infrastructure.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-02-front-door-20261110.md"
+        ],
+        "verification_method": "Check Chat-first route and dashboard redirect in Shell tests/browser; verify SPEC-304 deep-link and custom-domain compatibility before claiming full route compatibility."
+      },
+      "REQ-2E717B8BD3E7": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-02-front-door-20261110.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Preserve the Chat-first routing contract; verify real canonical-account login under REQ-B7D16C4F9A3E when the modular development target is available.",
+        "requirement_digest": "4b1d970c1ec6188ca9bbe51908e2cbf3627a74af60d1519023200cfbaa5b0ef8",
+        "requirement_id": "REQ-2E717B8BD3E7",
+        "requirement_text": "The new authenticated SaaS experience SHALL open directly to the new Chat workspace. After login, `/` SHALL resolve to `/chat`; the new application SHALL NOT expose or reuse the Legacy dashboard as its home screen. A request to `/dashboard` within the new application resolves to `/chat`. This route behavior applies only to the new Modular application; it does not authorize changing the currently serving `aimarkethubs.com` application before its replacement is healthy and a handover is intentional.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-02-front-door-20261110.md",
+          "handoff/evidence/section-04-chat-ui-20261110.md"
+        ],
+        "verification_method": "Run Shell route tests and mocked browser flow for successful sign-in and dashboard redirect; keep real-account hosted login tracked separately."
+      },
+      "REQ-32CAB23B7018": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L173"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L173",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-01-build-matrix-20261110.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep named filtered builds and package-local outputs; finish independently scoped deploy/rollback evidence and expand modules without an aggregate root build.",
+        "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
+        "requirement_id": "REQ-32CAB23B7018",
+        "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/section-04-chat-ui-20261110.md"
+        ],
+        "verification_method": "Run explicit Shell, Chat, and Core package builds and inspect their output manifests/sizes; confirm a Chat change does not build other apps or Legacy."
+      },
       "REQ-4BB581C90577": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -203,22 +419,86 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-01-build-matrix-20261110.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Implement small reversible package releases; Shell and Chat code are scaffolds until login, chat, and target-health evidence pass.",
+        "next_action": "Continue independent module releases and record actual target-specific rollback evidence when deployable workloads are enabled; preserve the Legacy site until intentional handover.",
         "requirement_digest": "e4132619d068cb4403e647cb6b06cf141988778ef6b7aa76877987fb78129c15",
         "requirement_id": "REQ-4BB581C90577",
         "requirement_text": "Migration is a **series of small reversible module releases**. The original `apps/web` remains running on `smartaihub.app` while new sources are selectively copied into clean module packages, with dependency pruning, modern UI replacement where appropriate, actual Debian UAT and Cloudflare staging, then production availability. Core login/tenant/Shell minimum viable vertical slice SHALL be usable first; completion of all Core commerce/admin features is **not** a prerequisite for beginning independent module migration or human tests. “Partially migrated” does not mean feature removed or traffic blindly forwarded.",
-        "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "successor_mapping": [],
         "verification_evidence": [
-          "handoff/evidence/section-01-build-boundary-20261110.md"
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-2"
         ],
-        "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+        "verification_method": "Run each named workload build independently and inspect output scope, sizes, and deployment/rollback boundaries; verify no aggregate root build is introduced."
+      },
+      "REQ-64CA2E9BC303": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L71"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L71",
+        "blocker": {
+          "class": "TARGET_NOT_AVAILABLE",
+          "description": "The modular-debian-dev target is not deployable/applicationAvailable=false; current port-3100 service must remain until the new Core is healthy and intentional handover occurs.",
+          "next_action": "Resume human UAT after modular-debian-dev is available and hosted health is verified."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+        ],
+        "implementation_status": "VALIDATION_PENDING",
+        "next_action": "Do not substitute mocked Playwright for human UAT; run and record authorized UAT after the target is available and healthy.",
+        "requirement_digest": "607bc4c2356e637a35ef1cf39162e100a460047a548f374ece93e404b8d7bd7b",
+        "requirement_id": "REQ-64CA2E9BC303",
+        "requirement_text": "- A real authorized human UAT session SHALL be recorded for each meaningful feature: route/role, steps, observed success/failure, tester feedback, bug owner, fix commit and redeploy outcome. Automated tests are supporting tools, not a substitute for real users.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+        ],
+        "verification_method": "Record a real authorized human UAT session on the actual Modular development target; automated and mocked browser checks are supporting evidence only."
+      },
+      "REQ-6BA6E5614490": {
+        "applicability": "NOT_APPLICABLE",
+        "applicability_rationale": "R1.7 supersedes only this row's former mandatory SPEC-224 entry path. Direct Codex/Claude development and optional SPEC-224 are now both valid; SPEC-224 evidence is recorded only when that route is used. Other R1.1 module priorities and safety requirements remain in force.",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L113"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L113",
+        "blocker": null,
+        "current_relevance": "SUPERSEDED_BY_R1.7",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": null,
+        "final_state": "NOT_APPLICABLE",
+        "implementation_evidence": [
+          "spec.md#R1.7",
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
+        ],
+        "implementation_status": "SUPERSEDED_BY_OWNER_CLARIFICATION",
+        "next_action": "Use the R1.7 successor requirement; retain SPEC-224 as an optional route and record its receipts only when used.",
+        "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
+        "requirement_id": "REQ-6BA6E5614490",
+        "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [
+          "REQ-E5EEFB57E176"
+        ],
+        "verification_evidence": [
+          "spec.md#R1.7",
+          "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1"
+        ],
+        "verification_method": "Compare the superseded requirement with R1.7 and confirm the direct development path used for the integrated checkpoint; do not fabricate SPEC-224 Run evidence."
       },
       "REQ-8ACA3DD0FDD4": {
         "applicability": "APPLICABLE",
@@ -246,6 +526,38 @@
         ],
         "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
       },
+      "REQ-B7D16C4F9A3E": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L177"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L177",
+        "blocker": {
+          "class": "TARGET_NOT_AVAILABLE",
+          "description": "The modular-debian-dev target is not deployable/applicationAvailable=false; the current site on port 3100/Tunnel remains in service.",
+          "next_action": "Resume existing-account login proof after the Modular target is healthy and handover is intentional."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "VALIDATION_PENDING",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-02-front-door-20261110.md"
+        ],
+        "implementation_status": "VALIDATION_PENDING",
+        "next_action": "Keep the existing site and credentials untouched; perform real-account login only after target availability and health are proven.",
+        "requirement_digest": "a531c3f97d1766a40e0284e783c1eb7b3c81e0cb8359134f539da5874617247f",
+        "requirement_id": "REQ-B7D16C4F9A3E",
+        "requirement_text": "`aimarkethubs.com` remains the Debian development/UAT target, and `smartsihub.com` remains the separate future Cloudflare production target. Login success on the new dev application SHALL be tested with a pre-existing canonical account; do not create or reset the requested existing account as part of front-door work.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-02-front-door-20261110.md",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-10"
+        ],
+        "verification_method": "Authenticate with a pre-existing canonical account against the actual aimarkethubs.com Modular development target and verify target health; do not create/reset the account or switch service traffic for the test."
+      },
       "REQ-C8D3AE2138BD": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -271,6 +583,64 @@
           "handoff/evidence/section-01-build-boundary-20261110.md"
         ],
         "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      },
+      "REQ-E014BEE5B67C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L184"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L184",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep every delivered workload independently buildable; add/verify Mini App Creator and future migrated workload packages with their own focused checks, manifests, size records, and deploy/rollback scopes before claiming full coverage.",
+        "requirement_digest": "2ac6b5c0a774a5c69b56945accbdff0482be0ac23ecb98e95d4e9399b0f4a65a",
+        "requirement_id": "REQ-E014BEE5B67C",
+        "requirement_text": "2. **Independent workload modules.** Each separately delivered product workload (including Core, Shell, Chat, Browser Pilot, Mini App Creator, and later migrated areas) SHALL have a bounded package/module, a named package-filtered build and focused verification command, its own output/manifest and size evidence, and an independent deploy/rollback scope when it is deployable. A module change builds that module and only its small, direct contract/SDK dependencies. Shared contracts remain small and versioned. Do not add a root default build that aggregates all applications/modules or require a Legacy-sized site build to change one workload.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-2",
+          "handoff/evidence/section-05-gap-review-rounds-20261110.md#round-9"
+        ],
+        "verification_method": "Build each workload via its named filter and inspect only that package plus its direct small contracts dependency, output, size, and separate deploy/rollback readiness."
+      },
+      "REQ-E5EEFB57E176": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L183"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L183",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+          "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Continue direct Codex/Claude development or use SPEC-224 optionally; record the actual source SHA and route-specific receipts.",
+        "requirement_digest": "2fc67702d36e7fdf3823c05ebc8868cac507f6106fbbe802fe7f0b687cf86949",
+        "requirement_id": "REQ-E5EEFB57E176",
+        "requirement_text": "1. **Development entry paths.** The Modular SaaS Core SHALL support direct implementation by Codex or Claude in the canonical source repository/workspace, or work routed through the existing SPEC-224 facilities on `smartaihub.app`. Both paths are valid and optional. SPEC-224 remains the existing supported control surface when selected; it is not a mandatory wrapper for every development task. Record SPEC-224 Run/Runner evidence only when that route was actually used. Both paths preserve canonical Spec ownership, focused verification, exact source-SHA receipts, tenant/data/security constraints, and the normal development Git integration path.",
+        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/final-gap-review-10-rounds-20261110.md#round-1",
+          "handoff/evidence/section-01-build-matrix-20261110.md"
+        ],
+        "verification_method": "Verify the integrated source SHA and focused package checks from a direct Codex development session; only record SPEC-224 receipts when that route is actually used."
       }
     }
   },
@@ -282,15 +652,15 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-10T01:43:33.649292Z",
+    "reconciled_at": "2026-11-10T04:24:11.254238Z",
     "sources": [
       {
-        "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
       },
       {
-        "digest": "4c46abcac4f430bd1ed86f4fb82c7f45b4f178e941417c29ed364fe85b86eab0",
+        "digest": "117f15a788cb40d0bacfe19f9e176ef647327537d8176966139d03614c5f9892",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-plan.md"
       },
@@ -300,12 +670,32 @@
         "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-spec.md"
       },
       {
-        "digest": "2dc290e1bb49ff0e1a3cca2b0f0a3e1eb6800421a4fc2c97358dfb3c498fe395",
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "bf5fa10a130ecb0f7b1f87cfcf5d5b384a7fafb31c652c4d0cb74fc51b166f49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d637fe190724a015d2056938ce76ed90d56f45e3727248538bf7611c99e99076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "94cbd7092a9e1261ecfc7136eaa18a78179510b8a765971bd4a6d63a12b5b99a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/index.md"
       },
       {
-        "digest": "aa262ae31ea8b6598b2d3e2348db9a049a612139bf48e4e3974d23fbc83dc302",
+        "digest": "c284a1ed1c928184ac46c50ccfe5e0b9afbf5954f57d64d4fe1a9fef217c4444",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-01-package-boundaries-and-builds.md"
       },
@@ -320,14 +710,84 @@
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-03-chat-worker-auth-data-and-provider-contract.md"
       },
       {
-        "digest": "3c789687569d6062ba819f078e4df75a086b21295d1094173b34b442ebc9ecfc",
+        "digest": "271438ef961254120b5ed9cde9284e065a5cf9ac8dd874e4246fa54cd88a95b6",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-04-chat-independent-ui-and-artifacts.md"
       },
       {
-        "digest": "bd47a98c2908217076615929d784546ad59058555036d4d3cf22f777c479412f",
+        "digest": "f78fd5391cfcba5a606b9c8ff0869d5874a22dd56d27f65b8fbc6137373bde19",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-05-browser-pilot-and-runtime-proof.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-package-boundaries-and-builds: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-package-boundaries-and-builds",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-react-shell-login-and-routing: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-react-shell-login-and-routing",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-chat-worker-auth-data-and-provider-contract: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-chat-worker-auth-data-and-provider-contract",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-chat-independent-ui-and-artifacts: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-chat-independent-ui-and-artifacts",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-browser-pilot-and-runtime-proof: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-browser-pilot-and-runtime-proof",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -337,7 +797,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-        "source_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "source_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -363,24 +823,89 @@
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-package-boundaries-and-builds: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-package-boundaries-and-builds",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-react-shell-login-and-routing: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-react-shell-login-and-routing",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-chat-worker-auth-data-and-provider-contract: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-chat-worker-auth-data-and-provider-contract",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-chat-independent-ui-and-artifacts: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-04-chat-independent-ui-and-artifacts",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-browser-pilot-and-runtime-proof: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-05-browser-pilot-and-runtime-proof",
+        "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+        "source_digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-        "source_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "source_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
       },
       {
-        "digest": "4c46abcac4f430bd1ed86f4fb82c7f45b4f178e941417c29ed364fe85b86eab0",
+        "digest": "117f15a788cb40d0bacfe19f9e176ef647327537d8176966139d03614c5f9892",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-plan.md"
       },
@@ -390,12 +915,32 @@
         "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-spec.md"
       },
       {
-        "digest": "2dc290e1bb49ff0e1a3cca2b0f0a3e1eb6800421a4fc2c97358dfb3c498fe395",
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "bf5fa10a130ecb0f7b1f87cfcf5d5b384a7fafb31c652c4d0cb74fc51b166f49",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "e5a176370c20f6946d5b0850910c9088edb003c01e1b16b5292319fccc95428c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "d637fe190724a015d2056938ce76ed90d56f45e3727248538bf7611c99e99076",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "94cbd7092a9e1261ecfc7136eaa18a78179510b8a765971bd4a6d63a12b5b99a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/index.md"
       },
       {
-        "digest": "aa262ae31ea8b6598b2d3e2348db9a049a612139bf48e4e3974d23fbc83dc302",
+        "digest": "c284a1ed1c928184ac46c50ccfe5e0b9afbf5954f57d64d4fe1a9fef217c4444",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-01-package-boundaries-and-builds.md"
       },
@@ -410,12 +955,12 @@
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-03-chat-worker-auth-data-and-provider-contract.md"
       },
       {
-        "digest": "3c789687569d6062ba819f078e4df75a086b21295d1094173b34b442ebc9ecfc",
+        "digest": "271438ef961254120b5ed9cde9284e065a5cf9ac8dd874e4246fa54cd88a95b6",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-04-chat-independent-ui-and-artifacts.md"
       },
       {
-        "digest": "bd47a98c2908217076615929d784546ad59058555036d4d3cf22f777c479412f",
+        "digest": "f78fd5391cfcba5a606b9c8ff0869d5874a22dd56d27f65b8fbc6137373bde19",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-05-browser-pilot-and-runtime-proof.md"
       }
@@ -426,23 +971,32 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 9,
     "blocked_true_external": 0,
     "fail": 0,
-    "not_applicable": 0,
-    "pass": 0,
-    "total": 16,
-    "unresolved": 16
+    "not_applicable": 1,
+    "pass": 2,
+    "total": 18,
+    "unresolved": 15
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T02:00:49.692047Z",
+  "updated_at": "2026-11-10T04:30:07.580735Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      "handoff/evidence/section-01-build-matrix-20261110.md",
+      "handoff/evidence/section-02-front-door-20261110.md",
+      "handoff/evidence/section-03-worker-contract-20261110.md",
+      "handoff/evidence/section-04-chat-ui-20261110.md",
+      "handoff/evidence/section-05-gap-review-rounds-20261110.md",
+      "handoff/evidence/final-gap-review-10-rounds-20261110.md"
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "package"
+    ],
+    "sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

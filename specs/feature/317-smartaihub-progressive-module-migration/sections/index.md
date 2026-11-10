@@ -28,7 +28,7 @@ END_MANIFEST -->
 1. Section 01 establishes independent package builds, manifests and tiny contracts.
 2. Sections 02 and 03 proceed from that boundary; section 03 must finish a read-only live schema/writer audit before any persistence implementation.
 3. Section 04 consumes Shell routing and Chat API contracts but remains independently built and served.
-4. Section 05 adds only the authorized browser adapter/job projection, runs scoped local checks and records target/UAT gaps truthfully.
+4. Section 05 adds Browser Pilot as its own buildable package, integrates only the server-verified capability into Chat, runs scoped local checks and records target/UAT gaps truthfully.
 
 ## Section Summaries
 
@@ -45,4 +45,4 @@ Add the Chat Hono Worker with Core-derived principal and verified shared-data/pr
 Build the Chat SPA independently and lazy-load it from Shell; include basic streaming UI, a typed structured block and persistent artifact panel.
 
 ### section-05-browser-pilot-and-runtime-proof
-Connect the authorized Chromium/Playwright adapter and durable job contract when configured; verify package-only build/Worker behavior and document remaining UAT/deployment gaps.
+Build the Browser Pilot policy/adapter package independently; connect it to Chat only through authorized browser-provider and canonical durable-job adapters, then document remaining UAT/deployment gaps.

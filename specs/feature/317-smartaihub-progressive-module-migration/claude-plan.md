@@ -2,43 +2,50 @@
 
 ## Outcome
 
-Replace the assumption that `/dashboard` is the new home with a fresh Modular application flow: login → Chat. Create independently buildable Core/Shell/Chat packages with versioned assets and narrow contracts. The old site remains available until a healthy replacement is explicitly handed over.
+Replace the assumption that `/dashboard` is the new home with a fresh Modular application flow: login → Chat. Create independently buildable Core/Shell/Chat/Browser Pilot packages with versioned assets and narrow contracts. Each workload has an explicit package build; there is no aggregate root build. The old site remains available until a healthy replacement is explicitly handed over.
 
-## Requirements and status
+## Requirements and current status
 
-| Requirement | Mapping | Status before work | Required evidence |
+These rows use the IDs in the canonical SPEC-317 requirement ledger. Runtime, real-account login, and human UAT remain separate from local package verification.
+
+| Requirement | Mapping | Current status | Evidence / next action |
 |---|---|---|---|
-| `REQ-4BB581C90577` small reversible releases; Core/Shell before module UAT | 01–05 | Open | filtered build evidence, target remains unchanged |
-| `REQ-6F1846B57E8F` independently moving authenticated module | 01–05 | Open | Authenticated Chat route and package isolation |
-| `REQ-069F6F822212` single durable writer/idempotency | 03, 05 | Open | Chat records/job operations use canonical writer and IDs |
-| `REQ-2B7D77E6D086` consistent Shell/module routes | 02, 04 | Open | route and manifest behavior |
-| `REQ-64CA2E9BC303` real human UAT | 05 | Open | authorized UAT record; not inferred from automated tests |
-| `REQ-48EFA6340760` actual legacy-data ownership mapping | 03 | Open | schema/authority audit before any chat write |
-| `REQ-AB16939A3F52` identity, domains and target separation | 01–05 | Open | shared identity contract and unchanged target evidence |
-| `REQ-38590D443AC3` single Core financial/job authority | 03, 05 | Open | no duplicate writer/ledger/job store |
-| `REQ-91CC7880E937` cross-provider portability/idempotency | Deferred; no paid/provider side effects in this slice | Open | future distinct provider/commerce invocation evidence |
-| `REQ-C8D3AE2138BD` bounded modules, manifest, no Legacy runtime | 01–05 | Open | dependency/bundle report and source scan |
-| `REQ-34BA27C1BFAE` R1.6 Chat front door | 02, 04 | Open | login default `/chat`, no Legacy dashboard |
-| `REQ-8ACA3DD0FDD4` R1.6 independent package builds | 01–04 | Open | filtered builds and lazy versioned module assets |
-| `REQ-07858C20A7E7` R1.6 domain/runtime separation | 05 | Open | target map and unchanged live route evidence |
+| `REQ-4BB581C90577` small reversible releases | 01–05 | PARTIAL | Independent package builds pass; target-specific deploy/rollback evidence remains |
+| `REQ-6F1846B57E8F` dependency-informed waves and an authenticated pilot | 01–05 | OPEN | Verify the authenticated pilot and permitted sequencing across modules |
+| `REQ-069F6F822212` compatible reads and durable idempotent writer | 03, 05 | OPEN | Verify the canonical writer/fence before enabling persistence or jobs |
+| `REQ-2B7D77E6D086` Shell routes and deep-link compatibility | 02, 04 | PARTIAL | Chat-first route passes; finish SPEC-304 deep-link/custom-domain compatibility |
+| `REQ-64CA2E9BC303` authorized human UAT | 02, 05 | VALIDATION_PENDING | Run on the healthy Modular development target; mocked browser checks are not UAT |
+| `REQ-48EFA6340760` legacy shared-data ownership registry | 03 | OPEN | Finish actual table ownership mapping before Chat writes |
+| `REQ-6BA6E5614490` mandatory SPEC-224 entry path | 01–05 | NOT_APPLICABLE | Superseded only as an entry-path mandate by R1.7; SPEC-224 remains optional |
+| `R1.4` development loop and selective handover | 01–05 | OPEN | Preserve target boundaries; finish real target health, acceptance, and handover evidence |
+| `REQ-F08A9F0ABB58` identity, domains, and runtime targets | 01–05 | OPEN | Verify the owner-directed target/runtime separation at deployment time |
+| `REQ-B89BDD10E8E0` canonical financial and job authority | 03, 05 | OPEN | Keep new data/job authority within approved shared contracts |
+| `REQ-4C483EA0329D` credit and subscription economics | Deferred | OPEN | Verify before enabling paid/provider effects |
+| `REQ-4A6FCC9AB87A` portability and business-effect idempotency | Deferred | OPEN | Verify per-provider/app before external business effects |
+| `REQ-295AD937395C` bounded migration and dependency isolation | 01–05 | PARTIAL | Package isolation is evidenced; complete each module's provenance/data/release record |
+| `REQ-2E717B8BD3E7` Chat-first new-app route | 02, 04 | PASS | Shell tests and mocked route/browser checks pass; real account proof is tracked separately |
+| `REQ-32CAB23B7018` Core/Shell/Chat independent package builds | 01–04 | PARTIAL | Filtered builds and size evidence pass; deploy/rollback scopes remain |
+| `REQ-B7D16C4F9A3E` aimarkethubs.com target and existing-account login | 02, 05 | VALIDATION_PENDING | Test only after target health; do not create/reset the canonical account |
+| `REQ-E5EEFB57E176` direct Codex/Claude or optional SPEC-224 path | 01–05 | PASS | Direct Codex path integrated; do not claim SPEC-224 receipts for direct work |
+| `REQ-E014BEE5B67C` independently buildable workload modules | 01–05 | PARTIAL | Core/Shell/Chat/Browser Pilot have filtered builds; add future workload packages with the same boundary |
 
-`REQ-6BA6E5614490` and `R1.4` prescribe initial development control-plane/Run evidence. Direct code changes may be used only as already authorized by the user/session and must not be misreported as a SPEC-224 UI Run. Record only actual execution evidence.
+R1.7 supersedes the older R1.1/R1.4 command-path mandate: development may run directly through Codex/Claude or optionally through SPEC-224 on `smartaihub.app`. Direct work must not be misreported as a SPEC-224 UI Run; record only execution evidence from the path actually used.
 
 ## Architecture and interfaces
 
 1. Keep `apps/saas-core` as the existing standalone Hono Worker and expose only the minimal versioned session-principal contract required by the Chat module. Chat never receives the private browser-session signing key. Prefer an audience-bound short-lived internal assertion over forwarding raw session secrets between Workers.
 2. Add `packages/saas-contracts` only if needed for stable route DTOs and module manifest types; do not create a central import barrel or put business logic/shared schema there.
 3. Add `apps/saas-shell` as a React/Vite SPA. It owns `/login`, `/`, `/chat` resolution, account/logout chrome and the versioned module manifest loader. After login it always defaults to `/chat`; `/dashboard` in the new app resolves to `/chat`.
-4. Add `modules/chat` as an independently versioned Vite UI + Hono Worker package. Its manifest declares route base `/chat`, asset version/hash, API route, required Core contract, capabilities, data authority, deployment scope, and optional job/browser adapter. The Shell lazy-loads Chat assets; it does not import Chat source.
+4. Add `modules/chat` as an independently versioned Vite UI + Hono Worker package. Its manifest declares route base `/chat`, asset version/hash, API route, required Core contract, capabilities, data authority, deployment scope, and optional job/browser adapter. The Shell lazy-loads Chat assets; it does not import Chat source. `modules/browser-pilot` is a separate bounded package; Chat consumes only its small shared capability contract, never its implementation.
 5. Chat reads/writes only the verified existing conversation/message/artifact records using a narrow role or canonical API. Before persistence is implemented, inspect the actual `smartspec` catalog/schema and legacy writer contract without reading unrelated row contents. Do not add Chat DDL or a replacement store to the shared Core database by default.
 6. Provider calls use server-side bindings/adapters with no browser key. A configured provider may stream directly for bounded responses. Any work that must survive request/browser closure is admitted to canonical `worker_jobs` and outbox and executed by an authorized existing worker; Chat does not create an alternate queue.
 
 ## Build contract
 
-- Add named package scripts for Core, Shell, Chat and contracts as appropriate.
+- Add named package scripts for Core, Shell, Chat, Browser Pilot and contracts as appropriate.
 - Remove the root all-package `build` default. Do not add an all-app build replacement.
 - Keep each Vite/Wrangler output under its package, with content-hashed static assets and a measured package-only size record.
-- `pnpm --filter @smartaihub/saas-core build`, `pnpm --filter @smartaihub/saas-shell build`, and `pnpm --filter @smartaihub/chat build` must build only that selected package and true required dependencies.
+- `pnpm run build:core`, `pnpm run build:shell`, `pnpm run build:chat`, and `pnpm run build:browser-pilot` select one workload and only its small direct dependencies. A Chat change must not build Core, Shell, Browser Pilot, Legacy `apps/web`, or unrelated modules.
 - No `apps/web` build, legacy service restart or production Cloudflare resource change.
 
 ## Implementation order and checkpoints
