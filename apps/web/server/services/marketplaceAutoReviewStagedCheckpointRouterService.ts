@@ -416,10 +416,10 @@ class StagedMediaTaskInFlightError extends Error {
 }
 
 /**
- * Keep prompt jobs durable while a render for the same shot is active. Applying
- * a replacement prompt clears that shot's media task/artifact references, so
- * the worker retries this check after the current render settles instead of
- * racing it or failing the user's queued request.
+ * A media-producing operation that also replaces its prompt must not race a
+ * render already submitted for the same shot. Prompt-only repairs do not use
+ * this guard: they are independent worker jobs and supersede the active media
+ * task reference when the replacement prompt is committed.
  */
 export function assertStagedShotMediaSettledBeforePromptApply(
   stagedPipeline: Record<string, any> | null | undefined,
@@ -431,6 +431,30 @@ export function assertStagedShotMediaSettledBeforePromptApply(
     )
   );
   if (hasActiveTask) throw new StagedMediaTaskInFlightError();
+}
+
+function removeStagedTasksInvalidatedByPrompt(
+  stagedPipeline: Record<string, any> | null | undefined,
+  targets: Array<{ shotId: number; stage: "image" | "video" }>
+) {
+  const tasks = record(stagedPipeline?.tasks);
+  return Object.fromEntries(
+    Object.entries(tasks).filter(
+      ([key]) =>
+        !targets.some(
+          target =>
+            key === `${target.stage}:${target.shotId}` ||
+            (target.stage === "image" && key === `video:${target.shotId}`)
+        )
+    )
+  );
+}
+
+export function removeStagedTasksInvalidatedByPromptForTest(
+  stagedPipeline: Record<string, any> | null | undefined,
+  targets: Array<{ shotId: number; stage: "image" | "video" }>
+) {
+  return removeStagedTasksInvalidatedByPrompt(stagedPipeline, targets);
 }
 
 function operationFromWorkerJob(
@@ -1303,11 +1327,12 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   }
 
   const promptByShot = new Map<number, string>();
-  // Bulk prompt repair is admitted while renders run. Defer the entire prompt
-  // batch before making any LLM calls so a retry never pays twice for targets
-  // processed earlier in the same batch.
+  const promptContextDigests = new Map<number, string>();
+  // Prompt-only repair is independent of in-flight media. Media-producing
+  // batches still defer before making any LLM calls so a retry never pays
+  // twice for targets processed earlier in the same batch.
   for (const target of input.targets) {
-    if (target.promptOnly) {
+    if (!target.promptOnly) {
       assertStagedShotMediaSettledBeforePromptApply(stagedPipeline, target.shotId);
     }
   }
@@ -1330,7 +1355,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
         stagedTaskStatus(stagedPipeline, key) ?? ""
       )
     );
-    if (hasTaskInFlight) continue;
+    if (hasTaskInFlight && !target.promptOnly) continue;
     if (
       target.stage === "image" &&
       !target.refreshPrompt &&
@@ -1368,6 +1393,20 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       promptByShot.set(target.shotId, currentPrompt);
       continue;
     }
+    if (target.promptOnly) {
+      promptContextDigests.set(
+        target.shotId,
+        buildStagedShotPromptContextDigest({
+          run,
+          metadata,
+          shotId: target.shotId,
+          stage: target.stage,
+          publicUrl: input.runtime?.publicUrl,
+          tenantId: input.auth.tenantId,
+          model: target.promptModel,
+        })
+      );
+    }
     const generatedPrompt = await generateCompleteStagedShotPrompt({
       run,
       metadata,
@@ -1392,6 +1431,28 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     idempotencyKey: applyIdempotencyKey,
     auth: input.auth,
     queueAdvance: input.targets.some(target => !target.promptOnly),
+    allowStateDrift: input.targets.every(target => target.promptOnly)
+      ? current =>
+          input.targets.every(target => {
+            const expectedContextDigest = promptContextDigests.get(target.shotId);
+            const currentShot = current.stagedSequentialStoryboard.shots.find(
+              shot => shot.shotId === target.shotId
+            );
+            return (
+              typeof expectedContextDigest === "string" &&
+              currentShot !== undefined &&
+              buildStagedShotPromptContextDigest({
+                run,
+                metadata: current,
+                shotId: target.shotId,
+                stage: target.stage,
+                publicUrl: input.runtime?.publicUrl,
+                tenantId: input.auth.tenantId,
+                model: target.promptModel,
+              }) === expectedContextDigest
+            );
+          })
+      : undefined,
     mutate(current, operationId) {
       const nextTargets = input.targets.filter(target =>
         promptByShot.has(target.shotId)
@@ -1493,16 +1554,9 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
             : checkpoint;
         }
       );
-      const tasks = Object.fromEntries(
-        Object.entries(record((current as any).stagedPipeline).tasks).filter(
-          ([key]) =>
-            !nextTargets.some(
-              target =>
-                key === `${target.stage}:${target.shotId}` ||
-                (target.stage === "image" &&
-                  key === `video:${target.shotId}`)
-            )
-        )
+      const tasks = removeStagedTasksInvalidatedByPrompt(
+        record((current as any).stagedPipeline),
+        nextTargets
       );
       const existingReceipts = record(
         record((current as any).stagedPipeline).bulkGenerationReceipts
@@ -2463,14 +2517,6 @@ export async function generateStagedAutoReviewShotPrompt(input: {
       message: "checkpoint_not_editable",
     });
   }
-  const stagedPipeline = record((metadata as any).stagedPipeline);
-  if (input.workerExecution) {
-    assertStagedShotMediaSettledBeforePromptApply(
-      stagedPipeline,
-      input.shotId
-    );
-  }
-
   if (!input.workerExecution) {
     const promptContextDigest = buildStagedShotPromptContextDigest({
       run,
@@ -2620,17 +2666,9 @@ export async function generateStagedAutoReviewShotPrompt(input: {
               }
             : item;
         });
-      const tasks = Object.fromEntries(
-        Object.entries(
-          ((current as any).stagedPipeline?.tasks ?? {}) as Record<
-            string,
-            unknown
-          >
-        ).filter(([key]) =>
-          imagePrompt
-            ? key !== `image:${input.shotId}` && key !== `video:${input.shotId}`
-            : key !== `video:${input.shotId}`
-        )
+      const tasks = removeStagedTasksInvalidatedByPrompt(
+        record((current as any).stagedPipeline),
+        [{ shotId: input.shotId, stage: input.stage }]
       );
       const nextShot = {
         ...currentShot,

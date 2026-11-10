@@ -12,6 +12,7 @@ import {
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
   assertStagedShotMediaSettledBeforePromptApply,
   assertStagedStoryPlanApprovedForTest,
+  removeStagedTasksInvalidatedByPromptForTest,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
 import { buildSequentialSingleShotRefreshContractForTest } from "../productReviewSequentialStoryboardSkillRunner";
 
@@ -143,6 +144,40 @@ describe("staged prompt repair media dependency", () => {
       ).not.toThrow();
     }
   );
+});
+
+describe("staged prompt replacement task invalidation", () => {
+  it("detaches only the replaced video's active task and keeps sibling media jobs", () => {
+    const tasks = removeStagedTasksInvalidatedByPromptForTest(
+      {
+        tasks: {
+          "image:1": { status: "completed" },
+          "video:1": { status: "submitted" },
+          "image:2": { status: "processing" },
+          "video:2": { status: "submitted" },
+        },
+      },
+      [{ shotId: 1, stage: "video" }]
+    );
+
+    expect(Object.keys(tasks).sort()).toEqual(["image:1", "image:2", "video:2"]);
+  });
+
+  it("detaches both image and video tasks when replacing an image prompt", () => {
+    const tasks = removeStagedTasksInvalidatedByPromptForTest(
+      {
+        tasks: {
+          "image:1": { status: "submitted" },
+          "video:1": { status: "processing" },
+          "image:2": { status: "submitted" },
+          "video:2": { status: "submitted" },
+        },
+      },
+      [{ shotId: 1, stage: "image" }]
+    );
+
+    expect(Object.keys(tasks).sort()).toEqual(["image:2", "video:2"]);
+  });
 });
 
 describe("staged media dispatch story approval gate", () => {
@@ -340,6 +375,37 @@ describe("buildStagedSingleShotRefreshInput — staged single-shot regenerate co
       buildStagedShotPromptContextDigestForTest({
         run,
         metadata: imageRenderCompleted,
+        shotId: 1,
+        stage: "video",
+      })
+    ).toBe(originalDigest);
+  });
+
+  it("keeps a queued video prompt valid when the same shot's old video render settles", () => {
+    const plan = planFixture();
+    const { run, metadata } = fixture({ plan });
+    metadata.stagedPipeline.tasks["video:1"] = {
+      taskId: "provider-task-1",
+      status: "submitted",
+    };
+    const originalDigest = buildStagedShotPromptContextDigestForTest({
+      run,
+      metadata,
+      shotId: 1,
+      stage: "video",
+    });
+    const settledVideoRender = JSON.parse(JSON.stringify(metadata));
+    settledVideoRender.stagedPipeline.tasks["video:1"] = {
+      taskId: "provider-task-1",
+      status: "completed",
+    };
+    settledVideoRender.stagedSequentialStoryboard.shots[0].videoArtifactHash =
+      "old-video-artifact-hash";
+
+    expect(
+      buildStagedShotPromptContextDigestForTest({
+        run,
+        metadata: settledVideoRender,
         shotId: 1,
         stage: "video",
       })

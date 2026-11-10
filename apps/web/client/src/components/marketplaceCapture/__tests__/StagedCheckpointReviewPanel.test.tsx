@@ -647,7 +647,11 @@ describe("StagedCheckpointReviewPanel", () => {
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     ).toBeDisabled();
 
-    clickAndConfirmGeneration(videoPromptButton);
+    fireEvent.click(videoPromptButton);
+    expect(
+      screen.getByTestId("staged-generation-confirmation-dialog").textContent
+    ).toContain("ผลนั้นกับ Prompt ใหม่");
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
     expect(input.onGeneratePrompt).toHaveBeenCalledWith({
       shotId: 1,
       stage: "video",
@@ -1459,8 +1463,18 @@ describe("StagedCheckpointReviewPanel", () => {
         ...input.state,
         planReview: { ...input.state.planReview, status: "approved" },
         shots: [
-          { ...input.state.shots[0], shotId: 1, imageArtifactHash: null },
-          { ...input.state.shots[0], shotId: 2, imageArtifactHash: "image-2" },
+          {
+            ...input.state.shots[0],
+            shotId: 1,
+            imageArtifactHash: null,
+            imageTaskStatus: "processing",
+          },
+          {
+            ...input.state.shots[0],
+            shotId: 2,
+            imageArtifactHash: "image-2",
+            videoTaskStatus: "submitted",
+          },
         ],
       };
       render(<StagedCheckpointReviewPanel {...input} />);
@@ -1469,6 +1483,9 @@ describe("StagedCheckpointReviewPanel", () => {
         screen.getByRole("button", { name: "สร้าง Prompt วิดีโอทุกช็อต (2)" })
       );
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
+      expect(
+        screen.getByTestId("staged-generation-confirmation-dialog").textContent
+      ).toContain("ผลนั้นกับ Prompt ใหม่");
       fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
       expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);

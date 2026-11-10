@@ -1594,11 +1594,6 @@ export function StagedCheckpointReviewPanel(props: {
   const bulkVideoPromptTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
     if (!props.state || !isRunEditable(props.state)) return [];
     return props.state.shots
-      .filter(
-        shot =>
-          !isTaskInFlight(shot.imageTaskStatus) &&
-          !isTaskInFlight(shot.videoTaskStatus)
-      )
       .map(shot => ({
         shotId: shot.shotId,
         stage: "video" as const,
@@ -1617,6 +1612,15 @@ export function StagedCheckpointReviewPanel(props: {
     "waiting_external",
     "retry_scheduled",
   ];
+  const bulkVideoPromptWillSupersedeMedia = bulkVideoPromptTargets.some(
+    target => {
+      const shot = props.state?.shots.find(item => item.shotId === target.shotId);
+      return (
+        isTaskInFlight(shot?.imageTaskStatus) ||
+        isTaskInFlight(shot?.videoTaskStatus)
+      );
+    }
+  );
   const isShotPromptPipelineBusy = (shotId: number) =>
     props.state?.workerOperations?.some(job => {
       if (!activeWorkerStatuses.includes(job.status)) return false;
@@ -1979,7 +1983,7 @@ export function StagedCheckpointReviewPanel(props: {
                           Boolean(activeImagePromptWorkerOperation),
                         confirmation: {
                           title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
-                          description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                          description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก${bulkVideoPromptWillSupersedeMedia ? " มีบางช็อตกำลังเรนเดอร์อยู่ ผล render เดิมอาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่" : ""}`,
                         },
                         title: activeBulkGeneration
                           ? "กำลังเตรียมงานชุดนี้ใน Worker"
@@ -3462,6 +3466,12 @@ export function StagedCheckpointReviewPanel(props: {
               const videoMediaUploading = uploadingShotMedia.has(videoMediaKey);
               const imageMediaUploadError = shotMediaUploadErrors[imageMediaKey];
               const videoMediaUploadError = shotMediaUploadErrors[videoMediaKey];
+              const shotHasInFlightMedia =
+                isTaskInFlight(shot.imageTaskStatus) ||
+                isTaskInFlight(shot.videoTaskStatus);
+              const promptReplacementWarning = shotHasInFlightMedia
+                ? " งาน render เดิมของช็อตนี้อาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่"
+                : "";
               const storyEditable = storyEditAvailable;
               const shotPromptWorkerOperation =
                 props.state?.workerOperations?.find(
@@ -4095,13 +4105,13 @@ export function StagedCheckpointReviewPanel(props: {
                           "rounded border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800",
                           {
                             // Prompt authoring is independent of an already
-                            // running image/video render. The worker waits
-                            // for that media task to settle before applying
-                            // the new prompt, so users can queue repairs now.
+                            // running media render; the replacement detaches
+                            // that render from this shot to prevent stale media
+                            // from being attached to the new prompt.
                             disabled: isShotPromptPipelineBusy(shot.shotId),
                             confirmation: {
                               title: `ยืนยันสร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
-                              description: `ระบบจะส่งการสร้าง Prompt ภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
+                              description: `ระบบจะส่งการสร้าง Prompt ภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}${promptReplacementWarning}`,
                             },
                             title: isShotPromptPipelineBusy(shot.shotId)
                               ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
@@ -4226,14 +4236,13 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled: isShotPromptPipelineBusy(shot.shotId),
                             confirmation: {
                               title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
-                              description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
+                              description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}${promptReplacementWarning}`,
                             },
                             title:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus)
-                              ? "รอให้งานวิดีโอของช็อตนี้เสร็จก่อน"
-                              : isShotPromptPipelineBusy(shot.shotId)
+                              isShotPromptPipelineBusy(shot.shotId)
                                 ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
+                                : shotHasInFlightMedia
+                                  ? "สร้าง Prompt แยกได้ทันที; ผล render เดิมจะไม่ผูกกับ Prompt ใหม่"
                                 : undefined,
                           }
                         )}
