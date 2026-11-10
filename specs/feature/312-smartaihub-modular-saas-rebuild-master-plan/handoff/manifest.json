@@ -24,7 +24,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "308ec2b93aca05f1b74eed8647b3446158e58683",
+    "expected_canonical_sha": "b2a334cc9068977b48f085b90feb921dd2db37e3",
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
@@ -57,7 +57,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:73f176f8dc3c2b6a054caa95ba0006705cea6376c86e87d0ffcba6057cb377ea",
+    "artifact_digest": "sha256:fc8b18a68c238f24887a810d4d7a349ce8ec47b6c5299d718102b95df37ec943",
     "environment": "development: https://aimarkethubs.com (Debian systemd with local Workerd)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
@@ -83,7 +83,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 28,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -127,9 +127,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "308ec2b93aca05f1b74eed8647b3446158e58683",
+    "canonical_sha": "b2a334cc9068977b48f085b90feb921dd2db37e3",
     "integrated": true,
-    "integrated_at": "2026-11-10T14:38:54+07:00"
+    "integrated_at": "2026-11-10T14:46:29+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -347,7 +347,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T07:40:04.815682Z",
+  "updated_at": "2026-11-10T07:46:56.836917Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
