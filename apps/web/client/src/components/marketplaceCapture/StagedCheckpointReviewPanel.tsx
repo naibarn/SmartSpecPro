@@ -3484,6 +3484,20 @@ export function StagedCheckpointReviewPanel(props: {
                       (job.operation === "staged_bulk_generation" &&
                         job.targetShotIds?.includes(shot.shotId) === true))
                 ) ?? null;
+              const shotVideoPromptWorkerOperation =
+                props.state?.workerOperations?.find(
+                  job =>
+                    activeWorkerStatuses.includes(job.status) &&
+                    (((job.operation === "staged_prompt_generation" ||
+                      job.operation ===
+                        "sequential_shot_prompt_generation") &&
+                      job.shotId === shot.shotId &&
+                      job.targetStage === "video") ||
+                      (job.operation === "staged_bulk_generation" &&
+                        job.targetStage === "video" &&
+                        job.targetPromptOnly === true &&
+                        job.targetShotIds?.includes(shot.shotId) === true))
+                ) ?? null;
               const shotImageMediaWorkerOperation =
                 props.state?.workerOperations?.find(
                   job =>
@@ -3908,7 +3922,9 @@ export function StagedCheckpointReviewPanel(props: {
                         <span>วิดีโอรายช็อต</span>
                         <span className="flex items-center gap-2">
                           <span className="font-normal text-slate-500">
-                            {mediaTaskStatusLabel(shot.videoTaskStatus) ||
+                            {shotVideoPromptWorkerOperation
+                              ? "กำลังสร้าง Prompt วิดีโอ (ยังไม่ render)"
+                              : mediaTaskStatusLabel(shot.videoTaskStatus) ||
                               (shot.videoArtifactUrl
                                 ? "มีผลลัพธ์"
                                 : "ยังไม่มีวิดีโอ")}
@@ -4007,6 +4023,17 @@ export function StagedCheckpointReviewPanel(props: {
                               <p className="text-amber-700 font-medium">
                                 ไฟล์วิดีโอเดิมหมดอายุหรือเปิดไม่ได้แล้ว กรุณาสร้างใหม่หรืออัปโหลดวิดีโอแทน
                               </p>
+                            ) : shotVideoPromptWorkerOperation ? (
+                              <div className="space-y-1 font-medium text-sky-700" role="status">
+                                <p className="animate-pulse">
+                                  ✍️ กำลังสร้าง Prompt วิดีโอใน Worker — งานนี้ยังไม่ส่ง render
+                                </p>
+                                {isTaskInFlight(shot.videoTaskStatus) ? (
+                                  <p className="text-[11px] font-normal text-amber-700">
+                                    มีงาน render วิดีโอเดิมที่ส่งไว้ก่อนหน้านี้กำลังทำงานอยู่
+                                  </p>
+                                ) : null}
+                              </div>
                             ) : isTaskInFlight(shot.videoTaskStatus) ? (
                               <div className="flex items-center gap-2 font-medium text-sky-700 animate-pulse">
                                 <span>🎬 กำลังเรนเดอร์วิดีโอด้วย AI...</span>

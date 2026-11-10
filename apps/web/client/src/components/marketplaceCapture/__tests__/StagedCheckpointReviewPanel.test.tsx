@@ -471,6 +471,52 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 
+  it("shows video-prompt work as prompt-only even beside an older render task", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          videoTaskStatus: "processing",
+        },
+      ],
+      workerOperations: [
+        {
+          jobId: "image-prompt-job",
+          operation: "staged_prompt_generation",
+          status: "running",
+          shotId: 1,
+          targetStage: "image",
+          progress: 42,
+        },
+        {
+          jobId: "video-prompt-job",
+          operation: "staged_prompt_generation",
+          status: "running",
+          shotId: 1,
+          targetStage: "video",
+          progress: 18,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(
+      screen.getByText("กำลังสร้าง Prompt วิดีโอ (ยังไม่ render)")
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/กำลังสร้าง Prompt วิดีโอใน Worker — งานนี้ยังไม่ส่ง render/)
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/มีงาน render วิดีโอเดิมที่ส่งไว้ก่อนหน้านี้กำลังทำงานอยู่/)
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("🎬 กำลังเรนเดอร์วิดีโอด้วย AI...")
+    ).toBeNull();
+  });
+
   it("keeps a shot's approved image prompt dispatchable while the run-level advance worker is queued", () => {
     const input = props();
     input.state = {

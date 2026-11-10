@@ -22,6 +22,32 @@ describe("Feature 141 staged contracts", () => {
     expect(checkpoint.state).toBe("awaiting");
   });
 
+  it("keeps prompt approval separate from explicit media dispatch intent", () => {
+    const promptOnly = buildStagedCheckpointFixture({
+      kind: "video_prompt",
+      scope: "shot",
+      shotId: 1,
+      state: "approved",
+    });
+    expect(
+      HumanApprovalCheckpointV1Schema.parse(promptOnly).mediaDispatchIntent
+    ).toBeUndefined();
+
+    const mediaRequested = buildStagedCheckpointFixture({
+      ...promptOnly,
+      mediaDispatchIntent: {
+        requestedByUserId: 42,
+        requestedAt: "2026-11-10T00:00:00.000Z",
+      },
+    });
+    expect(
+      HumanApprovalCheckpointV1Schema.parse(mediaRequested).mediaDispatchIntent
+    ).toEqual({
+      requestedByUserId: 42,
+      requestedAt: "2026-11-10T00:00:00.000Z",
+    });
+  });
+
   it("represents all checkpoint stages without a second state machine", () => {
     const fixture = buildNineShotStoryboardFixture();
     const parsed = StagedSequentialStoryboardMetadataV1Schema.parse(fixture);

@@ -405,6 +405,17 @@ function stagedTaskStatus(
   return status || null;
 }
 
+function areAllWorkerTargetsPromptOnly(targets: unknown[]) {
+  return (
+    targets.length > 0 &&
+    targets.every(target => record(target).promptOnly === true)
+  );
+}
+
+export function areAllWorkerTargetsPromptOnlyForTest(targets: unknown[]) {
+  return areAllWorkerTargetsPromptOnly(targets);
+}
+
 class StagedMediaTaskInFlightError extends Error {
   readonly class = "retryable" as const;
   readonly diagnosticCode = "staged_media_task_in_flight";
@@ -737,7 +748,7 @@ export async function getStagedAutoReviewCheckpointState(
             ? record(targets[0]).stage
           : null,
       targetPromptOnly:
-        targets.length === 1 ? Boolean(record(targets[0]).promptOnly) : false,
+        areAllWorkerTargetsPromptOnly(targets),
       stage: typeof progress.stage === "string" ? progress.stage : null,
       progress: Number.isFinite(Number(progress.progress))
         ? Number(progress.progress)
@@ -1504,6 +1515,13 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
           referenceManifestHash:
             current.stagedSequentialStoryboard.referenceManifestHash,
           autoApprove: { userId: input.auth.userId },
+          ...(!target.promptOnly
+            ? {
+                mediaDispatchIntent: {
+                  requestedByUserId: input.auth.userId,
+                },
+              }
+            : {}),
         });
         replacementByShot.set(target.shotId, replacement);
         return imagePrompt
@@ -2434,7 +2452,7 @@ async function generateCompleteStagedShotPrompt(input: {
 /**
  * Generates one shot prompt through the existing single-shot skill seam.
  * This operation never submits an image/video task or queues provider spend;
- * only the later checkpoint approval can unlock media generation.
+ * only a separate explicit image/video action can authorize media generation.
  */
 export async function generateStagedAutoReviewShotPrompt(input: {
   runId: string;
@@ -3448,6 +3466,9 @@ export async function retryStagedAutoReviewShot(input: {
         referenceManifestHash:
           metadata.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
+        mediaDispatchIntent: {
+          requestedByUserId: input.auth.userId,
+        },
       });
       return {
         metadata: {

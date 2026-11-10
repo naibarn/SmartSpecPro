@@ -10,6 +10,7 @@ import {
   buildStagedShotPromptContextDigestForTest,
   classifyStagedDemonstrationTypeForTest,
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
+  areAllWorkerTargetsPromptOnlyForTest,
   assertStagedShotMediaSettledBeforePromptApply,
   assertStagedStoryPlanApprovedForTest,
   removeStagedTasksInvalidatedByPromptForTest,
@@ -28,6 +29,24 @@ function planFixture() {
     referenceManifestHash: "refs-1",
   });
 }
+
+describe("bulk worker operation projection", () => {
+  it("preserves prompt-only classification for multi-shot video prompt jobs", () => {
+    expect(
+      areAllWorkerTargetsPromptOnlyForTest([
+        { shotId: 1, stage: "video", promptOnly: true },
+        { shotId: 2, stage: "video", promptOnly: true },
+      ])
+    ).toBe(true);
+    expect(
+      areAllWorkerTargetsPromptOnlyForTest([
+        { shotId: 1, stage: "video", promptOnly: true },
+        { shotId: 2, stage: "video" },
+      ])
+    ).toBe(false);
+    expect(areAllWorkerTargetsPromptOnlyForTest([])).toBe(false);
+  });
+});
 
 /** Mirrors the fixture pattern used by
  *  marketplaceAutoReviewStagedPipeline.selfHealPersist.test.ts — a plain

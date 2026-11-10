@@ -436,6 +436,33 @@ function checkpointFor(
   );
 }
 
+/** A prompt checkpoint is dispatchable only after an explicit media action.
+ *  Automatic prompt generation and checkpoint approval do not authorize spend. */
+export function hasExplicitStagedMediaDispatchIntent(
+  checkpoint:
+    | {
+        mediaDispatchIntent?: { requestedByUserId?: number } | null;
+      }
+    | null
+    | undefined
+) {
+  return (
+    Number.isSafeInteger(checkpoint?.mediaDispatchIntent?.requestedByUserId) &&
+    Number(checkpoint?.mediaDispatchIntent?.requestedByUserId) > 0
+  );
+}
+
+export function hasExplicitStagedMediaDispatchIntentForTest(
+  checkpoint:
+    | {
+        mediaDispatchIntent?: { requestedByUserId?: number } | null;
+      }
+    | null
+    | undefined
+) {
+  return hasExplicitStagedMediaDispatchIntent(checkpoint);
+}
+
 function finalAssemblyFor(
   metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>,
   plan: StagedStoryArcPlan
@@ -2700,6 +2727,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     );
     if (
       imagePromptCheckpoint?.state === "approved" &&
+      hasExplicitStagedMediaDispatchIntent(imagePromptCheckpoint) &&
       !imageTask?.taskId &&
       !shotState?.imageArtifactHash &&
       !imageCheckpointConsumed
@@ -2878,6 +2906,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     );
     if (
       videoPromptCheckpoint?.state === "approved" &&
+      hasExplicitStagedMediaDispatchIntent(videoPromptCheckpoint) &&
       !videoTask?.taskId &&
       !shotState?.videoArtifactHash &&
       !videoCheckpointConsumed

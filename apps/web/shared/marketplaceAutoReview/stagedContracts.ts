@@ -97,6 +97,15 @@ export const HumanApprovalCheckpointV1Schema = z
     approvedProvider: z.string().min(1).nullable(),
     approvedSafetyVerdict: z.string().min(1).nullable(),
     approvedReferenceManifestHash: z.string().min(1).nullable(),
+    // Approval makes a prompt eligible for use; it does not authorize paid
+    // media generation. Only explicit image/video actions attach this intent.
+    mediaDispatchIntent: z
+      .object({
+        requestedByUserId: z.number().int().positive(),
+        requestedAt: z.string().datetime(),
+      })
+      .strict()
+      .optional(),
     // Additive, optional. Fail-open QC warnings from
     // `assessStagedPlanAdherence` (tone/structure/conversation-turns
     // adherence for the story_plan checkpoint) — informational only, never

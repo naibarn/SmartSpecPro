@@ -1438,6 +1438,12 @@ export function buildStagedCheckpoint(input: {
   // plan confirmation is the one deliberately-kept manual gate. Omitting
   // this param reproduces the previous "awaiting" output exactly.
   autoApprove?: { userId: number; approvedAt?: string } | null;
+  /** Explicit user request to spend media credits for this prompt. A
+   *  generated/approved prompt alone must never dispatch a render. */
+  mediaDispatchIntent?: {
+    requestedByUserId: number;
+    requestedAt?: string;
+  } | null;
   // Fail-open QC warnings from `assessStagedPlanAdherence` (tone/structure/
   // conversation-turns adherence). Only meaningful on `story_plan`
   // checkpoints; omit or pass an empty array everywhere else.
@@ -1449,6 +1455,7 @@ export function buildStagedCheckpoint(input: {
     input.kind === "video_prompt" ||
     input.kind === "video_result";
   const autoApprove = input.autoApprove;
+  const mediaDispatchIntent = input.mediaDispatchIntent;
   return {
     checkpointId: input.checkpointId,
     kind: input.kind,
@@ -1470,6 +1477,15 @@ export function buildStagedCheckpoint(input: {
     approvedProvider: input.provider ?? null,
     approvedSafetyVerdict: "passed",
     approvedReferenceManifestHash: input.referenceManifestHash ?? null,
+    ...(mediaDispatchIntent
+      ? {
+          mediaDispatchIntent: {
+            requestedByUserId: mediaDispatchIntent.requestedByUserId,
+            requestedAt:
+              mediaDispatchIntent.requestedAt ?? new Date().toISOString(),
+          },
+        }
+      : {}),
     ...(input.adherenceWarnings && input.adherenceWarnings.length > 0
       ? { adherenceWarnings: input.adherenceWarnings }
       : {}),

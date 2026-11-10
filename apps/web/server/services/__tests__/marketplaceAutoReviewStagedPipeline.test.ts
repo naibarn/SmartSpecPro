@@ -15,6 +15,7 @@ import {
   planAndMetadataFromRun,
   resolveStagedVideoDurationForTest,
   stagedCheckpointExpectationForTest,
+  hasExplicitStagedMediaDispatchIntentForTest,
 } from "../marketplaceAutoReviewStagedPipelineService";
 import { StagedSequentialStoryboardMetadataV1Schema } from "../../../shared/marketplaceAutoReview/stagedContracts";
 
@@ -32,6 +33,24 @@ describe("marketplace staged storyboard pipeline contracts", () => {
       imageUrls: ["https://example.test/product.png"],
     },
     referenceManifestHash: "refs-1",
+  });
+
+  it("does not treat an approved prompt as media-render authorization", () => {
+    expect(
+      hasExplicitStagedMediaDispatchIntentForTest({ state: "approved" })
+    ).toBe(false);
+    expect(
+      hasExplicitStagedMediaDispatchIntentForTest({
+        state: "approved",
+        mediaDispatchIntent: { requestedByUserId: 42 },
+      })
+    ).toBe(true);
+    expect(
+      hasExplicitStagedMediaDispatchIntentForTest({
+        state: "approved",
+        mediaDispatchIntent: { requestedByUserId: 0 },
+      })
+    ).toBe(false);
   });
 
   it("creates exactly nine ten-second reviewable shots", () => {
@@ -215,6 +234,43 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     expect(twelveShotPlan.shots.map(s => s.shotId)).toEqual(
       Array.from({ length: 12 }, (_, i) => i + 1)
     );
+  });
+
+  it("keeps newly generated prompt checkpoints non-dispatchable until the media button is used", () => {
+    const promptOnlyCheckpoint = buildStagedCheckpoint({
+      checkpointId: "video-prompt:run-141:shot-1:r1",
+      kind: "video_prompt",
+      shotId: 1,
+      revision: 1,
+      contentHash: "video-prompt-hash",
+      model: "prompt-model",
+      provider: "prompt-provider",
+      estimatedCredits: 0,
+      referenceManifestHash: "refs-1",
+      autoApprove: { userId: 42 },
+    });
+    expect(promptOnlyCheckpoint.state).toBe("approved");
+    expect(promptOnlyCheckpoint.mediaDispatchIntent).toBeUndefined();
+    expect(
+      hasExplicitStagedMediaDispatchIntentForTest(promptOnlyCheckpoint)
+    ).toBe(false);
+
+    const explicitVideoRequest = buildStagedCheckpoint({
+      checkpointId: "video-prompt:run-141:shot-1:r2",
+      kind: "video_prompt",
+      shotId: 1,
+      revision: 2,
+      contentHash: "video-prompt-hash-2",
+      model: "video-model",
+      provider: "video-provider",
+      estimatedCredits: 125,
+      referenceManifestHash: "refs-1",
+      autoApprove: { userId: 42 },
+      mediaDispatchIntent: { requestedByUserId: 42 },
+    });
+    expect(
+      hasExplicitStagedMediaDispatchIntentForTest(explicitVideoRequest)
+    ).toBe(true);
   });
 
   it("buildStagedPlanAndMetadataForInit drafts three review ideas from the product brief", async () => {

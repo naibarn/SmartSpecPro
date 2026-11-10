@@ -328,6 +328,7 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
       name: "⚡ สร้าง Prompt + ภาพทุกช็อต (2 ช็อต)",
     });
     fireEvent.click(bulkButton);
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     await waitFor(() => expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1));
     expect(mockBulkGenerateMutate).toHaveBeenCalledWith(
@@ -340,6 +341,38 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
         ],
       })
     );
+    expect(mockRetryMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("bulk video-prompt generation queues prompt-only targets without submitting video renders", async () => {
+    render(<StagedCheckpointReviewSurface runId="run-1" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt วิดีโอทุกช็อต (2)" })
+    );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+
+    await waitFor(() => expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1));
+    expect(mockBulkGenerateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          expect.objectContaining({
+            shotId: 1,
+            stage: "video",
+            promptOnly: true,
+            refreshPrompt: true,
+          }),
+          expect.objectContaining({
+            shotId: 2,
+            stage: "video",
+            promptOnly: true,
+            refreshPrompt: true,
+          }),
+        ],
+      })
+    );
+    expect(mockGeneratePromptMutate).not.toHaveBeenCalled();
+    expect(mockRetryMutate).not.toHaveBeenCalled();
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 });
@@ -415,6 +448,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
     fireEvent.click(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     expect(mockGeneratePromptMutate).toHaveBeenCalledTimes(1);
     const call = mockGeneratePromptMutate.mock.calls[0][0];
@@ -430,6 +464,31 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("creating a video prompt submits only the prompt-generation job, never a video-render job", () => {
+    render(<StagedCheckpointReviewSurface runId="run-1" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" })
+    );
+    expect(
+      screen.getByTestId("staged-generation-confirmation-dialog").textContent
+    ).toContain("สร้าง Prompt วิดีโอช็อตที่ 1");
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+
+    expect(mockGeneratePromptMutate).toHaveBeenCalledTimes(1);
+    expect(mockGeneratePromptMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-1",
+        shotId: 1,
+        stage: "video",
+        expectedStateDigest: "digest-0",
+      })
+    );
+    expect(mockBulkGenerateMutate).not.toHaveBeenCalled();
+    expect(mockRetryMutate).not.toHaveBeenCalled();
+    expect(mockRetryMutateAsync).not.toHaveBeenCalled();
+  });
+
   it("uses and remembers the selected story LLM when generating a shot prompt", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
@@ -439,6 +498,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
     fireEvent.click(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     expect(mockGeneratePromptMutate).toHaveBeenCalledWith(
       expect.objectContaining({ model: "test-story-llm", stage: "image" })
@@ -460,6 +520,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
       target: { value: "มีเด็กชาวไทยอายุ 8 เดือนในฉาก" },
     });
     fireEvent.click(screen.getByTestId("staged-ai-instruction-submit"));
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     expect(mockGeneratePromptMutate).toHaveBeenCalledTimes(1);
     const call = mockGeneratePromptMutate.mock.calls[0][0];
@@ -480,6 +541,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1);
     const call = mockBulkGenerateMutate.mock.calls[0][0];
@@ -501,6 +563,7 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", (
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1);
     const call = mockBulkGenerateMutate.mock.calls[0][0];
@@ -551,6 +614,7 @@ describe("StagedCheckpointReviewSurface — missing stateDigest surfaces an erro
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain(
@@ -569,6 +633,7 @@ describe("StagedCheckpointReviewSurface — missing stateDigest surfaces an erro
     fireEvent.click(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain(
@@ -591,6 +656,7 @@ describe("StagedCheckpointReviewSurface — missing stateDigest surfaces an erro
       target: { value: "มีเด็กชาวไทยอายุ 8 เดือนในฉาก" },
     });
     fireEvent.click(screen.getByTestId("staged-ai-instruction-submit"));
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
 
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain(
