@@ -56,7 +56,10 @@ export function resolveSpecialDialogueSpeakerEligibility(
     age: data.age,
     ageMin: data.ageMin,
     ageMax: data.ageMax,
-    ageRange: visualBible.ageRange ?? data.ageRange,
+    // The character editor writes the current casting age to data.ageRange.
+    // Older records can still have a previous value under visualBible, so
+    // prefer the root field when both are present.
+    ageRange: data.ageRange ?? visualBible.ageRange,
     ageStage: data.ageStage ?? lookDesign.age_stage,
     approvedDnaAgeRange: designDna.ageRange,
     role: input.role,
