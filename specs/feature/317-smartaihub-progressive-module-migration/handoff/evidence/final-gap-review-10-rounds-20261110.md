@@ -30,3 +30,7 @@
 - Provision and verify the separate least-privilege Chat DB adapter/RLS and authorized model provider before enabling data/generation.
 - Provision the approved browser provider/executor and canonical idempotent `worker_jobs` + outbox adapter; verify DNS/redirect egress policy before exposing a run action.
 - Verify a pre-existing account and target health on `aimarkethubs.com` only when the new deployment is healthy and the owner-directed handover is intentional. Keep `smartsihub.com` inactive until its separate production authority is provisioned.
+
+## Follow-up consistency audit
+
+After completing the ten rounds, a final cross-check found stale requirement IDs in the Claude plan and section headers. Replaced them with the current canonical ledger IDs, then verified every `REQ-*` reference in those files exists in the ledger and `python3 -m tools.spec_handoff validate --spec-dir specs/feature/317-smartaihub-progressive-module-migration` passes with no validation errors. The derived `completion_eligible=false` result is retained because hosted login/UAT, deployment, data/provider, and several migration requirements remain open. A direct source audit also confirmed the platform root has no unqualified `build` script and has named filtered commands for Core, Shell, Chat, and Browser Pilot; `modular-debian-dev` remains `applicationAvailable=false` and `deployable=false`, with the port-3100 service preserved.
