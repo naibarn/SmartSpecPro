@@ -3,15 +3,23 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `55`
-- Updated (UTC): `2026-11-10T10:39:33.780500+00:00`
+- State generation: `57`
+- Updated (UTC): `2026-11-10T10:47:24.951084+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `291269c9be22c66281bd1036d8b8a0bdd3547949`
+- Latest recorded merged Main SHA: `bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Release integrated revision 291269c9be22c66281bd1036d8b8a0bdd3547949 to legacy-debian-dev (smartaihub.app) and verify the release receipt, service health, and deployed source SHA. Then requeue one video prompt on the existing run and confirm it is persisted while the shot has an active render; do not replay the expired credit-bearing request automatically.
+- Next action: After release g469, submit one fresh confirmed video-prompt request on run mar_670133124534765cf0d36d3637b6ee89 and verify the new prompt is persisted without waiting for the same shot render. The prior request expired and was not automatically replayed because prompt generation can incur credits.
+
+## Latest release evidence
+
+- Target: `legacy-debian-dev` / `https://smartaihub.app`
+- Release: `smartspec-web-bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0-6aa4adc8b9b5-g469`
+- Source: `bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0`; artifact digest: `sha256:24de2877cecc79a94b37b65890c407c0fce2261b73f4691bb38c77696badbeb9`
+- `smartspec-web.service` and `smartspec-node-worker.service` are active; release health returned HTTP 200. Public Auto Review route and its updated workflow JavaScript asset also returned HTTP 200.
+- Focused Vitest: 2 files, 83 tests passed. The public prompt-generation flow was not re-triggered because it can incur credits.
 
 ## Sections
 
@@ -19,14 +27,13 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-video-prompt-queue-deploy | /mnt/SmartSpecDev/projects/SmartSpecPro | 291269c9be22c66281bd1036d8b8a0bdd3547949 | 291269c9be22c66281bd1036d8b8a0bdd3547949 | Release integrated revision 291269c9be22c66281bd1036d8b8a0bdd3547949 to legacy-debian-dev (smartaihub.app) and verify the release receipt, service health, and deployed source SHA. Then requeue one video prompt on the existing run and confirm it is persisted while the shot has an active render; do not replay the expired credit-bearing request automatically. |
+| section-03-proof-and-deployment | checkpointed | codex-marketplace-video-prompt-queue-deploy | /mnt/SmartSpecDev/projects/SmartSpecPro | bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0 | bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0 | After release g469, submit one fresh confirmed video-prompt request on run mar_670133124534765cf0d36d3637b6ee89 and verify the new prompt is persisted without waiting for the same shot render. The prior request expired and was not automatically replayed because prompt generation can incur credits. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.
-- Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery.
-- Authenticated browser UAT and live provider-backed video-prompt generation on the existing Marketplace Auto Review run remain outstanding; focused tests and deployment health pass.
-- The prompt-only worker fix has focused test coverage (83 tests across the checkpoint service and review panel); deployment and live requeue verification are pending.
+- Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.
+- Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.
+- The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.
 
 ## Resume
 
