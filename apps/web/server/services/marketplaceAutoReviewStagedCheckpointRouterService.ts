@@ -148,6 +148,39 @@ function isStagedCheckpointRetryable(
   return Boolean(checkpoint);
 }
 
+/**
+ * Only the current, non-superseded story plan may authorize paid media work.
+ * `planReview.status` is kept as a legacy summary; it must not override a
+ * newer story checkpoint that returned to `awaiting` after a shot/story edit.
+ */
+function assertStagedStoryPlanApproved(metadata: ReturnType<typeof parseStagedMetadata>) {
+  const currentStoryCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints
+    .filter(
+      checkpoint =>
+        checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
+    )
+    .reduce<(typeof metadata.stagedSequentialStoryboard.reviewCheckpoints)[number] | null>(
+      (latest, checkpoint) =>
+        !latest || checkpoint.revision > latest.revision ? checkpoint : latest,
+      null
+    );
+  const approved = currentStoryCheckpoint
+    ? currentStoryCheckpoint.state === "approved"
+    : record(metadata.planReview).status === "approved";
+  if (!approved) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_story_plan_not_approved",
+    });
+  }
+}
+
+export function assertStagedStoryPlanApprovedForTest(metadata: unknown) {
+  assertStagedStoryPlanApproved(
+    StagedSequentialStoryboardMetadataV1Schema.parse(metadata)
+  );
+}
+
 function tenantAccessClause(auth: StagedCheckpointAuth) {
   const tenantId = auth.tenantId?.trim();
   // Staged checkpoint mutations are tenant-bound; fail closed if a caller
@@ -1094,19 +1127,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
   if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
-  const storyCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-    checkpoint =>
-      checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
-  );
-  if (
-    storyCheckpoint?.state !== "approved" &&
-    metadata.planReview?.status !== "approved"
-  ) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_story_plan_not_approved",
-    });
-  }
+  assertStagedStoryPlanApproved(metadata);
   const seenShots = new Set<number>();
   for (const target of input.targets) {
     if (seenShots.has(target.shotId)) {
@@ -1225,19 +1246,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   assertStagedRunMutable(run);
   assertStagedMetadataPersisted(run);
   const metadata = parseStagedMetadata(run);
-  const storyCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-    checkpoint =>
-      checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
-  );
-  if (
-    storyCheckpoint?.state !== "approved" &&
-    metadata.planReview?.status !== "approved"
-  ) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_story_plan_not_approved",
-    });
-  }
+  assertStagedStoryPlanApproved(metadata);
   const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
   const requestHash = createHash("sha256")
     .update(input.requestIdempotencyKey)
@@ -3175,6 +3184,11 @@ export async function retryStagedAutoReviewShot(input: {
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
     mutate(metadata, operationId) {
+      // Image/video dispatch advances through the staged run worker. Without
+      // this guard an unapproved current story revision only produced a
+      // successful no-op `advance_run` job, leaving the prompt checkpoint
+      // looking approved while no provider task or artifact existed.
+      assertStagedStoryPlanApproved(metadata);
       const shot = metadata.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId
       );

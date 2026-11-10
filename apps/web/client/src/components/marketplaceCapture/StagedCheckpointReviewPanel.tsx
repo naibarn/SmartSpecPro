@@ -1314,7 +1314,17 @@ export function StagedCheckpointReviewPanel(props: {
   }, [props.state?.checkpoints]);
   const runCheckpoint = (kind: string) =>
     activeCheckpointByKey.get(`${kind}:run`);
-  const storyCheckpoint: StagedCheckpoint | null = runCheckpoint("story_plan") ?? (
+  const latestStoryCheckpoint = (props.state?.checkpoints ?? [])
+    .filter(
+      checkpoint =>
+        checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
+    )
+    .reduce<StagedCheckpoint | null>(
+      (latest, checkpoint) =>
+        !latest || checkpoint.revision > latest.revision ? checkpoint : latest,
+      null
+    );
+  const storyCheckpoint: StagedCheckpoint | null = latestStoryCheckpoint ?? (
     props.state?.storyPlan ? {
       checkpointId: `story-plan:${props.runId || 'run'}:r${props.state.planRevision || 1}`,
       kind: "story_plan",
@@ -1326,6 +1336,9 @@ export function StagedCheckpointReviewPanel(props: {
       consumed: props.state.planReview?.status === "approved",
     } : null
   );
+  const storyPlanApproved = storyCheckpoint
+    ? storyCheckpoint.state === "approved"
+    : props.state?.planReview?.status === "approved";
   const storyEditAvailable =
     Boolean(props.state && isRunEditable(props.state)) &&
     props.state?.metadataInitializationPending !== true &&
@@ -1582,10 +1595,9 @@ export function StagedCheckpointReviewPanel(props: {
     label: string,
     callback: () => void,
     className = "rounded border px-3 py-2 text-sm",
-    // Optional extra gating for this specific button, plus a title/aria
-    // hint. NOTE: do NOT use this to gate a credit-spending dispatch button
-    // on client-derived preconditions — see the dispatch buttons below and
-    // the 2026-07-30 incident note in the button body.
+    // Optional gating for server-projected prerequisites plus a title/aria
+    // hint. Paid image/video dispatch prerequisites are checked again by the
+    // server before a worker job is admitted.
     options?: { disabled?: boolean; title?: string }
   ) => (
     // Field incident 2026-07-30 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
@@ -1688,7 +1700,7 @@ export function StagedCheckpointReviewPanel(props: {
   const workerOperationLabels: Record<string, string> = {
     initialize_run: "เริ่มสร้างรีวิว",
     initialize_staged_metadata: "กู้คืนแนวเรื่องรีวิว",
-    advance_run: "สร้าง Prompt ภาพ",
+    advance_run: "ตรวจและส่งขั้นตอน Auto Review ต่อ",
     draft_quality_qc: "ตรวจคุณภาพเนื้อหา",
     staged_story_redraft: "ร่างแนวเรื่องใหม่",
     plan_redraft: "ร่างแนวเรื่องใหม่",
@@ -1824,12 +1836,7 @@ export function StagedCheckpointReviewPanel(props: {
                         disabled:
                           activeBulkGeneration ||
                           Boolean(activeImagePromptWorkerOperation) ||
-                          (props.state?.checkpoints.find(
-                            checkpoint =>
-                              checkpoint.kind === "story_plan" &&
-                              checkpoint.state !== "superseded"
-                          )?.state !== "approved" &&
-                            props.state?.planReview?.status !== "approved"),
+                          !storyPlanApproved,
                         title: activeBulkGeneration
                           ? "กำลังเตรียมงานชุดนี้ใน Worker"
                           : "สร้าง Prompt ใหม่และส่งสร้างภาพทุกช็อตเข้า Worker Jobs",
@@ -3634,6 +3641,10 @@ export function StagedCheckpointReviewPanel(props: {
                               <div className="flex items-center gap-2 font-medium text-violet-700 animate-pulse">
                                 <span>⏳ กำลังประมวลผลสร้างภาพด้วย AI...</span>
                               </div>
+                            ) : imageCheckpoint && !storyPlanApproved ? (
+                              <p className="text-amber-700 font-medium">
+                                เนื้อเรื่องฉบับล่าสุดยังรอยืนยัน — ยืนยันเนื้อเรื่องก่อนเริ่มสร้างภาพ
+                              </p>
                             ) : imageCheckpoint ? (
                               // Checkpoint is approved/consumed but advance
                               // failed. No button here anymore — this used to
@@ -3964,11 +3975,14 @@ export function StagedCheckpointReviewPanel(props: {
                               {
                                 disabled:
                                   !shot.imagePrompt?.trim() ||
+                                  !storyPlanApproved ||
                                   isTaskInFlight(shot.imageTaskStatus) ||
                                   isTaskInFlight(shot.videoTaskStatus) ||
                                   isShotPromptPipelineBusy(shot.shotId),
                                 title: !shot.imagePrompt?.trim()
                                   ? "สร้าง Prompt ภาพก่อน"
+                                  : !storyPlanApproved
+                                    ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
                                   : isTaskInFlight(shot.imageTaskStatus) ||
                                       isTaskInFlight(shot.videoTaskStatus)
                                     ? "รอให้งานของช็อตนี้เสร็จก่อน"
@@ -4096,6 +4110,7 @@ export function StagedCheckpointReviewPanel(props: {
                               {
                                 disabled:
                                   !shot.videoPrompt?.trim() ||
+                                  !storyPlanApproved ||
                                   !shot.imageArtifactHash ||
                                   imageResultCheckpoint?.state !== "approved" ||
                                   isTaskInFlight(shot.imageTaskStatus) ||
@@ -4103,6 +4118,8 @@ export function StagedCheckpointReviewPanel(props: {
                                   isShotPromptPipelineBusy(shot.shotId),
                                 title: !shot.videoPrompt?.trim()
                                   ? "สร้าง Prompt วิดีโอก่อน"
+                                  : !storyPlanApproved
+                                    ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างวิดีโอ"
                                   : !shot.imageArtifactHash ||
                                       imageResultCheckpoint?.state !== "approved"
                                     ? "ต้องสร้างและอนุมัติภาพของช็อตนี้ก่อน"

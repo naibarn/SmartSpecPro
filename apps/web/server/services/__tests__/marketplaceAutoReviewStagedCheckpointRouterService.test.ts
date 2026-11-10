@@ -10,6 +10,7 @@ import {
   buildStagedShotPromptContextDigestForTest,
   classifyStagedDemonstrationTypeForTest,
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
+  assertStagedStoryPlanApprovedForTest,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
 import { buildSequentialSingleShotRefreshContractForTest } from "../productReviewSequentialStoryboardSkillRunner";
 
@@ -109,6 +110,46 @@ function fixture(input: {
   };
   return { run: run as any, metadata: metadata as any };
 }
+
+describe("staged media dispatch story approval gate", () => {
+  it("rejects an awaiting current story checkpoint even if the legacy summary says approved", () => {
+    const metadata = fixture({ plan: planFixture() }).metadata;
+    const currentCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints[0];
+    metadata.stagedSequentialStoryboard.reviewCheckpoints = [
+      {
+        ...currentCheckpoint,
+        checkpointId: "story-plan:run-141:r2",
+        revision: currentCheckpoint.revision + 1,
+        state: "awaiting",
+      },
+      {
+        ...currentCheckpoint,
+        state: "approved",
+        approvedHash: metadata.stagedSequentialStoryboard.storyPlanHash,
+        approvedByUserId: 42,
+        approvedAt: new Date().toISOString(),
+      },
+    ];
+
+    expect(() => assertStagedStoryPlanApprovedForTest(metadata)).toThrow(
+      "staged_story_plan_not_approved"
+    );
+  });
+
+  it("allows media dispatch after the current story checkpoint is approved", () => {
+    const metadata = fixture({ plan: planFixture() }).metadata;
+    metadata.stagedSequentialStoryboard.reviewCheckpoints[0] = {
+      ...metadata.stagedSequentialStoryboard.reviewCheckpoints[0],
+      state: "approved",
+      approvedHash: metadata.stagedSequentialStoryboard.storyPlanHash,
+      approvedByUserId: 42,
+      approvedAt: new Date().toISOString(),
+    };
+    metadata.planReview.status = "awaiting";
+
+    expect(() => assertStagedStoryPlanApprovedForTest(metadata)).not.toThrow();
+  });
+});
 
 describe("computeRetryStagedAutoReviewFinalAssemblyMetadata — retry clears dead render refs", () => {
   function metadataWithFinalAssemblyCheckpoint() {

@@ -498,6 +498,7 @@ describe("StagedCheckpointReviewPanel", () => {
     const input = props();
     input.state = {
       ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
       checkpoints: [
         {
           ...baseCheckpoint,
@@ -541,6 +542,7 @@ describe("StagedCheckpointReviewPanel", () => {
     const input = props();
     input.state = {
       ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
       // Approved (and consumed) but no artifact ever arrived: the "task
       // stuck" recovery path, not a content dispute — same prompt, just
       // needs resubmitting.
@@ -579,10 +581,58 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
   });
 
+  it("blocks paid media dispatch until the latest story revision is approved", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      // A stale summary must not override the current awaiting checkpoint.
+      planReview: { status: "approved", redraftCount: 0 },
+      checkpoints: [
+        {
+          ...baseCheckpoint,
+          kind: "story_plan",
+          shotId: null,
+          checkpointId: "story:run-1:r2",
+          state: "awaiting",
+          revision: 2,
+          estimatedCredits: 0,
+        },
+        {
+          ...baseCheckpoint,
+          kind: "story_plan",
+          shotId: null,
+          checkpointId: "story:run-1:r1",
+          state: "approved",
+          revision: 1,
+          estimatedCredits: 0,
+        },
+        { ...baseCheckpoint, state: "approved", consumed: true },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const imageButton = screen.getByRole("button", {
+      name: "สร้างภาพช็อตที่ 1",
+    });
+    expect(imageButton).toBeDisabled();
+    expect(imageButton).toHaveAttribute(
+      "title",
+      "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
+    );
+    expect(screen.getByText(/เนื้อเรื่องฉบับล่าสุดยังรอยืนยัน/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    ).not.toBeDisabled();
+
+    fireEvent.click(imageButton);
+    expect(input.onRetry).not.toHaveBeenCalled();
+  });
+
   it("dispatches the video generation (onRetry, current prompt) when the video prompt was rejected", () => {
     const input = props();
     input.state = {
       ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
       shots: [
         {
           ...input.state.shots[0],
@@ -632,6 +682,7 @@ describe("StagedCheckpointReviewPanel", () => {
     const input = props();
     input.state = {
       ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
       shots: [
         {
           ...input.state.shots[0],
@@ -711,6 +762,10 @@ describe("StagedCheckpointReviewPanel", () => {
    */
   it("with a mutation in flight, disables ONLY the button that is running — every other shot's buttons stay clickable", () => {
     const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+    };
     input.pending = true;
     input.pendingAction = "generate-prompt-image-1";
     render(<StagedCheckpointReviewPanel {...input} />);
@@ -933,6 +988,10 @@ describe("StagedCheckpointReviewPanel", () => {
 
     it("the dispatch-only 'สร้างภาพช็อตที่ N' button calls onRetry (current prompt), not onGeneratePrompt/onGenerateAndDispatch", () => {
       const input = props();
+      input.state = {
+        ...input.state,
+        planReview: { status: "approved", redraftCount: 0 },
+      };
       render(<StagedCheckpointReviewPanel {...input} />);
 
       fireEvent.click(
@@ -1000,6 +1059,7 @@ describe("StagedCheckpointReviewPanel", () => {
       const input = props();
       input.state = {
         ...input.state,
+        planReview: { status: "approved", redraftCount: 0 },
         shots: [
           {
             ...input.state.shots[0],
@@ -1055,6 +1115,7 @@ describe("StagedCheckpointReviewPanel", () => {
       const input = props();
       input.state = {
         ...input.state,
+        planReview: { status: "approved", redraftCount: 0 },
         shots: [
           {
             ...input.state.shots[0],
