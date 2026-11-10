@@ -3930,7 +3930,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
+      "next_action": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Resolve the environment-tenant binding and provision a separate least-privilege Modular dev DB credential before implementing stateful auth/session access. Continue from smartaihub-platform main SHA f271a2b669de97b1ae85788f3233902b47db018b using the existing smartspec account/schema contract.",
+      "rationale": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },

@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -633,13 +633,14 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+      "evidence_sha": "712172880aab7d4994480236513b5fcc5b11b013",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage."
+        "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage.",
+        "smartaihub-platform main at a5e16406e1ab79d62c283ff03d6b83c895f6d34b plus SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: bounded expired session-JTI cleanup uses a dedicated NOLOGIN definer role, Core EXECUTE-only access, 500-row batches, and a scheduled Worker handler."
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Keep PARTIAL/OPEN until an authorized existing Legacy user authenticates, canonical customer membership/data is verified, development/production isolation and the selected development path are proven, a same-database Legacy/Core latency target and benchmark are recorded, a separately bounded expired session-JTI cleanup owner is established, and full acceptance/UAT is complete.",
+      "next_action": "Keep PARTIAL/OPEN until an authorized existing Legacy development user authenticates, canonical customer membership/data is verified, development/production isolation and selected development-path evidence are proven, a matched same-database Legacy/Core performance comparison records lower Core p95 without worse errors, and human UAT is complete. The bounded expired-session-JTI cleanup owner and scheduled dev operation are implemented and verified.",
       "requirement_digest": "0c32e4707fa5b6d5fcff5205c8dcd02fd1788749f96f7bd147b6b62b59dc9d4a",
       "requirement_id": "REQ-46847581892C",
       "requirement_text": "Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.",
@@ -647,9 +648,10 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md"
       ],
-      "verification_method": "Exact source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Core typecheck, 10-file/61-test suite, Wrangler dry-run (387.18 KiB, 91.46 KiB gzip), loopback Workerd/DO throttle and replay-expiry smoke, Hono/import and target-boundary review, and read-only PostgreSQL role/catalog/query-shape evidence. Does not prove actual stored-hash distribution, real-user login, authorized customer-data parity, production isolation, quantitative speed, cleanup ownership, UAT or deployment."
+      "verification_method": "Core main a5e16406e1ab79d62c283ff03d6b83c895f6d34b: typecheck PASS, 11 files/65 tests PASS, Wrangler dry-run 388.64 KiB / 91.87 KiB gzip, local Worker /livez 200 and scheduled cleanup outcome ok. SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: receipt SETTLED/SUCCEEDED on modular-debian-dev with 0418 applied; catalog verifies dedicated NOLOGIN owner, fixed search_path, PUBLIC denied, Core EXECUTE only and no direct DELETE; transaction test verifies limits and retention; five local scheduled runs reduced expired JTI rows to zero. Does not prove existing-user login, customer membership/data, comparative Legacy/Core performance, production isolation, human UAT, or deployment."
     }
   ],
   "schema_version": 1,

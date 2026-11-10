@@ -24,14 +24,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+    "expected_canonical_sha": "712172880aab7d4994480236513b5fcc5b11b013",
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Before any aimarkethubs.com handover or high-volume production: define and measure a numeric same-database Legacy/Core latency objective; establish a separately bounded owner for expired session-JTI cleanup; complete authorized existing-user and customer-membership UAT plus production-isolation proof. Keep this requirement PARTIAL/OPEN and preserve current target boundaries.",
+    "next_action": "Complete the remaining R1.6 acceptance using an authorized existing Legacy development test user: prove login on the modular development hostname, verify only that principal’s canonical customer membership/data, run the matched same-database Legacy/Core latency comparison, and verify development/production isolation when a separate production test path is provisioned. Keep aimarkethubs.com traffic on port 3100 until Core is healthy; leave smartsihub.com inactive.",
     "next_ready_workunit": "r19-pre-handover-acceptance",
     "reactivation_predicate": null,
-    "resume_point": "Deep Plan is complete (4/4), and all four Deep Implement sections are checkpointed. Source implementation is integrated in smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739; SmartSpecPro plan/evidence are integrated at a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa. Ten final review passes and latest focused checks are recorded in handoff/evidence/current-source-proof-20261110.md and handoff/evidence/final-10-gap-review-passes-20261110.md. Next: close the measured-latency and bounded JTI-retention gaps, then complete real-user, customer-data and environment-isolation acceptance before any target handover. No deployment or UAT is claimed.",
+    "resume_point": "Deep Plan remains valid at 4/4 and all four Deep Implement sections are checkpointed. The final ten-pass review evidence remains historical. The expired session-JTI gap is now closed: SmartSpecPro main has migration 0418 at 712172880aab7d4994480236513b5fcc5b11b013; smartaihub-platform main has the bounded scheduled cleanup at a5e16406e1ab79d62c283ff03d6b83c895f6d34b; receipt is successful on modular-debian-dev, the local scheduled handler ran, and the dev expired-JTI count is zero. The remaining work is authorized existing-user login, customer-membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Direct Codex development was used; no SPEC-224 receipt, deployment, handover, or production change is claimed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -78,7 +78,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 23,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -122,9 +122,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+    "canonical_sha": "712172880aab7d4994480236513b5fcc5b11b013",
     "integrated": true,
-    "integrated_at": "2026-11-10T04:11:59+07:00"
+    "integrated_at": "2026-11-10T07:32:05+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -209,13 +209,14 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+        "evidence_sha": "712172880aab7d4994480236513b5fcc5b11b013",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage."
+          "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage.",
+          "smartaihub-platform main at a5e16406e1ab79d62c283ff03d6b83c895f6d34b plus SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: bounded expired session-JTI cleanup uses a dedicated NOLOGIN definer role, Core EXECUTE-only access, 500-row batches, and a scheduled Worker handler."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Keep PARTIAL/OPEN until an authorized existing Legacy user authenticates, canonical customer membership/data is verified, development/production isolation and the selected development path are proven, a same-database Legacy/Core latency target and benchmark are recorded, a separately bounded expired session-JTI cleanup owner is established, and full acceptance/UAT is complete.",
+        "next_action": "Keep PARTIAL/OPEN until an authorized existing Legacy development user authenticates, canonical customer membership/data is verified, development/production isolation and selected development-path evidence are proven, a matched same-database Legacy/Core performance comparison records lower Core p95 without worse errors, and human UAT is complete. The bounded expired-session-JTI cleanup owner and scheduled dev operation are implemented and verified.",
         "requirement_digest": "0c32e4707fa5b6d5fcff5205c8dcd02fd1788749f96f7bd147b6b62b59dc9d4a",
         "requirement_id": "REQ-46847581892C",
         "requirement_text": "Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.",
@@ -223,9 +224,10 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
-          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md"
         ],
-        "verification_method": "Exact source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Core typecheck, 10-file/61-test suite, Wrangler dry-run (387.18 KiB, 91.46 KiB gzip), loopback Workerd/DO throttle and replay-expiry smoke, Hono/import and target-boundary review, and read-only PostgreSQL role/catalog/query-shape evidence. Does not prove actual stored-hash distribution, real-user login, authorized customer-data parity, production isolation, quantitative speed, cleanup ownership, UAT or deployment."
+        "verification_method": "Core main a5e16406e1ab79d62c283ff03d6b83c895f6d34b: typecheck PASS, 11 files/65 tests PASS, Wrangler dry-run 388.64 KiB / 91.87 KiB gzip, local Worker /livez 200 and scheduled cleanup outcome ok. SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: receipt SETTLED/SUCCEEDED on modular-debian-dev with 0418 applied; catalog verifies dedicated NOLOGIN owner, fixed search_path, PUBLIC denied, Core EXECUTE only and no direct DELETE; transaction test verifies limits and retention; five local scheduled runs reduced expired JTI rows to zero. Does not prove existing-user login, customer membership/data, comparative Legacy/Core performance, production isolation, human UAT, or deployment."
       },
       "REQ-FA42CFF33A89": {
         "applicability": "NOT_APPLICABLE",
@@ -338,18 +340,19 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-09T21:14:11.248429Z",
+  "updated_at": "2026-11-10T00:33:58.260731Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/section-03-and-04-proof-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "a8a8b4a93dd3716fe8579bfd344ca1ea44e0edfa",
+    "sha": "712172880aab7d4994480236513b5fcc5b11b013",
     "status": "PASS",
     "task_regressions": []
   }
