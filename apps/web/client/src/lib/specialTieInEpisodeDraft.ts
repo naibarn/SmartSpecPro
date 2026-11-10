@@ -124,6 +124,12 @@ const draftEnvelopeSchema = z.object({
     brollRenderJobId: z.string().max(128).nullable(),
   }),
 });
+const draftValuesSchema = draftEnvelopeSchema.shape.values;
+const draftEnvelopeHeaderSchema = z.object({
+  version: z.literal(DRAFT_VERSION),
+  savedAt: z.number().int().positive(),
+  values: z.record(z.string(), z.unknown()),
+});
 
 type ParsedSpecialTieInEpisodeDraftValues = z.infer<
   typeof draftEnvelopeSchema
@@ -140,6 +146,61 @@ export type SpecialTieInEpisodeDraftValues = Omit<
   >;
 };
 export type SpecialTieInEpisodeDraft = z.infer<typeof draftEnvelopeSchema>;
+
+const DEFAULT_DRAFT_VALUES: SpecialTieInEpisodeDraftValues = {
+  idea: "",
+  presentationStyle: "varied",
+  reviewSubjectType: "product",
+  storyStructure: "varied",
+  referenceType: "product",
+  references: [],
+  characterIds: [],
+  speakerCharacterIds: [],
+  durationSeconds: 10,
+  dialogueMode: "character_dialogue",
+  dialogueBrief: "",
+  shotDialogueDrafts: [],
+  allowAdditionalCharacters: false,
+  lockCharacterReferences: true,
+  lockReferenceImages: true,
+  imageModelId: "",
+  videoModelId: "",
+  ideaLlmModelId: "auto",
+  productQuery: "",
+  selectedProductId: null,
+  pendingImageIds: [],
+  selectedLocationId: null,
+  sceneSuggestions: [],
+  sceneChoiceByLabel: {},
+  selectedSceneLocationKey: null,
+  selectedIdeaId: null,
+  selectedMarketplaceIdea: null,
+  footageAssetId: null,
+  footageFileName: "",
+  footageAnalysisJobId: null,
+  footagePrepareJobId: null,
+  footageTrimStartMs: 0,
+  footageTrimEndMs: 0,
+  brollAssetId: "",
+  brollStartMs: 0,
+  brollEndMs: 5000,
+  brollSourceInMs: 0,
+  brollPlacements: [],
+  brollRenderJobId: null,
+};
+
+function restoreDraftValues(
+  rawValues: Record<string, unknown>
+): SpecialTieInEpisodeDraftValues {
+  const restored = { ...DEFAULT_DRAFT_VALUES } as Record<string, unknown>;
+  for (const [key, schema] of Object.entries(draftValuesSchema.shape)) {
+    if (!(key in rawValues)) continue;
+    const parsed = schema.safeParse(rawValues[key]);
+    // A stale field should not discard the other recoverable form values.
+    if (parsed.success) restored[key] = parsed.data;
+  }
+  return restored as SpecialTieInEpisodeDraftValues;
+}
 
 export type SpecialTieInDraftIdentity = {
   tenantId?: string | number | null;
@@ -158,12 +219,67 @@ export function specialTieInEpisodeDraftKey(
     .join(":")}`;
 }
 
+export type SpecialTieInModelPreferences = {
+  imageModelId: string;
+  videoModelId: string;
+};
+
+export function specialTieInModelPreferencesKey(
+  identity: Pick<SpecialTieInDraftIdentity, "tenantId" | "userId">
+): string | null {
+  const values = [identity.tenantId, identity.userId];
+  if (values.some(value => value == null || String(value).trim() === ""))
+    return null;
+  return `smarthub:special-tie-in-models:v1:${values
+    .map(value => encodeURIComponent(String(value)))
+    .join(":")}`;
+}
+
 function browserStorage(): Storage | null {
   if (typeof window === "undefined") return null;
   try {
     return window.localStorage;
   } catch {
     return null;
+  }
+}
+
+export function readSpecialTieInModelPreferences(
+  key: string | null,
+  storage: Storage | null = browserStorage()
+): SpecialTieInModelPreferences | null {
+  if (!key || !storage) return null;
+  try {
+    const parsed = z
+      .object({
+        imageModelId: z.string().max(160),
+        videoModelId: z.string().max(160),
+      })
+      .safeParse(JSON.parse(storage.getItem(key) ?? "null"));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSpecialTieInModelPreferences(
+  key: string | null,
+  preferences: SpecialTieInModelPreferences,
+  storage: Storage | null = browserStorage()
+): boolean {
+  if (!key || !storage) return false;
+  const parsed = z
+    .object({
+      imageModelId: z.string().max(160),
+      videoModelId: z.string().max(160),
+    })
+    .safeParse(preferences);
+  if (!parsed.success) return false;
+  try {
+    storage.setItem(key, JSON.stringify(parsed.data));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -212,19 +328,24 @@ export function readSpecialTieInEpisodeDraft(
   try {
     const raw = storage.getItem(key);
     if (!raw) return null;
-    const parsed = draftEnvelopeSchema.safeParse(JSON.parse(raw));
-    if (!parsed.success) {
+    const rawEnvelope: unknown = JSON.parse(raw);
+    const header = draftEnvelopeHeaderSchema.safeParse(rawEnvelope);
+    if (!header.success) {
       storage.removeItem(key);
       return null;
     }
     if (
-      parsed.data.savedAt > now + 5 * 60 * 1000 ||
-      now - parsed.data.savedAt > DRAFT_TTL_MS
+      header.data.savedAt > now + 5 * 60 * 1000 ||
+      now - header.data.savedAt > DRAFT_TTL_MS
     ) {
       storage.removeItem(key);
       return null;
     }
-    return parsed.data;
+    return draftEnvelopeSchema.parse({
+      version: DRAFT_VERSION,
+      savedAt: header.data.savedAt,
+      values: restoreDraftValues(header.data.values),
+    });
   } catch {
     try {
       storage.removeItem(key);

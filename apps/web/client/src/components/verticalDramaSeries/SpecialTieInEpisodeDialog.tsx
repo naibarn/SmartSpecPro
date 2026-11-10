@@ -55,8 +55,11 @@ import {
   clearSpecialTieInEpisodeDraft,
   hasMeaningfulSpecialTieInDraft,
   readSpecialTieInEpisodeDraft,
+  readSpecialTieInModelPreferences,
   specialTieInEpisodeDraftKey,
+  specialTieInModelPreferencesKey,
   writeSpecialTieInEpisodeDraft,
+  writeSpecialTieInModelPreferences,
   type SpecialTieInEpisodeDraftValues,
 } from "@/lib/specialTieInEpisodeDraft";
 import {
@@ -779,6 +782,14 @@ export function SpecialTieInEpisodeDialog({
       }),
     [seriesId, user?.currentTenantId, user?.id]
   );
+  const modelPreferencesKey = useMemo(
+    () =>
+      specialTieInModelPreferencesKey({
+        tenantId: user?.currentTenantId,
+        userId: user?.id,
+      }),
+    [user?.currentTenantId, user?.id]
+  );
   const [draftHydratedKey, setDraftHydratedKey] = useState<string | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
   const [draftSaved, setDraftSaved] = useState<boolean | null>(null);
@@ -882,6 +893,13 @@ export function SpecialTieInEpisodeDialog({
     }
 
     const saved = readSpecialTieInEpisodeDraft(draftKey);
+    const modelPreferences = readSpecialTieInModelPreferences(
+      modelPreferencesKey
+    );
+    // A restored form owns its own model choice. The user-level preference is
+    // only the fallback for drafts created before model selection was saved.
+    setIdeaGenerationJobId(null);
+    setIdeaGenerationJobScopeKey(null);
     if (saved) {
       // The local form draft is newer than the optional server idea-history
       // resume snapshot. Keep that snapshot from replacing these edits.
@@ -902,8 +920,18 @@ export function SpecialTieInEpisodeDialog({
       setAllowAdditionalCharacters(draft.allowAdditionalCharacters);
       setLockCharacterReferences(draft.lockCharacterReferences);
       setLockReferenceImages(draft.lockReferenceImages);
-      setImageModelId(draft.imageModelId);
-      setVideoModelId(draft.videoModelId);
+      const restoredImageModelId =
+        draft.imageModelId || modelPreferences?.imageModelId || "";
+      const restoredVideoModelId =
+        draft.videoModelId || modelPreferences?.videoModelId || "";
+      setImageModelId(restoredImageModelId);
+      setVideoModelId(restoredVideoModelId);
+      if (draft.imageModelId || draft.videoModelId) {
+        writeSpecialTieInModelPreferences(modelPreferencesKey, {
+          imageModelId: restoredImageModelId,
+          videoModelId: restoredVideoModelId,
+        });
+      }
       setIdeaLlmModelId(draft.ideaLlmModelId);
       setProductQuery(draft.productQuery);
       setSelectedProductId(draft.selectedProductId);
@@ -930,9 +958,11 @@ export function SpecialTieInEpisodeDialog({
       setDraftRestoredAt(saved.savedAt);
     } else {
       setDraftRestoredAt(null);
+      setImageModelId(modelPreferences?.imageModelId ?? "");
+      setVideoModelId(modelPreferences?.videoModelId ?? "");
     }
     setDraftHydratedKey(draftKey);
-  }, [open, draftKey, isEditingExistingEpisode]);
+  }, [open, draftKey, modelPreferencesKey, isEditingExistingEpisode]);
 
   useEffect(() => {
     if (
@@ -1225,6 +1255,10 @@ export function SpecialTieInEpisodeDialog({
     setLockReferenceImages(initialInput.lockReferenceImages);
     setImageModelId(initialInput.imageModelId);
     setVideoModelId(initialInput.videoModelId);
+    writeSpecialTieInModelPreferences(modelPreferencesKey, {
+      imageModelId: initialInput.imageModelId,
+      videoModelId: initialInput.videoModelId,
+    });
     setIdeaLlmModelId("auto");
     setSelectedMarketplaceIdea(initialInput.marketplaceReviewIdea ?? null);
     setSelectedSceneLocationKey(initialInput.sceneLocationKey ?? null);
@@ -1241,7 +1275,7 @@ export function SpecialTieInEpisodeDialog({
       setBrollPlacements(initialInput.broll.placements);
       setBrollRenderJobId(initialInput.broll.renderJobId ?? null);
     }
-  }, [open, initialInput]);
+  }, [open, initialInput, modelPreferencesKey]);
 
   useEffect(() => {
     if (footageAssetId && !footagePreviewUrl) {
@@ -1537,6 +1571,20 @@ export function SpecialTieInEpisodeDialog({
         : "Finish preparing the footage before generating ideas"
       : null,
   ].filter((blocker): blocker is string => Boolean(blocker));
+  const setPreferredImageModel = (modelId: string) => {
+    setImageModelId(modelId);
+    writeSpecialTieInModelPreferences(modelPreferencesKey, {
+      imageModelId: modelId,
+      videoModelId,
+    });
+  };
+  const setPreferredVideoModel = (modelId: string) => {
+    setVideoModelId(modelId);
+    writeSpecialTieInModelPreferences(modelPreferencesKey, {
+      imageModelId,
+      videoModelId: modelId,
+    });
+  };
   const actionState = resolveSpecialTieInActionState({
     createMutationPending: createMutation.isPending,
     finalSubmitPending: isSubmitting,
@@ -3749,7 +3797,7 @@ export function SpecialTieInEpisodeDialog({
                   disabled={
                     generateIdeasMutation.isPending ||
                     Boolean(ideaGenerationJobId) ||
-                    characterIds.length === 0
+                    ideaGenerationBlockers.length > 0
                   }
                   onClick={() => void generateMarketplaceIdeas()}
                 >
@@ -3767,7 +3815,7 @@ export function SpecialTieInEpisodeDialog({
                       !selectedProduct ||
                       generateIdeasMutation.isPending ||
                       Boolean(ideaGenerationJobId) ||
-                      characterIds.length === 0
+                      ideaGenerationBlockers.length > 0
                     }
                     onClick={generateIdeasFromMarketplaceProduct}
                   >
@@ -4759,14 +4807,14 @@ export function SpecialTieInEpisodeDialog({
               <div className="space-y-2">
                 <Label>
                   {lang === "th"
-                    ? "Model สร้างภาพ (เฉพาะตอนนี้)"
-                    : "Image model (episode only)"}
+                    ? "Model สร้างภาพ (จำไว้ใช้กับงานถัดไป)"
+                    : "Image model (saved for future jobs)"}
                 </Label>
                 <div data-testid="special-tie-in-image-model">
                   <SpecialTieInModelCombobox
                     models={imageModels}
                     value={imageModelId}
-                    onValueChange={setImageModelId}
+                    onValueChange={setPreferredImageModel}
                     placeholder={
                       modelsQuery.isLoading ? "Loading…" : "Select model"
                     }
@@ -4791,14 +4839,14 @@ export function SpecialTieInEpisodeDialog({
               <div className="space-y-2">
                 <Label>
                   {lang === "th"
-                    ? "Model สร้างวิดีโอ (เฉพาะตอนนี้)"
-                    : "Video model (episode only)"}
+                    ? "Model สร้างวิดีโอ (จำไว้ใช้กับงานถัดไป)"
+                    : "Video model (saved for future jobs)"}
                 </Label>
                 <div data-testid="special-tie-in-video-model">
                   <SpecialTieInModelCombobox
                     models={videoModels}
                     value={videoModelId}
-                    onValueChange={setVideoModelId}
+                    onValueChange={setPreferredVideoModel}
                     placeholder={
                       modelsQuery.isLoading ? "Loading…" : "Select model"
                     }
