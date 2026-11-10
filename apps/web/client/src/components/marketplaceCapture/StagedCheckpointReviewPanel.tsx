@@ -1525,28 +1525,30 @@ export function StagedCheckpointReviewPanel(props: {
         promptOnly: true,
       }));
   }, [props.state?.shots, props.state?.runStatus, promptModel]);
-  const isPromptPipelineBusy = () =>
+  const activeWorkerStatuses = [
+    "pending",
+    "queued",
+    "leased",
+    "claimed",
+    "preparing",
+    "running",
+    "waiting_external",
+    "retry_scheduled",
+  ];
+  const isShotPromptPipelineBusy = (shotId: number) =>
     props.state?.workerOperations?.some(job => {
+      if (!activeWorkerStatuses.includes(job.status)) return false;
+      if (job.operation === "advance_run") return true;
       if (
-        ![
-          "pending",
-          "queued",
-          "leased",
-          "claimed",
-          "preparing",
-          "running",
-          "waiting_external",
-          "retry_scheduled",
-        ].includes(job.status)
+        job.operation === "staged_prompt_generation" ||
+        job.operation === "sequential_shot_prompt_generation"
       ) {
-        return false;
+        return job.shotId === shotId;
       }
-      return [
-        "advance_run",
-        "staged_prompt_generation",
-        "sequential_shot_prompt_generation",
-        "staged_bulk_generation",
-      ].includes(job.operation);
+      return (
+        job.operation === "staged_bulk_generation" &&
+        job.targetShotIds?.includes(shotId) === true
+      );
     }) ?? false;
 
   if (!props.state && !props.loading && !props.error) return null;
@@ -3315,6 +3317,18 @@ export function StagedCheckpointReviewPanel(props: {
               const imageMediaUploadError = shotMediaUploadErrors[imageMediaKey];
               const videoMediaUploadError = shotMediaUploadErrors[videoMediaKey];
               const storyEditable = storyEditAvailable;
+              const shotPromptWorkerOperation =
+                props.state?.workerOperations?.find(
+                  job =>
+                    activeWorkerStatuses.includes(job.status) &&
+                    (job.operation === "advance_run" ||
+                      ((job.operation === "staged_prompt_generation" ||
+                        job.operation ===
+                          "sequential_shot_prompt_generation") &&
+                        job.shotId === shot.shotId) ||
+                      (job.operation === "staged_bulk_generation" &&
+                        job.targetShotIds?.includes(shot.shotId) === true))
+                ) ?? null;
               return (
                 <article
                   key={shot.shotId}
@@ -3332,6 +3346,27 @@ export function StagedCheckpointReviewPanel(props: {
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
                       {shotStateLabel(shot.state)}
                     </span>
+                    {shotPromptWorkerOperation ? (
+                      <span
+                        className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800"
+                        role="status"
+                      >
+                        {shotPromptWorkerOperation.targetStage === "image"
+                          ? "Prompt ภาพ"
+                          : shotPromptWorkerOperation.targetStage === "video"
+                            ? "Prompt วิดีโอ"
+                            : "Prompt"}{" "}
+                        {shotPromptWorkerOperation.status === "queued" ||
+                        shotPromptWorkerOperation.status === "pending" ||
+                        shotPromptWorkerOperation.status === "retry_scheduled"
+                          ? "รอคิว Worker"
+                          : "กำลังทำงานใน Worker"}
+                        {shotPromptWorkerOperation.progress !== null &&
+                        shotPromptWorkerOperation.progress !== undefined
+                          ? ` · ${Math.round(shotPromptWorkerOperation.progress)}%`
+                          : ""}
+                      </span>
+                    ) : null}
                   </div>
                   {shot.visualSummary ? (
                     <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
@@ -3876,13 +3911,13 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
-                              isPromptPipelineBusy(),
+                              isShotPromptPipelineBusy(shot.shotId),
                             title:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus)
                                 ? "รอให้งานสร้างสื่อของช็อตนี้เสร็จก่อน"
-                                : isPromptPipelineBusy()
-                                  ? "Worker กำลังสร้าง Prompt ภาพของช็อตนี้"
+                                : isShotPromptPipelineBusy(shot.shotId)
+                                  ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
                                 : undefined,
                           }
                         )}
@@ -3904,7 +3939,7 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
-                              isPromptPipelineBusy(),
+                              isShotPromptPipelineBusy(shot.shotId),
                           }
                         )}
                         {/* Step 3/3 — dispatch-only, using the CURRENT
@@ -3931,7 +3966,7 @@ export function StagedCheckpointReviewPanel(props: {
                                   !shot.imagePrompt?.trim() ||
                                   isTaskInFlight(shot.imageTaskStatus) ||
                                   isTaskInFlight(shot.videoTaskStatus) ||
-                                  isPromptPipelineBusy(),
+                                  isShotPromptPipelineBusy(shot.shotId),
                                 title: !shot.imagePrompt?.trim()
                                   ? "สร้าง Prompt ภาพก่อน"
                                   : isTaskInFlight(shot.imageTaskStatus) ||
@@ -4005,13 +4040,13 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
-                              isPromptPipelineBusy(),
+                              isShotPromptPipelineBusy(shot.shotId),
                             title:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus)
                               ? "รอให้งานวิดีโอของช็อตนี้เสร็จก่อน"
-                              : isPromptPipelineBusy()
-                                ? "Worker กำลังสร้าง Prompt วิดีโอของช็อตนี้"
+                              : isShotPromptPipelineBusy(shot.shotId)
+                                ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
                                 : undefined,
                           }
                         )}
@@ -4032,7 +4067,7 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
-                              isPromptPipelineBusy(),
+                              isShotPromptPipelineBusy(shot.shotId),
                           }
                         )}
                         {/* Step 3/3 — dispatch-only, same shape as the image
@@ -4065,7 +4100,7 @@ export function StagedCheckpointReviewPanel(props: {
                                   imageResultCheckpoint?.state !== "approved" ||
                                   isTaskInFlight(shot.imageTaskStatus) ||
                                   isTaskInFlight(shot.videoTaskStatus) ||
-                                  isPromptPipelineBusy(),
+                                  isShotPromptPipelineBusy(shot.shotId),
                                 title: !shot.videoPrompt?.trim()
                                   ? "สร้าง Prompt วิดีโอก่อน"
                                   : !shot.imageArtifactHash ||

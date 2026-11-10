@@ -368,6 +368,49 @@ describe("StagedCheckpointReviewPanel", () => {
     );
   });
 
+  it("keeps other shots queueable while a shot prompt worker is active", () => {
+    const input = props();
+    const firstShot = input.state.shots[0];
+    input.state = {
+      ...input.state,
+      shots: [
+        firstShot,
+        { ...firstShot, shotId: 2, title: "ช็อตถัดไป", imagePrompt: "" },
+      ],
+      workerOperations: [
+        {
+          jobId: "worker-shot-1",
+          operation: "staged_prompt_generation",
+          status: "queued",
+          shotId: 1,
+          targetStage: "image",
+          progress: 0,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" }).disabled
+    ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 2" }).disabled
+    ).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 2" }).disabled
+    ).toBe(false);
+    expect(screen.getByText(/Prompt ภาพ รอคิว Worker/)).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 2" })
+    );
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+      shotId: 2,
+      stage: "image",
+    });
+  });
+
   it("shows image prompt generation progress while its worker is running", () => {
     const input = props();
     input.state = {

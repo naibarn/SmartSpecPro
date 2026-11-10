@@ -923,6 +923,10 @@ async function mutateOwnedStagedMetadata(input: {
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
   queueAdvance?: boolean;
+  /** Merge queued shot prompts when only unrelated shot state changed. */
+  allowStateDrift?: (
+    metadata: ReturnType<typeof parseStagedMetadata>
+  ) => boolean;
   mutate: (
     metadata: ReturnType<typeof parseStagedMetadata>,
     operationId: string
@@ -980,7 +984,8 @@ async function mutateOwnedStagedMetadata(input: {
       };
     }
     if (
-      stagedMetadataStateDigest(existingMetadata) !== input.expectedStateDigest
+      stagedMetadataStateDigest(existingMetadata) !== input.expectedStateDigest &&
+      !input.allowStateDrift?.(existingMetadata)
     ) {
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
     }
@@ -2151,6 +2156,49 @@ export function buildStagedSingleShotRefreshInput(input: {
   };
 }
 
+function buildStagedShotPromptContextDigest(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  shotId: number;
+  stage: "image" | "video";
+  publicUrl?: string | null;
+  tenantId?: string;
+  instruction?: string | null;
+  model?: string | null;
+}) {
+  const refreshInput = buildStagedSingleShotRefreshInput(input);
+  // Public URLs and absolute vision URLs can differ between request and
+  // worker runtimes; the relative manifest and prompt context remain stable.
+  const context = Object.fromEntries(
+    Object.entries(refreshInput).filter(
+      ([key]) => key !== "publicUrl" && key !== "skillVisionUrls"
+    )
+  );
+  const targetShot = input.metadata.stagedSequentialStoryboard.shots.find(
+    shot => shot.shotId === input.shotId
+  );
+  return buildProductionStableHash({
+    ...context,
+    targetShotRevision: targetShot?.revision ?? null,
+  });
+}
+
+export function buildStagedShotPromptContextDigestForTest(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  shotId: number;
+  stage?: "image" | "video";
+  publicUrl?: string | null;
+  tenantId?: string;
+  instruction?: string | null;
+  model?: string | null;
+}) {
+  return buildStagedShotPromptContextDigest({
+    ...input,
+    stage: input.stage ?? "image",
+  });
+}
+
 /** Test-only wrapper (repo `...ForTest` convention). */
 export function buildStagedSingleShotRefreshInputForTest(input: {
   run: StagedCheckpointRun;
@@ -2250,6 +2298,8 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   shotId: number;
   stage: "image" | "video";
   expectedStateDigest: string;
+  expectedShotRevision?: number;
+  promptContextDigest?: string;
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
   runtime?: StagedCheckpointRuntime;
@@ -2289,12 +2339,35 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     };
   }
   const metadata = parseStagedMetadata(run);
-  if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
-    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
-  }
   const shot = metadata.stagedSequentialStoryboard.shots.find(
     item => item.shotId === input.shotId
   );
+  const hasPromptSnapshot =
+    input.expectedShotRevision !== undefined &&
+    typeof input.promptContextDigest === "string" &&
+    input.promptContextDigest.length > 0;
+  const promptSnapshotMatches = Boolean(
+    input.workerExecution &&
+      hasPromptSnapshot &&
+      shot?.revision === input.expectedShotRevision &&
+      buildStagedShotPromptContextDigest({
+        run,
+        metadata,
+        shotId: input.shotId,
+        stage: input.stage,
+        publicUrl: input.runtime?.publicUrl,
+        tenantId: input.auth.tenantId,
+        instruction: input.instruction,
+        model: input.model,
+      }) === input.promptContextDigest
+  );
+  if (
+    input.workerExecution && hasPromptSnapshot
+      ? !promptSnapshotMatches
+      : stagedMetadataStateDigest(metadata) !== input.expectedStateDigest
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
   if (!shot) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -2319,6 +2392,16 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   }
 
   if (!input.workerExecution) {
+    const promptContextDigest = buildStagedShotPromptContextDigest({
+      run,
+      metadata,
+      shotId: input.shotId,
+      stage: input.stage,
+      publicUrl: input.runtime?.publicUrl,
+      tenantId: input.auth.tenantId,
+      instruction: input.instruction,
+      model: input.model,
+    });
     const queued = await enqueueMarketplaceAutoReviewWorkerJob({
       tenantId,
       userId: input.auth.userId,
@@ -2329,6 +2412,8 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         shotId: input.shotId,
         stage: input.stage,
         expectedStateDigest: input.expectedStateDigest,
+        expectedShotRevision: shot.revision,
+        promptContextDigest,
         requestIdempotencyKey: input.idempotencyKey,
         instruction: input.instruction,
         model: input.model,
@@ -2361,6 +2446,28 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
     queueAdvance: false,
+    ...(hasPromptSnapshot
+      ? {
+          allowStateDrift(current) {
+            const currentShot = current.stagedSequentialStoryboard.shots.find(
+              item => item.shotId === input.shotId
+            );
+            return (
+              currentShot?.revision === input.expectedShotRevision &&
+              buildStagedShotPromptContextDigest({
+                run,
+                metadata: current,
+                shotId: input.shotId,
+                stage: input.stage,
+                publicUrl: input.runtime?.publicUrl,
+                tenantId: input.auth.tenantId,
+                instruction: input.instruction,
+                model: input.model,
+              }) === input.promptContextDigest
+            );
+          },
+        }
+      : {}),
     mutate(current, operationId) {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId

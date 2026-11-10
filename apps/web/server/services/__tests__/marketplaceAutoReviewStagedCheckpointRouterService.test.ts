@@ -7,6 +7,7 @@ import {
 } from "../marketplaceAutoReviewStoryArcPlanner";
 import {
   buildStagedSingleShotRefreshInputForTest,
+  buildStagedShotPromptContextDigestForTest,
   classifyStagedDemonstrationTypeForTest,
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
@@ -200,6 +201,51 @@ describe("Fix B — demonstration_type dispatch heuristic (marketplace auto-revi
 });
 
 describe("buildStagedSingleShotRefreshInput — staged single-shot regenerate contract", () => {
+  it("keeps a queued shot prompt valid when only another shot's generated prompt changes", () => {
+    const plan = planFixture();
+    const { run, metadata } = fixture({ plan });
+    const originalDigest = buildStagedShotPromptContextDigestForTest({
+      run,
+      metadata,
+      shotId: 1,
+    });
+    const otherShotPromptCompleted = JSON.parse(JSON.stringify(metadata));
+    const otherShot = otherShotPromptCompleted.stagedSequentialStoryboard.shots.find(
+      (shot: any) => shot.shotId === 2
+    );
+    otherShot.revision += 1;
+    otherShot.imagePrompt = "Generated prompt for shot 2";
+
+    expect(
+      buildStagedShotPromptContextDigestForTest({
+        run,
+        metadata: otherShotPromptCompleted,
+        shotId: 1,
+      })
+    ).toBe(originalDigest);
+  });
+
+  it("invalidates a queued shot prompt when that shot's generation context changes", () => {
+    const plan = planFixture();
+    const { run, metadata } = fixture({ plan });
+    const originalDigest = buildStagedShotPromptContextDigestForTest({
+      run,
+      metadata,
+      shotId: 1,
+    });
+    const changedShot = JSON.parse(JSON.stringify(metadata));
+    changedShot.stagedPipeline.plan.shots[0].dialogue = "บทพูดที่แก้ไขแล้ว";
+    changedShot.stagedSequentialStoryboard.shots[0].revision += 1;
+
+    expect(
+      buildStagedShotPromptContextDigestForTest({
+        run,
+        metadata: changedShot,
+        shotId: 1,
+      })
+    ).not.toBe(originalDigest);
+  });
+
   it("selects problem_solution for a shot with problem/defect dialogue and usage_demo for a neutral shot", () => {
     const plan = planFixture();
     const { run, metadata } = fixture({
