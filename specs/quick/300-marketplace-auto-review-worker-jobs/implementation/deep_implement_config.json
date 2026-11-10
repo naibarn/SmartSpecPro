@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed and verified legacy-debian-dev release generation 464 from 85b0e99d10e3fbc348e2521c0406c9cac97d449c; smartaihub.app and service health returned 200; deployed Auto Review bundle contains the confirmation dialog. Focused component tests passed (53). Provider-backed media generation and full browser UAT remain outstanding.",
-      "checkpoint_sha": "f05a5477ca44ec2777ecd7d538ae411c32072795",
-      "merged_main_sha": "85b0e99d10e3fbc348e2521c0406c9cac97d449c",
+      "next_action": "Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding.",
+      "checkpoint_sha": "017104a73197150ec21457733911e481661fb420",
+      "merged_main_sha": "5560f6bc77e238e8300461f07c6ad2e38d0fb34c",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-autoreview-confirm-dialog"
+      "session_id": "codex-autoreview-video-speaker-fix"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 48,
-  "updated_at": "2026-11-10T06:41:44.569310+00:00",
+  "generation": 51,
+  "updated_at": "2026-11-10T07:26:21.077567+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed and verified legacy-debian-dev release generation 464 from 85b0e99d10e3fbc348e2521c0406c9cac97d449c; smartaihub.app and service health returned 200; deployed Auto Review bundle contains the confirmation dialog. Focused component tests passed (53). Provider-backed media generation and full browser UAT remain outstanding.",
-    "merged_main_sha": "85b0e99d10e3fbc348e2521c0406c9cac97d449c",
+    "next_action": "Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding.",
+    "merged_main_sha": "5560f6bc77e238e8300461f07c6ad2e38d0fb34c",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
       "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
