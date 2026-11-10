@@ -421,6 +421,11 @@ describe("StagedCheckpointReviewPanel", () => {
 
     for (const shotId of [1, 2, 3]) {
       expect(
+        screen.getAllByRole("button", {
+          name: `สร้าง Prompt ภาพช็อตที่ ${shotId}`,
+        })
+      ).toHaveLength(1);
+      expect(
         screen.getByRole("button", { name: `สร้าง Prompt ภาพช็อตที่ ${shotId}` })
       ).not.toBeDisabled();
       expect(
@@ -638,7 +643,7 @@ describe("StagedCheckpointReviewPanel", () => {
     });
     expect(dispatchButton).toBeDisabled();
     expect(dispatchButton).toHaveAttribute("title", "สร้าง Prompt ภาพก่อน");
-    expect(screen.getByText("สร้าง Prompt ภาพก่อน")).toBeTruthy();
+    expect(screen.queryByText("สร้าง Prompt ภาพก่อน")).toBeNull();
 
     fireEvent.click(dispatchButton);
     expect(input.onRetry).not.toHaveBeenCalled();

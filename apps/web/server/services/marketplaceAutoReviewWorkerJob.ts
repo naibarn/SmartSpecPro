@@ -144,9 +144,21 @@ function canonicalIdempotencyKey(value: string): string {
 }
 
 function buildDefinition(input: MarketplaceAutoReviewAdmission) {
-  const operation = marketplaceAutoReviewWorkerInputSchema.parse(
+  const parsedOperation = marketplaceAutoReviewWorkerInputSchema.parse(
     input.operation
   );
+  // Zod preserves optional object keys that were explicitly supplied as
+  // `undefined`. That is valid in a TypeScript object but is not a JSON value,
+  // so worker job canonicalization correctly rejects it. Round-trip the
+  // schema-validated operation through JSON to omit undefined object fields
+  // before it crosses the durable job boundary.
+  const serializedOperation = JSON.stringify(parsedOperation);
+  if (typeof serializedOperation !== "string") {
+    throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_INPUT_NOT_JSON");
+  }
+  const operation = JSON.parse(
+    serializedOperation
+  ) as MarketplaceAutoReviewWorkerInput;
   if (operation.runId !== input.runId) {
     throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_RUN_MISMATCH");
   }

@@ -3940,11 +3940,6 @@ export function StagedCheckpointReviewPanel(props: {
                                     : undefined,
                               }
                             )}
-                        {!shot.imagePrompt ? (
-                          <span className="text-[11px] text-slate-500">
-                            สร้าง Prompt ภาพก่อน
-                          </span>
-                        ) : null}
                         {/* image_prompt now auto-approves at construction —
                             no approve click left to trigger; reject stays. */}
                         {imageCheckpoint?.state === "awaiting"
@@ -4082,11 +4077,6 @@ export function StagedCheckpointReviewPanel(props: {
                                       : undefined,
                               }
                             )}
-                        {!shot.videoPrompt ? (
-                          <span className="text-[11px] text-slate-500">
-                            สร้าง Prompt วิดีโอก่อน
-                          </span>
-                        ) : null}
                         {/* video_prompt now auto-approves at construction —
                             no approve click left to trigger; reject stays. */}
                         {videoCheckpoint?.state === "awaiting"
