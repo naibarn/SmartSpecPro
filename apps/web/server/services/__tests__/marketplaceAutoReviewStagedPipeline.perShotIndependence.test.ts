@@ -139,13 +139,15 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       },
       referenceManifestHash: "refs-independence-1",
     });
-    // This regression covers two independent shots. Keep the worker plan
-    // scoped to them so the pipeline does not stop first to compile the
-    // other seven shots' intentionally absent prompt checkpoints.
-    const plan = { ...generatedPlan, shots: generatedPlan.shots.slice(0, 2) };
+    // Keep the worker plan scoped to three shots so the pipeline does not
+    // stop first to compile the other six shots' intentionally absent prompt
+    // checkpoints. Shot 3 also covers recovery from an already-consumed
+    // checkpoint whose previous provider hand-off never recorded a task.
+    const plan = { ...generatedPlan, shots: generatedPlan.shots.slice(0, 3) };
 
     const shot1 = plan.shots[0];
     const shot2 = plan.shots[1];
+    const shot3 = plan.shots[2];
 
     // --- story_plan: approved -------------------------------------------
     const rawStoryCheckpoint = buildStagedCheckpoint({
@@ -231,6 +233,29 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       referenceManifestHash: plan.referenceManifestHash,
       autoApprove: { userId: 42, approvedAt: "2026-07-29T00:00:00.000Z" },
     });
+    const shot3ImagePrompt = compileStagedImagePrompt({ plan, shot: shot3 });
+    const shot3ImagePromptCheckpoint = buildStagedCheckpoint({
+      checkpointId: `image-prompt:${runId}:shot-${shot3.shotId}:r${plan.planRevision}`,
+      kind: "image_prompt",
+      shotId: shot3.shotId,
+      revision: plan.planRevision,
+      contentHash: shot3ImagePrompt.contentHash,
+      model: "google-banana-2",
+      provider: "media-provider",
+      estimatedCredits: 5,
+      referenceManifestHash: plan.referenceManifestHash,
+      autoApprove: { userId: 42, approvedAt: "2026-07-29T00:00:00.000Z" },
+    });
+    const consumedShot3ImagePrompt = transitionStagedCheckpoint(
+      shot3ImagePromptCheckpoint,
+      {
+        type: "consume",
+        operationId: "prior-image-provider-handoff",
+        consumedAt: "2026-07-29T00:01:00.000Z",
+      }
+    );
+    expect(consumedShot3ImagePrompt.ok).toBe(true);
+    if (!consumedShot3ImagePrompt.ok) throw new Error("test setup failed");
 
     const shots = plan.shots.map(shot => {
       if (shot.shotId === shot1.shotId) {
@@ -263,7 +288,22 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
           imagePrompt: shot2ImagePrompt.prompt,
         };
       }
-      // Shots 3-9: untouched (no checkpoints at all) — must remain no-ops
+      if (shot.shotId === shot3.shotId) {
+        return {
+          shotId: shot.shotId,
+          revision: plan.planRevision,
+          state: "image_prompt_awaiting",
+          storySummary: shot.storySummary,
+          dialogue: shot.dialogue,
+          imagePromptHash: shot3ImagePrompt.contentHash,
+          imageArtifactHash: null,
+          imageArtifactUrl: null,
+          videoPromptHash: null,
+          videoArtifactHash: null,
+          imagePrompt: shot3ImagePrompt.prompt,
+        };
+      }
+      // Shots 4-9: untouched (no checkpoints at all) — must remain no-ops
       // in the loop, proving they're never gated on shot 1 or shot 2.
       return {
         shotId: shot.shotId,
@@ -303,6 +343,7 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
           shot1ImageResultCheckpoint,
           shot1VideoPromptCheckpoint,
           shot2ImagePromptCheckpoint,
+          consumedShot3ImagePrompt.checkpoint,
         ],
       },
       stagedPipeline: {
@@ -384,6 +425,18 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
     const shot2Task =
       persisted.metadataJson.stagedPipeline.tasks[`image:${shot2.shotId}`];
     expect(shot2Task?.taskId).toBe("provider-task-shot2");
+    expect(
+      persisted.metadataJson.stagedPipeline.tasks[`image:${shot3.shotId}`]
+    ).toBeUndefined();
+    expect(
+      persisted.metadataJson.stagedSequentialStoryboard.reviewCheckpoints.find(
+        (checkpoint: any) =>
+          checkpoint.shotId === shot3.shotId && checkpoint.kind === "image_prompt"
+      )?.consumedByOperationId
+    ).toBe("prior-image-provider-handoff");
+    expect(persisted.metadataJson.correctionRequired?.reasonCode).not.toBe(
+      "checkpoint_consumed"
+    );
 
     // Shot 1's spent credit for the now-permanently-failed video task was
     // refunded — the CRITICAL CONSTRAINT: making the loop non-blocking must

@@ -80,6 +80,7 @@ export type StagedAutoReviewGenerationTarget = {
   promptModel?: string;
   refreshPrompt?: boolean;
   promptOnly?: boolean;
+  replaceExisting?: boolean;
 };
 
 type StagedCheckpointRun = typeof marketplaceAutoReviewRuns.$inferSelect;
@@ -677,7 +678,13 @@ export async function getStagedAutoReviewCheckpointState(
       targetStage:
         operationInput.stage === "image" || operationInput.stage === "video"
           ? operationInput.stage
+          : targets.length === 1 &&
+              (record(targets[0]).stage === "image" ||
+                record(targets[0]).stage === "video")
+            ? record(targets[0]).stage
           : null,
+      targetPromptOnly:
+        targets.length === 1 ? Boolean(record(targets[0]).promptOnly) : false,
       stage: typeof progress.stage === "string" ? progress.stage : null,
       progress: Number.isFinite(Number(progress.progress))
         ? Number(progress.progress)
@@ -1164,6 +1171,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     if (
       target.stage === "image" &&
       !target.refreshPrompt &&
+      !target.replaceExisting &&
       (shot.imageArtifactHash || shot.imageArtifactUrl)
     ) {
       throw new TRPCError({
@@ -1174,7 +1182,9 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     if (
       target.stage === "video" &&
       !target.promptOnly &&
-      (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
+      (!shot.imageArtifactHash ||
+        (!target.replaceExisting &&
+          (shot.videoArtifactHash || shot.videoArtifactUrl)))
     ) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -1289,6 +1299,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     if (
       target.stage === "image" &&
       !target.refreshPrompt &&
+      !target.replaceExisting &&
       (shot.imageArtifactHash || shot.imageArtifactUrl)
     ) {
       continue;
@@ -1296,7 +1307,9 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     if (
       target.stage === "video" &&
       !target.promptOnly &&
-      (!shot.imageArtifactHash || shot.videoArtifactHash || shot.videoArtifactUrl)
+      (!shot.imageArtifactHash ||
+        (!target.replaceExisting &&
+          (shot.videoArtifactHash || shot.videoArtifactUrl)))
     ) {
       continue;
     }

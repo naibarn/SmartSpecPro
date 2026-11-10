@@ -104,4 +104,40 @@ describe("Marketplace Auto Review worker job admission", () => {
     });
     expect(() => validateJobDefinition(definition)).not.toThrow();
   });
+
+  it("queues per-shot media replacement without unsupported undefined fields", async () => {
+    await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      runId: "run-auto-review-1",
+      idempotencyKey: "request-image-generation-1",
+      operation: {
+        operation: "staged_bulk_generation",
+        runId: "run-auto-review-1",
+        expectedStateDigest: "state-digest-1",
+        requestIdempotencyKey: "request-image-generation-1",
+        targets: [
+          {
+            shotId: 1,
+            stage: "image",
+            model: undefined,
+            promptModel: undefined,
+            refreshPrompt: undefined,
+            promptOnly: undefined,
+            replaceExisting: true,
+          },
+        ],
+      },
+    });
+
+    const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
+    expect(definition.input).toEqual({
+      operation: "staged_bulk_generation",
+      runId: "run-auto-review-1",
+      expectedStateDigest: "state-digest-1",
+      requestIdempotencyKey: "request-image-generation-1",
+      targets: [{ shotId: 1, stage: "image", replaceExisting: true }],
+    });
+    expect(() => validateJobDefinition(definition)).not.toThrow();
+  });
 });

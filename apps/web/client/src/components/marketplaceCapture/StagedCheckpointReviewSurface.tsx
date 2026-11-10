@@ -23,6 +23,7 @@ export function StagedCheckpointReviewSurface(props: {
   const runId = props.runId?.trim() ?? "";
   const enabled = Boolean(runId && props.enabled !== false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   // Bulk prompt and media generation is tracked by the durable worker job.
   const stateQuery =
     trpc.marketplaceCapture.getStagedAutoReviewCheckpointState.useQuery(
@@ -37,6 +38,7 @@ export function StagedCheckpointReviewSurface(props: {
     );
   const refresh = async () => {
     setActionError(null);
+    setActionNotice(null);
     await stateQuery.refetch();
   };
   // Raw backend reason codes that are actually user-actionable get a
@@ -88,14 +90,26 @@ export function StagedCheckpointReviewSurface(props: {
     return message;
   };
   const mutationOptions: {
-    onSuccess: () => Promise<void>;
+    onSuccess: (result: unknown, variables: unknown) => Promise<void>;
     onError: (error: { message: string }) => void;
   } = {
-    onSuccess: async () => {
+    onSuccess: async (_result, rawVariables) => {
       setActionError(null);
+      const targets = (rawVariables as { targets?: Array<{
+        shotId: number;
+        stage: "image" | "video";
+        promptOnly?: boolean;
+      }> } | null)?.targets;
+      const target = targets?.length === 1 ? targets[0] : null;
+      setActionNotice(
+        target && !target.promptOnly
+          ? `ส่งงานสร้าง${target.stage === "image" ? "ภาพ" : "วิดีโอ"}ช็อตที่ ${target.shotId} เข้า Worker แล้ว — สถานะจะอัปเดตอัตโนมัติ`
+          : null
+      );
       await stateQuery.refetch();
     },
     onError: (error: { message: string }) => {
+      setActionNotice(null);
       setActionError(friendlyActionError(error.message));
       // A digest mismatch means this client is holding a stale snapshot —
       // retrying with the SAME stale digest would just drift again. Pull a
@@ -232,6 +246,15 @@ export function StagedCheckpointReviewSurface(props: {
       const variables = retryShotMutation.variables;
       return `dispatch-${variables.stage}-${variables.shotId}`;
     }
+    if (
+      bulkGenerateMutation.isPending &&
+      bulkGenerateMutation.variables?.targets?.length === 1
+    ) {
+      const [target] = bulkGenerateMutation.variables.targets;
+      if (!target.promptOnly) {
+        return `dispatch-${target.stage}-${target.shotId}`;
+      }
+    }
     const entries: Array<[string, boolean]> = [
       ["approve", approveMutation.isPending],
       ["creative-qc", creativeQcMutation.isPending],
@@ -258,6 +281,7 @@ export function StagedCheckpointReviewSurface(props: {
     acceptImageMutation.isPending,
     approveMutation.isPending,
     bulkGenerateMutation.isPending,
+    bulkGenerateMutation.variables,
     creativeQcMutation.isPending,
     creativeQcRepairMutation.isPending,
     creativeQcSelectRepairMutation.isPending,
@@ -453,6 +477,7 @@ export function StagedCheckpointReviewSurface(props: {
         ...(target.promptModel ? { promptModel: target.promptModel } : {}),
         ...(target.refreshPrompt ? { refreshPrompt: true } : {}),
         ...(target.promptOnly ? { promptOnly: true } : {}),
+        ...(target.replaceExisting ? { replaceExisting: true } : {}),
       })),
     });
   };
@@ -485,8 +510,13 @@ export function StagedCheckpointReviewSurface(props: {
     shotId: number;
     stage: "image" | "video";
     model?: string;
+    replaceExisting?: boolean;
   }) => {
     if (!requireStateDigest()) return;
+    setActionError(null);
+    setActionNotice(
+      `กำลังส่งงานสร้าง${input.stage === "image" ? "ภาพ" : "วิดีโอ"}ช็อตที่ ${input.shotId} เข้า Worker…`
+    );
     bulkGenerateMutation.mutate({
       runId,
       expectedStateDigest: stateDigest,
@@ -498,6 +528,7 @@ export function StagedCheckpointReviewSurface(props: {
         shotId: input.shotId,
         stage: input.stage,
         ...(input.model ? { model: input.model } : {}),
+        ...(input.replaceExisting ? { replaceExisting: true } : {}),
       }],
     });
   };
@@ -561,6 +592,7 @@ export function StagedCheckpointReviewSurface(props: {
         state={state}
         loading={stateQuery.isLoading}
         error={actionError ?? stateQuery.error?.message ?? null}
+        notice={actionNotice}
         pending={Boolean(pendingMutation)}
         pendingAction={pendingMutation}
         onRefresh={refresh}

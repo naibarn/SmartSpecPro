@@ -2792,7 +2792,22 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         shot.shotId
       );
     }
-    if (imagePromptCheckpoint?.state === "approved" && !imageTask?.taskId) {
+    // `consumeCheckpoint` runs before provider reference preparation and
+    // submission. If either fails, the approved checkpoint stays consumed
+    // while no provider task exists. A later sweep must not consume it again
+    // (which only replaces the original shot failure with
+    // `checkpoint_consumed`); the shot's repair button creates a fresh
+    // checkpoint and dispatches it through the Worker Jobs path.
+    const imageCheckpointConsumed = Boolean(
+      imagePromptCheckpoint?.consumedAt ||
+        imagePromptCheckpoint?.consumedByOperationId
+    );
+    if (
+      imagePromptCheckpoint?.state === "approved" &&
+      !imageTask?.taskId &&
+      !shotState?.imageArtifactHash &&
+      !imageCheckpointConsumed
+    ) {
       try {
         metadata = (await handleImageProvider({
           ...params,
@@ -2959,7 +2974,18 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         shot.shotId
       );
     }
-    if (videoPromptCheckpoint?.state === "approved" && !videoTask?.taskId) {
+    // Match the image guard above: don't repeatedly re-consume a checkpoint
+    // whose previous provider hand-off failed before a task id was recorded.
+    const videoCheckpointConsumed = Boolean(
+      videoPromptCheckpoint?.consumedAt ||
+        videoPromptCheckpoint?.consumedByOperationId
+    );
+    if (
+      videoPromptCheckpoint?.state === "approved" &&
+      !videoTask?.taskId &&
+      !shotState?.videoArtifactHash &&
+      !videoCheckpointConsumed
+    ) {
       try {
         metadata = (await handleVideoProvider({
           ...params,

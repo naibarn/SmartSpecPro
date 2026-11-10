@@ -434,11 +434,11 @@ describe("StagedCheckpointReviewPanel", () => {
     });
     expect(dispatch).not.toBeDisabled();
     fireEvent.click(dispatch);
-    expect(input.onRetry).toHaveBeenCalledWith(
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: 1,
         stage: "image",
-        autoApprove: true,
+        replaceExisting: true,
       })
     );
   });
@@ -478,6 +478,37 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(screen.getByTestId("story-image-prompt-status").textContent).toContain(
       "สร้าง Prompt ภาพครบ 1/1 ช็อต"
     );
+  });
+
+  it("shows the queued image Worker Job on its shot while leaving sibling shots available", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+      shots: [
+        input.state.shots[0],
+        { ...input.state.shots[0], shotId: 2, title: "ช็อตสอง" },
+      ],
+      workerOperations: [
+        {
+          jobId: "image-job-1",
+          operation: "staged_bulk_generation",
+          status: "queued",
+          targetShotIds: [1],
+          targetStage: "image",
+          targetPromptOnly: false,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(
+      screen.getByText("ส่งงานสร้างภาพแล้ว — รอคิว Worker")
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "สร้างภาพช็อตที่ 2" })
+    ).not.toBeDisabled();
   });
 
   it("always exposes image and video prompt repair actions when a shot has no prompt checkpoint", () => {
@@ -547,10 +578,8 @@ describe("StagedCheckpointReviewPanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "บันทึก Prompt ภาพช็อตที่ 1" })
     );
-    // Per the explicit user directive reversing the earlier one-click
-    // consolidation, "สร้างภาพช็อตที่ 1" is now dispatch-only (onRetry, the
-    // shot's CURRENT prompt) — it no longer rewrites the prompt itself via
-    // onGenerateAndDispatch.
+    // Image dispatch reuses the saved prompt and enters the durable worker
+    // queue for this shot.
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     );
@@ -559,18 +588,18 @@ describe("StagedCheckpointReviewPanel", () => {
       shotId: 1,
       imagePrompt: "Prompt ภาพฉบับแก้ไขเฉพาะช็อตที่ 1",
     });
-    expect(input.onRetry).toHaveBeenCalledWith(
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: 1,
         stage: "image",
-        autoApprove: true,
+        replaceExisting: true,
       })
     );
     expect(input.onGeneratePrompt).not.toHaveBeenCalled();
-    expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    expect(input.onRetry).not.toHaveBeenCalled();
   });
 
-  it("shows exactly one dispatch-only generate-image button for a stuck submission (no duplicate inside the placeholder) and wires it to onRetry", () => {
+  it("shows exactly one generate-image button for a stuck submission and queues a Worker Job", () => {
     const input = props();
     input.state = {
       ...input.state,
@@ -603,14 +632,14 @@ describe("StagedCheckpointReviewPanel", () => {
 
     fireEvent.click(generateButtons[0]);
 
-    expect(input.onRetry).toHaveBeenCalledWith(
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: 1,
         stage: "image",
-        autoApprove: true,
+        replaceExisting: true,
       })
     );
-    expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    expect(input.onRetry).not.toHaveBeenCalled();
   });
 
   it("blocks paid media dispatch until the latest story revision is approved", () => {
@@ -658,6 +687,7 @@ describe("StagedCheckpointReviewPanel", () => {
 
     fireEvent.click(imageButton);
     expect(input.onRetry).not.toHaveBeenCalled();
+    expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
   });
 
   it("explains that existing image prompts remain when a newer story revision awaits confirmation", () => {
@@ -739,15 +769,15 @@ describe("StagedCheckpointReviewPanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
     );
-    expect(input.onRetry).toHaveBeenCalledWith(
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         shotId: 1,
         stage: "video",
-        autoApprove: true,
+        replaceExisting: true,
       })
     );
     expect(input.onGeneratePrompt).not.toHaveBeenCalled();
-    expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    expect(input.onRetry).not.toHaveBeenCalled();
   });
 
   it("keeps video generation visible but disabled until the shot image is approved", () => {
@@ -1058,7 +1088,7 @@ describe("StagedCheckpointReviewPanel", () => {
       expect(input.onRetry).not.toHaveBeenCalled();
     });
 
-    it("the dispatch-only 'สร้างภาพช็อตที่ N' button calls onRetry (current prompt), not onGeneratePrompt/onGenerateAndDispatch", () => {
+    it("the 'สร้างภาพช็อตที่ N' button queues the saved prompt through Worker Jobs", () => {
       const input = props();
       input.state = {
         ...input.state,
@@ -1070,15 +1100,15 @@ describe("StagedCheckpointReviewPanel", () => {
         screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
       );
 
-      expect(input.onRetry).toHaveBeenCalledTimes(1);
-      const call = input.onRetry.mock.calls[0][0];
+      expect(input.onGenerateAndDispatch).toHaveBeenCalledTimes(1);
+      const call = input.onGenerateAndDispatch.mock.calls[0][0];
       expect(call).toMatchObject({
         shotId: 1,
         stage: "image",
-        autoApprove: true,
+        replaceExisting: true,
       });
       expect(input.onGeneratePrompt).not.toHaveBeenCalled();
-      expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+      expect(input.onRetry).not.toHaveBeenCalled();
     });
 
     it("keeps other shot image buttons available during a coarse retry mutation and uses a high-contrast primary style", () => {
@@ -1108,7 +1138,7 @@ describe("StagedCheckpointReviewPanel", () => {
         ],
       };
       input.pending = true;
-      input.pendingAction = "retry-shot";
+      input.pendingAction = "dispatch-image-1";
       render(<StagedCheckpointReviewPanel {...input} />);
 
       const firstShot = screen.getByRole("button", {
@@ -1117,14 +1147,14 @@ describe("StagedCheckpointReviewPanel", () => {
       const secondShot = screen.getByRole("button", {
         name: "สร้างภาพช็อตที่ 2",
       });
-      expect(firstShot).not.toBeDisabled();
+      expect(firstShot).toBeDisabled();
       expect(secondShot).not.toBeDisabled();
       expect(firstShot.className).toContain("bg-violet-700");
       expect(firstShot.className).toContain("disabled:bg-violet-200");
 
       fireEvent.click(secondShot);
-      expect(input.onRetry).toHaveBeenCalledWith(
-        expect.objectContaining({ shotId: 2, stage: "image" })
+      expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ shotId: 2, stage: "image", replaceExisting: true })
       );
     });
 
@@ -1264,15 +1294,15 @@ describe("StagedCheckpointReviewPanel", () => {
         screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
       );
 
-      expect(input.onRetry).toHaveBeenCalledWith(
+      expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
         expect.objectContaining({
           shotId: 1,
           stage: "video",
-          autoApprove: true,
+          replaceExisting: true,
         })
       );
       expect(input.onGeneratePrompt).not.toHaveBeenCalled();
-      expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+      expect(input.onRetry).not.toHaveBeenCalled();
     });
   });
 

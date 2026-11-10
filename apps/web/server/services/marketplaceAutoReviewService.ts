@@ -20970,6 +20970,36 @@ export function buildMarketplaceAutoReviewStoryboardReviewLinkForTest(input: {
   return buildMarketplaceAutoReviewStoryboardReviewLink(input);
 }
 
+function summarizeStagedAutoReviewProgress(metadataValue: unknown) {
+  const metadata = asRecord(metadataValue);
+  if (metadata.planningArchitecture !== "staged_two_skill_v2") return null;
+  const staged = asRecord(metadata.stagedSequentialStoryboard);
+  const shots = Array.isArray(staged.shots)
+    ? staged.shots.map(asRecord)
+    : [];
+  if (shots.length === 0) return null;
+  const tasks = asRecord(asRecord(metadata.stagedPipeline).tasks);
+  const count = (predicate: (shot: Record<string, any>) => boolean) =>
+    shots.filter(predicate).length;
+  const taskStatus = (shot: Record<string, any>, stage: "image" | "video") =>
+    cleanText(asRecord(tasks[`${stage}:${shot.shotId}`]).status);
+  const inFlight = (status: string) =>
+    ["pending", "processing", "submitted", "waiting_external"].includes(status);
+  return {
+    totalShots: shots.length,
+    imagePromptsReady: count(shot => Boolean(cleanText(shot.imagePrompt))),
+    imageArtifactsReady: count(shot =>
+      Boolean(cleanText(shot.imageArtifactHash) || cleanText(shot.imageArtifactUrl))
+    ),
+    imageTasksInFlight: count(shot => inFlight(taskStatus(shot, "image"))),
+    videoPromptsReady: count(shot => Boolean(cleanText(shot.videoPrompt))),
+    videoArtifactsReady: count(shot =>
+      Boolean(cleanText(shot.videoArtifactHash) || cleanText(shot.videoArtifactUrl))
+    ),
+    videoTasksInFlight: count(shot => inFlight(taskStatus(shot, "video"))),
+  };
+}
+
 function serializeRun(
   run: MarketplaceAutoReviewRun,
   stages: MarketplaceAutoReviewStage[] = [],
@@ -21074,6 +21104,7 @@ function serializeRun(
     const metadata = asRecord(run.metadataJson);
     const hyperframesAutoPreviewSummary =
       summarizeHyperframesPreviewMarkerForUi(metadata.hyperframesAutoPreview);
+    const stagedProgress = summarizeStagedAutoReviewProgress(metadata);
     return {
       ...serializedRun,
       resultJson: summarizeMarketplaceAutoReviewResultForUi(run.resultJson),
@@ -21096,6 +21127,7 @@ function serializeRun(
         // user action is distinguishable without fetching heavy metadata.
         planReview: metadata.planReview ?? null,
         creativeQc: metadata.creativeQc ?? null,
+        ...(stagedProgress ? { stagedProgress } : {}),
         stagedSequentialStoryboard: metadata.stagedSequentialStoryboard
           ? {
               storyPlanStatus:

@@ -151,6 +151,7 @@ export type StagedReviewState = {
     shotId?: number | null;
     targetShotIds?: number[];
     targetStage?: "image" | "video" | null;
+    targetPromptOnly?: boolean;
     stage?: string | null;
     progress?: number | null;
     createdAt?: string | null;
@@ -339,6 +340,8 @@ export type StagedBulkGenerateTarget = {
   promptModel?: string;
   refreshPrompt?: boolean;
   promptOnly?: boolean;
+  /** Recreate this shot's media from its saved prompt when an artifact exists. */
+  replaceExisting?: boolean;
 };
 
 function checkpointLabel(checkpoint: StagedCheckpoint): string {
@@ -671,6 +674,7 @@ export function StagedCheckpointReviewPanel(props: {
   state: StagedReviewState | null | undefined;
   loading?: boolean;
   error?: string | null;
+  notice?: string | null;
   pending?: boolean;
   pendingAction?: string | null;
   onRefresh: () => void;
@@ -706,6 +710,7 @@ export function StagedCheckpointReviewPanel(props: {
     shotId: number;
     stage: "image" | "video";
     model?: string;
+    replaceExisting?: boolean;
   }) => void;
   onRetry: (input: StagedCheckpointRetry) => void;
   // Fires once with the full target list (not once per shot) — the caller
@@ -1800,6 +1805,11 @@ export function StagedCheckpointReviewPanel(props: {
       {props.error ? (
         <p className="mt-3 text-sm text-red-700" role="alert">
           {props.error}
+        </p>
+      ) : null}
+      {props.notice ? (
+        <p className="mt-3 text-sm text-sky-800" role="status">
+          {props.notice}
         </p>
       ) : null}
       {activeWorkerOperation ? (
@@ -3367,6 +3377,14 @@ export function StagedCheckpointReviewPanel(props: {
                       (job.operation === "staged_bulk_generation" &&
                         job.targetShotIds?.includes(shot.shotId) === true))
                 ) ?? null;
+              const shotImageMediaWorkerOperation =
+                props.state?.workerOperations?.find(
+                  job =>
+                    job.operation === "staged_bulk_generation" &&
+                    job.targetStage === "image" &&
+                    job.targetPromptOnly !== true &&
+                    job.targetShotIds?.includes(shot.shotId) === true
+                ) ?? null;
               return (
                 <article
                   key={shot.shotId}
@@ -3389,11 +3407,20 @@ export function StagedCheckpointReviewPanel(props: {
                         className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800"
                         role="status"
                       >
-                        {shotPromptWorkerOperation.targetStage === "image"
-                          ? "Prompt ภาพ"
-                          : shotPromptWorkerOperation.targetStage === "video"
-                            ? "Prompt วิดีโอ"
-                            : "Prompt"}{" "}
+                        {shotPromptWorkerOperation.operation ===
+                        "staged_bulk_generation"
+                          ? shotPromptWorkerOperation.targetStage === "image"
+                            ? "สร้างภาพ"
+                            : shotPromptWorkerOperation.targetStage === "video"
+                              ? shotPromptWorkerOperation.targetPromptOnly
+                                ? "Prompt วิดีโอ"
+                                : "สร้างวิดีโอ"
+                              : "สร้าง Prompt และสื่อ"
+                          : shotPromptWorkerOperation.targetStage === "image"
+                            ? "Prompt ภาพ"
+                            : shotPromptWorkerOperation.targetStage === "video"
+                              ? "Prompt วิดีโอ"
+                              : "Prompt"}{" "}
                         {shotPromptWorkerOperation.status === "queued" ||
                         shotPromptWorkerOperation.status === "pending" ||
                         shotPromptWorkerOperation.status === "retry_scheduled"
@@ -3641,11 +3668,11 @@ export function StagedCheckpointReviewPanel(props: {
                                   <button
                                     id={`regen-image-${shot.shotId}`}
                                     onClick={() =>
-                                      props.onRetry({
+                                      props.onGenerateAndDispatch({
                                         shotId: shot.shotId,
                                         stage: "image",
                                         model: selectedImageModel,
-                                        autoApprove: true,
+                                        replaceExisting: true,
                                       })
                                     }
                                     className="rounded-lg bg-white/90 hover:bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-lg transition flex items-center gap-1.5 cursor-pointer"
@@ -3672,6 +3699,22 @@ export function StagedCheckpointReviewPanel(props: {
                               <div className="flex items-center gap-2 font-medium text-violet-700 animate-pulse">
                                 <span>⏳ กำลังประมวลผลสร้างภาพด้วย AI...</span>
                               </div>
+                            ) :
+                            shotImageMediaWorkerOperation &&
+                            ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled"].includes(
+                              shotImageMediaWorkerOperation.status
+                            ) ? (
+                              <p className="font-medium text-violet-800" role="status">
+                                {shotImageMediaWorkerOperation.status === "queued" ||
+                                shotImageMediaWorkerOperation.status === "pending"
+                                  ? "ส่งงานสร้างภาพแล้ว — รอคิว Worker"
+                                  : "Worker กำลังสร้างภาพช็อตนี้"}
+                              </p>
+                            ) :
+                            shotImageMediaWorkerOperation?.status === "failed" ? (
+                              <p className="font-medium text-red-700" role="alert">
+                                งานสร้างภาพใน Worker ไม่สำเร็จ กดสร้างภาพอีกครั้งเพื่อส่งงานใหม่
+                              </p>
                             ) : imageCheckpoint && imageCorrectionApplies ? (
                               <p className="text-amber-800 font-medium" role="status">
                                 {correctionSafeMessage(imageCorrection?.reasonCode)}
@@ -3984,42 +4027,37 @@ export function StagedCheckpointReviewPanel(props: {
                               isShotPromptPipelineBusy(shot.shotId),
                           }
                         )}
-                        {/* Step 3/3 — dispatch-only, using the CURRENT
-                            approved prompt (never rewriting it); the
-                            credit-spending step. Same mutation call shape as
-                            the hover "🔄 สร้างใหม่" overlay below
-                            (retryShotMutation with autoApprove: true).
-                            Disabled (never hidden) until the shot actually
-                            has an image prompt, so the required order stays
-                            visible instead of silently doing nothing. */}
+                        {/* Dispatch the saved prompt through the dedicated
+                            Worker Jobs operation. This is shot-scoped, so a
+                            queued image never blocks sibling shots. */}
                         {action(
-                              `dispatch-image-${shot.shotId}`,
-                              `สร้างภาพช็อตที่ ${shot.shotId}`,
-                              () =>
-                                props.onRetry({
-                                  shotId: shot.shotId,
-                                  stage: "image",
-                                  model: selectedImageModel,
-                                  autoApprove: true,
-                                }),
-                              "rounded-lg px-3.5 py-2 text-sm font-semibold shadow-xs transition",
-                              {
-                                disabled:
-                                  !shot.imagePrompt?.trim() ||
-                                  !storyPlanApproved ||
-                                  isTaskInFlight(shot.imageTaskStatus) ||
-                                  isTaskInFlight(shot.videoTaskStatus) ||
-                                  isShotPromptPipelineBusy(shot.shotId),
-                                title: !shot.imagePrompt?.trim()
-                                  ? "สร้าง Prompt ภาพก่อน"
-                                  : !storyPlanApproved
-                                    ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
-                                  : isTaskInFlight(shot.imageTaskStatus) ||
-                                      isTaskInFlight(shot.videoTaskStatus)
-                                    ? "รอให้งานของช็อตนี้เสร็จก่อน"
-                                    : undefined,
-                              }
-                            )}
+                          `dispatch-image-${shot.shotId}`,
+                          `สร้างภาพช็อตที่ ${shot.shotId}`,
+                          () =>
+                            props.onGenerateAndDispatch({
+                              shotId: shot.shotId,
+                              stage: "image",
+                              model: selectedImageModel,
+                              replaceExisting: true,
+                            }),
+                          "rounded-lg px-3.5 py-2 text-sm font-semibold shadow-xs transition",
+                          {
+                            disabled:
+                              !shot.imagePrompt?.trim() ||
+                              !storyPlanApproved ||
+                              isTaskInFlight(shot.imageTaskStatus) ||
+                              isTaskInFlight(shot.videoTaskStatus) ||
+                              isShotPromptPipelineBusy(shot.shotId),
+                            title: !shot.imagePrompt?.trim()
+                              ? "สร้าง Prompt ภาพก่อน"
+                              : !storyPlanApproved
+                                ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
+                                : isTaskInFlight(shot.imageTaskStatus) ||
+                                    isTaskInFlight(shot.videoTaskStatus)
+                                  ? "รอให้งานของช็อตนี้เสร็จก่อน"
+                                  : undefined,
+                          }
+                        )}
                         {/* image_prompt now auto-approves at construction —
                             no approve click left to trigger; reject stays. */}
                         {imageCheckpoint?.state === "awaiting"
@@ -4131,11 +4169,11 @@ export function StagedCheckpointReviewPanel(props: {
                               `dispatch-video-${shot.shotId}`,
                               `สร้างวิดีโอช็อตที่ ${shot.shotId}`,
                               () =>
-                                props.onRetry({
+                                props.onGenerateAndDispatch({
                                   shotId: shot.shotId,
                                   stage: "video",
                                   model: selectedVideoModel,
-                                  autoApprove: true,
+                                  replaceExisting: true,
                                 }),
                               "rounded-lg bg-sky-700 hover:bg-sky-800 px-3.5 py-2 text-sm font-semibold text-white shadow-xs transition",
                               {

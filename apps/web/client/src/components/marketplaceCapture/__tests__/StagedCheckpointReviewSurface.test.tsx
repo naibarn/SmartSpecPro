@@ -57,12 +57,9 @@ const mockRetryMutateAsync = vi.fn(
   })
 );
 
-// Plain (non-async) `.mutate` for retryStagedAutoReviewShot — this is what
-// the per-shot dispatch-only "สร้างภาพ/วิดีโอช็อตที่ N" buttons actually call
-// via onRetry now (see StagedCheckpointReviewSurface's onRetry, which calls
-// `retryShotMutation.mutate`, never `.mutateAsync`) after the consolidated
-// one-click button was split back into 3 explicit steps. Declared at module
-// scope (like mockGeneratePromptMutate below) so it survives re-renders.
+// Plain `.mutate` for the legacy retry endpoint. Per-shot media dispatch is
+// expected to use `mockBulkGenerateMutate` so it creates a durable,
+// shot-scoped Worker Jobs entry instead.
 const mockRetryMutate = vi.fn();
 
 // Set by the retryStagedAutoReviewShot mock below on every render — lets a
@@ -400,21 +397,14 @@ describe("StagedCheckpointReviewSurface — manual shot media upload wiring", ()
   });
 });
 
-describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring (prompt-only / instruction / dispatch-only, post consolidation-reversal)", () => {
-  // Per an explicit user directive, the former one-click "สร้างภาพ/วิดีโอช็อตที่
-  // N" consolidation (writes a fresh prompt then immediately dispatches
-  // generation, via onGenerateAndDispatch's generatePromptMutation.mutateAsync
-  // → retryShotMutation.mutateAsync chain) has been reversed back into 3
-  // separate, explicit steps per stage: a prompt-only button
-  // (generatePromptMutation.mutate, no instruction), the existing
-  // AI-instruction dialog (generatePromptMutation.mutate, with instruction —
-  // relabeled from "AI ปรับแต่ง..." to "ปรับปรุง...ด้วยคำสั่ง" but otherwise
-  // unchanged), and a dispatch-only button (retryShotMutation.mutate via
-  // onRetry, using the CURRENT prompt, never rewriting it). No per-shot
-  // button reaches onGenerateAndDispatch's mutateAsync chain anymore.
+describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring", () => {
+  // Prompt drafting stays a separate worker-backed action. Image and video
+  // dispatch use a single-shot staged_bulk_generation request, so the job
+  // can be queued independently and tracked after browser refresh.
   beforeEach(() => {
     mockGeneratePromptMutate.mockClear();
     mockGeneratePromptMutateAsync.mockClear();
+    mockBulkGenerateMutate.mockClear();
     mockRetryMutate.mockClear();
     mockRetryMutateAsync.mockClear();
   });
@@ -484,45 +474,42 @@ describe("StagedCheckpointReviewSurface — per-shot pipeline buttons wiring (pr
     expect(mockRetryMutate).not.toHaveBeenCalled();
   });
 
-  it("the dispatch-only 'สร้างภาพช็อตที่ 1' button calls retryShotMutation.mutate DIRECTLY with the current (pre-click) digest — never the generate-prompt-then-dispatch mutateAsync chain", () => {
+  it("the 'สร้างภาพช็อตที่ 1' button queues a shot-scoped Worker Job using the saved prompt", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     );
 
-    expect(mockRetryMutate).toHaveBeenCalledTimes(1);
-    const call = mockRetryMutate.mock.calls[0][0];
+    expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1);
+    const call = mockBulkGenerateMutate.mock.calls[0][0];
     expect(call).toMatchObject({
       runId: "run-1",
-      shotId: 1,
-      stage: "image",
-      autoApprove: true,
       expectedStateDigest: "digest-0",
+      targets: [{ shotId: 1, stage: "image", replaceExisting: true }],
     });
-    // Neither generate-prompt mutation fires — this is dispatch-only,
-    // reusing the shot's already-approved prompt.
+    expect(screen.getByText(/กำลังส่งงานสร้างภาพช็อตที่ 1 เข้า Worker/)).toBeTruthy();
+    expect(mockRetryMutate).not.toHaveBeenCalled();
     expect(mockGeneratePromptMutate).not.toHaveBeenCalled();
     expect(mockGeneratePromptMutateAsync).not.toHaveBeenCalled();
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("the dispatch-only 'สร้างวิดีโอช็อตที่ 1' button calls retryShotMutation.mutate with the saved video model", () => {
+  it("the 'สร้างวิดีโอช็อตที่ 1' button queues a shot-scoped Worker Job with the saved model", () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     fireEvent.click(
       screen.getByRole("button", { name: "สร้างวิดีโอช็อตที่ 1" })
     );
 
-    expect(mockRetryMutate).toHaveBeenCalledTimes(1);
-    const call = mockRetryMutate.mock.calls[0][0];
+    expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1);
+    const call = mockBulkGenerateMutate.mock.calls[0][0];
     expect(call).toMatchObject({
       runId: "run-1",
-      shotId: 1,
-      stage: "video",
-      autoApprove: true,
       expectedStateDigest: "digest-0",
+      targets: [{ shotId: 1, stage: "video", model: "veo3/generate-veo-3-video-lite", replaceExisting: true }],
     });
+    expect(mockRetryMutate).not.toHaveBeenCalled();
     expect(mockGeneratePromptMutate).not.toHaveBeenCalled();
     expect(mockGeneratePromptMutateAsync).not.toHaveBeenCalled();
   });

@@ -1779,6 +1779,7 @@ export const marketplaceCaptureRouter = router({
               promptModel: z.string().trim().max(128).optional(),
               refreshPrompt: z.boolean().optional(),
               promptOnly: z.boolean().optional(),
+              replaceExisting: z.boolean().optional(),
             }).strict()
           )
           .min(1)

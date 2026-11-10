@@ -97,7 +97,55 @@ function isWaitingForUser(run: MarketplaceAutoReviewJobSummary): boolean {
   );
 }
 
+function stagedProgress(run: MarketplaceAutoReviewJobSummary) {
+  const progress = run.metadataJson?.stagedProgress;
+  if (!progress || typeof progress !== "object") return null;
+  const total = Number(progress.totalShots);
+  if (!Number.isFinite(total) || total <= 0) return null;
+  return {
+    total,
+    imagePromptsReady: Number(progress.imagePromptsReady) || 0,
+    imageArtifactsReady: Number(progress.imageArtifactsReady) || 0,
+    imageTasksInFlight: Number(progress.imageTasksInFlight) || 0,
+  };
+}
+
 function statusPresentation(run: MarketplaceAutoReviewJobSummary) {
+  const currentStage = text(run.currentStage);
+  const progress = stagedProgress(run);
+  if (
+    progress &&
+    ["image_generation", "storyboard_review"].includes(currentStage)
+  ) {
+    if (progress.imageTasksInFlight > 0) {
+      return {
+        label: `กำลังสร้างภาพ ${progress.imageArtifactsReady}/${progress.total}`,
+        className: "border-violet-200 bg-violet-50 text-violet-800",
+        Icon: Loader2,
+      };
+    }
+    if (progress.imagePromptsReady < progress.total) {
+      return {
+        label: `รอ Prompt ภาพ ${progress.imagePromptsReady}/${progress.total}`,
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+        Icon: Clock3,
+      };
+    }
+    if (progress.imageArtifactsReady < progress.total) {
+      return {
+        label: `รอสร้างภาพ ${progress.imageArtifactsReady}/${progress.total}`,
+        className: "border-sky-200 bg-sky-50 text-sky-800",
+        Icon: Clock3,
+      };
+    }
+    if (isWaitingForUser(run)) {
+      return {
+        label: `รอตรวจภาพ ${progress.imageArtifactsReady}/${progress.total}`,
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+        Icon: Clock3,
+      };
+    }
+  }
   if (isWaitingForUser(run)) {
     return {
       label: "รอตรวจ/ยืนยัน",
@@ -151,6 +199,20 @@ function statusPresentation(run: MarketplaceAutoReviewJobSummary) {
   }
 }
 
+function stagedStageLabel(run: MarketplaceAutoReviewJobSummary): string {
+  const progress = stagedProgress(run);
+  const stage = text(run.currentStage);
+  if (
+    progress &&
+    ["image_generation", "storyboard_review"].includes(stage) &&
+    progress.imagePromptsReady >= progress.total &&
+    progress.imageArtifactsReady < progress.total
+  ) {
+    return "สร้างภาพรายช็อต";
+  }
+  return stageLabel(stage);
+}
+
 function stageLabel(stage: unknown): string {
   switch (text(stage)) {
     case "product_preflight":
@@ -160,6 +222,7 @@ function stageLabel(stage: unknown): string {
     case "prompt_plan":
       return "ตรวจ Prompt ภาพ";
     case "image_generation":
+      return "สร้างภาพรายช็อต";
     case "storyboard_review":
       return "Storyboard Review / ผลภาพ";
     case "video_generation":
@@ -283,8 +346,9 @@ export function MarketplaceAutoReviewJobNavigator({
             const stageIndex = Number(run.stageIndex) || 0;
             const progress =
               stageCount > 0
-                ? `${Math.min(stageIndex, stageCount)}/${stageCount}`
+                ? `ขั้นตอน ${Math.min(stageIndex, stageCount)}/${stageCount}`
                 : null;
+            const mediaProgress = stagedProgress(run);
             return (
               <li key={runId} className="relative">
                 <button
@@ -334,8 +398,15 @@ export function MarketplaceAutoReviewJobNavigator({
                     ) : null}
                   </span>
                   <span className="mt-2 block truncate text-xs text-slate-300">
-                    {stageLabel(run.currentStage)}
+                    {stagedStageLabel(run)}
                   </span>
+                  {mediaProgress ? (
+                    <span className="mt-1 block truncate text-[11px] text-sky-300">
+                      Prompt ภาพ {mediaProgress.imagePromptsReady}/
+                      {mediaProgress.total} · ภาพ{" "}
+                      {mediaProgress.imageArtifactsReady}/{mediaProgress.total}
+                    </span>
+                  ) : null}
                   <span className="mt-1 block truncate text-[11px] text-slate-500">
                     {formatDate(run.updatedAt ?? run.createdAt)}
                   </span>

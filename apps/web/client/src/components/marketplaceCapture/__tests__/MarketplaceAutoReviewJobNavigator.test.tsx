@@ -68,6 +68,41 @@ describe("MarketplaceAutoReviewJobNavigator", () => {
       screen.queryByText("ยังไม่มี Job Review สำหรับสินค้านี้")
     ).toBeNull();
   });
+
+  it("shows image prompt and image delivery progress beside the overall stage", () => {
+    render(
+      <MarketplaceAutoReviewJobNavigator
+        runs={[
+          {
+            id: "mar-images",
+            status: "running",
+            currentStage: "storyboard_review",
+            stageIndex: 5,
+            stageCount: 11,
+            planningArchitecture: "staged_two_skill_v2",
+            metadataJson: {
+              planningArchitecture: "staged_two_skill_v2",
+              stagedProgress: {
+                totalShots: 9,
+                imagePromptsReady: 9,
+                imageArtifactsReady: 0,
+                imageTasksInFlight: 0,
+              },
+            },
+          },
+        ]}
+        selectedRunId="mar-images"
+        productId="product_1"
+        onOpenRun={vi.fn()}
+        onCreateNew={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("รอสร้างภาพ 0/9")).toBeTruthy();
+    expect(screen.getByText("Prompt ภาพ 9/9 · ภาพ 0/9")).toBeTruthy();
+    expect(screen.getByText("สร้างภาพรายช็อต")).toBeTruthy();
+    expect(screen.getByText("ขั้นตอน 5/11")).toBeTruthy();
+  });
 });
 
 /**
