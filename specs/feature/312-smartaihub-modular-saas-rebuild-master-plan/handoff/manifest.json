@@ -45,7 +45,8 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png"
     ],
     "next_action": "Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.",
     "rationale": "The four-section Core identity slice remains implemented and integrated. The Modular development release is serving on aimarkethubs.com with Core, Chat, Shell, login, signup, forgot-password and email-verification routes healthy. The account-flow bridge now uses Workerd-supported manual redirect handling and its reset request was verified with a nonexistent test address. The account exists and is MFA-enabled, but the owner has not retried password login or completed MFA, so successful authentication remains unproven. Keep parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation and human UAT are evidenced. smartsihub.com production remains inactive.",
@@ -63,7 +64,8 @@
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
       "handoff/evidence/modular-login-language-selector-right-align-20261110.png",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
+      "handoff/evidence/modular-login-final-20261110.png"
     ],
     "required": false,
     "source_sha": "f85520edeaa574844338448b4352712629f832dc",
@@ -85,7 +87,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 31,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -175,7 +177,8 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png"
       ],
       "next_action": "Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.",
       "rationale": "The four-section Core identity slice remains implemented and integrated. The Modular development release is serving on aimarkethubs.com with Core, Chat, Shell, login, signup, forgot-password and email-verification routes healthy. The account-flow bridge now uses Workerd-supported manual redirect handling and its reset request was verified with a nonexistent test address. The account exists and is MFA-enabled, but the owner has not retried password login or completed MFA, so successful authentication remains unproven. Keep parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation and human UAT are evidenced. smartsihub.com production remains inactive.",
@@ -350,7 +353,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T08:59:27.792990Z",
+  "updated_at": "2026-11-10T09:02:03.658127Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

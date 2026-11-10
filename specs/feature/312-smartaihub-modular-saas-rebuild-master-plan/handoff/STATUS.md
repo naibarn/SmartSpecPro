@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
 - Next action: Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.
-- Manifest generation: 31
+- Manifest generation: 32
 
 ## Source-declared status and relationship claims
 
