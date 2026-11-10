@@ -650,8 +650,74 @@ export function isGrokVideoFamily(
   );
 }
 
+const GPT_IMAGE_26_ASPECT_RATIOS = ["auto", "1:1", "16:9", "9:16", "3:2", "2:3", "21:9", "4:3"];
+const GPT_IMAGE_26_QUALITY_OPTIONS = ["low", "medium", "high", "xhigh", "max", "auto"];
+
+function buildGptImage26Model(variant: "flare" | "sunburst" | "economy"): ModelDefinition {
+  const name = variant === "flare" ? "Flare" : variant === "sunburst" ? "Sunburst" : "Economy";
+  const id = `gpt-image-2-6-${variant}-text-to-image`;
+  const imageToImageId = `gpt-image-2-6-${variant}-image-to-image`;
+  const economy = variant === "economy";
+  const ratioOptions = economy
+    ? GPT_IMAGE_26_ASPECT_RATIOS
+    : ["auto", "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9"];
+  const select = (key: string, label: string, values: string[], defaultValue: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    key, label, type: "select", options: values.map(value => ({ value, label: value.toUpperCase() })), default: defaultValue, ...extra,
+  });
+  const inputFields: Record<string, unknown>[] = [
+    { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+    select("aspect_ratio", "Aspect Ratio", ratioOptions, "auto", { syncWith: "aspect_ratio" }),
+  ];
+  if (!economy) {
+    inputFields.push(
+      select("resolution", "Resolution", ["1K", "2K", "4K"], "1K", { affectsPricing: true, syncWith: "resolution" }),
+      select("quality", "Image Quality", GPT_IMAGE_26_QUALITY_OPTIONS, "medium"),
+    );
+  }
+  inputFields.push(
+    select("background", "Background", ["auto", "opaque", "transparent"], "auto"),
+    select("output_format", "Output Format", economy ? ["png"] : ["png", "jpeg", "webp", "gif", "svg"], "png"),
+  );
+  if (!economy) {
+    inputFields.push(
+      select("complexity", "Planning Complexity", ["low", "medium", "high"], "medium"),
+      select("moderation", "Audit Intensity", ["auto", "low"], "auto"),
+    );
+  }
+  return {
+    id, type: "image", name: `GPT Image 2.6 ${name}`, provider: "kie.ai",
+    description: `OpenAI GPT Image 2.6 ${name} generation and reference-image editing via Kie AI.`,
+    aliases: [
+      `gpt image 2.6 ${variant}`, `gpt-image-2-6-${variant}`, id, imageToImageId,
+      `gpt-image-2-6/${variant}-text-to-image`, `gpt-image-2-6/${variant}-image-to-image`,
+      `gpt image 2.6 ${variant} image to image`,
+    ],
+    creditCost: 30, thinkingModeDefault: economy ? "none" : "medium",
+    thinkingModes: economy ? ["none"] : GPT_IMAGE_26_QUALITY_OPTIONS,
+    aspectRatios: ratioOptions, isEnabled: true, priority: 7,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask", apiPayloadFormat: "market",
+      kieModelId: `gpt-image-2-6/${variant}-text-to-image`,
+      documentationUrl: `https://docs.kie.ai/market/gpt/gpt-image-2-6-${variant}-text-to-image`,
+      generateType: "text-to-image", supportsReferenceImages: true,
+      maxPromptLength: variant === "flare" ? 32_000 : 20_000, maxReferenceImages: 16,
+      apiConfig: {
+        kie_model_id_with_references: `gpt-image-2-6/${variant}-image-to-image`,
+        reference_image_input_key: "input_urls", reference_image_input_type: "array",
+        ...(!economy ? { defaultInputParams: { quality: "medium" } } : {}),
+      },
+      inputFields,
+      pricingTiers: economy ? { default: 30, "1K": 30 } : { default: 30, "1K": 30, "2K": 50, "4K": 80 },
+      pricingFormula: "flat",
+    },
+  };
+}
+
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
+  buildGptImage26Model("flare"),
+  buildGptImage26Model("sunburst"),
+  buildGptImage26Model("economy"),
   {
     id: "google-nano-banana-pro",
     type: "image",

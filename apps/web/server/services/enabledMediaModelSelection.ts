@@ -95,6 +95,13 @@ export function inferMediaModelHintFromText(mediaType: MediaType, text?: string 
     if (/\bomni\b/i.test(normalized)) return "gemini-omni-flash-1-1";
   }
   if (mediaType === "image") {
+    if (/gpt\s*image\s*2\.6(?!.*(flare|sunburst|economy))|gpt-image-2-6(?!.*(flare|sunburst|economy))/i.test(normalized)) {
+      return "gpt-image-2-6-flare-text-to-image";
+    }
+    if (/gpt\s*image\s*2\.6.*(flare|sunburst|economy)|gpt-image-2-6.*(flare|sunburst|economy)/i.test(normalized)) {
+      const variant = /economy/i.test(normalized) ? "economy" : /sunburst/i.test(normalized) ? "sunburst" : "flare";
+      return `gpt-image-2-6-${variant}-text-to-image`;
+    }
     if (/gpt\s*image\s*2\.5.*flare|gpt-image-2-5.*flare/i.test(normalized)) {
       return "gpt-image-2-5-flare-text-to-image";
     }

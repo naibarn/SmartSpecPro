@@ -1668,7 +1668,68 @@ const VIDEO_MODELS = [
 ];
 
 // Image Models - Complete Kie AI catalog
+const GPT_IMAGE_26_RATIOS = ["auto", "1:1", "16:9", "9:16", "3:2", "2:3", "21:9", "4:3"];
+const GPT_IMAGE_26_QUALITY = ["low", "medium", "high", "xhigh", "max", "auto"];
+function buildGptImage26Models() {
+  return (["flare", "sunburst", "economy"] as const).map((variant) => {
+    const title = variant[0].toUpperCase() + variant.slice(1);
+    const economy = variant === "economy";
+    const modelId = `gpt-image-2-6-${variant}-text-to-image`;
+    const imageToImageId = `gpt-image-2-6-${variant}-image-to-image`;
+    const ratios = economy ? GPT_IMAGE_26_RATIOS : ["auto", "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9"];
+    const select = (key: string, label: string, values: string[], defaultValue: string, extra: Partial<InputField> = {}): InputField => ({
+      key, label, type: "select" as const, options: values.map(value => ({ value, label: value.toUpperCase() })), default: defaultValue, ...extra,
+    });
+    const inputFields: InputField[] = [
+      { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
+      select("aspect_ratio", "Aspect Ratio", ratios, "auto", { syncWith: "aspect_ratio" }),
+    ];
+    if (!economy) inputFields.push(
+      select("resolution", "Resolution", ["1K", "2K", "4K"], "1K", { affectsPricing: true, syncWith: "resolution" }),
+      select("quality", "Image Quality", GPT_IMAGE_26_QUALITY, "medium"),
+    );
+    inputFields.push(
+      select("background", "Background", ["auto", "opaque", "transparent"], "auto"),
+      select("output_format", "Output Format", economy ? ["png"] : ["png", "jpeg", "webp", "gif", "svg"], "png"),
+    );
+    if (!economy) inputFields.push(
+      select("complexity", "Planning Complexity", ["low", "medium", "high"], "medium"),
+      select("moderation", "Audit Intensity", ["auto", "low"], "auto"),
+    );
+    return {
+      modelId,
+      name: `GPT Image 2.6 ${title}`,
+      description: `OpenAI GPT Image 2.6 ${title} generation and reference-image editing via Kie AI createTask.`,
+      modelType: "image" as const,
+      provider: "kie.ai",
+      aliases: [`gpt image 2.6 ${variant}`, `gpt-image-2-6-${variant}`, modelId, imageToImageId, `gpt-image-2-6/${variant}-text-to-image`, `gpt-image-2-6/${variant}-image-to-image`, `gpt image 2.6 ${variant} image to image`],
+      creditCost: 30,
+      thinkingModeDefault: economy ? "none" : "medium",
+      thinkingModes: economy ? ["none"] : GPT_IMAGE_26_QUALITY,
+      priority: 7,
+      sortOrder: 7,
+      aspectRatios: ratios,
+      configJson: {
+        apiEndpoint: "/api/v1/jobs/createTask", apiPayloadFormat: "market",
+        kieModelId: `gpt-image-2-6/${variant}-text-to-image`,
+        documentationUrl: `https://docs.kie.ai/market/gpt/gpt-image-2-6-${variant}-text-to-image`,
+        generateType: "text-to-image", supportsReferenceImages: true,
+        maxPromptLength: variant === "flare" ? 32_000 : 20_000, maxReferenceImages: 16,
+        apiConfig: {
+          kie_model_id_with_references: `gpt-image-2-6/${variant}-image-to-image`,
+          reference_image_input_key: "input_urls", reference_image_input_type: "array",
+          ...(!economy ? { defaultInputParams: { quality: "medium" } } : {}),
+        },
+        inputFields,
+        pricingTiers: economy ? { default: 30, "1K": 30 } : { default: 30, "1K": 30, "2K": 50, "4K": 80 },
+        pricingFormula: "flat",
+      },
+    };
+  });
+}
+
 const IMAGE_MODELS = [
+  ...buildGptImage26Models(),
   // === GPT-4o / OpenAI ===
   {
     modelId: "gpt-4o-image",
