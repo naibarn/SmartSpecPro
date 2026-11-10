@@ -12,7 +12,7 @@ export function createMarketplaceAutoReviewWorkerToken(input: {
   return signBearerToken(
     {
       sub: String(input.userId),
-      userId: input.userId,
+      user_id: input.userId,
       tenantId: input.tenantId,
       type: "access",
       tokenUse: "marketplace_auto_review_background",

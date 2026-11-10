@@ -105,7 +105,7 @@ async function resolveStagedUserToken(
     token = signBearerToken(
       {
         sub: String(userId),
-        userId: userId,
+        user_id: userId,
         type: "access",
         tokenUse: "marketplace_auto_review_background",
         scopes: ["media:generate"],
@@ -2711,6 +2711,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     const imageTask = taskRecord(metadata, shot.shotId, "image");
     if (
       imageTask?.taskId &&
+      !["failed", "cancelled"].includes(String(imageTask.status ?? "")) &&
       !metadata.stagedSequentialStoryboard.shots.find(
         item => item.shotId === shot.shotId
       )?.imageArtifactHash
@@ -2892,7 +2893,11 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       continue;
     }
     const videoTask = taskRecord(metadata, shot.shotId, "video");
-    if (videoTask?.taskId && !shotState?.videoArtifactHash) {
+    if (
+      videoTask?.taskId &&
+      !["failed", "cancelled"].includes(String(videoTask.status ?? "")) &&
+      !shotState?.videoArtifactHash
+    ) {
       try {
         const reconciled = await reconcileVideoProvider({
           db: params.db,

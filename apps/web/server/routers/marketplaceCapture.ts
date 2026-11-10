@@ -438,7 +438,7 @@ function autoReviewRuntimeFromCtx(ctx: any) {
           {
             sub: String(userId),
             type: "access",
-            userId,
+            user_id: userId,
             tenantId,
             scopes: ["media:generate"],
             jti: `marketplace_auto_review_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,

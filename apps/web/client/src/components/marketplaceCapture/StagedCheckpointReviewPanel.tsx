@@ -470,6 +470,24 @@ function isTaskInFlight(status: string | null | undefined) {
   return ["pending", "processing", "submitted"].includes(String(status ?? ""));
 }
 
+function isTaskFailed(status: string | null | undefined) {
+  return ["failed", "cancelled"].includes(String(status ?? ""));
+}
+
+function correctionSafeMessage(
+  reasonCode: string | null | undefined,
+  stageKey?: string | null
+) {
+  switch (reasonCode) {
+    case "Desktop token identity mismatch":
+      return "งานสร้างภาพก่อนหน้าไม่ผ่านการยืนยันตัวตนของ worker จึงยังไม่มีภาพ ระบบได้รับการแก้แล้ว กดสร้างภาพของช็อตที่ต้องการอีกครั้งได้";
+    case "checkpoint_consumed":
+      return "งานเบื้องหลังหยุดหลังรับขั้นตอนนี้ไปประมวลผล แต่ยังไม่มีผลลัพธ์กลับมา ลองส่งขั้นตอนนี้อีกครั้งได้";
+    default:
+      return `งานสร้าง${stageKey === "video_generation" ? "วิดีโอ" : stageKey === "audio_generation" ? "เสียง" : "ภาพ"}หยุดก่อนส่งผลลัพธ์กลับมา ลองส่งงานนี้อีกครั้งได้`;
+  }
+}
+
 function isRunEditable(state: StagedReviewState) {
   return !["completed", "failed", "cancelled"].includes(
     String(state.runStatus ?? "")
@@ -1581,12 +1599,11 @@ export function StagedCheckpointReviewPanel(props: {
     (props.pendingAction === "edit-shot" && id.startsWith("edit-")) ||
     (props.pendingAction === "generate-prompt" &&
       id.startsWith("generate-prompt-")) ||
-    // "retry-shot" backs both the legacy "retry-*" ids (hover overlay
-    // correction-required actions, etc.) AND the split-out "dispatch-*"
-    // per-shot generate buttons — both call props.onRetry, which is always
-    // backed by retryShotMutation for image/video stages.
+    // The retry mutation reports an exact `dispatch-${stage}-${shotId}` while
+    // it has variables. If variables are unavailable, keep legacy retry
+    // controls local; never treat a coarse retry flag as all shots being busy.
     (props.pendingAction === "retry-shot" &&
-      (id.startsWith("retry-") || id.startsWith("dispatch-"))) ||
+      id.startsWith("retry-")) ||
     (props.pendingAction === "retry-audio" && id.startsWith("retry-audio"));
 
   const action = (
@@ -1628,9 +1645,14 @@ export function StagedCheckpointReviewPanel(props: {
     // 4.5:1. opacity-90 stays above 4.5:1 while still visibly dimming.
     <button
       type="button"
-      className={`${className} disabled:cursor-not-allowed disabled:opacity-90`}
+      className={`${className} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-violet-700 disabled:cursor-not-allowed disabled:opacity-90 ${
+        id.startsWith("dispatch-image-")
+          ? "min-h-11 border border-violet-800 bg-violet-700 text-white hover:bg-violet-800 focus-visible:ring-violet-700 disabled:border-violet-300 disabled:bg-violet-200 disabled:text-violet-950 disabled:opacity-100"
+          : ""
+      }`}
       disabled={isThisActionRunning(id) || options?.disabled}
       aria-label={label}
+      aria-busy={isThisActionRunning(id) || undefined}
       title={options?.title}
       onClick={callback}
     >
@@ -2398,8 +2420,10 @@ export function StagedCheckpointReviewPanel(props: {
             >
               <p className="font-medium">ขั้นตอนต้องตรวจแก้ก่อนทำงานต่อ</p>
               <p className="mt-1">
-                {props.state.correctionRequired.reasonCode ||
-                  "provider_correction_required"}
+                {correctionSafeMessage(
+                  props.state.correctionRequired.reasonCode,
+                  props.state.correctionRequired.stageKey
+                )}
               </p>
               {props.state.correctionRequired.stageKey === "audio_generation"
                 ? action("retry-audio", "ลองแผนเสียงใหม่", () =>
@@ -3308,6 +3332,11 @@ export function StagedCheckpointReviewPanel(props: {
               const imageResultCheckpoint = activeCheckpointByKey.get(
                 `image_result:${shot.shotId}`
               );
+              const imageCorrection = props.state.correctionRequired;
+              const imageCorrectionApplies =
+                imageCorrection?.stageKey === "image_generation" &&
+                (!imageCorrection.shotId ||
+                  imageCorrection.shotId === shot.shotId);
               const videoCheckpoint = activeCheckpointByKey.get(
                 `video_prompt:${shot.shotId}`
               );
@@ -3643,21 +3672,21 @@ export function StagedCheckpointReviewPanel(props: {
                               <div className="flex items-center gap-2 font-medium text-violet-700 animate-pulse">
                                 <span>⏳ กำลังประมวลผลสร้างภาพด้วย AI...</span>
                               </div>
+                            ) : imageCheckpoint && imageCorrectionApplies ? (
+                              <p className="text-amber-800 font-medium" role="status">
+                                {correctionSafeMessage(imageCorrection?.reasonCode)}
+                              </p>
+                            ) : imageCheckpoint && isTaskFailed(shot.imageTaskStatus) ? (
+                              <p className="text-amber-800 font-medium" role="status">
+                                งานสร้างภาพช็อตนี้ไม่สำเร็จ กดปุ่มสร้างภาพด้านล่างเพื่อส่งใหม่
+                              </p>
                             ) : imageCheckpoint && !storyPlanApproved ? (
                               <p className="text-amber-700 font-medium">
                                 เนื้อเรื่องฉบับล่าสุดยังรอยืนยัน — ยืนยันเนื้อเรื่องก่อนเริ่มสร้างภาพ
                               </p>
                             ) : imageCheckpoint ? (
-                              // Checkpoint is approved/consumed but advance
-                              // failed. No button here anymore — this used to
-                              // duplicate the one action-bar button below the
-                              // image, per explicit user feedback ("no need
-                              // to duplicate the button in the middle of the
-                              // image, since there's already a button
-                              // below"). Just point down to it.
-                              <p className="text-amber-700 font-medium">
-                                ระบบส่งงานสร้างภาพค้างอยู่ — กดปุ่ม "สร้างภาพช็อตที่{" "}
-                                {shot.shotId}" ด้านล่างเพื่อสั่งใหม่
+                              <p className="text-violet-900 font-medium">
+                                Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่างเพื่อส่งงานเข้า Worker และรอผลที่นี่
                               </p>
                             ) : (
                               <>
@@ -3973,7 +4002,7 @@ export function StagedCheckpointReviewPanel(props: {
                                   model: selectedImageModel,
                                   autoApprove: true,
                                 }),
-                              "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-2 text-sm font-semibold text-white shadow-xs transition",
+                              "rounded-lg px-3.5 py-2 text-sm font-semibold shadow-xs transition",
                               {
                                 disabled:
                                   !shot.imagePrompt?.trim() ||

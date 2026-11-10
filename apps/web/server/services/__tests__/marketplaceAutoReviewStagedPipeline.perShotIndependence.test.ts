@@ -129,7 +129,7 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
 
   it("does not throw when shot 1's video task is permanently failed, still dispatches shot 2's ready image, and refunds shot 1's spent credit", async () => {
     const runId = "run-independence-1";
-    const plan = buildStagedStoryArcPlan({
+    const generatedPlan = buildStagedStoryArcPlan({
       runId,
       product: {
         productId: "product-1",
@@ -139,6 +139,10 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       },
       referenceManifestHash: "refs-independence-1",
     });
+    // This regression covers two independent shots. Keep the worker plan
+    // scoped to them so the pipeline does not stop first to compile the
+    // other seven shots' intentionally absent prompt checkpoints.
+    const plan = { ...generatedPlan, shots: generatedPlan.shots.slice(0, 2) };
 
     const shot1 = plan.shots[0];
     const shot2 = plan.shots[1];
@@ -391,5 +395,21 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
         originalTransactionId: 777,
       })
     );
+
+    const failedVideoPollsBeforeNextPass =
+      (mediaGenerationService.getTask as any).mock.calls.filter(
+        ([taskId]: [string]) => taskId === "provider-video-task-shot1-dead"
+      ).length;
+    await advanceStagedMarketplaceAutoReviewRun({
+      db,
+      run: getRunRow() as any,
+      auth,
+      runtime,
+    });
+    expect(
+      (mediaGenerationService.getTask as any).mock.calls.filter(
+        ([taskId]: [string]) => taskId === "provider-video-task-shot1-dead"
+      )
+    ).toHaveLength(failedVideoPollsBeforeNextPass);
   });
 });

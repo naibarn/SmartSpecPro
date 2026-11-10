@@ -598,7 +598,7 @@ describe("StagedCheckpointReviewPanel", () => {
     // The placeholder still tells the user where to click, just without its
     // own button.
     expect(
-      screen.getByText(/ระบบส่งงานสร้างภาพค้างอยู่/)
+      screen.getByText(/Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่าง/)
     ).toBeTruthy();
 
     fireEvent.click(generateButtons[0]);
@@ -1079,6 +1079,53 @@ describe("StagedCheckpointReviewPanel", () => {
       });
       expect(input.onGeneratePrompt).not.toHaveBeenCalled();
       expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    });
+
+    it("keeps other shot image buttons available during a coarse retry mutation and uses a high-contrast primary style", () => {
+      const input = props() as ReturnType<typeof props> & {
+        pending?: boolean;
+        pendingAction?: string;
+      };
+      input.state = {
+        ...input.state,
+        planReview: { status: "approved", redraftCount: 0 },
+        shots: [
+          ...input.state.shots,
+          {
+            ...input.state.shots[0],
+            shotId: 2,
+            title: "ช็อตสอง",
+          },
+        ],
+        checkpoints: [
+          { ...baseCheckpoint, state: "approved" },
+          {
+            ...baseCheckpoint,
+            checkpointId: "image-prompt:run-1:shot-2:r1",
+            shotId: 2,
+            state: "approved",
+          },
+        ],
+      };
+      input.pending = true;
+      input.pendingAction = "retry-shot";
+      render(<StagedCheckpointReviewPanel {...input} />);
+
+      const firstShot = screen.getByRole("button", {
+        name: "สร้างภาพช็อตที่ 1",
+      });
+      const secondShot = screen.getByRole("button", {
+        name: "สร้างภาพช็อตที่ 2",
+      });
+      expect(firstShot).not.toBeDisabled();
+      expect(secondShot).not.toBeDisabled();
+      expect(firstShot.className).toContain("bg-violet-700");
+      expect(firstShot.className).toContain("disabled:bg-violet-200");
+
+      fireEvent.click(secondShot);
+      expect(input.onRetry).toHaveBeenCalledWith(
+        expect.objectContaining({ shotId: 2, stage: "image" })
+      );
     });
 
     it("opening the AI-instruction dialog (now labeled 'ปรับปรุง Prompt...'), typing an instruction, and submitting calls onGeneratePrompt with the instruction text included", () => {
