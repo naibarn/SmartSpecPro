@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 16 unresolved of 16
-- Next action: Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.
-- Manifest generation: 6
+- Next action: Build the fresh React/Vite Shell login and Chat-first routing; continue with the isolated Chat API and user-facing module.
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 

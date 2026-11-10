@@ -28,8 +28,8 @@
     "expected_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4"
   },
   "continuation": {
-    "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
-    "next_ready_workunit": "SPEC-317 implementation slice",
+    "next_action": "Implement the new Shell sign-in/session flow and route successful users directly to /chat; leave aimarkethubs.com traffic unchanged.",
+    "next_ready_workunit": "section-02-react-shell-login-and-routing",
     "reactivation_predicate": null,
     "resume_point": null,
     "waiting_predicate": null
@@ -41,7 +41,7 @@
       "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
       "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
     ],
-    "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+    "next_action": "Build the fresh React/Vite Shell login and Chat-first routing; continue with the isolated Chat API and user-facing module.",
     "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
     "residual_requirements": []
   },
@@ -75,7 +75,7 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 6,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
     "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
@@ -92,11 +92,30 @@
     "title": "SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover"
   },
   "implementation": {
-    "checkpoint_shas": [],
-    "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "checkpoint_shas": [
+      "ebb264aa0151e97e9e463b7d4ca23290a48569db"
+    ],
+    "mapping": [
+      {
+        "evidence": "handoff/evidence/section-01-build-boundary-20261110.md",
+        "requirements": [
+          "REQ-4BB581C90577",
+          "REQ-C8D3AE2138BD",
+          "REQ-8ACA3DD0FDD4"
+        ],
+        "section": "section-01-package-boundaries-and-builds",
+        "source_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "status": "PARTIAL"
+      }
+    ],
+    "source_paths": [
+      "smartaihub-platform/apps/saas-core",
+      "smartaihub-platform/apps/saas-shell",
+      "smartaihub-platform/modules/chat",
+      "smartaihub-platform/packages/saas-contracts"
+    ],
+    "started": true,
+    "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": null,
@@ -142,7 +161,7 @@
         "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
       ],
-      "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "next_action": "Build the fresh React/Vite Shell login and Chat-first routing; continue with the isolated Chat API and user-facing module.",
       "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
       "residual_requirements": []
     },
@@ -173,6 +192,86 @@
         }
       ],
       "updated_at": "2026-11-01T07:18:24.581031Z"
+    },
+    "requirements": {
+      "REQ-4BB581C90577": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L16"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L16",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Implement small reversible package releases; Shell and Chat code are scaffolds until login, chat, and target-health evidence pass.",
+        "requirement_digest": "e4132619d068cb4403e647cb6b06cf141988778ef6b7aa76877987fb78129c15",
+        "requirement_id": "REQ-4BB581C90577",
+        "requirement_text": "Migration is a **series of small reversible module releases**. The original `apps/web` remains running on `smartaihub.app` while new sources are selectively copied into clean module packages, with dependency pruning, modern UI replacement where appropriate, actual Debian UAT and Cloudflare staging, then production availability. Core login/tenant/Shell minimum viable vertical slice SHALL be usable first; completion of all Core commerce/admin features is **not** a prerequisite for beginning independent module migration or human tests. “Partially migrated” does not mean feature removed or traffic blindly forwarded.",
+        "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-boundary-20261110.md"
+        ],
+        "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      },
+      "REQ-8ACA3DD0FDD4": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Implement functional Shell login and lazy Chat assets, then remeasure package-only builds after those features land.",
+        "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
+        "requirement_id": "REQ-8ACA3DD0FDD4",
+        "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
+        "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-boundary-20261110.md"
+        ],
+        "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      },
+      "REQ-C8D3AE2138BD": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Finish dependency isolation evidence after implementing the full Shell and Chat behavior; do not claim module stability from scaffolding.",
+        "requirement_digest": "cb67953120f53072f24c4cf02a48684dbce0c51af34e8ebc4570d9ae5f71d2d4",
+        "requirement_id": "REQ-C8D3AE2138BD",
+        "requirement_text": "Migrate capabilities by bounded module, not by converting the whole Legacy application. Existing code, schemas, screens and UI assets are references only. Each new or reused module must document owner/provenance, permitted source inputs, data authority, capability manifest, tenant boundary, secret placement, target-specific release and rollback before enabling its route. No Legacy server import, worker process or shared all-powerful credential may become a hidden dependency of ordinary Cloudflare Core or Chat paths.",
+        "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/section-01-build-boundary-20261110.md"
+        ],
+        "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
+      }
     }
   },
   "reconciliation": {
@@ -327,7 +426,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -336,7 +435,7 @@
     "unresolved": 16
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T01:43:33.649292Z",
+  "updated_at": "2026-11-10T02:00:49.692047Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

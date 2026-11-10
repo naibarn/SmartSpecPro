@@ -16,7 +16,7 @@ Replace the assumption that `/dashboard` is the new home with a fresh Modular ap
 | `REQ-48EFA6340760` actual legacy-data ownership mapping | 03 | Open | schema/authority audit before any chat write |
 | `REQ-AB16939A3F52` identity, domains and target separation | 01–05 | Open | shared identity contract and unchanged target evidence |
 | `REQ-38590D443AC3` single Core financial/job authority | 03, 05 | Open | no duplicate writer/ledger/job store |
-| `REQ-91CC7880E937` independent package/build model | 01, 04 | Open | per-package builds, no aggregate/root all build |
+| `REQ-91CC7880E937` cross-provider portability/idempotency | Deferred; no paid/provider side effects in this slice | Open | future distinct provider/commerce invocation evidence |
 | `REQ-C8D3AE2138BD` bounded modules, manifest, no Legacy runtime | 01–05 | Open | dependency/bundle report and source scan |
 | `REQ-34BA27C1BFAE` R1.6 Chat front door | 02, 04 | Open | login default `/chat`, no Legacy dashboard |
 | `REQ-8ACA3DD0FDD4` R1.6 independent package builds | 01–04 | Open | filtered builds and lazy versioned module assets |

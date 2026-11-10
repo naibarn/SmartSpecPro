@@ -1,28 +1,32 @@
 {
-  "generation": 5,
+  "generation": 8,
   "reconciliation_version": 3,
   "requirements": [
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L16"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L16",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Implement small reversible package releases; Shell and Chat code are scaffolds until login, chat, and target-health evidence pass.",
       "requirement_digest": "e4132619d068cb4403e647cb6b06cf141988778ef6b7aa76877987fb78129c15",
       "requirement_id": "REQ-4BB581C90577",
       "requirement_text": "Migration is a **series of small reversible module releases**. The original `apps/web` remains running on `smartaihub.app` while new sources are selectively copied into clean module packages, with dependency pruning, modern UI replacement where appropriate, actual Debian UAT and Cloudflare staging, then production availability. Core login/tenant/Shell minimum viable vertical slice SHALL be usable first; completion of all Core commerce/admin features is **not** a prerequisite for beginning independent module migration or human tests. “Partially migrated” does not mean feature removed or traffic blindly forwarded.",
       "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-01-build-boundary-20261110.md"
+      ],
+      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
     },
     {
       "applicability": "UNASSESSED",
@@ -267,26 +271,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L161",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Finish dependency isolation evidence after implementing the full Shell and Chat behavior; do not claim module stability from scaffolding.",
       "requirement_digest": "cb67953120f53072f24c4cf02a48684dbce0c51af34e8ebc4570d9ae5f71d2d4",
       "requirement_id": "REQ-C8D3AE2138BD",
       "requirement_text": "Migrate capabilities by bounded module, not by converting the whole Legacy application. Existing code, schemas, screens and UI assets are references only. Each new or reused module must document owner/provenance, permitted source inputs, data authority, capability manifest, tenant boundary, secret placement, target-specific release and rollback before enabling its route. No Legacy server import, worker process or shared all-powerful credential may become a hidden dependency of ordinary Cloudflare Core or Chat paths.",
       "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-01-build-boundary-20261110.md"
+      ],
+      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
     },
     {
       "applicability": "UNASSESSED",
@@ -311,26 +319,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171"
       ],
       "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "ebb264aa0151e97e9e463b7d4ca23290a48569db",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform@ebb264aa0151e97e9e463b7d4ca23290a48569db"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Implement functional Shell login and lazy Chat assets, then remeasure package-only builds after those features land.",
       "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
       "requirement_id": "REQ-8ACA3DD0FDD4",
       "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
       "source_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/section-01-build-boundary-20261110.md"
+      ],
+      "verification_method": "Run explicit package-filtered builds/tests and inspect output scope, Worker size, and forbidden Legacy/Express imports."
     },
     {
       "applicability": "UNASSESSED",
