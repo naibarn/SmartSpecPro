@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `51`
-- Updated (UTC): `2026-11-10T07:26:21.077567+00:00`
+- State generation: `53`
+- Updated (UTC): `2026-11-10T08:38:26.371063+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `5560f6bc77e238e8300461f07c6ad2e38d0fb34c`
+- Latest recorded merged Main SHA: `df3c33889e2b896724ed76e36fe3cecad177063b`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding.
+- Next action: Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-autoreview-video-speaker-fix | /mnt/SmartSpecDev/projects/SmartSpecPro | 017104a73197150ec21457733911e481661fb420 | 5560f6bc77e238e8300461f07c6ad2e38d0fb34c | Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding. |
+| section-03-proof-and-deployment | checkpointed | codex-autoreview-speaker-prompt-deploy | /mnt/SmartSpecDev/projects/SmartSpecPro | df3c33889e2b896724ed76e36fe3cecad177063b | df3c33889e2b896724ed76e36fe3cecad177063b | Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

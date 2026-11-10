@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding.",
-      "checkpoint_sha": "017104a73197150ec21457733911e481661fb420",
-      "merged_main_sha": "5560f6bc77e238e8300461f07c6ad2e38d0fb34c",
+      "next_action": "Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI.",
+      "checkpoint_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
+      "merged_main_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-autoreview-video-speaker-fix"
+      "session_id": "codex-autoreview-speaker-prompt-deploy"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 51,
-  "updated_at": "2026-11-10T07:26:21.077567+00:00",
+  "generation": 53,
+  "updated_at": "2026-11-10T08:38:26.371063+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed and verified legacy-debian-dev release generation 465 from 5560f6bc77e238e8300461f07c6ad2e38d0fb34c; web and Node worker are healthy and https://smartaihub.app returns 200. Regenerate the existing shot video prompts to apply the canonical dialogue and speaker-to-face bindings; provider-backed media generation and full browser UAT remain outstanding.",
-    "merged_main_sha": "5560f6bc77e238e8300461f07c6ad2e38d0fb34c",
+    "next_action": "Deployed generation 467 to legacy-debian-dev from df3c33889e2b896724ed76e36fe3cecad177063b; release status confirms current canonical and worker/runtime match. Video provider dispatch now waits for an accepted shot image, preventing checkpoint_not_ready retries/refunds. Existing run mar_670133124534765cf0d36d3637b6ee89 still needs a successful image artifact before video rendering; regenerate its prompts to refresh speaker visual maps, then validate image/video output through the UI.",
+    "merged_main_sha": "df3c33889e2b896724ed76e36fe3cecad177063b",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
       "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
