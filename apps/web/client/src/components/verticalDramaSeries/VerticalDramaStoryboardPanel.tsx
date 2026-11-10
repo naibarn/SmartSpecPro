@@ -1474,6 +1474,10 @@ interface VerticalDramaStoryboardPanelProps {
   productImages?: VerticalDramaAvailableProductImageView[];
   /** True while `listProductImages` is loading — shown inside the picker dialog. */
   productImagesLoading?: boolean;
+  /** True when `listProductImages` failed and the picker should offer a retry. */
+  productImagesError?: boolean;
+  retryProductImages?: () => void;
+  retryingProductImages?: boolean;
   /** Persist a shot's user-chosen product reference image URL(s) — sets
    *  `productReferenceAssetIds` (and `productRefsCustomized: true`, even for an
    *  explicit empty selection) via the free `updateEpisodeDraft` JSONB-patch
@@ -2407,6 +2411,9 @@ export function VerticalDramaStoryboardPanel({
   productTieInByShot = {},
   productImages = [],
   productImagesLoading = false,
+  productImagesError = false,
+  retryProductImages,
+  retryingProductImages = false,
   onSaveShotProductReferences,
   savingProductReferencesForShot = null,
   loading = false,
@@ -12065,6 +12072,9 @@ export function VerticalDramaStoryboardPanel({
           shotNumber={productImagePickerForShot}
           images={productImages}
           imagesLoading={productImagesLoading}
+          imagesError={productImagesError}
+          onRetryImages={retryProductImages}
+          retryingImages={retryingProductImages}
           selectedUrls={productImagePickerDraft}
           onToggle={url =>
             setProductImagePickerDraft(prev =>
@@ -16189,6 +16199,9 @@ function ProductImagePickerDialog({
   shotNumber: number;
   images: VerticalDramaAvailableProductImageView[];
   imagesLoading: boolean;
+  imagesError: boolean;
+  onRetryImages?: () => void;
+  retryingImages: boolean;
   selectedUrls: string[];
   onToggle: (url: string) => void;
   maxProductImages: number;
@@ -16241,6 +16254,29 @@ function ProductImagePickerDialog({
             <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
             {t(locale, "กำลังโหลดภาพ…", "Loading images…")}
           </div>
+        ) : imagesError ? (
+          <>
+            <p>
+              {t(
+                locale,
+                "โหลดรายการภาพสินค้าไม่สำเร็จ",
+                "Could not load product images"
+              )}
+            </p>
+            {onRetryImages ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onRetryImages}
+                disabled={retryingImages}
+              >
+                {retryingImages
+                  ? t(locale, "กำลังลองใหม่…", "Retrying…")
+                  : t(locale, "ลองโหลดรายการอีกครั้ง", "Retry loading images")}
+              </Button>
+            ) : null}
+          </>
         ) : images.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted-foreground">
             {t2.productImagePickerNoImages}
@@ -16280,6 +16316,12 @@ function ProductImagePickerDialog({
                       src={img.url}
                       alt={img.label ?? ""}
                       className="h-full w-full object-contain"
+                      errorLabel={t(
+                        locale,
+                        "โหลดภาพนี้ไม่สำเร็จ",
+                        "Image could not be loaded"
+                      )}
+                      retryLabel={t(locale, "ลองอีกครั้ง", "Retry")}
                     />
                     {selected ? (
                       <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">

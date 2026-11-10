@@ -568,6 +568,9 @@ export interface VerticalDramaStoryboardPanelData {
    *  reference upgrade) — see `VerticalDramaStoryboardPanel`'s prop of the same name. */
   productImages?: VerticalDramaAvailableProductImageView[];
   productImagesLoading?: boolean;
+  productImagesError?: boolean;
+  retryProductImages?: () => void;
+  retryingProductImages?: boolean;
   onSaveShotProductReferences?: (shotNumber: number, urls: string[]) => void;
   savingProductReferencesForShot?: number | null;
   onChangeCharacterReference?: (characterId: string) => void;
@@ -1802,6 +1805,9 @@ export function VerticalDramaEpisodeWorkspace({
           productTieInByShot={storyboardPanel?.productTieInByShot}
           productImages={storyboardPanel?.productImages}
           productImagesLoading={storyboardPanel?.productImagesLoading}
+          productImagesError={storyboardPanel?.productImagesError}
+          retryProductImages={storyboardPanel?.retryProductImages}
+          retryingProductImages={storyboardPanel?.retryingProductImages}
           onSaveShotProductReferences={
             storyboardPanel?.onSaveShotProductReferences
           }
@@ -2784,6 +2790,9 @@ export function VerticalDramaEpisodeWorkspace({
                         productImagesLoading={
                           storyboardPanel?.productImagesLoading
                         }
+                        productImagesError={storyboardPanel?.productImagesError}
+                        retryProductImages={storyboardPanel?.retryProductImages}
+                        retryingProductImages={storyboardPanel?.retryingProductImages}
                         onSaveShotProductReferences={
                           storyboardPanel?.onSaveShotProductReferences
                         }

@@ -10938,6 +10938,10 @@ function EpisodeWorkspaceShell({
             productImages: (productImagesQuery.data?.images ??
               []) as VerticalDramaAvailableProductImageView[],
             productImagesLoading: productImagesQuery.isLoading,
+            productImagesError:
+              productImagesQuery.isError && !productImagesQuery.data,
+            retryProductImages: () => void productImagesQuery.refetch(),
+            retryingProductImages: productImagesQuery.isFetching,
             onSaveShotProductReferences: handleSaveShotProductReferences,
             savingProductReferencesForShot,
             onChangeCharacterReference: characterId =>
