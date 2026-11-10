@@ -5,7 +5,9 @@
       "domain": "smartaihub.app",
       "environment": "development",
       "application": "legacy-smartspec",
-      "workspaceRepositories": ["smartspecpro"],
+      "workspaceRepositories": [
+        "smartspecpro"
+      ],
       "workspaceLabel": "SmartAIHub Legacy Development",
       "runtime": "debian-systemd",
       "buildMode": "production",
@@ -26,7 +28,9 @@
       "domain": "aimarkethubs.com",
       "environment": "development",
       "application": "smartsihub-modular-core",
-      "workspaceRepositories": ["github.com/naibarn/smartaihub-platform"],
+      "workspaceRepositories": [
+        "github.com/naibarn/smartaihub-platform"
+      ],
       "workspaceLabel": "SmartAIHub Modular Core",
       "specificationRange": "SPEC-312..SPEC-324",
       "runtime": "debian-systemd-with-local-workerd",
@@ -49,11 +53,11 @@
         "activeService": "smartsihub-shell-dev.service",
         "activePort": 3202,
         "tunnelService": "smartspec-dev-tunnel.service",
-        "rollbackConfig": "/home/dev/modular-development-releases/660867d205bcbc4ec52e0387ba9626b6cb23d06e/rollback/cloudflared.pre-modular.yml"
+        "rollbackConfig": "/home/dev/modular-development-releases/5148814925accf6ed7ec46dd11465ed11e30da1f-brand-update/rollback/cloudflared.pre-modular.yml"
       },
       "controller": "modular-debian-dev-release",
-      "currentRelease": "modular-debian-dev-660867d205bcbc4ec52e0387ba9626b6cb23d06e",
-      "releaseReceipt": "/home/dev/modular-development-releases/660867d205bcbc4ec52e0387ba9626b6cb23d06e/release-manifest.json",
+      "currentRelease": "modular-debian-dev-5148814925accf6ed7ec46dd11465ed11e30da1f-brand-update",
+      "releaseReceipt": "/home/dev/modular-development-releases/5148814925accf6ed7ec46dd11465ed11e30da1f-brand-update/release-manifest.json",
       "components": {
         "core": {
           "service": "smartsihub-core-dev.service",

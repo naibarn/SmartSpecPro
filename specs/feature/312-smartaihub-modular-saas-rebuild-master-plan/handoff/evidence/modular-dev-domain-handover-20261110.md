@@ -44,6 +44,25 @@ The deployment proves route, assets, host/session configuration and shared datab
 
 Chat persistence and model-provider configuration remain separate product gaps; the deployed UI reports their configured state rather than claiming those capabilities are live.
 
+## Subsequent Login UI release — 2026-11-10
+
+The current `modular-debian-dev` release supersedes the initial Shell screenshot and branding above. The development hostname remains `aimarkethubs.com`; `smartsihub.com` remains inactive.
+
+- Platform source SHA: `5148814925accf6ed7ec46dd11465ed11e30da1f`
+- Release: `/home/dev/modular-development-releases/5148814925accf6ed7ec46dd11465ed11e30da1f-brand-update`
+- Release receipt: `/home/dev/modular-development-releases/5148814925accf6ed7ec46dd11465ed11e30da1f-brand-update/release-manifest.json`
+- Visible product branding is `SmartSIHub` on Login, Shell Chat header, service status, and Chat module title; the Chat message timeline's assistant label uses the same brand.
+- Login has a Thai/English “แสดงรหัสผ่าน / ซ่อนรหัสผ่าน” (`Show password / Hide password`) secondary button beside the password field. Visibility is transient component state; the password is not persisted and is cleared when MFA is required.
+- Core, Shell, and Chat package builds plus Wrangler dry-runs passed on the exact integrated source revision.
+- Release-controller local smoke passed for Core, Chat, and Shell (200); unauthenticated Chat session remained 401; Chat manifest and entry asset returned 200.
+- Release-controller public smoke passed for `/`, `/login`, Chat health, and Chat module manifest (200); unauthenticated Chat session remained 401.
+- All three service units now point to this same immutable release. The public Chat module HTML title also returns `SmartSIHub Chat`.
+- Automated UI/unit tests were not run for this follow-up. No user was created and no password was changed; interactive login was not exercised.
+
+Public Login screenshot from the current release:
+
+![SmartSIHub Login with the show-password control](modular-login-password-toggle-20261110.png)
+
 ## Rollback
 
 The prior ingress configuration is preserved at:
