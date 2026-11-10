@@ -28,10 +28,10 @@
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Have the account owner retry sign-in at aimarkethubs.com with the existing smartaihubapp@gmail.com credentials and complete MFA. If login still fails, note the attempt time so Codex can inspect the safe rejection category in Core logs; do not send the password. Then verify canonical customer membership/data, matched same-database Legacy/Core p95, development/production isolation, and human UAT. Keep smartsihub.com inactive.",
+    "next_action": "Retry the saved-password sign-in at aimarkethubs.com and complete MFA. If it still fails, note the attempt time only; do not send credentials. Then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT. Keep smartsihub.com inactive.",
     "next_ready_workunit": "r19-pre-handover-acceptance",
     "reactivation_predicate": null,
-    "resume_point": "Deep Plan remains valid at 4/4 and all four Deep Implement sections are checkpointed. The final ten-pass review evidence remains historical. The expired session-JTI gap is now closed: SmartSpecPro main has migration 0418 at 712172880aab7d4994480236513b5fcc5b11b013; smartaihub-platform main has the bounded scheduled cleanup at a5e16406e1ab79d62c283ff03d6b83c895f6d34b; receipt is successful on modular-debian-dev, the local scheduled handler ran, and the dev expired-JTI count is zero. The remaining work is authorized existing-user login, customer-membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Direct Codex development was used; no SPEC-224 receipt or production change is claimed; the development deployment is now recorded in current evidence. Update 2026-11-10: aimarkethubs.com serves release modular-debian-dev-b35231155cc5d0542225c5089ac5d9cb6a2fa384-language-selector-right-align; Core, Chat, and Shell are active from that release, and the login language selector is visually right-aligned. Read-only metadata confirms smartaihubapp@gmail.com exists, is enabled, and has MFA; password acceptance and MFA completion remain unverified. No password reset or MFA bypass occurred. Update 2026-11-10: source f85520edeaa574844338448b4352712629f832dc is deployed as modular-debian-dev-f85520edeaa574844338448b4352712629f832dc-legacy-auth-bridge-fixed. Login, signup, forgot-password and email-verification pages return HTTP 200; a safe reset-code request to a nonexistent example.invalid address returned the generic success status. The 503 root cause was Workerd rejecting redirect:\"error\" before network access; redirect handling is now manual and non-2xx responses remain rejected. Core/Shell/Chat smoke is passing. Actual saved-password acceptance and MFA are still unverified; parent acceptance remains partial.",
+    "resume_point": "Deep Plan remains valid at 4/4 and all four Deep Implement sections are checkpointed. The final ten-pass review evidence remains historical. The expired session-JTI gap is now closed: SmartSpecPro main has migration 0418 at 712172880aab7d4994480236513b5fcc5b11b013; smartaihub-platform main has the bounded scheduled cleanup at a5e16406e1ab79d62c283ff03d6b83c895f6d34b; receipt is successful on modular-debian-dev, the local scheduled handler ran, and the dev expired-JTI count is zero. The remaining work is authorized existing-user login, customer-membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Direct Codex development was used; no SPEC-224 receipt or production change is claimed; the development deployment is now recorded in current evidence. Update 2026-11-10: aimarkethubs.com serves release modular-debian-dev-b35231155cc5d0542225c5089ac5d9cb6a2fa384-language-selector-right-align; Core, Chat, and Shell are active from that release, and the login language selector is visually right-aligned. Read-only metadata confirms smartaihubapp@gmail.com exists, is enabled, and has MFA; password acceptance and MFA completion remain unverified. No password reset or MFA bypass occurred. Update 2026-11-10: source f85520edeaa574844338448b4352712629f832dc is deployed as modular-debian-dev-f85520edeaa574844338448b4352712629f832dc-legacy-auth-bridge-fixed. Login, signup, forgot-password and email-verification pages return HTTP 200; a safe reset-code request to a nonexistent example.invalid address returned the generic success status. The 503 root cause was Workerd rejecting redirect:\"error\" before network access; redirect handling is now manual and non-2xx responses remain rejected. Core/Shell/Chat smoke is passing. Actual saved-password acceptance and MFA are still unverified; parent acceptance remains partial. Update 2026-11-10: the deployed login failure was caused by Workerd rejecting hash-wasm runtime WebAssembly compilation. Core now imports the precompiled bcrypt module at platform SHA cef2354c6110bf558a12fac4558546c0878c57c2; tests, Workerd verification, and modular-debian-dev local/public smoke passed. The real account password and MFA flow still require the owner retry; no credentials were read or changed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -46,10 +46,11 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md"
     ],
-    "next_action": "Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.",
-    "rationale": "The four-section Core identity slice remains implemented and integrated. The Modular development release is serving on aimarkethubs.com with Core, Chat, Shell, login, signup, forgot-password and email-verification routes healthy. The account-flow bridge now uses Workerd-supported manual redirect handling and its reset request was verified with a nonexistent test address. The account exists and is MFA-enabled, but the owner has not retried password login or completed MFA, so successful authentication remains unproven. Keep parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation and human UAT are evidenced. smartsihub.com production remains inactive.",
+    "next_action": "Have the account owner retry sign-in and complete MFA at aimarkethubs.com after the Worker bcrypt fix. If it fails, inspect only the safe rejection category using the attempt time. Continue customer membership/data, matched Legacy/Core performance, development/production isolation, and human UAT; keep smartsihub.com inactive.",
+    "rationale": "The Modular Core, Chat, and Shell are deployed and their local/public health checks pass. Existing account login was rejected because Workerd blocks runtime WebAssembly compilation in hash-wasm; the Worker now uses a statically imported precompiled bcrypt module. Core tests, typecheck, Worker build, Workerd synthetic verifier probe, and a safe post-deploy auth probe pass. Actual password acceptance and MFA completion remain unverified until the account owner retries. Keep parent acceptance partial while customer membership/data, matched Legacy/Core performance, environment isolation, and human UAT remain open. smartsihub.com production remains inactive.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -59,16 +60,17 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:f6371058c0e4bfa4f6ffd293ddcb0d38d922df8f6173fcf90f4cb90a1bfa0b8a",
+    "artifact_digest": "sha256:957cbcde432d183d3577d05fbcd4b85ccf4d5769339afd1ac1a5674db499faa4",
     "environment": "development: https://aimarkethubs.com (Debian systemd with local Workerd)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
       "handoff/evidence/modular-login-language-selector-right-align-20261110.png",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
-      "handoff/evidence/modular-login-final-20261110.png"
+      "handoff/evidence/modular-login-final-20261110.png",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md"
     ],
     "required": false,
-    "source_sha": "f85520edeaa574844338448b4352712629f832dc",
+    "source_sha": "cef2354c6110bf558a12fac4558546c0878c57c2",
     "status": "PASS"
   },
   "disposition": {
@@ -87,7 +89,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 32,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -178,10 +180,11 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md"
       ],
-      "next_action": "Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.",
-      "rationale": "The four-section Core identity slice remains implemented and integrated. The Modular development release is serving on aimarkethubs.com with Core, Chat, Shell, login, signup, forgot-password and email-verification routes healthy. The account-flow bridge now uses Workerd-supported manual redirect handling and its reset request was verified with a nonexistent test address. The account exists and is MFA-enabled, but the owner has not retried password login or completed MFA, so successful authentication remains unproven. Keep parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation and human UAT are evidenced. smartsihub.com production remains inactive.",
+      "next_action": "Have the account owner retry sign-in and complete MFA at aimarkethubs.com after the Worker bcrypt fix. If it fails, inspect only the safe rejection category using the attempt time. Continue customer membership/data, matched Legacy/Core performance, development/production isolation, and human UAT; keep smartsihub.com inactive.",
+      "rationale": "The Modular Core, Chat, and Shell are deployed and their local/public health checks pass. Existing account login was rejected because Workerd blocks runtime WebAssembly compilation in hash-wasm; the Worker now uses a statically imported precompiled bcrypt module. Core tests, typecheck, Worker build, Workerd synthetic verifier probe, and a safe post-deploy auth probe pass. Actual password acceptance and MFA completion remain unverified until the account owner retries. Keep parent acceptance partial while customer membership/data, matched Legacy/Core performance, environment isolation, and human UAT remain open. smartsihub.com production remains inactive.",
       "residual_requirements": []
     },
     "disposition": {
@@ -353,7 +356,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T09:02:03.658127Z",
+  "updated_at": "2026-11-10T12:45:05.781844Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

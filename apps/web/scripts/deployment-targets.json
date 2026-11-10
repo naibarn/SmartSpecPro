@@ -53,11 +53,11 @@
         "activeService": "smartsihub-shell-dev.service",
         "activePort": 3202,
         "tunnelService": "smartspec-dev-tunnel.service",
-        "rollbackConfig": "/home/dev/modular-development-releases/modular-debian-dev-f85520edeaa574844338448b4352712629f832dc-legacy-auth-bridge-fixed/rollback/cloudflared.pre-modular.yml"
+        "rollbackConfig": "/home/dev/modular-development-releases/modular-debian-dev-cef2354c6110bf558a12fac4558546c0878c57c2-worker-bcrypt-precompiled/rollback/cloudflared.pre-modular.yml"
       },
       "controller": "modular-debian-dev-release",
-      "currentRelease": "modular-debian-dev-f85520edeaa574844338448b4352712629f832dc-legacy-auth-bridge-fixed",
-      "releaseReceipt": "/home/dev/modular-development-releases/modular-debian-dev-f85520edeaa574844338448b4352712629f832dc-legacy-auth-bridge-fixed/release-manifest.json",
+      "currentRelease": "modular-debian-dev-cef2354c6110bf558a12fac4558546c0878c57c2-worker-bcrypt-precompiled",
+      "releaseReceipt": "/home/dev/modular-development-releases/modular-debian-dev-cef2354c6110bf558a12fac4558546c0878c57c2-worker-bcrypt-precompiled/release-manifest.json",
       "components": {
         "core": {
           "service": "smartsihub-core-dev.service",

@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Continue pre-handover acceptance: have the account owner retry saved-password sign-in and MFA at aimarkethubs.com. If rejected, inspect the safe Core rejection category without receiving or logging credentials; then verify customer membership/data, matched same-database performance, development/production isolation, and human UAT.
-- Manifest generation: 32
+- Next action: Have the account owner retry sign-in and complete MFA at aimarkethubs.com after the Worker bcrypt fix. If it fails, inspect only the safe rejection category using the attempt time. Continue customer membership/data, matched Legacy/Core performance, development/production isolation, and human UAT; keep smartsihub.com inactive.
+- Manifest generation: 33
 
 ## Source-declared status and relationship claims
 
