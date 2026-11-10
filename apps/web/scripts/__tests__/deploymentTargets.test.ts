@@ -22,7 +22,7 @@ describe("deployment targets", () => {
       applicationAvailable: true,
       deployable: true,
       controller: "modular-debian-dev-release",
-      currentRelease: "modular-debian-dev-4349529142843d42a78b8e961a5e4e863efcf676-language-selector-accent",
+      currentRelease: "modular-debian-dev-b35231155cc5d0542225c5089ac5d9cb6a2fa384-language-selector-right-align",
     });
     expect(resolveDeploymentTarget("modular-cloudflare-prod")).toMatchObject({
       domain: "smartsihub.com",
