@@ -1551,7 +1551,6 @@ export function StagedCheckpointReviewPanel(props: {
   const isShotPromptPipelineBusy = (shotId: number) =>
     props.state?.workerOperations?.some(job => {
       if (!activeWorkerStatuses.includes(job.status)) return false;
-      if (job.operation === "advance_run") return true;
       if (
         job.operation === "staged_prompt_generation" ||
         job.operation === "sequential_shot_prompt_generation"
@@ -3332,11 +3331,10 @@ export function StagedCheckpointReviewPanel(props: {
                 props.state?.workerOperations?.find(
                   job =>
                     activeWorkerStatuses.includes(job.status) &&
-                    (job.operation === "advance_run" ||
-                      ((job.operation === "staged_prompt_generation" ||
-                        job.operation ===
-                          "sequential_shot_prompt_generation") &&
-                        job.shotId === shot.shotId) ||
+                    (((job.operation === "staged_prompt_generation" ||
+                      job.operation ===
+                        "sequential_shot_prompt_generation") &&
+                      job.shotId === shot.shotId) ||
                       (job.operation === "staged_bulk_generation" &&
                         job.targetShotIds?.includes(shot.shotId) === true))
                 ) ?? null;

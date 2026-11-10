@@ -411,6 +411,38 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 
+  it("keeps a shot's approved image prompt dispatchable while the run-level advance worker is queued", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "approved", redraftCount: 0 },
+      checkpoints: [{ ...baseCheckpoint, state: "approved" }],
+      workerOperations: [
+        {
+          jobId: "advance-run-1",
+          operation: "advance_run",
+          status: "queued",
+          progress: 0,
+        },
+      ],
+    };
+
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const dispatch = screen.getByRole("button", {
+      name: "สร้างภาพช็อตที่ 1",
+    });
+    expect(dispatch).not.toBeDisabled();
+    fireEvent.click(dispatch);
+    expect(input.onRetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotId: 1,
+        stage: "image",
+        autoApprove: true,
+      })
+    );
+  });
+
   it("shows image prompt generation progress while its worker is running", () => {
     const input = props();
     input.state = {
