@@ -621,6 +621,39 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 
+  it("lets users queue prompt repair while that shot's image or video is rendering", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          imageTaskStatus: "processing",
+          videoTaskStatus: "processing",
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const imagePromptButton = screen.getByRole("button", {
+      name: "สร้าง Prompt ภาพช็อตที่ 1",
+    });
+    const videoPromptButton = screen.getByRole("button", {
+      name: "สร้าง Prompt วิดีโอช็อตที่ 1",
+    });
+    expect(imagePromptButton).not.toBeDisabled();
+    expect(videoPromptButton).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
+    ).toBeDisabled();
+
+    clickAndConfirmGeneration(videoPromptButton);
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+      shotId: 1,
+      stage: "video",
+    });
+  });
+
   it("allows editing the rejected image prompt for its shot and dispatch-only generation (onRetry, current prompt) for it", () => {
     const input = props();
     input.state = {

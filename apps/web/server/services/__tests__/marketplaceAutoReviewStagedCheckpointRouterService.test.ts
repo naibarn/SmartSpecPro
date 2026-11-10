@@ -10,6 +10,7 @@ import {
   buildStagedShotPromptContextDigestForTest,
   classifyStagedDemonstrationTypeForTest,
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
+  assertStagedShotMediaSettledBeforePromptApply,
   assertStagedStoryPlanApprovedForTest,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
 import { buildSequentialSingleShotRefreshContractForTest } from "../productReviewSequentialStoryboardSkillRunner";
@@ -110,6 +111,39 @@ function fixture(input: {
   };
   return { run: run as any, metadata: metadata as any };
 }
+
+describe("staged prompt repair media dependency", () => {
+  it.each(["pending", "processing", "submitted"])(
+    "marks prompt application retryable while shot media is %s",
+    status => {
+      try {
+        assertStagedShotMediaSettledBeforePromptApply(
+          { tasks: { "video:1": { status } } },
+          1
+        );
+        throw new Error("expected active media task to defer prompt apply");
+      } catch (error) {
+        expect(error).toMatchObject({
+          name: "StagedMediaTaskInFlightError",
+          class: "retryable",
+          diagnosticCode: "staged_media_task_in_flight",
+        });
+      }
+    }
+  );
+
+  it.each(["completed", "failed", "cancelled"])(
+    "allows prompt application after media is %s",
+    status => {
+      expect(() =>
+        assertStagedShotMediaSettledBeforePromptApply(
+          { tasks: { "video:1": { status } } },
+          1
+        )
+      ).not.toThrow();
+    }
+  );
+});
 
 describe("staged media dispatch story approval gate", () => {
   it("rejects an awaiting current story checkpoint even if the legacy summary says approved", () => {
@@ -285,6 +319,31 @@ describe("buildStagedSingleShotRefreshInput — staged single-shot regenerate co
         shotId: 1,
       })
     ).not.toBe(originalDigest);
+  });
+
+  it("keeps a queued video prompt valid when its awaited image render completes", () => {
+    const plan = planFixture();
+    const { run, metadata } = fixture({ plan });
+    const originalDigest = buildStagedShotPromptContextDigestForTest({
+      run,
+      metadata,
+      shotId: 1,
+      stage: "video",
+    });
+    const imageRenderCompleted = JSON.parse(JSON.stringify(metadata));
+    imageRenderCompleted.stagedSequentialStoryboard.shots[0].imageArtifactUrl =
+      "https://example.test/shots/shot-1-approved.png";
+    imageRenderCompleted.stagedSequentialStoryboard.shots[0].imageArtifactHash =
+      "approved-image-hash";
+
+    expect(
+      buildStagedShotPromptContextDigestForTest({
+        run,
+        metadata: imageRenderCompleted,
+        shotId: 1,
+        stage: "video",
+      })
+    ).toBe(originalDigest);
   });
 
   it("selects problem_solution for a shot with problem/defect dialogue and usage_demo for a neutral shot", () => {

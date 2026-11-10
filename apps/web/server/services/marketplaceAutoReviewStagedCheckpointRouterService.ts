@@ -405,6 +405,34 @@ function stagedTaskStatus(
   return status || null;
 }
 
+class StagedMediaTaskInFlightError extends Error {
+  readonly class = "retryable" as const;
+  readonly diagnosticCode = "staged_media_task_in_flight";
+
+  constructor() {
+    super("Waiting for the current shot media task to finish");
+    this.name = "StagedMediaTaskInFlightError";
+  }
+}
+
+/**
+ * Keep prompt jobs durable while a render for the same shot is active. Applying
+ * a replacement prompt clears that shot's media task/artifact references, so
+ * the worker retries this check after the current render settles instead of
+ * racing it or failing the user's queued request.
+ */
+export function assertStagedShotMediaSettledBeforePromptApply(
+  stagedPipeline: Record<string, any> | null | undefined,
+  shotId: number
+) {
+  const hasActiveTask = [`image:${shotId}`, `video:${shotId}`].some(key =>
+    ["pending", "processing", "submitted"].includes(
+      stagedTaskStatus(stagedPipeline, key) ?? ""
+    )
+  );
+  if (hasActiveTask) throw new StagedMediaTaskInFlightError();
+}
+
 function operationFromWorkerJob(
   job: { id: string; inputJson: Record<string, unknown> },
   fallback: StagedCheckpointRun
@@ -1163,7 +1191,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
         stagedTaskStatus(record((metadata as any).stagedPipeline), key) ?? ""
       )
     );
-    if (hasTaskInFlight) {
+    if (hasTaskInFlight && !target.promptOnly) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "staged_media_task_in_flight",
@@ -1275,6 +1303,14 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   }
 
   const promptByShot = new Map<number, string>();
+  // Bulk prompt repair is admitted while renders run. Defer the entire prompt
+  // batch before making any LLM calls so a retry never pays twice for targets
+  // processed earlier in the same batch.
+  for (const target of input.targets) {
+    if (target.promptOnly) {
+      assertStagedShotMediaSettledBeforePromptApply(stagedPipeline, target.shotId);
+    }
+  }
   for (const target of input.targets) {
     const shot = metadata.stagedSequentialStoryboard.shots.find(
       item => item.shotId === target.shotId
@@ -1294,9 +1330,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
         stagedTaskStatus(stagedPipeline, key) ?? ""
       )
     );
-    if (hasTaskInFlight) {
-      continue;
-    }
+    if (hasTaskInFlight) continue;
     if (
       target.stage === "image" &&
       !target.refreshPrompt &&
@@ -2205,11 +2239,23 @@ function buildStagedShotPromptContextDigest(input: {
       ([key]) => key !== "publicUrl" && key !== "skillVisionUrls"
     )
   );
+  // A video prompt queued during image rendering should be drafted against the
+  // accepted image that exists when its worker runs. The image artifact is a
+  // downstream result, not an authored story input, so it must not invalidate
+  // this queued request when the render settles.
+  const stableContext = {
+    ...context,
+    referenceManifest: Array.isArray(context.referenceManifest)
+      ? (context.referenceManifest as Array<Record<string, unknown>>).filter(
+          entry => entry.role !== "approved_shot_image"
+        )
+      : context.referenceManifest,
+  };
   const targetShot = input.metadata.stagedSequentialStoryboard.shots.find(
     shot => shot.shotId === input.shotId
   );
   return buildProductionStableHash({
-    ...context,
+    ...stableContext,
     targetShotRevision: targetShot?.revision ?? null,
   });
 }
@@ -2417,21 +2463,12 @@ export async function generateStagedAutoReviewShotPrompt(input: {
       message: "checkpoint_not_editable",
     });
   }
-  const taskKeys =
-    input.stage === "image"
-      ? [`image:${input.shotId}`, `video:${input.shotId}`]
-      : [`image:${input.shotId}`, `video:${input.shotId}`];
   const stagedPipeline = record((metadata as any).stagedPipeline);
-  const mediaTaskInFlight = taskKeys.some(taskKey =>
-    ["pending", "processing", "submitted"].includes(
-      stagedTaskStatus(stagedPipeline, taskKey) ?? ""
-    )
-  );
-  if (mediaTaskInFlight) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "staged_media_task_in_flight",
-    });
+  if (input.workerExecution) {
+    assertStagedShotMediaSettledBeforePromptApply(
+      stagedPipeline,
+      input.shotId
+    );
   }
 
   if (!input.workerExecution) {

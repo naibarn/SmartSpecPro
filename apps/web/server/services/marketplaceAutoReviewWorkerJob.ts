@@ -166,6 +166,10 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
     throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_RUN_MISMATCH");
   }
   const idempotencyKey = canonicalIdempotencyKey(input.idempotencyKey);
+  const waitsForShotMedia =
+    operation.operation === "staged_prompt_generation" ||
+    (operation.operation === "staged_bulk_generation" &&
+      operation.targets.some(target => target.promptOnly === true));
   return {
     definition: {
       tenantId: input.tenantId,
@@ -177,9 +181,12 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
       input: operation as unknown as Record<string, unknown>,
       idempotencyKey,
       retryPolicy: {
-        maxAttempts: 3,
-        baseDelayMs: 5_000,
-        maxDelayMs: 5 * 60_000,
+        // Prompt repair can be queued while the previous render completes.
+        // Retries are short, bounded metadata checks; no provider work starts
+        // until the shot's media task is settled.
+        maxAttempts: waitsForShotMedia ? 60 : 3,
+        baseDelayMs: waitsForShotMedia ? 10_000 : 5_000,
+        maxDelayMs: waitsForShotMedia ? 60_000 : 5 * 60_000,
         jitter: "bounded" as const,
         deadlineMs: 6 * 60 * 60_000,
         allowedErrorClasses: ["retryable", "timeout", "unavailable"],

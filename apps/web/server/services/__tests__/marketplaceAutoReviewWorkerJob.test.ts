@@ -50,6 +50,34 @@ describe("Marketplace Auto Review worker job admission", () => {
       expectedStateDigest: "state-digest-1",
       requestIdempotencyKey: "request-image-prompt-1",
     });
+    expect(definition.retryPolicy).toMatchObject({
+      maxAttempts: 60,
+      baseDelayMs: 10_000,
+      maxDelayMs: 60_000,
+    });
+    expect(() => validateJobDefinition(definition)).not.toThrow();
+  });
+
+  it("gives queued bulk prompt-only repair enough retries to wait for active renders", async () => {
+    await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      runId: "run-auto-review-bulk-prompt",
+      idempotencyKey: "request-video-prompt-bulk-1",
+      operation: {
+        operation: "staged_bulk_generation",
+        runId: "run-auto-review-bulk-prompt",
+        expectedStateDigest: "state-digest-1",
+        requestIdempotencyKey: "request-video-prompt-bulk-1",
+        targets: [
+          { shotId: 1, stage: "video", promptOnly: true, refreshPrompt: true },
+          { shotId: 2, stage: "video", promptOnly: true, refreshPrompt: true },
+        ],
+      },
+    });
+
+    const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
+    expect(definition.retryPolicy.maxAttempts).toBe(60);
     expect(() => validateJobDefinition(definition)).not.toThrow();
   });
 

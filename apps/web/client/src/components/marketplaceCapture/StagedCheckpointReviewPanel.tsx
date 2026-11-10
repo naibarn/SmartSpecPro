@@ -4094,21 +4094,18 @@ export function StagedCheckpointReviewPanel(props: {
                             }),
                           "rounded border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800",
                           {
-                            disabled:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus) ||
-                              isShotPromptPipelineBusy(shot.shotId),
+                            // Prompt authoring is independent of an already
+                            // running image/video render. The worker waits
+                            // for that media task to settle before applying
+                            // the new prompt, so users can queue repairs now.
+                            disabled: isShotPromptPipelineBusy(shot.shotId),
                             confirmation: {
                               title: `ยืนยันสร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
                               description: `ระบบจะส่งการสร้าง Prompt ภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
                             },
-                            title:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus)
-                                ? "รอให้งานสร้างสื่อของช็อตนี้เสร็จก่อน"
-                                : isShotPromptPipelineBusy(shot.shotId)
-                                  ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
-                                : undefined,
+                            title: isShotPromptPipelineBusy(shot.shotId)
+                              ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
+                              : undefined,
                           }
                         )}
                         {/* Step 2/3 — same AI-instruction dialog as before
@@ -4126,10 +4123,7 @@ export function StagedCheckpointReviewPanel(props: {
                           },
                           "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800",
                           {
-                            disabled:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus) ||
-                              isShotPromptPipelineBusy(shot.shotId),
+                            disabled: isShotPromptPipelineBusy(shot.shotId),
                           }
                         )}
                         {/* Dispatch the saved prompt through the dedicated
@@ -4229,10 +4223,7 @@ export function StagedCheckpointReviewPanel(props: {
                             }),
                           "rounded border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800",
                           {
-                            disabled:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus) ||
-                              isShotPromptPipelineBusy(shot.shotId),
+                            disabled: isShotPromptPipelineBusy(shot.shotId),
                             confirmation: {
                               title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
                               description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
@@ -4260,10 +4251,7 @@ export function StagedCheckpointReviewPanel(props: {
                           },
                           "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800",
                           {
-                            disabled:
-                              isTaskInFlight(shot.imageTaskStatus) ||
-                              isTaskInFlight(shot.videoTaskStatus) ||
-                              isShotPromptPipelineBusy(shot.shotId),
+                            disabled: isShotPromptPipelineBusy(shot.shotId),
                           }
                         )}
                         {/* Step 3/3 — dispatch-only, same shape as the image
