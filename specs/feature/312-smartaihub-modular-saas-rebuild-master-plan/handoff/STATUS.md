@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
-- Next action: Have the account owner retry sign-in and complete MFA at aimarkethubs.com after the Worker bcrypt fix. If it fails, inspect only the safe rejection category using the attempt time. Continue customer membership/data, matched Legacy/Core performance, development/production isolation, and human UAT; keep smartsihub.com inactive.
-- Manifest generation: 33
+- Next action: Hard-refresh /chat while signed in and verify Retry plus desktop/tablet/mobile layout; then continue customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Keep smartsihub.com inactive.
+- Manifest generation: 34
 
 ## Source-declared status and relationship claims
 
