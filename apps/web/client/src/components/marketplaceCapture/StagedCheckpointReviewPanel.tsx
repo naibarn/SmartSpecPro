@@ -3027,15 +3027,17 @@ export function StagedCheckpointReviewPanel(props: {
               />
             </label>
             {storyCheckpoint?.state === "awaiting" ? (
-              <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3.5 shadow-2xs">
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3.5 shadow-2xs">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold text-emerald-900">
-                      ✨ เนื้อเรื่องย่อและ {expectedFinalShotCount}{" "}
-                      ช็อตพร้อมใช้งานแล้ว
+                    <p className="text-xs font-bold text-amber-900">
+                      ✨ เนื้อเรื่องฉบับที่ {storyCheckpoint.revision} รอยืนยัน
                     </p>
-                    <p className="mt-0.5 text-xs text-emerald-700">
-                      กดยืนยันเพื่ออนุมัติเนื้อเรื่องและเริ่มสร้าง Prompt ภาพของทุกช็อตได้เลย การตรวจ QC เป็นทางเลือกและข้ามได้
+                    <p className="mt-0.5 text-xs text-amber-800">
+                      {imagePromptShotsCompleted > 0
+                        ? `มี Prompt ภาพแล้ว ${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต ระบบเก็บ Prompt ที่มีไว้ให้ การยืนยันนี้อนุมัติเนื้อเรื่องฉบับล่าสุดเพื่อทำงานต่อ`
+                        : `กดยืนยันเพื่ออนุมัติเนื้อเรื่องฉบับนี้และเริ่มสร้าง Prompt ภาพของทุกช็อตได้เลย`}{" "}
+                      การตรวจ QC เป็นทางเลือกและข้ามได้
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
@@ -3055,7 +3057,9 @@ export function StagedCheckpointReviewPanel(props: {
                     </span>
                     {action(
                       "approve-story",
-                      "✅ ยืนยันเนื้อเรื่อง (เริ่มสร้าง Prompt ภาพ)",
+                      imagePromptShotsCompleted > 0
+                        ? "✅ ยืนยันเนื้อเรื่องฉบับล่าสุด"
+                        : "✅ ยืนยันเนื้อเรื่อง (เริ่มสร้าง Prompt ภาพ)",
                       () =>
                         props.onApprove({
                           checkpoint: storyCheckpoint,

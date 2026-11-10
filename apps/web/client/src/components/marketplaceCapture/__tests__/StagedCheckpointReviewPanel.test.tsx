@@ -628,6 +628,46 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onRetry).not.toHaveBeenCalled();
   });
 
+  it("explains that existing image prompts remain when a newer story revision awaits confirmation", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planRevision: 2,
+      planReview: { status: "approved", redraftCount: 0 },
+      checkpoints: [
+        {
+          ...baseCheckpoint,
+          kind: "story_plan",
+          shotId: null,
+          checkpointId: "story:run-1:r2",
+          state: "awaiting",
+          revision: 2,
+          estimatedCredits: 0,
+        },
+        { ...baseCheckpoint, state: "approved", consumed: true },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByText("✨ เนื้อเรื่องฉบับที่ 2 รอยืนยัน")).toBeTruthy();
+    expect(
+      screen.getByText(/มี Prompt ภาพแล้ว 1\/1 ช็อต ระบบเก็บ Prompt ที่มีไว้/)
+    ).toBeTruthy();
+    const confirm = screen.getByRole("button", {
+      name: "✅ ยืนยันเนื้อเรื่องฉบับล่าสุด",
+    });
+    fireEvent.click(confirm);
+    expect(input.onApprove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkpoint: expect.objectContaining({
+          checkpointId: "story:run-1:r2",
+          revision: 2,
+          state: "awaiting",
+        }),
+      })
+    );
+  });
+
   it("dispatches the video generation (onRetry, current prompt) when the video prompt was rejected", () => {
     const input = props();
     input.state = {

@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `38`
-- Updated (UTC): `2026-11-09T18:31:48.990228+00:00`
+- State generation: `40`
+- Updated (UTC): `2026-11-10T01:39:16.686542+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `151243a2f20bb6b75e1e2a0f28cc6e3de8d75cfa`
+- Latest recorded merged Main SHA: `a1cfc7b1a217e05ead850565e1a3afdb4e4837d1`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Deployed and verified source 151243a2f20bb6b75e1e2a0f28cc6e3de8d75cfa at legacy-debian-dev generation 455; optional provider-backed smoke remains for user acceptance.
+- Next action: The live run confirms that prior prompts were generated, then Shot 2 edit created story revision 3 awaiting re-confirmation. UI now labels the latest awaiting revision and preserves/counts existing prompts; focused test passed. Integrate the two owned UI paths, deploy to legacy-debian-dev, and verify runtime health and assets.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-autoreview-finalize | /mnt/SmartSpecDev/projects/SmartSpecPro | 151243a2f20bb6b75e1e2a0f28cc6e3de8d75cfa | 151243a2f20bb6b75e1e2a0f28cc6e3de8d75cfa | Deployed and verified source 151243a2f20bb6b75e1e2a0f28cc6e3de8d75cfa at legacy-debian-dev generation 455; optional provider-backed smoke remains for user acceptance. |
+| section-03-proof-and-deployment | checkpointed | codex-autoreview-finalize | /mnt/SmartSpecDev/projects/SmartSpecPro | a1cfc7b1a217e05ead850565e1a3afdb4e4837d1 | a1cfc7b1a217e05ead850565e1a3afdb4e4837d1 | The live run confirms that prior prompts were generated, then Shot 2 edit created story revision 3 awaiting re-confirmation. UI now labels the latest awaiting revision and preserves/counts existing prompts; focused test passed. Integrate the two owned UI paths, deploy to legacy-debian-dev, and verify runtime health and assets. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
