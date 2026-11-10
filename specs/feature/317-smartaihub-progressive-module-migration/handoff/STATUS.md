@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 13 unresolved of 13
+- Requirements: 0 pass / 16 unresolved of 16
 - Next action: Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.
-- Manifest generation: 4
+- Manifest generation: 6
 
 ## Source-declared status and relationship claims
 

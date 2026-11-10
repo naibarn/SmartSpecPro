@@ -1,0 +1,2 @@
+{"generation": 1, "at": "2026-11-10T01:44:20.059604+00:00", "reason": "config_save", "active_section": null, "merged_main_sha": null, "next_action": null, "open_gap_count": 0}
+{"generation": 2, "at": "2026-11-10T01:44:40.336101+00:00", "reason": "section:section-01-package-boundaries-and-builds", "active_section": "section-01-package-boundaries-and-builds", "merged_main_sha": null, "next_action": "Implement independently filterable Core, Shell, Chat packages in smartaihub-platform; remove the root aggregate build and validate package-only outputs.", "open_gap_count": 0}

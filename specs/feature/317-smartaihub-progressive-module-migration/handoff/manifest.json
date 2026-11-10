@@ -25,7 +25,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29"
+    "expected_spec_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4"
   },
   "continuation": {
     "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
@@ -75,18 +75,18 @@
     "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 4,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-    "digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+    "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-02T01:43:56.565808Z",
+      "last_evidence_at": "2026-11-10T01:43:33.649292Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.5",
+    "revision": "1.6",
     "slug": "317-smartaihub-progressive-module-migration",
     "spec_id": "317",
     "title": "SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover"
@@ -183,12 +183,52 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-02T01:43:56.565808Z",
+    "reconciled_at": "2026-11-10T01:43:33.649292Z",
     "sources": [
       {
-        "digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+        "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+      },
+      {
+        "digest": "4c46abcac4f430bd1ed86f4fb82c7f45b4f178e941417c29ed364fe85b86eab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-plan.md"
+      },
+      {
+        "digest": "b790887848bcc234766ae3a94de76b554102073a01e6a39eaeef49c6fbce7725",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-spec.md"
+      },
+      {
+        "digest": "2dc290e1bb49ff0e1a3cca2b0f0a3e1eb6800421a4fc2c97358dfb3c498fe395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/index.md"
+      },
+      {
+        "digest": "aa262ae31ea8b6598b2d3e2348db9a049a612139bf48e4e3974d23fbc83dc302",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-01-package-boundaries-and-builds.md"
+      },
+      {
+        "digest": "ac0ecbee52cae07b718e7de68906693de1bfb7138202b8822c9459836103359c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-02-react-shell-login-and-routing.md"
+      },
+      {
+        "digest": "4543ab025d9f643f89d120190305a31ecd4e8a6565267c9d1df5bbe4d59cb7c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-03-chat-worker-auth-data-and-provider-contract.md"
+      },
+      {
+        "digest": "3c789687569d6062ba819f078e4df75a086b21295d1094173b34b442ebc9ecfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-04-chat-independent-ui-and-artifacts.md"
+      },
+      {
+        "digest": "bd47a98c2908217076615929d784546ad59058555036d4d3cf22f777c479412f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-05-browser-pilot-and-runtime-proof.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -198,7 +238,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-        "source_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+        "source_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -229,16 +269,56 @@
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-        "source_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+        "source_digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+        "digest": "9776611ad8a6abf08546518ede17d55e03e438ca14e520f17e88cfe87adc11b4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+      },
+      {
+        "digest": "4c46abcac4f430bd1ed86f4fb82c7f45b4f178e941417c29ed364fe85b86eab0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-plan.md"
+      },
+      {
+        "digest": "b790887848bcc234766ae3a94de76b554102073a01e6a39eaeef49c6fbce7725",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-spec.md"
+      },
+      {
+        "digest": "2dc290e1bb49ff0e1a3cca2b0f0a3e1eb6800421a4fc2c97358dfb3c498fe395",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/index.md"
+      },
+      {
+        "digest": "aa262ae31ea8b6598b2d3e2348db9a049a612139bf48e4e3974d23fbc83dc302",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-01-package-boundaries-and-builds.md"
+      },
+      {
+        "digest": "ac0ecbee52cae07b718e7de68906693de1bfb7138202b8822c9459836103359c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-02-react-shell-login-and-routing.md"
+      },
+      {
+        "digest": "4543ab025d9f643f89d120190305a31ecd4e8a6565267c9d1df5bbe4d59cb7c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-03-chat-worker-auth-data-and-provider-contract.md"
+      },
+      {
+        "digest": "3c789687569d6062ba819f078e4df75a086b21295d1094173b34b442ebc9ecfc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-04-chat-independent-ui-and-artifacts.md"
+      },
+      {
+        "digest": "bd47a98c2908217076615929d784546ad59058555036d4d3cf22f777c479412f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-05-browser-pilot-and-runtime-proof.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -252,11 +332,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 13,
-    "unresolved": 13
+    "total": 16,
+    "unresolved": 16
   },
   "schema_version": 1,
-  "updated_at": "2026-11-02T01:43:56.565808Z",
+  "updated_at": "2026-11-10T01:43:33.649292Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

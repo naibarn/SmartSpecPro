@@ -1,15 +1,15 @@
 ---
 spec_id: 317
 semantic_id: smartaihub.progressive-modular-migration
-revision: R1.5
-date: 2026-11-02
+revision: R1.6
+date: 2026-11-10
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover
 ---
 
 # SPEC-317 — Progressive Module Migration and Independent Legacy Retirement
 
-> **Current-revision note (R1.5, 2026-11-02):** Earlier proposal text is retained for provenance. If R0.x–R1.4 migration sequencing, deployment, runtime, database, or always-on assertions conflict with the final R1.5 section or current owner-decision register, R1.5 controls.
+> **Current-revision note (R1.6, 2026-11-10):** Earlier proposal text is retained for provenance. R1.6 controls the Chat-first front door and independently built package boundary. For other migration, deployment, runtime, database, and always-on conflicts, R1.5 and the current owner-decision register control.
 
 ## 0. Decision
 
@@ -163,3 +163,13 @@ Migrate capabilities by bounded module, not by converting the whole Legacy appli
 A module may be developed and accepted while unrelated Legacy repair or migration continues. Existing smartaihub.app remains available to Legacy users; it is an optional development command surface when the particular Goal path is proven. New-platform authority handover is per Goal and single-owner: observe, transfer at a durable checkpoint, verify and retain rollback evidence without dual dispatch. Security acceptance is specific to each migrated route. See SPEC-325 for the common isolation and prompt-injection controls.
 
 An existing Runner installation or pairing is a reference/integration candidate, not automatically trusted by the new product. Do not copy Legacy device keys, bearer tokens, local grants or browser sessions. Re-enrollment uses the SPEC-325 device trust flow and the new environment key hierarchy.
+
+## R1.6 — Chat front door and independently built product modules (2026-11-10)
+
+The new authenticated SaaS experience SHALL open directly to the new Chat workspace. After login, `/` SHALL resolve to `/chat`; the new application SHALL NOT expose or reuse the Legacy dashboard as its home screen. A request to `/dashboard` within the new application resolves to `/chat`. This route behavior applies only to the new Modular application; it does not authorize changing the currently serving `aimarkethubs.com` application before its replacement is healthy and a handover is intentional.
+
+Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.
+
+The Shell resolves first-party modules using versioned manifests and content-hashed assets. It lazy-loads the Chat route from the Chat artifact and keeps module API calls on their scoped Worker routes. No first-party module imports another module's implementation, Legacy runtime source, Express, or a broad shared database schema. Preserve the existing PostgreSQL `smartspec` identity and data authorities; re-use existing Chat records only after verifying their live schema and writer/tenant contract. Do not create a second user/session authority or a new Chat data schema in the shared Core database as a shortcut.
+
+`aimarkethubs.com` remains the Debian development/UAT target, and `smartsihub.com` remains the separate future Cloudflare production target. Login success on the new dev application SHALL be tested with a pre-existing canonical account; do not create or reset the requested existing account as part of front-door work.
