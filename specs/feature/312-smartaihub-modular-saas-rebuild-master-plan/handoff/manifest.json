@@ -24,14 +24,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "712172880aab7d4994480236513b5fcc5b11b013",
+    "expected_canonical_sha": "308ec2b93aca05f1b74eed8647b3446158e58683",
     "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
   },
   "continuation": {
-    "next_action": "Complete the remaining R1.6 acceptance using an authorized existing Legacy development test user: prove login on the modular development hostname, verify only that principal’s canonical customer membership/data, run the matched same-database Legacy/Core latency comparison, and verify development/production isolation when a separate production test path is provisioned. Keep aimarkethubs.com traffic on port 3100 until Core is healthy; leave smartsihub.com inactive.",
+    "next_action": "Have the account owner retry sign-in at aimarkethubs.com with the existing smartaihubapp@gmail.com password and complete its MFA challenge; account presence and MFA are confirmed, but password acceptance remains unverified. Then verify that principal’s canonical customer membership/data, record a matched same-database Legacy/Core p95 comparison, and prove development/production isolation when a separate production test path is provisioned. Keep smartsihub.com inactive.",
     "next_ready_workunit": "r19-pre-handover-acceptance",
     "reactivation_predicate": null,
-    "resume_point": "Deep Plan remains valid at 4/4 and all four Deep Implement sections are checkpointed. The final ten-pass review evidence remains historical. The expired session-JTI gap is now closed: SmartSpecPro main has migration 0418 at 712172880aab7d4994480236513b5fcc5b11b013; smartaihub-platform main has the bounded scheduled cleanup at a5e16406e1ab79d62c283ff03d6b83c895f6d34b; receipt is successful on modular-debian-dev, the local scheduled handler ran, and the dev expired-JTI count is zero. The remaining work is authorized existing-user login, customer-membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Direct Codex development was used; no SPEC-224 receipt, deployment, handover, or production change is claimed.",
+    "resume_point": "Deep Plan remains valid at 4/4 and all four Deep Implement sections are checkpointed. The final ten-pass review evidence remains historical. The expired session-JTI gap is now closed: SmartSpecPro main has migration 0418 at 712172880aab7d4994480236513b5fcc5b11b013; smartaihub-platform main has the bounded scheduled cleanup at a5e16406e1ab79d62c283ff03d6b83c895f6d34b; receipt is successful on modular-debian-dev, the local scheduled handler ran, and the dev expired-JTI count is zero. The remaining work is authorized existing-user login, customer-membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Direct Codex development was used; no SPEC-224 receipt or production change is claimed; the development deployment is now recorded in current evidence. Update 2026-11-10: aimarkethubs.com serves release modular-debian-dev-b35231155cc5d0542225c5089ac5d9cb6a2fa384-language-selector-right-align; Core, Chat, and Shell are active from that release, and the login language selector is visually right-aligned. Read-only metadata confirms smartaihubapp@gmail.com exists, is enabled, and has MFA; password acceptance and MFA completion remain unverified. No password reset or MFA bypass occurred.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -42,10 +42,12 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png"
     ],
-    "next_action": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
-    "rationale": "The four-section Core identity slice is implemented and integrated on the canonical source main, with passing package typecheck, 61 tests, dry-run build and local Worker/DO proof. Ten fresh review passes found no further implementation defects; they retained two explicit operational/product gaps (latency target/benchmark and expired session-JTI cleanup) and the parent real-user/UAT requirements. Target registry remains unchanged and no deployment is claimed.",
+    "next_action": "Continue pre-handover acceptance: have the account owner verify existing-user password login and MFA on aimarkethubs.com, then verify canonical customer membership/data, matched same-database Legacy/Core performance, development/production isolation, and human UAT. The deployment and login UI are verified; successful account authentication is not yet proven.",
+    "rationale": "The four-section Core identity slice remains implemented and integrated. The latest Modular development release and right-aligned login language selector are serving on aimarkethubs.com, with Core, Chat, and Shell health/public smoke passing. Ten gap-review passes found no further code defects; the existing account is present and MFA-enabled, but successful password authentication remains unverified. Keep the parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation, and human UAT are evidenced. smartsihub.com production remains inactive.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -55,12 +57,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": null,
-    "evidence": [],
+    "artifact_digest": "sha256:73f176f8dc3c2b6a054caa95ba0006705cea6376c86e87d0ffcba6057cb377ea",
+    "environment": "development: https://aimarkethubs.com (Debian systemd with local Workerd)",
+    "evidence": [
+      "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
+      "handoff/evidence/modular-login-language-selector-right-align-20261110.png"
+    ],
     "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "source_sha": "b35231155cc5d0542225c5089ac5d9cb6a2fa384",
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -78,7 +83,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 27,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
@@ -122,9 +127,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "712172880aab7d4994480236513b5fcc5b11b013",
+    "canonical_sha": "308ec2b93aca05f1b74eed8647b3446158e58683",
     "integrated": true,
-    "integrated_at": "2026-11-10T07:32:05+07:00"
+    "integrated_at": "2026-11-10T14:38:54+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -165,10 +170,12 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-research.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-language-selector-right-align-20261110.png"
       ],
-      "next_action": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
-      "rationale": "The four-section Core identity slice is implemented and integrated on the canonical source main, with passing package typecheck, 61 tests, dry-run build and local Worker/DO proof. Ten fresh review passes found no further implementation defects; they retained two explicit operational/product gaps (latency target/benchmark and expired session-JTI cleanup) and the parent real-user/UAT requirements. Target registry remains unchanged and no deployment is claimed.",
+      "next_action": "Continue pre-handover acceptance: have the account owner verify existing-user password login and MFA on aimarkethubs.com, then verify canonical customer membership/data, matched same-database Legacy/Core performance, development/production isolation, and human UAT. The deployment and login UI are verified; successful account authentication is not yet proven.",
+      "rationale": "The four-section Core identity slice remains implemented and integrated. The latest Modular development release and right-aligned login language selector are serving on aimarkethubs.com, with Core, Chat, and Shell health/public smoke passing. Ten gap-review passes found no further code defects; the existing account is present and MFA-enabled, but successful password authentication remains unverified. Keep the parent acceptance partial until account-owner login/MFA, customer membership/data, matched Legacy/Core performance, environment isolation, and human UAT are evidenced. smartsihub.com production remains inactive.",
       "residual_requirements": []
     },
     "disposition": {
@@ -340,7 +347,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-10T00:33:58.260731Z",
+  "updated_at": "2026-11-10T07:40:04.815682Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
