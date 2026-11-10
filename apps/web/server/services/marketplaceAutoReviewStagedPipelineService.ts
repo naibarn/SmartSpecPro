@@ -1,8 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import sharp from "sharp";
 import { getDb } from "../db";
-import { assertR2StorageActive, storagePut } from "../storage";
 
 import {
   marketplaceAutoReviewRuns,
@@ -58,7 +56,7 @@ import {
   assertStagedProviderSpendAllowed,
   transitionStagedCheckpoint,
 } from "./marketplaceAutoReviewStagedCheckpointService";
-import { mediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
+import { mediaGenerationService } from "./mediaGenerationService";
 import { getUnifiedMediaTask } from "./mediaTaskPollingService";
 import { ensureMarketplaceAutoReviewMediaUrlDurable } from "./marketplaceAutoReviewMediaAssetService";
 import { getModelById, deriveModelResolutionOptions } from "./modelRegistry";
@@ -83,7 +81,6 @@ type Runtime = { userToken?: string | null; publicUrl?: string | null };
 const STAGED_IMAGE_MODEL = "google-banana-2";
 const STAGED_VIDEO_MODEL = "veo3/generate-veo-3-video-lite";
 const STAGED_AUDIO_MODEL = "elevenlabs-tts";
-const KIE_AI_STAGED_REFERENCE_MAX_BYTES = 10 * 1024 * 1024;
 
 function record(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -237,111 +234,6 @@ function resolveStagedVideoDuration(
     }
   }
   return { duration: closest, fitted: true };
-}
-
-/**
- * Kie.ai rejects WebP reference images (and raw `data:` URIs, which aren't
- * fetchable by Kie.ai's servers at all — those come from the staged review
- * UI's character/product drag-drop uploader, which stores whatever
- * `FileReader.readAsDataURL()` produces rather than uploading to storage).
- * For anything Kie.ai can't consume directly, decode/fetch the source bytes,
- * re-encode as JPEG, and upload to our own storage so Kie.ai gets a real,
- * fetchable https:// URL. A prior version of this routed through an
- * `/api/media/image-convert` endpoint that was never actually implemented —
- * every "conversion" 404'd, and Kie.ai correctly reported that as
- * "File type not supported".
- */
-const KIE_AI_SUPPORTED_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
-
-function isKieAiProvider(provider: string, model?: string): boolean {
-  const normP = (provider || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (normP === "kieai" || normP === "kie") return true;
-  if (model) {
-    const derived = modelProvider(model).toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (derived === "kieai" || derived === "kie") return true;
-    const normM = model.toLowerCase();
-    if (normM.includes("banana") || normM.includes("veo") || normM.includes("flux") || normM.includes("grok")) return true;
-  }
-  return false;
-}
-
-async function convertReferenceImageForKieAi(params: {
-  source: string;
-  runId: string;
-}): Promise<string | null> {
-  try {
-    let buffer: Buffer;
-    if (params.source.startsWith("data:")) {
-      const match = params.source.match(/^data:[^;]+;base64,(.+)$/);
-      if (!match) return null;
-      buffer = Buffer.from(match[1], "base64");
-    } else {
-      const response = await fetch(params.source);
-      if (!response.ok) return null;
-      const contentLength = Number(response.headers.get("content-length") || 0);
-      if (contentLength > KIE_AI_STAGED_REFERENCE_MAX_BYTES) return null;
-      buffer = Buffer.from(await response.arrayBuffer());
-    }
-    if (buffer.length === 0 || buffer.length > KIE_AI_STAGED_REFERENCE_MAX_BYTES) return null;
-    const converted = await sharp(buffer).png().toBuffer();
-    const key = `marketplace-auto-review/${params.runId}/reference-uploads/${nanoid(12)}.png`;
-    await assertR2StorageActive();
-    const stored = await storagePut(key, converted, "image/png");
-    return stored.url;
-  } catch (error) {
-    console.warn(
-      `[staged-pipeline] failed to convert reference image for kie.ai (run ${params.runId}): ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-    return null;
-  }
-}
-
-async function sanitizeReferenceUrlsForProvider(
-  provider: string,
-  urls: string[],
-  publicUrl: string | null | undefined,
-  model: string | undefined,
-  runId: string,
-): Promise<string[]> {
-  if (!isKieAiProvider(provider, model)) return urls;
-
-  const result: string[] = [];
-  for (const raw of urls) {
-    if (raw.startsWith("data:")) {
-      const converted = await convertReferenceImageForKieAi({ source: raw, runId });
-      if (!converted) {
-        throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
-      }
-      result.push(converted);
-      continue;
-    }
-    try {
-      const resolvedSource = raw.startsWith("/") ? resolveReferenceUrl(raw, publicUrl) : raw;
-      const url = new URL(resolvedSource);
-      const pathname = url.pathname;
-      const extMatch = pathname.match(/\.([a-z0-9]+)$/i);
-      const ext = extMatch ? extMatch[1].toLowerCase() : "";
-
-      if (KIE_AI_SUPPORTED_EXTENSIONS.has(ext)) {
-        result.push(resolvedSource);
-        continue;
-      }
-
-      const converted = await convertReferenceImageForKieAi({ source: resolvedSource, runId });
-      if (!converted) {
-        throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
-      }
-      result.push(converted);
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith("staged_reference_prepare_failed:")) {
-        throw error;
-      }
-      throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
-    }
-  }
-  return result;
 }
 
 function stagedPlanFromMetadata(
@@ -1861,21 +1753,11 @@ async function handleImageProvider(params: {
   if (referenceImageUrls.length === 0)
     throw new Error("staged_reference_missing");
 
-  // Keep Kie references provider-safe before dispatch. The Python Kie adapter
-  // remains the canonical fetch/upload boundary; this staging path only applies
-  // a lossless PNG normalization when a legacy Kie model rejects the source
-  // extension. Never fall back to a lossy JPEG or silently drop a reference.
-  referenceImageUrls = await sanitizeReferenceUrlsForProvider(
-    provider,
-    referenceImageUrls,
-    params.runtime.publicUrl,
-    model,
-    params.run.id
-  );
-  if (referenceImageUrls.length === 0)
-    throw new Error(
-      `staged_reference_unsupported_format: all reference images were in a format unsupported by provider "${provider}"`
-    );
+  // Keep managed storage references intact here. mediaGenerationService
+  // resolves them with the tenant-scoped download broker before submitting to
+  // Python; fetching `/api/storage/files/*` here drops that authorization and
+  // makes valid product/character references look like 404s. The Python Kie
+  // adapter then rehosts and normalizes provider-incompatible formats.
 
   // Skill-first prompt authoring (project rule: prompt creation/improvement
   // uses LLM judgment, so it must always be skill-first and TS must never

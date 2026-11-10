@@ -227,9 +227,9 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       shotId: shot2.shotId,
       revision: plan.planRevision,
       contentHash: shot2ImagePrompt.contentHash,
-      model: "google-banana-2",
-      provider: "media-provider",
-      estimatedCredits: 5,
+      model: "gpt-image-2-5-sunburst-text-to-image",
+      provider: "kie.ai",
+      estimatedCredits: 30,
       referenceManifestHash: plan.referenceManifestHash,
       autoApprove: { userId: 42, approvedAt: "2026-07-29T00:00:00.000Z" },
     });
@@ -320,6 +320,14 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
 
     const metadata = {
       productImageUrls: ["https://example.test/product.png"],
+      customReferenceManifest: [
+        {
+          role: "primary_product",
+          label: "product",
+          url: "https://smartaihub.app/api/storage/files/tenant-1/product.webp",
+          active: true,
+        },
+      ],
       planningArchitecture: "staged_two_skill_v2" as const,
       planningArchitectureVersion: 1 as const,
       humanApprovalPolicy: "all_checkpoints_required" as const,
@@ -421,6 +429,17 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
     // Shot 2's ready-to-dispatch image was NOT blocked by shot 1's failure
     // — this is the core of the fix: sibling shots must keep progressing.
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(1);
+    const dispatchedImageRequest = (mediaGenerationService.generateImageAsync as any)
+      .mock.calls[0][0];
+    expect(dispatchedImageRequest.referenceImageUrls).toEqual([
+      "https://smartaihub.app/api/storage/files/tenant-1/product.webp",
+    ]);
+    expect(dispatchedImageRequest.publicUrl).toBe("https://app.test");
+    expect(dispatchedImageRequest.auditContext).toMatchObject({
+      userId: 42,
+      tenantId: "tenant-1",
+      source: "marketplace_auto_review_staged",
+    });
     const persisted = getRunRow();
     const shot2Task =
       persisted.metadataJson.stagedPipeline.tasks[`image:${shot2.shotId}`];

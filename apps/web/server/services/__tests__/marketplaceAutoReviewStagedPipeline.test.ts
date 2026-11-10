@@ -645,8 +645,8 @@ describe("staged dispatch task records carry an in-flight status (grep-guard)", 
   });
 });
 
-describe("staged Kie reference preparation is fail-closed (grep-guard)", () => {
-  it("never forwards an unprepared raw reference after conversion or fetch failure", async () => {
+describe("staged provider references use the authenticated media boundary", () => {
+  it("does not anonymously fetch tenant-protected references before media submission", async () => {
     const fs = await import("fs");
     const path = await import("path");
     const source = fs.readFileSync(
@@ -656,15 +656,20 @@ describe("staged Kie reference preparation is fail-closed (grep-guard)", () => {
       ),
       "utf-8"
     );
-    const sanitizer = source.slice(
-      source.indexOf("async function sanitizeReferenceUrlsForProvider"),
-      source.indexOf("\nfunction stagedPlanFromMetadata")
+    const imageProvider = source.slice(
+      source.indexOf("async function handleImageProvider"),
+      source.indexOf("\nasync function reconcileImageProvider")
+    );
+    const submitBoundary = source.slice(
+      source.indexOf("async function reserveAndSubmit"),
+      source.indexOf("\nfunction taskRecord")
     );
 
-    expect(sanitizer).not.toContain("result.push(converted ?? raw)");
-    expect(sanitizer).not.toContain("catch {\n      result.push(raw)");
-    expect(sanitizer).toContain("staged_reference_prepare_failed:image:");
-    expect(sanitizer).toContain("resolveReferenceUrl(raw, publicUrl)");
-    expect(source).toContain("KIE_AI_STAGED_REFERENCE_MAX_BYTES");
+    expect(source).not.toContain("sanitizeReferenceUrlsForProvider");
+    expect(source).not.toContain("convertReferenceImageForKieAi");
+    expect(imageProvider).not.toContain("fetch(");
+    expect(imageProvider).toContain("referenceImageUrls,");
+    expect(imageProvider).toContain("tenantId: params.auth.tenantId");
+    expect(submitBoundary).toContain("mediaGenerationService.generateImageAsync(");
   });
 });
