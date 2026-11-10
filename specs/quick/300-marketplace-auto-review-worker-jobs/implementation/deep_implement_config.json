@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Deployed source 3b2e0e41aeff33c78f6a88a42c1521b5204a90e3 to legacy-debian-dev generation 459 (release smartspec-web-3b2e0e41aeff33c78f6a88a42c1521b5204a90e3-bcb011690812). Service and Node worker are healthy; public health 200, API smoke 12/12 reachable with 0 server errors, Auto Review asset 200 contains the updated awaiting-revision copy. Live run revision 3 still requires user confirmation after Shot 2 edit; existing prompts remain stored. Provider-backed image/video generation remains unverified because it consumes credits.",
-      "checkpoint_sha": "3b2e0e41aeff33c78f6a88a42c1521b5204a90e3",
-      "merged_main_sha": "3b2e0e41aeff33c78f6a88a42c1521b5204a90e3",
+      "next_action": "Deployed generation 460 to legacy-debian-dev; user can Ctrl+Shift+R and dispatch the already-approved Shot 1 image prompt while any run-level advance_run job is queued. Verify image appears; provider-backed media generation remains untested by Codex because dispatch spends credits.",
+      "checkpoint_sha": "5095e39d33d634fc0d792ef7aae1a804c00688f1",
+      "merged_main_sha": "5095e39d33d634fc0d792ef7aae1a804c00688f1",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-autoreview-finalize"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 41,
-  "updated_at": "2026-11-10T01:47:14.729613+00:00",
+  "generation": 42,
+  "updated_at": "2026-11-10T02:15:25.807732+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Deployed source 3b2e0e41aeff33c78f6a88a42c1521b5204a90e3 to legacy-debian-dev generation 459 (release smartspec-web-3b2e0e41aeff33c78f6a88a42c1521b5204a90e3-bcb011690812). Service and Node worker are healthy; public health 200, API smoke 12/12 reachable with 0 server errors, Auto Review asset 200 contains the updated awaiting-revision copy. Live run revision 3 still requires user confirmation after Shot 2 edit; existing prompts remain stored. Provider-backed image/video generation remains unverified because it consumes credits.",
-    "merged_main_sha": "3b2e0e41aeff33c78f6a88a42c1521b5204a90e3",
+    "next_action": "Deployed generation 460 to legacy-debian-dev; user can Ctrl+Shift+R and dispatch the already-approved Shot 1 image prompt while any run-level advance_run job is queued. Verify image appears; provider-backed media generation remains untested by Codex because dispatch spends credits.",
+    "merged_main_sha": "5095e39d33d634fc0d792ef7aae1a804c00688f1",
     "gaps": [
       "Provider-backed QC/media generation and full browser UAT were not run; focused automated tests cover the reported contracts without consuming credits.",
       "Provider-backed QC/media generation was not run live; unit/integration tests cover QC schema normalization, optional QC continuation, prompt generation and worker recovery."
