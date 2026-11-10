@@ -18,7 +18,11 @@ describe("deployment targets", () => {
       domain: "aimarkethubs.com",
       environment: "development",
       application: "smartsihub-modular-core",
-      status: "prepared",
+      status: "serving",
+      applicationAvailable: true,
+      deployable: true,
+      controller: "modular-debian-dev-release",
+      currentRelease: "modular-debian-dev-660867d205bcbc4ec52e0387ba9626b6cb23d06e",
     });
     expect(resolveDeploymentTarget("modular-cloudflare-prod")).toMatchObject({
       domain: "smartsihub.com",

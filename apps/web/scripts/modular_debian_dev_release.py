@@ -274,6 +274,8 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     now = datetime.now(timezone.utc).isoformat()
     target.update({
         "controller": "modular-debian-dev-release",
+        "currentRelease": manifest["releaseId"],
+        "releaseReceipt": str(manifest_file),
         "status": "serving",
         "applicationAvailable": True,
         "deployable": True,

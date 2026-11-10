@@ -38,13 +38,41 @@
       "service": "smartsihub-core-dev.service",
       "port": 3200,
       "releaseRoot": "/home/dev/modular-development-releases",
-      "status": "prepared",
-      "applicationAvailable": false,
-      "deployable": false,
+      "status": "serving",
+      "applicationAvailable": true,
+      "deployable": true,
       "handover": {
         "currentService": "smartspec-dev-web.service",
         "currentPort": 3100,
-        "preserveUntilCoreHealthy": true
+        "preserveUntilCoreHealthy": false,
+        "preservedForRollback": true,
+        "activeService": "smartsihub-shell-dev.service",
+        "activePort": 3202,
+        "tunnelService": "smartspec-dev-tunnel.service",
+        "rollbackConfig": "/home/dev/modular-development-releases/660867d205bcbc4ec52e0387ba9626b6cb23d06e/rollback/cloudflared.pre-modular.yml"
+      },
+      "controller": "modular-debian-dev-release",
+      "currentRelease": "modular-debian-dev-660867d205bcbc4ec52e0387ba9626b6cb23d06e",
+      "releaseReceipt": "/home/dev/modular-development-releases/660867d205bcbc4ec52e0387ba9626b6cb23d06e/release-manifest.json",
+      "components": {
+        "core": {
+          "service": "smartsihub-core-dev.service",
+          "port": 3200,
+          "health": "/livez",
+          "expected": 200
+        },
+        "chat": {
+          "service": "smartsihub-chat-dev.service",
+          "port": 3201,
+          "health": "/api/chat/livez",
+          "expected": 200
+        },
+        "shell": {
+          "service": "smartsihub-shell-dev.service",
+          "port": 3202,
+          "health": "/login",
+          "expected": 200
+        }
       }
     },
     "modular-cloudflare-prod": {
