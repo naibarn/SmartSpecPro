@@ -329,6 +329,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Create one video motion prompt for Marketplace Auto Review shot ${input.shotId}. This action creates prompt text only; do not render or generate a video.`,
     "Use Image 1 as the exact approved start frame and the source of truth for the people, product, blocking, and scene.",
     `Format: vertical 9:16, ${input.shot.durationSeconds} seconds.`,
+    "Begin the video prompt with: Use the approved image (Image 1) as the exact start frame and visual source of truth.",
     `Product: ${clean(input.productName, 200)}`,
     facts.length
       ? `Verified product facts:\n${facts.map(fact => `- ${fact}`).join("\n")}`
@@ -339,8 +340,8 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Character portrait identity map (images after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
-    "Before writing the prompt, compare each attached portrait with the detected people in Image 1. In SPEAKER VISUAL MAP FOR THIS SHOT, give every dialogue speaker a concrete observed appearance, viewer-relative position, and exact detected person ID from the supplied detection results. Do not use cast IDs or image labels as the video's identity cues. If any dialogue speaker cannot be matched confidently to one detected person ID, do not guess, assign voice-over, or substitute another person; return an invalid result so the request fails visibly.",
-    "Only the named, detected person moves their mouth during that exact line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
+    "Before writing the prompt, compare each attached portrait with the detected people in Image 1. Include this exact section and bullet syntax in the prompt, before the dialogue: SPEAKER VISUAL MAP FOR THIS SHOT\n- <exact cast name>: <concrete observed appearance>; <viewer-left, viewer-center, or viewer-right>; detected ID <exact person-N from the detection results>. Include one bullet for every dialogue speaker. Replace every angle-bracket placeholder with actual supplied values; never output placeholders. Include the heading SPEAKER-TO-FACE LOCK. Never put dialogue quotes in the visual map. Do not use cast IDs or image labels as video identity cues. If a speaker cannot be matched confidently, return an invalid result rather than guessing.",
+    "After the visual map, include the exact heading Approved dialogue: and one line for each approved turn. Use this format: <exact cast name>: <matching visual cue and detected person-N> says verbatim: \"<exact approved line>\". Replace every angle-bracket placeholder with actual supplied values; never output placeholders. Do not add a second dialogue list or repeat any quoted line. Only the named, detected person moves their mouth during that line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
       : null,
