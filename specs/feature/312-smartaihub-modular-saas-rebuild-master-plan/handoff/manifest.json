@@ -24,15 +24,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "61f548101d9ca538d485c3712ee481897b0703e9",
-    "expected_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a"
+    "expected_canonical_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+    "expected_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7"
   },
   "continuation": {
-    "next_action": "Choose the authorization target for smartaihubapp@gmail.com: provide its canonical existing customer tenant ID if it is already an active member, or explicitly direct creation of a dedicated development-only workspace and membership. Do not infer access from admin role or hostname. After membership is resolved, repeat authenticated Chat UAT; separately complete the scoped persistence/provider path before enabling Send, plus matched Legacy/Core performance and production-isolation evidence. Keep smartsihub.com inactive.",
-    "next_ready_workunit": "r19-pre-handover-acceptance",
-    "reactivation_predicate": null,
-    "resume_point": "Update 2026-11-11: platform source 61f548101d9ca538d485c3712ee481897b0703e9 is deployed to modular-debian-dev-61f548101d9ca538d485c3712ee481897b0703e9-chat-access-ui. Local/public health and the new Chat manifest, JS, CSS, and responsive breakpoints pass. The visible access failure is caused by the existing account having zero active tenant memberships; no membership was changed. See modular-chat-membership-state-20261111.md. Authenticated browser UAT remains open. Chat Send is still disabled pending its scoped persistence/provider path. smartsihub.com remains inactive.",
-    "waiting_predicate": "Owner identifies an authorized existing customer tenant for this account or explicitly directs a dedicated modular development workspace and membership."
+    "next_action": "Refresh /chat in the existing signed-in browser and confirm the default personal workspace, create/switch controls, and desktop/tablet/mobile layout. Continue scoped chat persistence/provider work before enabling Send, then matched Legacy/Core latency and production-isolation evidence. Keep smartsihub.com inactive.",
+    "next_ready_workunit": "chat-default-workspace-uat-and-persistence-provider",
+    "reactivation_predicate": "User reports workspace UAT or the scoped Chat persistence/provider path becomes ready for implementation.",
+    "resume_point": "2026-11-11: platform main@d1e71fe8aa4b8019f08559a5e69a15a4f9228930 is deployed to modular-debian-dev. Default personal workspace provisioning and create/select UI are live; migrations 0420/0421 are applied. See modular-chat-default-workspace-deployment-20261111.md. Chat Send remains disabled pending scoped persistence/provider integration; authenticated visual UAT, matched performance and production-isolation evidence remain open.",
+    "waiting_predicate": "Authenticated user verifies the deployed workspace flow; scoped Chat persistence/provider capability is then implemented before Send is enabled. No customer-tenant authorization choice is needed for the default personal workspace."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -48,11 +48,17 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
     ],
-    "next_action": "Hard-refresh /chat while signed in and verify Retry plus desktop/tablet/mobile layout; then continue customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Keep smartsihub.com inactive.",
-    "rationale": "The Modular Core, Chat, and Shell remain deployed on the authorized development target. The Chat module entry export and imported stylesheet loading defects are fixed; local/public health, auth-boundary, public module assets, mount export, and responsive breakpoint rules passed verification. Shell and Chat regression tests, package typechecks, and independent builds passed. Authenticated browser interaction and visual desktop/tablet/mobile UAT were not available in this session, so keep acceptance partial. Customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof remain open; smartsihub.com remains inactive.",
-    "residual_requirements": []
+    "next_action": "Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.",
+    "rationale": "The default personal workspace, create/switch controls and environment-scoped migrations are implemented, built from exact integrated platform SHA d1e71fe and deployed by the modular-debian-dev controller with local/public health and rollback proof. Ten focused workspace gap-review passes are recorded. Acceptance remains partial because authenticated visual UAT, Chat persistence/provider, matched performance and production-isolation evidence remain open.",
+    "residual_requirements": [
+      "Authenticated desktop/tablet/mobile workspace UAT",
+      "Scoped Chat persistence and model-provider path before Send",
+      "Matched Legacy/Core performance evidence",
+      "Production-isolation acceptance; smartsihub.com stays inactive"
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -61,8 +67,8 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:34f87fe7a4fe430a7ce1209c782a30e04d8373f6f080dbe96fc0ed5e49f84323",
-    "environment": "development: https://aimarkethubs.com (Debian systemd with local Workerd)",
+    "artifact_digest": "sha256:7e5eeea3d101453237b90a2b62f8af2117bf2d42ad5bc0e6ef4d2a7895e02080",
+    "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
       "handoff/evidence/modular-login-language-selector-right-align-20261110.png",
@@ -70,10 +76,11 @@
       "handoff/evidence/modular-login-final-20261110.png",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
     ],
     "required": false,
-    "source_sha": "61f548101d9ca538d485c3712ee481897b0703e9",
+    "source_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
     "status": "PASS"
   },
   "disposition": {
@@ -92,18 +99,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 35,
+  "generation": 39,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+    "digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-09T03:48:26.504208Z",
+      "last_evidence_at": "2026-11-11T05:15:28.260798Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.6",
+    "revision": "1.7",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -142,9 +149,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "61f548101d9ca538d485c3712ee481897b0703e9",
+    "canonical_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
     "integrated": true,
-    "integrated_at": "2026-11-11T11:01:47+07:00"
+    "integrated_at": "2026-11-11T11:50:08+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -191,11 +198,17 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
       ],
-      "next_action": "Hard-refresh /chat while signed in and verify Retry plus desktop/tablet/mobile layout; then continue customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Keep smartsihub.com inactive.",
-      "rationale": "The Modular Core, Chat, and Shell remain deployed on the authorized development target. The Chat module entry export and imported stylesheet loading defects are fixed; local/public health, auth-boundary, public module assets, mount export, and responsive breakpoint rules passed verification. Shell and Chat regression tests, package typechecks, and independent builds passed. Authenticated browser interaction and visual desktop/tablet/mobile UAT were not available in this session, so keep acceptance partial. Customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof remain open; smartsihub.com remains inactive.",
-      "residual_requirements": []
+      "next_action": "Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.",
+      "rationale": "The default personal workspace, create/switch controls and environment-scoped migrations are implemented, built from exact integrated platform SHA d1e71fe and deployed by the modular-debian-dev controller with local/public health and rollback proof. Ten focused workspace gap-review passes are recorded. Acceptance remains partial because authenticated visual UAT, Chat persistence/provider, matched performance and production-isolation evidence remain open.",
+      "residual_requirements": [
+        "Authenticated desktop/tablet/mobile workspace UAT",
+        "Scoped Chat persistence and model-provider path before Send",
+        "Matched Legacy/Core performance evidence",
+        "Production-isolation acceptance; smartsihub.com stays inactive"
+      ]
     },
     "disposition": {
       "confidence": "HIGH",
@@ -255,6 +268,60 @@
         ],
         "verification_method": "Core main a5e16406e1ab79d62c283ff03d6b83c895f6d34b: typecheck PASS, 11 files/65 tests PASS, Wrangler dry-run 388.64 KiB / 91.87 KiB gzip, local Worker /livez 200 and scheduled cleanup outcome ok. SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: receipt SETTLED/SUCCEEDED on modular-debian-dev with 0418 applied; catalog verifies dedicated NOLOGIN owner, fixed search_path, PUBLIC denied, Core EXECUTE only and no direct DELETE; transaction test verifies limits and retention; five local scheduled runs reduced expired JTI rows to zero. Does not prove existing-user login, customer membership/data, comparative Legacy/Core performance, production isolation, human UAT, or deployment."
       },
+      "REQ-4F88475454B1": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L224"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L224",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Keep personal workspaces environment-scoped and separate from Legacy customer tenants.",
+        "requirement_digest": "07670db603a450e2c92ddb2aefcbb5cabaf37e61758f43e76d1dad67d5ef037c",
+        "requirement_id": "REQ-4F88475454B1",
+        "requirement_text": "Personal workspaces SHALL be isolated by the verified Modular environment tenant and remain separate from Legacy customer tenants and their business data. Existing customer workspaces may appear only through their existing active canonical membership and policy; default-workspace provisioning SHALL NOT create, infer, or grant a customer-tenant membership from a role, email address, or hostname. The development environment SHALL NOT provision or read production personal-workspace records. These workspace controls make the Chat area usable but do not enable message sending without the separately required scoped persistence and provider path. This clarification does not change the `aimarkethubs.com` development target or activate `smartsihub.com`.",
+        "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+        ],
+        "verification_method": "Verify environment-scoped personal workspace data, function-only access for the Modular auth role, wrong-environment denial, direct table denial, and no customer membership mutation."
+      },
+      "REQ-C7C0E67BDE2B": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L222"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L222",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Preserve the deployed default-workspace and explicit workspace switching behavior; collect authenticated visual UAT separately.",
+        "requirement_digest": "2d9fe881387efeda8a03a44784d8b827e6a8ca186721ace8f9cd6a2f589f95f3",
+        "requirement_id": "REQ-C7C0E67BDE2B",
+        "requirement_text": "After successful authentication, `/chat` SHALL provision an environment-scoped personal default workspace idempotently for the signed-in account when one does not already exist, then open Chat directly in that workspace. An account SHALL NOT be blocked at a “no workspace” dead end solely because it has no customer-tenant membership. Chat SHALL provide a visible workspace selector and a user action to create and switch to another personal workspace; creating one SHALL select it for the current session. With no explicit user selection, the personal default remains the initial workspace. Preserve the user's explicit selection for the current session only when the selected workspace is still authorized.",
+        "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+        ],
+        "verification_method": "Verify idempotent default workspace provisioning, Chat routing, selector, create-and-select behavior, environment binding, and deployment evidence; keep authenticated visual UAT separate."
+      },
       "REQ-FA42CFF33A89": {
         "applicability": "NOT_APPLICABLE",
         "applicability_rationale": "The prior mandatory-only rule routing all development through the smartaihub.app Autonomous Implements/Creator is superseded by the owner R1.6 decision. Direct Codex/Claude development in the canonical source repository is a normal supported path; existing SPEC-224 facilities remain optional. Record receipts only for the path actually used.",
@@ -293,12 +360,118 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-09T03:48:26.504208Z",
+    "reconciled_at": "2026-11-11T05:15:28.260798Z",
     "sources": [
       {
-        "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+        "digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      },
+      {
+        "digest": "9499259345f439e863e71c91366b2e398e3d74ee3224466d3b03419ffadd4951",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-plan.md"
+      },
+      {
+        "digest": "fa9cc9dac963ff6e0aa3789de2c5b9d0e81982a9a0685114f50128ba387a8d20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
+      },
+      {
+        "digest": "1fbe58a40d8884e6d549a564a3c5d612bf2af6822023ba3d031d0dcd78c51420",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f5ef4cb3c69082463024a7786c4e1a1c360a46a2ba05e56ced23eb3252fed29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "9ba66f9d65639c4d757b31e590d1ed4496cba1a9b634ce6f70cae28ed3513531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
+      },
+      {
+        "digest": "bfbfb925964fc088755acb3202a8fc5fff59554af88bfe0f45476292e22cc10f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-01-environment-database-boundary.md"
+      },
+      {
+        "digest": "8826ac3c61da0332509c6a884b10c230c36c98d1789fa89dd5eed38c221607dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-02-password-mfa-compatibility.md"
+      },
+      {
+        "digest": "e2bfdcaae044846b40f5649318081a3488740dad4e8a499c739201eb432aa64b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-03-session-membership-routes.md"
+      },
+      {
+        "digest": "8aa6612491b80dc5392da78cde9dd99cb684bea7f24383f753c275728d68f487",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-04-worker-proof-and-handoff.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-environment-database-boundary",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-password-mfa-compatibility: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-password-mfa-compatibility",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-session-membership-routes: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-session-membership-routes",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-worker-proof-and-handoff: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-worker-proof-and-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -308,7 +481,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+        "source_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
@@ -334,21 +507,123 @@
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-environment-database-boundary",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-password-mfa-compatibility: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-password-mfa-compatibility",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-session-membership-routes: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-session-membership-routes",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-worker-proof-and-handoff: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-04-worker-proof-and-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+        "source_digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
         "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+        "source_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "value": "PROPOSED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+        "digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      },
+      {
+        "digest": "9499259345f439e863e71c91366b2e398e3d74ee3224466d3b03419ffadd4951",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-plan.md"
+      },
+      {
+        "digest": "fa9cc9dac963ff6e0aa3789de2c5b9d0e81982a9a0685114f50128ba387a8d20",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
+      },
+      {
+        "digest": "1fbe58a40d8884e6d549a564a3c5d612bf2af6822023ba3d031d0dcd78c51420",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "a26fdfdb4690432ea612d720de00a9b8c2a9529d2fe3cf017afa2376afe5c8c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "f5ef4cb3c69082463024a7786c4e1a1c360a46a2ba05e56ced23eb3252fed29a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "9ba66f9d65639c4d757b31e590d1ed4496cba1a9b634ce6f70cae28ed3513531",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
+      },
+      {
+        "digest": "bfbfb925964fc088755acb3202a8fc5fff59554af88bfe0f45476292e22cc10f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-01-environment-database-boundary.md"
+      },
+      {
+        "digest": "8826ac3c61da0332509c6a884b10c230c36c98d1789fa89dd5eed38c221607dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-02-password-mfa-compatibility.md"
+      },
+      {
+        "digest": "e2bfdcaae044846b40f5649318081a3488740dad4e8a499c739201eb432aa64b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-03-session-membership-routes.md"
+      },
+      {
+        "digest": "8aa6612491b80dc5392da78cde9dd99cb684bea7f24383f753c275728d68f487",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-04-worker-proof-and-handoff.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -357,16 +632,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
-    "pass": 0,
-    "total": 29,
+    "pass": 2,
+    "total": 31,
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-11T04:02:22.110317Z",
+  "updated_at": "2026-11-11T05:21:36.615005Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -376,11 +651,12 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "61f548101d9ca538d485c3712ee481897b0703e9",
+    "sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
     "status": "PASS",
     "task_regressions": []
   }

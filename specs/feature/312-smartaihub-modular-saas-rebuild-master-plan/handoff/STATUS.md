@@ -4,12 +4,13 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 28 unresolved of 29
-- Next action: Hard-refresh /chat while signed in and verify Retry plus desktop/tablet/mobile layout; then continue customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Keep smartsihub.com inactive.
-- Manifest generation: 35
+- Requirements: 2 pass / 28 unresolved of 31
+- Next action: Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.
+- Manifest generation: 39
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
 - Status claim: `PROPOSED_NOT_IMPLEMENTED` — `specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#7`
+- Deep-implement section claims (4): CHECKPOINTED: 4

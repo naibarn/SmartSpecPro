@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 12,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "d5fe8e3d94fde68831728b1822ddcdebd08307a3bf3d365bb9ceb86f4a834a1a",
       "requirement_id": "REQ-BB2A910023B8",
       "requirement_text": "SmartAIHub SHALL be re-architected as a small SaaS Core plus independently built, deployed and rolled-back first-party modules, while the original `apps/web` continues to run on Debian. Every module is copied selectively from the legacy source into a clean destination folder, dependencies slimmed, UI modernized where beneficial, tests added, and modules made available in scoped beta as soon as a usable slice exists. Slower individual delivery is acceptable; a one-shot rewrite/cutover is NOT.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "0929ad210f8d2b70d9264eda03413d3a2e9e80d66a5982a6354af750cbd210b7",
       "requirement_id": "REQ-2DB2B6A11BD8",
       "requirement_text": "**Goals:** reduce build RAM/time, bundle size, deployment blast radius, runtime overhead, accidental restarts and Cloudflare cost; preserve existing users, tenant IDs, canonical data, application functions and accepted business behavior. The programme SHALL begin inventory and Core-boundary discovery immediately, **in parallel with bounded implementation of demonstrably owned slices**; inventory completion is not permission to postpone coding, previews, or human UAT. Spec 312 is program governance, **not** a second deployment/job/payment authority.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "596e706b349702063d8f15baebb40c1e3ab8551e261d3671accc8463acfa8ec0",
       "requirement_id": "REQ-A46558127F87",
       "requirement_text": "- PostgreSQL `smartspec` remains the canonical **Core control-plane** database for identity, tenants, canonical credit ledger, `worker_jobs`, product registry, App installs and subscriptions. **New Mini App business data MUST NOT be stored there.** The only business-data exception is an explicitly registered Mini App/module migrated from Legacy that already owns tables there. See SPEC-323; never clone identity, credit ledger or job authority.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "4dfcc9b06b3a17c3da5e08d7cb562ccee7e79f57d3824dc1b24273bd93e15a7e",
       "requirement_id": "REQ-C09632845210",
       "requirement_text": "- New module code MUST NOT import the executable legacy `apps/web` server/client runtime or another module's implementation.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "5d97a4f52494a55f71395d2f911502b54182ede7bf677c85f1f84637896366c2",
       "requirement_id": "REQ-DC2F1A8516A0",
       "requirement_text": "- Each first-party deployment unit MUST build, package, activate and roll back without rebuilding/restarting unrelated units.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "ccda447f7840d09192920ce8ec4b72441e90907f930d5068a2793c687a976a92",
       "requirement_id": "REQ-0BAC939D5F17",
       "requirement_text": "For each item produce `module-inventory.csv` (stable ID), plus a human-readable mapping with ownership, dependency evidence, proposed target and acceptance evidence. Every identified active item MUST end with one allocation: `SAAS_CORE`, `PUBLIC_APP`, `FIRST_PARTY_MODULE`, `SHARED_CONTRACT`, `SPECIALIZED_EXECUTOR`, or `LEGACY_ONLY_PENDING_DECISION`. Unknown ownership is labeled `UNKNOWN_OWNER` and scoped to the affected capability; it does **not** freeze unrelated implementation or beta release. An unproven write path must not be enabled for real financial/privileged mutations until its owner is established.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "ddd9197b1c32a949ac05c6d70f68453e61525b8c1f2cc2a3af889d92c3794978",
       "requirement_id": "REQ-D80BDD46DD5F",
       "requirement_text": "A capability belongs in Core only if: (a) it applies to most/all modules as platform authority; (b) duplicating it compromises identity/tenant/financial correctness or module entitlement; or (c) it is needed to authenticate/authorize/measure module calls. Core includes identity/session, tenant/domain/membership, RBAC/policy, wallet authority adapters, purchase/payment reconciliation adapters, module registry, entitlement/licensing, usage accounting contract and scoped API credentials. `SPEC-207` owns financial logic; `SPEC-280` owns usage pricing/revenue. Chat/model selection, video and asset editors, application-specific CMS, specialized execution, social posting and document parsing MUST NOT be moved into Core merely for convenience.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "f25a7bcca98061cec1e81bfb701a47e7ffa07fb90e9eaecd5372ce176f3af080",
       "requirement_id": "REQ-167F498E8E04",
       "requirement_text": "**A. Authoritative delivery rule.** The 2026-11-01 owner decision supersedes the **blocking sequence** previously described as G0–G6 in these new draft specs. Codex SHALL begin implementable Core slices while inventory proceeds. Audit, source provenance, dependency tracing, automated tests, budgets and readiness receipts are **work outputs and advisory status**, not prerequisites requiring a green global gate to start writing code, building, exposing a development URL, or beginning bounded human UAT. No percentage/coverage/10-review/completeness threshold may be invented as a condition to start implementation.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "b9b45d0de8ec9baa5b358aa2e66fae3ec0840ce20ad2857e57dd65af8e561c59",
       "requirement_id": "REQ-D8BB78290DDE",
       "requirement_text": "3. **Same actual PostgreSQL Core database and existing schema.** `smartspec` is the single canonical **Core** DB, **not** a migrated/imported copy or replacement D1; it holds identity, wallet/ledger, platform jobs, App registry and existing Legacy data. Fresh Mini Apps MUST use independent App data stores under SPEC-323, not tables in `smartspec`. Identity, hashes, MFA, user/tenant IDs and existing ledger remain intact. First Core slice defaults to **zero DDL**; justified Core metadata is additive only. Do not confuse app-control metadata in Core with its business data.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "770f8073d61235b1908289423fb20fc765680a15a8fef62df7e8534e638c7ba0",
       "requirement_id": "REQ-5EA2D59BCA70",
       "requirement_text": "SPEC-318 is the narrow implementation contract for the dominant long-running jobs. `SAAS_CORE` SHALL own only authentication/authorization and thin job intake/status adapters, not an embedded Queue processor/Rust supervisor. Reuse canonical `worker_jobs` and outbox/lease authority across Debian and Cloudflare. Local Debian execution may use zero Cloudflare Queues cost, while verified production jobs may select TypeScript push, external Rust pull, or existing provider/runner executors by job class. Do not mandate Cloudflare Queue or Rust for every Mini App. Never hold Worker Queue invocations for multi-hour jobs. Short/long routes may use distinct queues only with measured need and no double-consumer configuration. See SPEC-318; planned performance and cost tracking are advisory, not pre-implementation approval gates.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "3067dee540c2f73a3015f9b9ce19102662016948484ca261b5783bc5e45f6be5",
       "requirement_id": "REQ-0EFDFE79A430",
       "requirement_text": "- Business priority changes to **Mini App-first marketplace** with agent/Skill capability as the execution layer. Public Creator Portfolio and Services offers are first-class. No new agent-first directory is required before beta.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "03b95d7e5a81bce3fe0f2d7dd94d3fc7dcaa0edd902ef88fdc5b910a07dad596",
       "requirement_id": "REQ-29B718963E5E",
       "requirement_text": "- The cross-spec audit SHALL reference existing SPEC-207, 256, 261, 263, 270, 273, 277, 280, 287, 293, 294, 295, 303, 304, 311, 318 and existing 199/248/224 authorities. Do not declare all old specs obsolete or recreate parallel canonical systems.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "63eac0f583eaee7a824ca55a9be9b3e3181b2c7508c57325b44d85fd8db22623",
       "requirement_id": "REQ-E13A9E34BFC9",
       "requirement_text": "- Credit redenomination is a coordinated legacy/new Financial Authority update, not a presentation-only display change. Old balance value must be preserved.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "853a6951de7dea59271105b17a7a7c877dd1619720330bb849dbbc188289237b",
       "requirement_id": "REQ-CF5B579A0168",
       "requirement_text": "This programme has TWO different data scopes. **Core control-plane** state and migrated legacy data remain in PostgreSQL `smartspec`; **new Mini App business data** lives outside that DB. If Mini App is stateless it need not provision any DB. Hosted-domain choice is independent of DB owner/provider and does not grant write access to Core. SPEC-323 is the authoritative specialization. M0 shall inventory legacy App tables and mark exact allowable shared-DB exceptions, while building fresh Mini Apps directly on isolated storage. Do not block unrelated UI/agent beta on inventory completion.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -319,7 +319,7 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L151",
       "blocker": null,
       "current_relevance": "SUPERSEDED_BY_R1.6_OWNER_DECISION",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "STALE",
       "evidence_sha": null,
       "final_state": "NOT_APPLICABLE",
       "implementation_evidence": [],
@@ -328,7 +328,7 @@
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
       "requirement_id": "REQ-FA42CFF33A89",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [
         "SPEC-312 R1.6 — Shared Core database, environment tenants and direct development"
       ],
@@ -355,7 +355,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -377,7 +377,7 @@
       "requirement_digest": "0bf905ee286b88eb35065cf8cb37864dbaef0b3a9d113954e9682eafe08bae42",
       "requirement_id": "REQ-088EB84317A9",
       "requirement_text": "Computer Use and fast decision routing are **cross-cutting optional capabilities** and MUST NOT block the P1 fresh Core/P2 Chat/P3 Mini App Creator beta when their own adapter is unready. Existing SPEC-208 is already the canonical Computer Use / Clef-first architecture. New platform adopts its contracts through thin adapters; no legacy monolith import, duplicate routing authority or Job ledger. Deliver one final-result-only headless browsing pilot early, then Desktop Runner and Clef optional routing, with Cloudflare Browser Run / Kitesurf and Moli benchmarked by eligibility and cost.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -399,7 +399,7 @@
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
       "requirement_id": "REQ-11BDE28B61A3",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -421,7 +421,7 @@
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
       "requirement_id": "REQ-AEB8CB86FDAE",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -443,7 +443,7 @@
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
       "requirement_id": "REQ-9243A49EB447",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -465,7 +465,7 @@
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
       "requirement_id": "REQ-5FDF8CE72332",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -487,7 +487,7 @@
       "requirement_digest": "9cbeb8995bc615447934a26ba984d8ffb8b54998c86e9ab115c518812726351d",
       "requirement_id": "REQ-306C2EAF8016",
       "requirement_text": "Before remote device execution is enabled, the new product must pass the SPEC-325 enrollment, device proof-of-possession, signed-job-envelope, revoke/reconnect, locked-session and shared-Companion acceptance cases on a non-production environment. Device availability is a workload capability; it is never a prerequisite for cloud Agent identity or browser-closed job durability.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -509,7 +509,7 @@
       "requirement_digest": "51530126ac52352e1cdddbc6db72572458f03ede5534abf1710879d1d519c1f1",
       "requirement_id": "REQ-78BB9E3B7A83",
       "requirement_text": "- The Legacy `smartaihub.app`, modular development `aimarkethubs.com`, and modular Cloudflare `smartsihub.com` runtimes MUST use the same canonical PostgreSQL `smartspec` database and Core identity, customer-tenant, entitlement, financial and `worker_jobs`/outbox authority. Existing user accounts and IDs MUST remain usable in the Modular product. Implementations MUST NOT clone users, create a second identity/ledger/job authority, copy the database or replace the existing schema. New Mini App business data MUST remain in its independent App data plane under SPEC-323.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -531,7 +531,7 @@
       "requirement_digest": "f0805d88fcdc9b8f27341959c9443790b5da66dce589631d8d31cd77b4d4033e",
       "requirement_id": "REQ-83BA6F65A95A",
       "requirement_text": "- The new Core MUST use Hono/TypeScript for both local Debian/workerd development and Cloudflare Workers, and MUST remain small and fast for that runtime. Implementations MUST NOT introduce Express or import the Legacy Express runtime into the new Core; `apps/web` remains the Legacy application.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -553,7 +553,7 @@
       "requirement_digest": "ffb68be2e53ecb9a6036b104b6d6766c8253a36884723eeb462e6c654fe66483",
       "requirement_id": "REQ-9352CD8A515B",
       "requirement_text": "- Implementations MUST keep customer tenancy separate from deployment environment tenancy. `aimarkethubs.com` MUST bind to the modular development/test environment tenant and `smartsihub.com` MUST bind to a distinct modular production environment tenant. Existing customer tenant IDs and authorized canonical Core data MUST remain shared. Every customer-data request MUST resolve access from the verified account, membership and policy; hostname or request data MUST NOT grant tenant access. Development-only records and effects MUST stay scoped to the development environment tenant.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -575,7 +575,7 @@
       "requirement_digest": "b68d2c54165afd3a905ab6f7c9313091b77c516c535578ded5abbfd7d1d72221",
       "requirement_id": "REQ-078D75C9DFB8",
       "requirement_text": "- Runtime DB credentials, deployment identities, Worker bindings and secrets MUST be separately scoped per environment where supported while connecting to the same canonical database. Existing authorization and schema semantics MUST be preserved; zero DDL remains the default. A different runtime credential MUST NOT imply a different database, and a shared database MUST NOT grant blanket cross-tenant access.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -597,7 +597,7 @@
       "requirement_digest": "62a2c7910f15283b4a9f4054f15d232bca8681bb0e37ea2fc93218fdf09d008a",
       "requirement_id": "REQ-C81078458FFE",
       "requirement_text": "- Development MUST be supported directly through Codex or Claude in the canonical source repository and MAY instead use the existing SPEC-224 Job/Run, Runner, Workspace and Harness facilities on `smartaihub.app`. Both paths MUST preserve the same source, focused-check, commit and handoff evidence. Implementations MUST record SPEC-224 receipts only when that path was actually used and MUST NOT create a replacement in-house orchestration system.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -619,7 +619,7 @@
       "requirement_digest": "2adcdd822fa2a4b4e348eb9be882f2080b96e1f8190b90fe36a960b170b91d33",
       "requirement_id": "REQ-61DD767ED6C7",
       "requirement_text": "- Implementations MUST preserve current target readiness: `aimarkethubs.com` remains unavailable for Modular traffic until its replacement is healthy, and the current port-3100 service remains in place until intentional handover. `smartsihub.com` remains inactive until its separate production release authority is provisioned. This clarification authorizes no runtime, database, DNS or production change by itself.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -632,7 +632,7 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L218",
       "blocker": null,
       "current_relevance": "RELEVANT",
-      "evidence_freshness": "FRESH",
+      "evidence_freshness": "STALE",
       "evidence_sha": "712172880aab7d4994480236513b5fcc5b11b013",
       "final_state": "PARTIAL",
       "implementation_evidence": [
@@ -644,7 +644,7 @@
       "requirement_digest": "0c32e4707fa5b6d5fcff5205c8dcd02fd1788749f96f7bd147b6b62b59dc9d4a",
       "requirement_id": "REQ-46847581892C",
       "requirement_text": "Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.",
-      "source_spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
@@ -652,9 +652,63 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md"
       ],
       "verification_method": "Core main a5e16406e1ab79d62c283ff03d6b83c895f6d34b: typecheck PASS, 11 files/65 tests PASS, Wrangler dry-run 388.64 KiB / 91.87 KiB gzip, local Worker /livez 200 and scheduled cleanup outcome ok. SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: receipt SETTLED/SUCCEEDED on modular-debian-dev with 0418 applied; catalog verifies dedicated NOLOGIN owner, fixed search_path, PUBLIC denied, Core EXECUTE only and no direct DELETE; transaction test verifies limits and retention; five local scheduled runs reduced expired JTI rows to zero. Does not prove existing-user login, customer membership/data, comparative Legacy/Core performance, production isolation, human UAT, or deployment."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L222"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L222",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Preserve the deployed default-workspace and explicit workspace switching behavior; collect authenticated visual UAT separately.",
+      "requirement_digest": "2d9fe881387efeda8a03a44784d8b827e6a8ca186721ace8f9cd6a2f589f95f3",
+      "requirement_id": "REQ-C7C0E67BDE2B",
+      "requirement_text": "After successful authentication, `/chat` SHALL provision an environment-scoped personal default workspace idempotently for the signed-in account when one does not already exist, then open Chat directly in that workspace. An account SHALL NOT be blocked at a “no workspace” dead end solely because it has no customer-tenant membership. Chat SHALL provide a visible workspace selector and a user action to create and switch to another personal workspace; creating one SHALL select it for the current session. With no explicit user selection, the personal default remains the initial workspace. Preserve the user's explicit selection for the current session only when the selected workspace is still authorized.",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      ],
+      "verification_method": "Verify idempotent default workspace provisioning, Chat routing, selector, create-and-select behavior, environment binding, and deployment evidence; keep authenticated visual UAT separate."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L224"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L224",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep personal workspaces environment-scoped and separate from Legacy customer tenants.",
+      "requirement_digest": "07670db603a450e2c92ddb2aefcbb5cabaf37e61758f43e76d1dad67d5ef037c",
+      "requirement_id": "REQ-4F88475454B1",
+      "requirement_text": "Personal workspaces SHALL be isolated by the verified Modular environment tenant and remain separate from Legacy customer tenants and their business data. Existing customer workspaces may appear only through their existing active canonical membership and policy; default-workspace provisioning SHALL NOT create, infer, or grant a customer-tenant membership from a role, email address, or hostname. The development environment SHALL NOT provision or read production personal-workspace records. These workspace controls make the Chat area usable but do not enable message sending without the separately required scoped persistence and provider path. This clarification does not change the `aimarkethubs.com` development target or activate `smartsihub.com`.",
+      "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      ],
+      "verification_method": "Verify environment-scoped personal workspace data, function-only access for the Modular auth role, wrong-environment denial, direct table denial, and no customer membership mutation."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+  "spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
   "spec_id": "312"
 }

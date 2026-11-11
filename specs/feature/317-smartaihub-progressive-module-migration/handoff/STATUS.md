@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 2 pass / 15 unresolved of 18
-- Next action: Keep Chat persistence and Browser Pilot unavailable. Resume real-account login and target-health proof when modular-debian-dev is available and the authorized UAT session can be exercised; continue independent module work meanwhile.
-- Manifest generation: 15
+- Requirements: 4 pass / 15 unresolved of 20
+- Next action: Collect authenticated workspace UAT; continue Chat persistence/provider implementation. Keep Browser Pilot unavailable until its approved runtime and canonical job adapter are configured.
+- Manifest generation: 20
 
 ## Source-declared status and relationship claims
 

@@ -2,15 +2,15 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.6
-date: 2026-11-09
+revision: R1.7
+date: 2026-11-11
 status: PROPOSED_NOT_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
 ---
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.6, 2026-11-09):** Earlier R0.x–R1.5 proposal text is retained for provenance. The R1.6 owner clarification at the end of this Spec and the [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) control conflicting database, tenant, and development-path wording.
+> **Current-revision note (R1.7, 2026-11-11):** Earlier R0.x–R1.6 proposal text is retained for provenance. R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -216,3 +216,9 @@ Before remote device execution is enabled, the new product must pass the SPEC-32
 - Implementations MUST preserve current target readiness: `aimarkethubs.com` remains unavailable for Modular traffic until its replacement is healthy, and the current port-3100 service remains in place until intentional handover. `smartsihub.com` remains inactive until its separate production release authority is provisioned. This clarification authorizes no runtime, database, DNS or production change by itself.
 
 Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.
+
+## R1.7 — Chat default personal workspace and user-controlled workspace switching (2026-11-11)
+
+After successful authentication, `/chat` SHALL provision an environment-scoped personal default workspace idempotently for the signed-in account when one does not already exist, then open Chat directly in that workspace. An account SHALL NOT be blocked at a “no workspace” dead end solely because it has no customer-tenant membership. Chat SHALL provide a visible workspace selector and a user action to create and switch to another personal workspace; creating one SHALL select it for the current session. With no explicit user selection, the personal default remains the initial workspace. Preserve the user's explicit selection for the current session only when the selected workspace is still authorized.
+
+Personal workspaces SHALL be isolated by the verified Modular environment tenant and remain separate from Legacy customer tenants and their business data. Existing customer workspaces may appear only through their existing active canonical membership and policy; default-workspace provisioning SHALL NOT create, infer, or grant a customer-tenant membership from a role, email address, or hostname. The development environment SHALL NOT provision or read production personal-workspace records. These workspace controls make the Chat area usable but do not enable message sending without the separately required scoped persistence and provider path. This clarification does not change the `aimarkethubs.com` development target or activate `smartsihub.com`.

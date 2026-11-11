@@ -1,15 +1,15 @@
 ---
 spec_id: 317
 semantic_id: smartaihub.progressive-modular-migration
-revision: R1.7
-date: 2026-11-10
+revision: R1.8
+date: 2026-11-11
 status: PROPOSED_NOT_IMPLEMENTED
 title: SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover
 ---
 
 # SPEC-317 — Progressive Module Migration and Independent Legacy Retirement
 
-> **Current-revision note (R1.7, 2026-11-10):** Earlier proposal text is retained for provenance. R1.7 controls development entry paths and independently buildable workload modules; R1.6 controls the Chat-first front door. For other migration, deployment, runtime, database, and always-on conflicts, R1.5 and the current owner-decision register control.
+> **Current-revision note (R1.8, 2026-11-11):** Earlier proposal text is retained for provenance. R1.8 controls default personal Chat workspace behavior; R1.7 controls development entry paths and independently buildable workload modules; R1.6 controls the Chat-first front door. For other migration, deployment, runtime, database, and always-on conflicts, R1.5 and the current owner-decision register control.
 
 ## 0. Decision
 
@@ -184,3 +184,9 @@ This owner clarification controls over conflicting older development-command-pat
 2. **Independent workload modules.** Each separately delivered product workload (including Core, Shell, Chat, Browser Pilot, Mini App Creator, and later migrated areas) SHALL have a bounded package/module, a named package-filtered build and focused verification command, its own output/manifest and size evidence, and an independent deploy/rollback scope when it is deployable. A module change builds that module and only its small, direct contract/SDK dependencies. Shared contracts remain small and versioned. Do not add a root default build that aggregates all applications/modules or require a Legacy-sized site build to change one workload.
 3. **Chat-first user journey.** The new application authenticates against the existing canonical account authority and opens directly to the new Chat workspace. It does not expose or reuse the Legacy dashboard as its home screen.
 4. **Environment boundary.** `aimarkethubs.com` remains the Debian development/UAT target and its currently healthy service stays untouched until the new Core is healthy and handover is intentional. `smartsihub.com` remains a separate future Cloudflare production target. A direct development session or SPEC-224 Run does not authorize a release, DNS change, production resource, database credential broadening, or traffic handover.
+
+## R1.8 — Default Chat workspace and explicit workspace management (2026-11-11)
+
+After successful authentication, `/chat` SHALL idempotently provision an environment-scoped personal default workspace when the account has none and open Chat directly in it. Absence of a customer-tenant membership alone SHALL NOT leave the user at a workspace-access dead end. Chat SHALL show a workspace selector and allow the user to create and switch to another personal workspace; creating a workspace SHALL select it in the current session. Unless the user explicitly chooses another authorized workspace in that session, Chat starts in the personal default.
+
+Personal workspaces are separate from Legacy customer tenants and are scoped to the verified Modular development or production environment. Existing customer workspaces appear only through their existing active canonical memberships and policies. Provisioning a personal default SHALL NOT create or infer customer membership from the account role, email, or hostname. This workspace behavior does not enable message sending until the separately required scoped persistence/provider path is configured. SPEC-312 R1.7 is the parent data and environment boundary.
