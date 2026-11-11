@@ -7483,6 +7483,21 @@ function dialogueSignature(lines: ShotDialogueLine[] | undefined): string {
     .join("\n");
 }
 
+function hasSameLineAssignedToDifferentSpeakers(
+  lines: readonly ShotDialogueLine[]
+): boolean {
+  const speakerByLine = new Map<string, string>();
+  for (const line of lines) {
+    const text = normalizeDialogueSignatureText(line.lineTh);
+    const speaker = line.characterKey?.trim().toLocaleLowerCase();
+    if (!text || !speaker) continue;
+    const previousSpeaker = speakerByLine.get(text);
+    if (previousSpeaker && previousSpeaker !== speaker) return true;
+    speakerByLine.set(text, speaker);
+  }
+  return false;
+}
+
 function hasDuplicateDialogueOnOtherClip(
   pack: VerticalDramaMotionPromptPack | null,
   shotNumber: number,
@@ -7513,6 +7528,10 @@ function shouldRegenerateDialogueForVideoPrompt(input: {
   if (input.dialogueLines.length === 0) return false;
   if (input.dialogueLines.some(line => line.origin === "script_fallback"))
     return true;
+  // A repeated utterance attributed to different people is usually a stale
+  // speaker-assignment artifact. Refresh it before it is used for lip-sync or
+  // native audio; repeated lines by the same person remain valid.
+  if (hasSameLineAssignedToDifferentSpeakers(input.dialogueLines)) return true;
   if (
     input.dialogueLines.some(line =>
       SCRIPT_DIALOGUE_SOUND_MARKER_PATTERN.test(line.lineTh.trim())

@@ -182,6 +182,7 @@ import {
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  getCurrentVerticalDramaSpeakerVisualBindings,
   hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
   type VerticalDramaDetectedShotPerson,
@@ -5083,6 +5084,11 @@ export function VerticalDramaStoryboardPanel({
                         ? t(locale, "ภาพมุมเดียว", "Single view")
                         : undefined;
           const frame = frameByShot.get(shotNumber);
+          const speakerVisualBindingsForShot =
+            getCurrentVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings,
+              frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId
+            );
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
           const speakerOptionsForShot =
             resolveSpeakerOptionsForShot(shotNumber);
@@ -9839,6 +9845,7 @@ export function VerticalDramaStoryboardPanel({
                             t={t2}
                             clip={clip}
                             characterPortraits={characterPortraits}
+                            speakerVisualBindings={speakerVisualBindingsForShot}
                             nativeAudio={
                               // `ttsFallbackByClip` (from `generateVideoClip`'s
                               // response) is authoritative once this clip has been
@@ -15847,6 +15854,7 @@ function ClipDialogueBox({
   t: t2,
   clip,
   characterPortraits,
+  speakerVisualBindings,
   nativeAudio,
   isEditing,
   draft,
@@ -15863,6 +15871,7 @@ function ClipDialogueBox({
   t: ReturnType<typeof vdCopy>;
   clip: VerticalDramaMotionPromptClipView;
   characterPortraits: VerticalDramaCharacterPortraitMap;
+  speakerVisualBindings: VerticalDramaSpeakerVisualBinding[];
   nativeAudio: boolean;
   isEditing: boolean;
   draft: VerticalDramaClipDialogueLineView[];
@@ -15888,13 +15897,23 @@ function ClipDialogueBox({
   const [dialogueCopied, setDialogueCopied] = useState(false);
   const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false);
   const [regenerateInstruction, setRegenerateInstruction] = useState("");
+  const speakerNameForLine = (line: VerticalDramaClipDialogueLineView) => {
+    const key = line.characterKey?.trim();
+    if (!key) return "—";
+    const localBinding = speakerVisualBindings.find(binding => {
+      const id = binding.id.trim().toLocaleLowerCase();
+      const normalizedKey = key.toLocaleLowerCase();
+      return (
+        normalizedKey === id ||
+        normalizedKey === `shot-local-speaker-${id}` ||
+        normalizedKey === binding.speakerLabel.trim().toLocaleLowerCase()
+      );
+    });
+    return localBinding?.speakerLabel ?? characterPortraits[key]?.name ?? key;
+  };
   const compiledDialogueText = lines
     .map(line => {
-      const portrait = line.characterKey
-        ? characterPortraits[line.characterKey]
-        : undefined;
-      const speaker = portrait?.name ?? line.characterKey ?? "—";
-      return `${speaker}: ${line.lineTh}`;
+      return `${speakerNameForLine(line)}: ${line.lineTh}`;
     })
     .join("\n");
   const hasScriptFallbackOrigin = lines.some(
@@ -16050,9 +16069,7 @@ function ClipDialogueBox({
       ) : (
         <ul className="flex flex-col gap-1.5">
           {lines.map((line, idx) => {
-            const portrait = line.characterKey
-              ? characterPortraits[line.characterKey]
-              : undefined;
+            const speakerName = speakerNameForLine(line);
             return (
               <li
                 key={idx}
@@ -16061,7 +16078,7 @@ function ClipDialogueBox({
                 {isEditing ? (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <span>{portrait?.name ?? line.characterKey ?? "—"}</span>
+                      <span>{speakerName}</span>
                     </div>
                     <Textarea
                       value={line.lineTh}
@@ -16084,7 +16101,7 @@ function ClipDialogueBox({
                 ) : (
                   <div className="flex flex-col gap-0.5">
                     <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
-                      <span>{portrait?.name ?? line.characterKey ?? "—"}</span>
+                      <span>{speakerName}</span>
                       {line.emotion ? (
                         <Badge
                           variant="outline"
