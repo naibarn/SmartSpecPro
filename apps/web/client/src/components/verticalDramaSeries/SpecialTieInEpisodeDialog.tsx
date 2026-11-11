@@ -737,6 +737,7 @@ export function SpecialTieInEpisodeDialog({
   );
   const [ideaHistory, setIdeaHistory] = useState<IdeaHistoryRun[]>([]);
   const historyHydratedRef = useRef(false);
+  const skipDraftSaveOnceRef = useRef(false);
   const [ideaGenerationJobId, setIdeaGenerationJobId] = useState<string | null>(
     null
   );
@@ -892,10 +893,22 @@ export function SpecialTieInEpisodeDialog({
       return;
     }
 
-    const saved = readSpecialTieInEpisodeDraft(draftKey);
     const modelPreferences = readSpecialTieInModelPreferences(
       modelPreferencesKey
     );
+    if (initialMode === "fresh") {
+      // A fresh episode must not restore the browser draft left by an older
+      // unfinished episode. Keep that draft available for an explicit resume.
+      historyHydratedRef.current = true;
+      skipDraftSaveOnceRef.current = true;
+      setDraftRestoredAt(null);
+      setImageModelId(modelPreferences?.imageModelId ?? "");
+      setVideoModelId(modelPreferences?.videoModelId ?? "");
+      setDraftHydratedKey(draftKey);
+      return;
+    }
+
+    const saved = readSpecialTieInEpisodeDraft(draftKey);
     // A restored form owns its own model choice. The user-level preference is
     // only the fallback for drafts created before model selection was saved.
     setIdeaGenerationJobId(null);
@@ -962,7 +975,13 @@ export function SpecialTieInEpisodeDialog({
       setVideoModelId(modelPreferences?.videoModelId ?? "");
     }
     setDraftHydratedKey(draftKey);
-  }, [open, draftKey, modelPreferencesKey, isEditingExistingEpisode]);
+  }, [
+    open,
+    draftKey,
+    modelPreferencesKey,
+    isEditingExistingEpisode,
+    initialMode,
+  ]);
 
   useEffect(() => {
     if (
@@ -972,6 +991,10 @@ export function SpecialTieInEpisodeDialog({
       isEditingExistingEpisode
     )
       return;
+    if (skipDraftSaveOnceRef.current) {
+      skipDraftSaveOnceRef.current = false;
+      return;
+    }
     setDraftSaved(writeSpecialTieInEpisodeDraft(draftKey, draftValues));
   }, [open, draftKey, draftHydratedKey, draftValues, isEditingExistingEpisode]);
 
