@@ -37377,9 +37377,19 @@ const MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS = 5 * 60_000;
 const MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT = 5;
 
 export function shouldOpenMarketplaceAutoReviewRunawayCircuit(
-  recentJobCount: number
+  recentJobCount: number,
+  scopeMatches = {
+    sameRequester: true,
+    sameOperation: true,
+    sameTarget: true,
+  }
 ) {
-  return recentJobCount >= MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT;
+  return (
+    scopeMatches.sameRequester &&
+    scopeMatches.sameOperation &&
+    scopeMatches.sameTarget &&
+    recentJobCount >= MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT
+  );
 }
 
 export async function queueMarketplaceAutoReviewAdvance(
@@ -37400,22 +37410,24 @@ export async function queueMarketplaceAutoReviewAdvance(
     return;
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
-  const recentAdvanceJobs = await db
+  const recentSameSourceJobs = await db
     .select({ id: workerJobs.id })
     .from(workerJobs)
     .where(
       and(
         eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+        eq(workerJobs.requestedByUserId, auth.userId),
         eq(workerJobs.jobType, "marketplace.auto_review.execute"),
         gte(
           workerJobs.createdAt,
           new Date(Date.now() - MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS)
         ),
-        sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+        sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+        sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
       )
     )
     .limit(MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT);
-  if (shouldOpenMarketplaceAutoReviewRunawayCircuit(recentAdvanceJobs.length)) {
+  if (shouldOpenMarketplaceAutoReviewRunawayCircuit(recentSameSourceJobs.length)) {
     const stoppedAt = nowIso();
     const reason = "runaway_worker_job_admission_circuit_open";
     await updateRun({
@@ -37430,7 +37442,10 @@ export async function queueMarketplaceAutoReviewAdvance(
           status: "open",
           reason,
           jobType: "marketplace.auto_review.execute",
-          recentJobCount: recentAdvanceJobs.length,
+          operation: "advance_run",
+          requestedByUserId: auth.userId,
+          runId: run.id,
+          recentJobCount: recentSameSourceJobs.length,
           windowMs: MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS,
           openedAt: stoppedAt,
         },
@@ -37443,6 +37458,7 @@ export async function queueMarketplaceAutoReviewAdvance(
       .where(
         and(
           eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+          eq(workerJobs.requestedByUserId, auth.userId),
           eq(workerJobs.jobType, "marketplace.auto_review.execute"),
           inArray(workerJobs.status, [
             "pending",
@@ -37453,7 +37469,8 @@ export async function queueMarketplaceAutoReviewAdvance(
             "running",
             "retry_scheduled",
           ] as any),
-          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+          sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
         )
       );
     const controlPlane = createJobControlPlane();

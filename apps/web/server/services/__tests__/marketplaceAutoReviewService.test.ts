@@ -8869,10 +8869,24 @@ describe("marketplace auto review audio/video planning", () => {
     );
   });
 
-  it("opens a runaway circuit at the repeated-job threshold", () => {
+  it("opens only for repeated jobs from the same requester, operation, and target", () => {
     expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(4)).toBe(false);
     expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(5)).toBe(true);
     expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(6)).toBe(true);
+    expect(
+      shouldOpenMarketplaceAutoReviewRunawayCircuit(8, {
+        sameRequester: false,
+        sameOperation: true,
+        sameTarget: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldOpenMarketplaceAutoReviewRunawayCircuit(8, {
+        sameRequester: true,
+        sameOperation: true,
+        sameTarget: false,
+      })
+    ).toBe(false);
   });
 
   it("persists provider cancellation intent evidence when hard cancel cannot be dispatched", async () => {
