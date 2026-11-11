@@ -167,6 +167,9 @@ const MarketplaceCaptureProductDetail = lazy(
 const MarketplaceAutoReviewWorkflowPage = lazy(
   () => import("./pages/MarketplaceAutoReviewWorkflowPage")
 );
+const MarketplaceAutoReviewJobsPage = lazy(
+  () => import("./pages/MarketplaceAutoReviewJobsPage")
+);
 const MarketplaceCaptureCandidateBatch = lazy(
   () => import("./pages/MarketplaceCaptureCandidateBatch")
 );
@@ -796,6 +799,11 @@ function Router() {
           <Route path="/marketplace-capture/candidates/:batchId">
             <RequireAuth>
               <MarketplaceCaptureCandidateBatch />
+            </RequireAuth>
+          </Route>
+          <Route path="/marketplace/auto-review">
+            <RequireAuth>
+              <MarketplaceAutoReviewJobsPage />
             </RequireAuth>
           </Route>
           <Route path="/marketplace/auto-review/new/:productId">

@@ -281,6 +281,17 @@ export const defaultMenuItems: MenuItem[] = [
     requiresFeature: "MARKETPLACE_CAPTURE_ENABLED",
   },
   {
+    id: "marketplace-auto-review-jobs",
+    label: "Marketplace Auto Review",
+    labelTh: "งานรีวิว Marketplace",
+    icon: "Clapperboard",
+    path: "/marketplace/auto-review",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.905,
+    requiresFeature: "MARKETPLACE_CAPTURE_ENABLED",
+  },
+  {
     id: "marketplace-intelligence",
     label: "Marketplace Intelligence",
     labelTh: "วิเคราะห์ Marketplace",

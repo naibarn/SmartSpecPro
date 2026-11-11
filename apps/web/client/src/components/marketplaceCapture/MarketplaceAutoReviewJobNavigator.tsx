@@ -19,7 +19,8 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   selectedRunId?: string | null;
   loading?: boolean;
   error?: string | null;
-  productId: string;
+  productId?: string;
+  allProducts?: boolean;
   setupMode?: boolean;
   onOpenRun: (runId: string) => void;
   onCreateNew: () => void;
@@ -270,6 +271,7 @@ export function MarketplaceAutoReviewJobNavigator({
   loading = false,
   error = null,
   productId,
+  allProducts = false,
   setupMode = false,
   onOpenRun,
   onCreateNew,
@@ -304,16 +306,22 @@ export function MarketplaceAutoReviewJobNavigator({
             {visibleRuns.length} งาน
           </span>
         </div>
-        <h2 className="mt-2 text-base font-semibold">งาน Review ของสินค้า</h2>
+        <h2 className="mt-2 text-base font-semibold">
+          {allProducts ? "งาน Review ทั้งหมด" : "งาน Review ของสินค้า"}
+        </h2>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
-          เลือกเปิดงานเดิมเพื่อตรวจต่อ หรือสร้างงานใหม่จากสินค้านี้
+          {allProducts
+            ? "เปิดดูงานเดิม หรืองานที่ยังรอตรวจและทำต่อได้"
+            : "เลือกเปิดงานเดิมเพื่อตรวจต่อ หรือสร้างงานใหม่จากสินค้านี้"}
         </p>
-        <p
-          className="mt-2 truncate text-[11px] text-slate-500"
-          title={productId}
-        >
-          Product: {productId}
-        </p>
+        {!allProducts && productId ? (
+          <p
+            className="mt-2 truncate text-[11px] text-slate-500"
+            title={productId}
+          >
+            Product: {productId}
+          </p>
+        ) : null}
       </header>
 
       <nav
@@ -335,7 +343,9 @@ export function MarketplaceAutoReviewJobNavigator({
         ) : null}
         {!loading && !error && visibleRuns.length === 0 ? (
           <p className="rounded-lg border border-dashed border-white/15 bg-white/5 p-4 text-center text-xs leading-5 text-slate-400">
-            ยังไม่มี Job Review สำหรับสินค้านี้
+            {allProducts
+              ? "ยังไม่มี Job Review"
+              : "ยังไม่มี Job Review สำหรับสินค้านี้"}
           </p>
         ) : null}
         <ul className="space-y-2">
