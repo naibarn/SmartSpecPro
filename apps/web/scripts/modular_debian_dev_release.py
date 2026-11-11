@@ -172,6 +172,40 @@ def verify_service_directories(expected: dict[str, Path], *, proc_root: Path = P
             raise ReleaseError(f"SERVICE_RELEASE_PATH_MISMATCH:{name}")
 
 
+def wait_for_service_directories(
+    expected: dict[str, Path],
+    *,
+    proc_root: Path = Path("/proc"),
+    attempts: int = 10,
+    interval: float = 1,
+) -> None:
+    last_error: ReleaseError | None = None
+    for attempt in range(attempts):
+        try:
+            verify_service_directories(expected, proc_root=proc_root)
+            return
+        except ReleaseError as exc:
+            last_error = exc
+            if attempt + 1 < attempts:
+                time.sleep(interval)
+    raise last_error or ReleaseError("SERVICE_RELEASE_PATH_UNAVAILABLE")
+
+
+def wait_for_service_release_directories(
+    artifact_root: Path,
+    *,
+    proc_root: Path = Path("/proc"),
+    attempts: int = 10,
+    interval: float = 1,
+) -> None:
+    expected_root = artifact_root.resolve()
+    expected = {
+        name: expected_root / relative
+        for name, relative in SERVICE_WORKING_DIRECTORIES.items()
+    }
+    wait_for_service_directories(expected, proc_root=proc_root, attempts=attempts, interval=interval)
+
+
 def write_service_release_dropins(
     artifact_root: Path,
     rollback_directory: Path,
@@ -257,7 +291,7 @@ def http_status(url: str, *, host: str | None = None, max_time: int = 8) -> tupl
         raise ReleaseError("HTTP_SMOKE_RESPONSE_INVALID") from exc
 
 
-def verify_local_components() -> dict[str, int]:
+def _verify_local_components_once() -> dict[str, int]:
     outcomes: dict[str, int] = {}
     for name, component in COMPONENTS.items():
         run(["systemctl", "--user", "is-active", component["service"]])
@@ -295,6 +329,18 @@ def verify_local_components() -> dict[str, int]:
     outcomes["chat_manifest"] = 200
     outcomes["chat_entry"] = 200
     return outcomes
+
+
+def verify_local_components(*, attempts: int = 6, interval: float = 1) -> dict[str, int]:
+    last_error: ReleaseError | None = None
+    for attempt in range(attempts):
+        try:
+            return _verify_local_components_once()
+        except ReleaseError as exc:
+            last_error = exc
+            if attempt + 1 < attempts:
+                time.sleep(interval)
+    raise last_error or ReleaseError("LOCAL_COMPONENTS_UNAVAILABLE")
 
 
 def _verify_public_site_once() -> dict[str, int]:
@@ -386,36 +432,54 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     systemd_rollback = artifact_root / "rollback" / "systemd"
     tunnel_changed = False
     services_prepared = False
+    stage = "write_service_dropins"
     try:
         write_service_release_dropins(artifact_root, systemd_rollback)
         services_prepared = True
+        stage = "restart_candidate_services"
         restart_modular_services()
-        verify_service_release_directories(artifact_root)
+        stage = "verify_candidate_service_directories"
+        wait_for_service_release_directories(artifact_root)
+        stage = "verify_candidate_health"
         local_smoke = verify_local_components()
 
+        stage = "switch_tunnel"
         candidate_text = args.candidate_config.read_text()
         atomic_write(args.active_config, candidate_text)
         tunnel_changed = True
         run(["systemctl", "--user", "restart", TUNNEL_SERVICE], timeout=30)
         time.sleep(3)
+        stage = "verify_public_site"
         public_smoke = verify_public_site()
     except Exception as exc:
+        rollback_stage = "begin"
         try:
             if tunnel_changed:
+                rollback_stage = "restore_tunnel_config"
                 atomic_write(args.active_config, backup.read_text())
                 run(["systemctl", "--user", "restart", TUNNEL_SERVICE], timeout=30)
             if services_prepared:
+                rollback_stage = "restore_service_dropins"
                 restore_service_release_dropins(systemd_rollback)
+                rollback_stage = "restart_previous_services"
                 restart_modular_services()
-                verify_service_directories(previous_service_directories)
+                rollback_stage = "verify_previous_service_directories"
+                wait_for_service_directories(previous_service_directories)
+                rollback_stage = "verify_previous_health"
                 verify_local_components()
             if tunnel_changed:
+                rollback_stage = "verify_public_recovery"
                 recovered_status, _ = http_status("https://aimarkethubs.com/")
                 if recovered_status != 200:
                     raise ReleaseError("PUBLIC_ROLLBACK_UNHEALTHY")
         except Exception as rollback_error:
-            raise ReleaseError("HANDOVER_FAILED_AND_ROLLBACK_FAILED") from rollback_error
-        raise ReleaseError("HANDOVER_FAILED_ROLLED_BACK") from exc
+            original = str(exc) if isinstance(exc, ReleaseError) else type(exc).__name__
+            rollback = str(rollback_error) if isinstance(rollback_error, ReleaseError) else type(rollback_error).__name__
+            raise ReleaseError(
+                f"HANDOVER_FAILED_AND_ROLLBACK_FAILED:stage={stage};cause={original};rollback_stage={rollback_stage};rollback={rollback}"
+            ) from rollback_error
+        original = str(exc) if isinstance(exc, ReleaseError) else type(exc).__name__
+        raise ReleaseError(f"HANDOVER_FAILED_ROLLED_BACK:stage={stage};cause={original}") from exc
 
     now = datetime.now(timezone.utc).isoformat()
     target.update({

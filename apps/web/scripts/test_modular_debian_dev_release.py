@@ -116,6 +116,31 @@ class ModularDebianReleasePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(release.ReleaseError, "SERVICE_RELEASE_PATH_MISMATCH:core"):
                     release.verify_service_release_directories(candidate.parent.parent, proc_root=root / "proc")
 
+    def test_waits_for_restarted_services_to_report_the_candidate_directory(self):
+        expected = {
+            name: Path("/release") / suffix
+            for name, suffix in release.SERVICE_WORKING_DIRECTORIES.items()
+        }
+        with patch.object(release, "verify_service_directories", side_effect=(
+            release.ReleaseError("SERVICE_PROCESS_UNAVAILABLE:core"),
+            None,
+        )) as verify, patch.object(release.time, "sleep") as sleep:
+            release.wait_for_service_directories(expected, attempts=3, interval=0.1)
+
+        self.assertEqual(verify.call_count, 2)
+        sleep.assert_called_once_with(0.1)
+
+    def test_retries_local_health_probes_after_a_service_restart(self):
+        expected = {"core": 200, "chat": 200, "shell": 200}
+        with patch.object(release, "_verify_local_components_once", side_effect=(
+            release.ReleaseError("LOCAL_COMPONENT_UNHEALTHY:chat"),
+            expected,
+        )) as verify, patch.object(release.time, "sleep") as sleep:
+            self.assertEqual(release.verify_local_components(attempts=3, interval=0.1), expected)
+
+        self.assertEqual(verify.call_count, 2)
+        sleep.assert_called_once_with(0.1)
+
     def test_release_dropins_switch_to_candidate_and_restore_exact_previous_state(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
