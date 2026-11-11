@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `14`
-- Updated (UTC): `2026-11-10T04:30:40.905976+00:00`
+- State generation: `16`
+- Updated (UTC): `2026-11-11T08:28:32.691621+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/317-smartaihub-progressive-module-migration/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `6c1b97a65f860ba5d9dadb06e188fa53316efbdb`
+- Latest recorded merged Main SHA: `03f450112b61efcec8c14004f7495076aae79035`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-05-browser-pilot-and-runtime-proof`
-- Next action: All five sections are integrated; package-level checks and ten cross-section gap-review rounds are recorded. Resume hosted existing-account login/UAT and provider/data/runtime integrations only after modular-debian-dev is available and healthy; keep current port-3100/Tunnel, Chat persistence, Browser Pilot, and smartsihub.com unchanged until their prerequisites are met.
+- Active section: `section-03-chat-worker-auth-data-and-provider-contract`
+- Next action: Perform authenticated browser verification of the provider/model selector, then continue scoped Chat persistence and server-side provider execution; keep Send disabled until both are verified.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-package-boundaries-and-builds | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | ebb264aa0151e97e9e463b7d4ca23290a48569db | ebb264aa0151e97e9e463b7d4ca23290a48569db | Section 01 is integrated on smartaihub-platform/main. Implement Section 02 in that repository: fresh Shell sign-in/session flow, route success to /chat, no Legacy Dashboard. |
 | section-02-react-shell-login-and-routing | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | 266a28ab475256c1cbb5e61ab4517aa67fd8e688 | 266a28ab475256c1cbb5e61ab4517aa67fd8e688 | Continue Section 03 with a read-only audit of the approved development database target and existing Legacy auth/conversation/message/artifact contracts; implement against verified contracts only and record non-blocking limitations. |
-| section-03-chat-worker-auth-data-and-provider-contract | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | d0a85bbf46986d2bb164775ef8a9a62b543a8006 | d0a85bbf46986d2bb164775ef8a9a62b543a8006 | Implement Section 04 independently: replace the Chat placeholder with the new module UI, consume the session/capabilities contracts, retain truthful unavailable states for persistence/provider, and test the UI without calling Legacy runtime. |
+| section-03-chat-worker-auth-data-and-provider-contract | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | 03f450112b61efcec8c14004f7495076aae79035 | 03f450112b61efcec8c14004f7495076aae79035 | Perform authenticated browser verification of the provider/model selector, then continue scoped Chat persistence and server-side provider execution; keep Send disabled until both are verified. |
 | section-04-chat-independent-ui-and-artifacts | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | 95035695ff3408dfe954594a838e03b98e33ac91 | 95035695ff3408dfe954594a838e03b98e33ac91 | Section 04 is integrated; implement Browser Pilot as a separate bounded package and expose only its server-verified disabled capability in Chat while provider/job adapter/host policy are absent. |
 | section-05-browser-pilot-and-runtime-proof | checkpointed | — | /mnt/SmartSpecDev/projects/smartaihub-platform | 6c1b97a65f860ba5d9dadb06e188fa53316efbdb | 6c1b97a65f860ba5d9dadb06e188fa53316efbdb | All five sections are integrated; package-level checks and ten cross-section gap-review rounds are recorded. Resume hosted existing-account login/UAT and provider/data/runtime integrations only after modular-debian-dev is available and healthy; keep current port-3100/Tunnel, Chat persistence, Browser Pilot, and smartsihub.com unchanged until their prerequisites are met. |
 
@@ -29,6 +29,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No model provider is configured for the Chat Worker. Keep the capability unavailable until an approved server-side provider binding is provisioned.
 - Browser provider, approved Runner, DNS/redirect egress enforcement and canonical worker_jobs+outbox adapter are not configured; keep Browser Pilot unavailable and no run action exposed.
 - Real canonical-account login, data persistence, model response and domain health are not proven on aimarkethubs.com; do not create/reset users or hand over traffic.
+- Catalog is deployed and selectable, but Auto is not connected to a live generation route; Chat persistence and provider execution are still unavailable.
 
 ## Resume
 

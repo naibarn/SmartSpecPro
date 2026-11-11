@@ -31,9 +31,9 @@
     "section-03-chat-worker-auth-data-and-provider-contract": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-      "next_action": "Implement Section 04 independently: replace the Chat placeholder with the new module UI, consume the session/capabilities contracts, retain truthful unavailable states for persistence/provider, and test the UI without calling Legacy runtime.",
-      "checkpoint_sha": "d0a85bbf46986d2bb164775ef8a9a62b543a8006",
-      "merged_main_sha": "d0a85bbf46986d2bb164775ef8a9a62b543a8006"
+      "next_action": "Perform authenticated browser verification of the provider/model selector, then continue scoped Chat persistence and server-side provider execution; keep Send disabled until both are verified.",
+      "checkpoint_sha": "03f450112b61efcec8c14004f7495076aae79035",
+      "merged_main_sha": "03f450112b61efcec8c14004f7495076aae79035"
     },
     "section-04-chat-independent-ui-and-artifacts": {
       "checkpoint_sha": "95035695ff3408dfe954594a838e03b98e33ac91",
@@ -60,18 +60,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-10T01:44:20.059502+00:00",
-  "generation": 14,
-  "updated_at": "2026-11-10T04:30:40.905976+00:00",
+  "generation": 16,
+  "updated_at": "2026-11-11T08:28:32.691621+00:00",
   "progress": {
-    "active_section": "section-05-browser-pilot-and-runtime-proof",
-    "next_action": "All five sections are integrated; package-level checks and ten cross-section gap-review rounds are recorded. Resume hosted existing-account login/UAT and provider/data/runtime integrations only after modular-debian-dev is available and healthy; keep current port-3100/Tunnel, Chat persistence, Browser Pilot, and smartsihub.com unchanged until their prerequisites are met.",
-    "merged_main_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+    "active_section": "section-03-chat-worker-auth-data-and-provider-contract",
+    "next_action": "Perform authenticated browser verification of the provider/model selector, then continue scoped Chat persistence and server-side provider execution; keep Send disabled until both are verified.",
+    "merged_main_sha": "03f450112b61efcec8c14004f7495076aae79035",
     "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
     "gaps": [
       "Chat persistence is disabled: verified role modular_core_auth_dev has no privileges on conversations, messages, conversation_artifacts or worker_jobs; these tables also have RLS disabled. Provision a separate least-privilege Chat role or canonical tenant-scoped adapter before enabling read/write routes.",
       "No model provider is configured for the Chat Worker. Keep the capability unavailable until an approved server-side provider binding is provisioned.",
       "Browser provider, approved Runner, DNS/redirect egress enforcement and canonical worker_jobs+outbox adapter are not configured; keep Browser Pilot unavailable and no run action exposed.",
-      "Real canonical-account login, data persistence, model response and domain health are not proven on aimarkethubs.com; do not create/reset users or hand over traffic."
+      "Real canonical-account login, data persistence, model response and domain health are not proven on aimarkethubs.com; do not create/reset users or hand over traffic.",
+      "Catalog is deployed and selectable, but Auto is not connected to a live generation route; Chat persistence and provider execution are still unavailable."
     ]
   }
 }

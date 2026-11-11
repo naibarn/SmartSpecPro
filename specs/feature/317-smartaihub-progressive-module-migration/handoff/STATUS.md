@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 4 pass / 15 unresolved of 20
-- Next action: Collect authenticated workspace UAT; continue Chat persistence/provider implementation. Keep Browser Pilot unavailable until its approved runtime and canonical job adapter are configured.
-- Manifest generation: 20
+- Requirements: 0 pass / 19 unresolved of 20
+- Next action: Run authenticated browser checks for the Kie AI/OpenRouter model selector and responsive layout; continue scoped Chat persistence and server-side provider execution before enabling Send. Keep Browser Pilot unavailable until its runtime/job controls are configured.
+- Manifest generation: 23
 
 ## Source-declared status and relationship claims
 
