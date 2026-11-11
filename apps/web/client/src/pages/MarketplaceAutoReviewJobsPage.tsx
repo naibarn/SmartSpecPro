@@ -64,9 +64,11 @@ export default function MarketplaceAutoReviewJobsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_PRODUCTS}>ทุกสินค้า</SelectItem>
-              {(productsQuery.data ?? []).map(productId => (
-                <SelectItem key={productId} value={productId}>
-                  {productId}
+              {(productsQuery.data ?? []).map(product => (
+                <SelectItem key={product.productId} value={product.productId}>
+                  {product.productName
+                    ? `${product.productName} · ${product.productId}`
+                    : product.productId}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -75,11 +77,19 @@ export default function MarketplaceAutoReviewJobsPage() {
       }
       state="ready"
     >
+      <section className="mb-4 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+        <h2 className="font-semibold">หน้านี้ใช้ค้นหาและเลือกงาน</h2>
+        <p className="mt-1 leading-6">
+          งานใหม่อยู่บนสุด เลือก “ทุกสินค้า” หรือเลือกสินค้าในตัวกรอง แล้วกดการ์ดงานเพื่อเปิด Job Workbench
+          สำหรับตรวจและทำงานต่อทีละช็อต
+        </p>
+      </section>
       <MarketplaceAutoReviewJobNavigator
         runs={runs}
         loading={jobsQuery.isLoading}
         error={jobsQuery.error?.message ?? null}
         allProducts
+        productOptions={productsQuery.data ?? []}
         hasMore={jobsQuery.hasNextPage}
         loadingMore={jobsQuery.isFetchingNextPage}
         onLoadMore={() => void jobsQuery.fetchNextPage()}

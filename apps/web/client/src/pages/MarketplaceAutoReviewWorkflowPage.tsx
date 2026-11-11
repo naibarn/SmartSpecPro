@@ -14,6 +14,7 @@ import { StagedCheckpointReviewSurface } from "@/components/marketplaceCapture/S
 import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
 import { MarketplaceAutoReviewLegacyDetails } from "@/components/marketplaceCapture/MarketplaceAutoReviewLegacyDetails";
 import { trpc } from "@/lib/trpc";
+import { projectSequentialShotCards } from "@/lib/marketplaceSequentialStoryboardUi";
 
 const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
 
@@ -87,10 +88,14 @@ function numeric(value: unknown) {
 }
 
 function formatDateTime(value: unknown) {
-  if (typeof value !== "string" && !(value instanceof Date)) {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
     return "ยังไม่มีเวลา";
   }
-  const date = new Date(value);
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "ยังไม่มีเวลา";
   return date.toLocaleString("th-TH", {
     day: "numeric",
@@ -156,10 +161,23 @@ export default function MarketplaceAutoReviewWorkflowPage() {
         ? metadata.creditSummary
         : {};
   const productId = typeof run?.productId === "string" ? run.productId : "";
+  const hasLegacyShots = projectSequentialShotCards(run?.metadataJson).length > 0;
+  const [selectedProductFilter, setSelectedProductFilter] =
+    useState("__all_products__");
+  const productOptionsQuery = trpc.marketplaceCapture.listAutoReviewRunProducts.useQuery(
+    undefined,
+    { staleTime: 60_000 }
+  );
   const jobsQuery = trpc.marketplaceCapture.listAutoReviewRuns.useQuery(
-    { productId, limit: 50, summary: true },
     {
-      enabled: Boolean(productId),
+      productId:
+        selectedProductFilter === "__all_products__"
+          ? undefined
+          : selectedProductFilter,
+      limit: 50,
+      summary: true,
+    },
+    {
       refetchOnWindowFocus: true,
       staleTime: 15_000,
       refetchInterval: query => {
@@ -213,11 +231,13 @@ export default function MarketplaceAutoReviewWorkflowPage() {
   );
   const product = (productQuery.data as any)?.product ?? productQuery.data;
   const productName =
-    typeof product?.title === "string"
-      ? product.title
-      : typeof product?.name === "string"
-        ? product.name
-        : "Marketplace product";
+    typeof product?.productName === "string"
+      ? product.productName
+      : typeof product?.title === "string"
+        ? product.title
+        : typeof product?.name === "string"
+          ? product.name
+          : "Marketplace product";
   const outputLinks = safeOutputLinks(run);
   const storyboardLink =
     outputLinks.find((link: any) => link.kind === "storyboard_review") ?? null;
@@ -442,6 +462,10 @@ export default function MarketplaceAutoReviewWorkflowPage() {
             loading={jobsQuery.isFetching}
             error={jobsQuery.error?.message ?? null}
             productId={productId}
+            productName={productName}
+            productOptions={productOptionsQuery.data ?? []}
+            selectedProductFilter={selectedProductFilter}
+            onProductFilterChange={setSelectedProductFilter}
             onOpenRun={nextRunId =>
               setLocation(
                 `/marketplace/auto-review/${encodeURIComponent(nextRunId)}`
@@ -490,6 +514,14 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
                       <Package className="h-3.5 w-3.5" /> {productName}
                     </span>
+                    {productId ? (
+                      <span
+                        className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5"
+                        title={productId}
+                      >
+                        รหัสสินค้า {productId}
+                      </span>
+                    ) : null}
                     <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
                       Run {runId}
                     </span>
@@ -497,12 +529,36 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                       ขั้นตอน {stageLabel(run?.currentStage)}
                     </span>
                   </div>
+                  <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-300">
+                    หน้านี้คือรายละเอียดของงานที่เลือก: ใช้ตรวจ Prompt และผลลัพธ์
+                    แยกรายช็อต ส่วนหน้ารวมงานใช้ค้นงานย้อนหลังและกรองตามสินค้า
+                  </p>
                   {run ? (
                     <p className="mt-2 text-xs leading-5 text-slate-400">
                       สร้าง {formatDateTime(run.createdAt)} · อัปเดตล่าสุด{" "}
                       {formatDateTime(run.updatedAt ?? run.createdAt)}
                     </p>
                   ) : null}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      className="inline-flex min-h-10 items-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                      href="/marketplace/auto-review"
+                    >
+                      ดูงานทั้งหมด / ค้นหางานเก่า
+                    </a>
+                    {isStaged || hasLegacyShots ? (
+                      <a
+                        className="inline-flex min-h-10 items-center rounded-lg border border-sky-300/40 bg-sky-400/15 px-3 py-2 text-xs font-medium text-sky-100 transition hover:bg-sky-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                        href={
+                          isStaged
+                            ? "#staged-auto-review-shot-list"
+                            : "#auto-review-legacy-shot-list"
+                        }
+                      >
+                        ดูข้อมูลแยกรายช็อต
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex min-w-[13rem] flex-col items-start gap-3 sm:items-end">
                   <span

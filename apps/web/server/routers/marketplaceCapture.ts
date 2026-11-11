@@ -1341,7 +1341,14 @@ export const marketplaceCaptureRouter = router({
 
   listAutoReviewRunProducts: protectedProcedure
     .input(z.void())
-    .output(z.array(z.string()))
+    .output(
+      z.array(
+        z.object({
+          productId: z.string(),
+          productName: z.string().nullable(),
+        })
+      )
+    )
     .query(async ({ ctx }) => {
       const auth = authFromCtx(ctx);
       return listMarketplaceAutoReviewRunProducts(auth);

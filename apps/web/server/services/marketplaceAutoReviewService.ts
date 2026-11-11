@@ -72,6 +72,7 @@ import {
   mediaProductionRuns,
   mediaStudioStoryboardReviews,
   marketplaceAutoReviewRuns,
+  marketplaceProducts,
   marketplaceAutoReviewStages,
   marketplaceAutoReviewRunLeases,
   marketplaceAutoReviewStageAttempts,
@@ -23937,9 +23938,37 @@ export async function listMarketplaceAutoReviewRunProducts(auth: AuthContext) {
         tenantAccessClause(auth)
       )
     );
-  return rows
-    .map(row => row.productId)
-    .sort((left, right) => left.localeCompare(right));
+  const productIds = rows.map(row => row.productId);
+  const productRows = productIds.length
+    ? await db
+        .select({
+          productId: marketplaceProducts.id,
+          productName: marketplaceProducts.productName,
+        })
+        .from(marketplaceProducts)
+        .where(
+          and(
+            inArray(marketplaceProducts.id, productIds),
+            eq(marketplaceProducts.userId, auth.userId),
+            auth.tenantId
+              ? or(
+                  eq(marketplaceProducts.tenantId, auth.tenantId),
+                  sql`${marketplaceProducts.tenantId} is null`
+                )
+              : undefined
+          )
+        )
+    : [];
+  const productNameById = new Map(
+    productRows.map(row => [row.productId, cleanText(row.productName) || null])
+  );
+  const options = productIds.map(productId => ({
+    productId,
+    productName: productNameById.get(productId) ?? null,
+  }));
+  return options.sort((left, right) =>
+    (left.productName ?? left.productId).localeCompare(right.productName ?? right.productId)
+  );
 }
 
 async function ensureRunStages(

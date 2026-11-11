@@ -21,6 +21,10 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   loading?: boolean;
   error?: string | null;
   productId?: string;
+  productName?: string;
+  productOptions?: { productId: string; productName: string | null }[];
+  selectedProductFilter?: string;
+  onProductFilterChange?: (productId: string) => void;
   allProducts?: boolean;
   setupMode?: boolean;
   hasMore?: boolean;
@@ -47,8 +51,13 @@ function text(...values: unknown[]): string {
 }
 
 function runTimestamp(run: MarketplaceAutoReviewJobSummary): number {
-  const value = text(run.createdAt, run.updatedAt);
-  const timestamp = Date.parse(value);
+  const value = run.createdAt ?? run.updatedAt;
+  const timestamp =
+    value instanceof Date
+      ? value.getTime()
+      : typeof value === "number"
+        ? value
+        : Date.parse(String(value ?? ""));
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
@@ -243,7 +252,10 @@ function stageLabel(stage: unknown): string {
 }
 
 function formatDate(value: unknown): string {
-  const date = new Date(text(value));
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(typeof value === "number" ? value : String(value ?? ""));
   if (Number.isNaN(date.getTime())) return "ยังไม่มีเวลา";
   return date.toLocaleString("th-TH", {
     day: "numeric",
@@ -275,6 +287,10 @@ export function MarketplaceAutoReviewJobNavigator({
   loading = false,
   error = null,
   productId,
+  productName,
+  productOptions,
+  selectedProductFilter,
+  onProductFilterChange,
   allProducts = false,
   setupMode = false,
   hasMore = false,
@@ -298,6 +314,9 @@ export function MarketplaceAutoReviewJobNavigator({
   const visibleRuns = sortMarketplaceAutoReviewRunsNewestFirst(
     runs.filter(run => text(run.id, run.productionRunId))
   );
+  const productNameById = new Map(
+    (productOptions ?? []).map(option => [option.productId, option.productName])
+  );
 
   return (
     <aside
@@ -318,17 +337,45 @@ export function MarketplaceAutoReviewJobNavigator({
         </h2>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
           {allProducts
-            ? "เปิดดูงานเดิม หรืองานที่ยังรอตรวจและทำต่อได้"
-            : "เลือกเปิดงานเดิมเพื่อตรวจต่อ หรือสร้างงานใหม่จากสินค้านี้"}
+            ? "งานทั้งหมดเรียงจากล่าสุด เลือกสินค้าเพื่อกรอง แล้วกดงานเพื่อเปิดรายละเอียด"
+            : "เลือกงานเพื่อเปิดรายละเอียด หรือกรองสินค้าเพื่อค้นหางานอื่น"}
         </p>
-        {!allProducts && productId ? (
-          <p
-            className="mt-2 truncate text-[11px] text-slate-500"
-            title={productId}
-          >
-            Product: {productId}
-          </p>
+        {productId ? (
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+            <p
+              className="truncate text-xs font-medium text-slate-200"
+              title={productName || productId}
+            >
+              สินค้า: {productName || "ไม่พบชื่อสินค้า"}
+            </p>
+            <p className="mt-0.5 break-all text-[10px] text-slate-500">
+              รหัสสินค้า: {productId}
+            </p>
+          </div>
         ) : null}
+        {onProductFilterChange && productOptions ? (
+          <label className="mt-3 block text-[11px] font-medium text-slate-300">
+            กรองรายการงานตามสินค้า
+            <select
+              aria-label="กรองรายการงานตามสินค้า"
+              className="mt-1.5 min-h-10 w-full rounded-lg border border-white/15 bg-slate-900 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+              value={selectedProductFilter ?? "__all_products__"}
+              onChange={event => onProductFilterChange(event.target.value)}
+            >
+              <option value="__all_products__">ทุกสินค้า</option>
+              {productOptions.map(option => (
+                <option key={option.productId} value={option.productId}>
+                  {option.productName
+                    ? `${option.productName} · ${option.productId}`
+                    : option.productId}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <p className="mt-2 text-[10px] text-slate-500">
+          กดการ์ดงานเพื่อเปิด Job Workbench
+        </p>
       </header>
 
       <nav
@@ -401,7 +448,8 @@ export function MarketplaceAutoReviewJobNavigator({
                           className="mt-1 block truncate text-[10px] text-slate-500"
                           title={String(run.productId)}
                         >
-                          Product: {String(run.productId)}
+                          {productNameById.get(String(run.productId)) || "สินค้าไม่พบ"}
+                          <span className="ml-1">· {String(run.productId)}</span>
                         </span>
                       ) : null}
                     </span>
