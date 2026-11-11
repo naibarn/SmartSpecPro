@@ -108,7 +108,6 @@ function assertTerminalVideoPromptGenerationAllowed(
 ) {
   if (!STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))) return;
   if (
-    run.status === "cancelled" ||
     targets.length === 0 ||
     targets.some(target => target.stage !== "video")
   ) {
