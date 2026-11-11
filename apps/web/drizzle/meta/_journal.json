@@ -2857,6 +2857,13 @@
       "when": 1794484800000,
       "tag": "0421_modular_default_workspace_serialization",
       "breakpoints": true
+    },
+    {
+      "idx": 422,
+      "version": "7",
+      "when": 1794484800001,
+      "tag": "0422_modular_chat_llm_model_catalog",
+      "breakpoints": true
     }
   ]
 }
