@@ -116960,7 +116960,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "712172880aab7d4994480236513b5fcc5b11b013",
+      "canonical_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -116992,7 +116992,14 @@
         "requirement REQ-078D75C9DFB8 is OPEN",
         "requirement REQ-C81078458FFE is OPEN",
         "requirement REQ-61DD767ED6C7 is OPEN",
-        "requirement REQ-46847581892C is PARTIAL"
+        "requirement REQ-46847581892C is PARTIAL",
+        "requirement REQ-C7C0E67BDE2B is STALE_EVIDENCE",
+        "requirement REQ-4F88475454B1 is STALE_EVIDENCE",
+        "requirement REQ-B6FD5A53E627 is OPEN",
+        "requirement REQ-FB597F9F6A31 is OPEN",
+        "requirement REQ-5BEC18A71622 is OPEN",
+        "requirement REQ-2D598487C0BB is OPEN",
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -117005,12 +117012,103 @@
       "declared_claims": [
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-environment-database-boundary",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-password-mfa-compatibility: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-password-mfa-compatibility",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-session-membership-routes: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-session-membership-routes",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-worker-proof-and-handoff: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-worker-proof-and-handoff",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-chat-canonical-job-and-queue-admission: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-05-chat-canonical-job-and-queue-admission",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-06-provider-admission-and-queue-consumer: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-06-provider-admission-and-queue-consumer",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-07-chat-job-status-ui-and-runtime-proof: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-07-chat-job-status-ui-and-runtime-proof",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+          "source_digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -117023,20 +117121,28 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+          "source_digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
-      "deployment": "UNKNOWN",
-      "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+      "deployment": "PASS",
+      "digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-09T03:48:26.504208Z",
+      "last_reconciled": "2026-11-11T13:49:35.715103Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
+      "next_action": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "class": "MISSING_CONFIGURED_CAPABILITY",
+        "description": "Chat turn append is scoped and transactional but lacks a client request idempotency key for replay-safe retry after an uncertain network result.",
+        "id": "chat-turn-idempotency",
+        "next_action": "Add and test idempotent turn admission before automatic retry support.",
+        "requirements": [
+          "REQ-069F6F822212"
+        ]
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "record_kind": "CANONICAL_SPEC",
@@ -117054,21 +117160,182 @@
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-environment-database-boundary",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-password-mfa-compatibility: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-password-mfa-compatibility",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-03-session-membership-routes: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-03-session-membership-routes",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-04-worker-proof-and-handoff: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-04-worker-proof-and-handoff",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-05-chat-canonical-job-and-queue-admission: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-05-chat-canonical-job-and-queue-admission",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-06-provider-admission-and-queue-consumer: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-06-provider-admission-and-queue-consumer",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-07-chat-job-status-ui-and-runtime-proof: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-07-chat-job-status-ui-and-runtime-proof",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "DECLARED_STATUS",
             "confidence": "LOW",
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 7,
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-            "source_digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+            "source_digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "f71789f2c3046d1133d595a6fb6624ac03e025d829d92754876e41b646520a2a",
+            "digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+          },
+          {
+            "digest": "9499259345f439e863e71c91366b2e398e3d74ee3224466d3b03419ffadd4951",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-plan.md"
+          },
+          {
+            "digest": "fa9cc9dac963ff6e0aa3789de2c5b9d0e81982a9a0685114f50128ba387a8d20",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
+          },
+          {
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/.deep_implement_state.lock"
+          },
+          {
+            "digest": "503ca8b90ecd829b59d0c79b269ab92b42c82f199db3e1b901143b35d8fa0e78",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "192b5cc70890384c540c57b9bd01c16749176c22902be0f6ba26f020edcf6b10",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "c2e59d5a015537ace804e29243f42a681ff5dbfb58e7dd9130fdc3c741b66faa",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
+          },
+          {
+            "digest": "bfbfb925964fc088755acb3202a8fc5fff59554af88bfe0f45476292e22cc10f",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-01-environment-database-boundary.md"
+          },
+          {
+            "digest": "8826ac3c61da0332509c6a884b10c230c36c98d1789fa89dd5eed38c221607dd",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-02-password-mfa-compatibility.md"
+          },
+          {
+            "digest": "e2bfdcaae044846b40f5649318081a3488740dad4e8a499c739201eb432aa64b",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-03-session-membership-routes.md"
+          },
+          {
+            "digest": "8aa6612491b80dc5392da78cde9dd99cb684bea7f24383f753c275728d68f487",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-04-worker-proof-and-handoff.md"
+          },
+          {
+            "digest": "cd30fe0a2479219a20ae387c5ba55a3d4a627561ca09d7701917c877870d4ca9",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-05-chat-canonical-job-and-queue-admission.md"
+          },
+          {
+            "digest": "cf2eaae443f91cf8412931c85e124df455e9de33ad1380f1c5247b29d1f9b141",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-06-provider-admission-and-queue-consumer.md"
+          },
+          {
+            "digest": "d63b635ca2e3f3a4629f4ec6286f2861985d93f44f5b8c45adc047a43c1c6380",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-07-chat-job-status-ui-and-runtime-proof.md"
           }
         ],
         "implementation_equivalence": "UNASSESSED",
@@ -117077,14 +117344,106 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 28,
+        "open": 34,
         "pass": 0,
-        "total": 29
+        "total": 35
       },
       "review_priority": "R4_STATUS_CLAIM",
-      "revision": "1.6",
+      "revision": "1.7",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-environment-database-boundary",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-password-mfa-compatibility: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-password-mfa-compatibility",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-session-membership-routes: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-session-membership-routes",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-worker-proof-and-handoff: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-worker-proof-and-handoff",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-chat-canonical-job-and-queue-admission: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-05-chat-canonical-job-and-queue-admission",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-06-provider-admission-and-queue-consumer: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-06-provider-admission-and-queue-consumer",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-07-chat-job-status-ui-and-runtime-proof: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-07-chat-job-status-ui-and-runtime-proof",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "f923ed91c59d57dcce96a3bf685cb2acd766eccb98473a158b9c70cdc195fa25",
+          "value": "checkpointed"
+        }
+      ],
       "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_id": "312",
@@ -117093,7 +117452,7 @@
       "successors": [],
       "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory",
       "true_blockers": 0,
-      "verification": "PASS"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
@@ -117678,28 +118037,34 @@
       "verification": "UNKNOWN"
     },
     {
-      "acceptance": "UNKNOWN",
+      "acceptance": "PENDING",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": null,
+      "canonical_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
         "lifecycle has not reached implementation completion",
-        "requirement REQ-4BB581C90577 is OPEN",
+        "requirement REQ-4BB581C90577 is PARTIAL",
         "requirement REQ-6F1846B57E8F is OPEN",
-        "requirement REQ-069F6F822212 is OPEN",
-        "requirement REQ-2B7D77E6D086 is OPEN",
-        "requirement REQ-64CA2E9BC303 is OPEN",
-        "requirement REQ-48EFA6340760 is OPEN",
-        "requirement REQ-6BA6E5614490 is OPEN",
+        "requirement REQ-069F6F822212 is PARTIAL",
+        "requirement REQ-2B7D77E6D086 is PARTIAL",
+        "requirement REQ-64CA2E9BC303 is VALIDATION_PENDING",
+        "requirement REQ-48EFA6340760 is PARTIAL",
         "requirement R1.4 is OPEN",
-        "requirement REQ-AB16939A3F52 is OPEN",
-        "requirement REQ-38590D443AC3 is OPEN",
-        "requirement REQ-F704F8E6840D is OPEN",
-        "requirement REQ-91CC7880E937 is OPEN",
-        "requirement REQ-C8D3AE2138BD is OPEN",
+        "requirement REQ-F08A9F0ABB58 is OPEN",
+        "requirement REQ-B89BDD10E8E0 is PARTIAL",
+        "requirement REQ-4C483EA0329D is OPEN",
+        "requirement REQ-4A6FCC9AB87A is OPEN",
+        "requirement REQ-295AD937395C is PARTIAL",
+        "requirement REQ-2E717B8BD3E7 is PARTIAL",
+        "requirement REQ-32CAB23B7018 is PARTIAL",
+        "requirement REQ-B7D16C4F9A3E is STALE_EVIDENCE",
+        "requirement REQ-E5EEFB57E176 is STALE_EVIDENCE",
+        "requirement REQ-E014BEE5B67C is PARTIAL",
+        "requirement REQ-8B7DD498863B is STALE_EVIDENCE",
+        "requirement R1.7 is STALE_EVIDENCE",
         "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required acceptance evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -117712,12 +118077,77 @@
       "declared_claims": [
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-package-boundaries-and-builds: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-package-boundaries-and-builds",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-react-shell-login-and-routing: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-react-shell-login-and-routing",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-chat-worker-auth-data-and-provider-contract: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-chat-worker-auth-data-and-provider-contract",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-chat-independent-ui-and-artifacts: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-chat-independent-ui-and-artifacts",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-browser-pilot-and-runtime-proof: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-05-browser-pilot-and-runtime-proof",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-          "source_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+          "source_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
@@ -117730,20 +118160,29 @@
           "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-          "source_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+          "source_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
           "value": "PROPOSED_NOT_IMPLEMENTED"
         }
       ],
-      "deployment": "UNKNOWN",
-      "digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+      "deployment": "PASS",
+      "digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-02T01:43:56.565808Z",
-      "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "last_reconciled": "2026-11-11T05:15:29.098375Z",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.",
       "path": "specs/feature/317-smartaihub-progressive-module-migration",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "class": "MISSING_CONFIGURED_CAPABILITY",
+        "description": "No approved browser provider/executor, canonical worker_jobs+outbox adapter, or provider-side DNS/redirect/private-address egress controls are configured.",
+        "id": "browser-runtime-job-adapter",
+        "next_action": "Keep Browser Pilot unavailable; integrate only after those authorities and controls are verified.",
+        "requirements": [
+          "REQ-E014BEE5B67C",
+          "REQ-64CA2E9BC303"
+        ]
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/317-smartaihub-progressive-module-migration",
       "record_kind": "CANONICAL_SPEC",
@@ -117761,21 +118200,146 @@
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-package-boundaries-and-builds: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-package-boundaries-and-builds",
+            "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+            "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-react-shell-login-and-routing: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-react-shell-login-and-routing",
+            "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+            "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-03-chat-worker-auth-data-and-provider-contract: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-03-chat-worker-auth-data-and-provider-contract",
+            "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+            "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-04-chat-independent-ui-and-artifacts: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-04-chat-independent-ui-and-artifacts",
+            "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+            "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-05-browser-pilot-and-runtime-proof: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-05-browser-pilot-and-runtime-proof",
+            "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+            "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "DECLARED_STATUS",
             "confidence": "LOW",
             "excerpt": "status: PROPOSED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
-            "source_digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+            "source_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
             "value": "PROPOSED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "a3c0389df9c3ff17fbfc464acb02dd19378b114a98b0015fbf0bb9381c4f6e29",
+            "digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md"
+          },
+          {
+            "digest": "f63993b09ee21279d6fa412f490070ff5c6ffdedfc60e430ca4fd2abe00a9ddb",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-plan.md"
+          },
+          {
+            "digest": "b790887848bcc234766ae3a94de76b554102073a01e6a39eaeef49c6fbce7725",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/claude-spec.md"
+          },
+          {
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/.deep_implement_state.lock"
+          },
+          {
+            "digest": "849143f53ed4b6a9b3c2a78c5da4825e74590e734c5cf8e732e13a88d4cfe223",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "fcbd2116813230e51d94c185a59b69cd1e93d50ddc29a600ef5bab90a21b777c",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "94cbd7092a9e1261ecfc7136eaa18a78179510b8a765971bd4a6d63a12b5b99a",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/index.md"
+          },
+          {
+            "digest": "9db0837bfbd043a72643922c74c669e39a4b9fa6dd636cd4b0554658aebf4b57",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-01-package-boundaries-and-builds.md"
+          },
+          {
+            "digest": "fd1a22cb4274131853a6930f14fc5f47db68fba529ceb167ae4da5ec428a62c2",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-02-react-shell-login-and-routing.md"
+          },
+          {
+            "digest": "de286eea25d67e5ac2ae56d4f24079dbe0d5f4c7cf09b58a179c69a6a792636f",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-03-chat-worker-auth-data-and-provider-contract.md"
+          },
+          {
+            "digest": "9ab30ad47b6fdd7d0114f462c5a5bdae0612624fbcea33e5d2353d5f03970a1b",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-04-chat-independent-ui-and-artifacts.md"
+          },
+          {
+            "digest": "37c015acbed897bdba78c374a9b943d100f742ea3e07016a757e0d6a57a226b7",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/317-smartaihub-progressive-module-migration/sections/section-05-browser-pilot-and-runtime-proof.md"
           }
         ],
         "implementation_equivalence": "UNASSESSED",
@@ -117784,14 +118348,80 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 13,
+        "open": 19,
         "pass": 0,
-        "total": 13
+        "total": 20
       },
       "review_priority": "R4_STATUS_CLAIM",
-      "revision": "1.5",
+      "revision": "1.8",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-package-boundaries-and-builds: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-package-boundaries-and-builds",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-react-shell-login-and-routing: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-react-shell-login-and-routing",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-chat-worker-auth-data-and-provider-contract: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-chat-worker-auth-data-and-provider-contract",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-chat-independent-ui-and-artifacts: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-chat-independent-ui-and-artifacts",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-browser-pilot-and-runtime-proof: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-05-browser-pilot-and-runtime-proof",
+          "source": "specs/feature/317-smartaihub-progressive-module-migration/implementation/deep_implement_config.json",
+          "source_digest": "89f6fca40e52131a312196392a88e1ae27916b382a30a6d45edc447658c9d659",
+          "value": "checkpointed"
+        }
+      ],
       "slug": "317-smartaihub-progressive-module-migration",
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_id": "317",
@@ -117800,7 +118430,7 @@
       "successors": [],
       "title": "SmartAIHub Progressive Legacy-to-Module Copy, Isolation, Modernization and Per-Module Cutover",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",

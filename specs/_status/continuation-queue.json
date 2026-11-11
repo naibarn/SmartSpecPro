@@ -3929,8 +3929,8 @@
     {
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
+      "declared_claim_count": 8,
+      "next_action": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -4004,8 +4004,8 @@
     {
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "declared_claim_count": 6,
+      "next_action": "Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.",
       "path": "specs/feature/317-smartaihub-progressive-module-migration",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/317-smartaihub-progressive-module-migration",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Continue only with pre-handover acceptance work: measure a defined Legacy/Core latency target, establish bounded expired session-JTI cleanup, and gather authorized existing-user/customer-membership and environment-isolation evidence. Do not change public target traffic as part of this record.",
+      "rationale": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },
@@ -5289,7 +5289,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/317-smartaihub-progressive-module-migration",
       "priority": "P1",
-      "rationale": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "rationale": "Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.",
       "record_key": "canonical:specs/feature/317-smartaihub-progressive-module-migration",
       "spec_id": "317"
     },
