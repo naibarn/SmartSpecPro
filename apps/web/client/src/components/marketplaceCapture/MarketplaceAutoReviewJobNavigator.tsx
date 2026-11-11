@@ -435,8 +435,11 @@ export function MarketplaceAutoReviewJobNavigator({
                       {mediaProgress.imageArtifactsReady}/{mediaProgress.total}
                     </span>
                   ) : null}
-                  <span className="mt-1 block truncate text-[11px] text-slate-500">
-                    {formatDate(run.updatedAt ?? run.createdAt)}
+                  <span className="mt-1 block truncate text-[10px] text-slate-500">
+                    สร้าง {formatDate(run.createdAt)}
+                  </span>
+                  <span className="block truncate text-[10px] text-slate-500">
+                    อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
                   </span>
                 </button>
                 {/* Delete — sits OUTSIDE the card button (buttons can't nest)

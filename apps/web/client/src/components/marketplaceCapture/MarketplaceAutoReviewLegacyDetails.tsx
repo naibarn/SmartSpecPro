@@ -366,6 +366,14 @@ export function MarketplaceAutoReviewLegacyDetails({
             เปิด Job Workbench ใหม่ · 9 ช็อต
           </button>
         </div>
+        {sequentialShots.length > 0 ? (
+          <a
+            href="#auto-review-legacy-shot-list"
+            className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-white/70 px-3 py-2 text-sm font-medium text-amber-950 hover:bg-white"
+          >
+            ดูข้อมูล {sequentialShots.length} ช็อต
+          </a>
+        ) : null}
         <div className="mt-4 grid gap-2 text-xs text-amber-900 sm:grid-cols-3">
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">แก้ไขงานนี้</strong>
@@ -396,7 +404,10 @@ export function MarketplaceAutoReviewLegacyDetails({
             <StatusIcon className="h-4 w-4 text-violet-600" /> {status.label}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            อัปเดตล่าสุด {formatDate(run.updatedAt ?? run.createdAt)}
+            สร้าง {formatDate(run.createdAt)}
+          </p>
+          <p className="text-xs text-slate-500">
+            อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
           </p>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -465,6 +476,7 @@ export function MarketplaceAutoReviewLegacyDetails({
         <article
           className="rounded-2xl border border-sky-200 bg-sky-50/60 p-5 shadow-sm sm:p-6"
           aria-label="รีวิว storyboard รายช็อตของงานเดิม"
+          id="auto-review-legacy-shot-list"
         >
           <header className="flex flex-wrap items-start justify-between gap-3">
             <div>

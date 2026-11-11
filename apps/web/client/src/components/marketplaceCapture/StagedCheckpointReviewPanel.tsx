@@ -1888,6 +1888,14 @@ export function StagedCheckpointReviewPanel(props: {
             </div>
           ) : null}
         </div>
+        {props.state?.shots.length ? (
+          <a
+            href="#staged-auto-review-shot-list"
+            className="inline-flex min-h-9 items-center rounded-md border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100"
+          >
+            ดูข้อมูล {props.state.shots.length} ช็อต
+          </a>
+        ) : null}
         {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
       </div>
       {props.loading ? (
@@ -3435,7 +3443,10 @@ export function StagedCheckpointReviewPanel(props: {
           ) : null}
 
 
-          <div className="mt-3 space-y-3">
+          <div
+            id="staged-auto-review-shot-list"
+            className="mt-3 space-y-3 scroll-mt-4"
+          >
             {props.state.shots.map(shot => {
               const imageCheckpoint = activeCheckpointByKey.get(
                 `image_prompt:${shot.shotId}`

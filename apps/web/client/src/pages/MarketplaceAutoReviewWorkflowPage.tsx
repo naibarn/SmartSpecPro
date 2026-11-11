@@ -86,6 +86,21 @@ function numeric(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatDateTime(value: unknown) {
+  if (typeof value !== "string" && !(value instanceof Date)) {
+    return "ยังไม่มีเวลา";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "ยังไม่มีเวลา";
+  return date.toLocaleString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function hasPendingSequentialImageEdit(runData: unknown): boolean {
   const metadata =
     runData && typeof runData === "object"
@@ -482,6 +497,12 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                       ขั้นตอน {stageLabel(run?.currentStage)}
                     </span>
                   </div>
+                  {run ? (
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      สร้าง {formatDateTime(run.createdAt)} · อัปเดตล่าสุด{" "}
+                      {formatDateTime(run.updatedAt ?? run.createdAt)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex min-w-[13rem] flex-col items-start gap-3 sm:items-end">
                   <span
