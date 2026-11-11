@@ -10,7 +10,10 @@
     "section-01-environment-database-boundary",
     "section-02-password-mfa-compatibility",
     "section-03-session-membership-routes",
-    "section-04-worker-proof-and-handoff"
+    "section-04-worker-proof-and-handoff",
+    "section-05-chat-canonical-job-and-queue-admission",
+    "section-06-provider-admission-and-queue-consumer",
+    "section-07-chat-job-status-ui-and-runtime-proof"
   ],
   "sections_state": {
     "section-01-environment-database-boundary": {
@@ -37,6 +40,20 @@
       "checkpoint_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "review_file": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
+    },
+    "section-05-chat-canonical-job-and-queue-admission": {
+      "status": "in_progress",
+      "next_action": "Commit and integrate the scoped 0424/0425 migrations, schema and legacy publisher exclusion; apply them through the dev migration runner and verify outbox lane isolation and database postconditions."
+    },
+    "section-06-provider-admission-and-queue-consumer": {
+      "status": "checkpointed",
+      "next_action": "Apply and verify additive database migrations 0424/0425, then run local Workerd Queue and Durable Object proof; do not provision or deploy the inactive Cloudflare production target.",
+      "checkpoint_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
+      "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5"
+    },
+    "section-07-chat-job-status-ui-and-runtime-proof": {
+      "status": "in_progress",
+      "next_action": "Verify and integrate Chat job polling and responsive UI behavior; run local Workerd/Queue proof and deploy only to modular-debian-dev if the release path proves healthy."
     }
   },
   "pre_commit": {
@@ -48,15 +65,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 15,
-  "updated_at": "2026-11-09T21:10:07.626414+00:00",
+  "generation": 21,
+  "updated_at": "2026-11-11T13:18:37.169514+00:00",
   "progress": {
-    "active_section": "section-04-worker-proof-and-handoff",
-    "next_action": "All four implementation sections and ten final gap-review passes are complete at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL/OPEN. Before target handover or high-volume production, define and measure a same-database Legacy/Core speed objective and establish a separately bounded expired session-JTI cleanup authority.",
-    "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
+    "active_section": "section-05-chat-canonical-job-and-queue-admission",
+    "next_action": "Commit and integrate the scoped 0424/0425 migrations, schema and legacy publisher exclusion; apply them through the dev migration runner and verify outbox lane isolation and database postconditions.",
+    "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
     "gaps": [
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim faster before target handover.",
-      "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production."
+      "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
+      "Local Workerd Queue/DO contention, consumer crash redelivery and restart persistence still need end-to-end proof; current package tests cover focused consumer/rate-policy paths.",
+      "Managed Cloudflare Queue autoscaling cannot be verified in local Workerd, and modular-cloudflare-prod remains intentionally inactive.",
+      "Chat UI main chunk is 536.44 KB (163.20 KB gzip), above Vite’s 500 KB warning; consider splitting the Chat module while preserving its standalone build."
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, isNull, lte, ne, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -391,6 +391,10 @@ export async function publishPendingJobOutbox(
       isNull(workerJobOutbox.publishedAt),
       isNull(workerJobOutbox.cancelledAt),
       isNull(workerJobOutbox.quarantinedAt),
+      or(
+        isNull(workerJobOutbox.publisherLeaseTokenHash),
+        ne(workerJobOutbox.publisherLeaseTokenHash, "modular-chat-outbox-lane-v1"),
+      ),
       lte(workerJobOutbox.nextAttemptAt, now),
     ))
     .limit(limit);

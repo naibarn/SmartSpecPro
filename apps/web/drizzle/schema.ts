@@ -17063,9 +17063,9 @@ export const workerJobs = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    tenantId: varchar("tenantId", { length: 36 })
-      .notNull()
-      .references(() => tenants.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+    environmentTenantId: varchar("environment_tenant_id", { length: 64 }),
+    chatWorkspaceId: varchar("chat_workspace_id", { length: 36 }),
     teamId: varchar("teamId", { length: 36 }).references(
       () => assistantTeams.id,
       { onDelete: "set null" }
@@ -17186,6 +17186,20 @@ export const workerJobs = pgTable(
       t.workerSeriesBindingId,
       t.workerSeriesBindingRevision,
       t.status
+    ),
+    uniqueIndex("worker_jobs_modular_chat_idempotency_unique")
+      .on(t.environmentTenantId, t.chatWorkspaceId, t.requestedByUserId, t.idempotencyKey)
+      .where(sql`"jobType" = 'modular_chat.turn' AND "idempotencyKey" IS NOT NULL`),
+    index("worker_jobs_modular_chat_scope_status_idx")
+      .on(t.environmentTenantId, t.chatWorkspaceId, t.requestedByUserId, t.status, t.createdAt)
+      .where(sql`"jobType" = 'modular_chat.turn'`),
+    check(
+      "worker_jobs_modular_chat_scope_check",
+      sql`(${t.environmentTenantId} IS NULL AND ${t.chatWorkspaceId} IS NULL) OR (${t.environmentTenantId} IN ('modular-development', 'modular-production') AND ${t.chatWorkspaceId} IS NOT NULL)`,
+    ),
+    check(
+      "worker_jobs_modular_chat_identity_check",
+      sql`(${t.jobType} = 'modular_chat.turn' AND ${t.environmentTenantId} IN ('modular-development', 'modular-production') AND ${t.chatWorkspaceId} IS NOT NULL AND ${t.requestedByUserId} IS NOT NULL) OR (${t.jobType} <> 'modular_chat.turn' AND ${t.tenantId} IS NOT NULL AND ${t.environmentTenantId} IS NULL AND ${t.chatWorkspaceId} IS NULL)`,
     ),
   ]
 );
@@ -17845,12 +17859,15 @@ export const workerJobOutbox = pgTable(
     nextAttemptAt: timestamp("nextAttemptAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    modularChatNextAttemptAt: timestamp("modularChatNextAttemptAt", { withTimezone: true }),
     publisherLeaseTokenHash: varchar("publisherLeaseTokenHash", {
       length: 128,
     }),
     publisherLeaseExpiresAt: timestamp("publisherLeaseExpiresAt", {
       withTimezone: true,
     }),
+    modularChatDispatchLeaseTokenHash: varchar("modularChatDispatchLeaseTokenHash", { length: 64 }),
+    modularChatDispatchLeaseExpiresAt: timestamp("modularChatDispatchLeaseExpiresAt", { withTimezone: true }),
     publisherFencingVersion: integer("publisherFencingVersion")
       .notNull()
       .default(0),
