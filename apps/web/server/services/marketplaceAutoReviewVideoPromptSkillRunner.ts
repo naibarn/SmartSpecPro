@@ -555,9 +555,9 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     !isCompleteStagedVideoPrompt(
       prompt,
       input.shot.dialogue,
+      detection.people.map(person => person.id),
       input.shot.dialogueTurns,
-      input.cast,
-      detection.people.map(person => person.id)
+      input.cast
     )
   ) {
     throw new Error(
