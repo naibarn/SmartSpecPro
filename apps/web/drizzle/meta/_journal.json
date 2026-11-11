@@ -2899,6 +2899,13 @@
       "when": 1794484800006,
       "tag": "0427_modular_chat_queue_sql_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 428,
+      "version": "7",
+      "when": 1794484800007,
+      "tag": "0428_modular_chat_message_details",
+      "breakpoints": true
     }
   ]
 }
