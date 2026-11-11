@@ -443,7 +443,10 @@ export async function runMarketplaceAutoReviewJob(
               skippedRuns += 1;
               continue;
             }
-            if (!awaitingPlanReview) {
+            if (
+              !awaitingPlanReview &&
+              metadata.planningArchitecture !== "staged_two_skill_v2"
+            ) {
               await queueMarketplaceAutoReviewAdvance(
                 run.id,
                 { userId: run.userId, tenantId },
@@ -474,6 +477,12 @@ export async function runMarketplaceAutoReviewJob(
         } else if (awaitingPlanReview) {
           // The text/story checkpoint is intentionally user-driven. Do not
           // flood worker_jobs with no-op advance jobs while the user reviews it.
+          skippedRuns += 1;
+          continue;
+        } else if (metadata.planningArchitecture === "staged_two_skill_v2") {
+          // Staged checkpoints are user-triggered. The generic sweeper used
+          // to enqueue an unrelated no-op advance_run job every minute while
+          // waiting for the next explicit checkpoint action.
           skippedRuns += 1;
           continue;
         } else {

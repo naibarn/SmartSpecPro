@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import * as marketplaceAutoReviewService from "../../services/marketplaceAutoReviewService";
 
 import {
   isMarketplaceAutoReviewAdvanceOutboxJobType,
@@ -50,6 +52,48 @@ describe("marketplaceAutoReviewJob", () => {
     expect(source).toContain(
       "reconcileMarketplaceAutoReviewSequentialShotImageEdit("
     );
+  });
+
+  it("does not enqueue generic advance jobs for user-driven staged checkpoints", async () => {
+    const queueAdvance = vi.spyOn(
+      marketplaceAutoReviewService,
+      "queueMarketplaceAutoReviewAdvance"
+    );
+    let limitCall = 0;
+    const stagedRun = {
+      id: "mar_staged_run",
+      userId: 1,
+      tenantId: "tenant-1",
+      status: "running",
+      updatedAt: new Date("2026-11-11T00:00:00.000Z"),
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        initializationControl: { status: "completed" },
+      },
+    };
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => {
+        limitCall += 1;
+        return limitCall === 1 ? [] : limitCall === 2 ? [stagedRun] : [];
+      },
+    };
+
+    try {
+      await runMarketplaceAutoReviewJob({
+        db: { select: () => chain },
+        runHyperframesWorker: async () => ({
+          processed: 0,
+          disabled: false,
+          runtimeDeferred: false,
+        }),
+      });
+      expect(queueAdvance).not.toHaveBeenCalled();
+    } finally {
+      queueAdvance.mockRestore();
+    }
   });
 
   it("dispatches durable initialization with an atomic claim, heartbeat, and exhausted-run failure", () => {
