@@ -2588,7 +2588,8 @@ function AutoReviewRefChip({
 
 export default function MarketplaceCaptureProductDetail() {
   const { confirm } = useConfirm();
-  const { t } = useScopedTranslation(["common"]);
+  const { t, locale } = useScopedTranslation(["common"]);
+  const isThaiLocale = locale === "th";
   const hyperframesCopy = getMarketplaceHyperframesUiCopy();
   const [location, setLocation] = useLocation();
   const isAutoReviewJobSetupRoute = location.startsWith(
@@ -7294,10 +7295,12 @@ export default function MarketplaceCaptureProductDetail() {
                   >
                     <Button
                       type="button"
-                      className="min-h-11 bg-violet-700 text-white hover:bg-violet-800"
+                      className="min-h-11 !bg-violet-700 !text-white shadow-md hover:!bg-violet-800 focus-visible:ring-violet-300"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      สร้าง Job Review ใหม่
+                      {isThaiLocale
+                        ? "ตั้งค่า Job Review ใหม่"
+                        : "Set up a new review job"}
                     </Button>
                   </Link>
                   {latestJobWorkbenchRunId ? (

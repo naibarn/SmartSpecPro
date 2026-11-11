@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -276,6 +277,8 @@ export function MarketplaceAutoReviewJobNavigator({
   deletingRunId = null,
   className = "",
 }: MarketplaceAutoReviewJobNavigatorProps) {
+  const { i18n } = useTranslation();
+  const isThaiLocale = (i18n.resolvedLanguage ?? i18n.language) === "th";
   // Two-step inline confirm — this codebase's convention for a destructive
   // row action (see the character/look delete buttons in the VD panels).
   // Deleting a job is irreversible: the run row cascades to its stages,
@@ -480,12 +483,12 @@ export function MarketplaceAutoReviewJobNavigator({
           className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
             setupMode
               ? "bg-white/20 text-white hover:bg-white/25"
-              : "bg-violet-700 text-white hover:bg-violet-800"
+              : "!bg-violet-700 !text-white hover:!bg-violet-800"
           }`}
           onClick={onCreateNew}
         >
           <Plus className="h-4 w-4" />
-          สร้าง Job Review ใหม่
+          {isThaiLocale ? "ตั้งค่า Job Review ใหม่" : "Set up a new review job"}
         </button>
       </footer>
     </aside>
