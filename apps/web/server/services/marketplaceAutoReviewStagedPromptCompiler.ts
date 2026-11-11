@@ -44,7 +44,8 @@ export function isCompleteStagedVideoPrompt(
   value: unknown,
   approvedDialogue: string,
   derivedDialogueTurns?: readonly StagedDialogueTurn[],
-  cast?: readonly StagedCastMember[]
+  cast?: readonly StagedCastMember[],
+  detectedPersonIds: readonly string[] = []
 ): value is string {
   if (typeof value !== "string") return false;
   const prompt = value.trim();
@@ -130,6 +131,24 @@ export function isCompleteStagedVideoPrompt(
       /@Image\d+|cast-\d+/i.test(anchor)
     );
   });
+  const detectedPersonIdSet = new Set(detectedPersonIds);
+  const speakerHasDetectedFace = requiredSpeakerBindings.every(member => {
+    const visualMapStart = prompt.search(/SPEAKER VISUAL MAP FOR THIS SHOT\s*:?/i);
+    if (visualMapStart < 0) return false;
+    const visualMapText = prompt
+      .slice(visualMapStart)
+      .split(/\n(?:Approved dialogue|Camera\/action|Pacing|Audio):/i, 1)[0];
+    const escapedName = member.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const line = visualMapText.split(/\r?\n/).find(candidate =>
+      new RegExp(`^\\s*[-*]\\s*${escapedName}\\s*:`, "i").test(candidate.trim())
+    );
+    const detectedId = line?.match(/\bperson-\d+\b/i)?.[0];
+    return Boolean(
+      line && detectedId && detectedPersonIdSet.has(detectedId) &&
+      /viewer-(?:left|center|right)/i.test(line) &&
+      !/offscreen|voice[- ]?over|not visible|cannot be matched|not visually resolved|fallback/i.test(line)
+    );
+  });
   const dialogueHasVisualAnchors = (namedDialogue ?? []).every(line => {
     const member = castByName.get(normalizedName(line.speakerName));
     if (!member) return true;
@@ -163,7 +182,8 @@ export function isCompleteStagedVideoPrompt(
       (bindingDirectivePresent &&
         visualMapPresent &&
         !missingSpeakerBinding &&
-        dialogueHasVisualAnchors))
+        dialogueHasVisualAnchors &&
+        (detectedPersonIds.length === 0 || speakerHasDetectedFace)))
   );
 }
 

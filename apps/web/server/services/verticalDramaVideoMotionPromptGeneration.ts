@@ -57,6 +57,7 @@ import {
   buildVisionAwareContent,
   type VisionAwareContent,
   type VisionAwareImageInput,
+  type VisionAwareCallResponse,
   extractJson,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -1518,6 +1519,61 @@ function loadShotVideoPromptSystemPrompt(): string {
   throw new Error(
     `Could not locate skill.md for "vertical-drama-shot-video-prompt" under any known skills directory`,
   );
+}
+
+export type VerticalDramaShotVideoPromptUsageObserver = (
+  response: VisionAwareCallResponse,
+  requestedModel: string,
+  providerName: string
+) => void;
+
+/**
+ * Invoke the Vertical Drama per-shot video-prompt skill exactly once for a
+ * caller that already resolved its model, source image, and billing context.
+ * This deliberately does not render video, repair output, change models, or
+ * retry with text-only input.
+ */
+export async function generateVerticalDramaShotVideoPromptDirect(input: {
+  model: string;
+  userId: number;
+  tenantId: string;
+  publicUrl?: string | null;
+  userPromptText: string;
+  images: VisionAwareImageInput[];
+  onUsage?: VerticalDramaShotVideoPromptUsageObserver;
+}): Promise<{
+  data: ShotVideoPromptOutput;
+  providerName: string;
+  response: VisionAwareCallResponse;
+}> {
+  const outcome = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
+    model: input.model,
+    systemPrompt: loadShotVideoPromptSystemPrompt(),
+    userPromptText: input.userPromptText,
+    hasVision: true,
+    images: input.images,
+    userId: input.userId,
+    tenantId: input.tenantId,
+    publicUrl: input.publicUrl,
+    schema: shotVideoPromptOutputSchema,
+    firstAttemptMaxTokens: 3600,
+    retryMaxTokens: 3600,
+    singleAttempt: true,
+    disableModelFallback: true,
+    disableProviderFallbacks: true,
+    onUsage: input.onUsage,
+  });
+
+  if (!outcome.usedVision) {
+    throw new VdVisionRequiredError(
+      "The Vertical Drama video-prompt skill requires the approved shot image."
+    );
+  }
+  return {
+    data: outcome.data,
+    providerName: outcome.providerName,
+    response: outcome.response,
+  };
 }
 
 /**

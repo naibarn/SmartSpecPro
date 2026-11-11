@@ -18,6 +18,7 @@ import {
   executeVisionAwareJsonCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  type VisionAwareCallResponse,
 } from "./verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
@@ -73,6 +74,12 @@ const outputSchema = z
   });
 
 type DetectedShotPersonOutput = z.infer<typeof personSchema>;
+
+export type VerticalDramaSpeakerDetectionUsageObserver = (
+  response: VisionAwareCallResponse,
+  requestedModel: string,
+  providerName: string
+) => void;
 
 let cachedSystemPrompt: string | null = null;
 let cachedSystemPromptTime = 0;
@@ -243,4 +250,77 @@ export async function detectVerticalDramaShotPeople(params: {
     })
     .map((person, index) => ({ ...person, id: `person-${index + 1}` }));
   return { people, creditsUsed, model };
+}
+
+/**
+ * Run the same Vertical Drama detection skill once for a caller-owned image.
+ * Marketplace Auto Review uses this direct entry point so it can preserve its
+ * own billing/source context without inventing a series or episode record.
+ * Provider, model, schema, and text-only fallbacks are intentionally disabled.
+ */
+export async function detectVerticalDramaShotPeopleDirect(params: {
+  userId: number;
+  tenantId: string;
+  shotNumber: number;
+  imageUrl: string;
+  model: string;
+  publicUrl?: string | null;
+  onUsage?: VerticalDramaSpeakerDetectionUsageObserver;
+}): Promise<{
+  people: VerticalDramaDetectedShotPerson[];
+  model: string;
+  providerName: string;
+  response: VisionAwareCallResponse;
+}> {
+  const outcome = await executeVisionAwareJsonCallWithRetry<
+    z.infer<typeof outputSchema>
+  >({
+    model: params.model,
+    systemPrompt: loadSkillSystemPrompt(),
+    userPromptText: `Shot number: ${params.shotNumber}. Detect every visible person in the attached approved image.`,
+    hasVision: true,
+    images: [
+      {
+        url: params.imageUrl,
+        label: "APPROVED_START_FRAME_IMAGE (the only source for people and coordinates):",
+      },
+    ],
+    userId: params.userId,
+    tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
+    schema: outputSchema,
+    firstAttemptMaxTokens: 1400,
+    retryMaxTokens: 1400,
+    singleAttempt: true,
+    disableModelFallback: true,
+    disableProviderFallbacks: true,
+    onUsage: params.onUsage,
+  });
+
+  if (!outcome.usedVision) {
+    throw new Error("VERTICAL_DRAMA_SPEAKER_DETECTION_VISION_REQUIRED");
+  }
+  const people = (outcome.data.people as DetectedShotPersonOutput[])
+    .map(person => ({
+      id: person.id,
+      boundingBox: person.bounding_box,
+      appearance: person.appearance,
+      confidence: person.confidence,
+    }))
+    .sort((left, right) => {
+      const centerDelta =
+        left.boundingBox.x + left.boundingBox.width / 2 -
+        (right.boundingBox.x + right.boundingBox.width / 2);
+      return Math.abs(centerDelta) > 0.03
+        ? centerDelta
+        : left.boundingBox.y - right.boundingBox.y;
+    })
+    .map((person, index) => ({ ...person, id: `person-${index + 1}` }));
+
+  return {
+    people,
+    model: params.model,
+    providerName: outcome.providerName,
+    response: outcome.response,
+  };
 }

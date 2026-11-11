@@ -49,6 +49,7 @@ import {
   isCompleteStagedImagePrompt,
   isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
+import { generateMarketplaceAutoReviewVideoPrompt } from "./marketplaceAutoReviewVideoPromptSkillRunner";
 import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
   refreshSequentialShotPromptWithSkill,
@@ -1479,6 +1480,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       tenantId: input.auth.tenantId,
       stage: target.stage,
       model: target.promptModel,
+      requestIdempotencyKey: `marketplace-auto-review-bulk:${requestHash}:shot-${target.shotId}:${target.stage}`,
     });
     promptByShot.set(target.shotId, generatedPrompt);
   }
@@ -2427,6 +2429,7 @@ async function generateCompleteStagedShotPrompt(input: {
   tenantId?: string;
   instruction?: string | null;
   model?: string | null;
+  requestIdempotencyKey: string;
 }): Promise<string> {
   const plan = record(record(input.metadata).stagedPipeline).plan as
     | StagedStoryArcPlan
@@ -2437,6 +2440,79 @@ async function generateCompleteStagedShotPrompt(input: {
       code: "BAD_REQUEST",
       message: "staged_invalid_shot_contract",
     });
+  }
+
+  const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
+    shot => shot.shotId === input.shotId
+  );
+  if (input.stage === "video") {
+    const approvedImageUrl = safeArtifactUrl(stagedShot?.imageArtifactUrl);
+    const approvedImageCheckpoint =
+      input.metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+        checkpoint =>
+          checkpoint.shotId === input.shotId &&
+          checkpoint.kind === "image_result" &&
+          checkpoint.state === "approved"
+      );
+    if (!approvedImageUrl || !approvedImageCheckpoint || !stagedShot) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_REQUIRED:shot-${input.shotId}`,
+      });
+    }
+    requireStagedImageArtifactHash(stagedShot);
+    const refreshInput = buildStagedSingleShotRefreshInput({
+      ...input,
+      stage: "video",
+    });
+    const tenantId = String(input.tenantId ?? input.run.tenantId ?? "").trim();
+    if (!tenantId) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "MARKETPLACE_VIDEO_PROMPT_TENANT_REQUIRED",
+      });
+    }
+    const productFacts = [
+      plan.product.description,
+      ...Object.entries(plan.product.specs ?? {}).map(([key, value]) =>
+        value === null || value === undefined || typeof value === "object"
+          ? ""
+          : `${key}: ${String(value)}`
+      ),
+    ].filter(
+      (fact): fact is string => typeof fact === "string" && fact.trim().length > 0
+    );
+    const generated = await generateMarketplaceAutoReviewVideoPrompt({
+      userId: input.run.userId,
+      tenantId,
+      publicUrl: input.publicUrl,
+      runId: input.run.id,
+      shotId: input.shotId,
+      approvedImageUrl,
+      promptModel: input.model,
+      requestIdempotencyKey: input.requestIdempotencyKey,
+      shot: planShot,
+      cast: plan.cast ?? [],
+      productName: plan.product.productName,
+      productFacts,
+      referenceManifest: refreshInput.referenceManifest,
+      instruction: input.instruction,
+    });
+    if (
+      !isCompleteStagedVideoPrompt(
+        generated.prompt,
+        planShot.dialogue,
+        planShot.dialogueTurns,
+        plan.cast,
+        generated.detectedPeople.map(person => person.id)
+      )
+    ) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `MARKETPLACE_VIDEO_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`,
+      });
+    }
+    return generated.prompt;
   }
 
   let prompt = "";
@@ -2468,9 +2544,6 @@ async function generateCompleteStagedShotPrompt(input: {
         );
   if (isComplete()) return prompt;
 
-  const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
-    shot => shot.shotId === input.shotId
-  );
   if (input.stage === "image") {
     const customManifest = Array.isArray((input.metadata as any).customReferenceManifest)
       ? (input.metadata as any).customReferenceManifest
@@ -2644,6 +2717,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     instruction: input.instruction,
     model: input.model,
     stage: input.stage,
+    requestIdempotencyKey: input.idempotencyKey,
   });
 
   return mutateOwnedStagedMetadata({
