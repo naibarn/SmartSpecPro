@@ -16,7 +16,10 @@ import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { isCompleteStagedVideoPrompt } from "./marketplaceAutoReviewStagedPromptCompiler";
-import type { SequentialReferenceManifestEntry } from "./productReviewSequentialStoryboardSkillRunner";
+import {
+  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
+  type SequentialReferenceManifestEntry,
+} from "./productReviewSequentialStoryboardSkillRunner";
 import type {
   StagedCastMember,
   StagedStoryArcShot,
@@ -265,6 +268,84 @@ type MarketplaceSpeakerVisualEntry = {
   detected_person_id?: string;
 };
 
+const MARKETPLACE_VIDEO_PROMPT_PREFIX =
+  "Create a vertical 9:16 video using the approved image as the exact start frame. Camera movement follows the shot action. No on-screen text, captions, or subtitles.";
+
+type SpeakerBinding = {
+  speaker: string;
+  line: string;
+  person: Pick<VerticalDramaDetectedShotPerson, "id" | "appearance">;
+  cue: string;
+};
+
+function renderSpeakerSections(bindings: readonly SpeakerBinding[]): string {
+  const normalizedName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  const uniqueBindings = bindings.filter(
+    (binding, index) =>
+      bindings.findIndex(
+        item => normalizedName(item.speaker) === normalizedName(binding.speaker)
+      ) === index
+  );
+  return [
+    "SPEAKER VISUAL MAP FOR THIS SHOT:",
+    "Detected appearance:",
+    ...uniqueBindings.map(
+      binding => `${binding.person.id}: ${binding.person.appearance}`
+    ),
+    ...uniqueBindings.map(binding => `- ${binding.speaker}: ${binding.cue}`),
+    "SPEAKER-TO-FACE LOCK: Match each spoken line only to the detected person named for that line. All other visible people keep their mouths closed.",
+    "Approved dialogue:",
+    ...bindings.map(
+      binding =>
+        `${binding.speaker}: ${binding.cue} says verbatim: "${binding.line}"`
+    ),
+  ].join("\n");
+}
+
+function motionPromptBudget(
+  dialogue: readonly { speaker: string; line: string }[],
+  people: readonly VerticalDramaDetectedShotPerson[],
+  estimate: "longest" | "shortest"
+): number {
+  const id = people.reduce(
+    (selected, person) =>
+      (
+        estimate === "longest"
+          ? person.id.length > selected.length
+          : person.id.length < selected.length
+      )
+        ? person.id
+        : selected,
+    people[0]?.id ?? "person-1"
+  );
+  const appearance = people.reduce(
+    (selected, person) =>
+      (
+        estimate === "longest"
+          ? person.appearance.length > selected.length
+          : person.appearance.length < selected.length
+      )
+        ? person.appearance
+        : selected,
+    people[0]?.appearance ?? ""
+  );
+  const cue = `${id}, viewer-center`;
+  const sections = renderSpeakerSections(
+    dialogue.map(turn => ({
+      ...turn,
+      person: { id, appearance },
+      cue,
+    }))
+  );
+  return (
+    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS -
+    MARKETPLACE_VIDEO_PROMPT_PREFIX.length -
+    sections.length -
+    4
+  );
+}
+
 function detectedPersonPosition(
   person: VerticalDramaDetectedShotPerson
 ): "viewer-left" | "viewer-center" | "viewer-right" {
@@ -296,15 +377,37 @@ function buildAuthoritativeSpeakerSections(input: {
   const normalizedName = (value: string) =>
     value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
   const usedPersonIds = new Set<string>();
+  const bySpeaker = new Map<
+    string,
+    { person: VerticalDramaDetectedShotPerson; cue: string }
+  >();
   const bindings = input.dialogue.map(turn => {
-    const analysis = input.frameAnalysisPeople.find(
-      person => normalizedName(person.name) === normalizedName(turn.speaker)
+    const speakerKey = normalizedName(turn.speaker);
+    const previous = bySpeaker.get(speakerKey);
+    if (previous) return { ...turn, ...previous };
+    const matches = input.frameAnalysisPeople.filter(
+      person => normalizedName(person.name) === speakerKey
     );
+    if (matches.length !== 1) {
+      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+    }
+    const analysis = matches[0];
     const explicitId = analysis?.detected_person_id?.trim();
     const explicitPerson = explicitId
       ? input.detectedPeople.find(person => person.id === explicitId)
       : undefined;
-    const targetX = analysis ? positionTargetX(analysis.position) : undefined;
+    const targetX = positionTargetX(analysis.position);
+    if (
+      targetX === undefined ||
+      (explicitPerson &&
+        Math.abs(
+          explicitPerson.boundingBox.x +
+            explicitPerson.boundingBox.width / 2 -
+            targetX
+        ) > 0.4)
+    ) {
+      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+    }
     const positionalCandidates =
       targetX === undefined
         ? []
@@ -319,42 +422,30 @@ function buildAuthoritativeSpeakerSections(input: {
     const nearestCandidate = positionalCandidates[0];
     const nextCandidate = positionalCandidates[1];
     const positionalPerson =
-      input.detectedPeople.length === 1
+      targetX !== undefined && input.detectedPeople.length === 1
         ? input.detectedPeople[0]
         : nearestCandidate &&
             (!nextCandidate ||
               nextCandidate.distance - nearestCandidate.distance >= 0.08)
           ? nearestCandidate.person
           : undefined;
-    const person = explicitPerson ?? positionalPerson;
+    const person = explicitId ? explicitPerson : positionalPerson;
     if (!person || usedPersonIds.has(person.id)) {
       throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
     }
     usedPersonIds.add(person.id);
     const position = detectedPersonPosition(person);
     const cue = `${person.id}, ${position}`;
-    return { ...turn, person, position, cue };
+    bySpeaker.set(speakerKey, { person, cue });
+    return { ...turn, person, cue };
   });
-
-  return [
-    "SPEAKER VISUAL MAP FOR THIS SHOT:",
-    "Detected appearance:",
-    ...bindings.map(
-      binding => `${binding.person.id}: ${binding.person.appearance}`
-    ),
-    ...bindings.map(binding => `- ${binding.speaker}: ${binding.cue}`),
-    "SPEAKER-TO-FACE LOCK: Match each spoken line only to the detected person named for that line. All other visible people keep their mouths closed.",
-    "Approved dialogue:",
-    ...bindings.map(
-      binding =>
-        `${binding.speaker}: ${binding.cue} says verbatim: "${binding.line}"`
-    ),
-  ].join("\n");
+  return renderSpeakerSections(bindings);
 }
 
 function replaceGeneratedSpeakerSections(
   prompt: string,
-  authoritativeSections: string
+  authoritativeSections: string,
+  approvedDialogue: readonly { line: string }[]
 ): string {
   const withoutSpeakerMap = prompt.replace(
     /(?:^|\n)\s*SPEAKER VISUAL MAP FOR THIS SHOT[^\n]*[\s\S]*?(?=\n\s*(?:Approved dialogue\b|Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b)|$)/gi,
@@ -368,7 +459,51 @@ function replaceGeneratedSpeakerSections(
     /(?:^|\n)\s*SPEAKER-TO-FACE LOCK:[^\n]*(?:\n(?!\s*(?:Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b))[^\n]*)*/gi,
     "\n"
   );
-  return `${withoutLock.trim()}\n\n${authoritativeSections}`;
+  let motion = withoutLock.trim();
+  for (const line of approvedDialogue) {
+    // The visual map owns the only spoken transcript. Models can still echo a
+    // supplied line in their prose despite being asked not to do so.
+    const escaped = line.line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    motion = motion.replace(
+      new RegExp(`["“‘']\\s*${escaped}\\s*["”’']`, "gu"),
+      "the approved line"
+    );
+    if (line.line.length >= 8) {
+      motion = motion.split(line.line).join("the approved line");
+    }
+  }
+  if (
+    motion.length < 40 ||
+    /^(?:i\s+)?(?:cannot|can't|am unable|am sorry|apolog)/i.test(motion)
+  ) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_MOTION_INCOMPLETE");
+  }
+  const maxLength = PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
+  const remaining =
+    maxLength -
+    MARKETPLACE_VIDEO_PROMPT_PREFIX.length -
+    authoritativeSections.length -
+    4;
+  if (remaining < 80) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_CONTENT_TOO_LONG");
+  }
+  if (motion.length > remaining) {
+    let end = remaining;
+    if (/[\uD800-\uDBFF]/.test(motion.charAt(end - 1))) end -= 1;
+    const slice = motion.slice(0, end);
+    const sentenceEnd = Math.max(
+      slice.lastIndexOf(". "),
+      slice.lastIndexOf("! "),
+      slice.lastIndexOf("? "),
+      slice.lastIndexOf("\n")
+    );
+    motion = (
+      sentenceEnd >= Math.floor(remaining / 2)
+        ? slice.slice(0, sentenceEnd + 1)
+        : slice
+    ).trimEnd();
+  }
+  return `${MARKETPLACE_VIDEO_PROMPT_PREFIX}\n\n${motion}\n\n${authoritativeSections}`;
 }
 
 export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
@@ -390,6 +525,18 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_PRODUCT_NAME_REQUIRED");
   }
   const dialogue = parseDialogue(input.shot.dialogue);
+  const maximumMotionBudget = motionPromptBudget(
+    dialogue,
+    input.detectedPeople,
+    "shortest"
+  );
+  if (maximumMotionBudget < 80) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_CONTENT_TOO_LONG");
+  }
+  const motionBudget = Math.max(
+    80,
+    motionPromptBudget(dialogue, input.detectedPeople, "longest")
+  );
   const castByName = new Map(
     input.cast.map(member => [
       member.name.normalize("NFKC").trim().toLowerCase(),
@@ -441,6 +588,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Create one video motion prompt for Marketplace Auto Review shot ${input.shotId}. This action creates prompt text only; do not render or generate a video.`,
     "Use Image 1 as the exact approved start frame and the source of truth for the people, product, blocking, and scene.",
     `Format: vertical 9:16, ${input.shot.durationSeconds} seconds.`,
+    `Limit the generated motion prompt field to ${motionBudget} characters; the application reserves the remaining space for the exact speaker map and dialogue.`,
     "Begin the video prompt with: Use the approved image (Image 1) as the exact start frame and visual source of truth.",
     `Product: ${clean(input.productName, 200)}`,
     facts.length
@@ -664,6 +812,12 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   });
 
   const approvedTurns = parseDialogue(input.shot.dialogue);
+  const positionSource = generated.data.frame_analysis?.position_source
+    ?.trim()
+    .toLowerCase();
+  if (approvedTurns.length && positionSource && positionSource !== "image") {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED");
+  }
   const frameAnalysisPeople = (generated.data.frame_analysis?.people ??
     []) as MarketplaceSpeakerVisualEntry[];
   const speakerSections = buildAuthoritativeSpeakerSections({
@@ -673,7 +827,8 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   });
   const prompt = replaceGeneratedSpeakerSections(
     generated.data.prompt.trim(),
-    speakerSections
+    speakerSections,
+    approvedTurns
   );
   if (
     !isCompleteStagedVideoPrompt(
@@ -684,6 +839,30 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       detection.people.map(person => person.id)
     )
   ) {
+    const failedCheck = !isCompleteStagedVideoPrompt(prompt, "")
+      ? "format_or_length"
+      : !isCompleteStagedVideoPrompt(prompt, input.shot.dialogue)
+        ? "dialogue"
+        : !isCompleteStagedVideoPrompt(
+              prompt,
+              input.shot.dialogue,
+              input.shot.dialogueTurns
+            )
+          ? "stale_dialogue"
+          : !isCompleteStagedVideoPrompt(
+                prompt,
+                input.shot.dialogue,
+                input.shot.dialogueTurns,
+                input.cast
+              )
+            ? "speaker_map"
+            : "detected_people";
+    console.warn("[MarketplaceVideoPrompt] validation failed", {
+      shotId: input.shotId,
+      failedCheck,
+      promptLength: prompt.length,
+      maxLength: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
+    });
     throw new Error(
       `MARKETPLACE_VIDEO_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`
     );
