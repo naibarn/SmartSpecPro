@@ -426,6 +426,20 @@ function safeArtifactUrl(value: unknown): string | null {
   return null;
 }
 
+function requireStagedImageArtifactHash(shot: {
+  shotId: number;
+  imageArtifactHash?: string | null;
+}): string {
+  const hash = shot.imageArtifactHash?.trim();
+  if (!hash) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `staged_approved_image_hash_missing:shot-${shot.shotId}`,
+    });
+  }
+  return hash;
+}
+
 function stagedTextOrEmpty(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
