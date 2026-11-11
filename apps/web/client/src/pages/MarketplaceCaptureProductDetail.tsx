@@ -12,6 +12,16 @@ import { Link, useLocation } from "wouter";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { isLostUpstreamApiErrorMessage } from "@/lib/apiResponseDiagnostics";
 import {
@@ -3788,6 +3798,14 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  const resolveAutoReviewRunawayReviewMutation =
+    trpc.marketplaceCapture.resolveAutoReviewRunawayReview.useMutation({
+      onSuccess: async () => {
+        await autoReviewRuns.refetch();
+        toast.success("อัปเดตการตัดสินใจของงานแล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
   // Marketplace mandatory text-plan review gate (2026-07-23,
   // planning/marketplace-storyboard-text-gate) — "ยืนยัน สร้างภาพ" / "ให้ AI
   // ร่างใหม่". Both mutations return the SAME full (`includeHeavyMetadata`)
@@ -4173,6 +4191,65 @@ export default function MarketplaceCaptureProductDetail() {
     insight => insight.insightType !== "combined_opportunity"
   );
   const autoReviewRunItems = (autoReviewRuns.data ?? []) as any[];
+  const runawayReviewRun = autoReviewRunItems.find(
+    run =>
+      asRecord(asRecord(run?.metadataJson).workerJobAdmissionReview).status ===
+      "awaiting_confirmation"
+  );
+  const runawayReviewDialog = (
+    <AlertDialog open={Boolean(runawayReviewRun)} onOpenChange={() => undefined}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600" aria-hidden="true" />
+            พบการสร้างงานซ้ำใน run นี้
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            ระบบพักการสร้างงานถัดไปแล้ว พบงานต้นทางเดียวกัน{" "}
+            {asRecord(
+              asRecord(runawayReviewRun?.metadataJson).workerJobAdmissionReview
+            ).recentJobCount ?? 3}{" "}
+            ครั้งใน 5 นาที ต้องการทำงานต่ออีก 1 งาน หรือหยุด run นี้ทันที?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            disabled={resolveAutoReviewRunawayReviewMutation.isPending}
+            className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+            onClick={event => {
+              event.preventDefault();
+              if (runawayReviewRun?.id) {
+                resolveAutoReviewRunawayReviewMutation.mutate({
+                  runId: runawayReviewRun.id,
+                  decision: "stop",
+                });
+              }
+            }}
+          >
+            {resolveAutoReviewRunawayReviewMutation.isPending
+              ? "กำลังหยุดงาน…"
+              : "หยุดและยกเลิก run"}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={resolveAutoReviewRunawayReviewMutation.isPending}
+            onClick={event => {
+              event.preventDefault();
+              if (runawayReviewRun?.id) {
+                resolveAutoReviewRunawayReviewMutation.mutate({
+                  runId: runawayReviewRun.id,
+                  decision: "continue_once",
+                });
+              }
+            }}
+          >
+            {resolveAutoReviewRunawayReviewMutation.isPending
+              ? "กำลังทำต่อ…"
+              : "ทำต่ออีก 1 งาน"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
   const stagedAutoReviewRunItems = autoReviewRunItems.filter(
     run =>
       compactText(asRecord(run?.metadataJson).planningArchitecture) ===
@@ -7111,6 +7188,7 @@ export default function MarketplaceCaptureProductDetail() {
             </div>
           </div>
         </div>
+        {runawayReviewDialog}
       </main>
     );
   }
@@ -10974,6 +11052,7 @@ export default function MarketplaceCaptureProductDetail() {
           </section>
         </aside>
       </div>
+      {runawayReviewDialog}
       {previewAutoReviewImage ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4"

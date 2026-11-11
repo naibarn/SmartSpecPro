@@ -21129,6 +21129,7 @@ function serializeRun(
         // branch too (list views) even though it's small, so a run needing
         // user action is distinguishable without fetching heavy metadata.
         planReview: metadata.planReview ?? null,
+        workerJobAdmissionReview: metadata.workerJobAdmissionReview ?? null,
         creativeQc: metadata.creativeQc ?? null,
         ...(stagedProgress ? { stagedProgress } : {}),
         stagedSequentialStoryboard: metadata.stagedSequentialStoryboard
@@ -37374,6 +37375,7 @@ function clearMarketplaceAutoReviewAdvanceTimer(_runId: string, _userId: number)
 }
 
 const MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS = 5 * 60_000;
+const MARKETPLACE_AUTO_REVIEW_RUNAWAY_CONFIRMATION_LIMIT = 3;
 const MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT = 5;
 
 export function shouldOpenMarketplaceAutoReviewRunawayCircuit(
@@ -37392,11 +37394,29 @@ export function shouldOpenMarketplaceAutoReviewRunawayCircuit(
   );
 }
 
+export function shouldRequireMarketplaceAutoReviewRunawayConfirmation(
+  recentJobCount: number,
+  scopeMatches = {
+    sameRequester: true,
+    sameOperation: true,
+    sameTarget: true,
+  }
+) {
+  return (
+    scopeMatches.sameRequester &&
+    scopeMatches.sameOperation &&
+    scopeMatches.sameTarget &&
+    recentJobCount >= MARKETPLACE_AUTO_REVIEW_RUNAWAY_CONFIRMATION_LIMIT &&
+    recentJobCount < MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT
+  );
+}
+
 export async function queueMarketplaceAutoReviewAdvance(
   runId: string,
   auth: AuthContext,
   runtime: RuntimeContext = {},
-  delayMs = 60_000
+  delayMs = 60_000,
+  allowConfirmedContinuation = false
 ) {
   const db = await getDb();
   if (!db) {
@@ -37410,6 +37430,13 @@ export async function queueMarketplaceAutoReviewAdvance(
     return;
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const admissionReview = asRecord(metadata.workerJobAdmissionReview);
+  if (
+    admissionReview.status === "awaiting_confirmation" ||
+    (admissionReview.status === "continuing" && !allowConfirmedContinuation)
+  ) {
+    return { created: false, confirmationRequired: true };
+  }
   const recentSameSourceJobs = await db
     .select({ id: workerJobs.id })
     .from(workerJobs)
@@ -37423,7 +37450,9 @@ export async function queueMarketplaceAutoReviewAdvance(
           new Date(Date.now() - MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS)
         ),
         sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
-        sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+        sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`,
+        sql`${workerJobs.inputJson}->>'targetStage' = ${run.currentStage}`,
+        sql`${workerJobs.inputJson}->>'targetStageIndex' = ${String(Number(run.stageIndex ?? 0))}`
       )
     )
     .limit(MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT);
@@ -37470,7 +37499,9 @@ export async function queueMarketplaceAutoReviewAdvance(
             "retry_scheduled",
           ] as any),
           sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
-          sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+          sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`,
+          sql`${workerJobs.inputJson}->>'targetStage' = ${run.currentStage}`,
+          sql`${workerJobs.inputJson}->>'targetStageIndex' = ${String(Number(run.stageIndex ?? 0))}`
         )
       );
     const controlPlane = createJobControlPlane();
@@ -37488,6 +37519,63 @@ export async function queueMarketplaceAutoReviewAdvance(
       )
     );
     return { created: false, circuitOpen: true };
+  }
+  if (
+    shouldRequireMarketplaceAutoReviewRunawayConfirmation(
+      recentSameSourceJobs.length
+    )
+  ) {
+    const requestedAt = nowIso();
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: {
+        ...metadata,
+        workerJobAdmissionReview: {
+          status: "awaiting_confirmation",
+          reason: "repeated_same_source_jobs",
+          jobType: "marketplace.auto_review.execute",
+          operation: "advance_run",
+          requestedByUserId: auth.userId,
+          runId: run.id,
+          currentStage: run.currentStage,
+          stageIndex: Number(run.stageIndex ?? 0),
+          recentJobCount: recentSameSourceJobs.length,
+          windowMs: MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS,
+          requestedAt,
+        },
+      },
+    });
+    const queuedJobs = await db
+      .select({ id: workerJobs.id })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+          eq(workerJobs.requestedByUserId, auth.userId),
+          eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+          inArray(workerJobs.status, ["pending", "queued", "retry_scheduled"] as any),
+          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+          sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`,
+          sql`${workerJobs.inputJson}->>'targetStage' = ${run.currentStage}`,
+          sql`${workerJobs.inputJson}->>'targetStageIndex' = ${String(Number(run.stageIndex ?? 0))}`
+        )
+      );
+    const controlPlane = createJobControlPlane();
+    await Promise.all(
+      queuedJobs.map(job =>
+        controlPlane
+          .cancel(
+            job.id,
+            "runaway_worker_job_admission_confirmation_required",
+            undefined,
+            auth.userId,
+            { tenantId: tenantIdForRun(run, auth), requestedByUserId: auth.userId }
+          )
+          .catch(() => undefined)
+      )
+    );
+    return { created: false, confirmationRequired: true };
   }
   const requestedAtMs = Date.now() + Math.max(500, delayMs);
   const bucket = Math.ceil(requestedAtMs / 60_000);
@@ -37520,7 +37608,12 @@ export async function queueMarketplaceAutoReviewAdvance(
     tenantId: tenantIdForRun(run, auth),
     userId: run.userId,
     runId: run.id,
-    operation: { operation: "advance_run", runId: run.id },
+    operation: {
+      operation: "advance_run",
+      runId: run.id,
+      targetStage: run.currentStage,
+      targetStageIndex: Number(run.stageIndex ?? 0),
+    },
     idempotencyKey: [
       "marketplace-auto-review",
       run.id,
@@ -37533,6 +37626,88 @@ export async function queueMarketplaceAutoReviewAdvance(
     priority: 50,
     scheduledAt,
   });
+}
+
+export async function resolveMarketplaceAutoReviewRunawayReview(
+  runId: string,
+  decision: "continue_once" | "stop",
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const admissionReview = asRecord(metadata.workerJobAdmissionReview);
+  if (admissionReview.status !== "awaiting_confirmation") {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "This run is no longer waiting for confirmation",
+    });
+  }
+  if (decision === "stop") {
+    return cancelMarketplaceAutoReviewRun(runId, auth, runtime);
+  }
+  await updateRun({
+    db,
+    runId,
+    metadataJson: {
+      ...metadata,
+      workerJobAdmissionReview: {
+        ...admissionReview,
+        status: "continuing",
+        decision,
+        decidedAt: nowIso(),
+        decidedByUserId: auth.userId,
+      },
+    },
+  });
+  try {
+    await queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500, true);
+  } catch (error) {
+    const latestRun = await reloadRun(db, runId, auth);
+    const latestMetadata = asRecord(latestRun.metadataJson) as RunMetadata;
+    const latestReview = asRecord(latestMetadata.workerJobAdmissionReview);
+    if (latestReview.status === "continuing") {
+      await updateRun({
+        db,
+        runId,
+        metadataJson: {
+          ...latestMetadata,
+          workerJobAdmissionReview: {
+            ...latestReview,
+            status: "awaiting_confirmation",
+          },
+        },
+      });
+    }
+    throw error;
+  }
+  const latestRun = await reloadRun(db, runId, auth);
+  const latestMetadata = asRecord(latestRun.metadataJson) as RunMetadata;
+  const latestReview = asRecord(latestMetadata.workerJobAdmissionReview);
+  if (latestReview.status === "continuing") {
+    await updateRun({
+      db,
+      runId,
+      metadataJson: {
+        ...latestMetadata,
+        workerJobAdmissionReview: {
+          ...latestReview,
+          status: "continued_once",
+          continuedAt: nowIso(),
+        },
+      },
+    });
+  }
+  return {
+    decision,
+    run: await getMarketplaceAutoReviewRun(runId, auth),
+  };
 }
 
 export async function cancelMarketplaceAutoReviewRun(

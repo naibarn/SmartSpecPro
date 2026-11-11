@@ -35,6 +35,8 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
         ]),
         runId: runIdSchema,
         operationId: z.string().trim().min(1).max(80).optional(),
+        targetStage: z.string().trim().min(1).max(100).optional(),
+        targetStageIndex: z.number().int().min(0).max(100).optional(),
       })
       .strict(),
     z

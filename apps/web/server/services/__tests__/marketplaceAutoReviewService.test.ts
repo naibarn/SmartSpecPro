@@ -8,6 +8,7 @@ import {
   buildMarketplaceAutoReviewAutomationSnapshotsForTest,
   buildMarketplaceAutoReviewCancellationEvidenceForTest,
   shouldOpenMarketplaceAutoReviewRunawayCircuit,
+  shouldRequireMarketplaceAutoReviewRunawayConfirmation,
   summarizeMarketplaceAutoReviewStagedCancellationForTest,
   buildMarketplaceAutoReviewClaimEvidenceMappingForTest,
   buildMarketplaceAutoReview3x3StoryboardPromptForTest,
@@ -8887,6 +8888,22 @@ describe("marketplace auto review audio/video planning", () => {
         sameTarget: false,
       })
     ).toBe(false);
+  });
+
+  it("asks before pausing only for repeated jobs with the same owner and target", () => {
+    expect(shouldRequireMarketplaceAutoReviewRunawayConfirmation(2)).toBe(false);
+    expect(shouldRequireMarketplaceAutoReviewRunawayConfirmation(3)).toBe(true);
+    expect(shouldRequireMarketplaceAutoReviewRunawayConfirmation(4)).toBe(true);
+    expect(shouldRequireMarketplaceAutoReviewRunawayConfirmation(5)).toBe(false);
+    for (const scopeMatches of [
+      { sameRequester: false, sameOperation: true, sameTarget: true },
+      { sameRequester: true, sameOperation: false, sameTarget: true },
+      { sameRequester: true, sameOperation: true, sameTarget: false },
+    ]) {
+      expect(
+        shouldRequireMarketplaceAutoReviewRunawayConfirmation(4, scopeMatches)
+      ).toBe(false);
+    }
   });
 
   it("persists provider cancellation intent evidence when hard cancel cannot be dispatched", async () => {

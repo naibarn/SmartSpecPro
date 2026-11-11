@@ -51,6 +51,7 @@ import {
   getMarketplaceAutoReviewRun,
   listMarketplaceAutoReviewRuns,
   queueMarketplaceAutoReviewAdvance,
+  resolveMarketplaceAutoReviewRunawayReview,
   regenerateMarketplaceAutoReviewSequentialShot,
   generateMarketplaceAutoReviewSequentialShotPrompt,
   saveMarketplaceAutoReviewSequentialLanguagePlan,
@@ -1529,6 +1530,23 @@ export const marketplaceCaptureRouter = router({
     .mutation(async ({ input, ctx }) =>
       cancelMarketplaceAutoReviewRun(
         input.runId,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  resolveAutoReviewRunawayReview: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        decision: z.enum(["continue_once", "stop"]),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      resolveMarketplaceAutoReviewRunawayReview(
+        input.runId,
+        input.decision,
         authFromCtx(ctx),
         autoReviewRuntimeFromCtx(ctx)
       )
