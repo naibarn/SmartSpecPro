@@ -34,6 +34,7 @@ SERVICE_WORKING_DIRECTORIES = {
     "chat": "modules/chat",
     "shell": "apps/saas-shell",
 }
+RUNTIME_WORKSPACES = SERVICE_WORKING_DIRECTORIES
 ACTIVE_TUNNEL_CONFIG = Path("/home/dev/.config/smartspec-dev/cloudflared.yml")
 TUNNEL_SERVICE = "smartspec-dev-tunnel.service"
 
@@ -107,6 +108,33 @@ def digest_tree(directory: Path) -> str:
         digest.update(b"\0")
         digest.update(hashlib.sha256(file_path.read_bytes()).digest())
     return f"sha256:{digest.hexdigest()}"
+
+
+def verify_runtime_dependencies(artifact_root: Path) -> None:
+    root = artifact_root.resolve()
+
+    def require_internal_path(path: Path, label: str) -> None:
+        try:
+            resolved = path.resolve(strict=True)
+            resolved.relative_to(root)
+        except (OSError, ValueError) as exc:
+            raise ReleaseError(f"ARTIFACT_RUNTIME_DEPENDENCY_MISSING:{label}") from exc
+
+    require_internal_path(root / "node_modules/.bin/wrangler", "wrangler")
+    for component, relative in RUNTIME_WORKSPACES.items():
+        workspace = root / relative
+        try:
+            package = json.loads((workspace / "package.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ReleaseError(f"ARTIFACT_PACKAGE_MANIFEST_INVALID:{component}") from exc
+        dependencies: dict[str, str] = {}
+        for field in ("dependencies", "devDependencies"):
+            declared = package.get(field, {})
+            if not isinstance(declared, dict):
+                raise ReleaseError(f"ARTIFACT_PACKAGE_MANIFEST_INVALID:{component}")
+            dependencies.update(declared)
+        for dependency in dependencies:
+            require_internal_path(workspace / "node_modules" / dependency, f"{component}:{dependency}")
 
 
 def run(command: list[str], *, timeout: int = 20) -> subprocess.CompletedProcess[str]:
@@ -403,6 +431,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
         built = manifest.get("builds", {}).get(name, {})
         if built.get("artifactDigest") != digest_tree(artifact_root / relative):
             raise ReleaseError(f"RELEASE_ARTIFACT_DIGEST_MISMATCH:{name}")
+    verify_runtime_dependencies(artifact_root)
 
     if args.active_config.resolve() != ACTIVE_TUNNEL_CONFIG or not args.active_config.is_file():
         raise ReleaseError("ACTIVE_TUNNEL_CONFIG_MISSING")

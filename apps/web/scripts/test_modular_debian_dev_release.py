@@ -81,6 +81,44 @@ class ModularDebianReleasePolicyTests(unittest.TestCase):
                 {"tunnel": "dev-tunnel", "credentials-file": "/private/tunnel.json"},
             )
 
+    def test_runtime_dependency_preflight_accepts_a_complete_workspace_install(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wrangler = root / "node_modules/.bin/wrangler"
+            wrangler.parent.mkdir(parents=True)
+            wrangler.write_text("#!/bin/sh\n", encoding="utf-8")
+            for relative in release.RUNTIME_WORKSPACES.values():
+                workspace = root / relative
+                workspace.mkdir(parents=True)
+                (workspace / "package.json").write_text(
+                    '{"dependencies":{"hono":"4"},"devDependencies":{"vitest":"3"}}',
+                    encoding="utf-8",
+                )
+                for dependency in ("hono", "vitest"):
+                    package = workspace / "node_modules" / dependency
+                    package.mkdir(parents=True)
+                    (package / "index.js").write_text("export {};\n", encoding="utf-8")
+
+            release.verify_runtime_dependencies(root)
+
+    def test_runtime_dependency_preflight_rejects_missing_workspace_links(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wrangler = root / "node_modules/.bin/wrangler"
+            wrangler.parent.mkdir(parents=True)
+            wrangler.write_text("#!/bin/sh\n", encoding="utf-8")
+            for relative in release.RUNTIME_WORKSPACES.values():
+                workspace = root / relative
+                workspace.mkdir(parents=True)
+                (workspace / "package.json").write_text('{"dependencies":{"hono":"4"}}', encoding="utf-8")
+                if relative != release.RUNTIME_WORKSPACES["chat"]:
+                    package = workspace / "node_modules/hono"
+                    package.mkdir(parents=True)
+                    (package / "index.js").write_text("export {};\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(release.ReleaseError, "ARTIFACT_RUNTIME_DEPENDENCY_MISSING:chat:hono"):
+                release.verify_runtime_dependencies(root)
+
     def test_requires_running_services_to_use_the_candidate_release(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
