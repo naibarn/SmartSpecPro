@@ -2892,6 +2892,13 @@
       "when": 1794484800005,
       "tag": "0426_modular_chat_live_free_model_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 427,
+      "version": "7",
+      "when": 1794484800006,
+      "tag": "0427_modular_chat_queue_sql_fix",
+      "breakpoints": true
     }
   ]
 }
