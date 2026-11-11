@@ -341,6 +341,7 @@ async function executeReadyNodeEnvelope(
     console.error("[Feature186] postgres Node job execution failed", {
       jobId: candidate.jobId,
       error: error instanceof Error ? error.message.slice(0, 500) : "unknown_error",
+      stack: error instanceof Error ? error.stack?.slice(0, 3_000) : undefined,
     });
     return { jobId: candidate.jobId, state: "error" };
   }
