@@ -2586,8 +2586,16 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   modelFallbackReason?: string;
   timeoutMs?: number;
   disableProviderFallbacks?: boolean;
-  onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
-}): Promise<{ data: T; response: VisionAwareCallResponse }> {
+  onUsage?: (
+    response: VisionAwareCallResponse,
+    requestedModel: string,
+    providerName: string
+  ) => void;
+}): Promise<{
+  data: T;
+  response: VisionAwareCallResponse;
+  providerName: string;
+}> {
   const result = await executeWithFallback({
     model: args.model,
     messages: [
@@ -2613,7 +2621,7 @@ export async function runVisionAwareJsonAttempt<T>(args: {
     );
   }
 
-  args.onUsage?.(result.response, args.model);
+  args.onUsage?.(result.response, args.model, result.providerName);
 
   const responseContent = result.response.choices?.[0]?.message?.content ?? "";
   if (!responseContent.trim()) {
@@ -2636,7 +2644,11 @@ export async function runVisionAwareJsonAttempt<T>(args: {
       validation.error
     );
   }
-  return { data: validation.data as T, response: result.response };
+  return {
+    data: validation.data as T,
+    response: result.response,
+    providerName: result.providerName,
+  };
 }
 
 export async function executeVisionAwareJsonCallWithRetry<T>(args: {
@@ -2675,10 +2687,15 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   timeoutMs?: number;
   disableProviderFallbacks?: boolean;
   /** Observe every successful provider response, including schema-repair attempts. */
-  onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
+  onUsage?: (
+    response: VisionAwareCallResponse,
+    requestedModel: string,
+    providerName: string
+  ) => void;
 }): Promise<{
   data: T;
   response: VisionAwareCallResponse;
+  providerName: string;
   usedVision: boolean;
 }> {
   const verticalDramaSettings = args.verticalDramaContext
