@@ -157,6 +157,35 @@ describe("Marketplace video prompt generation with real completeness validation"
     expect(result.prompt.match(/Yes, the coffee is ready\./g)).toHaveLength(1);
   });
 
+  it("identifies each named speaker directly by the detected appearance", async () => {
+    const result = await generateMarketplaceAutoReviewVideoPrompt(request);
+    expect(result.prompt).toContain("- Mali: person-1, viewer-left — woman in a cream blouse");
+    expect(result.prompt).toContain("- Ton: person-2, viewer-right — man in a dark jacket");
+    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("keeps detailed descriptions attached to the matched names rather than cast order", async () => {
+    const originalPeople = dependencies.people;
+    const originalMatches = dependencies.framePeople;
+    dependencies.people = [
+      { ...originalPeople[0], appearance: "older man with short white hair and glasses, wearing a light button-up shirt and watch, pointing toward the coffee machine" },
+      { ...originalPeople[1], appearance: "young man in a dark jacket and pink shirt, leaning over the counter" },
+    ];
+    dependencies.framePeople = [
+      { name: "Ton", position: "left", detected_person_id: "person-1" },
+      { name: "Mali", position: "right", detected_person_id: "person-2" },
+    ];
+    try {
+      const result = await generateMarketplaceAutoReviewVideoPrompt(request);
+      expect(result.prompt).toContain("- Ton: person-1, viewer-left — older man with short white hair and glasses");
+      expect(result.prompt).toContain("- Mali: person-2, viewer-right — young man in a dark jacket and pink shirt");
+      expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    } finally {
+      dependencies.people = originalPeople;
+      dependencies.framePeople = originalMatches;
+    }
+  });
+
   it("keeps the complete prompt within the provider budget after adding the required map and dialogue", async () => {
     dependencies.videoPrompt = prefix + "The camera moves gently. ".repeat(65);
     expect(dependencies.videoPrompt.length).toBeLessThan(2000);

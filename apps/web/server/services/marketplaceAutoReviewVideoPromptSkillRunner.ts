@@ -289,11 +289,9 @@ function renderSpeakerSections(bindings: readonly SpeakerBinding[]): string {
   );
   return [
     "SPEAKER VISUAL MAP FOR THIS SHOT:",
-    "Detected appearance:",
     ...uniqueBindings.map(
-      binding => `${binding.person.id}: ${binding.person.appearance}`
+      binding => `- ${binding.speaker}: ${binding.cue} — ${binding.person.appearance}`
     ),
-    ...uniqueBindings.map(binding => `- ${binding.speaker}: ${binding.cue}`),
     "SPEAKER-TO-FACE LOCK: Match each spoken line only to the detected person named for that line. All other visible people keep their mouths closed.",
     "Approved dialogue:",
     ...bindings.map(
