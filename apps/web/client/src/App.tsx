@@ -724,6 +724,11 @@ function Router() {
               <BlogPost />
             </TenantPublicRoute>
           </Route>
+          <Route path="/marketplace/auto-review">
+            <RequireAuth>
+              <MarketplaceAutoReviewJobsPage />
+            </RequireAuth>
+          </Route>
           <Route path="/marketplace">
             <TenantPublicRoute pageKey="marketplace"><Marketplace /></TenantPublicRoute>
           </Route>
@@ -799,11 +804,6 @@ function Router() {
           <Route path="/marketplace-capture/candidates/:batchId">
             <RequireAuth>
               <MarketplaceCaptureCandidateBatch />
-            </RequireAuth>
-          </Route>
-          <Route path="/marketplace/auto-review">
-            <RequireAuth>
-              <MarketplaceAutoReviewJobsPage />
             </RequireAuth>
           </Route>
           <Route path="/marketplace/auto-review/new/:productId">
