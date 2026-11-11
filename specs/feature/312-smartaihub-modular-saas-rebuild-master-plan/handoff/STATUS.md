@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 28 unresolved of 29
 - Next action: Hard-refresh /chat while signed in and verify Retry plus desktop/tablet/mobile layout; then continue customer membership/data UAT, matched Legacy/Core performance evidence, and production-isolation proof. Keep smartsihub.com inactive.
-- Manifest generation: 34
+- Manifest generation: 35
 
 ## Source-declared status and relationship claims
 
