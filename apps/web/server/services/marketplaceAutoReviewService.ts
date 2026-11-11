@@ -37373,6 +37373,15 @@ function clearMarketplaceAutoReviewAdvanceTimer(_runId: string, _userId: number)
   return false;
 }
 
+const MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS = 5 * 60_000;
+const MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT = 5;
+
+export function shouldOpenMarketplaceAutoReviewRunawayCircuit(
+  recentJobCount: number
+) {
+  return recentJobCount >= MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT;
+}
+
 export async function queueMarketplaceAutoReviewAdvance(
   runId: string,
   auth: AuthContext,
@@ -37391,6 +37400,78 @@ export async function queueMarketplaceAutoReviewAdvance(
     return;
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const recentAdvanceJobs = await db
+    .select({ id: workerJobs.id })
+    .from(workerJobs)
+    .where(
+      and(
+        eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+        eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+        gte(
+          workerJobs.createdAt,
+          new Date(Date.now() - MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS)
+        ),
+        sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+      )
+    )
+    .limit(MARKETPLACE_AUTO_REVIEW_RUNAWAY_JOB_LIMIT);
+  if (shouldOpenMarketplaceAutoReviewRunawayCircuit(recentAdvanceJobs.length)) {
+    const stoppedAt = nowIso();
+    const reason = "runaway_worker_job_admission_circuit_open";
+    await updateRun({
+      db,
+      runId: run.id,
+      status: "failed",
+      errorMessage:
+        "Auto Review stopped after creating too many worker jobs in a short period. Review the run before retrying.",
+      metadataJson: {
+        ...metadata,
+        workerJobAdmissionCircuit: {
+          status: "open",
+          reason,
+          jobType: "marketplace.auto_review.execute",
+          recentJobCount: recentAdvanceJobs.length,
+          windowMs: MARKETPLACE_AUTO_REVIEW_RUNAWAY_WINDOW_MS,
+          openedAt: stoppedAt,
+        },
+      },
+      completedAt: nowDate(),
+    });
+    const activeJobs = await db
+      .select({ id: workerJobs.id })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantIdForRun(run, auth)),
+          eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+          inArray(workerJobs.status, [
+            "pending",
+            "queued",
+            "leased",
+            "claimed",
+            "preparing",
+            "running",
+            "retry_scheduled",
+          ] as any),
+          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
+        )
+      );
+    const controlPlane = createJobControlPlane();
+    await Promise.all(
+      activeJobs.map(job =>
+        controlPlane
+          .cancel(
+            job.id,
+            reason,
+            undefined,
+            auth.userId,
+            { tenantId: tenantIdForRun(run, auth), requestedByUserId: auth.userId }
+          )
+          .catch(() => undefined)
+      )
+    );
+    return { created: false, circuitOpen: true };
+  }
   const requestedAtMs = Date.now() + Math.max(500, delayMs);
   const bucket = Math.ceil(requestedAtMs / 60_000);
   const scheduledAt = new Date(bucket * 60_000);

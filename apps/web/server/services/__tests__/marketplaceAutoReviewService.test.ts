@@ -7,6 +7,7 @@ import {
   buildMarketplaceAutoReviewAudioContinuityEnvelopeForTest,
   buildMarketplaceAutoReviewAutomationSnapshotsForTest,
   buildMarketplaceAutoReviewCancellationEvidenceForTest,
+  shouldOpenMarketplaceAutoReviewRunawayCircuit,
   summarizeMarketplaceAutoReviewStagedCancellationForTest,
   buildMarketplaceAutoReviewClaimEvidenceMappingForTest,
   buildMarketplaceAutoReview3x3StoryboardPromptForTest,
@@ -8866,6 +8867,12 @@ describe("marketplace auto review audio/video planning", () => {
     expect(libraryMetadata.media_artifact_inspection.inspectionId).toBe(
       (finalized.mediaArtifactInspection as any).inspectionId
     );
+  });
+
+  it("opens a runaway circuit at the repeated-job threshold", () => {
+    expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(4)).toBe(false);
+    expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(5)).toBe(true);
+    expect(shouldOpenMarketplaceAutoReviewRunawayCircuit(6)).toBe(true);
   });
 
   it("persists provider cancellation intent evidence when hard cancel cannot be dispatched", async () => {
