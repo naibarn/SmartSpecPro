@@ -2850,6 +2850,13 @@
       "when": 1794398400000,
       "tag": "0420_modular_personal_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 421,
+      "version": "7",
+      "when": 1794484800000,
+      "tag": "0421_modular_default_workspace_serialization",
+      "breakpoints": true
     }
   ]
 }
