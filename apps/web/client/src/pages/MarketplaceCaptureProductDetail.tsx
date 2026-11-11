@@ -7299,8 +7299,8 @@ export default function MarketplaceCaptureProductDetail() {
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       {isThaiLocale
-                        ? "ตั้งค่า Job Review ใหม่"
-                        : "Set up a new review job"}
+                        ? "ตั้งค่างานรีวิววิดีโอใหม่"
+                        : "Set up a new video review job"}
                     </Button>
                   </Link>
                   {latestJobWorkbenchRunId ? (

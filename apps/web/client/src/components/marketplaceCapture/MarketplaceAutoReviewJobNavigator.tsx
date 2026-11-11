@@ -488,7 +488,9 @@ export function MarketplaceAutoReviewJobNavigator({
           onClick={onCreateNew}
         >
           <Plus className="h-4 w-4" />
-          {isThaiLocale ? "ตั้งค่า Job Review ใหม่" : "Set up a new review job"}
+          {isThaiLocale
+            ? "ตั้งค่างานรีวิววิดีโอใหม่"
+            : "Set up a new video review job"}
         </button>
       </footer>
     </aside>
