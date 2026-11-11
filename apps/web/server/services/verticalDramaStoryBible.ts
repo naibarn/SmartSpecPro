@@ -63,7 +63,10 @@ import {
   calculateCreditsForLLM,
 } from "./creditService";
 import { debugLog, debugError } from "../_core/logger";
-import { inspectVerticalDramaEpisodeCompletion } from "./verticalDramaCompletionContract";
+import {
+  hasDuplicateDialogueAcrossSpeakers,
+  inspectVerticalDramaEpisodeCompletion,
+} from "./verticalDramaCompletionContract";
 import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import type { StoryConsistencyFinding } from "@shared/verticalDramaSeries/storyConsistency";
 import {
@@ -511,6 +514,7 @@ export type VdDeepDraftWarning = {
     | "silence_intent_conflict"
     | "episode_missing_after_retry"
     | "missing_dialogue_after_retry"
+    | "duplicate_dialogue_speakers_after_retry"
     | "tie_in_placement_mismatch"
     | "premise_coverage_low"
     | "shot_completeness_violation"
@@ -4119,6 +4123,14 @@ export function computeShotCompletenessViolations(
       }
     }
 
+    if (hasDuplicateDialogueAcrossSpeakers([shot])) {
+      violations.push({
+        episodeNumber,
+        shotNumber: shot.shot_number,
+        message: `Episode ${episodeNumber} shot ${shot.shot_number} assigns the same spoken line to multiple speakers — keep each utterance under only the character who says it; use different lines for the other characters.`,
+      });
+    }
+
     const locationKey = shot.location_key?.trim();
     if (!locationKey) {
       violations.push({
@@ -5175,6 +5187,7 @@ function buildDeepDraftPrompts(params: {
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
     'For dialogue_lines, optionally set "addressed_to" only when the speaker is clearly addressing a specific visible character in this shot. Omit it when the addressee is ambiguous; never invent a character or add visual presence from the field.',
+    'Within a shot, never assign the same spoken line to two different speakers. Each dialogue_lines[].speaker must be the actual character who speaks that line, and the speaker name must exactly match that character’s canonical name or declared alias. If another character responds, write a distinct response for them; do not duplicate the first character’s line under the listener.',
     durationProfileText,
     storyControlSeedBlock,
     shotDurations
@@ -6687,11 +6700,21 @@ export async function generateStoryBibleDeep(
           dialogueViolations.map(violation => violation.episodeNumber)
         ),
       ];
+      const duplicateDialogueEpisodeNumbers = chunkDrafted
+        .filter(item => hasDuplicateDialogueAcrossSpeakers(item.shotDrafts))
+        .map(item => item.episodeNumber);
       for (const episodeNumber of dialogueMissingEpisodeNumbers) {
         warnings.push({
           episodeNumber,
           shotNumber: 0,
           reason: "missing_dialogue_after_retry",
+        });
+      }
+      for (const episodeNumber of duplicateDialogueEpisodeNumbers) {
+        warnings.push({
+          episodeNumber,
+          shotNumber: 0,
+          reason: "duplicate_dialogue_speakers_after_retry",
         });
       }
 
@@ -6762,12 +6785,16 @@ export async function generateStoryBibleDeep(
         ...new Set([
           ...reconciled.missingEpisodeNumbers,
           ...dialogueMissingEpisodeNumbers,
+          ...duplicateDialogueEpisodeNumbers,
         ]),
       ];
       if (unresolvedEpisodeNumbers.length > 0) {
         for (const missingEpisodeNumber of unresolvedEpisodeNumbers) {
           pendingRepairEpisodeNumbers.add(missingEpisodeNumber);
-          if (!dialogueMissingEpisodeNumbers.includes(missingEpisodeNumber)) {
+          if (
+            !dialogueMissingEpisodeNumbers.includes(missingEpisodeNumber) &&
+            !duplicateDialogueEpisodeNumbers.includes(missingEpisodeNumber)
+          ) {
             warnings.push({
               episodeNumber: missingEpisodeNumber,
               shotNumber: 0,
@@ -9047,23 +9074,48 @@ async function runPremiumChunk(
   const dialogueMissingEpisodeNumbers = [
     ...new Set(dialogueViolations.map(violation => violation.episodeNumber)),
   ];
+  const duplicateDialogueEpisodeNumbers = [
+    ...new Set(
+      episodeStates
+        .filter(state => hasDuplicateDialogueAcrossSpeakers(state.shotDrafts))
+        .map(state => state.episodeNumber)
+    ),
+  ];
   const episodeStatesWithDialogueWarnings = episodeStates.map(state =>
-    dialogueMissingEpisodeNumbers.includes(state.episodeNumber)
+    dialogueMissingEpisodeNumbers.includes(state.episodeNumber) ||
+    duplicateDialogueEpisodeNumbers.includes(state.episodeNumber)
       ? {
           ...state,
           localWarnings: [
             ...state.localWarnings,
-            {
-              episodeNumber: state.episodeNumber,
-              shotNumber: 0,
-              reason: "missing_dialogue_after_retry" as const,
-            },
+            ...(dialogueMissingEpisodeNumbers.includes(state.episodeNumber)
+              ? [
+                  {
+                    episodeNumber: state.episodeNumber,
+                    shotNumber: 0,
+                    reason: "missing_dialogue_after_retry" as const,
+                  },
+                ]
+              : []),
+            ...(duplicateDialogueEpisodeNumbers.includes(state.episodeNumber)
+              ? [
+                  {
+                    episodeNumber: state.episodeNumber,
+                    shotNumber: 0,
+                    reason: "duplicate_dialogue_speakers_after_retry" as const,
+                  },
+                ]
+              : []),
           ],
         }
       : state
   );
   const unresolvedEpisodeNumbers = [
-    ...new Set([...missingEpisodeNumbers, ...dialogueMissingEpisodeNumbers]),
+    ...new Set([
+      ...missingEpisodeNumbers,
+      ...dialogueMissingEpisodeNumbers,
+      ...duplicateDialogueEpisodeNumbers,
+    ]),
   ];
   const recapDelta: DeepDraftRecapEpisode[] = episodeStates.map(ep => {
     const source = findPremiumSourceItem(

@@ -5,7 +5,12 @@ export interface VerticalDramaEpisodeCompletionInput {
 
 export interface VerticalDramaEpisodeCompletionViolation {
   episodeNumber: number;
-  codes: Array<"missing_shots" | "invalid_shot_numbers" | "missing_dialogue">;
+  codes: Array<
+    | "missing_shots"
+    | "invalid_shot_numbers"
+    | "missing_dialogue"
+    | "duplicate_dialogue_speakers"
+  >;
 }
 
 export interface VerticalDramaCompletionReport {
@@ -16,6 +21,36 @@ export interface VerticalDramaCompletionReport {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Detects one utterance assigned to multiple characters within the same shot. */
+export function hasDuplicateDialogueAcrossSpeakers(
+  shotDrafts: unknown
+): boolean {
+  if (!Array.isArray(shotDrafts)) return false;
+
+  return shotDrafts.some(shot => {
+    if (!isRecord(shot) || !Array.isArray(shot.dialogue_lines)) return false;
+    const speakersByLine = new Map<string, Set<string>>();
+    for (const item of shot.dialogue_lines) {
+      if (!isRecord(item) || typeof item.line !== "string") continue;
+      if (typeof item.speaker !== "string") continue;
+      const line = item.line
+        .normalize("NFC")
+        .replace(/\s+/g, " ")
+        .trim();
+      const speaker = item.speaker
+        .normalize("NFC")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!line || !speaker) continue;
+      const speakers = speakersByLine.get(line) ?? new Set<string>();
+      speakers.add(speaker);
+      speakersByLine.set(line, speakers);
+      if (speakers.size > 1) return true;
+    }
+    return false;
+  });
 }
 
 export function inspectVerticalDramaEpisodeCompletion(input: {
@@ -49,6 +84,9 @@ export function inspectVerticalDramaEpisodeCompletion(input: {
     });
   });
   if (!hasDialogue) codes.push("missing_dialogue");
+  if (hasDuplicateDialogueAcrossSpeakers(shots)) {
+    codes.push("duplicate_dialogue_speakers");
+  }
 
   return codes.length > 0
     ? { episodeNumber: input.episodeNumber, codes }

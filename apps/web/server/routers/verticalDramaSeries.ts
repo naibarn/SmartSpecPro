@@ -3400,8 +3400,13 @@ export async function runGenerateStoryBibleDeepJob(
           knownCharacters: characterBibleProfiles,
           seasonLineage,
           qualityRepairInstructions: completionReport.violations.map(
-            violation =>
-              `Episode ${violation.episodeNumber}: repair completion violations ${violation.codes.join(", ")}. Return all required shots and speakable dialogue.`
+            violation => {
+              const duplicateSpeakerRule =
+                violation.codes.includes("duplicate_dialogue_speakers")
+                  ? " Do not assign the same utterance to multiple speakers; each speaker must be the actual character saying that line, using their canonical name or declared alias. Give each responding character a distinct line."
+                  : "";
+              return `Episode ${violation.episodeNumber}: repair completion violations ${violation.codes.join(", ")}. Return all required shots and speakable dialogue.${duplicateSpeakerRule}`;
+            }
           ),
           onProgress,
           onChunkComplete,
