@@ -276,13 +276,15 @@ function detectedPersonPosition(
       : "viewer-center";
 }
 
-function positionBucket(
-  value: string
-): "viewer-left" | "viewer-center" | "viewer-right" | undefined {
+function positionTargetX(value: string): number | undefined {
   const normalized = value.trim().toLowerCase();
-  if (/left/.test(normalized)) return "viewer-left";
-  if (/right/.test(normalized)) return "viewer-right";
-  if (/center|centre|middle/.test(normalized)) return "viewer-center";
+  if (/far[- ]left/.test(normalized)) return 0.08;
+  if (/center[- ]left|centre[- ]left/.test(normalized)) return 0.4;
+  if (/\bleft\b/.test(normalized)) return 0.25;
+  if (/far[- ]right/.test(normalized)) return 0.92;
+  if (/center[- ]right|centre[- ]right/.test(normalized)) return 0.6;
+  if (/\bright\b/.test(normalized)) return 0.75;
+  if (/center|centre|middle/.test(normalized)) return 0.5;
   return undefined;
 }
 
@@ -302,15 +304,29 @@ function buildAuthoritativeSpeakerSections(input: {
     const explicitPerson = explicitId
       ? input.detectedPeople.find(person => person.id === explicitId)
       : undefined;
-    const bucket = analysis ? positionBucket(analysis.position) : undefined;
-    const positionalMatches = bucket
-      ? input.detectedPeople.filter(
-          person => detectedPersonPosition(person) === bucket
-        )
-      : [];
-    const person =
-      explicitPerson ??
-      (positionalMatches.length === 1 ? positionalMatches[0] : undefined);
+    const targetX = analysis ? positionTargetX(analysis.position) : undefined;
+    const positionalCandidates =
+      targetX === undefined
+        ? []
+        : input.detectedPeople
+            .map(person => ({
+              person,
+              distance: Math.abs(
+                person.boundingBox.x + person.boundingBox.width / 2 - targetX
+              ),
+            }))
+            .sort((left, right) => left.distance - right.distance);
+    const nearestCandidate = positionalCandidates[0];
+    const nextCandidate = positionalCandidates[1];
+    const positionalPerson =
+      input.detectedPeople.length === 1
+        ? input.detectedPeople[0]
+        : nearestCandidate &&
+            (!nextCandidate ||
+              nextCandidate.distance - nearestCandidate.distance >= 0.08)
+          ? nearestCandidate.person
+          : undefined;
+    const person = explicitPerson ?? positionalPerson;
     if (!person || usedPersonIds.has(person.id)) {
       throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
     }
