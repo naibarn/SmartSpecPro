@@ -25,16 +25,6 @@
   "blockers": [
     {
       "class": "MISSING_CONFIGURED_CAPABILITY",
-      "description": "The Legacy provider/model catalog is available through a safe shared-DB view, but no tenant-scoped Chat persistence adapter or Chat Worker provider execution capability is configured; message sending and generation remain disabled.",
-      "id": "chat-data-provider",
-      "next_action": "Verify a tenant-scoped adapter for canonical Chat data and implement server-side provider execution against approved provider credentials before enabling Send.",
-      "requirements": [
-        "REQ-48EFA6340760",
-        "REQ-B89BDD10E8E0"
-      ]
-    },
-    {
-      "class": "MISSING_CONFIGURED_CAPABILITY",
       "description": "No approved browser provider/executor, canonical worker_jobs+outbox adapter, or provider-side DNS/redirect/private-address egress controls are configured.",
       "id": "browser-runtime-job-adapter",
       "next_action": "Keep Browser Pilot unavailable; integrate only after those authorities and controls are verified.",
@@ -42,18 +32,36 @@
         "REQ-E014BEE5B67C",
         "REQ-64CA2E9BC303"
       ]
+    },
+    {
+      "class": "MISSING_CONFIGURED_CAPABILITY",
+      "description": "Chat turn persistence is scoped to the authenticated user, environment and workspace, but append has no client request idempotency key for safe retry after an uncertain network result.",
+      "id": "chat-turn-idempotency",
+      "next_action": "Add and verify idempotent turn admission before adding automatic client retries.",
+      "requirements": [
+        "REQ-069F6F822212"
+      ]
+    },
+    {
+      "class": "HUMAN_UAT_PENDING",
+      "description": "The exact release is deployed and public health checks pass, but no human has yet confirmed an authenticated provider response, persisted history after reload, or desktop/tablet/mobile behavior on this release.",
+      "id": "authenticated-chat-uat",
+      "next_action": "Verify a real chat turn, reload the conversation, and check desktop/tablet/mobile layouts on aimarkethubs.com; record any feedback.",
+      "requirements": [
+        "REQ-64CA2E9BC303"
+      ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "03f450112b61efcec8c14004f7495076aae79035",
+    "expected_canonical_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "expected_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8"
   },
   "continuation": {
-    "next_action": "Sign in to aimarkethubs.com and confirm Kie AI/OpenRouter model choices load. Then continue tenant-scoped Chat persistence and server-side provider execution before enabling Send; keep Browser Pilot disabled until its runtime/job/egress controls are configured.",
-    "next_ready_workunit": "chat-persistence-provider-and-authenticated-workspace-uat",
-    "reactivation_predicate": "User submits authenticated workspace-flow UAT, or scoped Chat persistence/provider capability is available for implementation.",
-    "resume_point": "2026-11-11: smartaihub-platform/main@03f450112b61efcec8c14004f7495076aae79035 is deployed and health-checked on modular-debian-dev / aimarkethubs.com. The new Chat catalog reads 38 configured models from 2 existing providers through a least-privilege view; the Chat UI exposes Auto and explicit model choices. See modular-chat-provider-catalog-deployment-20261111.md. Chat sending/generation remains disabled pending scoped persistence and provider execution; authenticated visual UAT remains open.",
-    "waiting_predicate": "Authenticated browser click-through remains for user-specific UAT; implementation can continue with the scoped Chat persistence/provider execution path without waiting for that UAT."
+    "next_action": "On aimarkethubs.com, send a real turn using an available OpenRouter model, confirm it appears in history after reload, and check desktop/tablet/mobile. Capture any issue; implementation follow-up is turn idempotency and the separate Browser Pilot prerequisites.",
+    "next_ready_workunit": "authenticated-chat-uat-and-turn-idempotency",
+    "reactivation_predicate": "Authenticated human UAT feedback or implementation of turn idempotency / approved Browser Pilot runtime capabilities.",
+    "resume_point": "2026-11-11: smartaihub-platform/main@824c2a3b1c247b675353c783e8979ede9aaaa488 is deployed and health-checked on modular-debian-dev / aimarkethubs.com. Three configured free OpenRouter chat-completions models are selectable through the existing shared smartspec provider configuration; Chat turns use scoped persistence in canonical conversations/messages. See handoff/evidence/modular-chat-functional-send-release-20261111.md. Authenticated live-response/history/responsive UAT, request idempotency, Browser Pilot and production acceptance remain open.",
+    "waiting_predicate": "Human authenticated send/history/responsive UAT remains user-specific; code work can continue with turn idempotency and independent Browser Pilot prerequisites."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -63,14 +71,16 @@
       "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md",
       "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/section-01-build-matrix-20261110.md",
       "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-release-20261111.md"
     ],
-    "next_action": "Run authenticated browser checks for the Kie AI/OpenRouter model selector and responsive layout; continue scoped Chat persistence and server-side provider execution before enabling Send. Keep Browser Pilot unavailable until its runtime/job controls are configured.",
-    "rationale": "Core, Shell and Chat are deployed and health-checked at the current integrated platform SHA on modular-debian-dev. The shared catalog safely exposes 38 models from 2 existing providers and the Chat UI offers Auto and explicit choices. Send/generation remains disabled because tenant-scoped persistence and provider execution are not implemented; authenticated visual UAT, Browser Pilot and production acceptance remain open.",
+    "next_action": "Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.",
+    "rationale": "The exact integrated Core, Shell and Chat release is deployed and health-checked. Existing provider configuration is read server-side and scoped conversation/message persistence uses the shared smartspec database. Automated package checks passed. Human authenticated send/history/responsive UAT and idempotent turn retry remain open; Browser Pilot and production acceptance remain separate.",
     "residual_requirements": [
-      "REQ-64CA2E9BC303: authenticated human UAT",
-      "REQ-48EFA6340760 and REQ-B89BDD10E8E0: scoped Chat data/provider",
-      "REQ-E014BEE5B67C and REQ-64CA2E9BC303: Browser Pilot runtime/job controls",
+      "REQ-64CA2E9BC303: authenticated human UAT on the current release",
+      "REQ-069F6F822212: idempotent turn writes before automatic retry support",
+      "REQ-48EFA6340760: finish the Legacy Shared-DB Exception inventory/registry",
+      "REQ-E014BEE5B67C: Browser Pilot runtime/job controls and remaining independent module evidence",
       "Matched performance and production-isolation evidence"
     ]
   },
@@ -81,14 +91,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d80e33227631c8f322240472cd9cc521660c0d018cff3e6269a030c286794f7c",
+    "artifact_digest": "sha256:980cb85e10fda2355260851052cbb8671f440c677fc507899eb493f8512baf45",
     "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
     "evidence": [
       "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-release-20261111.md"
     ],
     "required": true,
-    "source_sha": "03f450112b61efcec8c14004f7495076aae79035",
+    "source_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "status": "PASS"
   },
   "disposition": {
@@ -107,7 +118,7 @@
     "rationale": "Active canonical SPEC-317. Owner clarification R1.7 supports direct Codex/Claude development or optional SPEC-224; it supersedes only the older mandatory entry path. The new Modular app remains Chat-first and independently built, with aimarkethubs.com and smartsihub.com boundaries unchanged.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 23,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/317-smartaihub-progressive-module-migration/spec.md",
     "digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
@@ -129,7 +140,8 @@
       "266a28ab475256c1cbb5e61ab4517aa67fd8e688",
       "d0a85bbf46986d2bb164775ef8a9a62b543a8006",
       "95035695ff3408dfe954594a838e03b98e33ac91",
-      "6c1b97a65f860ba5d9dadb06e188fa53316efbdb"
+      "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+      "824c2a3b1c247b675353c783e8979ede9aaaa488"
     ],
     "mapping": [
       {
@@ -155,25 +167,25 @@
         "status": "PARTIAL"
       },
       {
-        "evidence": "handoff/evidence/section-03-worker-contract-20261110.md",
+        "evidence": "handoff/evidence/modular-chat-functional-send-release-20261111.md",
         "requirements": [
           "REQ-069F6F822212",
           "REQ-48EFA6340760",
           "REQ-B89BDD10E8E0"
         ],
         "section": "section-03-chat-worker-auth-data-and-provider-contract",
-        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "source_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "status": "PARTIAL"
       },
       {
-        "evidence": "handoff/evidence/section-04-chat-ui-20261110.md",
+        "evidence": "handoff/evidence/modular-chat-functional-send-release-20261111.md",
         "requirements": [
           "REQ-2B7D77E6D086",
           "REQ-2E717B8BD3E7",
           "REQ-32CAB23B7018"
         ],
         "section": "section-04-chat-independent-ui-and-artifacts",
-        "source_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "source_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "status": "PARTIAL"
       },
       {
@@ -199,9 +211,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "03f450112b61efcec8c14004f7495076aae79035",
+    "canonical_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "integrated": true,
-    "integrated_at": "2026-11-11T15:23:40+07:00"
+    "integrated_at": "2026-11-11T17:54:55+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -247,14 +259,16 @@
         "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/final-gap-review-10-rounds-20261110.md",
         "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/section-01-build-matrix-20261110.md",
         "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-        "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+        "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+        "handoff/evidence/modular-chat-functional-send-release-20261111.md"
       ],
-      "next_action": "Run authenticated browser checks for the Kie AI/OpenRouter model selector and responsive layout; continue scoped Chat persistence and server-side provider execution before enabling Send. Keep Browser Pilot unavailable until its runtime/job controls are configured.",
-      "rationale": "Core, Shell and Chat are deployed and health-checked at the current integrated platform SHA on modular-debian-dev. The shared catalog safely exposes 38 models from 2 existing providers and the Chat UI offers Auto and explicit choices. Send/generation remains disabled because tenant-scoped persistence and provider execution are not implemented; authenticated visual UAT, Browser Pilot and production acceptance remain open.",
+      "next_action": "Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.",
+      "rationale": "The exact integrated Core, Shell and Chat release is deployed and health-checked. Existing provider configuration is read server-side and scoped conversation/message persistence uses the shared smartspec database. Automated package checks passed. Human authenticated send/history/responsive UAT and idempotent turn retry remain open; Browser Pilot and production acceptance remain separate.",
       "residual_requirements": [
-        "REQ-64CA2E9BC303: authenticated human UAT",
-        "REQ-48EFA6340760 and REQ-B89BDD10E8E0: scoped Chat data/provider",
-        "REQ-E014BEE5B67C and REQ-64CA2E9BC303: Browser Pilot runtime/job controls",
+        "REQ-64CA2E9BC303: authenticated human UAT on the current release",
+        "REQ-069F6F822212: idempotent turn writes before automatic retry support",
+        "REQ-48EFA6340760: finish the Legacy Shared-DB Exception inventory/registry",
+        "REQ-E014BEE5B67C: Browser Pilot runtime/job controls and remaining independent module evidence",
         "Matched performance and production-isolation evidence"
       ]
     },
@@ -325,26 +339,33 @@
           "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L55"
         ],
         "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L55",
-        "blocker": null,
+        "blocker": {
+          "class": "MISSING_CONFIGURED_CAPABILITY",
+          "description": "Conversation writes have environment, workspace and owner scoping, but turn append does not accept an idempotency key; a retry after an uncertain network result could duplicate a turn.",
+          "next_action": "Implement and test idempotent turn admission."
+        },
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "03f450112b61efcec8c14004f7495076aae79035",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "smartaihub-platform@03f450112b61efcec8c14004f7495076aae79035",
-          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Continue read-only shared-data integration; define durable owner/fence and idempotency before adding any Legacy/new mutation route.",
+        "next_action": "Add a client request idempotency key and verify replay-safe turn append before enabling automatic retries or broadening Legacy/new mutation routing.",
         "requirement_digest": "6dab0dcb8033de6730d147f3a12bf237d2c8800842094e499a3e89f9b6151963",
         "requirement_id": "REQ-069F6F822212",
         "requirement_text": "- Read from both old/new only when compatible and approved; mutation routing must have a durable owner/fence and idempotency.",
         "source_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
-        "verification_method": "Verify the Hono catalog endpoint reads only the least-privilege view, and confirm the Core role cannot directly SELECT legacy provider tables or expose provider secrets."
+        "verification_method": "Verify every shared-data read/write is scoped by authenticated user, environment and workspace; inspect database function permissions and verify retry idempotency before claiming complete mutation fencing."
       },
       "REQ-295AD937395C": {
         "applicability": "APPLICABLE",
@@ -408,15 +429,17 @@
         "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L171",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "STALE",
-        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-        "final_state": "STALE_EVIDENCE",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
+        "final_state": "PARTIAL",
         "implementation_evidence": [
           "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Repeat the authenticated Chat-first/default-workspace acceptance check on current main and capture its evidence before restoring PASS.",
+        "next_action": "Confirm the current deployed authenticated Chat-first route and visual behavior during human UAT; keep any legacy dashboard outside the modular app.",
         "requirement_digest": "4b1d970c1ec6188ca9bbe51908e2cbf3627a74af60d1519023200cfbaa5b0ef8",
         "requirement_id": "REQ-2E717B8BD3E7",
         "requirement_text": "The new authenticated SaaS experience SHALL open directly to the new Chat workspace. After login, `/` SHALL resolve to `/chat`; the new application SHALL NOT expose or reuse the Legacy dashboard as its home screen. A request to `/dashboard` within the new application resolves to `/chat`. This route behavior applies only to the new Modular application; it does not authorize changing the currently serving `aimarkethubs.com` application before its replacement is healthy and a handover is intentional.",
@@ -425,9 +448,10 @@
         "verification_evidence": [
           "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
           "handoff/evidence/section-02-front-door-20261110.md",
-          "handoff/evidence/section-04-chat-ui-20261110.md"
+          "handoff/evidence/section-04-chat-ui-20261110.md",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
-        "verification_method": "Verify login routing to /chat, idempotent default workspace, authorized workspace switching, create-and-select flow, independent builds/tests, and deployed module assets; keep authenticated visual UAT tracked under REQ-64CA2E9BC303."
+        "verification_method": "Check Shell routing tests and deployment health/manifest; authenticated current-release route UAT remains under REQ-64CA2E9BC303."
       },
       "REQ-32CAB23B7018": {
         "applicability": "APPLICABLE",
@@ -438,24 +462,58 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "smartaihub-platform@6c1b97a65f860ba5d9dadb06e188fa53316efbdb",
-          "handoff/evidence/section-01-build-matrix-20261110.md"
+          "handoff/evidence/section-01-build-matrix-20261110.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Keep named filtered builds and package-local outputs; finish independently scoped deploy/rollback evidence and expand modules without an aggregate root build.",
+        "next_action": "Preserve filtered package commands and independent outputs; continue proving module-only build/deploy scope as further workloads are added.",
         "requirement_digest": "0ddd3dfb5a4931244b5f5acabddac2e2658be0706133cbfefca3b91434f553dc",
         "requirement_id": "REQ-32CAB23B7018",
         "requirement_text": "Build the new experience from small first-party packages: `apps/saas-core` is the Hono API Worker; `apps/saas-shell` is the account/navigation React SPA; `modules/chat` is a separately versioned Chat module with independently built assets and its own API Worker only where needed; shared packages contain only small versioned contracts/SDK primitives. Each deployable app/module SHALL have a package-filtered build command, its own build output, manifest, size record and deploy/rollback scope. A change to Chat SHALL NOT build or restart Core, Shell, Legacy `apps/web`, or another module. The root SHALL NOT provide a default aggregate build that bundles every application/module; build selection is explicit, such as `pnpm --filter @smartaihub/chat build` or the corresponding named script.",
-        "source_spec_digest": "1caad5e53d353b73bcfeb3e58786ca1b0a960345386ee72927b76fd39e3d6ecc",
+        "source_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
         "successor_mapping": [],
         "verification_evidence": [
           "handoff/evidence/section-01-build-matrix-20261110.md",
-          "handoff/evidence/section-04-chat-ui-20261110.md"
+          "handoff/evidence/section-04-chat-ui-20261110.md",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
-        "verification_method": "Run explicit Shell, Chat, and Core package builds and inspect their output manifests/sizes; confirm a Chat change does not build other apps or Legacy."
+        "verification_method": "Inspect exact-source Core, Shell and Chat build commands, per-package output digests, bundle size and target deployment receipt; do not claim all future module isolation complete."
+      },
+      "REQ-48EFA6340760": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L108"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L108",
+        "blocker": {
+          "class": "MISSING_GOVERNANCE_RECORD",
+          "description": "Chat now reuses existing conversations/messages tables through scoped functions, but the required complete Legacy Shared-DB Exception inventory/registry is not evidenced.",
+          "next_action": "Complete the registry and bind the migrated Chat data to its canonical module ID."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Inventory all pre-existing Legacy-owned records and add the canonical App/module binding to the Legacy Shared-DB Exception registry; do not use this Core-table pattern for new Mini Apps.",
+        "requirement_digest": "54dfa0855aa481e310e894aea2ae3c04d934f020beb85917c7dd2d30f821bf7c",
+        "requirement_id": "REQ-48EFA6340760",
+        "requirement_text": "Migration must inventory the **actual pre-existing Legacy-owned tables** in `smartspec` and bind them to canonical App/module IDs in a Legacy Shared-DB Exception registry. Only these explicitly inherited business records may remain in the Core PostgreSQL; they are not a model to follow when creating NEW Mini Apps. A legacy App may later opt to move its business data into an app-owned D1 or PostgreSQL with controlled export, dual-runtime compatibility and verified cutover; do not force a legacy move before useful beta. New Mini Apps start with independent data contracts and storage from day one; no “temporary add tables to Core” shortcut.",
+        "source_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
+        ],
+        "verification_method": "Inspect the migration and shared database contract; verify only explicitly inventoried Legacy-owned tables are reused and new Mini Apps have independent data contracts."
       },
       "REQ-4BB581C90577": {
         "applicability": "APPLICABLE",
@@ -493,28 +551,31 @@
         "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L71",
         "blocker": {
           "class": "HUMAN_UAT_PENDING",
-          "description": "The modular development target is healthy and deployed; authenticated workspace-flow and visual checks have not yet been recorded by a human tester.",
-          "next_action": "Use the existing signed-in browser to verify default workspace, create/switch controls and responsive layout, then record observed feedback."
+          "description": "Automated checks and public health probes passed, but authenticated live-provider response, persisted history after reload and responsive behavior have not been observed by a human on this exact release.",
+          "next_action": "Complete and record authenticated UAT on aimarkethubs.com."
         },
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "final_state": "VALIDATION_PENDING",
         "implementation_evidence": [
           "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
         "implementation_status": "VALIDATION_PENDING",
-        "next_action": "Do not substitute mocked browser tests for human UAT; record the actual user flow on the deployed target.",
+        "next_action": "Run authenticated UAT on the current exact release: send one real turn, reload and confirm persisted history, and check desktop/tablet/mobile; record observed feedback and any fix/redeploy.",
         "requirement_digest": "607bc4c2356e637a35ef1cf39162e100a460047a548f374ece93e404b8d7bd7b",
         "requirement_id": "REQ-64CA2E9BC303",
         "requirement_text": "- A real authorized human UAT session SHALL be recorded for each meaningful feature: route/role, steps, observed success/failure, tester feedback, bug owner, fix commit and redeploy outcome. Automated tests are supporting tools, not a substitute for real users.",
         "source_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
         "successor_mapping": [],
         "verification_evidence": [
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
         ],
-        "verification_method": "Record the authorized human tester’s actual desktop/tablet/mobile steps, result, feedback, bug owner and redeploy outcome on aimarkethubs.com. Automated checks and public assets do not substitute for this UAT."
+        "verification_method": "Record the authorized human tester’s actual current-release route, steps, provider response, reload/persistence result, desktop/tablet/mobile observations, feedback and any repair/redeploy outcome."
       },
       "REQ-6BA6E5614490": {
         "applicability": "NOT_APPLICABLE",
@@ -628,6 +689,37 @@
           "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
         ],
         "verification_method": "Use the existing canonical account on aimarkethubs.com and verify the Modular Chat route/session; do not create/reset credentials or change customer-tenant membership."
+      },
+      "REQ-B89BDD10E8E0": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L146"
+        ],
+        "authority_source": "specs/feature/317-smartaihub-progressive-module-migration/spec.md#L146",
+        "blocker": {
+          "class": "MISSING_CONFIGURED_CAPABILITY",
+          "description": "This Chat slice supports only configured free OpenRouter chat-completions models and creates no private wallet or worker-job ledger; paid or long-running execution is not implemented.",
+          "next_action": "Integrate authorized billing and worker_jobs/outbox contracts before adding paid or long-running execution."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep paid generation, long-running Agent work and all credit/job effects behind their authorized billing and worker_jobs/outbox contracts before enabling those capabilities.",
+        "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
+        "requirement_id": "REQ-B89BDD10E8E0",
+        "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
+        "source_spec_digest": "42a57b355daec4c2483f945748b4c2c73b69d4034618683b67fb3ce29244f6d8",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-functional-send-release-20261111.md"
+        ],
+        "verification_method": "Inspect deployed Chat/Core routes and database migration for private credit/job ledgers; keep unsupported paid and long-running work unavailable."
       },
       "REQ-C8D3AE2138BD": {
         "applicability": "APPLICABLE",
@@ -1042,7 +1134,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 12,
+    "applicable": 14,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
@@ -1051,7 +1143,7 @@
     "unresolved": 19
   },
   "schema_version": 1,
-  "updated_at": "2026-11-11T08:33:13.701569Z",
+  "updated_at": "2026-11-11T11:23:40.889435Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1062,13 +1154,14 @@
       "handoff/evidence/section-05-gap-review-rounds-20261110.md",
       "handoff/evidence/final-gap-review-10-rounds-20261110.md",
       "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md"
+      "specs/feature/317-smartaihub-progressive-module-migration/handoff/evidence/modular-chat-provider-catalog-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-release-20261111.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "package"
     ],
-    "sha": "03f450112b61efcec8c14004f7495076aae79035",
+    "sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "status": "PARTIAL",
     "task_regressions": []
   }

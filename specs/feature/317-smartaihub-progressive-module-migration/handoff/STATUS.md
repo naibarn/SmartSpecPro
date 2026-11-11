@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 19 unresolved of 20
-- Next action: Run authenticated browser checks for the Kie AI/OpenRouter model selector and responsive layout; continue scoped Chat persistence and server-side provider execution before enabling Send. Keep Browser Pilot unavailable until its runtime/job controls are configured.
-- Manifest generation: 23
+- Next action: Complete authenticated UAT for provider response, persisted history and responsive layout; add request idempotency before enabling automatic retries. Keep Browser Pilot unavailable until its approved runtime and job controls exist.
+- Manifest generation: 26
 
 ## Source-declared status and relationship claims
 

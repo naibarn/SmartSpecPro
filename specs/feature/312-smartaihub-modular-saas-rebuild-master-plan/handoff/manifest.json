@@ -22,17 +22,36 @@
     "status": "ACTIVE_CANONICAL",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "MISSING_CONFIGURED_CAPABILITY",
+      "description": "Chat turn append is scoped and transactional but lacks a client request idempotency key for replay-safe retry after an uncertain network result.",
+      "id": "chat-turn-idempotency",
+      "next_action": "Add and test idempotent turn admission before automatic retry support.",
+      "requirements": [
+        "REQ-069F6F822212"
+      ]
+    },
+    {
+      "class": "HUMAN_UAT_PENDING",
+      "description": "The modular Chat release is deployed, but authenticated live-provider response, persisted-history reload and responsive desktop/tablet/mobile behavior have not been observed on this exact release.",
+      "id": "authenticated-chat-uat",
+      "next_action": "Complete and record authenticated UAT at aimarkethubs.com.",
+      "requirements": [
+        "REQ-64CA2E9BC303"
+      ]
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+    "expected_canonical_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "expected_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7"
   },
   "continuation": {
-    "next_action": "Refresh /chat in the existing signed-in browser and confirm the default personal workspace, create/switch controls, and desktop/tablet/mobile layout. Continue scoped chat persistence/provider work before enabling Send, then matched Legacy/Core latency and production-isolation evidence. Keep smartsihub.com inactive.",
-    "next_ready_workunit": "chat-default-workspace-uat-and-persistence-provider",
-    "reactivation_predicate": "User reports workspace UAT or the scoped Chat persistence/provider path becomes ready for implementation.",
-    "resume_point": "2026-11-11: platform main@d1e71fe8aa4b8019f08559a5e69a15a4f9228930 is deployed to modular-debian-dev. Default personal workspace provisioning and create/select UI are live; migrations 0420/0421 are applied. See modular-chat-default-workspace-deployment-20261111.md. Chat Send remains disabled pending scoped persistence/provider integration; authenticated visual UAT, matched performance and production-isolation evidence remain open.",
-    "waiting_predicate": "Authenticated user verifies the deployed workspace flow; scoped Chat persistence/provider capability is then implemented before Send is enabled. No customer-tenant authorization choice is needed for the default personal workspace."
+    "next_action": "On aimarkethubs.com, send a real turn using an available OpenRouter model, reload and confirm the conversation persists, and check desktop/tablet/mobile. Report any failure for repair; keep paid/long-running Agent execution and production acceptance unavailable until their contracts and approvals are ready.",
+    "next_ready_workunit": "authenticated-chat-uat-and-turn-idempotency",
+    "reactivation_predicate": "Authenticated Chat UAT feedback or completion of replay-safe turn admission and remaining program-level verification.",
+    "resume_point": "2026-11-11: smartaihub-platform/main@824c2a3b1c247b675353c783e8979ede9aaaa488 is deployed to modular-debian-dev / aimarkethubs.com. The existing provider catalog and canonical conversations/messages are shared through scoped Core functions. Full release proof is in handoff/evidence/modular-chat-functional-send-rollout-20261111.md; detailed implementation/DB boundary proof is in SPEC-317. Human UAT, turn idempotency and wider SPEC-312 acceptance remain open.",
+    "waiting_predicate": "Human authenticated Chat send/history/responsive UAT remains pending; the program can continue independently with turn idempotency and remaining performance/isolation work."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -49,15 +68,17 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
     ],
-    "next_action": "Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.",
-    "rationale": "The default personal workspace, create/switch controls and environment-scoped migrations are implemented, built from exact integrated platform SHA d1e71fe and deployed by the modular-debian-dev controller with local/public health and rollback proof. Ten focused workspace gap-review passes are recorded. Acceptance remains partial because authenticated visual UAT, Chat persistence/provider, matched performance and production-isolation evidence remain open.",
+    "next_action": "Complete authenticated Chat UAT for a real provider response, history persistence after reload, and desktop/tablet/mobile behavior. Add replay-safe turn idempotency before automatic retries; continue the remaining program inventory, matched performance and production-isolation evidence separately.",
+    "rationale": "The modular Chat provider and scoped persistence path has been implemented and deployed on the development target, backed by the existing shared smartspec database and provider configuration. Package tests/typechecks and target health checks passed. The wider rebuild remains incomplete; authenticated Chat UAT, turn idempotency, program-level performance and production isolation remain open.",
     "residual_requirements": [
-      "Authenticated desktop/tablet/mobile workspace UAT",
-      "Scoped Chat persistence and model-provider path before Send",
+      "Authenticated live-response/history/responsive Chat UAT",
+      "Replay-safe Chat turn append before automatic retries",
+      "Remaining module inventory and independent delivery evidence",
       "Matched Legacy/Core performance evidence",
-      "Production-isolation acceptance; smartsihub.com stays inactive"
+      "Production isolation and acceptance; smartsihub.com remains inactive"
     ]
   },
   "dependencies": {
@@ -67,7 +88,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:7e5eeea3d101453237b90a2b62f8af2117bf2d42ad5bc0e6ef4d2a7895e02080",
+    "artifact_digest": "sha256:980cb85e10fda2355260851052cbb8671f440c677fc507899eb493f8512baf45",
     "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
@@ -77,10 +98,11 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
     ],
     "required": false,
-    "source_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+    "source_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "status": "PASS"
   },
   "disposition": {
@@ -99,7 +121,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 39,
+  "generation": 41,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
@@ -125,7 +147,8 @@
       "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "7931d5295ce22134e0c1e0ed60d5b6adb2a9c037",
       "754166301ebb4f6d63f776bebcfe16d23a7b4e9e",
-      "61f548101d9ca538d485c3712ee481897b0703e9"
+      "61f548101d9ca538d485c3712ee481897b0703e9",
+      "824c2a3b1c247b675353c783e8979ede9aaaa488"
     ],
     "mapping": [],
     "source_paths": [
@@ -148,10 +171,10 @@
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+    "canonical_ref": "smartaihub-platform/main",
+    "canonical_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
     "integrated": true,
-    "integrated_at": "2026-11-11T11:50:08+07:00"
+    "integrated_at": "2026-11-11T17:54:55+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -199,15 +222,17 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-final-20261110.png",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
       ],
-      "next_action": "Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.",
-      "rationale": "The default personal workspace, create/switch controls and environment-scoped migrations are implemented, built from exact integrated platform SHA d1e71fe and deployed by the modular-debian-dev controller with local/public health and rollback proof. Ten focused workspace gap-review passes are recorded. Acceptance remains partial because authenticated visual UAT, Chat persistence/provider, matched performance and production-isolation evidence remain open.",
+      "next_action": "Complete authenticated Chat UAT for a real provider response, history persistence after reload, and desktop/tablet/mobile behavior. Add replay-safe turn idempotency before automatic retries; continue the remaining program inventory, matched performance and production-isolation evidence separately.",
+      "rationale": "The modular Chat provider and scoped persistence path has been implemented and deployed on the development target, backed by the existing shared smartspec database and provider configuration. Package tests/typechecks and target health checks passed. The wider rebuild remains incomplete; authenticated Chat UAT, turn idempotency, program-level performance and production isolation remain open.",
       "residual_requirements": [
-        "Authenticated desktop/tablet/mobile workspace UAT",
-        "Scoped Chat persistence and model-provider path before Send",
+        "Authenticated live-response/history/responsive Chat UAT",
+        "Replay-safe Chat turn append before automatic retries",
+        "Remaining module inventory and independent delivery evidence",
         "Matched Legacy/Core performance evidence",
-        "Production-isolation acceptance; smartsihub.com stays inactive"
+        "Production isolation and acceptance; smartsihub.com remains inactive"
       ]
     },
     "disposition": {
@@ -277,11 +302,13 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "final_state": "PASS",
         "implementation_evidence": [
           "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
         ],
         "implementation_status": "IMPLEMENTED",
         "next_action": "Keep personal workspaces environment-scoped and separate from Legacy customer tenants.",
@@ -291,7 +318,8 @@
         "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "successor_mapping": [],
         "verification_evidence": [
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
         ],
         "verification_method": "Verify environment-scoped personal workspace data, function-only access for the Modular auth role, wrong-environment denial, direct table denial, and no customer membership mutation."
       },
@@ -304,11 +332,13 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
         "final_state": "PASS",
         "implementation_evidence": [
           "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
+          "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
         ],
         "implementation_status": "IMPLEMENTED",
         "next_action": "Preserve the deployed default-workspace and explicit workspace switching behavior; collect authenticated visual UAT separately.",
@@ -318,7 +348,8 @@
         "source_spec_digest": "625b2c309da83b901d3208e46c4a661548bb7e96d2d0aee5047cf781c196aff7",
         "successor_mapping": [],
         "verification_evidence": [
-          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+          "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+          "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
         ],
         "verification_method": "Verify idempotent default workspace provisioning, Chat routing, selector, create-and-select behavior, environment binding, and deployment evidence; keep authenticated visual UAT separate."
       },
@@ -641,7 +672,7 @@
     "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-11-11T05:21:36.615005Z",
+  "updated_at": "2026-11-11T11:22:44.139139Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -652,12 +683,13 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
+      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
-    "status": "PASS",
+    "sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

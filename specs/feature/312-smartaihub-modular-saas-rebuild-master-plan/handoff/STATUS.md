@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 2 pass / 28 unresolved of 31
-- Next action: Collect authenticated workspace UAT from the deployed development site; implement a scoped Chat persistence/provider path before enabling message sending, then complete matched performance and production-isolation evidence.
-- Manifest generation: 39
+- Next action: Complete authenticated Chat UAT for a real provider response, history persistence after reload, and desktop/tablet/mobile behavior. Add replay-safe turn idempotency before automatic retries; continue the remaining program inventory, matched performance and production-isolation evidence separately.
+- Manifest generation: 41
 
 ## Source-declared status and relationship claims
 
