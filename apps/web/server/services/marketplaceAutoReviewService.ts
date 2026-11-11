@@ -10395,6 +10395,7 @@ async function refundMarketplaceLlmReservation(params: {
   if (amount <= 0) return undefined;
   return refundCredits({
     userId: params.auth.userId,
+    tenantId: autoTenantId(params.auth),
     amount,
     description: `Marketplace auto review LLM reservation refund: ${params.reason}`,
     originalTransactionId: params.reservation.transactionId,
@@ -10533,6 +10534,7 @@ async function refundMarketplaceMediaCredits(params: {
   if (amount <= 0 || params.ref.refundTransactionId) return params.ref;
   const result = await refundCredits({
     userId: params.auth.userId,
+    tenantId: autoTenantId(params.auth),
     amount,
     originalTransactionId: params.ref.creditTransactionId,
     idempotencyKey: `${params.ref.creditIdempotencyKey ?? params.ref.taskId}:refund:${params.reason}`,
@@ -10618,6 +10620,7 @@ async function refundMarketplaceRenderCredits(params: {
   if (amount <= 0 || reservation.refundTransactionId) return undefined;
   return refundCredits({
     userId: params.auth.userId,
+    tenantId: autoTenantId(params.auth),
     amount,
     originalTransactionId: toNumber(reservation.transactionId) || undefined,
     idempotencyKey: `${cleanText(reservation.idempotencyKey) || cleanText(reservation.jobId) || "render"}:refund:${params.reason}`,
@@ -37575,6 +37578,7 @@ export async function cancelMarketplaceAutoReviewRun(
     try {
       const refund = await refundCredits({
         userId: auth.userId,
+        tenantId: autoTenantId(auth),
         amount: toNumber(metadata.audioCreditAmount),
         originalTransactionId: metadata.audioCreditTransactionId,
         idempotencyKey: `${metadata.audioCreditIdempotencyKey}:refund:run_cancelled`,
