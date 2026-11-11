@@ -349,7 +349,8 @@ export function MarketplaceAutoReviewLegacyDetails({
                 รายละเอียดงานเดิม: {productName}
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
-                งานนี้ถูกสร้างด้วยระบบเดิมที่รันต่อเนื่องจนจบ จึงไม่มี
+                นี่คืองานเดิมที่สร้างด้วยระบบ Legacy และกำลังเปิดดูผลของ run นี้อยู่
+                งานเดิมไม่มี
                 checkpoint สำหรับ approve / reject / edit / retry
                 ย้อนหลังและไม่สามารถหยุดเครดิตระหว่างทางได้ แต่ถ้ามีข้อมูล
                 sequential storyboard ระบบยังแสดงและแก้ไข prompt
@@ -363,7 +364,7 @@ export function MarketplaceAutoReviewLegacyDetails({
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             <Sparkles className="h-4 w-4" />
-            เปิด Job Workbench ใหม่ · 9 ช็อต
+            เริ่มงานใหม่แบบตรวจทีละช็อต · 9 ช็อต
           </button>
         </div>
         {sequentialShots.length > 0 ? (
@@ -382,8 +383,9 @@ export function MarketplaceAutoReviewLegacyDetails({
               : "เปิดดู output เดิมได้ แต่ไม่มีข้อมูลรายช็อตให้แก้ย้อนหลัง"}
           </p>
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
-            <strong className="block text-amber-950">ทำงานใหม่</strong>
-            ใช้ปุ่มด้านบนเพื่อเริ่ม staged job ที่หยุดรอได้ทุก checkpoint
+            <strong className="block text-amber-950">เริ่มงานแบบใหม่</strong>
+            ปุ่มด้านบนสร้าง run ใหม่แยกจากงานนี้ ไม่เขียนทับงานเดิม
+            และหยุดรอตรวจได้ทุก checkpoint
           </p>
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">เครดิต</strong>
