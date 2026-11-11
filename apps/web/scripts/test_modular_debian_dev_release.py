@@ -116,6 +116,31 @@ class ModularDebianReleasePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(release.ReleaseError, "SERVICE_RELEASE_PATH_MISMATCH:core"):
                     release.verify_service_release_directories(candidate.parent.parent, proc_root=root / "proc")
 
+    def test_release_dropins_switch_to_candidate_and_restore_exact_previous_state(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            candidate = root / "candidate-release"
+            rollback = candidate / "rollback/systemd"
+            unit_dir = root / "systemd/user"
+            existing = unit_dir / "smartsihub-core-dev.service.d/modular-release.conf"
+            existing.parent.mkdir(parents=True)
+            existing.write_text("[Service]\nWorkingDirectory=/previous/core\n", encoding="utf-8")
+
+            release.write_service_release_dropins(candidate, rollback, unit_dir=unit_dir)
+
+            self.assertIn(str(candidate / "apps/saas-core"), existing.read_text(encoding="utf-8"))
+            self.assertTrue((rollback / "smartsihub-core-dev.service.modular-release.conf").is_file())
+            self.assertTrue((rollback / "smartsihub-chat-dev.service.modular-release.conf.absent").is_file())
+            self.assertIn(
+                str(candidate / "modules/chat"),
+                (unit_dir / "smartsihub-chat-dev.service.d/modular-release.conf").read_text(encoding="utf-8"),
+            )
+
+            release.restore_service_release_dropins(rollback, unit_dir=unit_dir)
+
+            self.assertEqual(existing.read_text(encoding="utf-8"), "[Service]\nWorkingDirectory=/previous/core\n")
+            self.assertFalse((unit_dir / "smartsihub-chat-dev.service.d/modular-release.conf").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

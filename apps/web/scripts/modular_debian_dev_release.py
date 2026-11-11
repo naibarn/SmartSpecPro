@@ -136,6 +136,109 @@ def verify_service_release_directories(artifact_root: Path, *, proc_root: Path =
             raise ReleaseError(f"SERVICE_RELEASE_PATH_MISMATCH:{name}")
 
 
+def capture_service_directories(*, proc_root: Path = Path("/proc")) -> dict[str, Path]:
+    directories: dict[str, Path] = {}
+    for name, component in COMPONENTS.items():
+        run(["systemctl", "--user", "is-active", component["service"]])
+        result = run([
+            "systemctl", "--user", "show", component["service"],
+            "--property=MainPID", "--value",
+        ])
+        main_pid = result.stdout.strip()
+        if not main_pid.isdigit() or int(main_pid) == 0:
+            raise ReleaseError(f"SERVICE_PROCESS_UNAVAILABLE:{name}")
+        try:
+            directories[name] = Path(os.readlink(proc_root / main_pid / "cwd")).resolve()
+        except (OSError, RuntimeError) as exc:
+            raise ReleaseError(f"SERVICE_PROCESS_CWD_UNAVAILABLE:{name}") from exc
+    return directories
+
+
+def verify_service_directories(expected: dict[str, Path], *, proc_root: Path = Path("/proc")) -> None:
+    for name, component in COMPONENTS.items():
+        run(["systemctl", "--user", "is-active", component["service"]])
+        result = run([
+            "systemctl", "--user", "show", component["service"],
+            "--property=MainPID", "--value",
+        ])
+        main_pid = result.stdout.strip()
+        if not main_pid.isdigit() or int(main_pid) == 0:
+            raise ReleaseError(f"SERVICE_PROCESS_UNAVAILABLE:{name}")
+        try:
+            actual_directory = Path(os.readlink(proc_root / main_pid / "cwd")).resolve()
+        except (OSError, RuntimeError) as exc:
+            raise ReleaseError(f"SERVICE_PROCESS_CWD_UNAVAILABLE:{name}") from exc
+        if actual_directory != expected[name].resolve():
+            raise ReleaseError(f"SERVICE_RELEASE_PATH_MISMATCH:{name}")
+
+
+def write_service_release_dropins(
+    artifact_root: Path,
+    rollback_directory: Path,
+    *,
+    unit_dir: Path | None = None,
+) -> None:
+    unit_directory = unit_dir or Path.home() / ".config/systemd/user"
+    rollback_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    entries = []
+    for name, component in COMPONENTS.items():
+        service = component["service"]
+        dropin = unit_directory / f"{service}.d" / "modular-release.conf"
+        backup = rollback_directory / f"{service}.modular-release.conf"
+        absent = rollback_directory / f"{service}.modular-release.conf.absent"
+        if backup.exists() or absent.exists():
+            raise ReleaseError("SYSTEMD_ROLLBACK_BACKUP_ALREADY_EXISTS")
+        entries.append((name, dropin, backup, absent))
+
+    created_backups: list[Path] = []
+    try:
+        for _, dropin, backup, absent in entries:
+            if dropin.exists():
+                shutil.copy2(dropin, backup)
+                created_backups.append(backup)
+            else:
+                absent.touch(mode=0o600)
+                created_backups.append(absent)
+    except Exception:
+        for path in created_backups:
+            path.unlink(missing_ok=True)
+        raise
+
+    try:
+        for name, dropin, _, _ in entries:
+            working_directory = (artifact_root / SERVICE_WORKING_DIRECTORIES[name]).resolve()
+            dropin.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            atomic_write(dropin, f"[Service]\nWorkingDirectory={working_directory}\n")
+    except Exception:
+        restore_service_release_dropins(rollback_directory, unit_dir=unit_directory)
+        raise
+
+
+def restore_service_release_dropins(
+    rollback_directory: Path,
+    *,
+    unit_dir: Path | None = None,
+) -> None:
+    unit_directory = unit_dir or Path.home() / ".config/systemd/user"
+    for component in COMPONENTS.values():
+        service = component["service"]
+        dropin = unit_directory / f"{service}.d" / "modular-release.conf"
+        backup = rollback_directory / f"{service}.modular-release.conf"
+        absent = rollback_directory / f"{service}.modular-release.conf.absent"
+        if backup.is_file() and not absent.exists():
+            atomic_write(dropin, backup.read_text(encoding="utf-8"), backup.stat().st_mode & 0o777)
+        elif absent.is_file() and not backup.exists():
+            dropin.unlink(missing_ok=True)
+        else:
+            raise ReleaseError("SYSTEMD_ROLLBACK_BACKUP_INVALID")
+
+
+def restart_modular_services() -> None:
+    run(["systemctl", "--user", "daemon-reload"], timeout=30)
+    for component in COMPONENTS.values():
+        run(["systemctl", "--user", "restart", component["service"]], timeout=45)
+
+
 def http_status(url: str, *, host: str | None = None, max_time: int = 8) -> tuple[int, str]:
     command = ["curl", "--silent", "--show-error", "--max-time", str(max_time), "--output", "/tmp/modular-release-response"]
     if host:
@@ -268,7 +371,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     if old_status != 200:
         raise ReleaseError("LEGACY_ROLLBACK_SERVICE_UNHEALTHY")
 
-    verify_service_release_directories(artifact_root)
+    previous_service_directories = capture_service_directories()
     local_smoke = verify_local_components()
     run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "validate"])
     for route in ("/v1/core/auth/login", "/api/chat/livez", "/modules/chat/current/module.manifest.json", "/login", "/"):
@@ -280,22 +383,39 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
         raise ReleaseError("ROLLBACK_BACKUP_ALREADY_EXISTS")
     shutil.copy2(args.active_config, backup)
     os.chmod(backup, 0o600)
-    candidate_text = args.candidate_config.read_text()
-    atomic_write(args.active_config, candidate_text)
+    systemd_rollback = artifact_root / "rollback" / "systemd"
+    tunnel_changed = False
+    services_prepared = False
     try:
+        write_service_release_dropins(artifact_root, systemd_rollback)
+        services_prepared = True
+        restart_modular_services()
+        verify_service_release_directories(artifact_root)
+        local_smoke = verify_local_components()
+
+        candidate_text = args.candidate_config.read_text()
+        atomic_write(args.active_config, candidate_text)
+        tunnel_changed = True
         run(["systemctl", "--user", "restart", TUNNEL_SERVICE], timeout=30)
         time.sleep(3)
         public_smoke = verify_public_site()
     except Exception as exc:
-        atomic_write(args.active_config, backup.read_text())
-        run(["systemctl", "--user", "restart", TUNNEL_SERVICE], timeout=30)
         try:
-            recovered_status, _ = http_status("https://aimarkethubs.com/")
-        except ReleaseError:
-            recovered_status = 0
-        if recovered_status != 200:
-            raise ReleaseError("PUBLIC_SMOKE_FAILED_AND_ROLLBACK_UNHEALTHY") from exc
-        raise ReleaseError("PUBLIC_SMOKE_FAILED_ROLLED_BACK") from exc
+            if tunnel_changed:
+                atomic_write(args.active_config, backup.read_text())
+                run(["systemctl", "--user", "restart", TUNNEL_SERVICE], timeout=30)
+            if services_prepared:
+                restore_service_release_dropins(systemd_rollback)
+                restart_modular_services()
+                verify_service_directories(previous_service_directories)
+                verify_local_components()
+            if tunnel_changed:
+                recovered_status, _ = http_status("https://aimarkethubs.com/")
+                if recovered_status != 200:
+                    raise ReleaseError("PUBLIC_ROLLBACK_UNHEALTHY")
+        except Exception as rollback_error:
+            raise ReleaseError("HANDOVER_FAILED_AND_ROLLBACK_FAILED") from rollback_error
+        raise ReleaseError("HANDOVER_FAILED_ROLLED_BACK") from exc
 
     now = datetime.now(timezone.utc).isoformat()
     target.update({
@@ -335,6 +455,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
         "publicSmoke": public_smoke,
         "rollbackService": "smartspec-dev-web.service:3100",
         "rollbackConfig": str(backup),
+        "rollbackSystemdDirectory": str(systemd_rollback),
         "deployedAtUtc": now,
     }
 
