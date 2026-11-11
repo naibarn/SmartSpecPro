@@ -49,9 +49,9 @@
     },
     "section-06-provider-admission-and-queue-consumer": {
       "status": "checkpointed",
-      "next_action": "ProviderControlDO, account-wide rate admission, Queue consumer settlement and ambiguity-safe retry behavior are integrated and package checks/builds pass. Prove local Workerd Queue redelivery, contention and restart persistence; managed autoscaling remains unverified.",
-      "checkpoint_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
-      "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5"
+      "next_action": "ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.",
+      "checkpoint_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
+      "merged_main_sha": "78018b7a50c05234071e31f6b1361a70440915a3"
     },
     "section-07-chat-job-status-ui-and-runtime-proof": {
       "status": "checkpointed",
@@ -69,12 +69,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 27,
-  "updated_at": "2026-11-11T13:49:35.451277+00:00",
+  "generation": 28,
+  "updated_at": "2026-11-11T13:58:43.399422+00:00",
   "progress": {
-    "active_section": "section-07-chat-job-status-ui-and-runtime-proof",
-    "next_action": "Exact source ba37ee is deployed and public probes pass on aimarkethubs.com. Complete authenticated provider response/history/responsive UAT, local Queue delivery/redelivery and Durable Object contention/restart proof, plus a matched throughput benchmark before closing acceptance.",
-    "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
+    "active_section": "section-06-provider-admission-and-queue-consumer",
+    "next_action": "ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.",
+    "merged_main_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "Chat UI main chunk is 536.44 KB (163.20 KB gzip), above Vite’s 500 KB warning; consider splitting the Chat module while preserving its standalone build.",

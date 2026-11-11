@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 34 unresolved of 35
 - Next action: Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.
-- Manifest generation: 45
+- Manifest generation: 46
 
 ## Source-declared status and relationship claims
 

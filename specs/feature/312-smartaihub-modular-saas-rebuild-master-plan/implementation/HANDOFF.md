@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `27`
-- Updated (UTC): `2026-11-11T13:49:35.451277+00:00`
+- State generation: `28`
+- Updated (UTC): `2026-11-11T13:58:43.399422+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `ba37ee16658a36ecb907580e3fb582c10072c9e5`
+- Latest recorded merged Main SHA: `78018b7a50c05234071e31f6b1361a70440915a3`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-07-chat-job-status-ui-and-runtime-proof`
-- Next action: Exact source ba37ee is deployed and public probes pass on aimarkethubs.com. Complete authenticated provider response/history/responsive UAT, local Queue delivery/redelivery and Durable Object contention/restart proof, plus a matched throughput benchmark before closing acceptance.
+- Active section: `section-06-provider-admission-and-queue-consumer`
+- Next action: ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-session-membership-routes | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | Section 03 remains integrated at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Its final ten-pass cross-cutting review is recorded under section 04; retain the latency benchmark and expired session-JTI cleanup as explicit pre-handover/production gaps. |
 | section-04-worker-proof-and-handoff | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | The ten-pass Section 04 review is complete at source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL; before high-volume production, define a matched Legacy/Core speed objective and establish bounded expired session-JTI cleanup. |
 | section-05-chat-canonical-job-and-queue-admission | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Core chat admission, canonical worker_jobs/outbox migrations 0424/0425 and legacy publisher isolation are integrated. DB verification is READY and lane postconditions pass. Continue provider admission and local Queue delivery proof. |
-| section-06-provider-admission-and-queue-consumer | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ProviderControlDO, account-wide rate admission, Queue consumer settlement and ambiguity-safe retry behavior are integrated and package checks/builds pass. Prove local Workerd Queue redelivery, contention and restart persistence; managed autoscaling remains unverified. |
+| section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance. |
 | section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Exact source ba37ee is deployed and public probes pass on aimarkethubs.com. Complete authenticated provider response/history/responsive UAT, local Queue delivery/redelivery and Durable Object contention/restart proof, plus a matched throughput benchmark before closing acceptance. |
 
 ## Open gaps / blockers (not automatic merge blockers)

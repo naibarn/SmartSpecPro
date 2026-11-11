@@ -43,14 +43,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
+    "expected_canonical_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
     "expected_spec_digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6"
   },
   "continuation": {
     "next_action": "On the current aimarkethubs.com release, complete authenticated Chat send/history/responsive UAT, then prove local Workerd Queue redelivery and Durable Object persistence across restart; measure throughput against the Legacy baseline before claiming faster performance. Keep managed Cloudflare production resources inactive.",
     "next_ready_workunit": "authenticated-chat-uat-and-local-queue-runtime-proof",
     "reactivation_predicate": "Authenticated Chat UAT feedback or completion of local Queue/DO runtime proof and replay-safe turn idempotency; continue broader SPEC-312 inventory and performance/isolation work.",
-    "resume_point": "2026-11-11: smartaihub-platform/main@ba37ee16658a36ecb907580e3fb582c10072c9e5 is serving release modular-debian-dev-ba37ee16658a36ecb907580e3fb582c10072c9e5-chat-queue-retry1 on modular-debian-dev / aimarkethubs.com. Queue deployment evidence is in specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md. Database migrations 0424/0425 are applied; root release controller now fails before restart when workspace dependencies are incomplete. Authenticated provider UAT, local Queue redelivery/restart proof, performance measurement and remaining SPEC-312 requirements remain open.",
+    "resume_point": "2026-11-11: smartaihub-platform/main@78018b7a50c05234071e31f6b1361a70440915a3 is the current integrated source. The aimarkethubs.com release modular-debian-dev-ba37ee16658a36ecb907580e3fb582c10072c9e5-chat-queue-retry1 still serves source ba37ee16658a36ecb907580e3fb582c10072c9e5. Provider admission regression evidence is in handoff/evidence/modular-chat-provider-admission-tests-20261111.md. Database migrations 0424/0425 are applied. Authenticated provider UAT, local Queue redelivery/restart proof, performance measurement and remaining SPEC-312 requirements remain open.",
     "waiting_predicate": "Human authenticated Chat send/history/responsive UAT and local Workerd Queue/DO crash-restart proof remain pending; independent implementation can continue."
   },
   "continuation_assessment": {
@@ -70,10 +70,11 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
       "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md",
+      "handoff/evidence/modular-chat-provider-admission-tests-20261111.md"
     ],
     "next_action": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
-    "rationale": "The background Chat job path now uses canonical worker_jobs/outbox plus a Cloudflare Queue binding and provider-account Durable Object admission, and is deployed on the aimarkethubs.com development target. Database, package, build, release-controller and public health evidence pass. Overall SPEC acceptance remains partial because authenticated provider UAT, local Queue crash/restart proof, matched performance evidence and wider program requirements remain open.",
+    "rationale": "The background Chat job path uses canonical worker_jobs/outbox plus a Cloudflare Queue binding and provider-account Durable Object admission, and is deployed on the aimarkethubs.com development target at source ba37ee16658a36ecb907580e3fb582c10072c9e5. Provider admission regression tests are integrated at source 78018b7a50c05234071e31f6b1361a70440915a3. Database, package, build, release-controller and public health evidence pass. Overall SPEC acceptance remains partial because authenticated provider UAT, local Workerd Queue crash/restart proof, matched performance evidence and wider program requirements remain open.",
     "residual_requirements": [
       "Authenticated live-response/history/responsive Chat UAT",
       "Replay-safe Chat turn append before automatic retries",
@@ -127,7 +128,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 45,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "bff05c6eae8cabdfb882bb878b4a1bf2658fa081cbe947aa014ed6b2d0788cd6",
@@ -155,7 +156,8 @@
       "754166301ebb4f6d63f776bebcfe16d23a7b4e9e",
       "61f548101d9ca538d485c3712ee481897b0703e9",
       "824c2a3b1c247b675353c783e8979ede9aaaa488",
-      "ba37ee16658a36ecb907580e3fb582c10072c9e5"
+      "ba37ee16658a36ecb907580e3fb582c10072c9e5",
+      "78018b7a50c05234071e31f6b1361a70440915a3"
     ],
     "mapping": [],
     "source_paths": [
@@ -172,16 +174,17 @@
       "pnpm-lock.yaml",
       "modules/chat/src/ui/api.ts",
       "modules/chat/src/ui/ChatWorkspace.tsx",
-      "modules/chat/src/ui/styles.css"
+      "modules/chat/src/ui/styles.css",
+      "apps/saas-core/src/chat/providerControlDO.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
+    "canonical_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
     "integrated": true,
-    "integrated_at": "2026-11-11T20:16:58+07:00"
+    "integrated_at": "2026-11-11T20:58:07+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -231,10 +234,11 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
         "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md",
+        "handoff/evidence/modular-chat-provider-admission-tests-20261111.md"
       ],
       "next_action": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
-      "rationale": "The background Chat job path now uses canonical worker_jobs/outbox plus a Cloudflare Queue binding and provider-account Durable Object admission, and is deployed on the aimarkethubs.com development target. Database, package, build, release-controller and public health evidence pass. Overall SPEC acceptance remains partial because authenticated provider UAT, local Queue crash/restart proof, matched performance evidence and wider program requirements remain open.",
+      "rationale": "The background Chat job path uses canonical worker_jobs/outbox plus a Cloudflare Queue binding and provider-account Durable Object admission, and is deployed on the aimarkethubs.com development target at source ba37ee16658a36ecb907580e3fb582c10072c9e5. Provider admission regression tests are integrated at source 78018b7a50c05234071e31f6b1361a70440915a3. Database, package, build, release-controller and public health evidence pass. Overall SPEC acceptance remains partial because authenticated provider UAT, local Workerd Queue crash/restart proof, matched performance evidence and wider program requirements remain open.",
       "residual_requirements": [
         "Authenticated live-response/history/responsive Chat UAT",
         "Replay-safe Chat turn append before automatic retries",
@@ -805,7 +809,7 @@
     "unresolved": 34
   },
   "schema_version": 1,
-  "updated_at": "2026-11-11T13:49:35.715103Z",
+  "updated_at": "2026-11-11T13:59:10.460521Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -817,11 +821,12 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
+      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
+      "handoff/evidence/modular-chat-provider-admission-tests-20261111.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
+    "sha": "78018b7a50c05234071e31f6b1361a70440915a3",
     "status": "PARTIAL",
     "task_regressions": []
   }
