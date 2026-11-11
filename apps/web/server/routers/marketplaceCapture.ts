@@ -50,6 +50,7 @@ import {
   cancelMarketplaceAutoReviewRun,
   getMarketplaceAutoReviewRun,
   listMarketplaceAutoReviewRuns,
+  listMarketplaceAutoReviewRunProducts,
   queueMarketplaceAutoReviewAdvance,
   resolveMarketplaceAutoReviewRunawayReview,
   regenerateMarketplaceAutoReviewSequentialShot,
@@ -1326,6 +1327,7 @@ export const marketplaceCaptureRouter = router({
         .object({
           productId: z.string().min(1).max(64).optional(),
           limit: z.number().int().min(1).max(50).optional().default(10),
+          cursor: z.number().int().min(0).max(1_000_000).optional().default(0),
           summary: z.boolean().optional().default(false),
         })
         .optional()
@@ -1335,6 +1337,14 @@ export const marketplaceCaptureRouter = router({
     .query(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
       return listMarketplaceAutoReviewRuns(input, auth);
+    }),
+
+  listAutoReviewRunProducts: protectedProcedure
+    .input(z.void())
+    .output(z.array(z.string()))
+    .query(async ({ ctx }) => {
+      const auth = authFromCtx(ctx);
+      return listMarketplaceAutoReviewRunProducts(auth);
     }),
 
   advanceAutoReviewRun: protectedProcedure

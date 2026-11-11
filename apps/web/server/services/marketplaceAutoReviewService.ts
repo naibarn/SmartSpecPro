@@ -23862,6 +23862,7 @@ export async function listMarketplaceAutoReviewRuns(
   input: {
     productId?: string;
     limit?: number;
+    cursor?: number;
     summary?: boolean;
   },
   auth: AuthContext
@@ -23886,10 +23887,11 @@ export async function listMarketplaceAutoReviewRuns(
       )
     )
     .orderBy(
-      desc(marketplaceAutoReviewRuns.updatedAt),
-      desc(marketplaceAutoReviewRuns.createdAt)
+      desc(marketplaceAutoReviewRuns.createdAt),
+      desc(marketplaceAutoReviewRuns.id)
     )
-    .limit(limit);
+    .limit(limit)
+    .offset(Math.max(0, Math.floor(input.cursor ?? 0)));
   if (runs.length === 0) return [];
   const stages = await db
     .select()
@@ -23916,6 +23918,28 @@ export async function listMarketplaceAutoReviewRuns(
       includeHeavyMetadata: !input.summary,
     })
   );
+}
+
+export async function listMarketplaceAutoReviewRunProducts(auth: AuthContext) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+
+  const rows = await db
+    .selectDistinct({ productId: marketplaceAutoReviewRuns.productId })
+    .from(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.userId, auth.userId),
+        tenantAccessClause(auth)
+      )
+    );
+  return rows
+    .map(row => row.productId)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 async function ensureRunStages(

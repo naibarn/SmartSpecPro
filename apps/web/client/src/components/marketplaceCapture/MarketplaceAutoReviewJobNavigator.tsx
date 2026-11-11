@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ChevronDown,
   AlertTriangle,
   CheckCircle2,
   Clock3,
@@ -22,8 +23,11 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   productId?: string;
   allProducts?: boolean;
   setupMode?: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
   onOpenRun: (runId: string) => void;
   onCreateNew: () => void;
+  onLoadMore?: () => void;
   /** Delete one job. Omit to hide the affordance entirely (read-only mounts).
    *  Dependent rows cascade server-side; already-generated media stays in the
    *  user's Media library. */
@@ -43,7 +47,7 @@ function text(...values: unknown[]): string {
 }
 
 function runTimestamp(run: MarketplaceAutoReviewJobSummary): number {
-  const value = text(run.updatedAt, run.createdAt);
+  const value = text(run.createdAt, run.updatedAt);
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
@@ -254,14 +258,14 @@ function shortRunId(runId: string): string {
   return runId.length > 22 ? `${runId.slice(0, 10)}…${runId.slice(-8)}` : runId;
 }
 
-function jobTitle(run: MarketplaceAutoReviewJobSummary, index: number): string {
+function jobTitle(run: MarketplaceAutoReviewJobSummary): string {
   return (
     text(
       run.name,
       run.title,
       run.metadataJson?.jobName,
       run.metadataJson?.title
-    ) || `Job Review #${index + 1}`
+    ) || "Job Review"
   );
 }
 
@@ -273,8 +277,11 @@ export function MarketplaceAutoReviewJobNavigator({
   productId,
   allProducts = false,
   setupMode = false,
+  hasMore = false,
+  loadingMore = false,
   onOpenRun,
   onCreateNew,
+  onLoadMore,
   onDeleteRun,
   deletingRunId = null,
   className = "",
@@ -295,7 +302,7 @@ export function MarketplaceAutoReviewJobNavigator({
   return (
     <aside
       className={`flex min-h-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10 ${className}`}
-      aria-label="Jobs ของสินค้านี้"
+      aria-label={allProducts ? "Jobs ทั้งหมด" : "Jobs ของสินค้านี้"}
     >
       <header className="border-b border-white/10 p-4">
         <div className="flex items-start justify-between gap-3">
@@ -378,7 +385,7 @@ export function MarketplaceAutoReviewJobNavigator({
                     <span className="min-w-0">
                       <span className="flex items-center gap-1.5">
                         <span className="block truncate text-sm font-semibold text-white">
-                          {jobTitle(run, index)}
+                          {jobTitle(run)}
                         </span>
                         {index === 0 ? (
                           <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
@@ -389,6 +396,14 @@ export function MarketplaceAutoReviewJobNavigator({
                       <span className="mt-1 block truncate text-[11px] text-slate-400">
                         {shortRunId(runId)}
                       </span>
+                      {allProducts && run.productId ? (
+                        <span
+                          className="mt-1 block truncate text-[10px] text-slate-500"
+                          title={String(run.productId)}
+                        >
+                          Product: {String(run.productId)}
+                        </span>
+                      ) : null}
                     </span>
                     <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
                   </span>
@@ -437,7 +452,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       <button
                         type="button"
                         className="rounded p-1 text-slate-300 hover:text-white"
-                        aria-label={`ยกเลิกการลบ ${jobTitle(run, index)}`}
+                        aria-label={`ยกเลิกการลบ ${jobTitle(run)}`}
                         onClick={() => setConfirmingDeleteRunId(null)}
                       >
                         <X className="h-3 w-3" />
@@ -446,7 +461,7 @@ export function MarketplaceAutoReviewJobNavigator({
                         type="button"
                         disabled={deletingRunId === runId}
                         className="rounded bg-red-500/90 p-1 text-white hover:bg-red-500 disabled:opacity-60"
-                        aria-label={`ยืนยันลบ ${jobTitle(run, index)}`}
+                        aria-label={`ยืนยันลบ ${jobTitle(run)}`}
                         data-testid={`job-delete-confirm-${runId}`}
                         onClick={() => {
                           setConfirmingDeleteRunId(null);
@@ -468,7 +483,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       // user cannot see is one they will report as missing —
                       // the same mistake the look selector made earlier today.
                       className="absolute right-8 top-2 z-10 rounded-md border border-white/10 bg-slate-900/70 p-1 text-slate-400 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-60"
-                      aria-label={`ลบ ${jobTitle(run, index)}`}
+                      aria-label={`ลบ ${jobTitle(run)}`}
                       title="ลบงานนี้"
                       data-testid={`job-delete-${runId}`}
                       onClick={() => setConfirmingDeleteRunId(runId)}
@@ -488,6 +503,21 @@ export function MarketplaceAutoReviewJobNavigator({
       </nav>
 
       <footer className="border-t border-white/10 p-3">
+        {hasMore ? (
+          <button
+            type="button"
+            disabled={loadingMore}
+            className="mb-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            onClick={onLoadMore}
+          >
+            {loadingMore ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            {loadingMore ? "กำลังโหลด…" : "ดูงานเพิ่มเติม"}
+          </button>
+        ) : null}
         <button
           type="button"
           className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
