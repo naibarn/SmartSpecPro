@@ -259,6 +259,102 @@ function formatDetectedPeople(
     .join("\n");
 }
 
+type MarketplaceSpeakerVisualEntry = {
+  name: string;
+  position: string;
+  detected_person_id?: string;
+};
+
+function detectedPersonPosition(
+  person: VerticalDramaDetectedShotPerson
+): "viewer-left" | "viewer-center" | "viewer-right" {
+  const centerX = person.boundingBox.x + person.boundingBox.width / 2;
+  return centerX < 0.34
+    ? "viewer-left"
+    : centerX > 0.66
+      ? "viewer-right"
+      : "viewer-center";
+}
+
+function positionBucket(
+  value: string
+): "viewer-left" | "viewer-center" | "viewer-right" | undefined {
+  const normalized = value.trim().toLowerCase();
+  if (/left/.test(normalized)) return "viewer-left";
+  if (/right/.test(normalized)) return "viewer-right";
+  if (/center|centre|middle/.test(normalized)) return "viewer-center";
+  return undefined;
+}
+
+function buildAuthoritativeSpeakerSections(input: {
+  dialogue: Array<{ speaker: string; line: string }>;
+  detectedPeople: readonly VerticalDramaDetectedShotPerson[];
+  frameAnalysisPeople: readonly MarketplaceSpeakerVisualEntry[];
+}): string {
+  const normalizedName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  const usedPersonIds = new Set<string>();
+  const bindings = input.dialogue.map(turn => {
+    const analysis = input.frameAnalysisPeople.find(
+      person => normalizedName(person.name) === normalizedName(turn.speaker)
+    );
+    const explicitId = analysis?.detected_person_id?.trim();
+    const explicitPerson = explicitId
+      ? input.detectedPeople.find(person => person.id === explicitId)
+      : undefined;
+    const bucket = analysis ? positionBucket(analysis.position) : undefined;
+    const positionalMatches = bucket
+      ? input.detectedPeople.filter(
+          person => detectedPersonPosition(person) === bucket
+        )
+      : [];
+    const person =
+      explicitPerson ??
+      (positionalMatches.length === 1 ? positionalMatches[0] : undefined);
+    if (!person || usedPersonIds.has(person.id)) {
+      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+    }
+    usedPersonIds.add(person.id);
+    const position = detectedPersonPosition(person);
+    const cue = `${person.id}, ${position}`;
+    return { ...turn, person, position, cue };
+  });
+
+  return [
+    "SPEAKER VISUAL MAP FOR THIS SHOT:",
+    "Detected appearance:",
+    ...bindings.map(
+      binding => `${binding.person.id}: ${binding.person.appearance}`
+    ),
+    ...bindings.map(binding => `- ${binding.speaker}: ${binding.cue}`),
+    "SPEAKER-TO-FACE LOCK: Match each spoken line only to the detected person named for that line. All other visible people keep their mouths closed.",
+    "Approved dialogue:",
+    ...bindings.map(
+      binding =>
+        `${binding.speaker}: ${binding.cue} says verbatim: "${binding.line}"`
+    ),
+  ].join("\n");
+}
+
+function replaceGeneratedSpeakerSections(
+  prompt: string,
+  authoritativeSections: string
+): string {
+  const withoutSpeakerMap = prompt.replace(
+    /(?:^|\n)\s*SPEAKER VISUAL MAP FOR THIS SHOT[^\n]*[\s\S]*?(?=\n\s*(?:Approved dialogue\b|Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b)|$)/gi,
+    "\n"
+  );
+  const withoutDialogue = withoutSpeakerMap.replace(
+    /(?:^|\n)\s*Approved dialogue[^\n]*\n[\s\S]*?(?=\n\s*(?:SPEAKER-TO-FACE LOCK:|Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b)|$)/gi,
+    "\n"
+  );
+  const withoutLock = withoutDialogue.replace(
+    /(?:^|\n)\s*SPEAKER-TO-FACE LOCK:[^\n]*(?:\n(?!\s*(?:Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b))[^\n]*)*/gi,
+    "\n"
+  );
+  return `${withoutLock.trim()}\n\n${authoritativeSections}`;
+}
+
 export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
   shotId: number;
   shot: StagedStoryArcShot;
@@ -340,8 +436,8 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Character portrait identity map (images after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
-    "Before writing the prompt, compare each attached portrait with the detected people in Image 1. Include this exact section and bullet syntax in the prompt, before the dialogue: SPEAKER VISUAL MAP FOR THIS SHOT\n- <exact cast name>: <concrete observed appearance>; <viewer-left, viewer-center, or viewer-right>; detected ID <exact person-N from the detection results>. Include one bullet for every dialogue speaker. Replace every angle-bracket placeholder with actual supplied values; never output placeholders. Include the heading SPEAKER-TO-FACE LOCK. Never put dialogue quotes in the visual map. Do not use cast IDs or image labels as video identity cues. If a speaker cannot be matched confidently, return an invalid result rather than guessing.",
-    "After the visual map, include the exact heading Approved dialogue: and one line for each approved turn. Use this format: <exact cast name>: <matching visual cue and detected person-N> says verbatim: \"<exact approved line>\". Replace every angle-bracket placeholder with actual supplied values; never output placeholders. Do not add a second dialogue list or repeat any quoted line. Only the named, detected person moves their mouth during that line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
+    "Before writing the prompt, compare each attached portrait with the detected people in Image 1. In the JSON frame_analysis.people array, include every dialogue speaker by exact cast name, observed position, and detected_person_id using the exact person-N ID supplied above. Do not infer the identity from cast order or left-to-right order. If the visual match is ambiguous, omit that speaker from frame_analysis.people rather than guessing.",
+    "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
       : null,
@@ -551,7 +647,18 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     usage: promptUsage.current,
   });
 
-  const prompt = generated.data.prompt.trim();
+  const approvedTurns = parseDialogue(input.shot.dialogue);
+  const frameAnalysisPeople = (generated.data.frame_analysis?.people ??
+    []) as MarketplaceSpeakerVisualEntry[];
+  const speakerSections = buildAuthoritativeSpeakerSections({
+    dialogue: approvedTurns,
+    detectedPeople: detection.people,
+    frameAnalysisPeople,
+  });
+  const prompt = replaceGeneratedSpeakerSections(
+    generated.data.prompt.trim(),
+    speakerSections
+  );
   if (
     !isCompleteStagedVideoPrompt(
       prompt,
