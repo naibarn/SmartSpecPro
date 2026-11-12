@@ -2934,6 +2934,13 @@
       "when": 1794484800011,
       "tag": "0432_modular_chat_settled_credit_details",
       "breakpoints": true
+    },
+    {
+      "idx": 433,
+      "version": "7",
+      "when": 1794484800012,
+      "tag": "0433_modular_chat_actual_cost_settlement",
+      "breakpoints": true
     }
   ]
 }
