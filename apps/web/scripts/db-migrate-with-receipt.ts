@@ -21,6 +21,27 @@ import {
 
 const { Client } = pg;
 
+function validateSharedTenantDevMigrationTarget(environment: NodeJS.ProcessEnv) {
+  try {
+    const databaseUrl = new URL(environment.DATABASE_URL ?? "");
+    const appUrl = new URL(environment.APP_URL ?? "");
+    if (
+      environment.NODE_ENV !== "development" ||
+      environment.SMARTSPEC_ENVIRONMENT !== "development" ||
+      environment.SMARTSPEC_DEV_DATABASE_MODE !== "shared-tenant" ||
+      !/^(postgres|postgresql):$/.test(databaseUrl.protocol) ||
+      !["localhost", "127.0.0.1", "[::1]"].includes(databaseUrl.hostname) ||
+      databaseUrl.pathname !== "/smartspec" ||
+      !decodeURIComponent(databaseUrl.username).endsWith("_dev") ||
+      !environment.SMARTSPEC_DEV_TENANT_DOMAIN ||
+      appUrl.hostname !== environment.SMARTSPEC_DEV_TENANT_DOMAIN
+    ) throw new Error("SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED");
+  } catch (error) {
+    if (error instanceof Error && error.message === "SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED") throw error;
+    throw new Error("SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED");
+  }
+}
+
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const phaseKey = process.env.MIGRATION_IDEMPOTENCY_KEY?.trim() || randomUUID();
 const startedAt = new Date();
@@ -290,8 +311,10 @@ async function mainWithMigrationLock() {
     let profile: "canonical" | "dev-active-baseline" = "canonical";
     const devBaselineWasRequested = process.env.SMARTSPEC_DEV_DATABASE_MODE === "development" ||
       process.env.SMARTSPEC_ENVIRONMENT === "development";
-    if (devBaselineWasRequested) validateDevActiveSchemaTarget(process.env);
-    if (devBaselineWasRequested) {
+    const sharedTenantDevMigration = process.env.SMARTSPEC_DEV_DATABASE_MODE === "shared-tenant";
+    if (sharedTenantDevMigration) validateSharedTenantDevMigrationTarget(process.env);
+    else if (devBaselineWasRequested) validateDevActiveSchemaTarget(process.env);
+    if (devBaselineWasRequested && !sharedTenantDevMigration) {
       profile = selectDevMigrationProfile({
         nodeEnv: process.env.NODE_ENV ?? "",
         environment: process.env.SMARTSPEC_ENVIRONMENT ?? "",
