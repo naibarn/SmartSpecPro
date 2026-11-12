@@ -55,9 +55,15 @@
     },
     "section-07-chat-job-status-ui-and-runtime-proof": {
       "status": "checkpointed",
-      "next_action": "Perform authenticated browser UAT on aimarkethubs.com release 651e7f6 at desktop, tablet and mobile; verify direct Chat entry/workspace, navigation placeholders, theme persistence, enabled model/Auto, queued text response/history, one-line model/timestamp metadata and exact credit-ledger delta. Replace the hard-coded Cloud Execution · Always On label with live status or a neutral label before acceptance. Keep file submission disabled until a scoped authenticated upload contract is implemented; continue Queue/DO recovery proof and matched Legacy/Core benchmarking.",
+      "next_action": "Perform authenticated browser UAT on aimarkethubs.com release e2e6d6b at desktop, tablet and mobile; verify direct Chat entry/workspace, navigation placeholders, tabs/collapse, theme persistence, enabled model/Auto, queued text response/history, one-line model/timestamp metadata and exact credit-ledger delta. Replace the hard-coded Cloud Execution · Always On claim; keep file submission disabled until a scoped authenticated upload contract exists; continue Queue/DO recovery proof and matched Legacy/Core benchmarking.",
       "checkpoint_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f"
+    },
+    "section-08-chat-sidebar-tabs-and-collapse": {
+      "status": "checkpointed",
+      "next_action": "Authenticated browser UAT on the deployed e2e6d6b release is the next acceptance step: review menu/history tab switching, conversation selection, workspace/account reachability, collapse/expand context restoration, composer/theme reachability at desktop/tablet/mobile. Keep overall acceptance partial until results are recorded; continue existing upload, Cloud Execution status, Queue/DO and benchmark gaps.",
+      "checkpoint_sha": "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
+      "merged_main_sha": "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4"
     }
   },
   "pre_commit": {
@@ -69,20 +75,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 42,
-  "updated_at": "2026-11-12T08:13:08.511728+00:00",
+  "generation": 46,
+  "updated_at": "2026-11-12T13:02:20.410715+00:00",
   "progress": {
-    "active_section": "section-07-chat-job-status-ui-and-runtime-proof",
-    "next_action": "Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07.",
-    "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+    "active_section": "section-08-chat-sidebar-tabs-and-collapse",
+    "next_action": "Authenticated browser UAT on the deployed e2e6d6b release is the next acceptance step: review menu/history tab switching, conversation selection, workspace/account reachability, collapse/expand context restoration, composer/theme reachability at desktop/tablet/mobile. Keep overall acceptance partial until results are recorded; continue existing upload, Cloud Execution status, Queue/DO and benchmark gaps.",
+    "merged_main_sha": "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
       "Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.",
       "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
-      "Authenticated browser UAT on exact release 651e7f6 is not recorded; use the owner’s normal signed-in account/MFA session for responsive interaction and credit-ledger verification. Do not store credentials in the repository.",
       "ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.",
-      "Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented."
+      "Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.",
+      "Authenticated desktop/tablet/mobile visual and interaction UAT for release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 is not recorded; verify panel tabs, history, workspace/account, collapse/expand, composer/theme, Chat response/history and credit-ledger delta using the normal owner MFA session."
     ]
   }
 }

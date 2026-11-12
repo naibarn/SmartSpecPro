@@ -2,7 +2,7 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.10
+revision: R1.11
 date: 2026-11-12
 status: PARTIALLY_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
@@ -10,7 +10,7 @@ scope: Architecture, census, module allocation, migration ordering, acceptance g
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.10, 2026-11-12):** Earlier R0.x–R1.9 proposal text is retained for provenance. R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
+> **Current-revision note (R1.11, 2026-11-12):** Earlier R0.x–R1.10 proposal text is retained for provenance. R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -256,3 +256,11 @@ The post-login destination SHALL be the usable `/chat` workspace, not the legacy
 - Desktop SHALL support the navigation and inspector alongside the conversation. Tablet and mobile layouts SHALL collapse those regions into reachable drawers or equivalent compact navigation, keep the composer visible and usable, and avoid horizontal overflow or controls hidden behind the theme selector.
 
 Acceptance SHALL include authenticated visual and interaction review of the deployed `aimarkethubs.com` release at desktop, tablet and mobile sizes; direct post-login routing to Chat; workspace selection/creation; every navigation destination resolving to a route or explicit placeholder; theme change and persistence; enabled-model and Auto selection; queued text response and restored history; provider/model and timestamp on one line with token/credit details reachable; attachment selection/removal with accurate upload limitation; and evidence that no agent/cloud metrics are fabricated. File submission remains a separate acceptance item and SHALL be enabled only after its upload contract is implemented and verified. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.
+
+## R1.11 — Switchable and collapsible Chat left panel (2026-11-12)
+
+- The Chat left panel SHALL separate primary navigation from conversation history using two clear, switchable tabs in the same left panel. Only the selected tab's content is shown, so navigation links and a long history list do not compete for vertical workspace at once.
+- Workspace selection/creation and the signed-in account controls SHALL remain reachable from the left panel regardless of the selected tab. Selecting an existing conversation and starting a new chat SHALL continue to use the current Chat flows.
+- The left panel SHALL provide an accessible collapse control. When collapsed, it SHALL reduce to a narrow left-edge expand control, increasing the central Chat workspace width. Expanding SHALL restore the previous panel tab and its working context.
+- The panel switcher and collapse/expand actions SHALL remain reachable on desktop, tablet and mobile without obscuring the composer, thread content or the theme control. The existing responsive drawer behavior MAY be used at smaller breakpoints.
+- Acceptance SHALL verify both panel tabs, history selection, collapse and expansion, context restoration, navigation and account access, and responsive layout behavior. This UI change does not alter authorization, tenant data, Chat job dispatch, model selection, credit settlement or any deployment target.

@@ -11,6 +11,7 @@ section-04-worker-proof-and-handoff
 section-05-chat-canonical-job-and-queue-admission
 section-06-provider-admission-and-queue-consumer
 section-07-chat-job-status-ui-and-runtime-proof
+section-08-chat-sidebar-tabs-and-collapse
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -28,6 +29,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 | section-05-chat-canonical-job-and-queue-admission | 01, 03 | 06, 07 | No |
 | section-06-provider-admission-and-queue-consumer | 05 | 07 | No |
 | section-07-chat-job-status-ui-and-runtime-proof | 05, 06 | - | No |
+| section-08-chat-sidebar-tabs-and-collapse | 07 | - | No |
 
 ## Execution Order
 
@@ -38,6 +40,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 5. Section 05 — admit Chat turns into `worker_jobs` + outbox atomically and add Cloudflare Queue bindings/publishing without exposing prompt data in messages.
 6. Section 06 — add a cross-instance provider admission Durable Object, idempotent Queue consumer/settlement, catalog freshness checks, and retry handling.
 7. Section 07 — update Chat to poll scoped job results, verify responsive desktop/tablet/mobile and local Workerd Queue delivery, then deploy only to `modular-debian-dev` and record evidence.
+8. Section 08 — separate left-panel navigation and history into switchable tabs, add collapse/expand controls, verify responsive behavior, then preview on `aimarkethubs.com` after integration.
 
 ## Section Summaries
 
@@ -68,3 +71,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 ### section-07-chat-job-status-ui-and-runtime-proof
 
 **Requirement IDs:** R1.7 usable Chat and R1.8 asynchronous feedback. **Objective:** return a fast accepted response, show queued/running/failure states, poll the job through a user/workspace/environment scoped API, render the stored answer, and preserve conversation history. Configure producer and consumer Queue bindings for local Wrangler simulation and future Cloudflare Workers without provisioning/activating production. **Owned paths:** `smartaihub-platform/modules/chat/src/**`, `apps/saas-core/src/identity/authRoutes.ts`, Queue config/consumer and focused tests; SPEC-312 evidence and canonical handoff through shared writer. **Prerequisites:** sections 05–06. **Completion predicate:** no synchronous provider call in HTTP route; chat accepts then surfaces success/failure; user A cannot read user B's job; local Queue retry/outbox replay and responsive desktop/tablet/mobile smoke pass; target release proves aimarkethubs.com health and no legacy/production target moved. **Verification/evidence:** package tests/build, local Workerd Queue smoke, migration/schema audit, deployment target/service/port/health receipts and exact source SHA. **Exposure/rollback:** replace only `modular-debian-dev`; preserve old port-3100 rollback until all three services healthy.
+
+### section-08-chat-sidebar-tabs-and-collapse
+
+**Requirement IDs:** R1.11 switchable and collapsible Chat left panel. **Objective:** keep the left panel as one stable workspace region while moving primary navigation and conversation history into separate tabs. Let the user collapse the panel to a narrow left-edge expand control to give the central conversation more space; expanding restores the last selected tab. Keep workspace selection/creation and account controls reachable while expanded. **Owned paths:** `smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx`, `modules/chat/src/ui/styles.css`, focused Chat UI tests; SPEC-312 R1.11, this section index and section file; canonical SPEC-312 handoff evidence/manifest through the shared writer. **Prerequisites:** the integrated Chat shell and existing history/workspace APIs. **Completion predicate:** focused UI tests show tab switching, history availability/selection, collapse and expansion, previous tab restoration, and preserved conversation/workspace/account actions; scoped Chat typecheck and build pass; responsive panel/drawer does not obscure the composer or theme control. **Verification/evidence:** Chat package tests, typecheck, target build and rendered desktop/tablet/mobile preview on `aimarkethubs.com`, bound to the exact integrated source SHA. **Exposure/rollback:** development target `modular-debian-dev` only; revert the owned UI changes without data migration. Does not alter auth, tenant scope, queue dispatch, provider selection, credit ledger, `smartaihub.app` or `smartsihub.com`.

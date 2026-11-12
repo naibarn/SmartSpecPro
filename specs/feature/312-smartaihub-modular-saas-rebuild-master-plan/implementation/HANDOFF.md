@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `42`
-- Updated (UTC): `2026-11-12T08:13:08.511728+00:00`
+- State generation: `46`
+- Updated (UTC): `2026-11-12T13:02:20.410715+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `651e7f6ec7f8f85a77c84eff81de02acc0f95f4f`
+- Latest recorded merged Main SHA: `e2e6d6bfedebfc2dc37cf98281e302b39c1820c4`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-07-chat-job-status-ui-and-runtime-proof`
-- Next action: Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07.
+- Active section: `section-08-chat-sidebar-tabs-and-collapse`
+- Next action: Authenticated browser UAT on the deployed e2e6d6b release is the next acceptance step: review menu/history tab switching, conversation selection, workspace/account reachability, collapse/expand context restoration, composer/theme reachability at desktop/tablet/mobile. Keep overall acceptance partial until results are recorded; continue existing upload, Cloud Execution status, Queue/DO and benchmark gaps.
 
 ## Sections
 
@@ -23,7 +23,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-04-worker-proof-and-handoff | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | Integrated and ten-pass review recorded at this SHA. Do not replay. Keep matched Legacy/Core latency benchmarking and expired session-JTI cleanup as open pre-production gaps. |
 | section-05-chat-canonical-job-and-queue-admission | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Canonical Chat worker_jobs/outbox admission and publisher isolation are integrated; development DB verification is recorded. Do not replay; Queue redelivery/idempotency/restart proof remains with section 07. |
 | section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07. |
-| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | Perform authenticated browser UAT on aimarkethubs.com release 651e7f6 at desktop, tablet and mobile; verify direct Chat entry/workspace, navigation placeholders, theme persistence, enabled model/Auto, queued text response/history, one-line model/timestamp metadata and exact credit-ledger delta. Replace the hard-coded Cloud Execution · Always On label with live status or a neutral label before acceptance. Keep file submission disabled until a scoped authenticated upload contract is implemented; continue Queue/DO recovery proof and matched Legacy/Core benchmarking. |
+| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | Perform authenticated browser UAT on aimarkethubs.com release e2e6d6b at desktop, tablet and mobile; verify direct Chat entry/workspace, navigation placeholders, tabs/collapse, theme persistence, enabled model/Auto, queued text response/history, one-line model/timestamp metadata and exact credit-ledger delta. Replace the hard-coded Cloud Execution · Always On claim; keep file submission disabled until a scoped authenticated upload contract exists; continue Queue/DO recovery proof and matched Legacy/Core benchmarking. |
+| section-08-chat-sidebar-tabs-and-collapse | checkpointed | — | — | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | Authenticated browser UAT on the deployed e2e6d6b release is the next acceptance step: review menu/history tab switching, conversation selection, workspace/account reachability, collapse/expand context restoration, composer/theme reachability at desktop/tablet/mobile. Keep overall acceptance partial until results are recorded; continue existing upload, Cloud Execution status, Queue/DO and benchmark gaps. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -31,9 +32,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.
 - Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.
 - Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.
-- Authenticated browser UAT on exact release 651e7f6 is not recorded; use the owner’s normal signed-in account/MFA session for responsive interaction and credit-ledger verification. Do not store credentials in the repository.
 - ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.
 - Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.
+- Authenticated desktop/tablet/mobile visual and interaction UAT for release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 is not recorded; verify panel tabs, history, workspace/account, collapse/expand, composer/theme, Chat response/history and credit-ledger delta using the normal owner MFA session.
 
 ## Resume
 
