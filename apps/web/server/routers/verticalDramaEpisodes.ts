@@ -31438,13 +31438,20 @@ export const verticalDramaEpisodesRouter = router({
           durationSeconds: storyboardShot?.durationSeconds ?? 8,
           dialogue: result.dialogue,
         };
-        const preservedVariantStore = matchingClip
+        const preservedClip = matchingClip
+          ? preserveVideoPromptVariantsOnLegacyReplacement({
+              previousClip: matchingClip,
+              nextClip: collapsedClip,
+              selectedVideoModelId: pack.selectedVideoModelId,
+            })
+          : collapsedClip;
+        // Variant history is additive and optional. Legacy clips commonly
+        // have no store, and malformed historical stores are intentionally
+        // discarded by preserveVideoPromptVariantsOnLegacyReplacement; only
+        // validate a store when one was actually carried forward.
+        const preservedVariantStore = preservedClip.videoPromptVariants
           ? videoPromptVariantStoreSchema.safeParse(
-              preserveVideoPromptVariantsOnLegacyReplacement({
-                previousClip: matchingClip,
-                nextClip: collapsedClip,
-                selectedVideoModelId: pack.selectedVideoModelId,
-              }).videoPromptVariants
+              preservedClip.videoPromptVariants
             )
           : null;
         if (preservedVariantStore && !preservedVariantStore.success) {

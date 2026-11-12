@@ -330,6 +330,9 @@ describe("regenerateClipDialogue", () => {
           prompt: "existing video prompt",
           durationSeconds: 6,
           dialogue: [{ lineTh: "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า" }],
+          // A malformed additive history must not block the legacy dialogue
+          // regeneration path; the variant helper drops unusable history.
+          videoPromptVariants: { version: "vd-video-prompt-variants/old" },
         },
       ],
       warnings: [],
