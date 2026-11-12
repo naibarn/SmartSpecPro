@@ -245,7 +245,10 @@ behavior or output.
 
 **Lead casting is fixed per run; supporting presence is per shot.** Bind each
 character reference's `@ImageN` tag to exactly one `characterName` for the
-entire run. Never render one character's face on the other character's
+entire run while authoring image and storyboard prompts. This portrait mapping
+is prompt-authoring context; it is not the final video's speaker locator. See
+Phase G for the required frame-grounded speaker map in each video prompt.
+Never render one character's face on the other character's
 `@ImageN` tag, never invent a speaker who is not in the manifest, and never
 let a later shot silently swap who is who. The two LEADS (`character_role`
 `host` and `guest`) are the conversation and are fixed for the whole run;
@@ -419,6 +422,18 @@ two-shot/over-the-shoulder framing from Two-Person Conversation Mode when a
 cast of two is staged); camera framing/angle; environment and lighting
 continuity; photorealistic commercial style; `9:16`; a no-added-text
 restriction; and any shot-specific negative constraints.
+
+### Single-Frame Layout Lock
+
+Every `start_frame_image_prompt` must include this exact layout rule:
+
+> SINGLE-FRAME LAYOUT LOCK: Create exactly one standalone continuous 9:16 camera frame showing only this shot's single start-of-action moment. Keep every visible person and the product together in one coherent scene. Do not create a collage, storyboard, grid, split-screen, multi-panel image, montage, inset, contact sheet, before/after, sequence of moments, product-spec card, callout, label, or embedded text. Do not combine actions from other shots or illustrate multiple product facts as separate scenes.
+
+Use the shot's own `visual_summary` to choose the one visible action. The full
+story, adjacent shots, product facts, and dialogue are context for continuity
+and accuracy; never turn them into extra moments, scenes, or panels inside
+this shot's image. If the shot describes a sequence, show only its beginning
+moment as the start frame.
 
 ### Start-Frame Action Rule
 

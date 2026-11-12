@@ -236,6 +236,18 @@ describe("product-review-sequential-storyboard bundle", () => {
     );
   });
 
+  it("requires one standalone visual moment in every start-frame image prompt", () => {
+    const body = readBundleFile(SKILL_MD_PATH);
+
+    expect(body).toContain("SINGLE-FRAME LAYOUT LOCK:");
+    expect(body).toContain("exactly one standalone continuous 9:16 camera frame");
+    expect(body).toContain("Do not create a collage, storyboard, grid, split-screen, multi-panel image");
+    expect(body).toContain("only this shot's single start-of-action moment");
+    expect(body).toMatch(
+      /The full\s+story, adjacent shots, product facts, and dialogue are context/
+    );
+  });
+
   it("input.schema.json parses and contains every §9.6 field", () => {
     const schema = JSON.parse(readBundleFile(INPUT_SCHEMA_PATH));
     expect(schema.type).toBe("object");

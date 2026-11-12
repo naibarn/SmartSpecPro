@@ -423,6 +423,18 @@ cast of two is staged); camera framing/angle; environment and lighting
 continuity; photorealistic commercial style; `9:16`; a no-added-text
 restriction; and any shot-specific negative constraints.
 
+### Single-Frame Layout Lock
+
+Every `start_frame_image_prompt` must include this exact layout rule:
+
+> SINGLE-FRAME LAYOUT LOCK: Create exactly one standalone continuous 9:16 camera frame showing only this shot's single start-of-action moment. Keep every visible person and the product together in one coherent scene. Do not create a collage, storyboard, grid, split-screen, multi-panel image, montage, inset, contact sheet, before/after, sequence of moments, product-spec card, callout, label, or embedded text. Do not combine actions from other shots or illustrate multiple product facts as separate scenes.
+
+Use the shot's own `visual_summary` to choose the one visible action. The full
+story, adjacent shots, product facts, and dialogue are context for continuity
+and accuracy; never turn them into extra moments, scenes, or panels inside
+this shot's image. If the shot describes a sequence, show only its beginning
+moment as the start frame.
+
 ### Start-Frame Action Rule
 
 The start frame depicts the BEGINNING of the shot's action — a hand
