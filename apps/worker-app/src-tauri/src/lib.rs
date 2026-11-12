@@ -361,6 +361,7 @@ pub fn run() {
             commands::worker_app_build_media_plan,
             commands::worker_app_start_local_folder_batch,
             commands::worker_app_get_local_folder_batch_status,
+            commands::worker_app_resume_local_folder_batch,
             commands::worker_app_cancel_local_folder_batch,
             commands::worker_app_process_media_asset,
             commands::worker_app_submit_media_job,

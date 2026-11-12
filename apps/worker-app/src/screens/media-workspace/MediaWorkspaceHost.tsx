@@ -145,6 +145,8 @@ function folderBatchProgressMessage(snapshot: LocalFolderBatchSnapshot, locale: 
       ? (locale === "th" ? "Batch เสร็จแล้ว" : "Batch completed")
       : snapshot.status === "canceled"
         ? (locale === "th" ? "หยุด Batch แล้ว" : "Batch stopped")
+        : snapshot.status === "interrupted"
+          ? (locale === "th" ? "Batch ถูกขัดจังหวะ — กลับมาทำต่อได้" : "Batch interrupted — ready to resume")
         : (locale === "th" ? "Batch เสร็จพร้อมรายการที่ผิดพลาด" : "Batch finished with errors");
     return `${label} · ${locale === "th" ? "สำเร็จ" : "done"} ${snapshot.completedCount} · ${locale === "th" ? "ข้าม" : "skipped"} ${snapshot.skippedCount} · ${locale === "th" ? "ผิดพลาด" : "failed"} ${snapshot.failedCount}${snapshot.canceledCount ? ` · ${locale === "th" ? "ยกเลิก" : "canceled"} ${snapshot.canceledCount}` : ""}`;
   }
@@ -327,6 +329,22 @@ export function MediaWorkspaceHost({
     batchScanWaiterRef.current = { id, resolve, reject, timeout };
     setBatchScanTarget({ entry, request: { id, sourcePath: entry.path } });
   }), []);
+
+  const resumeFolderBatch = async (sourceRelativeName?: string) => {
+    if (!folderBatchId) return;
+    setFolderBatchError("");
+    try {
+      const snapshot = await invoke<LocalFolderBatchSnapshot>("worker_app_resume_local_folder_batch", {
+        batchId: folderBatchId,
+        sourceRelativeName: sourceRelativeName ?? null,
+      });
+      setFolderBatchItems(folderBatchItemsFromSnapshot(snapshot));
+      setFolderBatchRunning(true);
+      setFolderBatchMessage(folderBatchProgressMessage(snapshot, locale));
+    } catch (error) {
+      setFolderBatchError(invokeError(error));
+    }
+  };
 
   useEffect(() => () => {
     const waiter = batchScanWaiterRef.current;
@@ -1175,10 +1193,31 @@ export function MediaWorkspaceHost({
                             ? ({ queued: "รอคิว Render", scanning: "สแกน Face + Activity ทั้งคลิป", dead_air_scan: "สแกน Dead Air ทั้งคลิป", rendering: "กำลัง Render ในเครื่อง", saving: "กำลังบันทึก MP4", completed: "เสร็จแล้ว", skipped: "ข้าม (มีไฟล์แล้ว)", failed: "ผิดพลาด", canceled: "ยกเลิก" } as const)[item.status]
                             : ({ queued: "Queued for local render", scanning: "Full Face + Activity scan", dead_air_scan: "Full Dead Air scan", rendering: "Rendering locally", saving: "Saving MP4", completed: "Completed", skipped: "Skipped (output exists)", failed: "Failed", canceled: "Canceled" } as const)[item.status]}</span>
                           {item.error ? <span className="warning"> · {item.error}</span> : null}
+                          {item.status === "failed" ? (
+                            <>
+                              {" "}
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => void resumeFolderBatch(item.relativeName)}
+                              >
+                                {locale === "th" ? (folderBatchRunning ? "เข้าคิวลองซ้ำ" : "ลองรายการนี้อีกครั้ง") : (folderBatchRunning ? "Queue retry" : "Retry this video")}
+                              </button>
+                            </>
+                          ) : null}
                         </li>
                       ))}
                     </ul>
                   </>
+                ) : null}
+                {!folderBatchRunning && folderBatchItems.some((item) => ["failed", "canceled", "queued"].includes(item.status)) ? (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void resumeFolderBatch()}
+                  >
+                    {locale === "th" ? "ทำรายการที่ค้างและผิดพลาดต่อ" : "Resume pending and failed videos"}
+                  </button>
                 ) : null}
                 {folderBatchRunning ? (
                   <button

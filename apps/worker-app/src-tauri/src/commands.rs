@@ -315,6 +315,22 @@ pub struct LocalFolderBatchSnapshot {
 pub struct LocalFolderBatchRuntimeState {
     pub snapshot: Option<LocalFolderBatchSnapshot>,
     pub cancel_requested: Option<Arc<AtomicBool>>,
+    pub stored_request: Option<StoredLocalFolderBatchRequest>,
+    persistence_dir: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredLocalFolderBatchRequest {
+    project_folder_path: String,
+    videos: Vec<LocalFolderBatchVideoRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredLocalFolderBatch {
+    snapshot: LocalFolderBatchSnapshot,
+    request: StoredLocalFolderBatchRequest,
 }
 
 static LOCAL_FOLDER_BATCH_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -431,6 +447,13 @@ pub async fn worker_app_start_local_folder_batch(
         items,
     );
     runtime.snapshot = Some(snapshot.clone());
+    runtime.persistence_dir = Some(app_data_dir.clone());
+    let stored_request = StoredLocalFolderBatchRequest {
+        project_folder_path: root_path.to_string_lossy().into_owned(),
+        videos: batch_videos.clone(),
+    };
+    persist_local_folder_batch(&app_data_dir, &snapshot, &stored_request)?;
+    runtime.stored_request = Some(stored_request);
     runtime.cancel_requested = Some(Arc::clone(&cancel_requested));
     drop(runtime);
 
@@ -454,13 +477,109 @@ pub async fn worker_app_start_local_folder_batch(
 
 #[tauri::command]
 pub async fn worker_app_get_local_folder_batch_status(
+    app: tauri::AppHandle,
     state: tauri::State<'_, WorkerAppState>,
 ) -> Result<Option<LocalFolderBatchSnapshot>, String> {
-    state
-        .local_folder_batch
-        .lock()
-        .map(|runtime| runtime.snapshot.clone())
-        .map_err(|_| "folder batch state lock poisoned".to_string())
+    let app_data_dir = app.path().app_data_dir().map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let mut runtime = state.local_folder_batch.lock().map_err(|_| "folder batch state lock poisoned".to_string())?;
+    if runtime.snapshot.is_none() {
+        if let Some(stored) = load_local_folder_batch(&app_data_dir)? {
+            let mut snapshot = stored.snapshot;
+            if snapshot.status == "running" {
+                snapshot.status = "interrupted".into();
+                snapshot.current_file = None;
+                snapshot.stage = "interrupted".into();
+                for item in &mut snapshot.items {
+                    if matches!(item.status.as_str(), "dead_air_scan" | "rendering" | "saving") {
+                        item.status = "queued".into();
+                        item.stage = "queued".into();
+                        item.error = Some("interrupted_before_completion".into());
+                    }
+                }
+                refresh_local_folder_batch_counts(&mut snapshot);
+                persist_local_folder_batch(&app_data_dir, &snapshot, &stored.request)?;
+            }
+            runtime.snapshot = Some(snapshot);
+            runtime.stored_request = Some(stored.request);
+            runtime.persistence_dir = Some(app_data_dir.clone());
+        }
+    }
+    Ok(runtime.snapshot.clone())
+}
+
+#[tauri::command]
+pub async fn worker_app_resume_local_folder_batch(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    batch_id: String,
+    source_relative_name: Option<String>,
+) -> Result<LocalFolderBatchSnapshot, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state.settings.lock().map_err(|_| "settings lock poisoned".to_string())?.clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
+    let mut runtime = state.local_folder_batch.lock().map_err(|_| "folder batch state lock poisoned".to_string())?;
+    if runtime.snapshot.as_ref().is_some_and(|snapshot| snapshot.status == "running") {
+        let Some(source_relative_name) = source_relative_name.as_deref() else {
+            return Err("local_folder_batch_already_running".into());
+        };
+        let snapshot = runtime.snapshot.as_mut().filter(|snapshot| snapshot.batch_id == batch_id)
+            .ok_or_else(|| "local_folder_batch_not_found".to_string())?;
+        let item = snapshot.items.iter_mut().find(|item| item.source_relative_name == source_relative_name)
+            .ok_or_else(|| "local_folder_batch_item_not_found".to_string())?;
+        if item.status != "failed" { return Err("local_folder_batch_no_retryable_items".into()); }
+        item.status = "queued".into();
+        item.stage = "queued".into();
+        item.error = None;
+        refresh_local_folder_batch_counts(snapshot);
+        let snapshot_copy = snapshot.clone();
+        if let Some(request) = runtime.stored_request.as_ref() {
+            persist_local_folder_batch(&app_data_dir, &snapshot_copy, request)?;
+        }
+        return Ok(snapshot_copy);
+    }
+    if runtime.snapshot.is_none() {
+        if let Some(stored) = load_local_folder_batch(&app_data_dir)? {
+            runtime.snapshot = Some(stored.snapshot);
+            runtime.stored_request = Some(stored.request);
+            runtime.persistence_dir = Some(app_data_dir.clone());
+        }
+    }
+    let mut snapshot = runtime.snapshot.clone().ok_or_else(|| "local_folder_batch_not_found".to_string())?;
+    if snapshot.batch_id != batch_id { return Err("local_folder_batch_not_found".into()); }
+    let request = runtime.stored_request.clone().ok_or_else(|| "local_folder_batch_request_not_found".to_string())?;
+    let root_path = PathBuf::from(&request.project_folder_path).canonicalize().map_err(|_| "project_folder_not_found".to_string())?;
+    if !root_path.is_dir() { return Err("project_folder_not_found".into()); }
+    let mut selected = false;
+    for item in &mut snapshot.items {
+        let targeted = source_relative_name.as_deref().map_or(true, |name| item.source_relative_name == name);
+        if targeted && matches!(item.status.as_str(), "failed" | "canceled" | "queued" | "dead_air_scan" | "rendering" | "saving") {
+            item.status = "queued".into();
+            item.stage = "queued".into();
+            item.error = None;
+            selected = true;
+        }
+    }
+    if !selected { return Err("local_folder_batch_no_retryable_items".into()); }
+    snapshot.status = "running".into();
+    snapshot.current_file = None;
+    snapshot.stage = "starting".into();
+    refresh_local_folder_batch_counts(&mut snapshot);
+    let cancel_requested = Arc::new(AtomicBool::new(false));
+    runtime.snapshot = Some(snapshot.clone());
+    runtime.persistence_dir = Some(app_data_dir.clone());
+    runtime.cancel_requested = Some(Arc::clone(&cancel_requested));
+    persist_local_folder_batch(&app_data_dir, &snapshot, &request)?;
+    drop(runtime);
+    let batch_state = Arc::clone(&state.local_folder_batch);
+    let batch_id = snapshot.batch_id.clone();
+    let project_folder = root_path.clone();
+    let videos = request.videos;
+    let debug_dir = app_data_dir.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        run_local_folder_batch(&batch_state, &batch_id, root_path, project_folder, videos, tools, cancel_requested, &debug_dir);
+    });
+    Ok(snapshot)
 }
 
 #[tauri::command]
@@ -543,6 +662,48 @@ fn make_local_folder_batch_snapshot(
     }
 }
 
+fn local_folder_batch_state_path(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.join("local-folder-batch.json")
+}
+
+fn persist_local_folder_batch(
+    app_data_dir: &Path,
+    snapshot: &LocalFolderBatchSnapshot,
+    request: &StoredLocalFolderBatchRequest,
+) -> Result<(), String> {
+    fs::create_dir_all(app_data_dir).map_err(|error| format!("folder_batch_checkpoint_failed: {error}"))?;
+    let path = local_folder_batch_state_path(app_data_dir);
+    let temporary = path.with_extension("json.tmp");
+    let bytes = serde_json::to_vec(&StoredLocalFolderBatch { snapshot: snapshot.clone(), request: request.clone() })
+        .map_err(|error| format!("folder_batch_checkpoint_failed: {error}"))?;
+    fs::write(&temporary, bytes).map_err(|error| format!("folder_batch_checkpoint_failed: {error}"))?;
+    match fs::rename(&temporary, &path) {
+        Ok(()) => Ok(()),
+        Err(first_error) => {
+            if path.exists() {
+                fs::remove_file(&path).map_err(|error| format!("folder_batch_checkpoint_failed: {error}"))?;
+                fs::rename(&temporary, &path).map_err(|error| format!("folder_batch_checkpoint_failed: {error}"))
+            } else {
+                Err(format!("folder_batch_checkpoint_failed: {first_error}"))
+            }
+        }
+    }
+}
+
+fn load_local_folder_batch(app_data_dir: &Path) -> Result<Option<StoredLocalFolderBatch>, String> {
+    let path = local_folder_batch_state_path(app_data_dir);
+    if !path.exists() { return Ok(None); }
+    let bytes = fs::read(path).map_err(|error| format!("folder_batch_checkpoint_read_failed: {error}"))?;
+    serde_json::from_slice(&bytes).map(Some).map_err(|error| format!("folder_batch_checkpoint_invalid: {error}"))
+}
+
+fn refresh_local_folder_batch_counts(snapshot: &mut LocalFolderBatchSnapshot) {
+    snapshot.completed_count = snapshot.items.iter().filter(|item| item.status == "completed").count();
+    snapshot.skipped_count = snapshot.items.iter().filter(|item| item.status == "skipped").count();
+    snapshot.failed_count = snapshot.items.iter().filter(|item| item.status == "failed").count();
+    snapshot.canceled_count = snapshot.items.iter().filter(|item| item.status == "canceled").count();
+}
+
 fn update_local_folder_batch(
     batch_state: &Arc<Mutex<LocalFolderBatchRuntimeState>>,
     batch_id: &str,
@@ -571,6 +732,10 @@ fn update_local_folder_batch(
     snapshot.skipped_count = snapshot.items.iter().filter(|item| item.status == "skipped").count();
     snapshot.failed_count = snapshot.items.iter().filter(|item| item.status == "failed").count();
     snapshot.canceled_count = snapshot.items.iter().filter(|item| item.status == "canceled").count();
+    let persisted_snapshot = snapshot.clone();
+    if let (Some(path), Some(request)) = (runtime.persistence_dir.as_deref(), runtime.stored_request.as_ref()) {
+        let _ = persist_local_folder_batch(path, &persisted_snapshot, request);
+    }
 }
 
 fn run_local_folder_batch(
@@ -583,7 +748,16 @@ fn run_local_folder_batch(
     cancel_requested: Arc<AtomicBool>,
     media_debug_dir: &Path,
 ) {
-    for video in videos {
+    loop {
+        let queued_videos = videos.iter().filter_map(|video| {
+            batch_state.lock().ok().and_then(|runtime| runtime.snapshot.as_ref()
+                .filter(|snapshot| snapshot.batch_id == batch_id)
+                .and_then(|snapshot| snapshot.items.iter().find(|item| item.source_relative_name == video.source_relative_name))
+                .filter(|item| item.status == "queued")
+                .map(|_| video.clone()))
+        }).collect::<Vec<_>>();
+        if queued_videos.is_empty() { break; }
+        for video in queued_videos {
         let item = batch_state
             .lock()
             .ok()
@@ -640,6 +814,7 @@ fn run_local_folder_batch(
                 update_local_folder_batch(batch_state, batch_id, "failed", None, Some(&item.source_relative_name), Some("failed"), Some(Some(error)));
             }
         }
+        }
     }
     let canceled = cancel_requested.load(std::sync::atomic::Ordering::Relaxed);
     if let Ok(mut runtime) = batch_state.lock() {
@@ -656,6 +831,13 @@ fn run_local_folder_batch(
             snapshot.status = final_status.into();
             snapshot.current_file = None;
             snapshot.stage = "finished".into();
+        }
+        if let (Some(path), Some(request), Some(snapshot)) = (
+            runtime.persistence_dir.as_deref(),
+            runtime.stored_request.as_ref(),
+            runtime.snapshot.as_ref(),
+        ) {
+            let _ = persist_local_folder_batch(path, snapshot, request);
         }
         runtime.cancel_requested = None;
     }
@@ -756,8 +938,12 @@ fn render_local_folder_video(
     let temporary_relative = Path::new("derived")
         .join(format!(".{output_stem}.batch-{batch_token}.tmp.mp4"));
     let temporary_name = temporary_relative.to_str().ok_or_else(|| "media_output_path_invalid".to_string())?.replace('\\', "/");
+    // A forced shutdown can leave this exact private temp behind. The batch
+    // checkpoint marks an unfinished render retryable, so clear its stale
+    // partial artifact before invoking FFmpeg again.
     if canonical_root.join(&temporary_relative).exists() {
-        return Err("media_output_temp_exists".into());
+        fs::remove_file(canonical_root.join(&temporary_relative))
+            .map_err(|_| "media_output_temp_cleanup_failed".to_string())?;
     }
     let source_name = request.source_relative_name.replace('\\', "/");
     let rendered = run_allowlisted_ffmpeg_segments(
