@@ -6380,7 +6380,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
  * call in this file) and idempotency-keyed.
  */
 const clipDialogueLineOutputSchema = z.object({
-  characterKey: z.string().optional(),
+  characterKey: z.string().trim().min(1),
   lineTh: z.string().min(1),
   emotion: z.string().optional(),
   delivery: z
@@ -6433,6 +6433,8 @@ export interface GenerateVerticalDramaClipDialogueParams {
   };
   /** Optional free-text creative instruction from the user (e.g. "สั้นลง", "ทางการน้อยลง"). Capped by the router's Zod schema at 500 chars. */
   instruction?: string;
+  /** Stable character keys permitted in this shot's generated dialogue. */
+  allowedCharacterKeys?: string[];
   dialogueLanguage?: VerticalDramaDialogueLanguage;
   thaiAccent?: VerticalDramaThaiAccent;
   idempotencyKey?: string;
@@ -6440,7 +6442,7 @@ export interface GenerateVerticalDramaClipDialogueParams {
 
 export interface GenerateVerticalDramaClipDialogueResult {
   dialogue: Array<{
-    characterKey?: string;
+    characterKey: string;
     lineTh: string;
     emotion?: string;
     delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
@@ -6474,6 +6476,11 @@ function buildClipDialogueUserPrompt(params: GenerateVerticalDramaClipDialoguePa
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
     shotContext.characterIdentityMap ?? null,
+    params.allowedCharacterKeys?.length
+      ? "ALLOWED SPEAKER KEYS (MANDATORY): every dialogue.characterKey must exactly equal one of these keys: " +
+        params.allowedCharacterKeys.join(", ") +
+        ". Use the stable key, never the display name, a variant alias, or an invented character."
+      : null,
     sceneContext
       ? `Nearby scene dialogue (context/tone only — do NOT copy these lines verbatim, do NOT reuse a broken/fragment line as-is):\n${sceneContext}`
       : null,
@@ -6518,6 +6525,28 @@ export async function generateVerticalDramaClipDialogue(
     resolveQualityLargeContextModelId
   );
   const userPrompt = buildClipDialogueUserPrompt(params);
+  const allowedCharacterKeys = new Set(
+    (params.allowedCharacterKeys ?? []).map(key => key.trim()).filter(Boolean)
+  );
+  const outputSchema = allowedCharacterKeys.size
+    ? clipDialogueOutputSchema.superRefine((value, context) => {
+        value.dialogue.forEach((line, index) => {
+          if (!line.characterKey?.trim()) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["dialogue", index, "characterKey"],
+              message: "Every line must name a shot character key",
+            });
+          } else if (!allowedCharacterKeys.has(line.characterKey.trim())) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["dialogue", index, "characterKey"],
+              message: "Speaker key is not in this shot's allowed cast",
+            });
+          }
+        });
+      })
+    : clipDialogueOutputSchema;
 
   const { data, response } = await executeJsonPlanningCallWithRetry({
     model,
@@ -6526,7 +6555,7 @@ export async function generateVerticalDramaClipDialogue(
     temperature: 0.8,
     userId: params.userId,
     maxTokens: 1200,
-    schema: clipDialogueOutputSchema,
+    schema: outputSchema,
     label: "Clip dialogue regeneration",
     verticalDramaContext: {
       seriesId: params.seriesId,

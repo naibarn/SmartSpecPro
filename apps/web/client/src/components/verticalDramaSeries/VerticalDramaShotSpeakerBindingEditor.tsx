@@ -14,6 +14,7 @@ import type {
 
 export interface VerticalDramaShotSpeakerOption {
   speakerLabel: string;
+  displayLabel?: string;
   dialogueLines: string[];
 }
 
@@ -314,7 +315,7 @@ export function VerticalDramaShotSpeakerBindingEditor({
               option => option.speakerLabel === speaker.speakerLabel
             ) ? (
               <p>
-                <strong>ผู้พูดตามบท:</strong> {speaker.speakerLabel}
+                <strong>ผู้พูดตามบท:</strong> {speaker.displayLabel ?? speaker.speakerLabel}
               </p>
             ) : (
               <TextInput

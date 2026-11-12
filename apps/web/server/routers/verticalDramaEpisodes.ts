@@ -31365,6 +31365,14 @@ export const verticalDramaEpisodesRouter = router({
                 ? sceneDialogueContext
                 : undefined,
             },
+            allowedCharacterKeys:
+              clipDialogueCharacterIdentitySources.length > 0
+                ? clipDialogueCharacterIdentitySources.map(
+                    source => source.characterKey
+                  )
+                : frame?.requiredCharacterRefs?.length
+                  ? frame.requiredCharacterRefs.map(String)
+                  : Array.from(knownSpeakerKeysForDialogue),
             instruction: input.instruction,
             dialogueLanguage: pack?.dialogueLanguage,
             thaiAccent: pack?.thaiAccent,

@@ -3427,6 +3427,53 @@ export function VerticalDramaStoryboardPanel({
 
   function resolveSpeakerOptionsForShot(shotNumber: number) {
     const clipsForShot = clipByShot.get(shotNumber) ?? [];
+    const portraitEntries = Object.entries(characterPortraits);
+    const keyByCharacterId = new Map(
+      portraitEntries.map(([key, portrait]) => [portrait.characterId, key])
+    );
+    const requiredKeys = new Set(
+      frameByShot.get(shotNumber)?.requiredCharacterRefs ?? []
+    );
+    const normalizeLabel = (value: string) =>
+      value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+    const canonicalSpeakerKey = (speaker: string) => {
+      const exactKey = characterPortraits[speaker] ? speaker : undefined;
+      const matchingKeys = exactKey
+        ? [exactKey]
+        : portraitEntries
+            .filter(([, portrait]) =>
+              [portrait.name, portrait.variantLabel].some(
+                value =>
+                  typeof value === "string" &&
+                  normalizeLabel(value) === normalizeLabel(speaker)
+              )
+            )
+            .map(([key]) => key);
+      const physicalKeys = Array.from(
+        new Set(
+          matchingKeys.map(key => {
+            const portrait = characterPortraits[key];
+            const rootId = portrait?.parentCharacterId ?? portrait?.characterId;
+            const selectedFamilyKey = Array.from(requiredKeys).find(
+              requiredKey => {
+                const selectedPortrait = characterPortraits[requiredKey];
+                return (
+                  selectedPortrait &&
+                  (selectedPortrait.parentCharacterId ??
+                    selectedPortrait.characterId) === rootId
+                );
+              }
+            );
+            if (selectedFamilyKey) return selectedFamilyKey;
+            const parentKey = portrait?.parentCharacterId
+              ? keyByCharacterId.get(portrait.parentCharacterId)
+              : undefined;
+            return parentKey ?? key;
+          })
+        )
+      );
+      return physicalKeys.length === 1 ? physicalKeys[0] : speaker;
+    };
     const clipDialogueLines = clipsForShot.flatMap(clip =>
       (clip.dialogue ?? []).map(line => ({
         speaker: line.characterKey ?? "",
@@ -3444,17 +3491,30 @@ export function VerticalDramaStoryboardPanel({
       : canonicalDialogueLines;
     const grouped = new Map<string, string[]>();
     for (const line of lines) {
-      const speakerLabel = line.speaker.trim();
+      const speakerLabel = canonicalSpeakerKey(line.speaker.trim());
       if (!speakerLabel) continue;
       grouped.set(speakerLabel, [
         ...(grouped.get(speakerLabel) ?? []),
         line.line,
       ]);
     }
-    return Array.from(grouped, ([speakerLabel, dialogueLines]) => ({
-      speakerLabel,
-      dialogueLines,
-    }));
+    return Array.from(grouped, ([speakerLabel, dialogueLines], index) => {
+      const portrait = characterPortraits[speakerLabel];
+      const parentPortrait = portrait?.parentCharacterId
+        ? portraitEntries.find(
+            ([, candidate]) =>
+              candidate.characterId === portrait.parentCharacterId
+          )?.[1]
+        : undefined;
+      const displayPortrait = parentPortrait ?? portrait;
+      const displayLabel = displayPortrait
+        ? displayPortrait.name?.trim() ||
+          formatShotCharacterLabel(displayPortrait, speakerLabel)
+        : /^character(?:-|$)/i.test(speakerLabel)
+          ? `ผู้พูด ${index + 1}`
+          : speakerLabel;
+      return { speakerLabel, displayLabel, dialogueLines };
+    });
   }
 
   const speakerMappingCandidates = shots.map((shot, index) => {
@@ -15902,7 +15962,10 @@ function ClipDialogueBox({
   const [dialogueCopied, setDialogueCopied] = useState(false);
   const [regeneratePopoverOpen, setRegeneratePopoverOpen] = useState(false);
   const [regenerateInstruction, setRegenerateInstruction] = useState("");
-  const speakerNameForLine = (line: VerticalDramaClipDialogueLineView) => {
+  const speakerNameForLine = (
+    line: VerticalDramaClipDialogueLineView,
+    lineIndex: number
+  ) => {
     const key = line.characterKey?.trim();
     if (!key) return "—";
     const localBinding = speakerVisualBindings.find(binding => {
@@ -15914,11 +15977,22 @@ function ClipDialogueBox({
         normalizedKey === binding.speakerLabel.trim().toLocaleLowerCase()
       );
     });
-    return localBinding?.speakerLabel ?? characterPortraits[key]?.name ?? key;
+    const portrait = characterPortraits[key];
+    const parentPortrait = portrait?.parentCharacterId
+      ? Object.values(characterPortraits).find(
+          candidate => candidate.characterId === portrait.parentCharacterId
+        )
+      : undefined;
+    const displayPortrait = parentPortrait ?? portrait;
+    if (localBinding) return localBinding.speakerLabel;
+    if (parentPortrait?.name?.trim()) return parentPortrait.name.trim();
+    if (displayPortrait)
+      return formatShotCharacterLabel(displayPortrait, key);
+    return /^character(?:-|$)/i.test(key) ? `ผู้พูด ${lineIndex + 1}` : key;
   };
   const compiledDialogueText = lines
-    .map(line => {
-      return `${speakerNameForLine(line)}: ${line.lineTh}`;
+    .map((line, index) => {
+      return `${speakerNameForLine(line, index)}: ${line.lineTh}`;
     })
     .join("\n");
   const hasScriptFallbackOrigin = lines.some(
@@ -16074,7 +16148,7 @@ function ClipDialogueBox({
       ) : (
         <ul className="flex flex-col gap-1.5">
           {lines.map((line, idx) => {
-            const speakerName = speakerNameForLine(line);
+            const speakerName = speakerNameForLine(line, idx);
             return (
               <li
                 key={idx}
