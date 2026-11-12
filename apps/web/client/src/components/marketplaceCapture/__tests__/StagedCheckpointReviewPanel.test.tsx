@@ -2229,15 +2229,41 @@ describe("Marketplace final video combine action", () => {
     expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a combine action after the shot list for users reviewing the last shot", () => {
+    const input = completedVideoState(9);
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const shotList = document.getElementById("staged-auto-review-shot-list");
+    const bottomAction = screen.getByTestId(
+      "staged-final-render-action-bottom"
+    );
+    expect(shotList).toBeTruthy();
+    expect(
+      (shotList!.compareDocumentPosition(bottomAction) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+    ).toBe(true);
+    const button = screen.getByRole("button", {
+      name: "รวมวิดีโอทั้ง 9 ช็อตตอนนี้",
+    });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the action visible and explains the missing shot when videos are incomplete", () => {
     const input = completedVideoState(8);
     render(<StagedCheckpointReviewPanel {...input} />);
 
     expect(screen.getByTestId("staged-final-render-action")).toBeTruthy();
     expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "รอวิดีโอครบ 9 ช็อต" })
-    ).toHaveAttribute("aria-disabled", "true");
+    const combineButtons = screen.getAllByRole("button", {
+      name: "รอวิดีโอครบ 9 ช็อต",
+    });
+    expect(combineButtons).toHaveLength(2);
+    combineButtons.forEach(button =>
+      expect(button).toHaveAttribute("aria-disabled", "true")
+    );
   });
 
 
@@ -2254,8 +2280,12 @@ describe("Marketplace final video combine action", () => {
     render(<StagedCheckpointReviewPanel {...input} />);
 
     expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "รอวิดีโอครบ 9 ช็อต" })
-    ).toHaveAttribute("aria-disabled", "true");
+    const combineButtons = screen.getAllByRole("button", {
+      name: "รอวิดีโอครบ 9 ช็อต",
+    });
+    expect(combineButtons).toHaveLength(2);
+    combineButtons.forEach(button =>
+      expect(button).toHaveAttribute("aria-disabled", "true")
+    );
   });
 });

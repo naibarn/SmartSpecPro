@@ -4488,6 +4488,63 @@ export function StagedCheckpointReviewPanel(props: {
               );
             })}
           </div>
+            {props.state.outputMode === "full_video" ? (
+              <Banner
+                className="sticky bottom-2 z-30 mt-4"
+                data-testid="staged-final-render-action-bottom"
+                status={
+                  finalVideoUrl
+                    ? "success"
+                    : canSubmitFinalRender
+                      ? "info"
+                      : "warning"
+                }
+                elevation="med"
+                title={
+                  finalVideoUrl
+                    ? "วิดีโอรวมพร้อมแล้ว"
+                    : canSubmitFinalRender
+                      ? "วิดีโอครบแล้ว — ขั้นต่อไป: รวมเป็นไฟล์เดียว"
+                      : `กำลังเตรียมวิดีโอ ${renderReadyShotCount}/${renderShotCount} ช็อต`
+                }
+                description={
+                  <>
+                    ตรวจรับแล้ว {renderReadyShotCount}/{renderShotCount} ช็อต
+                    {missingRenderShotIds.length > 0
+                      ? ` · ยังไม่มีวิดีโอช็อต ${missingRenderShotIds.join(", ")}`
+                      : ""}
+                    {unapprovedRenderShotIds.length > 0
+                      ? ` · รอตรวจรับช็อต ${unapprovedRenderShotIds.join(", ")}`
+                      : ""}
+                  </>
+                }
+                endContent={
+                  finalVideoUrl ? (
+                    <Button
+                      label="ดูวิดีโอรวมที่เสร็จแล้ว"
+                      href={`#staged-final-video-${props.runId}`}
+                      variant="primary"
+                      size="lg"
+                    />
+                  ) : (
+                    <Button
+                      label={
+                        renderJobId
+                          ? "ตรวจสอบงานรวมวิดีโอ"
+                          : canSubmitFinalRender
+                            ? `รวมวิดีโอทั้ง ${renderShotCount} ช็อตตอนนี้`
+                            : `รอวิดีโอครบ ${renderShotCount} ช็อต`
+                      }
+                      variant="primary"
+                      size="lg"
+                      isLoading={isThisActionRunning("submit-final-render")}
+                      isDisabled={!renderJobId && !canSubmitFinalRender}
+                      onClick={() => props.onSubmitFinalRender?.()}
+                    />
+                  )
+                }
+              />
+            ) : null}
         </>
       ) : null}
     </section>
