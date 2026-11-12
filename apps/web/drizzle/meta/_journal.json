@@ -2920,6 +2920,13 @@
       "when": 1794484800009,
       "tag": "0430_modular_chat_enabled_model_config",
       "breakpoints": true
+    },
+    {
+      "idx": 431,
+      "version": "7",
+      "when": 1794484800010,
+      "tag": "0431_modular_chat_credit_holds",
+      "breakpoints": true
     }
   ]
 }
