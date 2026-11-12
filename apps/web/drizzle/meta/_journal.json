@@ -2927,6 +2927,13 @@
       "when": 1794484800010,
       "tag": "0431_modular_chat_credit_holds",
       "breakpoints": true
+    },
+    {
+      "idx": 432,
+      "version": "7",
+      "when": 1794484800011,
+      "tag": "0432_modular_chat_settled_credit_details",
+      "breakpoints": true
     }
   ]
 }
