@@ -535,6 +535,41 @@ function requireStagedImageArtifactHash(shot: {
   return hash;
 }
 
+function assertStagedVideoPromptImageReady(input: {
+  shotId: number;
+  shot:
+    | { imageArtifactUrl?: string | null; imageArtifactHash?: string | null }
+    | undefined;
+  checkpoints: Array<{
+    shotId?: number | null;
+    kind: string;
+    state: string;
+    revision?: number;
+    contentHash?: string | null;
+  }>;
+}) {
+  const currentImageResult = input.checkpoints
+    .filter(
+      checkpoint =>
+        checkpoint.shotId === input.shotId &&
+        checkpoint.kind === "image_result" &&
+        checkpoint.state !== "superseded"
+    )
+    .sort((a, b) => (b.revision ?? 0) - (a.revision ?? 0))[0];
+  const imageHash = input.shot?.imageArtifactHash?.trim();
+  if (
+    !imageHash ||
+    !safeArtifactUrl(input.shot.imageArtifactUrl) ||
+    currentImageResult?.state !== "approved" ||
+    currentImageResult?.contentHash !== imageHash
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `staged_video_prompt_requires_approved_image:shot-${input.shotId}`,
+    });
+  }
+}
+
 function stagedTextOrEmpty(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -1403,6 +1438,13 @@ export async function startStagedAutoReviewBulkGeneration(input: {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "staged_invalid_shot_contract",
+      });
+    }
+    if (target.stage === "video") {
+      assertStagedVideoPromptImageReady({
+        shotId: target.shotId,
+        shot,
+        checkpoints: metadata.stagedSequentialStoryboard.reviewCheckpoints,
       });
     }
     const taskKeys =
@@ -2592,21 +2634,12 @@ async function generateCompleteStagedShotPrompt(input: {
     shot => shot.shotId === input.shotId
   );
   if (input.stage === "video") {
-    const approvedImageUrl = safeArtifactUrl(stagedShot?.imageArtifactUrl);
-    const approvedImageCheckpoint =
-      input.metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-        checkpoint =>
-          checkpoint.shotId === input.shotId &&
-          checkpoint.kind === "image_result" &&
-          checkpoint.state === "approved"
-      );
-    if (!approvedImageUrl || !approvedImageCheckpoint || !stagedShot) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: `MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_REQUIRED:shot-${input.shotId}`,
-      });
-    }
-    requireStagedImageArtifactHash(stagedShot);
+    assertStagedVideoPromptImageReady({
+      shotId: input.shotId,
+      shot: stagedShot,
+      checkpoints: input.metadata.stagedSequentialStoryboard.reviewCheckpoints,
+    });
+    const approvedImageUrl = safeArtifactUrl(stagedShot.imageArtifactUrl)!;
     const refreshInput = buildStagedSingleShotRefreshInput({
       ...input,
       stage: "video",
@@ -2814,6 +2847,13 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "checkpoint_not_editable",
+    });
+  }
+  if (input.stage === "video") {
+    assertStagedVideoPromptImageReady({
+      shotId: input.shotId,
+      shot,
+      checkpoints: metadata.stagedSequentialStoryboard.reviewCheckpoints,
     });
   }
   if (!input.workerExecution) {

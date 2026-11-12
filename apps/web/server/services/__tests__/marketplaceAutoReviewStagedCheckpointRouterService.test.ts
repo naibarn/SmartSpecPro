@@ -12,6 +12,7 @@ import {
   computeRetryStagedAutoReviewFinalAssemblyMetadata,
   areAllWorkerTargetsPromptOnlyForTest,
   assertStagedShotMediaSettledBeforePromptApply,
+  assertStagedVideoPromptImageReadyForTest,
   assertStagedStoryPlanApprovedForTest,
   removeStagedTasksInvalidatedByPromptForTest,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
@@ -236,6 +237,59 @@ describe("staged media dispatch story approval gate", () => {
     metadata.planReview.status = "awaiting";
 
     expect(() => assertStagedStoryPlanApprovedForTest(metadata)).not.toThrow();
+  });
+});
+
+describe("staged video prompt image prerequisite", () => {
+  it("rejects before enqueue when the shot has no approved image artifact", () => {
+    expect(() =>
+      assertStagedVideoPromptImageReadyForTest({
+        shotId: 1,
+        shot: { imageArtifactUrl: null, imageArtifactHash: null },
+        checkpoints: [],
+      })
+    ).toThrow("staged_video_prompt_requires_approved_image:shot-1");
+  });
+
+  it("allows prompt generation only with the current approved image artifact", () => {
+    expect(() =>
+      assertStagedVideoPromptImageReadyForTest({
+        shotId: 1,
+        shot: {
+          imageArtifactUrl: "https://example.test/shot-1.png",
+          imageArtifactHash: "image-hash-1",
+        },
+        checkpoints: [
+          {
+            checkpointId: "image-result:run-141:shot-1:r1",
+            kind: "image_result",
+            shotId: 1,
+            state: "approved",
+            contentHash: "image-hash-1",
+          },
+        ],
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects an approved checkpoint for a different image artifact", () => {
+    expect(() =>
+      assertStagedVideoPromptImageReadyForTest({
+        shotId: 1,
+        shot: {
+          imageArtifactUrl: "https://example.test/shot-1-new.png",
+          imageArtifactHash: "new-image-hash",
+        },
+        checkpoints: [
+          {
+            shotId: 1,
+            kind: "image_result",
+            state: "approved",
+            contentHash: "old-image-hash",
+          },
+        ],
+      })
+    ).toThrow("staged_video_prompt_requires_approved_image:shot-1");
   });
 });
 

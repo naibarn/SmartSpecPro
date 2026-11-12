@@ -51,6 +51,12 @@ export function StagedCheckpointReviewSurface(props: {
   // message back to a raw error code for the dispatch-only video button.
   const friendlyActionError = (message: string): string => {
     if (
+      message.startsWith("staged_video_prompt_requires_approved_image") ||
+      message.startsWith("MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_REQUIRED")
+    ) {
+      return 'ต้องสร้างภาพของช็อตนี้และรอให้ระบบอนุมัติก่อน จึงจะสร้าง Prompt วิดีโอและจับคู่ผู้พูดกับคนในภาพได้';
+    }
+    if (
       message === "staged_image_result_not_approved" ||
       message === "staged_image_artifact_missing"
     ) {

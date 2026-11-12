@@ -79,6 +79,62 @@ function stagedProviderPollTargets(metadataValue: unknown) {
     });
   });
 }
+
+export function buildStagedProviderPollAdmission(input: {
+  runId: string;
+  pollTargets: Array<{
+    shotId: number;
+    stage: "image" | "video";
+    taskId: string;
+    submittedAt: number;
+  }>;
+  now: Date;
+}) {
+  const targetShotIds = [
+    ...new Set(input.pollTargets.map(target => target.shotId)),
+  ].sort((a, b) => a - b);
+  const taskFingerprint = createHash("sha256")
+    .update(
+      input.pollTargets
+        .map(target => `${target.stage}:${target.shotId}:${target.taskId}`)
+        .sort()
+        .join("|")
+    )
+    .digest("hex")
+    .slice(0, 16);
+  // A newly-submitted provider task must keep the batch on the fast poll
+  // cadence even when another shot has been waiting for hours. The slowest
+  // cadence is appropriate only after every task in this batch is old.
+  const newestSubmittedAt = Math.max(
+    ...input.pollTargets
+      .map(target => target.submittedAt)
+      .filter(Number.isFinite)
+  );
+  const ageMs = Number.isFinite(newestSubmittedAt)
+    ? Math.max(0, input.now.getTime() - newestSubmittedAt)
+    : 0;
+  const pollIntervalMs =
+    ageMs < 10 * 60_000
+      ? 60_000
+      : ageMs < 60 * 60_000
+        ? 5 * 60_000
+        : 15 * 60_000;
+  const pollBucket = Math.floor(input.now.getTime() / pollIntervalMs);
+  const operationId = `staged_provider_poll:v2:${pollIntervalMs}:${pollBucket}:${taskFingerprint}`;
+
+  return {
+    operation: {
+      operation: "advance_run" as const,
+      runId: input.runId,
+      targetShotIds,
+      reconcileOnly: true,
+      operationId,
+    },
+    idempotencyKey: `marketplace-auto-review:${input.runId}:provider-poll:v2:${taskFingerprint}:${pollIntervalMs}:${pollBucket}`,
+    priority: 45,
+  };
+}
+
 const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
 const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -539,36 +595,11 @@ export async function runMarketplaceAutoReviewJob(
             skippedRuns += 1;
             continue;
           }
-          const targetShotIds = [
-            ...new Set(pollTargets.map(target => target.shotId)),
-          ].sort((a, b) => a - b);
-          const taskFingerprint = createHash("sha256")
-            .update(
-              pollTargets
-                .map(
-                  target => `${target.stage}:${target.shotId}:${target.taskId}`
-                )
-                .sort()
-                .join("|")
-            )
-            .digest("hex")
-            .slice(0, 16);
-          const oldestSubmittedAt = Math.min(
-            ...pollTargets
-              .map(target => target.submittedAt)
-              .filter(Number.isFinite)
-          );
-          const ageMs = Number.isFinite(oldestSubmittedAt)
-            ? Math.max(0, now.getTime() - oldestSubmittedAt)
-            : 0;
-          const pollIntervalMs =
-            ageMs < 10 * 60_000
-              ? 60_000
-              : ageMs < 60 * 60_000
-                ? 5 * 60_000
-                : 15 * 60_000;
-          const pollBucket = Math.floor(now.getTime() / pollIntervalMs);
-          const operationId = `staged_provider_poll:${pollIntervalMs}:${pollBucket}:${taskFingerprint}`;
+          const admission = buildStagedProviderPollAdmission({
+            runId: run.id,
+            pollTargets,
+            now,
+          });
           const [activeAdvanceJob] = await db
             .select({ id: workerJobs.id })
             .from(workerJobs)
@@ -599,16 +630,7 @@ export async function runMarketplaceAutoReviewJob(
             tenantId,
             userId: run.userId,
             runId: run.id,
-            operation: {
-              operation: "advance_run",
-              runId: run.id,
-              targetShotIds,
-              reconcileOnly: true,
-              operationId,
-            },
-            idempotencyKey: `marketplace-auto-review:${run.id}:provider-poll:${taskFingerprint}:${pollIntervalMs}:${pollBucket}`,
-            priority: 45,
-            scheduledAt: now,
+            ...admission,
           });
         } else {
           await queueMarketplaceAutoReviewAdvance(

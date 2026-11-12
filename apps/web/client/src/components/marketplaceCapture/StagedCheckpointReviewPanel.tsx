@@ -4244,9 +4244,18 @@ export function StagedCheckpointReviewPanel(props: {
                         2 · Prompt วิดีโอ → วิดีโอรายช็อต
                       </p>
                       <p className="mt-1 text-xs leading-5 text-slate-600">
-                        เลือกเอง: สร้าง Prompt → ปรับปรุงตามต้องการ →
-                        กดสร้างวิดีโอเพื่อใช้เครดิต (ต้องมีภาพที่อนุมัติแล้วก่อน)
+                        สร้าง Prompt โดยตรวจจับคนจากภาพที่อนุมัติแล้ว →
+                        ปรับปรุงตามต้องการ → กดสร้างวิดีโอแยกต่างหากเพื่อใช้เครดิต
                       </p>
+                      {!shot.imageArtifactHash ||
+                      !shot.imageArtifactUrl ||
+                      imageResultCheckpoint?.state !== "approved" ||
+                      imageResultCheckpoint?.contentHash !== shot.imageArtifactHash ? (
+                        <p className="mt-2 text-xs font-medium text-amber-800" role="status">
+                          ขั้นตอนถัดไป: สร้างภาพช็อตนี้และรอให้ระบบอนุมัติ
+                          เพื่อให้ AI ตรวจตำแหน่งคนและจับคู่กับบทพูดได้
+                        </p>
+                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {/* Split back out into 3 explicit steps, mirroring
                             the image section above — same user directive. */}
@@ -4264,7 +4273,13 @@ export function StagedCheckpointReviewPanel(props: {
                             }),
                           "rounded border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-800",
                           {
-                            disabled: isShotPromptPipelineBusy(shot.shotId),
+                            disabled:
+                              isShotPromptPipelineBusy(shot.shotId) ||
+                              !shot.imageArtifactHash ||
+                              !shot.imageArtifactUrl ||
+                              imageResultCheckpoint?.state !== "approved" ||
+                              imageResultCheckpoint?.contentHash !==
+                                shot.imageArtifactHash,
                             confirmation: {
                               title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
                               description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}${promptReplacementWarning}`,

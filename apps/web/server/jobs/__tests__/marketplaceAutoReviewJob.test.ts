@@ -5,6 +5,7 @@ import * as marketplaceAutoReviewService from "../../services/marketplaceAutoRev
 import * as marketplaceAutoReviewWorkerJob from "../../services/marketplaceAutoReviewWorkerJob";
 
 import {
+  buildStagedProviderPollAdmission,
   isMarketplaceAutoReviewAdvanceOutboxJobType,
   runMarketplaceAutoReviewJob,
 } from "../marketplaceAutoReviewJob";
@@ -22,6 +23,83 @@ function createEmptySchedulerDb() {
 }
 
 describe("marketplaceAutoReviewJob", () => {
+  it("keeps staged provider poll admissions identical inside one poll bucket", () => {
+    const input = {
+      runId: "mar_staged_provider_run",
+      pollTargets: [
+        {
+          shotId: 8,
+          stage: "video" as const,
+          taskId: "video-task-shot-8",
+          submittedAt: Date.parse("2026-11-10T06:22:02.589Z"),
+        },
+      ],
+    };
+    const first = buildStagedProviderPollAdmission({
+      ...input,
+      now: new Date("2026-11-12T12:16:34.000Z"),
+    });
+    const laterInBucket = buildStagedProviderPollAdmission({
+      ...input,
+      now: new Date("2026-11-12T12:18:34.000Z"),
+    });
+
+    expect(laterInBucket).toEqual(first);
+    expect(first).not.toHaveProperty("scheduledAt");
+    expect(first.idempotencyKey).toContain(":provider-poll:v2:");
+  });
+
+  it("uses a new idempotency key after the next staged provider poll bucket", () => {
+    const input = {
+      runId: "mar_staged_provider_run",
+      pollTargets: [
+        {
+          shotId: 8,
+          stage: "video" as const,
+          taskId: "video-task-shot-8",
+          submittedAt: Date.parse("2026-11-10T06:22:02.589Z"),
+        },
+      ],
+    };
+    const first = buildStagedProviderPollAdmission({
+      ...input,
+      now: new Date("2026-11-12T12:16:34.000Z"),
+    });
+    const nextBucket = buildStagedProviderPollAdmission({
+      ...input,
+      now: new Date("2026-11-12T12:31:34.000Z"),
+    });
+
+    expect(nextBucket.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(nextBucket.operation.operationId).not.toBe(
+      first.operation.operationId
+    );
+  });
+
+  it("keeps a new media task on the fast poll cadence beside an old task", () => {
+    const admission = buildStagedProviderPollAdmission({
+      runId: "mar_staged_provider_run",
+      pollTargets: [
+        {
+          shotId: 8,
+          stage: "video",
+          taskId: "old-video-task",
+          submittedAt: Date.parse("2026-11-10T06:22:02.589Z"),
+        },
+        {
+          shotId: 7,
+          stage: "image",
+          taskId: "new-image-task",
+          submittedAt: Date.parse("2026-11-12T12:07:08.150Z"),
+        },
+      ],
+      now: new Date("2026-11-12T12:08:34.000Z"),
+    });
+
+    expect(admission.operation.operationId).toContain(":60000:");
+    expect(admission.operation.targetShotIds).toEqual([7, 8]);
+  });
+
   it("only claims auto-review advance outbox jobs", () => {
     expect(isMarketplaceAutoReviewAdvanceOutboxJobType("advance_run")).toBe(
       true
@@ -167,10 +245,12 @@ describe("marketplaceAutoReviewJob", () => {
             reconcileOnly: true,
             operationId: expect.stringMatching(/^staged_provider_poll:/),
           }),
-          idempotencyKey: expect.stringContaining(":provider-poll:"),
+          idempotencyKey: expect.stringContaining(":provider-poll:v2:"),
           priority: expect.any(Number),
-          scheduledAt: expect.any(Date),
         })
+      );
+      expect(enqueueWorkerJob).toHaveBeenCalledWith(
+        expect.not.objectContaining({ scheduledAt: expect.anything() })
       );
     } finally {
       enqueueWorkerJob.mockRestore();

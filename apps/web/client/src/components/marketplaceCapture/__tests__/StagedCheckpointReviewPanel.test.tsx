@@ -436,7 +436,26 @@ describe("StagedCheckpointReviewPanel", () => {
       ...input.state,
       shots: [
         firstShot,
-        { ...firstShot, shotId: 2, title: "ช็อตถัดไป", imagePrompt: "" },
+        {
+          ...firstShot,
+          shotId: 2,
+          title: "ช็อตถัดไป",
+          imagePrompt: "",
+          imageArtifactUrl: "https://example.test/shot-2.png",
+          imageArtifactHash: "image-hash-2",
+        },
+      ],
+      checkpoints: [
+        ...input.state.checkpoints,
+        {
+          ...baseCheckpoint,
+          checkpointId: "image-result:run-1:shot-2:r1",
+          kind: "image_result",
+          shotId: 2,
+          state: "approved",
+          contentHash: "image-hash-2",
+          estimatedCredits: 0,
+        },
       ],
       workerOperations: [
         {
@@ -618,7 +637,7 @@ describe("StagedCheckpointReviewPanel", () => {
     ).not.toBeDisabled();
   });
 
-  it("always exposes image and video prompt repair actions when a shot has no prompt checkpoint", () => {
+  it("requires an approved image before exposing video prompt generation", () => {
     const input = props();
     input.state = {
       ...input.state,
@@ -641,9 +660,10 @@ describe("StagedCheckpointReviewPanel", () => {
       expect(
         screen.getByRole("button", { name: `สร้าง Prompt ภาพช็อตที่ ${shotId}` })
       ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: `สร้าง Prompt วิดีโอช็อตที่ ${shotId}` })
-      ).not.toBeDisabled();
+      const videoPromptButton = screen.getByRole("button", {
+        name: `สร้าง Prompt วิดีโอช็อตที่ ${shotId}`,
+      });
+      expect(videoPromptButton).toBeDisabled();
       expect(
         screen.getByRole("button", { name: `สร้างภาพช็อตที่ ${shotId}` })
       ).toBeDisabled();
@@ -655,17 +675,16 @@ describe("StagedCheckpointReviewPanel", () => {
     clickAndConfirmGeneration(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     );
-    clickAndConfirmGeneration(
-      screen.getByRole("button", { name: "สร้าง Prompt วิดีโอช็อตที่ 1" })
-    );
-    expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(1, {
+    expect(
+      screen.getAllByText(
+        /ขั้นตอนถัดไป: สร้างภาพช็อตนี้และรอให้ระบบอนุมัติ/
+      )
+    ).toHaveLength(3);
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
       shotId: 1,
       stage: "image",
     });
-    expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(2, {
-      shotId: 1,
-      stage: "video",
-    });
+    expect(input.onGeneratePrompt).toHaveBeenCalledTimes(1);
   });
 
   it("lets users queue prompt repair while that shot's image or video is rendering", () => {
@@ -675,8 +694,21 @@ describe("StagedCheckpointReviewPanel", () => {
       shots: [
         {
           ...input.state.shots[0],
+          imageArtifactUrl: "https://example.test/accepted-image.png",
+          imageArtifactHash: "accepted-image-hash",
           imageTaskStatus: "processing",
           videoTaskStatus: "processing",
+        },
+      ],
+      checkpoints: [
+        ...input.state.checkpoints,
+        {
+          ...baseCheckpoint,
+          checkpointId: "image-result:run-1:shot-1:r1",
+          kind: "image_result",
+          state: "approved",
+          contentHash: "accepted-image-hash",
+          estimatedCredits: 0,
         },
       ],
     };
@@ -1424,7 +1456,7 @@ describe("StagedCheckpointReviewPanel", () => {
       expect(textarea.value.length).toBeGreaterThan(0);
     });
 
-    it("video prompt repair actions remain available before an image is approved", () => {
+    it("video prompt repair actions remain available after an image is approved", () => {
       const input = props();
       input.state = {
         ...input.state,
@@ -1433,6 +1465,7 @@ describe("StagedCheckpointReviewPanel", () => {
           {
             ...input.state.shots[0],
             imageArtifactHash: "accepted-image-hash",
+            imageArtifactUrl: "https://example.test/accepted-image.png",
             videoPrompt: "ขยับกล้องช้า ๆ",
           },
         ],
