@@ -3442,6 +3442,7 @@ export function VerticalDramaStoryboardPanel({
     );
     const normalizeLabel = (value: string) =>
       value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+    const duplicateBindingLabelsBySpeaker = new Map<string, string[]>();
     const physicalKeyForLabel = (identityLabel: string) => {
       const exactKey = characterPortraits[identityLabel]
         ? identityLabel
@@ -3497,9 +3498,24 @@ export function VerticalDramaStoryboardPanel({
       const matchingBindings = speakerBindings.filter(
         binding => physicalKeyForLabel(binding.speakerLabel) === physicalKey
       );
-      return matchingBindings.length === 1
-        ? matchingBindings[0].speakerLabel
-        : physicalKey;
+      if (matchingBindings.length === 0) return physicalKey;
+      const selectedBinding =
+        matchingBindings.find(
+          binding =>
+            normalizeLabel(binding.speakerLabel) ===
+            normalizeLabel(identityLabel)
+        ) ??
+        matchingBindings.find(
+          binding => binding.personId && binding.boundingBox
+        ) ??
+        matchingBindings[0];
+      duplicateBindingLabelsBySpeaker.set(
+        selectedBinding.speakerLabel,
+        matchingBindings
+          .filter(binding => binding !== selectedBinding)
+          .map(binding => binding.speakerLabel)
+      );
+      return selectedBinding.speakerLabel;
     };
     const clipDialogueLines = clipsForShot.flatMap(clip =>
       (clip.dialogue ?? []).map(line => ({
@@ -3540,7 +3556,13 @@ export function VerticalDramaStoryboardPanel({
         : /^character(?:-|$)/i.test(speakerLabel)
           ? `ผู้พูด ${index + 1}`
           : speakerLabel;
-      return { speakerLabel, displayLabel, dialogueLines };
+      return {
+        speakerLabel,
+        displayLabel,
+        dialogueLines,
+        duplicateBindingLabels:
+          duplicateBindingLabelsBySpeaker.get(speakerLabel) ?? [],
+      };
     });
   }
 
@@ -5184,6 +5206,18 @@ export function VerticalDramaStoryboardPanel({
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
           const speakerOptionsForShot =
             resolveSpeakerOptionsForShot(shotNumber);
+          const duplicateSpeakerBindingLabels = new Set(
+            speakerOptionsForShot.flatMap(
+              speaker => speaker.duplicateBindingLabels
+            )
+          );
+          const speakerBindingsForEditor =
+            normalizeVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings
+            ).filter(
+              binding =>
+                !duplicateSpeakerBindingLabels.has(binding.speakerLabel)
+            );
           const dialogueCharacterKeys = (() => {
             const keys = new Set<string>();
             for (const clip of clipsForShot) {
@@ -8019,9 +8053,7 @@ export function VerticalDramaStoryboardPanel({
                       shotNumber={shotNumber}
                       locale={locale === "en" ? "en" : "th"}
                       speakers={speakerOptionsForShot}
-                      bindings={normalizeVerticalDramaSpeakerVisualBindings(
-                        frame?.speakerVisualBindings
-                      )}
+                      bindings={speakerBindingsForEditor}
                       startFrameImageSrc={startFrameImageSrc}
                       sourceMediaAssetId={frame?.approvedMediaAssetId}
                       detectedPeople={
