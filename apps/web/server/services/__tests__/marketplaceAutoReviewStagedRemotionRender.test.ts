@@ -221,6 +221,50 @@ describe("submitStagedRemotionFinalRender", () => {
     }
   });
 
+  it("resolves relative storage URLs before building the Remotion manifest", async () => {
+    const deps = fakeDeps();
+    const videoClipUrls = [
+      "/api/storage/files/marketplace/shot-1.mp4",
+      "/api/storage/files/marketplace/shot-2.mp4",
+    ];
+    const expectedUrls = videoClipUrls.map(url => `https://smartaihub.app${url}`);
+
+    await submitStagedRemotionFinalRender(
+      baseInput({ videoClipUrls, publicUrl: "https://smartaihub.app" }),
+      deps,
+    );
+
+    expect(deps.stageClip).toHaveBeenNthCalledWith(
+      1,
+      expectedUrls[0],
+      5,
+      "https://smartaihub.app",
+    );
+    const workerInput = deps.queueJob.mock.calls[0][0];
+    expect(
+      workerInput.remotionTemplate.layers
+        .filter((layer: any) => layer.type === "video")
+        .map((layer: any) => layer.src),
+    ).toEqual(expectedUrls);
+    expect(
+      workerInput.assetManifest.sources
+        .filter((source: any) => source.role === "video")
+        .map((source: any) => source.url),
+    ).toEqual(expectedUrls);
+  });
+
+  it("rejects relative clip URLs without a public URL before staging or queueing", async () => {
+    const deps = fakeDeps();
+    await expect(
+      submitStagedRemotionFinalRender(
+        baseInput({ videoClipUrls: ["/api/storage/files/shot-1.mp4", "https://cdn.example.com/clip2.mp4"] }),
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: "asset_url_invalid" });
+    expect(deps.stageClip).not.toHaveBeenCalled();
+    expect(deps.queueJob).not.toHaveBeenCalled();
+  });
+
   it("stages the audio file for real bytes-sha256 and includes it in the manifest", async () => {
     const deps = fakeDeps();
     await submitStagedRemotionFinalRender(

@@ -701,6 +701,28 @@ export interface StagedClipProbeResult {
   sha256: string;
 }
 
+function resolveStagedFinalRenderAssetUrl(
+  value: string,
+  publicUrl: string | null | undefined,
+): string {
+  let resolved: URL;
+  try {
+    resolved = publicUrl?.trim() ? new URL(value, publicUrl.trim()) : new URL(value);
+  } catch {
+    throw new StagedRemotionRenderError(
+      "asset_url_invalid",
+      "Final render assets must use absolute URLs or have a valid public base URL",
+    );
+  }
+  if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+    throw new StagedRemotionRenderError(
+      "asset_url_invalid",
+      "Final render assets must use HTTP or HTTPS URLs",
+    );
+  }
+  return resolved.href;
+}
+
 async function defaultStageClip(
   url: string,
   fallbackDurationSeconds: number | undefined,
@@ -845,7 +867,10 @@ export async function submitStagedRemotionFinalRender(
   const orderedClips = input.shots
     .map((shot, index) => ({
       shot,
-      url: (input.videoClipUrls[index] ?? "").toString().trim(),
+      url: resolveStagedFinalRenderAssetUrl(
+        (input.videoClipUrls[index] ?? "").toString().trim(),
+        input.publicUrl,
+      ),
     }))
     .filter(item => item.url.length > 0);
 
@@ -870,9 +895,11 @@ export async function submitStagedRemotionFinalRender(
   // is omitted entirely rather than shipping a manifest entry the worker's
   // checksum verification is guaranteed to reject.
   let audioSha256: string | null = null;
+  let resolvedAudioUrl: string | null = null;
   if (input.includeAudio && input.audioUrl) {
     try {
-      const stagedAudio = await stageAudio(input.audioUrl, input.publicUrl);
+      resolvedAudioUrl = resolveStagedFinalRenderAssetUrl(input.audioUrl, input.publicUrl);
+      const stagedAudio = await stageAudio(resolvedAudioUrl, input.publicUrl);
       audioSha256 = stagedAudio.sha256;
     } catch (error) {
       console.warn(
@@ -881,14 +908,14 @@ export async function submitStagedRemotionFinalRender(
       );
     }
   }
-  const audioIncluded = Boolean(input.includeAudio && input.audioUrl && audioSha256);
+  const audioIncluded = Boolean(input.includeAudio && resolvedAudioUrl && audioSha256);
 
   const { template, durationInFrames } = buildStagedRemotionTemplate({
     clips: orderedClips.map((item, index) => ({
       url: item.url,
       durationSec: staged[index].durationSec,
     })),
-    audio: audioIncluded ? { url: input.audioUrl! } : null,
+    audio: audioIncluded ? { url: resolvedAudioUrl! } : null,
     overlayText: input.overlayText ?? null,
     overlayImage: input.overlayImage ?? null,
     aiDisclosureText: input.aiDisclosureText ?? null,
@@ -915,7 +942,7 @@ export async function submitStagedRemotionFinalRender(
       ? [
           {
             role: "audio" as const,
-            url: input.audioUrl!,
+            url: resolvedAudioUrl!,
             sha256: audioSha256!,
           },
         ]
