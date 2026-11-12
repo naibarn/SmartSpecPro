@@ -208,6 +208,31 @@ describe("submitStagedRemotionFinalRender", () => {
     expect((deps as Record<string, unknown>).dispatchLaneA).toBeUndefined();
   });
 
+  it("assigns a new idempotency key to each explicit retry attempt", async () => {
+    const firstDeps = fakeDeps();
+    const retryDeps = fakeDeps();
+
+    await submitStagedRemotionFinalRender(
+      { ...baseInput(), renderAttempt: 1 },
+      firstDeps,
+    );
+    await submitStagedRemotionFinalRender(
+      { ...baseInput(), renderAttempt: 2 },
+      retryDeps,
+    );
+
+    const firstInput = firstDeps.queueJob.mock.calls[0][0];
+    const retryInput = retryDeps.queueJob.mock.calls[0][0];
+    expect(firstInput.idempotencyKey).toBe(
+      "marketplace-staged-remotion-final:run-1:r1:a1",
+    );
+    expect(retryInput.idempotencyKey).toBe(
+      "marketplace-staged-remotion-final:run-1:r1:a2",
+    );
+    expect(retryInput.idempotencyKey).not.toBe(firstInput.idempotencyKey);
+    expect(retryInput.traceId).toContain(":a2");
+  });
+
   it("uses the video clips' real staged sha256 (not sha256(url)) in the asset manifest", async () => {
     const deps = fakeDeps();
     await submitStagedRemotionFinalRender(baseInput(), deps);

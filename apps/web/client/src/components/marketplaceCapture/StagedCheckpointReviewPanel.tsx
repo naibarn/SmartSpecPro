@@ -1932,51 +1932,7 @@ export function StagedCheckpointReviewPanel(props: {
         ) : null}
         {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
       </div>
-      {props.loading ? (
-        <p className="mt-3 text-sm text-slate-600" role="status">
-          กำลังโหลด checkpoint…
-        </p>
-      ) : null}
-      {props.error ? (
-        <p className="mt-3 text-sm text-red-700" role="alert">
-          {props.error}
-        </p>
-      ) : null}
-      {props.notice ? (
-        <p className="mt-3 text-sm text-sky-800" role="status">
-          {props.notice}
-        </p>
-      ) : null}
-      {activeWorkerOperation ? (
-        <p className="mt-3 text-sm text-sky-800" role="status">
-          {workerOperationLabels[activeWorkerOperation.operation] ?? "งาน Auto Review"} กำลังทำงานเบื้องหลัง
-          {activeWorkerOperation.status === "queued" || activeWorkerOperation.status === "pending"
-            ? " (รอคิว Worker)"
-            : ""}
-          {activeWorkerOperation.progress !== null && activeWorkerOperation.progress !== undefined
-            ? ` · ${Math.round(activeWorkerOperation.progress)}%`
-            : ""}
-        </p>
-      ) : failedWorkerOperation ? (
-        <p className="mt-3 text-sm text-amber-800" role="status">
-          {workerOperationLabels[failedWorkerOperation.operation] ?? "งาน Auto Review"} ทำงานไม่สำเร็จใน Worker — กดสั่งรายการเดิมอีกครั้งเพื่อ retry
-        </p>
-      ) : null}
-      {props.state?.creativeQc && props.onStartCreativeQc ? (
-        <MarketplaceDraftQualityQcPanel
-          state={props.state.creativeQc as any}
-          onStart={props.onStartCreativeQc}
-          onRepair={props.onRepairCreativeQc}
-          onSelectRepair={props.onSelectCreativeQcRepair}
-          starting={props.creativeQcStarting}
-          repairing={props.creativeQcRepairing}
-          error={props.creativeQcError ?? props.creativeQcRepairError}
-          locale={props.state.languagePlan?.summaryLanguage ?? "th"}
-        />
-      ) : null}
-      {props.state ? (
-        <>
-          {props.state.outputMode === "full_video" ? (
+          {props.state?.outputMode === "full_video" ? (
             <Banner
               data-testid="staged-final-render-action"
               aria-label="รวมทุกช็อตเป็นวิดีโอเดียว"
@@ -2043,6 +1999,51 @@ export function StagedCheckpointReviewPanel(props: {
               }
             />
           ) : null}
+      {props.loading ? (
+        <p className="mt-3 text-sm text-slate-600" role="status">
+          กำลังโหลด checkpoint…
+        </p>
+      ) : null}
+      {props.error ? (
+        <p className="mt-3 text-sm text-red-700" role="alert">
+          {props.error}
+        </p>
+      ) : null}
+      {props.notice ? (
+        <p className="mt-3 text-sm text-sky-800" role="status">
+          {props.notice}
+        </p>
+      ) : null}
+      {activeWorkerOperation ? (
+        <p className="mt-3 text-sm text-sky-800" role="status">
+          {workerOperationLabels[activeWorkerOperation.operation] ?? "งาน Auto Review"} กำลังทำงานเบื้องหลัง
+          {activeWorkerOperation.status === "queued" || activeWorkerOperation.status === "pending"
+            ? " (รอคิว Worker)"
+            : ""}
+          {activeWorkerOperation.progress !== null && activeWorkerOperation.progress !== undefined
+            ? ` · ${Math.round(activeWorkerOperation.progress)}%`
+            : ""}
+        </p>
+      ) : failedWorkerOperation ? (
+        <p className="mt-3 text-sm text-amber-800" role="status">
+          {workerOperationLabels[failedWorkerOperation.operation] ?? "งาน Auto Review"} ทำงานไม่สำเร็จใน Worker — กดสั่งรายการเดิมอีกครั้งเพื่อ retry
+        </p>
+      ) : null}
+      {props.state?.creativeQc && props.onStartCreativeQc ? (
+        <MarketplaceDraftQualityQcPanel
+          state={props.state.creativeQc as any}
+          onStart={props.onStartCreativeQc}
+          onRepair={props.onRepairCreativeQc}
+          onSelectRepair={props.onSelectCreativeQcRepair}
+          starting={props.creativeQcStarting}
+          repairing={props.creativeQcRepairing}
+          error={props.creativeQcError ?? props.creativeQcRepairError}
+          locale={props.state.languagePlan?.summaryLanguage ?? "th"}
+        />
+      ) : null}
+      {props.state ? (
+        <>
+
           <div
             className="mt-4 rounded-xl border border-slate-200 bg-slate-950 p-3 text-white shadow-sm"
             aria-label="ความคืบหน้า checkpoint"

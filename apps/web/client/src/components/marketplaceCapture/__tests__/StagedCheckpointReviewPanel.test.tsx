@@ -2211,9 +2211,16 @@ describe("Marketplace final video combine action", () => {
 
   it("shows and enables the combine action when all 9 approved shot videos exist without finalRender state", () => {
     const input = completedVideoState(9);
+    input.loading = true;
     render(<StagedCheckpointReviewPanel {...input} />);
 
-    expect(screen.getByTestId("staged-final-render-action")).toBeTruthy();
+    const actionBanner = screen.getByTestId("staged-final-render-action");
+    const loadingMessage = screen.getByText("กำลังโหลด checkpoint…");
+    expect(
+      (actionBanner.compareDocumentPosition(loadingMessage) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0
+    ).toBe(true);
     const button = screen.getByRole("button", {
       name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
     });

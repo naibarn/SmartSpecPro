@@ -812,6 +812,8 @@ export interface SubmitStagedRemotionFinalRenderInput {
   runId: string;
   tenantId: string;
   planRevision: number;
+  /** Monotonically increasing render retry identity for this run/plan. */
+  renderAttempt?: number;
   requestedByUserId?: number | null;
   isAdminRequester?: boolean;
   /** Ordered 1:1 with `shots` (index `i` is shot `shots[i]`'s approved clip
@@ -1011,6 +1013,16 @@ export async function submitStagedRemotionFinalRender(
 
   const traceId = `staged-final-render:${input.runId}:r${input.planRevision}`;
   const videoProjectId = `mar-final:${input.runId}`;
+  const renderAttempt = input.renderAttempt ?? 1;
+  if (!Number.isSafeInteger(renderAttempt) || renderAttempt < 1) {
+    throw new StagedRemotionRenderError(
+      "render_attempt_invalid",
+      "Staged final render attempt must be a positive safe integer",
+    );
+  }
+  const attemptTraceId = `${traceId}:a${renderAttempt}`;
+  const idempotencyKey =
+    `marketplace-staged-remotion-final:${input.runId}:r${input.planRevision}:a${renderAttempt}`;
   const remotionTemplateHash = createHash("sha256").update(JSON.stringify(template)).digest("hex");
 
   const workerInput: RemotionRenderVideoWorkerInput = {
@@ -1020,7 +1032,7 @@ export async function submitStagedRemotionFinalRender(
     rendererPolicyVersion: REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
     videoProjectId,
     projectRevision: Math.max(1, input.planRevision),
-    traceId,
+    traceId: attemptTraceId,
     renderProfile: {
       profile: "final",
       width: template.width,
@@ -1044,6 +1056,7 @@ export async function submitStagedRemotionFinalRender(
 
   const { created, job } = await queueJob({
     ...workerInput,
+    idempotencyKey,
     tenantId: input.tenantId,
     requestedByUserId: input.requestedByUserId ?? undefined,
     isAdminRequester: input.isAdminRequester ?? false,

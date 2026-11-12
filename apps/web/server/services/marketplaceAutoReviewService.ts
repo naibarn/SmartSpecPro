@@ -36485,16 +36485,41 @@ export async function submitStagedAutoReviewFinalRender(input: {
       message: "staged_render_not_full_video",
     });
   }
-  const metadata = asRecord(run.metadataJson) as RunMetadata;
-  // Idempotency: an already-queued Remotion job for this run is returned
-  // as-is rather than queuing (and reserving credits for) a second one, so a
-  // double click cannot double-spend.
-  const existingJobId =
-    cleanText((metadata as Record<string, unknown>).renderJobId) ||
-    cleanText(run.renderJobId);
-  if (existingJobId) {
-    return { jobId: existingJobId, created: false };
+  let metadata = asRecord(run.metadataJson) as RunMetadata;
+  // A live render remains idempotent. Terminal failures are immutable worker
+  // rows, so clear only those stale references and give the next submit a new
+  // render-attempt identity.
+  const existingJobIds = uniqRefs([
+    cleanText((metadata as Record<string, unknown>).renderJobId),
+    cleanText(run.renderJobId),
+  ]);
+  let staleRenderReferenceFound = false;
+  for (const existingJobId of existingJobIds) {
+    const [existingJob] = await db
+      .select({ id: workerJobs.id, status: workerJobs.status })
+      .from(workerJobs)
+      .where(eq(workerJobs.id, existingJobId))
+      .limit(1);
+    if (
+      existingJob &&
+      !["failed", "canceled", "expired"].includes(existingJob.status)
+    ) {
+      return { jobId: existingJobId, created: false };
+    }
+    staleRenderReferenceFound = true;
   }
+  if (staleRenderReferenceFound) {
+    metadata = withUpdatedCreditSummary(
+      clearStagedRenderRefsFromMetadataForTest(metadata)
+    );
+    await updateRun({
+      db,
+      runId: run.id,
+      renderJobId: null,
+      metadataJson: metadata,
+    });
+  }
+  const renderAttempt = Math.max(0, toNumber(metadata.stagedRenderAttempt)) + 1;
   const renderManifest = stagedRemotionFinalRenderManifest(metadata);
   const settings = readStagedFinalRenderSettings(metadata);
   // The AI-disclosure decision is made HERE, at submit time, by the person
@@ -36556,6 +36581,7 @@ export async function submitStagedAutoReviewFinalRender(input: {
       runId: run.id,
       tenantId,
       planRevision: renderManifest.planRevision,
+      renderAttempt,
       requestedByUserId: input.auth.userId,
       videoClipUrls: renderManifest.videoClipUrls,
       shots: renderManifest.shots,
@@ -36587,6 +36613,7 @@ export async function submitStagedAutoReviewFinalRender(input: {
     metadataJson: withUpdatedCreditSummary({
       ...metadata,
       ...disclosureMetadata,
+      stagedRenderAttempt: renderAttempt,
       videoClipUrls: renderManifest.videoClipUrls,
       videoUnitIds: renderManifest.videoUnitIds,
       renderJobId: submitted.jobId,
