@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `31`
-- Updated (UTC): `2026-11-12T03:09:13.569045+00:00`
+- State generation: `34`
+- Updated (UTC): `2026-11-12T07:59:09.160042+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `48257d96ae5c05fcc44f036b461982eb0c7df1ff`
+- Latest recorded merged Main SHA: `651e7f6ec7f8f85a77c84eff81de02acc0f95f4f`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-07-chat-job-status-ui-and-runtime-proof`
-- Next action: After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.
+- Next action: Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission.
 
 ## Sections
 
@@ -23,17 +23,17 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-04-worker-proof-and-handoff | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | The ten-pass Section 04 review is complete at source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL; before high-volume production, define a matched Legacy/Core speed objective and establish bounded expired session-JTI cleanup. |
 | section-05-chat-canonical-job-and-queue-admission | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Core chat admission, canonical worker_jobs/outbox migrations 0424/0425 and legacy publisher isolation are integrated. DB verification is READY and lane postconditions pass. Continue provider admission and local Queue delivery proof. |
 | section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | Wire the scoped enabled-model catalog and worker provider lookup into chat; add atomic credit reserve and actual-usage USD settlement through the canonical worker job; keep provider ambiguity terminal and expose actionable credit/job state. |
-| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | f64b9fa0b8575740aaafa24f69c9ee6fdca46d89 | 48257d96ae5c05fcc44f036b461982eb0c7df1ff | After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence. |
+| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
 - Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.
-- Chat UI main chunk is 536.44 KB (163.20 KB gzip), above Vite’s 500 KB warning; consider splitting the Chat module while preserving its standalone build.
 - No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.
-- Authenticated Chat response/history/responsive UAT has not been observed on this release.
 - Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.
 - Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.
 - Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made.
+- Authenticated browser UAT at desktop, tablet, and mobile sizes remains unobserved on release 651e7f6; public/local health and static asset smoke do not prove visual interaction.
+- Image and file pickers select files but the Chat API has no upload contract yet; submission stays blocked with an explicit warning.
 
 ## Resume
 

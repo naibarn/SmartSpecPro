@@ -1,5 +1,5 @@
 {
-  "generation": 16,
+  "generation": 17,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -618,25 +618,25 @@
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L216",
       "blocker": null,
-      "current_relevance": "RELEVANT",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PASS",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; The modular replacement is healthy on aimarkethubs.com after intentional target handover; the release controller retained smartspec-dev-web.service on port 3100 and a tunnel/systemd rollback snapshot. Production target remains inactive.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; Modular replacement is healthy on aimarkethubs.com, the prior port-3100 service and rollback snapshot are preserved, and smartaihub.app/smartsihub.com remain on separate targets.",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Keep smartaihub.app on its legacy runtime and leave smartsihub.com inactive until its separate production release path is explicitly authorized.",
+      "next_action": "Keep smartaihub.app on the legacy runtime and leave smartsihub.com inactive until its separate production release authority is provisioned.",
       "requirement_digest": "2adcdd822fa2a4b4e348eb9be882f2080b96e1f8190b90fe36a960b170b91d33",
       "requirement_id": "REQ-61DD767ED6C7",
       "requirement_text": "- Implementations MUST preserve current target readiness: `aimarkethubs.com` remains unavailable for Modular traffic until its replacement is healthy, and the current port-3100 service remains in place until intentional handover. `smartsihub.com` remains inactive until its separate production release authority is provisioned. This clarification authorizes no runtime, database, DNS or production change by itself.",
       "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Verified exact deployment target map, release manifest source SHA, local/public health, preserved rollback service/port and inactive production target. See deployment evidence."
+      "verification_method": "Verified exact deployment target map, release manifest source SHA, local/public health, preserved port-3100 rollback and inactive production target."
     },
     {
       "applicability": "APPLICABLE",
@@ -947,48 +947,78 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L244"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L244",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": {
+        "class": "HUMAN_UAT_PENDING",
+        "description": "Authenticated browser review remains pending; the current Chat API does not accept uploaded files.",
+        "next_action": "Complete authenticated desktop/tablet/mobile UAT and add a validated upload contract before enabling file submission."
+      },
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+        "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
+        "smartaihub-platform/modules/chat/src/ui/main.tsx",
+        "smartaihub-platform/modules/chat/src/ui/styles.css",
+        "smartaihub-platform/modules/chat/vite.config.ts",
+        "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
+        "smartaihub-platform/apps/saas-shell/src/modules/chatModuleLoader.ts",
+        "smartaihub-platform/packages/saas-contracts/src/index.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete an authenticated queued Chat turn and verify model metadata, job status, usage/credit result and persisted history on release 651e7f6.",
       "requirement_digest": "078878febf705e6a22013b03a984ef9f45a4704dd617ab5c1d7b6766599ef3db",
       "requirement_id": "REQ-98B30E4A4A11",
       "requirement_text": "- The user-facing Chat SHALL show Auto and the enabled model choices, preserve the selected model for the current workspace/session, poll the canonical job status, and explain insufficient credits, provider limits and held credits in safe user-facing language. A delivered assistant message SHALL include its final model, token usage, credit debit and one-line timestamp/model metadata where available.",
       "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Package typechecks, focused Chat and Shell tests, exact-source Core/Shell/Chat builds, release-controller smoke and reachable asset fetch. Authenticated browser UAT remains pending."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L245"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L245",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": {
+        "class": "HUMAN_UAT_PENDING",
+        "description": "Authenticated browser review remains pending; the current Chat API does not accept uploaded files.",
+        "next_action": "Complete authenticated desktop/tablet/mobile UAT and add a validated upload contract before enabling file submission."
+      },
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+        "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
+        "smartaihub-platform/modules/chat/src/ui/main.tsx",
+        "smartaihub-platform/modules/chat/src/ui/styles.css",
+        "smartaihub-platform/modules/chat/vite.config.ts",
+        "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
+        "smartaihub-platform/apps/saas-shell/src/modules/chatModuleLoader.ts",
+        "smartaihub-platform/packages/saas-contracts/src/index.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete remaining authenticated paid/free and responsive acceptance cases; keep this release dev-only and leave smartaihub.app and smartsihub.com untouched.",
       "requirement_digest": "3e878fdfad0ae29ba9e85a004a5acd94ea3719616534c1a62592cf2138c4f336",
       "requirement_id": "REQ-272D8958200D",
       "requirement_text": "- Acceptance SHALL include tests for enabled-versus-disabled mappings, paid and free dispatch, live quote changes, provider-specific free quota isolation, insufficient-credit no-dispatch, exact USD settlement, unused-credit refund, 429 cooldown/retry, definitive rejection refund, ambiguous no-retry/held-credit visibility, responsive desktop/tablet/mobile behavior, and authenticated `aimarkethubs.com` UAT. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.",
       "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Package typechecks, focused Chat and Shell tests, exact-source Core/Shell/Chat builds, release-controller smoke and reachable asset fetch. Authenticated browser UAT remains pending."
     }
   ],
   "schema_version": 1,

@@ -55,9 +55,9 @@
     },
     "section-07-chat-job-status-ui-and-runtime-proof": {
       "status": "checkpointed",
-      "next_action": "After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.",
-      "checkpoint_sha": "f64b9fa0b8575740aaafa24f69c9ee6fdca46d89",
-      "merged_main_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff"
+      "next_action": "Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission.",
+      "checkpoint_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f"
     }
   },
   "pre_commit": {
@@ -69,20 +69,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 31,
-  "updated_at": "2026-11-12T03:09:13.569045+00:00",
+  "generation": 34,
+  "updated_at": "2026-11-12T07:59:09.160042+00:00",
   "progress": {
     "active_section": "section-07-chat-job-status-ui-and-runtime-proof",
-    "next_action": "After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.",
-    "merged_main_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+    "next_action": "Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission.",
+    "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
-      "Chat UI main chunk is 536.44 KB (163.20 KB gzip), above Vite’s 500 KB warning; consider splitting the Chat module while preserving its standalone build.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
-      "Authenticated Chat response/history/responsive UAT has not been observed on this release.",
       "Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.",
       "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
-      "Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made."
+      "Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made.",
+      "Authenticated browser UAT at desktop, tablet, and mobile sizes remains unobserved on release 651e7f6; public/local health and static asset smoke do not prove visual interaction.",
+      "Image and file pickers select files but the Chat API has no upload contract yet; submission stays blocked with an explicit warning."
     ]
   }
 }
