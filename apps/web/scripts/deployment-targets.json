@@ -53,11 +53,11 @@
         "activeService": "smartsihub-shell-dev.service",
         "activePort": 3202,
         "tunnelService": "smartspec-dev-tunnel.service",
-        "rollbackConfig": "/home/dev/modular-development-releases/modular-debian-dev-d6dd45fef6b0e11580eec1cced516cd693888c56-message-details/rollback/cloudflared.pre-modular.yml"
+        "rollbackConfig": "/home/dev/modular-development-releases/modular-debian-dev-243c416cb26e6ef93826234dd6f47785095e43df-pending-status/rollback/cloudflared.pre-modular.yml"
       },
       "controller": "modular-debian-dev-release",
-      "currentRelease": "modular-debian-dev-d6dd45fef6b0e11580eec1cced516cd693888c56-message-details",
-      "releaseReceipt": "/home/dev/modular-development-releases/modular-debian-dev-d6dd45fef6b0e11580eec1cced516cd693888c56-message-details/release-manifest.json",
+      "currentRelease": "modular-debian-dev-243c416cb26e6ef93826234dd6f47785095e43df-pending-status",
+      "releaseReceipt": "/home/dev/modular-development-releases/modular-debian-dev-243c416cb26e6ef93826234dd6f47785095e43df-pending-status/release-manifest.json",
       "components": {
         "core": {
           "service": "smartsihub-core-dev.service",
