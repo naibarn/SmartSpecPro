@@ -49,15 +49,15 @@
     },
     "section-06-provider-admission-and-queue-consumer": {
       "status": "checkpointed",
-      "next_action": "ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.",
+      "next_action": "Wire the scoped enabled-model catalog and worker provider lookup into chat; add atomic credit reserve and actual-usage USD settlement through the canonical worker job; keep provider ambiguity terminal and expose actionable credit/job state.",
       "checkpoint_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
       "merged_main_sha": "78018b7a50c05234071e31f6b1361a70440915a3"
     },
     "section-07-chat-job-status-ui-and-runtime-proof": {
       "status": "checkpointed",
-      "next_action": "Exact source ba37ee is deployed and public probes pass on aimarkethubs.com. Complete authenticated provider response/history/responsive UAT, local Queue delivery/redelivery and Durable Object contention/restart proof, plus a matched throughput benchmark before closing acceptance.",
-      "checkpoint_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
-      "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5"
+      "next_action": "After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.",
+      "checkpoint_sha": "f64b9fa0b8575740aaafa24f69c9ee6fdca46d89",
+      "merged_main_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff"
     }
   },
   "pre_commit": {
@@ -69,19 +69,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 28,
-  "updated_at": "2026-11-11T13:58:43.399422+00:00",
+  "generation": 31,
+  "updated_at": "2026-11-12T03:09:13.569045+00:00",
   "progress": {
-    "active_section": "section-06-provider-admission-and-queue-consumer",
-    "next_action": "ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.",
-    "merged_main_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
+    "active_section": "section-07-chat-job-status-ui-and-runtime-proof",
+    "next_action": "After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.",
+    "merged_main_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "Chat UI main chunk is 536.44 KB (163.20 KB gzip), above Vite’s 500 KB warning; consider splitting the Chat module while preserving its standalone build.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
       "Authenticated Chat response/history/responsive UAT has not been observed on this release.",
       "Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.",
-      "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive."
+      "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
+      "Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made."
     ]
   }
 }

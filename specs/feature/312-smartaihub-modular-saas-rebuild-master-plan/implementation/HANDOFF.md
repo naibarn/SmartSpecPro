@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `28`
-- Updated (UTC): `2026-11-11T13:58:43.399422+00:00`
+- State generation: `31`
+- Updated (UTC): `2026-11-12T03:09:13.569045+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `78018b7a50c05234071e31f6b1361a70440915a3`
+- Latest recorded merged Main SHA: `48257d96ae5c05fcc44f036b461982eb0c7df1ff`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-06-provider-admission-and-queue-consumer`
-- Next action: ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance.
+- Active section: `section-07-chat-job-status-ui-and-runtime-proof`
+- Next action: After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence.
 
 ## Sections
 
@@ -22,8 +22,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-session-membership-routes | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | Section 03 remains integrated at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Its final ten-pass cross-cutting review is recorded under section 04; retain the latency benchmark and expired session-JTI cleanup as explicit pre-handover/production gaps. |
 | section-04-worker-proof-and-handoff | checkpointed | — | — | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739 | The ten-pass Section 04 review is complete at source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL; before high-volume production, define a matched Legacy/Core speed objective and establish bounded expired session-JTI cleanup. |
 | section-05-chat-canonical-job-and-queue-admission | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Core chat admission, canonical worker_jobs/outbox migrations 0424/0425 and legacy publisher isolation are integrated. DB verification is READY and lane postconditions pass. Continue provider admission and local Queue delivery proof. |
-| section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | ProviderControlDO account-wide admission and serialized rate/cooldown/concurrency regression coverage are integrated at source main 78018b7a50c05234071e31f6b1361a70440915a3. Deployed aimarkethubs.com still serves ba37ee16658a36ecb907580e3fb582c10072c9e5; prove local Workerd Queue redelivery, DO restart persistence and matched throughput before acceptance. |
-| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | ba37ee16658a36ecb907580e3fb582c10072c9e5 | ba37ee16658a36ecb907580e3fb582c10072c9e5 | Exact source ba37ee is deployed and public probes pass on aimarkethubs.com. Complete authenticated provider response/history/responsive UAT, local Queue delivery/redelivery and Durable Object contention/restart proof, plus a matched throughput benchmark before closing acceptance. |
+| section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | Wire the scoped enabled-model catalog and worker provider lookup into chat; add atomic credit reserve and actual-usage USD settlement through the canonical worker job; keep provider ambiguity terminal and expose actionable credit/job state. |
+| section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | f64b9fa0b8575740aaafa24f69c9ee6fdca46d89 | 48257d96ae5c05fcc44f036b461982eb0c7df1ff | After the user updates the private local UAT credential through the normal login/reset process, run one controlled paid-model chat on aimarkethubs.com; verify Queue completion, response/history, exact 10,000-credits/USD ledger delta, and desktop/tablet/mobile interaction. Then prove local Queue redelivery and Durable Object restart persistence. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -33,6 +33,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Authenticated Chat response/history/responsive UAT has not been observed on this release.
 - Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.
 - Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.
+- Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made.
 
 ## Resume
 
