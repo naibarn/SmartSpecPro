@@ -259,8 +259,8 @@ function isStagedCheckpointRetryable(
 }
 
 /**
- * Only the current, non-superseded story plan may authorize paid media work.
- * `planReview.status` is kept as a legacy summary; it must not override a
+ * Prompt authoring requires approval of the current story plan.
+ * `planReview.status` is a legacy summary and cannot override a
  * newer story checkpoint that returned to `awaiting` after a shot/story edit.
  */
 function assertStagedStoryPlanApproved(metadata: ReturnType<typeof parseStagedMetadata>) {
@@ -288,6 +288,27 @@ function assertStagedStoryPlanApproved(metadata: ReturnType<typeof parseStagedMe
 export function assertStagedStoryPlanApprovedForTest(metadata: unknown) {
   assertStagedStoryPlanApproved(
     StagedSequentialStoryboardMetadataV1Schema.parse(metadata)
+  );
+}
+
+function assertStoryPlanApprovedForPromptRefresh(
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  // Saved prompts are ready for media generation; only authoring a replacement
+  // prompt depends on confirmation of the latest story revision.
+  if (targets.some(target => target.refreshPrompt)) {
+    assertStagedStoryPlanApproved(metadata);
+  }
+}
+
+export function assertStoryPlanApprovedForPromptRefreshForTest(
+  metadata: unknown,
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  assertStoryPlanApprovedForPromptRefresh(
+    metadata as ReturnType<typeof parseStagedMetadata>,
+    targets
   );
 }
 
@@ -1149,6 +1170,7 @@ async function mutateOwnedStagedMetadata(input: {
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
   queueAdvance?: boolean;
+  targetShotIds?: number[];
   terminalImageDispatchTargets?: StagedAutoReviewGenerationTarget[];
   terminalVideoPromptTargets?: Array<{
     shotId: number;
@@ -1298,13 +1320,15 @@ async function mutateOwnedStagedMetadata(input: {
             operation: "advance_run",
             runId: run.id,
             operationId,
-            ...(input.terminalImageDispatchTargets
-              ? {
-                  targetShotIds: input.terminalImageDispatchTargets.map(
-                    target => target.shotId
-                  ),
-                }
-              : {}),
+            ...(input.targetShotIds
+              ? { targetShotIds: input.targetShotIds }
+              : input.terminalImageDispatchTargets
+                ? {
+                    targetShotIds: input.terminalImageDispatchTargets.map(
+                      target => target.shotId
+                    ),
+                  }
+                : {}),
           },
           idempotencyKey: input.idempotencyKey,
           priority: 40,
@@ -1362,7 +1386,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
   if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
-  assertStagedStoryPlanApproved(metadata);
+  assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
   const seenShots = new Set<number>();
   for (const target of input.targets) {
     if (seenShots.has(target.shotId)) {
@@ -1485,7 +1509,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   const metadata = parseStagedMetadata(run);
   assertSavedImagePromptsAvailable(metadata, input.targets);
   assertStagedBulkGenerationAllowed(run, metadata, input.targets);
-  assertStagedStoryPlanApproved(metadata);
+  assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
   const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
   const requestHash = createHash("sha256")
     .update(input.requestIdempotencyKey)
@@ -1613,6 +1637,9 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     idempotencyKey: applyIdempotencyKey,
     auth: input.auth,
     queueAdvance: input.targets.some(target => !target.promptOnly),
+    targetShotIds: input.targets
+      .filter(target => !target.promptOnly)
+      .map(target => target.shotId),
     ...(terminalImageDispatchTargets
       ? { terminalImageDispatchTargets }
       : {}),
@@ -3572,12 +3599,8 @@ export async function retryStagedAutoReviewShot(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
+    targetShotIds: [input.shotId],
     mutate(metadata, operationId) {
-      // Image/video dispatch advances through the staged run worker. Without
-      // this guard an unapproved current story revision only produced a
-      // successful no-op `advance_run` job, leaving the prompt checkpoint
-      // looking approved while no provider task or artifact existed.
-      assertStagedStoryPlanApproved(metadata);
       const shot = metadata.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId
       );

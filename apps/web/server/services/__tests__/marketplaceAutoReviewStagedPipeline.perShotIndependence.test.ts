@@ -24,6 +24,7 @@ import {
   buildStagedStoryArcPlan,
 } from "../marketplaceAutoReviewStoryArcPlanner";
 import { compileStagedImagePrompt } from "../marketplaceAutoReviewStagedPromptCompiler";
+import { buildStagedImagePromptContentHash } from "../marketplaceAutoReviewStagedPromptCompiler";
 import { transitionStagedCheckpoint } from "../marketplaceAutoReviewStagedCheckpointService";
 import {
   marketplaceAutoReviewRuns,
@@ -511,5 +512,164 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
         ([taskId]: [string]) => taskId === "provider-video-task-shot1-dead"
       )
     ).toHaveLength(failedVideoPollsBeforeNextPass);
+  });
+
+  it("dispatches a saved prompt with a pending story revision, then polls the same task without resubmitting", async () => {
+    const runId = "run-saved-prompt-pending-story";
+    const plan = {
+      planRevision: 1,
+      title: "Story saved prompt regression",
+      storySummary: "A saved prompt remains dispatchable.",
+      product: {
+        productId: "product-1",
+        productName: "แก้วน้ำตัวอย่าง",
+        description: "สินค้าสำหรับทดสอบ saved prompt dispatch",
+        imageUrls: ["https://example.test/product.png"],
+      },
+      shots: [
+        {
+          shotId: 1,
+          title: "Demonstrate the product",
+          storySummary: "Show the product in use.",
+          dialogue: "",
+          durationSeconds: 10,
+        },
+      ],
+      referenceManifestHash: "refs-saved-prompt-pending-story",
+      storyPlanHash: "story-hash-saved-prompt-pending-story",
+      source: "llm_story_arc" as const,
+      authoring: { model: "test-model", provider: "test-provider", creditsUsed: 0 },
+    };
+    const shot = plan.shots[0];
+    const prompt = "Approved saved image prompt for this shot.";
+    const promptHash = buildStagedImagePromptContentHash({
+      revision: plan.planRevision,
+      shotId: shot.shotId,
+      prompt,
+      referenceManifestHash: plan.referenceManifestHash,
+    });
+    const storyCheckpoint = buildStagedCheckpoint({
+      checkpointId: `story-plan:${runId}:r${plan.planRevision}`,
+      kind: "story_plan",
+      revision: plan.planRevision,
+      contentHash: plan.storyPlanHash,
+      model: "user-edit",
+      provider: "user",
+      estimatedCredits: 0,
+      referenceManifestHash: plan.referenceManifestHash,
+    });
+    const imagePromptCheckpoint = buildStagedCheckpoint({
+      checkpointId: `image-prompt:${runId}:shot-${shot.shotId}:r${plan.planRevision}`,
+      kind: "image_prompt",
+      shotId: shot.shotId,
+      revision: plan.planRevision,
+      contentHash: promptHash,
+      model: "google-banana-2",
+      provider: "media-provider",
+      estimatedCredits: 5,
+      referenceManifestHash: plan.referenceManifestHash,
+      autoApprove: { userId: 42 },
+      mediaDispatchIntent: { requestedByUserId: 42 },
+    });
+    const metadata = {
+      productImageUrls: ["https://example.test/product.png"],
+      customReferenceManifest: [
+        {
+          role: "primary_product",
+          label: "product",
+          url: "https://smartaihub.app/api/storage/files/tenant-1/product.webp",
+          active: true,
+        },
+      ],
+      planningArchitecture: "staged_two_skill_v2" as const,
+      planningArchitectureVersion: 1 as const,
+      humanApprovalPolicy: "all_checkpoints_required" as const,
+      planReview: {
+        required: true as const,
+        status: "awaiting" as const,
+        planRevision: plan.planRevision,
+        approvedRevision: null,
+        redraftCount: 0,
+        lastOperationId: null,
+      },
+      stagedSequentialStoryboard: {
+        storyPlanStatus: "awaiting" as const,
+        planRevision: plan.planRevision,
+        storyPlanHash: plan.storyPlanHash,
+        referenceManifestHash: plan.referenceManifestHash,
+        shots: [
+          {
+            shotId: shot.shotId,
+            revision: plan.planRevision,
+            state: "image_prompt_awaiting",
+            storySummary: shot.storySummary,
+            dialogue: shot.dialogue,
+            imagePromptHash: promptHash,
+            imagePrompt: prompt,
+            imageArtifactHash: null,
+            imageArtifactUrl: null,
+            videoPromptHash: null,
+            videoArtifactHash: null,
+          },
+        ],
+        reviewCheckpoints: [storyCheckpoint, imagePromptCheckpoint],
+      },
+      stagedPipeline: {
+        plan,
+        planView: buildStagedPlanView(plan),
+        tasks: {},
+        audioPlan: null,
+        finalAssembly: null,
+      },
+    };
+    const initialRun = {
+      id: runId,
+      userId: 42,
+      tenantId: "tenant-1",
+      productId: "product-1",
+      outputMode: "storyboard_images",
+      status: "running",
+      currentStage: "image_generation",
+      stageIndex: 5,
+      resultJson: {},
+      completedAt: null,
+      metadataJson: metadata,
+    };
+    const { db, getRunRow } = makeFakeDb(initialRun);
+    const auth = { userId: 42, tenantId: "tenant-1" };
+    const runtime = { userToken: "internal", publicUrl: "https://app.test" };
+
+    await advanceStagedMarketplaceAutoReviewRun({
+      db,
+      run: initialRun as any,
+      auth,
+      runtime,
+      targetShotIds: [shot.shotId],
+    });
+
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(1);
+    expect(
+      getRunRow().metadataJson.stagedPipeline.tasks[`image:${shot.shotId}`]
+        ?.taskId
+    ).toBe("provider-task-shot2");
+
+    (mediaGenerationService.getTask as any).mockResolvedValue({
+      id: "provider-task-shot2",
+      status: "processing",
+    });
+    await advanceStagedMarketplaceAutoReviewRun({
+      db,
+      run: getRunRow() as any,
+      auth,
+      runtime,
+      targetShotIds: [shot.shotId],
+    });
+
+    expect(mediaGenerationService.getTask).toHaveBeenCalledWith(
+      "provider-task-shot2",
+      expect.any(String),
+      expect.objectContaining({ stage: "image_generation" })
+    );
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(1);
   });
 });

@@ -110,6 +110,13 @@ function formatJobType(jobType: string): string {
   return JOB_TYPE_LABELS[jobType] ?? jobType;
 }
 
+function formatWorkerJobTitle(job: {
+  jobType: string;
+  purposeLabel?: string | null;
+}): string {
+  return job.purposeLabel || formatJobType(job.jobType);
+}
+
 function formatSpecId(specId: string): string {
   const number = /^(?:SPEC-)?(\d+)(?:-|$)/i.exec(specId)?.[1];
   return number ? `SPEC-${number}` : specId;
@@ -587,7 +594,7 @@ export default function RenderJobsPage() {
                             }}
                           >
                             <TableCell>
-                              <div className="font-medium">{formatJobType(job.jobType)}</div>
+                              <div className="font-medium" title={job.purposeLabel ?? undefined}>{formatWorkerJobTitle(job)}</div>
                               {job.contextLabel ? (
                                 <div className="max-w-72 truncate text-xs text-slate-600" title={job.contextLabel}>
                                   {job.contextLabel}
@@ -660,7 +667,7 @@ export default function RenderJobsPage() {
                         aria-pressed={selectedJob === job.id}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="truncate font-medium">{formatJobType(job.jobType)}</span>
+                          <span className="truncate font-medium" title={job.purposeLabel ?? undefined}>{formatWorkerJobTitle(job)}</span>
                           <JobStatusBadge status={job.status} job={job} />
                         </div>
                         {job.contextLabel ? <div className="mb-1 line-clamp-2 text-xs text-slate-600">{job.contextLabel}</div> : null}
@@ -701,7 +708,7 @@ export default function RenderJobsPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
+                        <div className="truncate font-medium text-white" title={detailQuery.data.purposeLabel ?? undefined}>{formatWorkerJobTitle(detailQuery.data)}</div>
                         {detailQuery.data.contextLabel ? <div className="line-clamp-3 text-xs text-slate-300">{detailQuery.data.contextLabel}</div> : null}
                         {formatRequestedSpec(detailQuery.data.requestedSpec, Boolean(detailQuery.data.workPackageExternalId || detailQuery.data.specSources?.length)) ? <p className="text-xs text-cyan-200">{formatRequestedSpec(detailQuery.data.requestedSpec, Boolean(detailQuery.data.workPackageExternalId || detailQuery.data.specSources?.length))}</p> : null}
                         {formatWorkPackageSources(detailQuery.data) ? <p className="text-xs text-slate-300">{formatWorkPackageSources(detailQuery.data)}</p> : null}

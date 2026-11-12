@@ -2580,12 +2580,15 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     params.targetShotIds
   );
   const storyCheckpoint = checkpointFor(metadata, "story_plan");
-  if (
+  const storyPlanNeedsReview =
     !storyCheckpoint ||
     storyCheckpoint.state === "awaiting" ||
     storyCheckpoint.state === "rejected" ||
-    storyCheckpoint.state === "superseded"
-  ) {
+    storyCheckpoint.state === "superseded";
+  // A targeted advance is an explicit dispatch or a poll for an existing task.
+  // Dispatch still requires mediaDispatchIntent; polling reconciles its taskId
+  // first, so a poll cannot submit duplicate media.
+  if (storyPlanNeedsReview && params.targetShotIds === undefined) {
     const advanceAnchors = record(record(params.run.metadataJson).referenceAnchors);
     const advanceAdherence = assessStagedPlanAdherence(plan, {
       storytellingStructure:

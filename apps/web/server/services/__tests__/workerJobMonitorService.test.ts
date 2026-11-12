@@ -172,6 +172,110 @@ describe("workerJobMonitorService", () => {
     expect(detail.events).toHaveLength(3);
   });
 
+  it("shows the exact skills and shot for Marketplace video prompt jobs", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([
+        {
+          id: "job-marketplace-video-prompt",
+          tenantId: "tenant-1",
+          workerId: null,
+          runtimeType: "external_runtime",
+          workflowRunId: null,
+          requestedByUserId: 7,
+          jobType: "marketplace.auto_review.execute",
+          inputJson: {
+            operation: "staged_prompt_generation",
+            stage: "video",
+            shotId: 5,
+          },
+          status: "queued",
+          statusReason: null,
+          resourceProfile: "long_running",
+          outputJson: {},
+          failureReason: null,
+          createdAt,
+          startedAt: null,
+          finishedAt: null,
+          worker: null,
+        },
+      ]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const page = await listUserWorkerJobs(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(page.items[0]?.purposeLabel).toContain("ตรวจจับบุคคลในภาพ");
+    expect(page.items[0]?.purposeLabel).toContain("สร้าง Prompt วิดีโอ");
+    expect(page.items[0]?.purposeLabel).toContain("Shot 5");
+  });
+
+  it("labels scheduled staged provider polls as status checks, not new generation jobs", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([
+        {
+          id: "job-marketplace-provider-poll",
+          tenantId: "tenant-1",
+          workerId: null,
+          runtimeType: "node_job_worker",
+          workflowRunId: null,
+          requestedByUserId: 7,
+          jobType: "marketplace.auto_review.execute",
+          inputJson: {
+            operation: "advance_run",
+            operationId: "staged_provider_poll:60000:1234:abc123",
+            targetShotIds: [4, 8],
+          },
+          status: "completed",
+          statusReason: null,
+          resourceProfile: "long_running",
+          outputJson: {},
+          failureReason: null,
+          createdAt,
+          startedAt: createdAt,
+          finishedAt: laterAt,
+          worker: null,
+        },
+        {
+          id: "job-marketplace-user-advance",
+          tenantId: "tenant-1",
+          workerId: null,
+          runtimeType: "node_job_worker",
+          workflowRunId: null,
+          requestedByUserId: 7,
+          jobType: "marketplace.auto_review.execute",
+          inputJson: { operation: "advance_run", runId: "mar-user-action" },
+          status: "completed",
+          statusReason: null,
+          resourceProfile: "long_running",
+          outputJson: {},
+          failureReason: null,
+          createdAt,
+          startedAt: createdAt,
+          finishedAt: laterAt,
+          worker: null,
+        },
+      ]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const page = await listUserWorkerJobs(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(page.items[0]?.purposeLabel).toBe(
+      "ตรวจสถานะงานสื่อเดิมอัตโนมัติ · Shot 4, 8 (ไม่ส่งสร้างซ้ำ)"
+    );
+    expect(page.items[1]?.purposeLabel).toBe(
+      "ตรวจสถานะและขั้นตอน Auto Review"
+    );
+  });
+
   it("projects the durable SPEC-224 stage into Task Control without inventing progress", async () => {
     const repo = createRepo({
       getUserJob: vi.fn().mockResolvedValue({

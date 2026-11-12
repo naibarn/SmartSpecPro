@@ -3177,7 +3177,7 @@ export function StagedCheckpointReviewPanel(props: {
                     </p>
                     <p className="mt-0.5 text-xs text-amber-800">
                       {imagePromptShotsCompleted > 0
-                        ? `มี Prompt ภาพแล้ว ${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต ระบบเก็บ Prompt ที่มีไว้ให้ การยืนยันนี้อนุมัติเนื้อเรื่องฉบับล่าสุดเพื่อทำงานต่อ`
+                        ? `มี Prompt ภาพแล้ว ${imagePromptShotsCompleted}/${imagePromptShotsExpected} ช็อต — ส่งสร้างภาพจาก Prompt ที่บันทึกไว้ได้เลย ไม่ต้องยืนยันซ้ำ ปุ่มนี้ใช้ยืนยันเนื้อเรื่องเมื่อต้องการสร้าง Prompt ใหม่`
                         : `กดยืนยันเพื่ออนุมัติเนื้อเรื่องฉบับนี้และเริ่มสร้าง Prompt ภาพของทุกช็อตได้เลย`}{" "}
                       การตรวจ QC เป็นทางเลือกและข้ามได้
                     </p>
@@ -3859,10 +3859,6 @@ export function StagedCheckpointReviewPanel(props: {
                               <p className="text-amber-800 font-medium" role="status">
                                 งานสร้างภาพช็อตนี้ไม่สำเร็จ กดปุ่มสร้างภาพด้านล่างเพื่อส่งใหม่
                               </p>
-                            ) : imageCheckpoint && !storyPlanApproved ? (
-                              <p className="text-amber-700 font-medium">
-                                เนื้อเรื่องฉบับล่าสุดยังรอยืนยัน — ยืนยันเนื้อเรื่องก่อนเริ่มสร้างภาพ
-                              </p>
                             ) : imageCheckpoint ? (
                               <p className="text-violet-900 font-medium">
                                 Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่างเพื่อส่งงานเข้า Worker และรอผลที่นี่
@@ -4191,7 +4187,6 @@ export function StagedCheckpointReviewPanel(props: {
                           {
                             disabled:
                               !shot.imagePrompt?.trim() ||
-                              !storyPlanApproved ||
                               isTaskInFlight(shot.imageTaskStatus) ||
                               isTaskInFlight(shot.videoTaskStatus) ||
                               isShotPromptPipelineBusy(shot.shotId),
@@ -4201,9 +4196,7 @@ export function StagedCheckpointReviewPanel(props: {
                             },
                             title: !shot.imagePrompt?.trim()
                               ? "สร้าง Prompt ภาพก่อน"
-                              : !storyPlanApproved
-                                ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
-                                : isTaskInFlight(shot.imageTaskStatus) ||
+                              : isTaskInFlight(shot.imageTaskStatus) ||
                                     isTaskInFlight(shot.videoTaskStatus)
                                   ? "รอให้งานของช็อตนี้เสร็จก่อน"
                                   : undefined,
@@ -4327,7 +4320,6 @@ export function StagedCheckpointReviewPanel(props: {
                               {
                                 disabled:
                                   !shot.videoPrompt?.trim() ||
-                                  !storyPlanApproved ||
                                   !shot.imageArtifactHash ||
                                   imageResultCheckpoint?.state !== "approved" ||
                                   isTaskInFlight(shot.imageTaskStatus) ||
@@ -4339,8 +4331,6 @@ export function StagedCheckpointReviewPanel(props: {
                                 },
                                 title: !shot.videoPrompt?.trim()
                                   ? "สร้าง Prompt วิดีโอก่อน"
-                                  : !storyPlanApproved
-                                    ? "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างวิดีโอ"
                                   : !shot.imageArtifactHash ||
                                       imageResultCheckpoint?.state !== "approved"
                                     ? "ต้องสร้างและอนุมัติภาพของช็อตนี้ก่อน"

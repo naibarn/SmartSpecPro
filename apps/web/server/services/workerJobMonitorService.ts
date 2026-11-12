@@ -336,6 +336,8 @@ export type SafeWorkerJobOrchestration = {
 export type UserWorkerJobSummary = {
   id: string;
   jobType: string;
+  /** Safe user-facing purpose derived from allowlisted Marketplace operation fields. */
+  purposeLabel: string | null;
   /** Owner-authored Goal text used to distinguish delegated development jobs. */
   contextLabel: string | null;
   goalId: string | null;
@@ -856,6 +858,70 @@ function projectProgress(row: WorkerJobRow): {
   };
 }
 
+function projectWorkerJobPurpose(row: WorkerJobRow): string | null {
+  if (row.jobType !== "marketplace.auto_review.execute") return null;
+  const input = asRecord(row.inputJson);
+  const operation = safeBoundedString(input.operation, 80);
+  const shotId = safeInteger(input.shotId, 1, 30);
+  const operationId = safeBoundedString(input.operationId, 120);
+  if (
+    operation === "advance_run" &&
+    operationId?.startsWith("staged_provider_poll:")
+  ) {
+    const targetShotIds = Array.isArray(input.targetShotIds)
+      ? input.targetShotIds
+          .slice(0, 30)
+          .map(value => safeInteger(value, 1, 30))
+          .filter((value): value is number => value !== undefined)
+      : [];
+    const shotLabel = targetShotIds.length > 0
+      ? ` · Shot ${Array.from(new Set(targetShotIds)).join(", ")}`
+      : "";
+    return `ตรวจสถานะงานสื่อเดิมอัตโนมัติ${shotLabel} (ไม่ส่งสร้างซ้ำ)`;
+  }
+  if (operation === "staged_prompt_generation" && shotId) {
+    if (input.stage === "video") {
+      return `ตรวจจับบุคคลในภาพและสร้าง Prompt วิดีโอ · Shot ${shotId}`;
+    }
+    if (input.stage === "image") {
+      return `สร้าง Prompt ภาพ · Shot ${shotId}`;
+    }
+  }
+  if (operation === "staged_bulk_generation") {
+    const targets = Array.isArray(input.targets)
+      ? input.targets.map(asRecord)
+      : [];
+    const labels = new Set<string>();
+    for (const target of targets) {
+      if (target.stage === "image" && target.promptOnly === true) {
+        labels.add("สร้าง Prompt ภาพ");
+      } else if (target.stage === "image" && target.refreshPrompt === true) {
+        labels.add("ปรับ Prompt ภาพและส่งสร้างภาพ");
+      } else if (target.stage === "image") {
+        labels.add("ส่งสร้างภาพจาก Prompt ที่บันทึกไว้");
+      } else if (target.stage === "video" && target.promptOnly === true) {
+        labels.add("ตรวจจับบุคคลในภาพและสร้าง Prompt วิดีโอ");
+      } else if (target.stage === "video" && target.refreshPrompt === true) {
+        labels.add("ปรับ Prompt วิดีโอและส่งสร้างวิดีโอ");
+      } else if (target.stage === "video") {
+        labels.add("ส่งสร้างวิดีโอจาก Prompt ที่บันทึกไว้");
+      }
+    }
+    if (labels.size === 0) return "Marketplace Auto Review · ไม่พบรายการงาน";
+    return `${Array.from(labels).join("; ")} · ${targets.length} ช็อต`;
+  }
+  if (operation === "staged_story_redraft") return "สร้างแผนเรื่อง Auto Review ใหม่";
+  if (operation === "draft_quality_qc") return "ตรวจคุณภาพ Draft Auto Review (QC)";
+  if (operation === "advance_run") return "ตรวจสถานะและขั้นตอน Auto Review";
+  if (operation === "initialize_run" || operation === "initialize_staged_metadata") {
+    return "เตรียมข้อมูล Auto Review";
+  }
+  if (operation === "sequential_image_edit_reconciliation") {
+    return shotId ? `ตรวจผลแก้ภาพ Auto Review · Shot ${shotId}` : "ตรวจผลแก้ภาพ Auto Review";
+  }
+  return null;
+}
+
 function projectJob(
   row: WorkerJobRow & { worker: WorkerSummaryRow | null },
   eventsByJobId: Map<string, EventRow[]>,
@@ -933,6 +999,7 @@ function projectJob(
   return {
     id: row.id,
     jobType: row.jobType,
+    purposeLabel: projectWorkerJobPurpose(row),
     contextLabel,
     goalId,
     runId,

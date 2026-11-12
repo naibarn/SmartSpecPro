@@ -43,6 +43,7 @@ vi.mock("@/lib/trpc", () => ({
           data: {
             models: [
               { id: "google-banana-2", name: "Google Banana 2", provider: "google" },
+              { id: "veo3/generate-veo-3-video-lite", name: "Veo 3", provider: "google" },
             ],
             defaults: { image: "google-banana-2", video: "veo3/generate-veo-3-video-lite" },
           },
@@ -789,11 +790,10 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onRetry).not.toHaveBeenCalled();
   });
 
-  it("blocks paid media dispatch until the latest story revision is approved", () => {
+  it("dispatches a saved image prompt while a newer story revision awaits confirmation", () => {
     const input = props();
     input.state = {
       ...input.state,
-      // A stale summary must not override the current awaiting checkpoint.
       planReview: { status: "approved", redraftCount: 0 },
       checkpoints: [
         {
@@ -822,19 +822,80 @@ describe("StagedCheckpointReviewPanel", () => {
     const imageButton = screen.getByRole("button", {
       name: "สร้างภาพช็อตที่ 1",
     });
-    expect(imageButton).toBeDisabled();
-    expect(imageButton).toHaveAttribute(
-      "title",
-      "ยืนยันเนื้อเรื่องฉบับล่าสุดก่อนสร้างภาพ"
-    );
-    expect(screen.getByText(/เนื้อเรื่องฉบับล่าสุดยังรอยืนยัน/)).toBeTruthy();
+    expect(imageButton).not.toBeDisabled();
+    expect(
+      screen.getByText(/Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่าง/)
+    ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     ).not.toBeDisabled();
 
     fireEvent.click(imageButton);
-    expect(input.onRetry).not.toHaveBeenCalled();
     expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotId: 1,
+        stage: "image",
+        replaceExisting: true,
+      })
+    );
+  });
+
+  it("dispatches a saved video prompt without requiring story confirmation", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      planReview: { status: "awaiting", redraftCount: 0 },
+      shots: [
+        {
+          ...input.state.shots[0],
+          imageArtifactHash: "accepted-image-hash",
+          imageArtifactUrl: "https://example.test/accepted-image.png",
+          videoPrompt: "Saved video prompt",
+        },
+      ],
+      checkpoints: [
+        {
+          ...baseCheckpoint,
+          kind: "story_plan",
+          shotId: null,
+          checkpointId: "story:run-1:r2",
+          state: "awaiting",
+          revision: 2,
+          estimatedCredits: 0,
+        },
+        {
+          ...baseCheckpoint,
+          kind: "image_result",
+          checkpointId: "image-result:run-1:shot-1:r1",
+          state: "approved",
+          contentHash: "accepted-image-hash",
+          estimatedCredits: 0,
+        },
+        {
+          ...baseCheckpoint,
+          kind: "video_prompt",
+          checkpointId: "video-prompt:run-1:shot-1:r1",
+          state: "approved",
+          estimatedCredits: 4,
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const videoButton = screen.getByRole("button", {
+      name: "สร้างวิดีโอช็อตที่ 1",
+    });
+    expect(videoButton).not.toBeDisabled();
+    clickAndConfirmGeneration(videoButton);
+    expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotId: 1,
+        stage: "video",
+        replaceExisting: true,
+      })
+    );
   });
 
   it("explains that existing image prompts remain when a newer story revision awaits confirmation", () => {
@@ -860,7 +921,7 @@ describe("StagedCheckpointReviewPanel", () => {
 
     expect(screen.getByText("✨ เนื้อเรื่องฉบับที่ 2 รอยืนยัน")).toBeTruthy();
     expect(
-      screen.getByText(/มี Prompt ภาพแล้ว 1\/1 ช็อต ระบบเก็บ Prompt ที่มีไว้/)
+      screen.getByText(/ส่งสร้างภาพจาก Prompt ที่บันทึกไว้ได้เลย ไม่ต้องยืนยันซ้ำ/)
     ).toBeTruthy();
     const confirm = screen.getByRole("button", {
       name: "✅ ยืนยันเนื้อเรื่องฉบับล่าสุด",
