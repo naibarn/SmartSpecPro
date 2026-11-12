@@ -2,7 +2,7 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.11
+revision: R1.12
 date: 2026-11-12
 status: PARTIALLY_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
@@ -10,7 +10,7 @@ scope: Architecture, census, module allocation, migration ordering, acceptance g
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.11, 2026-11-12):** Earlier R0.x–R1.10 proposal text is retained for provenance. R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
+> **Current-revision note (R1.12, 2026-11-12):** Earlier R0.x–R1.11 proposal text is retained for provenance. R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -264,3 +264,11 @@ Acceptance SHALL include authenticated visual and interaction review of the depl
 - The left panel SHALL provide an accessible collapse control. When collapsed, it SHALL reduce to a narrow left-edge expand control, increasing the central Chat workspace width. Expanding SHALL restore the previous panel tab and its working context.
 - The panel switcher and collapse/expand actions SHALL remain reachable on desktop, tablet and mobile without obscuring the composer, thread content or the theme control. The existing responsive drawer behavior MAY be used at smaller breakpoints.
 - Acceptance SHALL verify both panel tabs, history selection, collapse and expansion, context restoration, navigation and account access, and responsive layout behavior. This UI change does not alter authorization, tenant data, Chat job dispatch, model selection, credit settlement or any deployment target.
+
+## R1.12 — Pinned sidebar controls and Astryx themes (2026-11-12)
+
+- In the expanded Chat sidebar, the signed-in user's avatar/name, profile/settings action and sign-out action SHALL remain pinned to the bottom edge even when the navigation or history content is long and scrollable.
+- The Thai/English language selector SHALL appear immediately above the account row, use the existing `smartaihub.locale` preference, and retain its selected state across reloads.
+- The Chat theme selector SHALL offer every Astryx theme supported by the installed design-system release: Neutral, Butter, Chocolate, Gothic, Matcha, Stone and Y2K. Selecting a theme SHALL apply that theme's Astryx tokens/styles to the Chat surface and persist the selection across reloads. Neutral is the default; Gothic uses dark mode.
+- Theme packages and their generated registry/CSS SHALL be loaded by the independently built Chat module. They SHALL remain compatible with the installed Astryx Core release and SHALL NOT require a monolithic shell build or a return to Express.
+- Acceptance SHALL verify footer ordering and bottom pinning, language persistence, all seven theme choices changing the active Astryx theme, theme persistence, and reachable controls at desktop, tablet and mobile widths. This UI change does not alter identity, tenant scope, queue/credit behavior or deployment targets.

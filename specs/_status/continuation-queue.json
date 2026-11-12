@@ -3929,8 +3929,8 @@
     {
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
-      "declared_claim_count": 9,
-      "next_action": "Complete authenticated browser UAT on aimarkethubs.com release e2e6d6b at desktop, tablet and mobile. Verify menu/history tabs, history selection, workspace/account access, collapse/expand context restoration, composer/theme reachability, Chat response/history and exact credit-ledger delta; record screenshots/results. Then replace the unsupported Cloud Execution “Always On” label, implement an authenticated upload contract before enabling attachment submission, prove local Queue redelivery and provider-account Durable Object contention/restart persistence, and run the matched Legacy/Core benchmark.",
+      "declared_claim_count": 10,
+      "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Complete authenticated browser UAT on aimarkethubs.com release e2e6d6b at desktop, tablet and mobile. Verify menu/history tabs, history selection, workspace/account access, collapse/expand context restoration, composer/theme reachability, Chat response/history and exact credit-ledger delta; record screenshots/results. Then replace the unsupported Cloud Execution “Always On” label, implement an authenticated upload contract before enabling attachment submission, prove local Queue redelivery and provider-account Durable Object contention/restart persistence, and run the matched Legacy/Core benchmark.",
+      "rationale": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },

@@ -12,6 +12,7 @@ section-05-chat-canonical-job-and-queue-admission
 section-06-provider-admission-and-queue-consumer
 section-07-chat-job-status-ui-and-runtime-proof
 section-08-chat-sidebar-tabs-and-collapse
+section-09-sidebar-footer-language-and-astryx-themes
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -30,6 +31,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 | section-06-provider-admission-and-queue-consumer | 05 | 07 | No |
 | section-07-chat-job-status-ui-and-runtime-proof | 05, 06 | - | No |
 | section-08-chat-sidebar-tabs-and-collapse | 07 | - | No |
+| section-09-sidebar-footer-language-and-astryx-themes | 08 | - | No |
 
 ## Execution Order
 
@@ -41,6 +43,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 6. Section 06 — add a cross-instance provider admission Durable Object, idempotent Queue consumer/settlement, catalog freshness checks, and retry handling.
 7. Section 07 — update Chat to poll scoped job results, verify responsive desktop/tablet/mobile and local Workerd Queue delivery, then deploy only to `modular-debian-dev` and record evidence.
 8. Section 08 — separate left-panel navigation and history into switchable tabs, add collapse/expand controls, verify responsive behavior, then preview on `aimarkethubs.com` after integration.
+9. Section 09 — pin account actions to the sidebar bottom, place the persisted language switch above them, expose all installed Astryx themes with real theme application, then preview the exact integrated build on `aimarkethubs.com`.
 
 ## Section Summaries
 
@@ -75,3 +78,7 @@ Plan scope: SPEC-312 R1.6 first stateful Core identity slice in the canonical `s
 ### section-08-chat-sidebar-tabs-and-collapse
 
 **Requirement IDs:** R1.11 switchable and collapsible Chat left panel. **Objective:** keep the left panel as one stable workspace region while moving primary navigation and conversation history into separate tabs. Let the user collapse the panel to a narrow left-edge expand control to give the central conversation more space; expanding restores the last selected tab. Keep workspace selection/creation and account controls reachable while expanded. **Owned paths:** `smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx`, `modules/chat/src/ui/styles.css`, focused Chat UI tests; SPEC-312 R1.11, this section index and section file; canonical SPEC-312 handoff evidence/manifest through the shared writer. **Prerequisites:** the integrated Chat shell and existing history/workspace APIs. **Completion predicate:** focused UI tests show tab switching, history availability/selection, collapse and expansion, previous tab restoration, and preserved conversation/workspace/account actions; scoped Chat typecheck and build pass; responsive panel/drawer does not obscure the composer or theme control. **Verification/evidence:** Chat package tests, typecheck, target build and rendered desktop/tablet/mobile preview on `aimarkethubs.com`, bound to the exact integrated source SHA. **Exposure/rollback:** development target `modular-debian-dev` only; revert the owned UI changes without data migration. Does not alter auth, tenant scope, queue dispatch, provider selection, credit ledger, `smartaihub.app` or `smartsihub.com`.
+
+### section-09-sidebar-footer-language-and-astryx-themes
+
+**Requirement IDs:** R1.12 Chat sidebar account/language footer and Astryx theme selection. **Objective:** keep the signed-in user identity, profile/settings, and sign-out actions pinned to the bottom of the expanded left panel; place the Thai/English control immediately above the account row; and make all installed Astryx themes selectable, visibly applied, and persistent. **Owned paths:** `smartaihub-platform/modules/chat/package.json`, `pnpm-lock.yaml`, `modules/chat/src/astryx-themes.ts`, `modules/chat/src/ui/ChatWorkspace.tsx`, `modules/chat/src/ui/main.tsx`, `modules/chat/src/ui/styles.css`, and focused Chat UI tests; SPEC-312 R1.12, this section index and section file; canonical handoff evidence/manifest through the shared writer. **Prerequisites:** integrated section 08 and Astryx Core 0.6.8. **Completion predicate:** account/settings/sign-out remain at the bottom while navigation/history scroll; language is directly above the account row and persists in `smartaihub.locale`; Neutral, Butter, Chocolate, Gothic, Matcha, Stone and Y2K each select actual Astryx tokens/styles and persist; Chat-only theme dependencies remain within the independently built module; scoped Chat tests, typecheck and build pass. **Verification/evidence:** exact-SHA package checks, public development-target release smoke, and authenticated responsive visual review when available. **Exposure/rollback:** `modular-debian-dev` only; do not change `smartaihub.app`, `smartsihub.com`, auth, tenant, queue or credit behavior.

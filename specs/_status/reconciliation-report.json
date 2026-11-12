@@ -6042,7 +6042,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+        "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
         "problem": null,
         "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -6051,7 +6051,7 @@
           "duplicate_ids": [],
           "duplicate_revisions": []
         },
-        "revision": "1.11",
+        "revision": "1.12",
         "root_kind": "CANONICAL",
         "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
         "spec_id": "312",
@@ -142999,7 +142999,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
+      "canonical_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -143057,6 +143057,11 @@
         "requirement REQ-96589EFC5C80 is PARTIAL",
         "requirement REQ-92B091408D3D is PARTIAL",
         "requirement REQ-0CA74E69BF98 is PARTIAL",
+        "requirement REQ-D4E61B7642C0 is PARTIAL",
+        "requirement REQ-D17E7B43470B is PARTIAL",
+        "requirement REQ-1147B298B5F9 is PARTIAL",
+        "requirement REQ-0BF02EAE0CE5 is PARTIAL",
+        "requirement REQ-5DCD6E80443A is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -143078,7 +143083,7 @@
           "line": null,
           "section": "section-01-environment-database-boundary",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143091,7 +143096,7 @@
           "line": null,
           "section": "section-02-password-mfa-compatibility",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143104,7 +143109,7 @@
           "line": null,
           "section": "section-03-session-membership-routes",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143117,7 +143122,7 @@
           "line": null,
           "section": "section-04-worker-proof-and-handoff",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143130,7 +143135,7 @@
           "line": null,
           "section": "section-05-chat-canonical-job-and-queue-admission",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143143,7 +143148,7 @@
           "line": null,
           "section": "section-06-provider-admission-and-queue-consumer",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143156,7 +143161,7 @@
           "line": null,
           "section": "section-07-chat-job-status-ui-and-runtime-proof",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143169,7 +143174,20 @@
           "line": null,
           "section": "section-08-chat-sidebar-tabs-and-collapse",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-09-sidebar-footer-language-and-astryx-themes: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-09-sidebar-footer-language-and-astryx-themes",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143179,7 +143197,7 @@
           "excerpt": "status: PARTIALLY_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+          "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
           "value": "PARTIALLY_IMPLEMENTED"
         }
       ],
@@ -143192,18 +143210,18 @@
           "excerpt": "status: PARTIALLY_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+          "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
           "value": "PARTIALLY_IMPLEMENTED"
         }
       ],
       "deployment": "PASS",
-      "digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+      "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-12T12:56:40.075013Z",
+      "last_reconciled": "2026-11-12T16:01:15.291826Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Complete authenticated browser UAT on aimarkethubs.com release e2e6d6b at desktop, tablet and mobile. Verify menu/history tabs, history selection, workspace/account access, collapse/expand context restoration, composer/theme reachability, Chat response/history and exact credit-ledger delta; record screenshots/results. Then replace the unsupported Cloud Execution “Always On” label, implement an authenticated upload contract before enabling attachment submission, prove local Queue redelivery and provider-account Durable Object contention/restart persistence, and run the matched Legacy/Core benchmark.",
+      "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "primary_blocker": {
         "class": "HUMAN_UAT_PENDING",
@@ -143242,7 +143260,7 @@
             "line": null,
             "section": "section-01-environment-database-boundary",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143255,7 +143273,7 @@
             "line": null,
             "section": "section-02-password-mfa-compatibility",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143268,7 +143286,7 @@
             "line": null,
             "section": "section-03-session-membership-routes",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143281,7 +143299,7 @@
             "line": null,
             "section": "section-04-worker-proof-and-handoff",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143294,7 +143312,7 @@
             "line": null,
             "section": "section-05-chat-canonical-job-and-queue-admission",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143307,7 +143325,7 @@
             "line": null,
             "section": "section-06-provider-admission-and-queue-consumer",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143320,7 +143338,7 @@
             "line": null,
             "section": "section-07-chat-job-status-ui-and-runtime-proof",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143333,7 +143351,20 @@
             "line": null,
             "section": "section-08-chat-sidebar-tabs-and-collapse",
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-            "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-09-sidebar-footer-language-and-astryx-themes: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-09-sidebar-footer-language-and-astryx-themes",
+            "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+            "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "value": "checkpointed"
           },
           {
@@ -143343,14 +143374,14 @@
             "excerpt": "status: PARTIALLY_IMPLEMENTED",
             "line": 7,
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-            "source_digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+            "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
             "value": "PARTIALLY_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "9712e763dd368bc13bc1fb808f2e71a873779ca8b3bf9c039430e43c4b1d313e",
+            "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
           },
@@ -143365,27 +143396,22 @@
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
           },
           {
-            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            "kind": "SUPPORTING_ARTIFACT",
-            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/.deep_implement_state.lock"
-          },
-          {
-            "digest": "53ffc4bacebaab13c0a558255c2d5d5d248bfba02ebb28f2d4d73a5ed206bad9",
+            "digest": "cd1b4aa261b87a698a7f8563d4d9cf847406d894a6c9cebe0fef4e0afcb792e9",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
           },
           {
-            "digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+            "digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
           },
           {
-            "digest": "9cbd3a53a17e66ee84c6e0569ec9e7b0cc42d6b404bdf505881bfb39e2d5383d",
+            "digest": "5ba57cba960f201e9c36f5fcc13a637ff85bd5556516f7d1ef3919058b9de044",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
           },
           {
-            "digest": "8ed00d5875326d1ff366a0efb7e0326b4e0d8da66f70ace1a6140e0cc407260d",
+            "digest": "b613213291e5e56cefb85c7344c4186fa7b7965bc7b2173ba7b7f7b9e4fa4002",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
           },
@@ -143428,6 +143454,11 @@
             "digest": "51cb94cfb7abc1b67f5f607f98c43a84ab5982bd3d87ab3184fabac60377eeb2",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
+          },
+          {
+            "digest": "48768cdfeb2c287d4572c2f3d8259087e476fecf9ac6f78eefcdd2f56186226c",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
           }
         ],
         "implementation_equivalence": "UNASSESSED",
@@ -143436,11 +143467,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 53,
+        "open": 58,
         "pass": 0,
-        "total": 54
+        "total": 59
       },
-      "revision": "1.11",
+      "revision": "1.12",
       "root_kind": "CANONICAL",
       "section_status_claims": [
         {
@@ -143453,7 +143484,7 @@
           "line": null,
           "section": "section-01-environment-database-boundary",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143466,7 +143497,7 @@
           "line": null,
           "section": "section-02-password-mfa-compatibility",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143479,7 +143510,7 @@
           "line": null,
           "section": "section-03-session-membership-routes",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143492,7 +143523,7 @@
           "line": null,
           "section": "section-04-worker-proof-and-handoff",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143505,7 +143536,7 @@
           "line": null,
           "section": "section-05-chat-canonical-job-and-queue-admission",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143518,7 +143549,7 @@
           "line": null,
           "section": "section-06-provider-admission-and-queue-consumer",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143531,7 +143562,7 @@
           "line": null,
           "section": "section-07-chat-job-status-ui-and-runtime-proof",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         },
         {
@@ -143544,7 +143575,20 @@
           "line": null,
           "section": "section-08-chat-sidebar-tabs-and-collapse",
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-          "source_digest": "f68ad56ea7e817d47ac32e54b7ae521f02e829c890bcccba119c616017548d9b",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-09-sidebar-footer-language-and-astryx-themes: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-09-sidebar-footer-language-and-astryx-themes",
+          "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
+          "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
           "value": "checkpointed"
         }
       ],
