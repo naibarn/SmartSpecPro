@@ -182,6 +182,7 @@ import {
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  findVerticalDramaSpeakerVisualBinding,
   getCurrentVerticalDramaSpeakerVisualBindings,
   hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
@@ -3428,6 +3429,11 @@ export function VerticalDramaStoryboardPanel({
   function resolveSpeakerOptionsForShot(shotNumber: number) {
     const clipsForShot = clipByShot.get(shotNumber) ?? [];
     const portraitEntries = Object.entries(characterPortraits);
+    const frame = frameByShot.get(shotNumber);
+    const speakerBindings = getCurrentVerticalDramaSpeakerVisualBindings(
+      frame?.speakerVisualBindings,
+      frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId
+    );
     const keyByCharacterId = new Map(
       portraitEntries.map(([key, portrait]) => [portrait.characterId, key])
     );
@@ -3437,7 +3443,14 @@ export function VerticalDramaStoryboardPanel({
     const normalizeLabel = (value: string) =>
       value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
     const canonicalSpeakerKey = (speaker: string) => {
-      const exactKey = characterPortraits[speaker] ? speaker : undefined;
+      const localBinding = findVerticalDramaSpeakerVisualBinding(
+        speakerBindings,
+        speaker
+      );
+      const identityLabel = localBinding?.speakerLabel ?? speaker;
+      const exactKey = characterPortraits[identityLabel]
+        ? identityLabel
+        : undefined;
       const matchingKeys = exactKey
         ? [exactKey]
         : portraitEntries
@@ -3445,7 +3458,7 @@ export function VerticalDramaStoryboardPanel({
               [portrait.name, portrait.variantLabel].some(
                 value =>
                   typeof value === "string" &&
-                  normalizeLabel(value) === normalizeLabel(speaker)
+                  normalizeLabel(value) === normalizeLabel(identityLabel)
               )
             )
             .map(([key]) => key);
@@ -3472,7 +3485,7 @@ export function VerticalDramaStoryboardPanel({
           })
         )
       );
-      return physicalKeys.length === 1 ? physicalKeys[0] : speaker;
+      return physicalKeys.length === 1 ? physicalKeys[0] : identityLabel;
     };
     const clipDialogueLines = clipsForShot.flatMap(clip =>
       (clip.dialogue ?? []).map(line => ({
@@ -15977,7 +15990,17 @@ function ClipDialogueBox({
         normalizedKey === binding.speakerLabel.trim().toLocaleLowerCase()
       );
     });
-    const portrait = characterPortraits[key];
+    const identityLabel = localBinding?.speakerLabel ?? key;
+    const portrait =
+      characterPortraits[identityLabel] ??
+      Object.values(characterPortraits).find(candidate =>
+        [candidate.name, candidate.variantLabel].some(
+          value =>
+            typeof value === "string" &&
+            value.trim().toLocaleLowerCase() ===
+              identityLabel.trim().toLocaleLowerCase()
+        )
+      );
     const parentPortrait = portrait?.parentCharacterId
       ? Object.values(characterPortraits).find(
           candidate => candidate.characterId === portrait.parentCharacterId
@@ -15986,10 +16009,17 @@ function ClipDialogueBox({
     const displayPortrait = parentPortrait ?? portrait;
     if (parentPortrait?.name?.trim()) return parentPortrait.name.trim();
     if (displayPortrait?.name?.trim()) return displayPortrait.name.trim();
-    if (localBinding && !/^character(?:-|$)/i.test(localBinding.speakerLabel))
+    if (
+      localBinding &&
+      !/^(?:character(?:-|$)|shot-local-speaker-)/i.test(
+        localBinding.speakerLabel
+      )
+    )
       return localBinding.speakerLabel;
     if (displayPortrait) return formatShotCharacterLabel(displayPortrait, key);
-    return /^character(?:-|$)/i.test(key) ? `ผู้พูด ${lineIndex + 1}` : key;
+    return /^(?:character(?:-|$)|shot-local-speaker-)/i.test(identityLabel)
+      ? `ผู้พูด ${lineIndex + 1}`
+      : identityLabel;
   };
   const compiledDialogueText = lines
     .map((line, index) => {
