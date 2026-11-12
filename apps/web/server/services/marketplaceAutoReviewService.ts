@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { getDb } from "../db";
 import {
   assertR2StorageActive,
+  storageHeadFile,
   storageExists,
   storagePut,
   storageReadText,
@@ -82,6 +83,7 @@ import {
   mediaModels,
   mediaAssets,
   videoEditorProjects,
+  workerArtifacts,
   workerJobs,
   type MarketplaceAutoReviewRun,
   type MarketplaceAutoReviewStage,
@@ -34325,6 +34327,197 @@ async function addRenderResultToLibrary(params: {
   return { libraryItemId: created.item.id, finalizedMetadata: finalMetadata };
 }
 
+type StagedRemotionArtifactProbeInput = {
+  runId: string;
+  resultUrl: string;
+  jobId: string;
+  jobStatus: string;
+  expectedArtifactId: string;
+  expectedStorageRef: string;
+  expectedStoragePrefix: string;
+  artifact: {
+    id: string;
+    workerJobId: string;
+    artifactType: string;
+    storageRef: string;
+    metadataJson: Record<string, unknown>;
+  } | null;
+  storageHead: {
+    contentType?: string;
+    contentLength?: number;
+  } | null;
+  storageHeadError?: boolean;
+};
+
+function buildStagedRemotionWorkerArtifactProbe(
+  input: StagedRemotionArtifactProbeInput
+): Record<string, unknown> {
+  const resultUrl = cleanText(input.resultUrl);
+  const probeId = `render-probe:${input.runId}:${buildProductionStableHash({ resultUrl }).slice(0, 12)}`;
+  const artifact = input.artifact;
+  const artifactMetadata = artifact?.metadataJson ?? {};
+  const metadataContentType = cleanText(
+    artifactMetadata.contentType
+  ).toLowerCase();
+  const metadataSizeBytes = Number(artifactMetadata.sizeBytes);
+  const checksumSha256 = cleanText(
+    artifactMetadata.checksumSha256
+  ).toLowerCase();
+  const headContentType = cleanText(
+    input.storageHead?.contentType
+  ).toLowerCase();
+  const headLength = input.storageHead?.contentLength;
+  const storageRefMatchesUrl = (() => {
+    try {
+      const url = new URL(resultUrl, "https://storage-probe.invalid");
+      const prefix = "/api/storage/files/";
+      if (!url.pathname.startsWith(prefix)) return false;
+      return (
+        decodeURIComponent(url.pathname.slice(prefix.length)) ===
+        input.expectedStorageRef
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  const checks: string[] = [];
+  const reasonCodes: string[] = [];
+  const recordCheck = (passed: boolean, check: string, reason: string) => {
+    if (passed) checks.push(check);
+    else reasonCodes.push(reason);
+  };
+
+  recordCheck(
+    input.jobStatus === "completed",
+    "completed_worker_job",
+    "worker_job_not_completed"
+  );
+  recordCheck(
+    Boolean(artifact) &&
+      artifact?.id === input.expectedArtifactId &&
+      artifact?.workerJobId === input.jobId &&
+      artifact?.artifactType === "remotion_render_mp4",
+    "job_bound_mp4_artifact",
+    "worker_artifact_missing_or_mismatched"
+  );
+  recordCheck(
+    Boolean(input.expectedStorageRef) &&
+      input.expectedStorageRef.startsWith(input.expectedStoragePrefix) &&
+      artifact?.storageRef === input.expectedStorageRef &&
+      storageRefMatchesUrl,
+    "artifact_storage_ref_matches_result_url",
+    "worker_artifact_storage_ref_mismatch"
+  );
+  recordCheck(
+    metadataContentType === "video/mp4" &&
+      Number.isSafeInteger(metadataSizeBytes) &&
+      metadataSizeBytes > 0 &&
+      /^[a-f0-9]{64}$/.test(checksumSha256),
+    "worker_artifact_video_metadata_valid",
+    "worker_artifact_metadata_invalid"
+  );
+  recordCheck(
+    !input.storageHeadError && input.storageHead !== null,
+    "storage_head_ok",
+    input.storageHeadError ? "storage_head_error" : "storage_object_missing"
+  );
+  recordCheck(
+    headContentType === "video/mp4",
+    "storage_video_content_type",
+    "storage_content_type_mismatch"
+  );
+  recordCheck(
+    Number.isSafeInteger(headLength) && headLength === metadataSizeBytes,
+    "storage_length_matches",
+    "storage_length_mismatch"
+  );
+
+  return {
+    probeId,
+    runId: input.runId,
+    resultUrl,
+    checkedAt: nowIso(),
+    method: "worker_artifact_storage_head",
+    status: reasonCodes.length === 0 ? "passed" : "failed",
+    workerJobId: input.jobId,
+    workerArtifactId: artifact?.id ?? null,
+    storageRef: artifact?.storageRef ?? null,
+    checksumSha256: /^[a-f0-9]{64}$/.test(checksumSha256)
+      ? checksumSha256
+      : null,
+    contentType: headContentType || metadataContentType || null,
+    contentLength: Number.isSafeInteger(headLength) ? headLength : null,
+    checks,
+    reasonCodes,
+  };
+}
+
+export function buildStagedRemotionWorkerArtifactProbeForTest(
+  input: StagedRemotionArtifactProbeInput
+): Record<string, unknown> {
+  return buildStagedRemotionWorkerArtifactProbe(input);
+}
+
+async function probeStagedRemotionWorkerArtifact(params: {
+  db: Db;
+  runId: string;
+  job: WorkerJob;
+  resultUrl: string;
+}): Promise<Record<string, unknown>> {
+  const output = asRecord(params.job.outputJson);
+  const outputArtifactRef = asRecord(output.outputArtifactRef);
+  const expectedArtifactId = cleanText(outputArtifactRef.artifactId);
+  const expectedStorageRef = cleanText(outputArtifactRef.storageRef);
+  const [artifact] =
+    expectedArtifactId && expectedStorageRef
+      ? await params.db
+          .select()
+          .from(workerArtifacts)
+          .where(
+            and(
+              eq(workerArtifacts.id, expectedArtifactId),
+              eq(workerArtifacts.workerJobId, params.job.id)
+            )
+          )
+          .limit(1)
+      : [];
+
+  let storageHead: Awaited<ReturnType<typeof storageHeadFile>> = null;
+  let storageHeadError = false;
+  if (artifact?.storageRef) {
+    try {
+      storageHead = await storageHeadFile(artifact.storageRef);
+    } catch {
+      storageHeadError = true;
+    }
+  }
+
+  const tenantId = cleanText(params.job.tenantId);
+  return buildStagedRemotionWorkerArtifactProbe({
+    runId: params.runId,
+    resultUrl: params.resultUrl,
+    jobId: params.job.id,
+    jobStatus: params.job.status,
+    expectedArtifactId,
+    expectedStorageRef,
+    expectedStoragePrefix: tenantId
+      ? `worker-artifacts/${tenantId}/${params.job.id}/`
+      : "worker-artifacts/__missing_tenant__/",
+    artifact: artifact
+      ? {
+          id: artifact.id,
+          workerJobId: artifact.workerJobId,
+          artifactType: artifact.artifactType,
+          storageRef: artifact.storageRef,
+          metadataJson: asRecord(artifact.metadataJson),
+        }
+      : null,
+    storageHead,
+    storageHeadError,
+  });
+}
+
 async function probeRenderArtifact(params: {
   runId: string;
   resultUrl: string;
@@ -36231,6 +36424,14 @@ async function reconcileStagedRemotionFinalRender(params: {
     return;
   }
   if (job.status !== "completed") return;
+  if (
+    job.tenantId !== params.tenantId ||
+    job.requestedByUserId !== params.run.userId
+  ) {
+    throw new Error(
+      "Staged Remotion render job owner does not match the Marketplace Auto Review run"
+    );
+  }
   const rawOutputUrl = resolveWorkerJobRenderOutputRef(job as WorkerJob);
   if (!rawOutputUrl) {
     throw new Error(
@@ -36267,8 +36468,10 @@ async function reconcileStagedRemotionFinalRender(params: {
     /^https?:\/\//i.test(outputUrl) || !publicOrigin
       ? outputUrl
       : new URL(outputUrl, publicOrigin).toString();
-  const renderArtifactProbe = await probeRenderArtifact({
+  const renderArtifactProbe = await probeStagedRemotionWorkerArtifact({
+    db: params.db,
     runId: params.run.id,
+    job: job as WorkerJob,
     resultUrl: absoluteOutputUrl,
   });
   const metadataWithProbe = withUpdatedCreditSummary({
@@ -36336,6 +36539,19 @@ async function reconcileStagedRemotionFinalRender(params: {
           ),
         }),
   });
+  if (cleanText(renderArtifactProbe.status) !== "passed") {
+    await updateRun({
+      db: params.db,
+      runId: params.run.id,
+      metadataJson: metadataWithProbe,
+    });
+    const reasonCodes = Array.isArray(renderArtifactProbe.reasonCodes)
+      ? renderArtifactProbe.reasonCodes.map(cleanText).filter(Boolean)
+      : [];
+    throw new Error(
+      `Render artifact probe failed: ${reasonCodes.join(",") || "unknown_reason"}`
+    );
+  }
   const preLibraryFinalizedMetadata = buildRenderFinalizationMetadata({
     run: params.run,
     plan: params.plan,

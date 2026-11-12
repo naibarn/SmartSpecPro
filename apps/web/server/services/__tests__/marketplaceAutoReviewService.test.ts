@@ -26,6 +26,7 @@ import {
   buildMarketplaceAutoReviewQaCacheEntryForTest,
   buildMarketplaceAutoReviewRenderLibraryMetadataForTest,
   buildMarketplaceAutoReviewRenderFinalizationMetadataForTest,
+  buildStagedRemotionWorkerArtifactProbeForTest,
   buildMarketplaceAutoReviewShotFrameRepairUnitsForTest,
   buildMarketplaceAutoReviewStoryConceptWizardForTest,
   buildMarketplaceAutoReviewStoryboardReviewLinkForTest,
@@ -9172,5 +9173,69 @@ describe("Marketplace Auto Review final Remotion manifest", () => {
         { renderJobId: "render-1", renderEngine: "legacy" }
       )
     ).toBe(false);
+  });
+
+  it("probes a staged Remotion artifact through trusted storage metadata", () => {
+    const probe = buildStagedRemotionWorkerArtifactProbeForTest({
+      runId: "mar_1",
+      resultUrl:
+        "https://smartaihub.app/api/storage/files/worker-artifacts/t-1/j-1/final.mp4",
+      jobId: "j-1",
+      jobStatus: "completed",
+      expectedArtifactId: "artifact-1",
+      expectedStorageRef: "worker-artifacts/t-1/j-1/final.mp4",
+      expectedStoragePrefix: "worker-artifacts/t-1/j-1/",
+      artifact: {
+        id: "artifact-1",
+        workerJobId: "j-1",
+        artifactType: "remotion_render_mp4",
+        storageRef: "worker-artifacts/t-1/j-1/final.mp4",
+        metadataJson: {
+          contentType: "video/mp4",
+          sizeBytes: 1024,
+          checksumSha256: "a".repeat(64),
+        },
+      },
+      storageHead: { contentType: "video/mp4", contentLength: 1024 },
+    });
+
+    expect(probe.status).toBe("passed");
+    expect(probe.method).toBe("worker_artifact_storage_head");
+    expect(probe.checks).toEqual(
+      expect.arrayContaining([
+        "completed_worker_job",
+        "job_bound_mp4_artifact",
+        "storage_head_ok",
+        "storage_length_matches",
+      ])
+    );
+  });
+
+  it("rejects staged Remotion artifact probes when storage metadata differs", () => {
+    const probe = buildStagedRemotionWorkerArtifactProbeForTest({
+      runId: "mar_1",
+      resultUrl:
+        "https://smartaihub.app/api/storage/files/worker-artifacts/t-1/j-1/final.mp4",
+      jobId: "j-1",
+      jobStatus: "completed",
+      expectedArtifactId: "artifact-1",
+      expectedStorageRef: "worker-artifacts/t-1/j-1/final.mp4",
+      expectedStoragePrefix: "worker-artifacts/t-1/j-1/",
+      artifact: {
+        id: "artifact-1",
+        workerJobId: "j-1",
+        artifactType: "remotion_render_mp4",
+        storageRef: "worker-artifacts/t-1/j-1/final.mp4",
+        metadataJson: {
+          contentType: "video/mp4",
+          sizeBytes: 1024,
+          checksumSha256: "a".repeat(64),
+        },
+      },
+      storageHead: { contentType: "video/mp4", contentLength: 2048 },
+    });
+
+    expect(probe.status).toBe("failed");
+    expect(probe.reasonCodes).toContain("storage_length_mismatch");
   });
 });
