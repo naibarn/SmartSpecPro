@@ -27,6 +27,7 @@
 - Release controller local smoke — Core 200, Chat 200, Shell 200, unauthenticated Chat session 401, module manifest 200, entry 200.
 - Release controller public smoke — Shell root/login 200, Chat health 200, unauthenticated Chat session 401, module manifest 200.
 - Local Workerd check fetched all 6 statically reachable Chat JavaScript/CSS assets and received 200 for each.
+- The deployed entry asset `assets/main-C50ygHtq.js` returned 200 and contains the Light/Dark theme choices, sidebar destinations, and image/file attachment controls.
 
 ## Remaining acceptance
 
