@@ -3427,16 +3427,21 @@ export function VerticalDramaStoryboardPanel({
 
   function resolveSpeakerOptionsForShot(shotNumber: number) {
     const clipsForShot = clipByShot.get(shotNumber) ?? [];
+    const clipDialogueLines = clipsForShot.flatMap(clip =>
+      (clip.dialogue ?? []).map(line => ({
+        speaker: line.characterKey ?? "",
+        line: line.lineTh,
+      }))
+    );
     const canonicalDialogueLines =
       canonicalDialogueByShot.get(shotNumber)?.dialogueLines ?? [];
-    const lines = canonicalDialogueLines.length
-      ? canonicalDialogueLines
-      : clipsForShot.flatMap(clip =>
-          (clip.dialogue ?? []).map(line => ({
-            speaker: line.characterKey ?? "",
-            line: line.lineTh,
-          }))
-        );
+    // The clip dialogue is what the user sees and will render when present.
+    // Canonical Overview dialogue is only the preview/fallback when no clip
+    // has authored lines; preferring it here can hide speakers added to a
+    // clip and leave them out of the person-detection mapping UI.
+    const lines = clipDialogueLines.length
+      ? clipDialogueLines
+      : canonicalDialogueLines;
     const grouped = new Map<string, string[]>();
     for (const line of lines) {
       const speakerLabel = line.speaker.trim();
