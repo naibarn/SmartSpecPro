@@ -3,10 +3,10 @@ Credit Service
 Handles credit balance, transactions, and deductions
 
 Credit System:
-- 1 USD = 1,000 credits
+- 1 USD = 10,000 credits
 - Markup: 15% (SmartSpec's revenue)
-- Top-up: User pays $100 → Gets 85,000 credits
-- Usage: LLM costs $0.10 → Deduct 100 credits
+- Top-up: User pays $100 → Gets 869,565 credits
+- Usage: LLM costs $0.10 → Deduct 1,000 credits
 """
 
 from decimal import Decimal
@@ -153,10 +153,10 @@ class CreditService:
         Deduct credits from user account for LLM usage
         
         Deducts actual LLM cost only (no markup).
-        Formula: credits_to_deduct = llm_cost_usd * 1000
+        Formula: credits_to_deduct = llm_cost_usd * 10000
         
         Example:
-            LLM cost: $0.10 → Deduct 100 credits
+            LLM cost: $0.10 → Deduct 1,000 credits
         
         Args:
             user_id: User ID
@@ -242,16 +242,16 @@ class CreditService:
         Business logic:
         - User pays $100 (including markup)
         - Markup is 15% → $15 goes to SmartSpec
-        - User gets credits worth $85 → 85,000 credits
+        - User gets credits worth $86.96 → 869,565 credits
         
         Formula:
             actual_value = payment / (1 + markup/100)
-            credits = actual_value * 1000
+            credits = actual_value * 10000
         
         Example:
             Payment: $100, Markup: 15%
             → Actual value: $85
-            → Credits: 85,000
+            → Credits: 869,565
         
         Args:
             user_id: User ID

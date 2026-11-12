@@ -68,7 +68,7 @@ export function getCheapestProvider(providers: ModelProvider[]): ModelProvider |
 
 /**
  * Estimate credits for a request with given model/provider
- * Uses 1 credit = $0.001 conversion
+ * Uses 10,000 credits = $1 conversion
  */
 export function estimateCredits(
   pricingInput: string | number,
@@ -79,5 +79,5 @@ export function estimateCredits(
   const costUsd =
     (estimatedInputTokens / 1_000_000) * Number(pricingInput) +
     (estimatedOutputTokens / 1_000_000) * Number(pricingOutput);
-  return Math.max(1, Math.ceil(costUsd * 1000));
+  return Math.max(1, Math.ceil(costUsd * 10_000));
 }

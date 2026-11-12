@@ -168,7 +168,7 @@ async def register(
     trust_outcome = "allowed" if trust_score >= 70 else ("flagged" if trust_score >= 40 else "blocked")
 
     # Determine signup credits based on trust score
-    signup_credits = 10000 if trust_score >= 70 else 0
+    signup_credits = 100000 if trust_score >= 70 else 0
 
     # Create new user
     user = User(

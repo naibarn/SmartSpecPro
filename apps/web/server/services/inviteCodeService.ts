@@ -83,8 +83,8 @@ export async function getUserInviteEnabled(): Promise<boolean> {
 }
 
 export async function getUserReferralBonusCredits(): Promise<number> {
-  const val = await getSettingValue("registration", "user_referral_bonus_credits", "50");
-  return parseInt(val, 10) || 50;
+  const val = await getSettingValue("registration", "user_referral_bonus_credits", "500");
+  return parseInt(val, 10) || 500;
 }
 
 export async function getMaxRegistrationsPerDevice(): Promise<number> {

@@ -242,7 +242,7 @@ class StreamingService:
     """Service for streaming LLM responses"""
     
     # Credits per USD conversion rate
-    CREDITS_PER_USD = 1000
+    CREDITS_PER_USD = 10000
     
     def __init__(
         self,

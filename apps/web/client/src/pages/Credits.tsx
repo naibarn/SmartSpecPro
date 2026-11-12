@@ -955,7 +955,7 @@ export default function Credits() {
                       <span className="text-sm font-bold">{formatNumber(pkg.credits)}</span>
                     </div>
                     <div className="text-xs text-center text-gray-500">
-                      {t('credits.buyCredits.perThousand', { amount: ((pkg.pricePerCredit ?? 0) * 1000).toFixed(2) })}
+                      {t('credits.buyCredits.perTenThousand', { amount: ((pkg.pricePerCredit ?? 0) * 10000).toFixed(2) })}
                     </div>
                   </div>
 

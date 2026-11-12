@@ -32,7 +32,7 @@ Integration ของ Stripe Payment สำหรับ SmartSpec Pro credit top
    ↓
 4. System คำนวณ credits ที่จะได้รับ
    - Payment: $100
-   - Credits: 86,956 credits ($86.956 value)
+   - Credits: 869,565 credits ($86.9565 value)
    - Markup: $13.044 (13.04%)
    ↓
 5. Click "Proceed to Payment"
@@ -146,7 +146,7 @@ Response:
 {
   "session_id": "cs_test_...",
   "url": "https://checkout.stripe.com/c/pay/cs_test_...",
-  "credits_to_receive": 86956,
+  "credits_to_receive": 869565,
   "amount_usd": 100.00
 }
 ```
@@ -164,7 +164,7 @@ Response:
   "session_id": "cs_test_...",
   "status": "completed",
   "amount_usd": 100.00,
-  "credits_added": 86956,
+  "credits_added": 869565,
   "payment_intent_id": "pi_...",
   "completed_at": "2025-12-30T12:00:00Z"
 }
@@ -200,7 +200,7 @@ Response:
     {
       "id": 1,
       "amount_usd": 100.00,
-      "credits_added": 86956,
+      "credits_added": 869565,
       "status": "completed",
       "payment_method": "card",
       "created_at": "2025-12-30T12:00:00Z",
@@ -264,22 +264,22 @@ def validate_amount(amount_usd: Decimal) -> bool:
 TOP_UP_AMOUNTS = {
     "small": {
         "amount_usd": Decimal("10.00"),
-        "credits": 8695,  # 10 / 1.15 * 1000
+        "credits": 86957,  # 10 / 1.15 * 10000
         "label": "Small Top-up"
     },
     "medium": {
         "amount_usd": Decimal("50.00"),
-        "credits": 43478,  # 50 / 1.15 * 1000
+        "credits": 434783,  # 50 / 1.15 * 10000
         "label": "Medium Top-up"
     },
     "large": {
         "amount_usd": Decimal("100.00"),
-        "credits": 86956,  # 100 / 1.15 * 1000
+        "credits": 869565,  # 100 / 1.15 * 10000
         "label": "Large Top-up"
     },
     "xlarge": {
         "amount_usd": Decimal("500.00"),
-        "credits": 434782,  # 500 / 1.15 * 1000
+        "credits": 4347826,  # 500 / 1.15 * 10000
         "label": "Extra Large Top-up"
     }
 }
@@ -382,13 +382,13 @@ def calculate_credits_from_payment(payment_usd: Decimal) -> int:
     
     Formula:
     - Actual value = Payment / (1 + Markup)
-    - Credits = Actual value * 1000
+    - Credits = Actual value * 10000
     
     Example:
     - Payment: $100
     - Markup: 15%
     - Actual: $100 / 1.15 = $86.956
-    - Credits: 86,956
+    - Credits: 869,565
     """
     return usd_to_credits(payment_usd)
 
@@ -397,11 +397,11 @@ def calculate_payment_from_credits(credits: int) -> Decimal:
     Calculate payment amount from desired credits
     
     Formula:
-    - Actual value = Credits / 1000
+    - Actual value = Credits / 10000
     - Payment = Actual value * (1 + Markup)
     
     Example:
-    - Credits: 86,956
+    - Credits: 869,565
     - Actual: $86.956
     - Markup: 15%
     - Payment: $86.956 * 1.15 = $100

@@ -121,8 +121,8 @@ class TestCreditsEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert "credits" in data
-        # $100 / 1.15 * 1000 = 86956.52... rounded (may be 86956 or 86957 depending on rounding)
-        assert data["credits"] in [86956, 86957]
+        # $100 / 1.15 * 10,000 = 869565.22... rounded to 869,565
+        assert data["credits"] == 869565
 
 
 class TestPaymentsEndpoints:

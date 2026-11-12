@@ -145,7 +145,7 @@ class TestCreditServiceDeduction:
         service = CreditService(test_db)
         initial_balance = test_user.credits_balance
         
-        # Deduct $1 = 1000 credits
+        # Deduct $1 = 10,000 credits
         transaction = await service.deduct_credits(
             user_id=str(test_user.id),
             llm_cost_usd=Decimal("1.00"),
@@ -155,9 +155,9 @@ class TestCreditServiceDeduction:
         
         assert transaction is not None
         assert transaction.type == "usage"
-        assert transaction.amount == -1000
+        assert transaction.amount == -10000
         assert transaction.meta["balance_before"] == initial_balance
-        assert transaction.balance_after == initial_balance - 1000
+        assert transaction.balance_after == initial_balance - 10000
         assert transaction.meta["model"] == "gpt-4"
     
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestCreditServiceTopup:
         initial_balance = test_user.credits_balance
         
         # Top up $100 with 15% markup
-        # User pays $100, gets credits worth $85 = 85000 credits
+        # User pays $100, gets credits worth $86.96 = 869,565 credits
         transaction = await service.topup_credits(
             user_id=str(test_user.id),
             payment_usd=Decimal("100"),
@@ -209,7 +209,7 @@ class TestCreditServiceTopup:
         
         assert transaction is not None
         assert transaction.type == "purchase"
-        # With 15% markup: $100 / 1.15 ≈ $86.96 → 86956 credits
+        # With 15% markup: $100 / 1.15 ≈ $86.96 → 869,565 credits
         assert transaction.amount > 0
         assert transaction.balance_after > initial_balance
         assert "payment_method" in transaction.meta
@@ -353,17 +353,17 @@ class TestCreditConversions:
     
     def test_usd_to_credits(self):
         """Test USD to credits conversion"""
-        # $1 = 1000 credits
-        assert usd_to_credits(Decimal("1")) == 1000
-        assert usd_to_credits(Decimal("0.10")) == 100
-        assert usd_to_credits(Decimal("100")) == 100000
+        # $1 = 10,000 credits
+        assert usd_to_credits(Decimal("1")) == 10000
+        assert usd_to_credits(Decimal("0.10")) == 1000
+        assert usd_to_credits(Decimal("100")) == 1000000
     
     def test_credits_to_usd(self):
         """Test credits to USD conversion"""
-        # 1000 credits = $1
-        assert credits_to_usd(1000) == Decimal("1.00")
-        assert credits_to_usd(100) == Decimal("0.10")
-        assert credits_to_usd(100000) == Decimal("100.00")
+        # 10,000 credits = $1
+        assert credits_to_usd(10000) == Decimal("1.00")
+        assert credits_to_usd(1000) == Decimal("0.10")
+        assert credits_to_usd(1000000) == Decimal("100.00")
     
     def test_conversion_roundtrip(self):
         """Test conversion roundtrip"""

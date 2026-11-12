@@ -32,7 +32,7 @@ vi.mock("../creditService", () => ({
   deductCreditsForModel: mockDeductCreditsForModel,
   drawFromReservation: mockDrawFromReservation,
   calculateCreditsForLLMDynamic: mockCalculateCreditsForLLMDynamic,
-  calculateCreditsFromCost: (costUsd: number) => Math.ceil(costUsd * 1000),
+  calculateCreditsFromCost: (costUsd: number) => Math.ceil(costUsd * 10000),
 }));
 
 vi.mock("../auditLogger", () => ({

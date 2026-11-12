@@ -16,7 +16,7 @@ vi.mock("@/lib/trpc", () => ({
               seriesTitle: "เรื่องทดสอบ",
               hasContext: true,
               coverage: "complete",
-              creditsPerUsd: 1000,
+              creditsPerUsd: 10000,
               chargedCredits: 1500,
               refundedCredits: 250,
               netActualCredits: 1250,

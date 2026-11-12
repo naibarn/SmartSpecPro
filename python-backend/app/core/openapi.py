@@ -64,10 +64,10 @@ All API endpoints (except `/health` and `/auth`) require JWT authentication.
 ## Credit System
 
 **How it works:**
-- 1 USD = 1,000 credits
-- Top-up with 15% markup: $100 → 86,956 credits
-- LLM usage: Cost × 1,000 = Credits deducted
-- Example: $0.10 API call = 100 credits
+- 1 USD = 10,000 credits
+- Top-up with 15% markup: $100 → 869,565 credits
+- LLM usage: Cost × 10,000 = Credits deducted
+- Example: $0.10 API call = 1,000 credits
 
 **Top-up:**
 ```bash

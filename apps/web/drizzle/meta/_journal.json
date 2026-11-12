@@ -2906,6 +2906,13 @@
       "when": 1794484800007,
       "tag": "0428_modular_chat_message_details",
       "breakpoints": true
+    },
+    {
+      "idx": 429,
+      "version": "7",
+      "when": 1794484800008,
+      "tag": "0429_credit_unit_scale_10000",
+      "breakpoints": true
     }
   ]
 }

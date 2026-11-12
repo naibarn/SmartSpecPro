@@ -6,7 +6,7 @@
   "buyCredits.best": "BEST",
   "buyCredits.noPackages": "No packages available",
   "buyCredits.oneTime": "one-time",
-  "buyCredits.perThousand": "{{amount}}/1K credits",
+  "buyCredits.perTenThousand": "{{amount}}/10K credits",
   "buyCredits.popular": "Popular",
   "buyCredits.title": "Buy Credits",
   "creatorEarnings.breakdownTitle": "Earnings by Entity",

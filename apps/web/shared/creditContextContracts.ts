@@ -81,7 +81,7 @@ export type PersistedCreditSourceType = CreditTransactionSourceType;
  * Product-facing cost estimate used by the Drama Series usage summary.
  * This is an estimate of platform credits, not a provider invoice amount.
  */
-export const CREDITS_PER_USD = 1_000;
+export const CREDITS_PER_USD = 10_000;
 
 export function creditsToUsdEstimate(credits: number): number {
   return credits / CREDITS_PER_USD;

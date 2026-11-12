@@ -26,8 +26,8 @@ logger = structlog.get_logger()
 router = APIRouter(tags=["OpenAI Compatible"])
 
 # Minimum credit balance required to make LLM calls (in credits)
-# 100 credits = $0.10 USD - enough for a small request
-MIN_CREDITS_REQUIRED = 100
+# 1,000 credits = $0.10 USD - enough for a small request
+MIN_CREDITS_REQUIRED = 1000
 
 # Estimated cost per request for pre-check (in USD)
 # This is a conservative estimate to prevent overdraft
@@ -178,11 +178,11 @@ async def _check_credit_balance(
                 status_code=402,
                 detail={
                     "error": "insufficient_credits",
-                    "message": f"Insufficient credits. Minimum required: {MIN_CREDITS_REQUIRED:,} credits (${MIN_CREDITS_REQUIRED/1000:.2f})",
+                    "message": f"Insufficient credits. Minimum required: {MIN_CREDITS_REQUIRED:,} credits (${MIN_CREDITS_REQUIRED/10000:.2f})",
                     "balance_credits": balance,
-                    "balance_usd": balance / 1000,
+                    "balance_usd": balance / 10000,
                     "min_required_credits": MIN_CREDITS_REQUIRED,
-                    "min_required_usd": MIN_CREDITS_REQUIRED / 1000,
+                    "min_required_usd": MIN_CREDITS_REQUIRED / 10000,
                     "topup_url": "/credits/topup"
                 }
             )
@@ -210,7 +210,7 @@ async def _check_credit_balance(
                     "error": "insufficient_credits",
                     "message": f"Insufficient credits for this request. Estimated cost: ${float(estimated_cost):.4f}",
                     "balance_credits": balance,
-                    "balance_usd": balance / 1000,
+                    "balance_usd": balance / 10000,
                     "estimated_cost_usd": float(estimated_cost),
                     "estimated_cost_credits": required_credits,
                     "topup_url": "/credits/topup"

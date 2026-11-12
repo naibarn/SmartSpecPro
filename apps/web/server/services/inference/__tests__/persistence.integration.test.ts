@@ -496,7 +496,7 @@ describe.skipIf(!enabled)("Spec 231 PostgreSQL persistence integration", () => {
       authority: {
         tenantId: "tenant-1",
         principalRef: "user:1",
-        availableBudgetMicros: 4_000,
+        availableBudgetMicros: 400,
       },
     });
     if (recovered.ok) durableReservationIds.push(recovered.reservationId);
@@ -508,7 +508,7 @@ describe.skipIf(!enabled)("Spec 231 PostgreSQL persistence integration", () => {
         userId: 1,
         now,
       })
-    ).resolves.toMatchObject({ availableBudgetMicros: 4_000 });
+    ).resolves.toMatchObject({ availableBudgetMicros: 400 });
   });
 
   it("serializes duplicate reservation settlement across independent Node processes", async () => {

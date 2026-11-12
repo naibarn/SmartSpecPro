@@ -12,7 +12,7 @@ SmartSpec Pro v0.2.0 integrates:
 - **Z.AI** (GLM-4.7, Chinese LLM)
 - **Direct providers** (OpenAI, Anthropic, Google, Groq, Ollama)
 - **Unified LLM Client** (intelligent routing)
-- **Credit System** (1 USD = 1,000 credits)
+- **Credit System** (1 USD = 10,000 credits)
 - **Monitoring** (usage tracking, provider health)
 
 ---
@@ -206,7 +206,7 @@ priority = settings.DEFAULT_BUDGET_PRIORITY  # "balanced"
 
 ### **Conversion**
 
-- **1 USD = 1,000 credits**
+- **1 USD = 10,000 credits**
 - **No markup on LLM usage**
 - **15% markup on top-up**
 
@@ -538,7 +538,7 @@ print(f"Balance: {balance} credits")
 # Top-up
 await credit_service.add_credits(
     user_id=user.id,
-    credits=100000,  # $100
+    credits=1000000,  # $100
     description="Top-up"
 )
 ```
@@ -570,7 +570,7 @@ SmartSpec Pro v0.2.0 provides:
 - ✅ **Automatic fallbacks** (model + provider)
 - ✅ **Privacy controls** (ZDR, data collection)
 - ✅ **Cost controls** (max price, budget priority)
-- ✅ **Credit system** (1 USD = 1,000 credits)
+- ✅ **Credit system** (1 USD = 10,000 credits)
 - ✅ **Monitoring** (usage tracking, provider health)
 - ✅ **Production-ready** (error handling, logging)
 

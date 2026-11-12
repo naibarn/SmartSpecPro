@@ -6,7 +6,7 @@
   "buyCredits.best": "ดีที่สุด",
   "buyCredits.noPackages": "ยังไม่มีแพ็กเกจ",
   "buyCredits.oneTime": "จ่ายครั้งเดียว",
-  "buyCredits.perThousand": "{{amount}}/1K เครดิต",
+  "buyCredits.perTenThousand": "{{amount}}/10K เครดิต",
   "buyCredits.popular": "ยอดนิยม",
   "buyCredits.title": "ซื้อเครดิต",
   "creatorEarnings.breakdownTitle": "รายได้แยกตามเอนทิตี",

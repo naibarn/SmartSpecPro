@@ -127,7 +127,7 @@ function asAuthority(input: {
   ) {
     return null;
   }
-  const availableBudgetMicros = BigInt(availableCredits) * 1_000n;
+  const availableBudgetMicros = BigInt(availableCredits) * 100n;
   if (availableBudgetMicros > BigInt(Number.MAX_SAFE_INTEGER)) return null;
   return {
     reservationId: input.reservationId,

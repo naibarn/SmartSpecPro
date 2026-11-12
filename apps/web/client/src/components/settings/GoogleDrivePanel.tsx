@@ -174,7 +174,7 @@ function OverviewPanel({
                 />
               </div>
               <p className="text-xs text-gray-500">
-                ${(budget.creditsUsedThisMonth * 0.001).toFixed(2)} / ${(budget.monthlyLimit * 0.001).toFixed(2)}
+                ${(budget.creditsUsedThisMonth * 0.0001).toFixed(2)} / ${(budget.monthlyLimit * 0.0001).toFixed(2)}
               </p>
             </>
           ) : (
@@ -473,7 +473,7 @@ function CreditUsagePanel() {
             />
           </div>
           <p className="text-xs text-gray-500">
-            ${(budget.creditsUsedThisMonth * 0.001).toFixed(2)} spent - ${((budget.monthlyLimit - budget.creditsUsedThisMonth) * 0.001).toFixed(2)} remaining
+            ${(budget.creditsUsedThisMonth * 0.0001).toFixed(2)} spent - ${((budget.monthlyLimit - budget.creditsUsedThisMonth) * 0.0001).toFixed(2)} remaining
           </p>
         </div>
       )}
@@ -515,7 +515,7 @@ function CreditUsagePanel() {
         {breakdown && (
           <div className="mt-3 pt-3 border-t flex justify-between text-sm">
             <span className="text-gray-500">Total: {breakdown.totalOperations} operations</span>
-            <span className="font-medium">{formatCredits(breakdown.totalCredits)} credits (${(breakdown.totalCredits * 0.001).toFixed(2)})</span>
+            <span className="font-medium">{formatCredits(breakdown.totalCredits)} credits (${(breakdown.totalCredits * 0.0001).toFixed(2)})</span>
           </div>
         )}
       </div>
@@ -607,7 +607,7 @@ function PricingInfoPanel() {
     <div className="space-y-4">
       <div className="rounded-lg border p-4 bg-purple-50">
         <h3 className="text-sm font-semibold text-purple-900">SmartAIHub - Pricing & Cost Guide</h3>
-        <p className="text-xs text-purple-700 mt-1">1 credit = $0.001 USD | 1,000 credits = $1.00</p>
+        <p className="text-xs text-purple-700 mt-1">1 credit = $0.0001 USD | 10,000 credits = $1.00</p>
       </div>
 
       {pricingCategories.map((cat) => (

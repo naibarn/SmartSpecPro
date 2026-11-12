@@ -29,8 +29,8 @@ describe("credit context contracts", () => {
     expect(mapResolutionToPresentation("unresolved")).toBe("unattributed");
   });
 
-  it("uses the product cost estimate of 1000 credits per USD", () => {
-    expect(CREDITS_PER_USD).toBe(1000);
-    expect(creditsToUsdEstimate(1250)).toBe(1.25);
+  it("uses the product cost estimate of 10,000 credits per USD", () => {
+    expect(CREDITS_PER_USD).toBe(10000);
+    expect(creditsToUsdEstimate(12500)).toBe(1.25);
   });
 });

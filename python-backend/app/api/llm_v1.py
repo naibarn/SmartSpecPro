@@ -158,7 +158,7 @@ async def chat_completion(
     
     # Calculate cost
     cost_usd = response.get("cost_usd", 0)
-    credits_used = int(cost_usd * 1000)
+    credits_used = int(cost_usd * 10000)
     
     # Deduct credits
     try:

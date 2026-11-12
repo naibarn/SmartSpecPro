@@ -2553,7 +2553,7 @@ export function buildMagnificModelConfigJson(modelId: string): Record<string, un
           "4k": { "4": metadata.cost + 80, "6": metadata.cost + 110, "8": metadata.cost + 140 },
         }
         : undefined,
-      provisionalConversion: "creditCost = ceil(providerPriceUsdOrEur * 1000), minimum 1 credit",
+      provisionalConversion: "creditCost = ceil(providerPriceUsdOrEur * 10000), minimum 1 credit",
     },
     pricingStatus: "estimated",
     pricingSource: "magnific-docs-or-admin",

@@ -2,7 +2,7 @@
  * Seed script for Credit Packages
  *
  * Pricing Formula:
- * - Base rate: 1 credit = $0.001 USD
+ * - Base rate: 1 credit = $0.0001 USD
  * - Markup: 15-25% depending on package size (volume discounts)
  *
  * Run with: npx tsx scripts/seed-packages.ts
@@ -177,15 +177,16 @@ async function seed() {
       const [result] = await db.insert(creditPackages).values({
         name: pkg.name,
         description: pkg.description,
-        credits: pkg.credits,
+        credits: pkg.credits * 10,
         priceUsd: pkg.priceUsd,
         isActive: pkg.isActive,
         isFeatured: pkg.isFeatured,
         sortOrder: pkg.sortOrder,
       }).returning();
 
-      const pricePerCredit = (parseFloat(pkg.priceUsd) / pkg.credits * 1000).toFixed(3);
-      console.log(`✅ Created "${pkg.name}": ${pkg.credits.toLocaleString()} credits @ $${pkg.priceUsd} ($${pricePerCredit}/1000 credits)`);
+      const grantedCredits = pkg.credits * 10;
+      const pricePerCredit = (parseFloat(pkg.priceUsd) / grantedCredits * 10000).toFixed(3);
+      console.log(`✅ Created "${pkg.name}": ${grantedCredits.toLocaleString()} credits @ $${pkg.priceUsd} ($${pricePerCredit}/10,000 credits)`);
     }
 
     console.log("\n📊 Pricing Summary:");
@@ -194,13 +195,14 @@ async function seed() {
     console.log("─".repeat(60));
 
     for (const pkg of packages) {
-      const baseCost = pkg.credits * 0.001;
+      const grantedCredits = pkg.credits * 10;
+      const baseCost = grantedCredits * 0.0001;
       const price = parseFloat(pkg.priceUsd);
       const markup = ((price / baseCost - 1) * 100).toFixed(0);
-      const per1000 = (price / pkg.credits * 1000).toFixed(2);
+      const per10000 = (price / grantedCredits * 10000).toFixed(2);
 
       console.log(
-        `${pkg.name.padEnd(12)} | ${pkg.credits.toLocaleString().padStart(10)} | $${pkg.priceUsd.padStart(7)} | $${per1000.padStart(8)} | ${markup}%`
+        `${pkg.name.padEnd(12)} | ${grantedCredits.toLocaleString().padStart(10)} | $${pkg.priceUsd.padStart(7)} | $${per10000.padStart(8)} | ${markup}%`
       );
     }
 

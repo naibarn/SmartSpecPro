@@ -2,8 +2,8 @@
  * Seed script for Credit Top-up Packages
  *
  * Fixed dollar amounts with 15% markup:
- * - Base rate: 1 credit = $0.001 USD
- * - Credits = (Price USD / 0.001) / 1.15
+ * - Base rate: 1 credit = $0.0001 USD
+ * - Package credit grants are denominated in the current 10,000 credits/USD unit.
  *
  * Run with: npx tsx scripts/seed-topup-packages.ts
  */
@@ -28,7 +28,7 @@ interface TopupPackage {
 /**
  * Top-up Package Calculations (15% markup)
  *
- * Formula: Credits = Floor(Price / 0.001 / 1.15)
+ * Formula: Credits = Floor(Price / 0.0001 / 1.15)
  *
  * | Price  | Base Credits | After 15% Markup | Actual Markup |
  * |--------|--------------|------------------|---------------|
@@ -160,15 +160,16 @@ async function seed() {
       const [result] = await db.insert(creditPackages).values({
         name: pkg.name,
         description: pkg.description,
-        credits: pkg.credits,
+        credits: pkg.credits * 10,
         priceUsd: pkg.priceUsd,
         isActive: pkg.isActive,
         isFeatured: pkg.isFeatured,
         sortOrder: pkg.sortOrder,
       }).returning();
 
-      const pricePerCredit = (parseFloat(pkg.priceUsd) / pkg.credits * 1000).toFixed(3);
-      console.log(`✅ Created "${pkg.name}": ${pkg.credits.toLocaleString()} credits @ $${pkg.priceUsd} ($${pricePerCredit}/1000 credits)`);
+      const grantedCredits = pkg.credits * 10;
+      const pricePerCredit = (parseFloat(pkg.priceUsd) / grantedCredits * 10000).toFixed(3);
+      console.log(`✅ Created "${pkg.name}": ${grantedCredits.toLocaleString()} credits @ $${pkg.priceUsd} ($${pricePerCredit}/10,000 credits)`);
     }
 
     console.log("\n📊 Top-up Pricing Summary (15% Markup):");
@@ -177,13 +178,14 @@ async function seed() {
     console.log("═".repeat(70));
 
     for (const pkg of topupPackages) {
-      const baseCost = pkg.credits * 0.001;
+      const grantedCredits = pkg.credits * 10;
+      const baseCost = grantedCredits * 0.0001;
       const price = parseFloat(pkg.priceUsd);
       const markup = ((price / baseCost - 1) * 100).toFixed(2);
-      const per1000 = (price / pkg.credits * 1000).toFixed(3);
+      const per10000 = (price / grantedCredits * 10000).toFixed(3);
 
       console.log(
-        `${pkg.name.padEnd(13)} | ${pkg.credits.toLocaleString().padStart(11)} | $${pkg.priceUsd.padStart(8)} | $${per1000.padStart(8)} | ${markup}%`
+        `${pkg.name.padEnd(13)} | ${grantedCredits.toLocaleString().padStart(11)} | $${pkg.priceUsd.padStart(8)} | $${per10000.padStart(8)} | ${markup}%`
       );
     }
 

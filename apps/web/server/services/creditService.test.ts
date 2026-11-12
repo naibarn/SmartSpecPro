@@ -482,8 +482,8 @@ describe("calculateCreditsForLLMDynamic", () => {
 
     const credits = await calculateCreditsForLLMDynamic(1000, 500, "gpt-4o");
     // (1000/1M * 2.5) + (500/1M * 10.0) = 0.0025 + 0.005 = 0.0075
-    // 0.0075 * 1000 = 7.5 → ceil = 8
-    expect(credits).toBe(8);
+    // 0.0075 * 10,000 = 75
+    expect(credits).toBe(75);
   });
 
   it("falls back to catalog pricing when a legacy Kie mapping still has zeroed DB pricing", async () => {
@@ -499,7 +499,7 @@ describe("calculateCreditsForLLMDynamic", () => {
     ]);
 
     const credits = await calculateCreditsForLLMDynamic(1000, 500, "gpt-5.4");
-    expect(credits).toBe(4);
+    expect(credits).toBe(35);
   });
 
   it("falls back to hardcoded MODEL_PRICING when model not in map", async () => {
@@ -508,8 +508,8 @@ describe("calculateCreditsForLLMDynamic", () => {
     const credits = await calculateCreditsForLLMDynamic(1000, 500, "gpt-4o-mini");
     // Uses hardcoded: gpt-4o-mini = { input: 0.15, output: 0.60 }
     // (1000/1M * 0.15) + (500/1M * 0.60) = 0.00015 + 0.0003 = 0.00045
-    // 0.00045 * 1000 = 0.45 → ceil = 1 (minimum)
-    expect(credits).toBe(1);
+    // 0.00045 * 10,000 = 4.5 → ceil = 5
+    expect(credits).toBe(5);
   });
 
   it("charges the 1-credit minimum for free models (isFree=true)", async () => {
@@ -523,19 +523,19 @@ describe("calculateCreditsForLLMDynamic", () => {
     mockModelProviderMapQuery([{ pricingInput: "2.00", pricingOutput: "8.00", isFree: false }]);
 
     const credits = await calculateCreditsForLLMDynamic(1000, 500, "openai/gpt-5.2");
-    expect(credits).toBe(6);
+    expect(credits).toBe(60);
   });
 
   it("DB pricing changes reflected without restart (no cache)", async () => {
     // First call: old pricing
     mockModelProviderMapQuery([{ pricingInput: "1.00", pricingOutput: "4.00", isFree: false }]);
     const credits1 = await calculateCreditsForLLMDynamic(1_000_000, 1_000_000, "test-model");
-    expect(credits1).toBe(5000); // (1.0 + 4.0) * 1000
+    expect(credits1).toBe(50000); // (1.0 + 4.0) * 10,000
 
     // Second call: updated pricing
     mockModelProviderMapQuery([{ pricingInput: "2.00", pricingOutput: "8.00", isFree: false }]);
     const credits2 = await calculateCreditsForLLMDynamic(1_000_000, 1_000_000, "test-model");
-    expect(credits2).toBe(10000); // (2.0 + 8.0) * 1000
+    expect(credits2).toBe(100000); // (2.0 + 8.0) * 10,000
   });
 });
 
@@ -545,8 +545,8 @@ describe("calculateCreditsForLLM (hardcoded, unchanged)", () => {
   it("calculates credits using hardcoded pricing", () => {
     const credits = calculateCreditsForLLM(1000, 500, "gpt-4o");
     // (1000/1M * 2.50) + (500/1M * 10.00) = 0.0025 + 0.005 = 0.0075
-    // 0.0075 * 1000 = 7.5 → ceil = 8
-    expect(credits).toBe(8);
+    // 0.0075 * 10,000 = 75
+    expect(credits).toBe(75);
   });
 
   it("minimum 1 credit", () => {
@@ -557,7 +557,7 @@ describe("calculateCreditsForLLM (hardcoded, unchanged)", () => {
 
 describe("calculateCreditsFromCost", () => {
   it("converts USD cost to credits", () => {
-    expect(calculateCreditsFromCost(0.001)).toBe(1);
-    expect(calculateCreditsFromCost(1.0)).toBe(1000);
+    expect(calculateCreditsFromCost(0.001)).toBe(10);
+    expect(calculateCreditsFromCost(1.0)).toBe(10000);
   });
 });

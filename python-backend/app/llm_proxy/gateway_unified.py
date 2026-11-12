@@ -3163,8 +3163,8 @@ class LLMGateway:
                         except Exception as e:
                             logger.debug(f"Could not parse pricingTiers: {e}")
 
-                    # Convert platform credits to USD (1000 credits = $1)
-                    db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                    # Convert platform credits to USD (10,000 credits = $1)
+                    db_cost = Decimal(str(credit_cost)) / Decimal("10000")
                     logger.info("estimate_cost_from_db", model=request.model, credit_cost=credit_cost, usd_cost=float(db_cost))
                     return db_cost
             except Exception as e:
@@ -3197,7 +3197,7 @@ class LLMGateway:
                             ),
                         ).get(f"{duration}s")
                         if credit_cost is not None:
-                            db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                            db_cost = Decimal(str(credit_cost)) / Decimal("10000")
                             logger.info(
                                 "estimate_cost_from_wavespeed_static_fallback",
                                 model=request.model,
@@ -3228,7 +3228,7 @@ class LLMGateway:
                                 measured = len(str(request.text or ""))
                                 units = max(1, math.ceil(measured / max(1, unit_size)))
                                 credit_cost *= units
-                            db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                            db_cost = Decimal(str(credit_cost)) / Decimal("10000")
                             logger.info(
                                 "estimate_cost_from_wavespeed_audio_static_fallback",
                                 model=request.model,

@@ -2257,9 +2257,9 @@ export const systemSettingsRouter = router({
     }
 
     return {
-      signupBonusCredits: parseInt(result.signup_bonus_credits || "100", 10),
+      signupBonusCredits: parseInt(result.signup_bonus_credits || "1000", 10),
       firstUserBonusCredits: parseInt(
-        result.first_user_bonus_credits || "10000",
+        result.first_user_bonus_credits || "100000",
         10
       ),
       autoAssignTenant: result.auto_assign_tenant !== "false",
@@ -2268,7 +2268,7 @@ export const systemSettingsRouter = router({
         : "open") as "open" | "invite_only",
       userInviteEnabled: result.user_invite_enabled === "true",
       userReferralBonusCredits: parseInt(
-        result.user_referral_bonus_credits || "50",
+        result.user_referral_bonus_credits || "500",
         10
       ),
       allowedAuthMethods,

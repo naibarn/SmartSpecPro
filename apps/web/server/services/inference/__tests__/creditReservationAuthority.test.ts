@@ -55,7 +55,7 @@ describe("Spec 231 credit owner settlement adapter", () => {
     expect(creditOwner.read).toHaveBeenCalledWith("reservation-1");
     expect(creditOwner.draw).toHaveBeenCalledWith(
       "reservation-1",
-      2,
+      11,
       "Spec 231 inference attempt settlement",
       "attempt-1",
     );
@@ -63,8 +63,8 @@ describe("Spec 231 credit owner settlement adapter", () => {
 
   it("preserves the existing one-credit minimum for zero-cost user LLM calls", async () => {
     expect(inferenceCostMicrosToCreditUnits(0)).toBe(1);
-    expect(inferenceCostMicrosToCreditUnits(1_000)).toBe(1);
-    expect(inferenceCostMicrosToCreditUnits(1_001)).toBe(2);
+    expect(inferenceCostMicrosToCreditUnits(100)).toBe(1);
+    expect(inferenceCostMicrosToCreditUnits(101)).toBe(2);
 
     const settle = createCreditReservationSettlement({
       expectedUserId: 7,

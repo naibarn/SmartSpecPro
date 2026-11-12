@@ -4,7 +4,7 @@ import {
   type CreditReservation,
 } from "../creditService";
 
-const USD_MICROS_PER_CREDIT = 1_000;
+const USD_MICROS_PER_CREDIT = 100;
 
 export type InferenceReservationAuthority = {
   reservationId: string;
@@ -28,7 +28,7 @@ export type CreditReservationAuthorityResult =
 
 /**
  * Converts the existing creditService reservation snapshot into Spec 231's
- * cost unit. CreditService defines 1 credit as USD $0.001, or 1,000 USD-micros.
+ * cost unit. CreditService defines 1 credit as USD $0.0001, or 100 USD-micros.
  * Scope fields come from authenticated server context, never request JSON.
  */
 export function adaptCreditReservationForInference(input: {

@@ -203,7 +203,7 @@ function OverviewPanel({
                 />
               </div>
               <p className="text-xs text-gray-500">
-                ${(budget.creditsUsedThisMonth * 0.001).toFixed(2)} / $
+                ${(budget.creditsUsedThisMonth * 0.0001).toFixed(2)} / $
                 {(budget.monthlyLimit * 0.001).toFixed(2)}
               </p>
             </>
@@ -608,8 +608,8 @@ function CreditUsagePanel() {
             />
           </div>
           <p className="text-xs text-gray-500">
-            ${(budget.creditsUsedThisMonth * 0.001).toFixed(2)} spent - $
-            {((budget.monthlyLimit - budget.creditsUsedThisMonth) * 0.001).toFixed(2)}{" "}
+            ${(budget.creditsUsedThisMonth * 0.0001).toFixed(2)} spent - $
+            {((budget.monthlyLimit - budget.creditsUsedThisMonth) * 0.0001).toFixed(2)}{" "}
             remaining
           </p>
         </div>
@@ -688,7 +688,7 @@ function CreditUsagePanel() {
             </span>
             <span className="font-medium">
               {formatCredits(breakdown.totalCredits)} credits ($
-              {(breakdown.totalCredits * 0.001).toFixed(2)})
+              {(breakdown.totalCredits * 0.0001).toFixed(2)})
             </span>
           </div>
         )}
@@ -850,7 +850,7 @@ function PricingInfoPanel() {
           SmartAIHub - Pricing & Cost Guide
         </h3>
         <p className="text-xs text-blue-700 mt-1">
-          1 credit = $0.001 USD | 1,000 credits = $1.00
+          1 credit = $0.0001 USD | 10,000 credits = $1.00
         </p>
       </div>
 

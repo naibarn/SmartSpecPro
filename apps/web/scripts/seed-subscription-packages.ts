@@ -2,7 +2,7 @@
  * Seed subscription packages with billing period support
  * Run with: npx tsx scripts/seed-subscription-packages.ts
  *
- * Base credit rate: 1 credit = $0.001 USD
+ * Base credit rate: 1 credit = $0.0001 USD
  * Subscription markup: 20-25% (better value than one-time for loyal customers)
  *
  * Billing period discounts:
@@ -17,7 +17,7 @@ import postgres from "postgres";
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
 
 // Subscription plans with monthly credits and pricing
-// Markup is 20% from base rate ($0.001/credit)
+// Markup is 20% from base rate ($0.0001/credit)
 const SUBSCRIPTION_PACKAGES = [
   {
     name: "Starter Plan",
@@ -93,7 +93,7 @@ async function seed() {
         ) VALUES (
           ${pkg.name},
           ${pkg.description},
-          ${pkg.credits},
+          ${pkg.credits * 10},
           ${pkg.priceUsd.toFixed(2)},
           'subscription',
           'monthly',
@@ -112,7 +112,7 @@ async function seed() {
       const yearly = (pkg.priceUsd * 12 * 0.90).toFixed(2);
 
       console.log(`Created: ${pkg.name}`);
-      console.log(`  Credits: ${pkg.credits.toLocaleString()}/month`);
+      console.log(`  Credits: ${(pkg.credits * 10).toLocaleString()}/month`);
       console.log(`  Monthly: $${pkg.priceUsd.toFixed(2)}`);
       console.log(`  Quarterly (5% off): $${quarterly}`);
       console.log(`  Semi-Annual (7% off): $${semiAnnual}`);

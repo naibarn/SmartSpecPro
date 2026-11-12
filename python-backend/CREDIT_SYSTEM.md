@@ -12,7 +12,7 @@ SmartSpec Pro uses a **credit-based payment system** where users purchase credit
 
 ### **Key Principles**
 
-1. **1 USD = 1,000 credits** (fixed conversion rate)
+1. **1 USD = 10,000 credits** (fixed conversion rate)
 2. **Markup applied on top-up only** (not on usage)
 3. **Actual LLM costs deducted** (no hidden fees on usage)
 4. **Integer-based credits** (no decimal confusion)
@@ -33,7 +33,7 @@ SmartSpec Pro generates revenue through a **markup on credit purchases**:
 
 ```
 User Payment → Markup Deducted → Credits Added → LLM Usage → Credits Deducted
-    $100    →   $13.04 revenue  →  86,956 credits →  $0.10 cost  →  100 credits
+    $100    →   $13.04 revenue  →  869,565 credits →  $0.10 cost  →  1,000 credits
 ```
 
 ### **Example Calculation**
@@ -43,13 +43,13 @@ User Payment → Markup Deducted → Credits Added → LLM Usage → Credits Ded
 User pays: $100.00
 Markup (15%): $100 / 1.15 = $86.956 (actual value)
 Revenue: $100 - $86.956 = $13.044 (13.04% effective)
-Credits received: 86,956 credits
+Credits received: 869,565 credits
 ```
 
 **LLM Usage:**
 ```
 LLM cost: $0.10 (actual provider cost)
-Credits deducted: 100 credits (0.10 × 1,000)
+Credits deducted: 1,000 credits (0.10 × 10,000)
 No additional markup or fees
 ```
 
@@ -61,31 +61,31 @@ No additional markup or fees
 
 | USD | Credits |
 |-----|---------|
-| $0.001 | 1 credit |
-| $0.01 | 10 credits |
-| $0.10 | 100 credits |
-| $1.00 | 1,000 credits |
-| $10.00 | 10,000 credits |
-| $100.00 | 100,000 credits |
+| $0.0001 | 1 credit |
+| $0.001 | 10 credits |
+| $0.01 | 100 credits |
+| $0.10 | 1,000 credits |
+| $1.00 | 10,000 credits |
+| $10.00 | 100,000 credits |
 
 ### **Top-up Examples**
 
 | Payment | Markup (15%) | Revenue | Credits Received | Effective Value |
 |---------|--------------|---------|------------------|-----------------|
-| $1.00 | $0.13 | $0.13 | 869 credits | $0.87 |
-| $10.00 | $1.30 | $1.30 | 8,695 credits | $8.70 |
-| $100.00 | $13.04 | $13.04 | 86,956 credits | $86.96 |
-| $1,000.00 | $130.43 | $130.43 | 869,565 credits | $869.57 |
+| $1.00 | $0.13 | $0.13 | 8,696 credits | $0.87 |
+| $10.00 | $1.30 | $1.30 | 86,957 credits | $8.70 |
+| $100.00 | $13.04 | $13.04 | 869,565 credits | $86.96 |
+| $1,000.00 | $130.43 | $130.43 | 8,695,652 credits | $869.57 |
 
 ### **LLM Usage Examples**
 
 | LLM Cost | Credits Deducted | Markup | Total Deducted |
 |----------|------------------|--------|----------------|
-| $0.001 | 1 credit | $0 | 1 credit |
-| $0.01 | 10 credits | $0 | 10 credits |
-| $0.10 | 100 credits | $0 | 100 credits |
-| $1.00 | 1,000 credits | $0 | 1,000 credits |
-| $10.00 | 10,000 credits | $0 | 10,000 credits |
+| $0.001 | 10 credits | $0 | 10 credits |
+| $0.01 | 100 credits | $0 | 100 credits |
+| $0.10 | 1,000 credits | $0 | 1,000 credits |
+| $1.00 | 10,000 credits | $0 | 10,000 credits |
+| $10.00 | 100,000 credits | $0 | 100,000 credits |
 
 ---
 
@@ -95,15 +95,15 @@ No additional markup or fees
 
 ```
 1. User registers → Balance: 0 credits ($0.00)
-2. User tops up $100 → Balance: 86,956 credits ($86.96)
-3. User makes LLM call costing $0.50 → Balance: 86,456 credits ($86.46)
+2. User tops up $100 → Balance: 869,565 credits ($86.96)
+3. User makes LLM call costing $0.50 → Balance: 864,565 credits ($86.46)
 4. User can make 172 more $0.50 calls before running out
 ```
 
 ### **Scenario 2: Heavy User**
 
 ```
-1. User tops up $1,000 → Balance: 869,565 credits ($869.57)
+1. User tops up $1,000 → Balance: 8,695,652 credits ($869.57)
 2. User makes 100 LLM calls @ $0.10 each → Balance: 859,565 credits ($859.57)
 3. Total spent: $10.00, Remaining: $859.57
 4. Can make 8,595 more $0.10 calls
@@ -159,12 +159,12 @@ CREATE TABLE system_config (
 
 ```python
 # Credit conversion
-usd_to_credits(Decimal("0.10")) → 100 credits
-credits_to_usd(100) → Decimal("0.10")
+usd_to_credits(Decimal("0.10")) → 1,000 credits
+credits_to_usd(1000) → Decimal("0.10")
 
 # Markup calculation
-calculate_credits_from_payment(Decimal("100.00")) → 86,956 credits
-calculate_payment_from_credits(86956) → Decimal("100.00")
+calculate_credits_from_payment(Decimal("100.00")) → 869,565 credits
+calculate_payment_from_credits(869565) → Decimal("100.00")
 ```
 
 ### **API Endpoints**
@@ -190,10 +190,10 @@ Content-Type: application/json
   "payment_usd": 100.00,
   "markup_percent": 15.0,
   "markup_amount_usd": 13.044,
-  "credits_received": 86956,
-  "balance_credits": 86956,
+  "credits_received": 869565,
+  "balance_credits": 869565,
   "balance_usd": 86.956,
-  "message": "Successfully topped up 86,956 credits ($86.96 value). Your new balance is 86,956 credits ($86.96)."
+  "message": "Successfully topped up 869,565 credits ($86.96 value). Your new balance is 869,565 credits ($86.96)."
 }
 ```
 
@@ -207,15 +207,15 @@ Authorization: Bearer <token>
 **Response:**
 ```json
 {
-  "balance_credits": 86956,
+  "balance_credits": 869565,
   "balance_usd": 86.956,
   "stats": {
-    "total_added_credits": 86956,
+    "total_added_credits": 869565,
     "total_added_usd": 86.956,
     "total_deducted_credits": 0,
     "total_deducted_usd": 0.0,
     "transaction_count": 1,
-    "current_balance_credits": 86956,
+    "current_balance_credits": 869565,
     "current_balance_usd": 86.956
   }
 }
@@ -235,11 +235,11 @@ Authorization: Bearer <token>
     {
       "id": "uuid",
       "type": "topup",
-      "amount": 86956,
+      "amount": 869565,
       "amount_usd": 86.956,
       "description": "Top-up via stripe",
       "balance_before": 0,
-      "balance_after": 86956,
+      "balance_after": 869565,
       "metadata": {
         "payment_method": "stripe",
         "payment_id": "pi_xxx",
@@ -247,18 +247,18 @@ Authorization: Bearer <token>
         "markup_percent": 15.0,
         "markup_amount_usd": 13.044,
         "actual_value_usd": 86.956,
-        "credits_received": 86956
+        "credits_received": 869565
       },
       "created_at": "2025-12-30T10:00:00Z"
     },
     {
       "id": "uuid",
       "type": "deduction",
-      "amount": 100,
+      "amount": 1000,
       "amount_usd": 0.10,
       "description": "LLM call: code_generation using anthropic/claude-sonnet",
-      "balance_before": 86956,
-      "balance_after": 86856,
+      "balance_before": 869565,
+      "balance_after": 868565,
       "metadata": {
         "task_type": "code_generation",
         "provider": "anthropic",
@@ -266,7 +266,7 @@ Authorization: Bearer <token>
         "tokens": 1500,
         "llm_cost": 0.10,
         "llm_cost_usd": 0.10,
-        "credits_deducted": 100
+        "credits_deducted": 1000
       },
       "created_at": "2025-12-30T10:05:00Z"
     }
@@ -291,7 +291,7 @@ Content-Type: application/json
 ```json
 {
   "payment_usd": 100.00,
-  "credits": 86956,
+  "credits": 869565,
   "markup_percent": 15.0,
   "markup_amount_usd": 13.044,
   "actual_value_usd": 86.956
@@ -389,14 +389,14 @@ amount DECIMAL(10, 4)  -- Stored as USD
 
 **New Schema (INTEGER):**
 ```sql
-credits_balance INTEGER  -- Stored as credits (1 USD = 1,000 credits)
+credits_balance INTEGER  -- Stored as credits (1 USD = 10,000 credits)
 amount INTEGER  -- Stored as credits
 ```
 
 **Migration Script:**
 ```sql
 -- See: migrations/001_credit_system_integer.sql
--- Converts existing USD balances to credits (multiply by 1000)
+-- Converts existing USD balances to credits (multiply by 10000)
 ```
 
 ---
@@ -416,8 +416,8 @@ amount INTEGER  -- Stored as credits
 ### **Constants**
 
 ```python
-USD_TO_CREDITS = 1000  # 1 USD = 1,000 credits
-CREDITS_TO_USD = Decimal("0.001")  # 1 credit = $0.001
+USD_TO_CREDITS = 10000  # 1 USD = 10,000 credits
+CREDITS_TO_USD = Decimal("0.0001")  # 1 credit = $0.0001
 DEFAULT_MARKUP_PERCENT = Decimal("15.0")  # 15% markup
 ```
 
@@ -425,8 +425,8 @@ DEFAULT_MARKUP_PERCENT = Decimal("15.0")  # 15% markup
 
 ## ❓ **FAQ**
 
-### **Q: Why 1,000 credits per USD?**
-A: To avoid decimal confusion and make credits feel more substantial. It's easier to understand "100 credits" than "$0.10".
+### **Q: Why 10,000 credits per USD?**
+A: To avoid decimal confusion and make credits feel more substantial. It's easier to understand "1,000 credits" than "$0.10".
 
 ### **Q: Why is the effective revenue 13.04% instead of 15%?**
 A: Because markup is calculated on the base price, not the total. $100 / 1.15 = $86.96, so revenue is $13.04 (13.04% of $100).

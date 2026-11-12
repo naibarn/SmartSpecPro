@@ -1697,7 +1697,7 @@ export async function calculateCreditsForLLMDynamic(
     const costUsd =
       (inputTokens / 1_000_000) * dbPricing.input +
       (outputTokens / 1_000_000) * dbPricing.output;
-    return Math.max(1, Math.ceil(costUsd * 1000));
+    return Math.max(1, Math.ceil(costUsd * 10_000));
   }
   // Fallback to hardcoded pricing
   return calculateCreditsForLLM(inputTokens, outputTokens, model);
@@ -1770,14 +1770,14 @@ export function calculateLLMCostUsd(
 /**
  * Calculate credits needed for LLM usage based on actual cost
  *
- * Credit pricing: 1 credit = $0.001 USD (so $1 = 1000 credits)
- * This means credits deducted = actual LLM cost in USD * 1000
+ * Credit pricing: 1 credit = $0.0001 USD (so $1 = 10,000 credits)
+ * This means credits deducted = actual LLM cost in USD * 10,000
  *
  * Example with gpt-4o-mini (1000 input + 500 output tokens):
  * - Input cost: 1000/1M * $0.15 = $0.00015
  * - Output cost: 500/1M * $0.60 = $0.0003
  * - Total cost: $0.00045
- * - Credits: 0.00045 * 1000 = 0.45 → ceil = 1 credit
+ * - Credits: 0.00045 * 10,000 = 4.5 → ceil = 5 credits
  */
 export function calculateCreditsForLLM(
   inputTokens: number,
@@ -1785,19 +1785,19 @@ export function calculateCreditsForLLM(
   model: string = "gpt-4o-mini"
 ): number {
   const costUsd = calculateLLMCostUsd(inputTokens, outputTokens, model);
-  // Convert USD to credits: 1 credit = $0.001
-  const credits = costUsd * 1000;
+  // Convert USD to credits: 1 credit = $0.0001
+  const credits = costUsd * 10_000;
   return Math.max(1, Math.ceil(credits));
 }
 
 /**
  * Calculate credits based on USD cost
  *
- * Pricing: 1 credit = $0.001 USD
- * So $1 = 1000 credits
+ * Pricing: 1 credit = $0.0001 USD
+ * So $1 = 10,000 credits
  */
 export function calculateCreditsFromCost(costUsd: number): number {
-  return Math.max(1, Math.ceil(costUsd * 1000));
+  return Math.max(1, Math.ceil(costUsd * 10_000));
 }
 
 /**

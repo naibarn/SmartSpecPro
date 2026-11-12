@@ -187,7 +187,7 @@ export async function seedUatIdentities(): Promise<void> {
         loginMethod: "codex_uat",
         role: identity.role,
         currentTenantId: identity.tenantId,
-        credits: 5_000,
+        credits: 50_000,
         plan: "free",
         isDisabled: false,
       });
@@ -196,7 +196,7 @@ export async function seedUatIdentities(): Promise<void> {
       await db.update(users).set({
         role: identity.role,
         currentTenantId: identity.tenantId,
-        credits: 5_000,
+        credits: 50_000,
         plan: "free",
         isDisabled: false,
         disabledReason: null,

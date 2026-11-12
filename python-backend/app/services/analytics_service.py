@@ -70,7 +70,7 @@ class AnalyticsService:
         # Calculate metrics
         total_requests = len(transactions)
         total_credits = sum(t.amount for t in transactions)
-        total_cost_usd = total_credits / 1000  # 1000 credits = $1
+        total_cost_usd = total_credits / 10000  # 10,000 credits = $1
         
         # Group by provider
         by_provider = {}
@@ -94,7 +94,7 @@ class AnalyticsService:
                 }
             by_provider[provider]["requests"] += 1
             by_provider[provider]["credits"] += t.amount
-            by_provider[provider]["cost_usd"] += t.amount / 1000
+            by_provider[provider]["cost_usd"] += t.amount / 10000
             
             # By model
             model_key = f"{provider}/{model}"
@@ -106,7 +106,7 @@ class AnalyticsService:
                 }
             by_model[model_key]["requests"] += 1
             by_model[model_key]["credits"] += t.amount
-            by_model[model_key]["cost_usd"] += t.amount / 1000
+            by_model[model_key]["cost_usd"] += t.amount / 10000
             
             # By day
             if day not in by_day:
@@ -117,7 +117,7 @@ class AnalyticsService:
                 }
             by_day[day]["requests"] += 1
             by_day[day]["credits"] += t.amount
-            by_day[day]["cost_usd"] += t.amount / 1000
+            by_day[day]["cost_usd"] += t.amount / 10000
         
         # Get payment summary
         payment_result = await self.db.execute(
@@ -220,7 +220,7 @@ class AnalyticsService:
             
             time_series[key]["requests"] += 1
             time_series[key]["credits"] += t.amount
-            time_series[key]["cost_usd"] += t.amount / 1000
+            time_series[key]["cost_usd"] += t.amount / 10000
         
         # Convert to list and sort
         data_points = list(time_series.values())
@@ -278,7 +278,7 @@ class AnalyticsService:
             
             providers[provider]["requests"] += 1
             providers[provider]["credits"] += t.amount
-            providers[provider]["cost_usd"] += t.amount / 1000
+            providers[provider]["cost_usd"] += t.amount / 10000
             
             model = metadata.get("model")
             if model:
@@ -421,7 +421,7 @@ class AnalyticsService:
             
             models[model_key]["requests"] += 1
             models[model_key]["credits"] += t.amount
-            models[model_key]["cost_usd"] += t.amount / 1000
+            models[model_key]["cost_usd"] += t.amount / 10000
         
         # Convert to list and sort
         top_models = list(models.values())

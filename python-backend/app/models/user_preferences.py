@@ -31,7 +31,7 @@ class UserPreferences(Base):
     marketing_emails = Column(Boolean, default=False, nullable=False)
     
     # Alert thresholds
-    low_credits_threshold = Column(Integer, default=1000, nullable=False)  # Alert when credits < this
+    low_credits_threshold = Column(Integer, default=10000, nullable=False)  # Alert when credits < this
     
     # LLM preferences
     default_llm_model = Column(String(100), nullable=True)  # e.g., "gpt-4", "claude-3-opus"
