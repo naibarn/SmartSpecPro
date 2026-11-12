@@ -1,5 +1,73 @@
 {
-  "generation": 17,
+  "generation": 24,
+  "historical_requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L252"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L252",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9a5e87e409ae1aab192ced7493b26071fb926acb3c074f0a7e407f4f9888533f",
+      "requirement_id": "REQ-4F215153870F",
+      "requirement_text": "- The shell SHALL provide conversation history, a New Chat action, an enabled-model selector with Auto, and a conversation inspector for the selected thread. Agent, task, cloud-execution and usage indicators SHALL be backed by current authorized data; the UI SHALL NOT present sample or fabricated counts/statuses as live system state.",
+      "source_spec_digest": "ef366eb3696cdb1f3d884b8d1588e0ebff7b321127a8fb6ea24e1354f6a394f1",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L255"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L255",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3d91a938f6c5b299a70e9241bad1c9889fa1352be16967eaa0f38f62965e2072",
+      "requirement_id": "REQ-E13EF9960509",
+      "requirement_text": "- A completed assistant message SHALL render its response and show available provider/model, token usage, credit debit and timestamp details together on one metadata line. Loading, queued, failed, empty-history and unavailable-route states SHALL remain understandable and actionable.",
+      "source_spec_digest": "ef366eb3696cdb1f3d884b8d1588e0ebff7b321127a8fb6ea24e1354f6a394f1",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L258"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L258",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5d9ac4fb4f154710f4edbe67034f07c4a6857b345eb190ef930f5ffa054f1ff7",
+      "requirement_id": "REQ-AEDAF91F1418",
+      "requirement_text": "Acceptance SHALL include authenticated visual and interaction review of the deployed `aimarkethubs.com` release at desktop, tablet and mobile sizes; direct post-login routing to Chat; workspace selection/creation; every navigation destination resolving to a route or explicit placeholder; theme change and persistence; enabled-model and Auto selection; queued text response and restored history; one-line response metadata; attachment selection/removal with accurate upload limitation; and evidence that no agent/cloud metrics are fabricated. File submission remains a separate acceptance item and SHALL be enabled only after its upload contract is implemented and verified. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.",
+      "source_spec_digest": "ef366eb3696cdb1f3d884b8d1588e0ebff7b321127a8fb6ea24e1354f6a394f1",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +87,7 @@
       "requirement_digest": "d5fe8e3d94fde68831728b1822ddcdebd08307a3bf3d365bb9ceb86f4a834a1a",
       "requirement_id": "REQ-BB2A910023B8",
       "requirement_text": "SmartAIHub SHALL be re-architected as a small SaaS Core plus independently built, deployed and rolled-back first-party modules, while the original `apps/web` continues to run on Debian. Every module is copied selectively from the legacy source into a clean destination folder, dependencies slimmed, UI modernized where beneficial, tests added, and modules made available in scoped beta as soon as a usable slice exists. Slower individual delivery is acceptable; a one-shot rewrite/cutover is NOT.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +109,7 @@
       "requirement_digest": "0929ad210f8d2b70d9264eda03413d3a2e9e80d66a5982a6354af750cbd210b7",
       "requirement_id": "REQ-2DB2B6A11BD8",
       "requirement_text": "**Goals:** reduce build RAM/time, bundle size, deployment blast radius, runtime overhead, accidental restarts and Cloudflare cost; preserve existing users, tenant IDs, canonical data, application functions and accepted business behavior. The programme SHALL begin inventory and Core-boundary discovery immediately, **in parallel with bounded implementation of demonstrably owned slices**; inventory completion is not permission to postpone coding, previews, or human UAT. Spec 312 is program governance, **not** a second deployment/job/payment authority.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +131,7 @@
       "requirement_digest": "596e706b349702063d8f15baebb40c1e3ab8551e261d3671accc8463acfa8ec0",
       "requirement_id": "REQ-A46558127F87",
       "requirement_text": "- PostgreSQL `smartspec` remains the canonical **Core control-plane** database for identity, tenants, canonical credit ledger, `worker_jobs`, product registry, App installs and subscriptions. **New Mini App business data MUST NOT be stored there.** The only business-data exception is an explicitly registered Mini App/module migrated from Legacy that already owns tables there. See SPEC-323; never clone identity, credit ledger or job authority.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +153,7 @@
       "requirement_digest": "4dfcc9b06b3a17c3da5e08d7cb562ccee7e79f57d3824dc1b24273bd93e15a7e",
       "requirement_id": "REQ-C09632845210",
       "requirement_text": "- New module code MUST NOT import the executable legacy `apps/web` server/client runtime or another module's implementation.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +175,7 @@
       "requirement_digest": "5d97a4f52494a55f71395d2f911502b54182ede7bf677c85f1f84637896366c2",
       "requirement_id": "REQ-DC2F1A8516A0",
       "requirement_text": "- Each first-party deployment unit MUST build, package, activate and roll back without rebuilding/restarting unrelated units.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +197,7 @@
       "requirement_digest": "ccda447f7840d09192920ce8ec4b72441e90907f930d5068a2793c687a976a92",
       "requirement_id": "REQ-0BAC939D5F17",
       "requirement_text": "For each item produce `module-inventory.csv` (stable ID), plus a human-readable mapping with ownership, dependency evidence, proposed target and acceptance evidence. Every identified active item MUST end with one allocation: `SAAS_CORE`, `PUBLIC_APP`, `FIRST_PARTY_MODULE`, `SHARED_CONTRACT`, `SPECIALIZED_EXECUTOR`, or `LEGACY_ONLY_PENDING_DECISION`. Unknown ownership is labeled `UNKNOWN_OWNER` and scoped to the affected capability; it does **not** freeze unrelated implementation or beta release. An unproven write path must not be enabled for real financial/privileged mutations until its owner is established.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +219,7 @@
       "requirement_digest": "ddd9197b1c32a949ac05c6d70f68453e61525b8c1f2cc2a3af889d92c3794978",
       "requirement_id": "REQ-D80BDD46DD5F",
       "requirement_text": "A capability belongs in Core only if: (a) it applies to most/all modules as platform authority; (b) duplicating it compromises identity/tenant/financial correctness or module entitlement; or (c) it is needed to authenticate/authorize/measure module calls. Core includes identity/session, tenant/domain/membership, RBAC/policy, wallet authority adapters, purchase/payment reconciliation adapters, module registry, entitlement/licensing, usage accounting contract and scoped API credentials. `SPEC-207` owns financial logic; `SPEC-280` owns usage pricing/revenue. Chat/model selection, video and asset editors, application-specific CMS, specialized execution, social posting and document parsing MUST NOT be moved into Core merely for convenience.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +241,7 @@
       "requirement_digest": "f25a7bcca98061cec1e81bfb701a47e7ffa07fb90e9eaecd5372ce176f3af080",
       "requirement_id": "REQ-167F498E8E04",
       "requirement_text": "**A. Authoritative delivery rule.** The 2026-11-01 owner decision supersedes the **blocking sequence** previously described as G0–G6 in these new draft specs. Codex SHALL begin implementable Core slices while inventory proceeds. Audit, source provenance, dependency tracing, automated tests, budgets and readiness receipts are **work outputs and advisory status**, not prerequisites requiring a green global gate to start writing code, building, exposing a development URL, or beginning bounded human UAT. No percentage/coverage/10-review/completeness threshold may be invented as a condition to start implementation.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +263,7 @@
       "requirement_digest": "b9b45d0de8ec9baa5b358aa2e66fae3ec0840ce20ad2857e57dd65af8e561c59",
       "requirement_id": "REQ-D8BB78290DDE",
       "requirement_text": "3. **Same actual PostgreSQL Core database and existing schema.** `smartspec` is the single canonical **Core** DB, **not** a migrated/imported copy or replacement D1; it holds identity, wallet/ledger, platform jobs, App registry and existing Legacy data. Fresh Mini Apps MUST use independent App data stores under SPEC-323, not tables in `smartspec`. Identity, hashes, MFA, user/tenant IDs and existing ledger remain intact. First Core slice defaults to **zero DDL**; justified Core metadata is additive only. Do not confuse app-control metadata in Core with its business data.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +285,7 @@
       "requirement_digest": "770f8073d61235b1908289423fb20fc765680a15a8fef62df7e8534e638c7ba0",
       "requirement_id": "REQ-5EA2D59BCA70",
       "requirement_text": "SPEC-318 is the narrow implementation contract for the dominant long-running jobs. `SAAS_CORE` SHALL own only authentication/authorization and thin job intake/status adapters, not an embedded Queue processor/Rust supervisor. Reuse canonical `worker_jobs` and outbox/lease authority across Debian and Cloudflare. Local Debian execution may use zero Cloudflare Queues cost, while verified production jobs may select TypeScript push, external Rust pull, or existing provider/runner executors by job class. Do not mandate Cloudflare Queue or Rust for every Mini App. Never hold Worker Queue invocations for multi-hour jobs. Short/long routes may use distinct queues only with measured need and no double-consumer configuration. See SPEC-318; planned performance and cost tracking are advisory, not pre-implementation approval gates.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +307,7 @@
       "requirement_digest": "3067dee540c2f73a3015f9b9ce19102662016948484ca261b5783bc5e45f6be5",
       "requirement_id": "REQ-0EFDFE79A430",
       "requirement_text": "- Business priority changes to **Mini App-first marketplace** with agent/Skill capability as the execution layer. Public Creator Portfolio and Services offers are first-class. No new agent-first directory is required before beta.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +329,7 @@
       "requirement_digest": "03b95d7e5a81bce3fe0f2d7dd94d3fc7dcaa0edd902ef88fdc5b910a07dad596",
       "requirement_id": "REQ-29B718963E5E",
       "requirement_text": "- The cross-spec audit SHALL reference existing SPEC-207, 256, 261, 263, 270, 273, 277, 280, 287, 293, 294, 295, 303, 304, 311, 318 and existing 199/248/224 authorities. Do not declare all old specs obsolete or recreate parallel canonical systems.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +351,7 @@
       "requirement_digest": "63eac0f583eaee7a824ca55a9be9b3e3181b2c7508c57325b44d85fd8db22623",
       "requirement_id": "REQ-E13A9E34BFC9",
       "requirement_text": "- Credit redenomination is a coordinated legacy/new Financial Authority update, not a presentation-only display change. Old balance value must be preserved.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +373,7 @@
       "requirement_digest": "853a6951de7dea59271105b17a7a7c877dd1619720330bb849dbbc188289237b",
       "requirement_id": "REQ-CF5B579A0168",
       "requirement_text": "This programme has TWO different data scopes. **Core control-plane** state and migrated legacy data remain in PostgreSQL `smartspec`; **new Mini App business data** lives outside that DB. If Mini App is stateless it need not provision any DB. Hosted-domain choice is independent of DB owner/provider and does not grant write access to Core. SPEC-323 is the authoritative specialization. M0 shall inventory legacy App tables and mark exact allowable shared-DB exceptions, while building fresh Mini Apps directly on isolated storage. Do not block unrelated UI/agent beta on inventory completion.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -328,7 +396,7 @@
       "requirement_digest": "f991bcf9488c8c8fd71b8b74a0dc6465fa952745d17b385c88d5e4f980d2bdff",
       "requirement_id": "REQ-FA42CFF33A89",
       "requirement_text": "**Normative owner directive:** ALL development of the new SmartSIHub platform SHALL be initiated, orchestrated, observed and accepted through the *currently running* `https://smartaihub.app` Autonomous Implements / Autonomous Mini App Creator facilities, using their existing SPEC-224 Job/Run, Runner, Workspace, Harness and deployment authorities. `smartaihub.app` is the **temporary development control plane**, not the new SaaS Core implementation or the new production domain. This rule applies to source changes, builds, tests, release requests, UAT and repair work; executors may run CLI internally as delegated tools. An emergency out-of-band repair is permitted ONLY when the old UI/control path is nonfunctional; reconcile its exact SHA/Run/receipts back into the canonical record as soon as recovery permits. Never claim that a task was executed through the UI unless actual Run evidence confirms it.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [
         "SPEC-312 R1.6 — Shared Core database, environment tenants and direct development"
       ],
@@ -355,7 +423,7 @@
       "requirement_digest": "586602efc03405a208ea03ab87ce3bd79e20ac21dc91c3ec60441636dce69a76",
       "requirement_id": "R1.4",
       "requirement_text": "The development loop SHALL be: **Goal entered on old website → durable Run and owned Debian workspace → implement/test/build → real `aimarkethubs.com` UAT → scoped `smartsihub.com` Cloudflare beta when appropriate → user feedback → automatic child repair/continue**. A defect in the existing control plane becomes an **in-scope bootstrap repair task** for the affected operation, not a reason to abandon the migration or create another approval system. Preserve task identity, source SHA, logs and work artifacts through restart/disconnect; no silent success claims. The new autonomous implementer becomes the primary authority only after it has completed real development tasks and recovery/rollback tests; user-visible traffic switches selectively, with the old tool retained as fallback until stable. See SPEC-324 and [roadmap](../../../docs/smartsihub-r1.4/ROADMAP-AUTONOMOUS-IMPLEMENTATION.md).",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -377,7 +445,7 @@
       "requirement_digest": "0bf905ee286b88eb35065cf8cb37864dbaef0b3a9d113954e9682eafe08bae42",
       "requirement_id": "REQ-088EB84317A9",
       "requirement_text": "Computer Use and fast decision routing are **cross-cutting optional capabilities** and MUST NOT block the P1 fresh Core/P2 Chat/P3 Mini App Creator beta when their own adapter is unready. Existing SPEC-208 is already the canonical Computer Use / Clef-first architecture. New platform adopts its contracts through thin adapters; no legacy monolith import, duplicate routing authority or Job ledger. Deliver one final-result-only headless browsing pilot early, then Desktop Runner and Clef optional routing, with Cloudflare Browser Run / Kitesurf and Moli benchmarked by eligibility and cost.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -399,7 +467,7 @@
       "requirement_digest": "2e4cad61989215fdd2c73587597e6f04cf436f95fa714b81c44e5ddf55e3017b",
       "requirement_id": "REQ-11BDE28B61A3",
       "requirement_text": "1. **Identity and domains.** `smartsihub.com` is the confirmed Cloudflare **production** hostname; `aimarkethubs.com` is the Debian-first new-platform development + real-human UAT; `smartaihub.app` is the still-running legacy system AND the sole initial user-facing development-command center, to be retired as a controller only after proven selective handover. Hostname, `NODE_ENV`, public link or site labels MUST NOT be used as substitute for verified runtime target, role or payment authority.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -421,7 +489,7 @@
       "requirement_digest": "253095c20c526b512e5fe6eefe77ae7e2f3944365fdfecd7b85c3f8ad30eae44",
       "requirement_id": "REQ-AEB8CB86FDAE",
       "requirement_text": "2. **No parallel financial or job authority.** PostgreSQL `smartspec` continues to own canonical identity, tenancy, wallet/credits, subscriptions, marketplace/app IDs, and `worker_jobs`; registered **legacy-migrated data** may stay there. New stateful Mini App business data MUST use an app-specific store outside Core; stateless Apps need none. Rust, TypeScript, Mini App, Browser and external Agent MUST access central financial/job effects through the versioned authorized contracts, not invent private settlement or job ledgers.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -433,29 +501,29 @@
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L187",
       "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
         "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
+        "description": "A live authenticated credit-ledger verification has not been recorded for the current release.",
+        "next_action": "Use a normal owner account/MFA session, perform one controlled paid Chat turn and record the exact balance and ledger delta without storing credentials."
       },
-      "current_relevance": "RELEVANT",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; The USD 1 = 10,000-credit unit is applied to the existing shared ledger; migration 0434 wires modular Chat reserve/settlement against that authority. No live turn was sent, so end-to-end debit is still unverified.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; shared credit reservation and settlement path is integrated for worker_jobs Chat turns.",
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
       "next_action": "Complete one authenticated paid Chat turn and verify the exact shared balance/ledger delta, reservation release/refund behavior and idempotent settlement.",
       "requirement_digest": "ac6b950b43568aac583a10d9f42d499f1a67b15a816ba8fdc8118d82fede37c1",
       "requirement_id": "REQ-9243A49EB447",
       "requirement_text": "7. **Economic and commercial identity.** 1 USD = 10,000 **new** credits; preserve old purchased/earned value by atomic denomination-versioned x10 migration for old units, avoid historical ledger rewrite and mixed unit writers. Only four revenue roles (Platform, Tenant Infra, Mini App, Skill) credit verified owner user wallets. One-time referral bonus is Platform-funded, not a fifth share. SmartSIHub **platform** subscription (monthly credits) is distinct from Mini App subscription (only new **exclusive** in-app Skills included); all shared/external Skills charged per distinct invocation. Pay-as-you-go reserve/actual settle/unused release and per-class overdraft default **zero** unless authorized. Users must have a SmartSIHub account; paid platform subscription is not universally mandatory.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
-      "verification_method": "Core package: 117 tests across 19 files; Chat package: 29 tests across 3 files; focused Core/Chat typechecks and isolated builds passed; deployment controller: 11 tests passed; local/public smoke passed. Authenticated LLM and ledger behavior remains unverified."
+      "verification_method": "Use one authenticated paid Chat turn to verify current shared credit balance, ledger delta, reservation release/refund and idempotent settlement; package tests do not replace live ledger proof."
     },
     {
       "applicability": "UNASSESSED",
@@ -474,7 +542,7 @@
       "requirement_digest": "1cdcfb527fdc04b4f596a2e09c93d4869929929cb7f784bfdb195b472d5de62b",
       "requirement_id": "REQ-5FDF8CE72332",
       "requirement_text": "8. **Cross-provider portability and idempotency.** Core remains PostgreSQL; independent new Mini Apps use app-owned **D1** / independent PostgreSQL or self-hosted storage under **BYOC** or managed deployment. **Idempotency** is required for job admission, shared Skill usage, credit reservation/settlement, subscription grants, referral bonuses and replayed webhooks; this is a business-effect invariant rather than a new global approval gate.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -496,7 +564,7 @@
       "requirement_digest": "9cbeb8995bc615447934a26ba984d8ffb8b54998c86e9ab115c518812726351d",
       "requirement_id": "REQ-306C2EAF8016",
       "requirement_text": "Before remote device execution is enabled, the new product must pass the SPEC-325 enrollment, device proof-of-possession, signed-job-envelope, revoke/reconnect, locked-session and shared-Companion acceptance cases on a non-production environment. Device availability is a workload capability; it is never a prerequisite for cloud Agent identity or browser-closed job durability.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -518,7 +586,7 @@
       "requirement_digest": "51530126ac52352e1cdddbc6db72572458f03ede5534abf1710879d1d519c1f1",
       "requirement_id": "REQ-78BB9E3B7A83",
       "requirement_text": "- The Legacy `smartaihub.app`, modular development `aimarkethubs.com`, and modular Cloudflare `smartsihub.com` runtimes MUST use the same canonical PostgreSQL `smartspec` database and Core identity, customer-tenant, entitlement, financial and `worker_jobs`/outbox authority. Existing user accounts and IDs MUST remain usable in the Modular product. Implementations MUST NOT clone users, create a second identity/ledger/job authority, copy the database or replace the existing schema. New Mini App business data MUST remain in its independent App data plane under SPEC-323.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -540,7 +608,7 @@
       "requirement_digest": "f0805d88fcdc9b8f27341959c9443790b5da66dce589631d8d31cd77b4d4033e",
       "requirement_id": "REQ-83BA6F65A95A",
       "requirement_text": "- The new Core MUST use Hono/TypeScript for both local Debian/workerd development and Cloudflare Workers, and MUST remain small and fast for that runtime. Implementations MUST NOT introduce Express or import the Legacy Express runtime into the new Core; `apps/web` remains the Legacy application.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -562,7 +630,7 @@
       "requirement_digest": "ffb68be2e53ecb9a6036b104b6d6766c8253a36884723eeb462e6c654fe66483",
       "requirement_id": "REQ-9352CD8A515B",
       "requirement_text": "- Implementations MUST keep customer tenancy separate from deployment environment tenancy. `aimarkethubs.com` MUST bind to the modular development/test environment tenant and `smartsihub.com` MUST bind to a distinct modular production environment tenant. Existing customer tenant IDs and authorized canonical Core data MUST remain shared. Every customer-data request MUST resolve access from the verified account, membership and policy; hostname or request data MUST NOT grant tenant access. Development-only records and effects MUST stay scoped to the development environment tenant.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -584,7 +652,7 @@
       "requirement_digest": "b68d2c54165afd3a905ab6f7c9313091b77c516c535578ded5abbfd7d1d72221",
       "requirement_id": "REQ-078D75C9DFB8",
       "requirement_text": "- Runtime DB credentials, deployment identities, Worker bindings and secrets MUST be separately scoped per environment where supported while connecting to the same canonical database. Existing authorization and schema semantics MUST be preserved; zero DDL remains the default. A different runtime credential MUST NOT imply a different database, and a shared database MUST NOT grant blanket cross-tenant access.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -606,7 +674,7 @@
       "requirement_digest": "62a2c7910f15283b4a9f4054f15d232bca8681bb0e37ea2fc93218fdf09d008a",
       "requirement_id": "REQ-C81078458FFE",
       "requirement_text": "- Development MUST be supported directly through Codex or Claude in the canonical source repository and MAY instead use the existing SPEC-224 Job/Run, Runner, Workspace and Harness facilities on `smartaihub.app`. Both paths MUST preserve the same source, focused-check, commit and handoff evidence. Implementations MUST record SPEC-224 receipts only when that path was actually used and MUST NOT create a replacement in-house orchestration system.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -623,20 +691,20 @@
       "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PASS",
       "implementation_evidence": [
-        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; Modular replacement is healthy on aimarkethubs.com, the prior port-3100 service and rollback snapshot are preserved, and smartaihub.app/smartsihub.com remain on separate targets.",
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; modular-debian-dev replacement is healthy on aimarkethubs.com and prior port-3100 rollback service is retained.",
         "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Keep smartaihub.app on the legacy runtime and leave smartsihub.com inactive until its separate production release authority is provisioned.",
+      "next_action": "Keep every future release bound to deployment-targets.json and preserve separate legacy and production targets.",
       "requirement_digest": "2adcdd822fa2a4b4e348eb9be882f2080b96e1f8190b90fe36a960b170b91d33",
       "requirement_id": "REQ-61DD767ED6C7",
       "requirement_text": "- Implementations MUST preserve current target readiness: `aimarkethubs.com` remains unavailable for Modular traffic until its replacement is healthy, and the current port-3100 service remains in place until intentional handover. `smartsihub.com` remains inactive until its separate production release authority is provisioned. This clarification authorizes no runtime, database, DNS or production change by itself.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
         "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Verified exact deployment target map, release manifest source SHA, local/public health, preserved port-3100 rollback and inactive production target."
+      "verification_method": "Verify exact deployment target mapping, source SHA, local/public health, retained rollback service and inactive smartaihub.app/smartsihub.com targets."
     },
     {
       "applicability": "APPLICABLE",
@@ -645,34 +713,31 @@
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L218",
       "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
         "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
+        "description": "Owner reports login now reaches Chat; authenticated acceptance of existing account membership/data continuity and development-path evidence remains incomplete.",
+        "next_action": "Use a normal signed-in account/MFA session to verify account, membership/data boundary and record the supported development path without storing credentials."
       },
-      "current_relevance": "RELEVANT",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform main at 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739: Hono authentication/session/membership slice uses existing smartspec identity authority, bounded password/MFA verification, environment-bound cookies/JWT, fixed-shard DO throttling and one-time MFA challenge replay storage.",
-        "smartaihub-platform main at a5e16406e1ab79d62c283ff03d6b83c895f6d34b plus SmartSpecPro migration commit 712172880aab7d4994480236513b5fcc5b11b013: bounded expired session-JTI cleanup uses a dedicated NOLOGIN definer role, Core EXECUTE-only access, 500-row batches, and a scheduled Worker handler.",
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; Hono Core uses the shared smartspec identity/account rows and the deployed Modular release passed protected unauthenticated-route smoke; the attempted authenticated login was rejected because the local saved password did not match the shared hash.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; modular Chat uses the shared smartspec identity authority and Hono Core boundary.",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Keep this acceptance partial until the user updates the private UAT credential and verifies an existing account, customer membership/data boundary, environment isolation, and authenticated human UAT on aimarkethubs.com.",
+      "next_action": "Complete authenticated existing-account/membership/data-boundary UAT and verify Hono/no-Express plus development-path evidence on aimarkethubs.com.",
       "requirement_digest": "0c32e4707fa5b6d5fcff5205c8dcd02fd1788749f96f7bd147b6b62b59dc9d4a",
       "requirement_id": "REQ-46847581892C",
       "requirement_text": "Acceptance MUST prove that (1) an existing Legacy user can authenticate on the Modular development hostname using the current canonical account authority, (2) an authorized customer membership resolves to the same canonical customer data without changing the customer-tenant ID, (3) development-only data/effects cannot enter production scope, (4) the Core build and local runtime use Hono with no Express server dependency, and (5) each supported direct or SPEC-224 development path records truthful source/check/handoff evidence.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/current-source-proof-20261110.md",
+        "handoff/evidence/final-10-gap-review-passes-20261110.md",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Shared account password hash was compared read-only using a bcrypt library and the exact Worker WASM verifier; both rejected the local saved value. Public login returned 401. Build/deployment smoke passed; customer membership and authenticated user acceptance remain open."
+      "verification_method": "Verify existing account login, authorized customer membership/data continuity, development isolation, Hono/no-Express boundary and truthful direct-Codex/Claude or SPEC-224 source/check/handoff evidence."
     },
     {
       "applicability": "APPLICABLE",
@@ -682,27 +747,26 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L222",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
-      "final_state": "STALE_EVIDENCE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
         "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-        "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
-        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Revalidate retained evidence against the current Spec and canonical revision.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify workspace default, selection and creation in authenticated UAT on release 651e7f6.",
       "requirement_digest": "2d9fe881387efeda8a03a44784d8b827e6a8ca186721ace8f9cd6a2f589f95f3",
       "requirement_id": "REQ-C7C0E67BDE2B",
       "requirement_text": "After successful authentication, `/chat` SHALL provision an environment-scoped personal default workspace idempotently for the signed-in account when one does not already exist, then open Chat directly in that workspace. An account SHALL NOT be blocked at a “no workspace” dead end solely because it has no customer-tenant membership. Chat SHALL provide a visible workspace selector and a user action to create and switch to another personal workspace; creating one SHALL select it for the current session. With no explicit user selection, the personal default remains the initial workspace. Preserve the user's explicit selection for the current session only when the selected workspace is still authorized.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
         "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Verify idempotent default workspace provisioning, Chat routing, selector, create-and-select behavior, environment binding, and deployment evidence; keep authenticated visual UAT separate."
+      "verification_method": "Review idempotent environment-scoped default workspace provisioning, direct Chat route, workspace selector/create action, then complete authenticated interaction UAT separately."
     },
     {
       "applicability": "APPLICABLE",
@@ -712,27 +776,26 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L224",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "824c2a3b1c247b675353c783e8979ede9aaaa488",
-      "final_state": "STALE_EVIDENCE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform@d1e71fe8aa4b8019f08559a5e69a15a4f9228930",
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
         "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-        "smartaihub-platform@824c2a3b1c247b675353c783e8979ede9aaaa488",
-        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Revalidate retained evidence against the current Spec and canonical revision.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete authenticated workspace/data isolation review on the deployed target.",
       "requirement_digest": "07670db603a450e2c92ddb2aefcbb5cabaf37e61758f43e76d1dad67d5ef037c",
       "requirement_id": "REQ-4F88475454B1",
       "requirement_text": "Personal workspaces SHALL be isolated by the verified Modular environment tenant and remain separate from Legacy customer tenants and their business data. Existing customer workspaces may appear only through their existing active canonical membership and policy; default-workspace provisioning SHALL NOT create, infer, or grant a customer-tenant membership from a role, email address, or hostname. The development environment SHALL NOT provision or read production personal-workspace records. These workspace controls make the Chat area usable but do not enable message sending without the separately required scoped persistence and provider path. This clarification does not change the `aimarkethubs.com` development target or activate `smartsihub.com`.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
         "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Verify environment-scoped personal workspace data, function-only access for the Modular auth role, wrong-environment denial, direct table denial, and no customer membership mutation."
+      "verification_method": "Recheck environment tenant binding, user/workspace authorization and no customer-membership inference; keep authenticated data-boundary UAT separate."
     },
     {
       "applicability": "APPLICABLE",
@@ -740,30 +803,26 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L228"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L228",
-      "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
-        "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
-      },
-      "current_relevance": "RELEVANT",
+      "blocker": null,
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; Each Chat turn enters canonical worker_jobs/outbox and is published as a small Queue reference; the consumer claims with fencing before provider dispatch. No inline provider call is used by the request handler.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Run authenticated job admission plus local Workerd outbox replay, Queue redelivery and duplicate-delivery proof after account UAT is available.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Prove authenticated admission, outbox replay, Queue redelivery, duplicate-delivery idempotency and DO restart/contention on the deployed source.",
       "requirement_digest": "9b9dd8508ce15afdfb016e24c06fa94b6cf639059988a1320e184d873388ac74",
       "requirement_id": "REQ-B6FD5A53E627",
       "requirement_text": "Chat LLM requests SHALL be admitted quickly and executed in the background so provider latency does not hold the browser request open and concurrent users are buffered instead of overwhelming an LLM provider. Admission SHALL write the job and its outbox intent atomically to the existing canonical `worker_jobs` and `worker_job_outbox`; it SHALL NOT create a second job ledger. The outbox publisher SHALL deliver a small, versioned job reference to a Cloudflare Queue, and the Queue consumer SHALL claim the canonical job with a lease/fencing token before calling the provider. Queue redelivery, publisher retries and duplicate client submissions SHALL be idempotent.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Core package: 117 tests across 19 files; Chat package: 29 tests across 3 files; focused Core/Chat typechecks and isolated builds passed; deployment controller: 11 tests passed; local/public smoke passed. Authenticated LLM and ledger behavior remains unverified."
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
     },
     {
       "applicability": "APPLICABLE",
@@ -772,29 +831,29 @@
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L230",
       "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
         "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
+        "description": "Authenticated browser acceptance on exact release 651e7f6 is not recorded yet.",
+        "next_action": "Verify queued-to-complete polling and persisted history after reload through an authenticated browser session on release 651e7f6."
       },
-      "current_relevance": "RELEVANT",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; Chat UI submits an idempotency key, displays job progress, polls user/workspace/environment-scoped status and reads persisted Chat messages. These behaviors have package tests but no authenticated browser run on this release.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Verify queued-to-complete UI progress, authenticated status polling, stored response/history after reload and responsive interaction on the deployed target.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify queued-to-complete polling and persisted history after reload through an authenticated browser session on release 651e7f6.",
       "requirement_digest": "719c8b7b8ba4286c0023257625a496b7f6fb8cbb0ef8ebb0a6c921f23fb7f516",
       "requirement_id": "REQ-FB597F9F6A31",
       "requirement_text": "The Chat UI SHALL receive a job ID promptly, display progress, and retrieve a completed response only through an authenticated user/workspace/environment scoped status read. Prompts and provider secrets SHALL NOT be copied into the Queue message. Job state, request, provider/model identity, response and settlement SHALL remain in the existing canonical database and Chat message records. Development Chat jobs SHALL be bound to `modular-development`; the new Core consumer SHALL ignore all non-Chat job types. Existing legacy workers and outbox publishers SHALL neither dispatch nor claim Modular Chat jobs.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Core package: 117 tests across 19 files; Chat package: 29 tests across 3 files; focused Core/Chat typechecks and isolated builds passed; deployment controller: 11 tests passed; local/public smoke passed. Authenticated LLM and ledger behavior remains unverified."
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
     },
     {
       "applicability": "APPLICABLE",
@@ -802,30 +861,26 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L232"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L232",
-      "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
-        "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
-      },
-      "current_relevance": "RELEVANT",
+      "blocker": null,
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; Provider controls and live quote validation are implemented and tested. Owner direction allows enabled paid models with the shared 10,000-credits/USD ledger; the previous free-only Chat restriction no longer applies to model selection. DO/Queue runtime contention and restart behavior remain unproven end to end.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; enabled model catalog, provider admission and Durable Object rate-control code are integrated.",
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Verify live provider admission, 429 handling, account-level Durable Object contention and restart persistence; retain paid-model selection under the owner-directed shared-credit policy.",
+      "next_action": "Verify live provider admission and 429 handling plus Durable Object contention/restart behavior under the owner-directed shared-credit policy.",
       "requirement_digest": "79384509513def9cf961ba7f24238eb94b1fefe97d0c62cffc1c2ad24e87f624",
       "requirement_id": "REQ-5BEC18A71622",
       "requirement_text": "Provider admission SHALL be coordinated across Worker instances using durable Cloudflare Durable Objects, not process-local memory. For OpenRouter free models, the limiter SHALL be keyed by a one-way hash of the provider account identity returned by `GET /api/v1/key`, so adding another key for the same account cannot multiply its allowance. It SHALL pace requests at no more than the documented 20 starts/minute and read the live daily limit and remaining quota (free accounts may have 50/day; eligible credited accounts may have 1,000/day). Cache the quota briefly, account for this system's starts since the snapshot, enforce global/per-user concurrency, honor `Retry-After` on definite 429 rejection, and fail closed when provider limits cannot be read. Provider credentials SHALL be transient to the rate-control lookup and SHALL NOT be stored in Durable Object state, Queue messages, logs or receipts. Durable Queue consumers SHALL use automatic concurrency scaling (no fixed maximum); the provider-account Durable Object SHALL keep outbound requests within the upstream account limit. Auto/model selection SHALL exclude provider models that are no longer present or that are no longer free; a stale catalog entry SHALL not cause an unbounded or paid fallback. A request whose provider outcome is ambiguous (including a lost response, 408, or 5xx after dispatch) SHALL NOT automatically call the provider again; an expired lease with an unfinished provider attempt SHALL settle as `provider_outcome_unknown`.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
-      "verification_method": "Core package: 117 tests across 19 files; Chat package: 29 tests across 3 files; focused Core/Chat typechecks and isolated builds passed; deployment controller: 11 tests passed; local/public smoke passed. Authenticated LLM and ledger behavior remains unverified."
+      "verification_method": "Verify live provider selection, 429 cooldown, account-level Durable Object contention, Queue redelivery and restart persistence; current focused tests/build/release checks do not prove these live runtime cases."
     },
     {
       "applicability": "APPLICABLE",
@@ -833,30 +888,26 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L234"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L234",
-      "blocker": {
-        "cause": "The configured private UAT password does not match the active shared account hash; the account has MFA enabled. No LLM call or credit mutation was made.",
-        "class": "HUMAN_UAT_PENDING",
-        "waiting_predicate": "The user updates the private local credential through normal login/reset, then authenticated UAT is run."
-      },
-      "current_relevance": "RELEVANT",
+      "blocker": null,
+      "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "48257d96ae5c05fcc44f036b461982eb0c7df1ff",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "Modular source main at 48257d96ae5c05fcc44f036b461982eb0c7df1ff; The isolated modular-debian-dev release and public/local service health checks passed, while the exact-source package tests passed. This is not evidence of Queue redelivery or a live paid turn.",
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "smartaihub-platform/main@651e7f6ec7f8f85a77c84eff81de02acc0f95f4f; Chat producer/outbox, Queue consumer and Durable Object provider control are integrated.",
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Complete local Workerd producer/outbox/Queue redelivery/consumer settlement and Durable Object restart proof; then retain the exact target release receipt.",
+      "next_action": "Prove local Workerd Queue redelivery, DO contention/restart persistence and result polling on the current source.",
       "requirement_digest": "3ee4b201d4dd37958cd461fba6029205d41d14b20ae2fcbf45a59b0e13e0ec9e",
       "requirement_id": "REQ-2D598487C0BB",
       "requirement_text": "Development verification SHALL exercise producer, outbox replay, Queue redelivery, consumer claim/settlement, rate-limit contention and result polling in local Workerd, then deploy only the verified replacement to `modular-debian-dev` (`aimarkethubs.com`). `smartsihub.com` production resources and traffic remain untouched.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
+        "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
       ],
-      "verification_method": "Core package: 117 tests across 19 files; Chat package: 29 tests across 3 files; focused Core/Chat typechecks and isolated builds passed; deployment controller: 11 tests passed; local/public smoke passed. Authenticated LLM and ledger behavior remains unverified."
+      "verification_method": "Run local Workerd producer, outbox replay, Queue redelivery, consumer settlement, provider limiter contention and Durable Object restart checks; package/build/release evidence is not a substitute."
     },
     {
       "applicability": "UNASSESSED",
@@ -875,7 +926,7 @@
       "requirement_digest": "fed3b980f93df6b59842e953243269df22fbb31b83504063077e36ccd6a9c526",
       "requirement_id": "REQ-4909DB4DF5C7",
       "requirement_text": "- Chat SHALL list models only when the existing shared `model_provider_map` and provider configuration are enabled for the selected user/workspace and the current provider catalog confirms the mapped upstream model and price. It SHALL preserve the configured upstream `providerModelId`; Auto and explicit choice SHALL use only this verified list. It SHALL NOT load or dispatch every model present in the provider catalog.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -897,7 +948,7 @@
       "requirement_digest": "e47e1a9c55653563a5cf019754ca2d6084152082b4316491b011090d85c40524",
       "requirement_id": "REQ-4C95C338D3DC",
       "requirement_text": "- Enabled paid models MAY be selected explicitly or by Auto. Every model's current provider quote SHALL be no higher than the configured shared catalog price used to reserve credits. Free-model daily quota and free-model pacing SHALL apply only to free models; shared provider/account and per-user concurrency limits, cooldown and authoritative 429 handling SHALL still protect paid-model traffic.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -919,7 +970,7 @@
       "requirement_digest": "e55be2b8c147836481fd569aa3e135df9c661f7ad78a360476e9446127432c8b",
       "requirement_id": "REQ-FFDF32DCAF54",
       "requirement_text": "- New Chat billing SHALL use the existing canonical `users.credits` balance and `credit_transactions` ledger, with **USD 1 = 10,000 credits**, without importing or invoking the legacy billing module/component. The bounded reservation, actual-cost settlement, refund and reconciliation logic SHALL be a small modular Core implementation and SHALL be callable only for the claimed, fenced `worker_jobs` Chat job. A request with insufficient credits SHALL not reach the provider.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -941,7 +992,7 @@
       "requirement_digest": "3f8b004b8c250d22cd476ab37452fa02e9c4857186976152be86359f630f6b62",
       "requirement_id": "REQ-9B5D8CE22686",
       "requirement_text": "- Every provider request SHALL pass through `worker_jobs` + outbox + Cloudflare Queue. The consumer SHALL reserve credits before dispatch, request provider usage, settle from the provider-reported USD cost when valid (otherwise use verified token counts and the pinned shared price), round fractional credits up, and return unused reservation atomically with the result. A definitive upstream rejection may release the hold; timeout, 408, 425, 5xx, missing billable usage, or any ambiguous result SHALL not trigger a second provider request and SHALL keep its reservation visible for reconciliation.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -954,34 +1005,28 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L244",
       "blocker": {
         "class": "HUMAN_UAT_PENDING",
-        "description": "Authenticated browser review remains pending; the current Chat API does not accept uploaded files.",
-        "next_action": "Complete authenticated desktop/tablet/mobile UAT and add a validated upload contract before enabling file submission."
+        "description": "Authenticated browser acceptance on exact release 651e7f6 is not recorded yet.",
+        "next_action": "Verify enabled-model selection, queued text response, final model/token/credit metadata, job state, history and exact ledger delta on release 651e7f6."
       },
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
       "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
-        "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
-        "smartaihub-platform/modules/chat/src/ui/main.tsx",
-        "smartaihub-platform/modules/chat/src/ui/styles.css",
-        "smartaihub-platform/modules/chat/vite.config.ts",
-        "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
-        "smartaihub-platform/apps/saas-shell/src/modules/chatModuleLoader.ts",
-        "smartaihub-platform/packages/saas-contracts/src/index.ts"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Complete an authenticated queued Chat turn and verify model metadata, job status, usage/credit result and persisted history on release 651e7f6.",
+      "next_action": "Verify enabled-model selection, queued text response, final model/token/credit metadata, job state, history and exact ledger delta on release 651e7f6.",
       "requirement_digest": "078878febf705e6a22013b03a984ef9f45a4704dd617ab5c1d7b6766599ef3db",
       "requirement_id": "REQ-98B30E4A4A11",
       "requirement_text": "- The user-facing Chat SHALL show Auto and the enabled model choices, preserve the selected model for the current workspace/session, poll the canonical job status, and explain insufficient credits, provider limits and held credits in safe user-facing language. A delivered assistant message SHALL include its final model, token usage, credit debit and one-line timestamp/model metadata where available.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
         "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Package typechecks, focused Chat and Shell tests, exact-source Core/Shell/Chat builds, release-controller smoke and reachable asset fetch. Authenticated browser UAT remains pending."
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
     },
     {
       "applicability": "APPLICABLE",
@@ -991,8 +1036,92 @@
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L245",
       "blocker": {
         "class": "HUMAN_UAT_PENDING",
-        "description": "Authenticated browser review remains pending; the current Chat API does not accept uploaded files.",
-        "next_action": "Complete authenticated desktop/tablet/mobile UAT and add a validated upload contract before enabling file submission."
+        "description": "Authenticated browser acceptance on exact release 651e7f6 is not recorded yet.",
+        "next_action": "Complete remaining authenticated paid/free provider, settlement, responsive visual and runtime acceptance cases on aimarkethubs.com; preserve production boundary."
+      },
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete remaining authenticated paid/free provider, settlement, responsive visual and runtime acceptance cases on aimarkethubs.com; preserve production boundary.",
+      "requirement_digest": "3e878fdfad0ae29ba9e85a004a5acd94ea3719616534c1a62592cf2138c4f336",
+      "requirement_id": "REQ-272D8958200D",
+      "requirement_text": "- Acceptance SHALL include tests for enabled-versus-disabled mappings, paid and free dispatch, live quote changes, provider-specific free quota isolation, insufficient-credit no-dispatch, exact USD settlement, unused-credit refund, 429 cooldown/retry, definitive rejection refund, ambiguous no-retry/held-credit visibility, responsive desktop/tablet/mobile behavior, and authenticated `aimarkethubs.com` UAT. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L249"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L249",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+        "handoff/evidence/modular-chat-default-workspace-deployment-20261111.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Prove direct post-login Chat and default workspace behavior in the authenticated owner session; retain tenant-isolation boundaries.",
+      "requirement_digest": "bf2a00fa34115bd70012fd16f0680b44a65b5f7da0c29cff7c7e3192215f8691",
+      "requirement_id": "R1.7",
+      "requirement_text": "The post-login destination SHALL be the usable `/chat` workspace, not the legacy dashboard or a blank/blocked workspace screen. It SHALL open in the user's authorized personal default workspace and allow the user to select or create another authorized workspace, consistent with R1.7.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L251"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L251",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+        "smartaihub-platform/modules/chat/src/ui/workspace.test.tsx"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Review every navigation item in authenticated desktop/tablet/mobile UAT and ensure each route or coming-soon placeholder is reachable.",
+      "requirement_digest": "0d520559303d52b8beba7ce4b6b7f05fa5ed74866790713057205eb60fe6ad11",
+      "requirement_id": "REQ-535E17894984",
+      "requirement_text": "- The Chat shell SHALL provide navigation for Chat, Agents, Mini Apps, Task Control, Mission Control, Marketplace and Settings. Each item SHALL open its implemented route or an explicit, usable “coming soon” placeholder; an unavailable feature SHALL NOT lead to a dead link, blank page or misleading success state. Public Website and Admin / Back Office destinations MAY remain explicit placeholders until their routes are implemented.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L252"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L252",
+      "blocker": {
+        "description": "The current toolbar hard-codes “Cloud Execution · Always On” without a live runtime-status source.",
+        "next_action": "Replace it with data-backed status or a neutral feature label, then add focused regression evidence."
       },
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
@@ -1000,28 +1129,157 @@
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
-        "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
-        "smartaihub-platform/modules/chat/src/ui/main.tsx",
-        "smartaihub-platform/modules/chat/src/ui/styles.css",
-        "smartaihub-platform/modules/chat/vite.config.ts",
-        "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
-        "smartaihub-platform/apps/saas-shell/src/modules/chatModuleLoader.ts",
-        "smartaihub-platform/packages/saas-contracts/src/index.ts"
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Complete remaining authenticated paid/free and responsive acceptance cases; keep this release dev-only and leave smartaihub.app and smartsihub.com untouched.",
-      "requirement_digest": "3e878fdfad0ae29ba9e85a004a5acd94ea3719616534c1a62592cf2138c4f336",
-      "requirement_id": "REQ-272D8958200D",
-      "requirement_text": "- Acceptance SHALL include tests for enabled-versus-disabled mappings, paid and free dispatch, live quote changes, provider-specific free quota isolation, insufficient-credit no-dispatch, exact USD settlement, unused-credit refund, 429 cooldown/retry, definitive rejection refund, ambiguous no-retry/held-credit visibility, responsive desktop/tablet/mobile behavior, and authenticated `aimarkethubs.com` UAT. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.",
-      "source_spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+      "next_action": "Replace the hard-coded “Cloud Execution · Always On” claim with a data-backed status or neutral label, then verify it on the deployed release.",
+      "requirement_digest": "c9da110c7eda1895fe1232412ea00bf943a6696f6ca8bac192780a7c26acccce",
+      "requirement_id": "REQ-384BD5AE0734",
+      "requirement_text": "- The shell SHALL provide conversation history, a New Chat action, an enabled-model selector with Auto, and a conversation inspector for the selected thread. Agent, task, cloud-execution and usage indicators SHALL be backed by current authorized data; the UI SHALL NOT present sample or fabricated counts/statuses as live system state. If no live cloud-execution state is available, the shell MAY show a neutral feature label but SHALL NOT claim “Always On” or active execution.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
       "successor_mapping": [],
       "verification_evidence": [
         "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
       ],
-      "verification_method": "Package typechecks, focused Chat and Shell tests, exact-source Core/Shell/Chat builds, release-controller smoke and reachable asset fetch. Authenticated browser UAT remains pending."
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L253"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L253",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/main.tsx",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify Light/Balance/Dark switching and preference persistence in authenticated browser UAT at desktop, tablet and mobile sizes.",
+      "requirement_digest": "e6641055c5add575c4c0a13311dc4111a1fa4472795b9f503a9d8f68dd2c8c5c",
+      "requirement_id": "REQ-2DC951F22CC2",
+      "requirement_text": "- The Chat appearance control SHALL offer the supported Light, Balance and Dark themes, using the installed Astryx theme system where available. It SHALL be reachable at the lower-right on desktop and repositioned at smaller breakpoints so it does not cover the composer or other controls. The selected preference SHALL persist for the user or browser session.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L254"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L254",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
+        "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify selecting/removing image and file attachments in browser; implement and verify authenticated upload before enabling attachment submission.",
+      "requirement_digest": "810827341c44721493bff0b524d2f1dcada2aa4798004e7847e3f23bf974c055",
+      "requirement_id": "REQ-E5B5C6C20C76",
+      "requirement_text": "- The message composer SHALL keep text submission independently usable and provide image/file selection controls with a clear selected-file state and removal action. Until an authenticated, tenant/user-scoped upload contract with server-side type/size validation and persisted attachment association is implemented, the UI SHALL NOT claim an attachment was uploaded or submit a message as if the attachment were available; it SHALL explain the limitation without disabling ordinary text Chat.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L255"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L255",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify response model/timestamp stay on one metadata line and token/credit details are reachable in the expanded message details.",
+      "requirement_digest": "d3c511de97ac24c9a885a117f9446ab77a712a485fe9bd0649d8e57f46845ff9",
+      "requirement_id": "REQ-753B40F87552",
+      "requirement_text": "- A completed assistant message SHALL render its response and show the final provider/model and timestamp together on one metadata line. Available token usage and credit debit SHALL remain available in the message details without forcing the model/timestamp metadata onto multiple lines. Loading, queued, failed, empty-history and unavailable-route states SHALL remain understandable and actionable.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L256"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L256",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "smartaihub-platform/modules/chat/src/ui/styles.css",
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete visual and interaction UAT at desktop/tablet/mobile; fix any overflow, blocked controls or theme/composer overlap.",
+      "requirement_digest": "2404128ecdbf1b5170921b2976cf6b80fee7265d0cfe45022486a69977b880cd",
+      "requirement_id": "REQ-638A23EE0D17",
+      "requirement_text": "- Desktop SHALL support the navigation and inspector alongside the conversation. Tablet and mobile layouts SHALL collapse those regions into reachable drawers or equivalent compact navigation, keep the composer visible and usable, and avoid horizontal overflow or controls hidden behind the theme selector.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+    },
+    {
+      "applicability": "APPLICABLE",
+      "authority_refs": [
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L258"
+      ],
+      "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L258",
+      "blocker": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete authenticated release UAT for routing, workspace, navigation, themes, models, queued text response/history, metadata and attachment states; keep actual file submission disabled until upload API acceptance.",
+      "requirement_digest": "a03a77dda5cf13d00ea2c3294a71bf807db512e4acc05e5cf433861f66076dcd",
+      "requirement_id": "REQ-BA91299B7E6E",
+      "requirement_text": "Acceptance SHALL include authenticated visual and interaction review of the deployed `aimarkethubs.com` release at desktop, tablet and mobile sizes; direct post-login routing to Chat; workspace selection/creation; every navigation destination resolving to a route or explicit placeholder; theme change and persistence; enabled-model and Auto selection; queued text response and restored history; provider/model and timestamp on one line with token/credit details reachable; attachment selection/removal with accurate upload limitation; and evidence that no agent/cloud metrics are fabricated. File submission remains a separate acceptance item and SHALL be enabled only after its upload contract is implemented and verified. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.",
+      "source_spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
+      "successor_mapping": [],
+      "verification_evidence": [
+        "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
+      ],
+      "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "986a357f3c26638fd43482ee823baf8014f5256436c782564d180fe1ea3496c4",
+  "spec_digest": "9c0540e5bf200af383e950fea64e4d36f15a8ac43bd6e11ea58ace8bff036125",
   "spec_id": "312"
 }

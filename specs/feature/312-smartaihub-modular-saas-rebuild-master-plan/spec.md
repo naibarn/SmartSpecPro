@@ -2,15 +2,15 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.7
-date: 2026-11-11
-status: PROPOSED_NOT_IMPLEMENTED
+revision: R1.10
+date: 2026-11-12
+status: PARTIALLY_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
 ---
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.7, 2026-11-11):** Earlier R0.x–R1.6 proposal text is retained for provenance. R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
+> **Current-revision note (R1.10, 2026-11-12):** Earlier R0.x–R1.9 proposal text is retained for provenance. R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -243,3 +243,16 @@ This owner decision supersedes only R1.8's free-only restriction and related fre
 - Every provider request SHALL pass through `worker_jobs` + outbox + Cloudflare Queue. The consumer SHALL reserve credits before dispatch, request provider usage, settle from the provider-reported USD cost when valid (otherwise use verified token counts and the pinned shared price), round fractional credits up, and return unused reservation atomically with the result. A definitive upstream rejection may release the hold; timeout, 408, 425, 5xx, missing billable usage, or any ambiguous result SHALL not trigger a second provider request and SHALL keep its reservation visible for reconciliation.
 - The user-facing Chat SHALL show Auto and the enabled model choices, preserve the selected model for the current workspace/session, poll the canonical job status, and explain insufficient credits, provider limits and held credits in safe user-facing language. A delivered assistant message SHALL include its final model, token usage, credit debit and one-line timestamp/model metadata where available.
 - Acceptance SHALL include tests for enabled-versus-disabled mappings, paid and free dispatch, live quote changes, provider-specific free quota isolation, insufficient-credit no-dispatch, exact USD settlement, unused-credit refund, 429 cooldown/retry, definitive rejection refund, ambiguous no-retry/held-credit visibility, responsive desktop/tablet/mobile behavior, and authenticated `aimarkethubs.com` UAT. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.
+
+## R1.10 — Chat workspace UI and truthful attachment affordances (2026-11-12)
+
+The post-login destination SHALL be the usable `/chat` workspace, not the legacy dashboard or a blank/blocked workspace screen. It SHALL open in the user's authorized personal default workspace and allow the user to select or create another authorized workspace, consistent with R1.7.
+
+- The Chat shell SHALL provide navigation for Chat, Agents, Mini Apps, Task Control, Mission Control, Marketplace and Settings. Each item SHALL open its implemented route or an explicit, usable “coming soon” placeholder; an unavailable feature SHALL NOT lead to a dead link, blank page or misleading success state. Public Website and Admin / Back Office destinations MAY remain explicit placeholders until their routes are implemented.
+- The shell SHALL provide conversation history, a New Chat action, an enabled-model selector with Auto, and a conversation inspector for the selected thread. Agent, task, cloud-execution and usage indicators SHALL be backed by current authorized data; the UI SHALL NOT present sample or fabricated counts/statuses as live system state. If no live cloud-execution state is available, the shell MAY show a neutral feature label but SHALL NOT claim “Always On” or active execution.
+- The Chat appearance control SHALL offer the supported Light, Balance and Dark themes, using the installed Astryx theme system where available. It SHALL be reachable at the lower-right on desktop and repositioned at smaller breakpoints so it does not cover the composer or other controls. The selected preference SHALL persist for the user or browser session.
+- The message composer SHALL keep text submission independently usable and provide image/file selection controls with a clear selected-file state and removal action. Until an authenticated, tenant/user-scoped upload contract with server-side type/size validation and persisted attachment association is implemented, the UI SHALL NOT claim an attachment was uploaded or submit a message as if the attachment were available; it SHALL explain the limitation without disabling ordinary text Chat.
+- A completed assistant message SHALL render its response and show the final provider/model and timestamp together on one metadata line. Available token usage and credit debit SHALL remain available in the message details without forcing the model/timestamp metadata onto multiple lines. Loading, queued, failed, empty-history and unavailable-route states SHALL remain understandable and actionable.
+- Desktop SHALL support the navigation and inspector alongside the conversation. Tablet and mobile layouts SHALL collapse those regions into reachable drawers or equivalent compact navigation, keep the composer visible and usable, and avoid horizontal overflow or controls hidden behind the theme selector.
+
+Acceptance SHALL include authenticated visual and interaction review of the deployed `aimarkethubs.com` release at desktop, tablet and mobile sizes; direct post-login routing to Chat; workspace selection/creation; every navigation destination resolving to a route or explicit placeholder; theme change and persistence; enabled-model and Auto selection; queued text response and restored history; provider/model and timestamp on one line with token/credit details reachable; attachment selection/removal with accurate upload limitation; and evidence that no agent/cloud metrics are fabricated. File submission remains a separate acceptance item and SHALL be enabled only after its upload contract is implemented and verified. This decision does not authorize deployment to `smartsihub.com` or changes to `smartaihub.app`.

@@ -3930,7 +3930,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 8,
-      "next_action": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
+      "next_action": "Complete authenticated responsive Chat UAT on release 651e7f6, replace the unsupported Cloud Execution “Always On” status, implement an authenticated upload contract before file submission, prove local Workerd Queue redelivery and provider-account Durable Object contention/restart persistence, and establish a matched Legacy/Core benchmark before claiming speed improvement.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Complete authenticated Chat response/history/responsive UAT on the current release, prove local Workerd Queue redelivery and Durable Object restart persistence, and obtain a matched throughput benchmark. Keep production managed Queue resources inactive under the target mapping.",
+      "rationale": "Complete authenticated responsive Chat UAT on release 651e7f6, replace the unsupported Cloud Execution “Always On” status, implement an authenticated upload contract before file submission, prove local Workerd Queue redelivery and provider-account Durable Object contention/restart persistence, and establish a matched Legacy/Core benchmark before claiming speed improvement.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },

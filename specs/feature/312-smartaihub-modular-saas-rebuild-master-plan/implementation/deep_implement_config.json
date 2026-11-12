@@ -18,44 +18,44 @@
   "sections_state": {
     "section-01-environment-database-boundary": {
       "status": "checkpointed",
-      "next_action": "Begin section 02 on current smartaihub-platform main: implement Worker-compatible bcrypt/Argon2 verification, legacy TOTP AES-GCM and RFC-compatible codes, and failure-safe MFA challenge handling using synthetic vectors and the account repository. Preserve stored passwords and shared account rows.",
+      "next_action": "Integrated and checkpointed at this SHA. Do not replay; preserve the shared smartspec Core-control-plane and separate Mini App data-plane boundary. Continue current open acceptance from section 07.",
       "checkpoint_sha": "48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e",
       "merged_main_sha": "48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e"
     },
     "section-02-password-mfa-compatibility": {
       "status": "checkpointed",
-      "next_action": "Begin section 03: implement Hono login, short-lived MFA challenge, host-only JWT session, logout/JTI revocation, active /me membership, strict sharded SQLite Durable Object throttling, Origin/cookie/host protections, and local DO tests. Keep only loopback local bindings and no public deployment.",
+      "next_action": "Integrated and checkpointed at this SHA. Do not replay; use the normal shared account and MFA flow for current Chat UAT. No credential reset or MFA bypass is part of the continuation.",
       "checkpoint_sha": "0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd",
       "merged_main_sha": "0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd"
     },
     "section-03-session-membership-routes": {
       "status": "checkpointed",
-      "next_action": "Section 03 remains integrated at source main 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Its final ten-pass cross-cutting review is recorded under section 04; retain the latency benchmark and expired session-JTI cleanup as explicit pre-handover/production gaps.",
+      "next_action": "Integrated and checkpointed at this SHA. Do not replay. Preserve the existing session/tenant boundaries; expired session-JTI cleanup remains a separate high-volume production gap.",
       "checkpoint_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739"
     },
     "section-04-worker-proof-and-handoff": {
       "status": "checkpointed",
-      "next_action": "The ten-pass Section 04 review is complete at source SHA 5aa98dab9ff2bfac22006b3a1ef89ed08f46c739. Keep REQ-46847581892C PARTIAL; before high-volume production, define a matched Legacy/Core speed objective and establish bounded expired session-JTI cleanup.",
+      "next_action": "Integrated and ten-pass review recorded at this SHA. Do not replay. Keep matched Legacy/Core latency benchmarking and expired session-JTI cleanup as open pre-production gaps.",
       "checkpoint_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "merged_main_sha": "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
       "review_file": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md"
     },
     "section-05-chat-canonical-job-and-queue-admission": {
       "status": "checkpointed",
-      "next_action": "Core chat admission, canonical worker_jobs/outbox migrations 0424/0425 and legacy publisher isolation are integrated. DB verification is READY and lane postconditions pass. Continue provider admission and local Queue delivery proof.",
+      "next_action": "Canonical Chat worker_jobs/outbox admission and publisher isolation are integrated; development DB verification is recorded. Do not replay; Queue redelivery/idempotency/restart proof remains with section 07.",
       "checkpoint_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5",
       "merged_main_sha": "ba37ee16658a36ecb907580e3fb582c10072c9e5"
     },
     "section-06-provider-admission-and-queue-consumer": {
       "status": "checkpointed",
-      "next_action": "Wire the scoped enabled-model catalog and worker provider lookup into chat; add atomic credit reserve and actual-usage USD settlement through the canonical worker job; keep provider ambiguity terminal and expose actionable credit/job state.",
+      "next_action": "Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07.",
       "checkpoint_sha": "78018b7a50c05234071e31f6b1361a70440915a3",
       "merged_main_sha": "78018b7a50c05234071e31f6b1361a70440915a3"
     },
     "section-07-chat-job-status-ui-and-runtime-proof": {
       "status": "checkpointed",
-      "next_action": "Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission.",
+      "next_action": "Perform authenticated browser UAT on aimarkethubs.com release 651e7f6 at desktop, tablet and mobile; verify direct Chat entry/workspace, navigation placeholders, theme persistence, enabled model/Auto, queued text response/history, one-line model/timestamp metadata and exact credit-ledger delta. Replace the hard-coded Cloud Execution · Always On label with live status or a neutral label before acceptance. Keep file submission disabled until a scoped authenticated upload contract is implemented; continue Queue/DO recovery proof and matched Legacy/Core benchmarking.",
       "checkpoint_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f"
     }
@@ -69,20 +69,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 34,
-  "updated_at": "2026-11-12T07:59:09.160042+00:00",
+  "generation": 42,
+  "updated_at": "2026-11-12T08:13:08.511728+00:00",
   "progress": {
     "active_section": "section-07-chat-job-status-ui-and-runtime-proof",
-    "next_action": "Run authenticated browser UAT on aimarkethubs.com at desktop, tablet, and mobile sizes; verify theme switching, navigation, attachment selection, queued text response and history. Build file upload API support as a separate scoped slice before enabling image/file submission.",
+    "next_action": "Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07.",
     "merged_main_sha": "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
       "Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.",
       "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
-      "Authenticated UAT is blocked because the saved local password does not match the shared account hash; the account has MFA enabled. Wait for the user to update the private credential file; no LLM request or credit mutation was made.",
-      "Authenticated browser UAT at desktop, tablet, and mobile sizes remains unobserved on release 651e7f6; public/local health and static asset smoke do not prove visual interaction.",
-      "Image and file pickers select files but the Chat API has no upload contract yet; submission stays blocked with an explicit warning."
+      "Authenticated browser UAT on exact release 651e7f6 is not recorded; use the owner’s normal signed-in account/MFA session for responsive interaction and credit-ledger verification. Do not store credentials in the repository.",
+      "ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.",
+      "Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented."
     ]
   }
 }
