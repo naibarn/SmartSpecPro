@@ -3442,12 +3442,7 @@ export function VerticalDramaStoryboardPanel({
     );
     const normalizeLabel = (value: string) =>
       value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
-    const canonicalSpeakerKey = (speaker: string) => {
-      const localBinding = findVerticalDramaSpeakerVisualBinding(
-        speakerBindings,
-        speaker
-      );
-      const identityLabel = localBinding?.speakerLabel ?? speaker;
+    const physicalKeyForLabel = (identityLabel: string) => {
       const exactKey = characterPortraits[identityLabel]
         ? identityLabel
         : undefined;
@@ -3485,7 +3480,26 @@ export function VerticalDramaStoryboardPanel({
           })
         )
       );
-      return physicalKeys.length === 1 ? physicalKeys[0] : identityLabel;
+      return physicalKeys.length === 1 ? physicalKeys[0] : undefined;
+    };
+    const canonicalSpeakerKey = (speaker: string) => {
+      const localBinding = findVerticalDramaSpeakerVisualBinding(
+        speakerBindings,
+        speaker
+      );
+      const identityLabel = localBinding?.speakerLabel ?? speaker;
+      const physicalKey = physicalKeyForLabel(identityLabel);
+      if (!physicalKey) return identityLabel;
+
+      // A saved shot binding may use the character's display name while a
+      // regenerated dialogue line uses its stable roster key. Reuse that
+      // binding only when both labels resolve to the same physical cast key.
+      const matchingBindings = speakerBindings.filter(
+        binding => physicalKeyForLabel(binding.speakerLabel) === physicalKey
+      );
+      return matchingBindings.length === 1
+        ? matchingBindings[0].speakerLabel
+        : physicalKey;
     };
     const clipDialogueLines = clipsForShot.flatMap(clip =>
       (clip.dialogue ?? []).map(line => ({
