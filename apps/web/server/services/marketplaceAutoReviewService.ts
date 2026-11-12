@@ -34417,7 +34417,14 @@ function assertPublishableRenderArtifact(input: {
       "Render artifact must be an MP4 or a trusted render URL before Library finalization"
     );
   }
-  const expectedVideoUnitIds = input.plan.shots.map(shot => `${shot.id}-video`);
+  const expectedVideoUnitIds = input.plan.shots.map((shot, index) => {
+    const shotId = Math.max(
+      1,
+      Math.floor(toNumber(shot.shotId ?? shot.order, index + 1))
+    );
+    const shotUnitId = cleanText(shot.id) || `shot-${shotId}`;
+    return `${shotUnitId}-video`;
+  });
   const videoUnitIds = Array.isArray(input.metadata.videoUnitIds)
     ? input.metadata.videoUnitIds.map(item => cleanText(item)).filter(Boolean)
     : [];
@@ -35921,8 +35928,8 @@ function stagedApprovedVideoUnitIds(
       const shotId = Number(asRecord(entry).shotId);
       if (!Number.isInteger(shotId) || shotId < 1) return "";
       const planShot = plan.shots[shotId - 1];
-      const planShotId = cleanText(planShot?.id);
-      return planShotId ? `${planShotId}-video` : "";
+      const planShotId = cleanText(planShot?.id) || `shot-${shotId}`;
+      return `${planShotId}-video`;
     })
     .filter(Boolean);
 }

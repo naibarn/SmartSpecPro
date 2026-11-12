@@ -100,6 +100,7 @@ import {
   validateMarketplaceAutoReviewImagePromptPreflightForTest,
   clearStagedRenderRefsFromMetadataForTest,
   buildStagedRemotionFinalRenderManifestForTest,
+  stagedApprovedVideoUnitIdsForTest,
   shouldReconcileStagedRemotionRenderBeforeAdvanceForTest,
   resolveStagedFinalRenderAudioUrl,
   reconcileStagedRemotionFinalRenderForTest,
@@ -7793,6 +7794,31 @@ describe("marketplace auto review audio/video planning", () => {
     ).toThrow(/ordered shot video unit ids/i);
   });
 
+  it("finalizes shotId-only plans with the same stable video unit ids as the manifest", () => {
+    const shots = [
+      { ...baseShot, id: undefined, shotId: 1 },
+      { ...baseShot, id: undefined, shotId: 2, order: 2 },
+    ];
+    const metadata = readyRenderGateMetadata({
+      videoClipUrls: [
+        "https://cdn.example.test/shot-1.mp4",
+        "https://cdn.example.test/shot-2.mp4",
+      ],
+      videoUnitIds: ["shot-1-video", "shot-2-video"],
+    });
+
+    expect(() =>
+      buildMarketplaceAutoReviewRenderFinalizationMetadataForTest({
+        run: { id: "mar_1", productionRunId: "prod_1", outputMode: "full_video" } as any,
+        plan: { ...basePlan, shots } as any,
+        metadata,
+        jobId: "render_1",
+        resultUrl: "https://cdn.example.test/final.mp4",
+        libraryItemId: 1,
+      })
+    ).not.toThrow();
+  });
+
   it("allows render finalization only when governance and QA gates are ready", () => {
     const metadata = readyRenderGateMetadata();
 
@@ -9118,6 +9144,19 @@ describe("Marketplace Auto Review final Remotion manifest", () => {
         },
       } as any)
     ).toThrow("staged_render_video_result_not_approved:shot-1");
+  });
+
+  it("derives stable video unit ids when staged plan shots only have shotId", () => {
+    expect(
+      stagedApprovedVideoUnitIdsForTest(
+        {
+          stagedSequentialStoryboard: {
+            shots: [{ shotId: 1 }, { shotId: 2 }],
+          },
+        } as any,
+        { shots: [{ shotId: 1 }, { shotId: 2 }] } as any
+      )
+    ).toEqual(["shot-1-video", "shot-2-video"]);
   });
 
   it("routes submitted Remotion jobs to reconciliation before staged advancement", () => {
