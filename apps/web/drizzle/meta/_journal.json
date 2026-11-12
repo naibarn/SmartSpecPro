@@ -2913,6 +2913,13 @@
       "when": 1794484800008,
       "tag": "0429_credit_unit_scale_10000",
       "breakpoints": true
+    },
+    {
+      "idx": 430,
+      "version": "7",
+      "when": 1794484800009,
+      "tag": "0430_modular_chat_enabled_model_config",
+      "breakpoints": true
     }
   ]
 }
