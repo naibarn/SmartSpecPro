@@ -6,6 +6,7 @@ Give the user immediate feedback after Chat admission, then render the completed
 ## Scope
 - Add an authenticated status endpoint whose read is scoped by user, selected workspace and environment tenant.
 - Return queued/running/succeeded/failed status and only the stored Chat answer after successful settlement.
+- Include safe credit reservation state for the owning user so insufficient-credit and ambiguous-held-credit failures are actionable; never expose another user's hold or provider diagnostics.
 - Update the Chat API and responsive UI to create an idempotency key, show queued/running state, poll with bounded backoff, restore conversation history and display a terminal error.
 - Keep native Queue producer/consumer bindings in Wrangler local Workerd. Future Cloudflare production remains a separate inactive target; do not create Cloudflare production resources.
 - Apply the development migration, test the local Workerd Queue, run focused package checks, deploy the verified bundle only to `modular-debian-dev`, and record source/deployment evidence.
