@@ -35,6 +35,14 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
         ]),
         runId: runIdSchema,
         operationId: z.string().trim().min(1).max(80).optional(),
+        targetShotIds: z
+          .array(z.number().int().min(1).max(30))
+          .min(1)
+          .max(30)
+          .refine(ids => new Set(ids).size === ids.length, {
+            message: "targetShotIds must be unique",
+          })
+          .optional(),
         targetStage: z.string().trim().min(1).max(100).optional(),
         targetStageIndex: z.number().int().min(0).max(100).optional(),
       })
@@ -404,7 +412,8 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
           runId: input.job.runId,
           jobId: input.jobId,
           schedulerSource: "worker_jobs:advance_run",
-        })
+        }),
+        input.job.targetShotIds
       );
     }
     case "draft_quality_qc": {

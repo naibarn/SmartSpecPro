@@ -73,6 +73,7 @@ import {
 // is the only case circular ESM imports can break. Do not call it (or
 // anything else imported from that module) at the top level of this file.
 import { recordStagedProviderFailureAndRefund } from "./marketplaceAutoReviewService";
+import { selectMarketplaceAutoReviewTargetShots } from "./marketplaceAutoReviewTargetShotScope";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Auth = { userId: number; tenantId?: string };
@@ -2565,6 +2566,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   run: MarketplaceAutoReviewRun;
   auth: Auth;
   runtime: Runtime;
+  targetShotIds?: number[];
 }): Promise<{ run: MarketplaceAutoReviewRun; finalAssemblyApproved: boolean }> {
   const { plan, metadata: initialMetadata } = planAndMetadataFromRun(
     params.run
@@ -2573,6 +2575,10 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   if (!StagedSequentialStoryboardMetadataV1Schema.safeParse(metadata).success) {
     throw new Error("staged_state_drift");
   }
+  const advanceShots = selectMarketplaceAutoReviewTargetShots(
+    plan.shots,
+    params.targetShotIds
+  );
   const storyCheckpoint = checkpointFor(metadata, "story_plan");
   if (
     !storyCheckpoint ||
@@ -2609,7 +2615,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     });
     return { run: params.run, finalAssemblyApproved: false };
   }
-  const hasUncompiledImagePrompt = plan.shots.some(shot => {
+  const hasUncompiledImagePrompt = advanceShots.some(shot => {
     const shotState = metadata.stagedSequentialStoryboard.shots.find(
       item => item.shotId === shot.shotId
     );
@@ -2630,7 +2636,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     return { run: params.run, finalAssemblyApproved: false };
   }
 
-  for (const shot of plan.shots) {
+  for (const shot of advanceShots) {
     const imageTask = taskRecord(metadata, shot.shotId, "image");
     if (
       imageTask?.taskId &&
@@ -3051,6 +3057,11 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       });
       continue;
     }
+  }
+
+  // A shot-scoped dispatch must not advance siblings or final assembly.
+  if (params.targetShotIds !== undefined) {
+    return { run: params.run, finalAssemblyApproved: false };
   }
 
   if (params.run.outputMode === "storyboard_images") {

@@ -135,6 +135,80 @@ function assertTerminalVideoPromptGenerationAllowed(
   }
 }
 
+function isTerminalSavedImageDispatchTarget(
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  return (
+    targets.length > 0 &&
+    new Set(targets.map(target => target.shotId)).size === targets.length &&
+    targets.every(
+      target =>
+        target.stage === "image" &&
+        target.promptOnly !== true &&
+        target.refreshPrompt !== true
+    )
+  );
+}
+
+function assertSavedImagePromptsAvailable(
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  for (const target of targets) {
+    if (
+      target.stage !== "image" ||
+      target.promptOnly === true ||
+      target.refreshPrompt === true
+    ) {
+      continue;
+    }
+    const shot = metadata.stagedSequentialStoryboard.shots.find(
+      item => item.shotId === target.shotId
+    );
+    if (!shot) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "staged_invalid_shot_contract",
+      });
+    }
+    if (!String(shot.imagePrompt ?? "").trim()) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_image_prompt_missing",
+      });
+    }
+  }
+}
+
+function assertTerminalImageDispatchAllowed(
+  run: StagedCheckpointRun,
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  if (!STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))) return;
+  if (!isTerminalSavedImageDispatchTarget(targets)) {
+    assertStagedRunMutable(run);
+    return;
+  }
+  assertSavedImagePromptsAvailable(metadata, targets);
+}
+
+function assertStagedBulkGenerationAllowed(
+  run: StagedCheckpointRun,
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  targets: StagedAutoReviewGenerationTarget[]
+) {
+  if (!STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))) return;
+  if (
+    targets.length > 0 &&
+    targets.every(target => target.promptOnly && target.refreshPrompt)
+  ) {
+    assertTerminalVideoPromptGenerationAllowed(run, metadata, targets);
+    return;
+  }
+  assertTerminalImageDispatchAllowed(run, metadata, targets);
+}
+
 function isStagedCheckpointConsumed(
   checkpoint:
     | { consumedAt?: string | null; consumedByOperationId?: string | null }
@@ -1075,6 +1149,7 @@ async function mutateOwnedStagedMetadata(input: {
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
   queueAdvance?: boolean;
+  terminalImageDispatchTargets?: StagedAutoReviewGenerationTarget[];
   terminalVideoPromptTargets?: Array<{
     shotId: number;
     stage: "image" | "video";
@@ -1122,7 +1197,13 @@ async function mutateOwnedStagedMetadata(input: {
       });
     assertStagedMetadataPersisted(run);
     const existingMetadata = parseStagedMetadata(run);
-    if (input.terminalVideoPromptTargets && input.queueAdvance === false) {
+    if (input.terminalImageDispatchTargets && input.queueAdvance !== false) {
+      assertTerminalImageDispatchAllowed(
+        run,
+        existingMetadata,
+        input.terminalImageDispatchTargets
+      );
+    } else if (input.terminalVideoPromptTargets && input.queueAdvance === false) {
       assertTerminalVideoPromptGenerationAllowed(
         run,
         existingMetadata,
@@ -1179,9 +1260,24 @@ async function mutateOwnedStagedMetadata(input: {
       planRevision: changed.planRevision,
     });
     const now = new Date();
+    const reviveForImageDispatch = Boolean(
+      input.terminalImageDispatchTargets &&
+        STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))
+    );
     const [updated] = await tx
       .update(marketplaceAutoReviewRuns)
-      .set({ metadataJson: metadata as Record<string, any>, updatedAt: now })
+      .set({
+        metadataJson: metadata as Record<string, any>,
+        ...(reviveForImageDispatch
+          ? {
+              status: "running",
+              currentStage: "image_generation",
+              stageIndex: 5,
+              completedAt: null,
+            }
+          : {}),
+        updatedAt: now,
+      })
       .where(
         and(
           eq(marketplaceAutoReviewRuns.id, run.id),
@@ -1202,6 +1298,13 @@ async function mutateOwnedStagedMetadata(input: {
             operation: "advance_run",
             runId: run.id,
             operationId,
+            ...(input.terminalImageDispatchTargets
+              ? {
+                  targetShotIds: input.terminalImageDispatchTargets.map(
+                    target => target.shotId
+                  ),
+                }
+              : {}),
           },
           idempotencyKey: input.idempotencyKey,
           priority: 40,
@@ -1233,11 +1336,8 @@ export async function startStagedAutoReviewBulkGeneration(input: {
   const run = await requireOwnedRun(db, input.runId, input.auth);
   assertStagedMetadataPersisted(run);
   const metadata = parseStagedMetadata(run);
-  if (input.targets.every(target => target.promptOnly && target.refreshPrompt)) {
-    assertTerminalVideoPromptGenerationAllowed(run, metadata, input.targets);
-  } else {
-    assertStagedRunMutable(run);
-  }
+  assertSavedImagePromptsAvailable(metadata, input.targets);
+  assertStagedBulkGenerationAllowed(run, metadata, input.targets);
   const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
   const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
     db,
@@ -1383,11 +1483,8 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   const run = await requireOwnedRun(db, input.runId, input.auth);
   assertStagedMetadataPersisted(run);
   const metadata = parseStagedMetadata(run);
-  if (input.targets.every(target => target.promptOnly && target.refreshPrompt)) {
-    assertTerminalVideoPromptGenerationAllowed(run, metadata, input.targets);
-  } else {
-    assertStagedRunMutable(run);
-  }
+  assertSavedImagePromptsAvailable(metadata, input.targets);
+  assertStagedBulkGenerationAllowed(run, metadata, input.targets);
   assertStagedStoryPlanApproved(metadata);
   const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
   const requestHash = createHash("sha256")
@@ -1505,12 +1602,20 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
 
   const expectedStateDigest = stagedMetadataStateDigest(metadata);
   const applyIdempotencyKey = `marketplace-auto-review-bulk-apply:${requestHash}`;
+  const terminalImageDispatchTargets =
+    STAGED_TERMINAL_RUN_STATUSES.has(String(run.status)) &&
+    isTerminalSavedImageDispatchTarget(input.targets)
+      ? input.targets
+      : undefined;
   return mutateOwnedStagedMetadata({
     runId: run.id,
     expectedStateDigest,
     idempotencyKey: applyIdempotencyKey,
     auth: input.auth,
     queueAdvance: input.targets.some(target => !target.promptOnly),
+    ...(terminalImageDispatchTargets
+      ? { terminalImageDispatchTargets }
+      : {}),
     ...(input.targets.every(target => target.promptOnly && target.refreshPrompt)
       ? { terminalVideoPromptTargets: input.targets }
       : {}),

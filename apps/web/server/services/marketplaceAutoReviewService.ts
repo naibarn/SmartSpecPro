@@ -36532,6 +36532,7 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   run: MarketplaceAutoReviewRun;
   auth: AuthContext;
   runtime: RuntimeContext;
+  targetShotIds?: number[];
 }) {
   let result: Awaited<ReturnType<typeof advanceStagedMarketplaceAutoReviewRun>>;
   try {
@@ -36540,6 +36541,7 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
       run: params.run,
       auth: params.auth,
       runtime: params.runtime,
+      ...(params.targetShotIds ? { targetShotIds: params.targetShotIds } : {}),
     });
   } catch (error) {
     await recordStagedProviderFailureAndRefund({
@@ -36635,7 +36637,8 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
 export async function advanceMarketplaceAutoReviewRun(
   runId: string,
   auth: AuthContext,
-  runtime: RuntimeContext = {}
+  runtime: RuntimeContext = {},
+  targetShotIds?: number[]
 ) {
   const db = await getDb();
   if (!db)
@@ -36733,6 +36736,7 @@ export async function advanceMarketplaceAutoReviewRun(
         run,
         auth,
         runtime,
+        ...(targetShotIds ? { targetShotIds } : {}),
       });
     }
     if (
