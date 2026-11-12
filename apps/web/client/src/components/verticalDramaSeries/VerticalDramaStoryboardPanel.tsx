@@ -15984,10 +15984,11 @@ function ClipDialogueBox({
         )
       : undefined;
     const displayPortrait = parentPortrait ?? portrait;
-    if (localBinding) return localBinding.speakerLabel;
     if (parentPortrait?.name?.trim()) return parentPortrait.name.trim();
-    if (displayPortrait)
-      return formatShotCharacterLabel(displayPortrait, key);
+    if (displayPortrait?.name?.trim()) return displayPortrait.name.trim();
+    if (localBinding && !/^character(?:-|$)/i.test(localBinding.speakerLabel))
+      return localBinding.speakerLabel;
+    if (displayPortrait) return formatShotCharacterLabel(displayPortrait, key);
     return /^character(?:-|$)/i.test(key) ? `ผู้พูด ${lineIndex + 1}` : key;
   };
   const compiledDialogueText = lines
