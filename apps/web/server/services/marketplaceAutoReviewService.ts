@@ -35667,6 +35667,30 @@ function stagedRemotionFinalRenderShots(
   });
 }
 
+function requireMarketplaceAutoReviewVideoUrlsForShotCount(
+  shotCount: number,
+  value: unknown,
+  shotIds: readonly string[]
+): string[] {
+  if (!Number.isInteger(shotCount) || shotCount <= 0) {
+    throw new Error("MARKETPLACE_AUTO_REVIEW_STORYBOARD_SHOTS_REQUIRED");
+  }
+  if (!Array.isArray(value) || value.length !== shotCount) {
+    throw new Error(
+      `MARKETPLACE_AUTO_REVIEW_VIDEO_CLIP_COUNT_MISMATCH:expected=${shotCount}:actual=${Array.isArray(value) ? value.length : "missing"}`
+    );
+  }
+  return value.map((url, index) => {
+    const normalized = cleanText(url);
+    if (!normalized) {
+      throw new Error(
+        `MARKETPLACE_AUTO_REVIEW_VIDEO_CLIP_URL_REQUIRED:${cleanText(shotIds[index]) || index + 1}`
+      );
+    }
+    return normalized;
+  });
+}
+
 function stagedRemotionFinalRenderManifest(metadata: RunMetadata) {
   const shots = stagedRemotionFinalRenderShots(metadata);
   const plan = asRecord(asRecord(metadata.stagedPipeline).plan);
