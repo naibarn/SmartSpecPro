@@ -2948,6 +2948,13 @@
       "when": 1794484800013,
       "tag": "0434_modular_chat_enabled_paid_credit_dispatch",
       "breakpoints": true
+    },
+    {
+      "idx": 435,
+      "version": "7",
+      "when": 1794484800014,
+      "tag": "0435_minimax_h3_image_media_model",
+      "breakpoints": true
     }
   ]
 }
