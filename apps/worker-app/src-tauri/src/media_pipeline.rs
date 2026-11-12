@@ -2544,9 +2544,19 @@ pub fn run_allowlisted_ffmpeg_segments(
                         focus_expression(focus_track, 'x', focus_x.unwrap_or(0.5).clamp(0.0, 1.0));
                     let focus_y_expr =
                         focus_expression(focus_track, 'y', focus_y.unwrap_or(0.5).clamp(0.0, 1.0));
-                    format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x_expr})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y_expr})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
+                    format!(
+                        "crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x_expr})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y_expr})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"
+                    )
                 };
-                args.extend([literal("-vf"), literal(filter)]);
+                // Camera motion expressions can grow past Windows' process
+                // command-line limit. That made later retained segments fail
+                // to spawn WSL even though FFmpeg was installed and earlier
+                // segments rendered. Keep the filter in the scratch workspace
+                // and pass only its short path to FFmpeg.
+                let filter_script = scratch.join(format!("filter-part-{index:03}.txt"));
+                fs::write(&filter_script, filter)
+                    .map_err(|error| format!("cannot_write_filter_script: {error}"))?;
+                args.extend([literal("-filter_script:v"), media_path(&filter_script)]);
             }
             args.extend([
                 literal("-c:v"),
@@ -2560,7 +2570,7 @@ pub fn run_allowlisted_ffmpeg_segments(
             args.push(media_path(&part));
             let status = tools
                 .status(MediaBinary::Ffmpeg, args)
-                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                .map_err(|error| format!("ffmpeg_spawn_failed: segment {}: {error}", index + 1))?;
             if !status.success() {
                 return Err("ffmpeg_render_failed".into());
             }
@@ -2598,7 +2608,7 @@ pub fn run_allowlisted_ffmpeg_segments(
         ];
         let status = tools
             .status(MediaBinary::Ffmpeg, args)
-            .map_err(|_| "ffmpeg_unavailable".to_string())?;
+            .map_err(|error| format!("ffmpeg_spawn_failed: concat: {error}"))?;
         if !status.success() {
             let fallback_args = vec![
                 literal("-hide_banner"),
@@ -2621,7 +2631,7 @@ pub fn run_allowlisted_ffmpeg_segments(
             ];
             let fb_status = tools
                 .status(MediaBinary::Ffmpeg, fallback_args)
-                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                .map_err(|error| format!("ffmpeg_spawn_failed: concat_fallback: {error}"))?;
             if !fb_status.success() {
                 return Err("ffmpeg_concat_failed".into());
             }
