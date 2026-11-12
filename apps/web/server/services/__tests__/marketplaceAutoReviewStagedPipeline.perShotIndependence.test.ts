@@ -645,6 +645,20 @@ describe("advanceStagedMarketplaceAutoReviewRun per-shot independence (bug fix)"
       auth,
       runtime,
       targetShotIds: [shot.shotId],
+      reconcileOnly: true,
+    });
+
+    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+    expect(
+      getRunRow().metadataJson.stagedPipeline.tasks[`image:${shot.shotId}`]
+    ).toBeUndefined();
+
+    await advanceStagedMarketplaceAutoReviewRun({
+      db,
+      run: initialRun as any,
+      auth,
+      runtime,
+      targetShotIds: [shot.shotId],
     });
 
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledTimes(1);

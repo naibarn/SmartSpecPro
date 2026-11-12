@@ -43,6 +43,7 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
             message: "targetShotIds must be unique",
           })
           .optional(),
+        reconcileOnly: z.boolean().optional(),
         targetStage: z.string().trim().min(1).max(100).optional(),
         targetStageIndex: z.number().int().min(0).max(100).optional(),
       })
@@ -413,7 +414,8 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
           jobId: input.jobId,
           schedulerSource: "worker_jobs:advance_run",
         }),
-        input.job.targetShotIds
+        input.job.targetShotIds,
+        input.job.reconcileOnly
       );
     }
     case "draft_quality_qc": {

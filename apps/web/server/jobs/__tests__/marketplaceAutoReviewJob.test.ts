@@ -69,6 +69,7 @@ describe("marketplaceAutoReviewJob", () => {
       updatedAt: new Date("2026-11-11T00:00:00.000Z"),
       metadataJson: {
         planningArchitecture: "staged_two_skill_v2",
+        planReview: { status: "awaiting" },
         initializationControl: { status: "completed" },
       },
     };
@@ -113,6 +114,7 @@ describe("marketplaceAutoReviewJob", () => {
       stageIndex: 5,
       metadataJson: {
         planningArchitecture: "staged_two_skill_v2",
+        planReview: { status: "awaiting" },
         initializationControl: { status: "completed" },
         stagedSequentialStoryboard: {
           shots: [
@@ -162,6 +164,7 @@ describe("marketplaceAutoReviewJob", () => {
             operation: "advance_run",
             runId: stagedRun.id,
             targetShotIds: [4],
+            reconcileOnly: true,
             operationId: expect.stringMatching(/^staged_provider_poll:/),
           }),
           idempotencyKey: expect.stringContaining(":provider-poll:"),

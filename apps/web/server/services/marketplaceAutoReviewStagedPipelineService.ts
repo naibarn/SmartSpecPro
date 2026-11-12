@@ -2567,6 +2567,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   auth: Auth;
   runtime: Runtime;
   targetShotIds?: number[];
+  reconcileOnly?: boolean;
 }): Promise<{ run: MarketplaceAutoReviewRun; finalAssemblyApproved: boolean }> {
   const { plan, metadata: initialMetadata } = planAndMetadataFromRun(
     params.run
@@ -2579,6 +2580,9 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     plan.shots,
     params.targetShotIds
   );
+  if (params.reconcileOnly && params.targetShotIds === undefined) {
+    throw new Error("staged_provider_reconciliation_requires_target_shots");
+  }
   const storyCheckpoint = checkpointFor(metadata, "story_plan");
   const storyPlanNeedsReview =
     !storyCheckpoint ||
@@ -2627,7 +2631,11 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       !String(shotState?.imagePrompt ?? "").trim()
     );
   });
-  if (storyCheckpoint.state === "approved" && hasUncompiledImagePrompt) {
+  if (
+    !params.reconcileOnly &&
+    storyCheckpoint.state === "approved" &&
+    hasUncompiledImagePrompt
+  ) {
     metadata = await compileImagePromptCheckpoints({
       db: params.db,
       run: params.run,
@@ -2737,6 +2745,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     if (
       imagePromptCheckpoint?.state === "approved" &&
       hasExplicitStagedMediaDispatchIntent(imagePromptCheckpoint) &&
+      !params.reconcileOnly &&
       !imageTask?.taskId &&
       !shotState?.imageArtifactHash &&
       !imageCheckpointConsumed
@@ -2916,6 +2925,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     if (
       videoPromptCheckpoint?.state === "approved" &&
       hasExplicitStagedMediaDispatchIntent(videoPromptCheckpoint) &&
+      !params.reconcileOnly &&
       !videoTask?.taskId &&
       !shotState?.videoArtifactHash &&
       !videoCheckpointConsumed
@@ -2965,6 +2975,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       }
       continue;
     }
+    if (params.reconcileOnly) continue;
     let videoResultCheckpoint = checkpointFor(
       metadata,
       "video_result",

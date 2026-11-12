@@ -6,6 +6,11 @@ const { createControlPlaneJobMock, createCanonicalJobInTransactionMock } =
     createCanonicalJobInTransactionMock: vi.fn(),
   }));
 
+const workerRuntimeMocks = vi.hoisted(() => ({
+  advanceRun: vi.fn(),
+  createRuntime: vi.fn(),
+}));
+
 vi.mock("../jobControlPlaneGateway", () => ({
   createControlPlaneJob: createControlPlaneJobMock,
 }));
@@ -14,13 +19,27 @@ vi.mock("../jobControlPlane", () => ({
   createCanonicalJobInTransaction: createCanonicalJobInTransactionMock,
 }));
 
+vi.mock("../marketplaceAutoReviewService", () => ({
+  advanceMarketplaceAutoReviewRun: workerRuntimeMocks.advanceRun,
+}));
+
+vi.mock("../marketplaceAutoReviewWorkerRuntime", () => ({
+  createMarketplaceAutoReviewWorkerRuntime: workerRuntimeMocks.createRuntime,
+}));
+
 import { validateJobDefinition } from "../jobCanonicalization";
-import { enqueueMarketplaceAutoReviewWorkerJob } from "../marketplaceAutoReviewWorkerJob";
+import {
+  enqueueMarketplaceAutoReviewWorkerJob,
+  marketplaceAutoReviewWorkerInputSchema,
+  executeMarketplaceAutoReviewWorkerJob,
+} from "../marketplaceAutoReviewWorkerJob";
 
 describe("Marketplace Auto Review worker job admission", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     createControlPlaneJobMock.mockResolvedValue({ jobId: "worker-job-1" });
+    workerRuntimeMocks.createRuntime.mockResolvedValue({ publicUrl: "https://app.test" });
+    workerRuntimeMocks.advanceRun.mockResolvedValue({ runId: "run-auto-review-1" });
   });
 
   it("omits undefined optional prompt fields before canonical job validation", async () => {
@@ -79,6 +98,31 @@ describe("Marketplace Auto Review worker job admission", () => {
     const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
     expect(definition.retryPolicy.maxAttempts).toBe(60);
     expect(() => validateJobDefinition(definition)).not.toThrow();
+  });
+
+  it("forwards reconciliation-only polls through advance_run without enabling dispatch", async () => {
+    const job = marketplaceAutoReviewWorkerInputSchema.parse({
+      operation: "advance_run",
+      runId: "run-auto-review-poll",
+      targetShotIds: [4],
+      reconcileOnly: true,
+      operationId: "staged_provider_poll:60000:1:fingerprint",
+    });
+
+    await executeMarketplaceAutoReviewWorkerJob({
+      job,
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      jobId: "provider-poll-job",
+    });
+
+    expect(workerRuntimeMocks.advanceRun).toHaveBeenCalledWith(
+      "run-auto-review-poll",
+      { userId: 42, tenantId: "tenant-marketplace" },
+      { publicUrl: "https://app.test" },
+      [4],
+      true
+    );
   });
 
   it("keeps populated model and instruction fields in the durable job input", async () => {

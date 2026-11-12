@@ -519,9 +519,14 @@ export async function runMarketplaceAutoReviewJob(
               priority: 20,
             });
           }
-        } else if (awaitingPlanReview) {
+        } else if (
+          awaitingPlanReview &&
+          metadata.planningArchitecture !== "staged_two_skill_v2"
+        ) {
           // The text/story checkpoint is intentionally user-driven. Do not
           // flood worker_jobs with no-op advance jobs while the user reviews it.
+          // Staged runs are handled below only to reconcile media tasks that
+          // were already submitted; that path cannot dispatch new media.
           skippedRuns += 1;
           continue;
         } else if (metadata.planningArchitecture === "staged_two_skill_v2") {
@@ -598,6 +603,7 @@ export async function runMarketplaceAutoReviewJob(
               operation: "advance_run",
               runId: run.id,
               targetShotIds,
+              reconcileOnly: true,
               operationId,
             },
             idempotencyKey: `marketplace-auto-review:${run.id}:provider-poll:${taskFingerprint}:${pollIntervalMs}:${pollBucket}`,
