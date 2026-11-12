@@ -2173,3 +2173,82 @@ describe("StagedCheckpointReviewPanel", () => {
     });
   });
 });
+
+describe("Marketplace final video combine action", () => {
+  function completedVideoState(videoCount: number) {
+    const input = props() as any;
+    input.onSubmitFinalRender = vi.fn();
+    input.state.shots = Array.from({ length: 9 }, (_, index) => ({
+      shotId: index + 1,
+      title: `ช็อต ${index + 1}`,
+      storySummary: `เรื่องย่อ ${index + 1}`,
+      dialogue: "บทพูด",
+      imagePrompt: "image prompt",
+      videoPrompt: "video prompt",
+      imageArtifactUrl: `https://example.test/image-${index + 1}.png`,
+      imageArtifactHash: `image-hash-${index + 1}`,
+      videoArtifactUrl:
+        index < videoCount ? `https://example.test/shot-${index + 1}.mp4` : null,
+      videoArtifactHash: index < videoCount ? `video-hash-${index + 1}` : null,
+    }));
+    input.state.checkpoints = [
+      ...input.state.checkpoints,
+      ...input.state.shots
+        .filter((shot: any) => shot.videoArtifactUrl)
+        .map((shot: any) => ({
+          checkpointId: `video-result:run-1:shot-${shot.shotId}:r1`,
+          kind: "video_result",
+          shotId: shot.shotId,
+          state: "approved",
+          revision: 1,
+          contentHash: shot.videoArtifactHash,
+          consumed: true,
+        })),
+    ];
+    input.state.finalRender = undefined;
+    return input;
+  }
+
+  it("shows and enables the combine action when all 9 approved shot videos exist without finalRender state", () => {
+    const input = completedVideoState(9);
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByTestId("staged-final-render-action")).toBeTruthy();
+    const button = screen.getByRole("button", {
+      name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
+    });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the action visible and explains the missing shot when videos are incomplete", () => {
+    const input = completedVideoState(8);
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByTestId("staged-final-render-action")).toBeTruthy();
+    expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "รอวิดีโอครบ 9 ช็อต" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+
+  it("requires the latest video checkpoint to be approved", () => {
+    const input = completedVideoState(9);
+    input.state.checkpoints.push({
+      checkpointId: "video-result:run-1:shot-4:r2",
+      kind: "video_result",
+      shotId: 4,
+      state: "awaiting",
+      revision: 2,
+      contentHash: "video-hash-4",
+    });
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "รอวิดีโอครบ 9 ช็อต" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+});

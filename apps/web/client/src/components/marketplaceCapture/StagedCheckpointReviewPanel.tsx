@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
 import { trpc } from "@/lib/trpc";
 import {
   loadStoredAutoStoryboardOverrides,
@@ -1426,6 +1427,39 @@ export function StagedCheckpointReviewPanel(props: {
   const effectiveAiDisclosure =
     aiDisclosureDraft ?? finalRenderSettings?.aiDisclosureEnabled ?? false;
   const finalVideoUrl = props.state?.finalRender?.outputUrl ?? null;
+  const renderShotCount = props.state?.shots.length ?? 0;
+  const renderReadyShotIds = (props.state?.shots ?? [])
+    .filter(shot => {
+      const videoHash = shot.videoArtifactHash?.trim();
+      const latestVideoCheckpoint = (props.state?.checkpoints ?? [])
+        .filter(
+          checkpoint =>
+            checkpoint.kind === "video_result" &&
+            checkpoint.shotId === shot.shotId &&
+            checkpoint.state !== "superseded"
+        )
+        .sort((left, right) => right.revision - left.revision)[0];
+      return Boolean(
+        shot.videoArtifactUrl?.trim() &&
+          videoHash &&
+          latestVideoCheckpoint?.state === "approved" &&
+          latestVideoCheckpoint.contentHash === videoHash
+      );
+    })
+    .map(shot => shot.shotId);
+  const renderReadyShotCount = renderReadyShotIds.length;
+  const canSubmitFinalRender =
+    renderShotCount > 0 && renderReadyShotCount === renderShotCount;
+  const missingRenderShotIds = (props.state?.shots ?? [])
+    .filter(shot => !shot.videoArtifactUrl?.trim())
+    .map(shot => shot.shotId);
+  const unapprovedRenderShotIds = (props.state?.shots ?? [])
+    .filter(
+      shot =>
+        Boolean(shot.videoArtifactUrl?.trim()) &&
+        !renderReadyShotIds.includes(shot.shotId)
+    )
+    .map(shot => shot.shotId);
   const finalVideoProbe = props.state?.finalRender?.probe ?? null;
   const effectiveSubtitlePreset =
     subtitlePresetDraft ?? finalRenderSettings?.subtitlePresetId ?? "classic_box";
@@ -1942,6 +1976,73 @@ export function StagedCheckpointReviewPanel(props: {
       ) : null}
       {props.state ? (
         <>
+          {props.state.outputMode === "full_video" ? (
+            <Banner
+              data-testid="staged-final-render-action"
+              aria-label="รวมทุกช็อตเป็นวิดีโอเดียว"
+              status={
+                finalVideoUrl
+                  ? "success"
+                  : canSubmitFinalRender
+                    ? "info"
+                    : "warning"
+              }
+              elevation="low"
+              style={{
+                position: "sticky",
+                top: "var(--spacing-2)",
+                zIndex: 20,
+                marginBlockEnd: "var(--spacing-4)",
+              }}
+              title={
+                finalVideoUrl
+                  ? "วิดีโอรวมพร้อมแล้ว"
+                  : renderJobId
+                    ? "กำลังรวมวิดีโอ"
+                    : canSubmitFinalRender
+                      ? `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
+                      : "เตรียมวิดีโอให้ครบก่อนรวม"
+              }
+              description={
+                <>
+                  ต่อวิดีโอรายช็อตตามลำดับ แล้วส่งให้ Worker App รวมด้วย Remotion
+                  <br />
+                  ตรวจรับแล้ว {renderReadyShotCount}/{renderShotCount} ช็อต
+                  {missingRenderShotIds.length > 0
+                    ? ` · ยังไม่มีช็อต ${missingRenderShotIds.join(", ")}`
+                    : ""}
+                  {unapprovedRenderShotIds.length > 0
+                    ? ` · ยังตรวจรับช็อต ${unapprovedRenderShotIds.join(", ")}`
+                    : ""}
+                </>
+              }
+              endContent={
+                finalVideoUrl ? (
+                  <Button
+                    label="ดูวิดีโอรวมที่เสร็จแล้ว"
+                    href={`#staged-final-video-${props.runId}`}
+                    variant="primary"
+                    size="lg"
+                  />
+                ) : (
+                  <Button
+                    label={
+                      renderJobId
+                        ? "ตรวจสถานะงานรวม"
+                        : canSubmitFinalRender
+                          ? `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
+                          : `รอวิดีโอครบ ${renderShotCount} ช็อต`
+                    }
+                    variant="primary"
+                    size="lg"
+                    isLoading={isThisActionRunning("submit-final-render")}
+                    isDisabled={!renderJobId && !canSubmitFinalRender}
+                    onClick={() => props.onSubmitFinalRender?.()}
+                  />
+                )
+              }
+            />
+          ) : null}
           <div
             className="mt-4 rounded-xl border border-slate-200 bg-slate-950 p-3 text-white shadow-sm"
             aria-label="ความคืบหน้า checkpoint"
@@ -2410,17 +2511,9 @@ export function StagedCheckpointReviewPanel(props: {
                 {/* Never disabled on a client-derived readiness guess — the
                     server owns the preconditions and answers with a mapped
                     Thai error (2026-07-30 dead-button policy). */}
-                {action(
-                  "submit-final-render",
-                  renderJobId
-                    ? "ส่งงาน render อีกครั้ง"
-                    : "ส่งงาน render เข้าคิว (Remotion)",
-                  () => props.onSubmitFinalRender?.(),
-                  "rounded bg-sky-800 px-3 py-2 text-sm font-medium text-white"
-                )}
-                <span className="text-xs text-slate-600">
-                  วิดีโอพร้อมแล้ว {props.state.finalRender.clipCount ?? 0} ช็อต
-                </span>
+                <p className="text-xs text-slate-600">
+                  สั่งรวมวิดีโอได้จากแถบด้านบน
+                </p>
               </div>
 
               {finalVideoUrl ? (

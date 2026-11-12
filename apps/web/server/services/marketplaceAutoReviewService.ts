@@ -35607,23 +35607,192 @@ export async function recordStagedProviderFailureAndRefund(params: {
 function stagedRemotionFinalRenderShots(
   metadata: RunMetadata
 ): import("./marketplaceAutoReviewStagedRemotionRender").StagedRemotionRenderShotInput[] {
-  const planShots = asRecord(asRecord(metadata.stagedPipeline).plan).shots;
-  if (!Array.isArray(planShots)) return [];
-  return planShots
-    .map((shot: any) => ({
-      shotId: Number(shot?.shotId),
-      dialogue: cleanText(shot?.dialogue),
-      dialogueTurns: Array.isArray(shot?.dialogueTurns)
-        ? shot.dialogueTurns
-            .map((turn: any) => ({
-              speakerName: cleanText(turn?.speakerName),
-              line: cleanText(turn?.line),
-            }))
-            .filter((turn: any) => turn.speakerName && turn.line)
-        : undefined,
-      durationSeconds: Number(shot?.durationSeconds) || undefined,
-    }))
-    .filter((shot: any) => Number.isInteger(shot.shotId));
+  const stagedPipeline = asRecord(metadata.stagedPipeline);
+  const plan = asRecord(stagedPipeline.plan);
+  const planShots = Array.isArray(plan.shots)
+    ? plan.shots
+    : asRecord(metadata.concept).shots;
+  if (!Array.isArray(planShots) || planShots.length === 0) {
+    throw new Error("STAGED_RENDER_SHOTS_REQUIRED");
+  }
+  const planShotsById = new Map<number, any>();
+  for (const [index, shot] of planShots.entries()) {
+    const shotId = Number(shot?.shotId ?? shot?.order ?? index + 1);
+    if (!Number.isInteger(shotId) || shotId < 1 || planShotsById.has(shotId)) {
+      throw new Error(`STAGED_RENDER_SHOT_ORDER_INVALID:${index + 1}`);
+    }
+    planShotsById.set(shotId, shot);
+  }
+  const configuredAssemblyShots = stagedPipeline.finalAssembly?.shots;
+  const orderedShotIds = Array.isArray(configuredAssemblyShots)
+    ? configuredAssemblyShots.map((shot: any) => Number(shot?.shotId))
+    : Array.from(planShotsById.keys()).sort((left, right) => left - right);
+  if (
+    orderedShotIds.length !== planShotsById.size ||
+    new Set(orderedShotIds).size !== planShotsById.size ||
+    orderedShotIds.some(shotId => !planShotsById.has(shotId))
+  ) {
+    throw new Error("STAGED_RENDER_SHOT_ORDER_INVALID:assembly");
+  }
+  return orderedShotIds.map(shotId => {
+    const shot = planShotsById.get(shotId);
+    const durationSeconds = Number(shot?.durationSeconds);
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      throw new Error(`STAGED_RENDER_SHOT_DURATION_REQUIRED:${shotId}`);
+    }
+    let dialogueTurns:
+      | Array<{ speakerName: string; line: string }>
+      | undefined;
+    if (shot?.dialogueTurns !== undefined) {
+      if (!Array.isArray(shot.dialogueTurns)) {
+        throw new Error(`STAGED_RENDER_SHOT_DIALOGUE_TURNS_INVALID:${shotId}`);
+      }
+      dialogueTurns = shot.dialogueTurns.map((turn: any, turnIndex: number) => {
+        const speakerName = cleanText(turn?.speakerName);
+        const line = cleanText(turn?.line);
+        if (!speakerName || !line) {
+          throw new Error(
+            `STAGED_RENDER_SHOT_DIALOGUE_TURN_INVALID:${shotId}:${turnIndex + 1}`
+          );
+        }
+        return { speakerName, line };
+      });
+    }
+    return {
+      shotId,
+      dialogue: cleanText(shot?.dialogue) || cleanText(shot?.voiceover),
+      dialogueTurns,
+      durationSeconds,
+    };
+  });
+}
+
+function stagedRemotionFinalRenderManifest(metadata: RunMetadata) {
+  const shots = stagedRemotionFinalRenderShots(metadata);
+  const plan = asRecord(asRecord(metadata.stagedPipeline).plan);
+  const planRevision = Number(
+    plan.planRevision ?? asRecord(metadata.concept).planRevision
+  );
+  if (!Number.isInteger(planRevision) || planRevision <= 0) {
+    throw new Error("STAGED_RENDER_PLAN_REVISION_REQUIRED");
+  }
+
+  const stagedStoryboard = asRecord(metadata.stagedSequentialStoryboard);
+  const stagedShots = Array.isArray(stagedStoryboard.shots)
+    ? stagedStoryboard.shots
+    : [];
+  let videoClipUrls: string[];
+  if (stagedShots.length === shots.length) {
+    const stagedShotsById = new Map(
+      stagedShots.map((shot: any) => [Number(shot?.shotId), shot])
+    );
+    videoClipUrls = shots.map(shot => {
+      const stagedShot = stagedShotsById.get(shot.shotId) as
+        | Record<string, any>
+        | undefined;
+      const artifactUrl = cleanText(stagedShot?.videoArtifactUrl);
+      if (!artifactUrl) return "";
+
+      const latestVideoCheckpoint = (Array.isArray(stagedStoryboard.reviewCheckpoints)
+        ? stagedStoryboard.reviewCheckpoints
+        : [])
+        .map((checkpoint: any) => asRecord(checkpoint))
+        .filter(
+          checkpoint =>
+            checkpoint.kind === "video_result" &&
+            Number(checkpoint.shotId) === shot.shotId &&
+            checkpoint.state !== "superseded"
+        )
+        .sort((left, right) => Number(right.revision) - Number(left.revision))[0];
+      if (
+        latestVideoCheckpoint?.state !== "approved" ||
+        !cleanText(stagedShot?.videoArtifactHash) ||
+        cleanText(latestVideoCheckpoint.contentHash) !==
+          cleanText(stagedShot.videoArtifactHash)
+      ) {
+        throw new Error(
+          `staged_render_video_result_not_approved:shot-${shot.shotId}`
+        );
+      }
+      return artifactUrl;
+    });
+  } else {
+    videoClipUrls = requireMarketplaceAutoReviewVideoUrlsForShotCount(
+      shots.length,
+      metadata.videoClipUrls,
+      shots.map(shot => `shot-${shot.shotId}`)
+    );
+  }
+  videoClipUrls = requireMarketplaceAutoReviewVideoUrlsForShotCount(
+    shots.length,
+    videoClipUrls,
+    shots.map(shot => `shot-${shot.shotId}`)
+  );
+
+  const conceptShots = Array.isArray(asRecord(metadata.concept).shots)
+    ? asRecord(metadata.concept).shots
+    : [];
+  const planShots = Array.isArray(plan.shots) ? plan.shots : [];
+  const videoUnitIds = shots.map(shot => {
+    const matchingPlanShot =
+      conceptShots.find(
+        (candidate: any) =>
+          Number(candidate?.shotId ?? candidate?.order) === shot.shotId
+      ) ??
+      planShots.find(
+        (candidate: any) =>
+          Number(candidate?.shotId ?? candidate?.order) === shot.shotId
+      );
+    const shotUnitId =
+      cleanText(matchingPlanShot?.id) || `shot-${shot.shotId}`;
+    return `${shotUnitId}-video`;
+  });
+  const audioUrl = resolveStagedFinalRenderAudioUrl(metadata);
+  const configuredIncludeAudio = asRecord(
+    asRecord(metadata.stagedPipeline).finalAssembly
+  ).includeAudio;
+  // `includeAudio` adds a separate full-timeline track. Native clip audio is
+  // already present in the shot videos; enabling the separate track without
+  // an approved TTS artifact would make an otherwise-ready render fail.
+  const includeAudio = Boolean(
+    audioUrl &&
+      (typeof configuredIncludeAudio === "boolean"
+        ? stagedFinalAssemblyIncludeAudio(metadata)
+        : true)
+  );
+
+  return {
+    planRevision,
+    shots,
+    videoClipUrls,
+    videoUnitIds,
+    includeAudio,
+    audioUrl,
+  };
+}
+
+export function buildStagedRemotionFinalRenderManifestForTest(
+  metadata: RunMetadata
+) {
+  return stagedRemotionFinalRenderManifest(metadata);
+}
+
+function shouldReconcileStagedRemotionRenderBeforeAdvance(
+  run: Pick<MarketplaceAutoReviewRun, "outputMode" | "renderJobId">,
+  metadata: RunMetadata
+): boolean {
+  return (
+    run.outputMode === "full_video" &&
+    cleanText(metadata.renderEngine) === "remotion_queue" &&
+    Boolean(cleanText(metadata.renderJobId) || cleanText(run.renderJobId))
+  );
+}
+
+export function shouldReconcileStagedRemotionRenderBeforeAdvanceForTest(
+  run: Pick<MarketplaceAutoReviewRun, "outputMode" | "renderJobId">,
+  metadata: RunMetadata
+): boolean {
+  return shouldReconcileStagedRemotionRenderBeforeAdvance(run, metadata);
 }
 
 function stagedFinalAssemblyIncludeAudio(metadata: RunMetadata): boolean {
@@ -36293,16 +36462,6 @@ export async function submitStagedAutoReviewFinalRender(input: {
     });
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
-  const shots = stagedRemotionFinalRenderShots(metadata);
-  const clipUrls = (metadata.videoClipUrls ?? []).filter(
-    (url: unknown) => typeof url === "string" && url.trim()
-  );
-  if (shots.length === 0 || clipUrls.length < shots.length) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_render_clips_incomplete",
-    });
-  }
   // Idempotency: an already-queued Remotion job for this run is returned
   // as-is rather than queuing (and reserving credits for) a second one, so a
   // double click cannot double-spend.
@@ -36312,6 +36471,7 @@ export async function submitStagedAutoReviewFinalRender(input: {
   if (existingJobId) {
     return { jobId: existingJobId, created: false };
   }
+  const renderManifest = stagedRemotionFinalRenderManifest(metadata);
   const settings = readStagedFinalRenderSettings(metadata);
   // The AI-disclosure decision is made HERE, at submit time, by the person
   // pressing render — and it is recorded either way.
@@ -36365,22 +36525,18 @@ export async function submitStagedAutoReviewFinalRender(input: {
             "user_opted_out_at_render_submit; platform-native AI labels (TikTok/Reels) cover disclosure",
         },
       };
-  const planRevision = Number(
-    asRecord(asRecord(metadata.stagedPipeline).plan).planRevision
-  );
   const tenantId = tenantIdForRun(run, input.auth);
   let submitted: { jobId: string; created: boolean };
   try {
     submitted = await submitStagedRemotionFinalRender({
       runId: run.id,
       tenantId,
-      planRevision:
-        Number.isFinite(planRevision) && planRevision > 0 ? planRevision : 1,
+      planRevision: renderManifest.planRevision,
       requestedByUserId: input.auth.userId,
-      videoClipUrls: metadata.videoClipUrls ?? [],
-      shots,
-      includeAudio: stagedFinalAssemblyIncludeAudio(metadata),
-      audioUrl: resolveStagedFinalRenderAudioUrl(metadata),
+      videoClipUrls: renderManifest.videoClipUrls,
+      shots: renderManifest.shots,
+      includeAudio: renderManifest.includeAudio,
+      audioUrl: renderManifest.audioUrl,
       subtitlePresetId: settings.subtitlePresetId,
       overlayText: settings.overlayText,
       overlayImage: settings.overlayImage,
@@ -36407,6 +36563,8 @@ export async function submitStagedAutoReviewFinalRender(input: {
     metadataJson: withUpdatedCreditSummary({
       ...metadata,
       ...disclosureMetadata,
+      videoClipUrls: renderManifest.videoClipUrls,
+      videoUnitIds: renderManifest.videoUnitIds,
       renderJobId: submitted.jobId,
       renderEngine: "remotion_queue",
       renderSubmittedAt: Date.now(),
@@ -36535,6 +36693,30 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   targetShotIds?: number[];
   reconcileOnly?: boolean;
 }) {
+  const initialMetadata = asRecord(params.run.metadataJson) as RunMetadata;
+  if (
+    shouldReconcileStagedRemotionRenderBeforeAdvance(
+      params.run,
+      initialMetadata
+    )
+  ) {
+    // Render submission is the user's explicit approval to assemble the
+    // already-approved shot videos. A stale story-plan review checkpoint must
+    // not prevent this Worker App job from returning its result to the run.
+    const refreshed = await reloadRun(params.db, params.run.id, params.auth);
+    const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
+    const plan = extractPlanFromRun(refreshed);
+    await reconcileStagedRemotionFinalRender({
+      db: params.db,
+      tenantId: tenantIdForRun(refreshed, params.auth),
+      auth: params.auth,
+      run: refreshed,
+      plan,
+      metadata,
+    });
+    return getMarketplaceAutoReviewRun(params.run.id, params.auth);
+  }
+
   let result: Awaited<ReturnType<typeof advanceStagedMarketplaceAutoReviewRun>>;
   try {
     result = await advanceStagedMarketplaceAutoReviewRun({

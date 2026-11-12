@@ -99,6 +99,8 @@ import {
   effectiveQualityModePolicyForTest,
   validateMarketplaceAutoReviewImagePromptPreflightForTest,
   clearStagedRenderRefsFromMetadataForTest,
+  buildStagedRemotionFinalRenderManifestForTest,
+  shouldReconcileStagedRemotionRenderBeforeAdvanceForTest,
   resolveStagedFinalRenderAudioUrl,
   reconcileStagedRemotionFinalRenderForTest,
   STAGED_REMOTION_QUEUED_TTL_MS,
@@ -9056,5 +9058,80 @@ describe("marketplace auto review audio/video planning", () => {
       "staged_video_1",
       "staged_audio_1",
     ]);
+  });
+});
+
+describe("Marketplace Auto Review final Remotion manifest", () => {
+  it("derives clips from approved staged artifacts in configured shot order", () => {
+    const manifest = buildStagedRemotionFinalRenderManifestForTest({
+      stagedPipeline: {
+        plan: {
+          planRevision: 4,
+          shots: [
+            { shotId: 1, dialogue: "Host: hello", durationSeconds: 10 },
+            { shotId: 2, dialogue: "Guest: hi", durationSeconds: 10 },
+          ],
+        },
+        finalAssembly: null,
+        audioUrl: null,
+      },
+      concept: { shots: [{ id: "shot-1", order: 1 }, { id: "shot-2", order: 2 }] },
+      stagedSequentialStoryboard: {
+        shots: [
+          { shotId: 2, videoArtifactUrl: "https://cdn.test/2.mp4", videoArtifactHash: "h2" },
+          { shotId: 1, videoArtifactUrl: "https://cdn.test/1.mp4", videoArtifactHash: "h1" },
+        ],
+        reviewCheckpoints: [
+          { kind: "video_result", shotId: 1, state: "approved", revision: 1, contentHash: "h1" },
+          { kind: "video_result", shotId: 2, state: "approved", revision: 1, contentHash: "h2" },
+        ],
+      },
+    } as any);
+
+    expect(manifest.planRevision).toBe(4);
+    expect(manifest.shots.map((shot: any) => shot.shotId)).toEqual([1, 2]);
+    expect(manifest.videoClipUrls).toEqual([
+      "https://cdn.test/1.mp4",
+      "https://cdn.test/2.mp4",
+    ]);
+    expect(manifest.videoUnitIds).toEqual(["shot-1-video", "shot-2-video"]);
+    expect(manifest.includeAudio).toBe(false);
+  });
+
+  it("rejects clips whose latest video result checkpoint is not approved", () => {
+    expect(() =>
+      buildStagedRemotionFinalRenderManifestForTest({
+        stagedPipeline: {
+          plan: {
+            planRevision: 1,
+            shots: [{ shotId: 1, dialogue: "hello", durationSeconds: 10 }],
+          },
+        },
+        stagedSequentialStoryboard: {
+          shots: [
+            { shotId: 1, videoArtifactUrl: "https://cdn.test/1.mp4", videoArtifactHash: "h1" },
+          ],
+          reviewCheckpoints: [
+            { kind: "video_result", shotId: 1, state: "approved", revision: 1, contentHash: "h1" },
+            { kind: "video_result", shotId: 1, state: "awaiting", revision: 2, contentHash: "h1" },
+          ],
+        },
+      } as any)
+    ).toThrow("staged_render_video_result_not_approved:shot-1");
+  });
+
+  it("routes submitted Remotion jobs to reconciliation before staged advancement", () => {
+    expect(
+      shouldReconcileStagedRemotionRenderBeforeAdvanceForTest(
+        { outputMode: "full_video", renderJobId: null },
+        { renderJobId: "render-1", renderEngine: "remotion_queue" }
+      )
+    ).toBe(true);
+    expect(
+      shouldReconcileStagedRemotionRenderBeforeAdvanceForTest(
+        { outputMode: "full_video", renderJobId: null },
+        { renderJobId: "render-1", renderEngine: "legacy" }
+      )
+    ).toBe(false);
   });
 });
