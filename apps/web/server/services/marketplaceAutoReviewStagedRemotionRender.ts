@@ -39,6 +39,7 @@ import {
   queueRemotionRenderVideoJob,
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import {
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
@@ -842,6 +843,46 @@ export interface StagedRemotionRenderDeps {
     url: string,
     publicUrl: string | null | undefined,
   ) => Promise<StagedAudioProbeResult>;
+  resolveWorkerAssetUrls?: (
+    urls: string[],
+    viewer: { userId: number; tenantId: string } | undefined,
+    publicUrl: string | null | undefined,
+  ) => Promise<string[] | undefined>;
+}
+
+async function resolveStagedWorkerAssetUrls(
+  urls: string[],
+  input: SubmitStagedRemotionFinalRenderInput,
+  resolver: NonNullable<StagedRemotionRenderDeps["resolveWorkerAssetUrls"]>,
+): Promise<string[]> {
+  const requestedByUserId = Number(input.requestedByUserId);
+  const viewer = Number.isSafeInteger(requestedByUserId) && requestedByUserId > 0
+    ? { userId: requestedByUserId, tenantId: input.tenantId }
+    : undefined;
+  try {
+    const resolved = await resolver(urls, viewer, input.publicUrl);
+    if (
+      !resolved ||
+      resolved.length !== urls.length ||
+      resolved.some(url => {
+        if (typeof url !== "string" || !url.trim()) return true;
+        try {
+          const parsed = new URL(url);
+          return parsed.protocol !== "https:" && parsed.protocol !== "http:";
+        } catch {
+          return true;
+        }
+      })
+    ) {
+      throw new Error("resolver returned an incomplete or invalid asset list");
+    }
+    return resolved;
+  } catch {
+    throw new StagedRemotionRenderError(
+      "asset_url_resolution_failed",
+      "Could not create worker-accessible URLs for the approved render assets",
+    );
+  }
 }
 
 export interface SubmitStagedRemotionFinalRenderResult {
@@ -863,16 +904,22 @@ export async function submitStagedRemotionFinalRender(
   const stageClip = deps.stageClip ?? defaultStageClip;
   const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
   const stageAudio = deps.stageAudio ?? defaultStageAudio;
+  const resolveWorkerAssetUrls =
+    deps.resolveWorkerAssetUrls ?? resolveExternalMediaReferenceUrls;
 
-  const orderedClips = input.shots
-    .map((shot, index) => ({
+  const orderedClips = input.shots.map((shot, index) => {
+    const assetUrl = (input.videoClipUrls[index] ?? "").toString().trim();
+    if (!assetUrl) {
+      throw new StagedRemotionRenderError(
+        "clip_url_missing",
+        `Approved video clip URL is missing for shot ${shot.shotId}`,
+      );
+    }
+    return {
       shot,
-      url: resolveStagedFinalRenderAssetUrl(
-        (input.videoClipUrls[index] ?? "").toString().trim(),
-        input.publicUrl,
-      ),
-    }))
-    .filter(item => item.url.length > 0);
+      url: resolveStagedFinalRenderAssetUrl(assetUrl, input.publicUrl),
+    };
+  });
 
   if (orderedClips.length === 0) {
     throw new StagedRemotionRenderError(
@@ -910,12 +957,25 @@ export async function submitStagedRemotionFinalRender(
   }
   const audioIncluded = Boolean(input.includeAudio && resolvedAudioUrl && audioSha256);
 
+  const workerAssetUrls = await resolveStagedWorkerAssetUrls(
+    [
+      ...orderedClips.map(item => item.url),
+      ...(audioIncluded ? [resolvedAudioUrl!] : []),
+    ],
+    input,
+    resolveWorkerAssetUrls,
+  );
+  const workerClipUrls = workerAssetUrls.slice(0, orderedClips.length);
+  const workerAudioUrl = audioIncluded
+    ? workerAssetUrls[orderedClips.length]
+    : null;
+
   const { template, durationInFrames } = buildStagedRemotionTemplate({
     clips: orderedClips.map((item, index) => ({
-      url: item.url,
+      url: workerClipUrls[index],
       durationSec: staged[index].durationSec,
     })),
-    audio: audioIncluded ? { url: resolvedAudioUrl! } : null,
+    audio: audioIncluded ? { url: workerAudioUrl! } : null,
     overlayText: input.overlayText ?? null,
     overlayImage: input.overlayImage ?? null,
     aiDisclosureText: input.aiDisclosureText ?? null,
@@ -935,14 +995,14 @@ export async function submitStagedRemotionFinalRender(
   const assetManifestSources = [
     ...orderedClips.map((item, index) => ({
       role: "video" as const,
-      url: item.url,
+      url: workerClipUrls[index],
       sha256: staged[index].sha256,
     })),
     ...(audioIncluded
       ? [
           {
             role: "audio" as const,
-            url: resolvedAudioUrl!,
+            url: workerAudioUrl!,
             sha256: audioSha256!,
           },
         ]

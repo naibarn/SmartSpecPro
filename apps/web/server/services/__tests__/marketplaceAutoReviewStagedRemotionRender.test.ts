@@ -221,23 +221,39 @@ describe("submitStagedRemotionFinalRender", () => {
     }
   });
 
-  it("resolves relative storage URLs before building the Remotion manifest", async () => {
-    const deps = fakeDeps();
+  it("brokers managed storage URLs before building the worker manifest", async () => {
+    const workerUrls = [
+      "https://smartaihub.app/api/mcp/downloads/ref-1/shot-1.mp4",
+      "https://smartaihub.app/api/mcp/downloads/ref-2/shot-2.mp4",
+    ];
+    const resolveWorkerAssetUrls = vi.fn(async (urls: string[]) =>
+      urls.map((_, index) => workerUrls[index]),
+    );
+    const deps = { ...fakeDeps(), resolveWorkerAssetUrls };
     const videoClipUrls = [
       "/api/storage/files/marketplace/shot-1.mp4",
       "/api/storage/files/marketplace/shot-2.mp4",
     ];
-    const expectedUrls = videoClipUrls.map(url => `https://smartaihub.app${url}`);
+    const appUrls = videoClipUrls.map(url => `https://smartaihub.app${url}`);
 
     await submitStagedRemotionFinalRender(
-      baseInput({ videoClipUrls, publicUrl: "https://smartaihub.app" }),
+      baseInput({
+        videoClipUrls,
+        publicUrl: "https://smartaihub.app",
+        requestedByUserId: 42,
+      }),
       deps,
     );
 
     expect(deps.stageClip).toHaveBeenNthCalledWith(
       1,
-      expectedUrls[0],
+      appUrls[0],
       5,
+      "https://smartaihub.app",
+    );
+    expect(resolveWorkerAssetUrls).toHaveBeenCalledWith(
+      appUrls,
+      { userId: 42, tenantId: "tenant-1" },
       "https://smartaihub.app",
     );
     const workerInput = deps.queueJob.mock.calls[0][0];
@@ -245,12 +261,26 @@ describe("submitStagedRemotionFinalRender", () => {
       workerInput.remotionTemplate.layers
         .filter((layer: any) => layer.type === "video")
         .map((layer: any) => layer.src),
-    ).toEqual(expectedUrls);
+    ).toEqual(workerUrls);
     expect(
       workerInput.assetManifest.sources
         .filter((source: any) => source.role === "video")
         .map((source: any) => source.url),
-    ).toEqual(expectedUrls);
+    ).toEqual(workerUrls);
+  });
+
+  it("rejects an incomplete worker asset URL resolution before queueing", async () => {
+    const deps = {
+      ...fakeDeps(),
+      resolveWorkerAssetUrls: vi.fn(async (urls: string[]) => urls.slice(0, 1)),
+    };
+    await expect(
+      submitStagedRemotionFinalRender(
+        baseInput({ requestedByUserId: 42 }),
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: "asset_url_resolution_failed" });
+    expect(deps.queueJob).not.toHaveBeenCalled();
   });
 
   it("rejects relative clip URLs without a public URL before staging or queueing", async () => {
