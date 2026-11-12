@@ -1,9 +1,11 @@
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 
 import { getDb } from "../db";
 import {
   marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
+  workerJobs,
 } from "../../drizzle/schema";
 import {
   failMarketplaceAutoReviewInitialization,
@@ -34,6 +36,49 @@ const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
   "running",
   "waiting_provider",
 ];
+
+function stagedProviderPollTargets(metadataValue: unknown) {
+  const metadata =
+    metadataValue &&
+    typeof metadataValue === "object" &&
+    !Array.isArray(metadataValue)
+      ? (metadataValue as Record<string, any>)
+      : {};
+  const storyboard = metadata.stagedSequentialStoryboard;
+  const shots = Array.isArray(storyboard?.shots) ? storyboard.shots : [];
+  const pipeline = metadata.stagedPipeline;
+  const tasks =
+    pipeline?.tasks &&
+    typeof pipeline.tasks === "object" &&
+    !Array.isArray(pipeline.tasks)
+      ? pipeline.tasks
+      : {};
+
+  return shots.flatMap((shot: any) => {
+    const shotId = Number(shot?.shotId);
+    if (!Number.isInteger(shotId) || shotId < 1) return [];
+    return (["image", "video"] as const).flatMap(stage => {
+      const task = tasks[`${stage}:${shotId}`];
+      const taskId = typeof task?.taskId === "string" ? task.taskId.trim() : "";
+      const status = typeof task?.status === "string" ? task.status : "";
+      const hasArtifact =
+        stage === "image"
+          ? Boolean(shot.imageArtifactHash || shot.imageArtifactUrl)
+          : Boolean(shot.videoArtifactHash || shot.videoArtifactUrl);
+      if (!taskId || hasArtifact || ["failed", "cancelled"].includes(status)) {
+        return [];
+      }
+      const submittedAt = Date.parse(
+        typeof task.submittedAt === "string"
+          ? task.submittedAt
+          : typeof task.createdAt === "string"
+            ? task.createdAt
+            : ""
+      );
+      return [{ shotId, stage, taskId, submittedAt }];
+    });
+  });
+}
 const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
 const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -480,11 +525,85 @@ export async function runMarketplaceAutoReviewJob(
           skippedRuns += 1;
           continue;
         } else if (metadata.planningArchitecture === "staged_two_skill_v2") {
-          // Staged checkpoints are user-triggered. The generic sweeper used
-          // to enqueue an unrelated no-op advance_run job every minute while
-          // waiting for the next explicit checkpoint action.
-          skippedRuns += 1;
-          continue;
+          // User decisions stay user-triggered, but an already-submitted media
+          // task needs a durable poll even when its review page is closed. The
+          // provider result is reconciled by the normal staged advance path;
+          // this only schedules that read/reconcile pass for affected shots.
+          const pollTargets = stagedProviderPollTargets(metadata);
+          if (pollTargets.length === 0) {
+            skippedRuns += 1;
+            continue;
+          }
+          const targetShotIds = [
+            ...new Set(pollTargets.map(target => target.shotId)),
+          ].sort((a, b) => a - b);
+          const taskFingerprint = createHash("sha256")
+            .update(
+              pollTargets
+                .map(
+                  target => `${target.stage}:${target.shotId}:${target.taskId}`
+                )
+                .sort()
+                .join("|")
+            )
+            .digest("hex")
+            .slice(0, 16);
+          const oldestSubmittedAt = Math.min(
+            ...pollTargets
+              .map(target => target.submittedAt)
+              .filter(Number.isFinite)
+          );
+          const ageMs = Number.isFinite(oldestSubmittedAt)
+            ? Math.max(0, now.getTime() - oldestSubmittedAt)
+            : 0;
+          const pollIntervalMs =
+            ageMs < 10 * 60_000
+              ? 60_000
+              : ageMs < 60 * 60_000
+                ? 5 * 60_000
+                : 15 * 60_000;
+          const pollBucket = Math.floor(now.getTime() / pollIntervalMs);
+          const operationId = `staged_provider_poll:${pollIntervalMs}:${pollBucket}:${taskFingerprint}`;
+          const [activeAdvanceJob] = await db
+            .select({ id: workerJobs.id })
+            .from(workerJobs)
+            .where(
+              and(
+                eq(workerJobs.tenantId, tenantId),
+                eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+                inArray(workerJobs.status, [
+                  "pending",
+                  "queued",
+                  "leased",
+                  "claimed",
+                  "preparing",
+                  "running",
+                  "waiting_external",
+                  "retry_scheduled",
+                ] as any),
+                sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+                sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+              )
+            )
+            .limit(1);
+          if (activeAdvanceJob) {
+            skippedRuns += 1;
+            continue;
+          }
+          await enqueueMarketplaceAutoReviewWorkerJob({
+            tenantId,
+            userId: run.userId,
+            runId: run.id,
+            operation: {
+              operation: "advance_run",
+              runId: run.id,
+              targetShotIds,
+              operationId,
+            },
+            idempotencyKey: `marketplace-auto-review:${run.id}:provider-poll:${taskFingerprint}:${pollIntervalMs}:${pollBucket}`,
+            priority: 45,
+            scheduledAt: now,
+          });
         } else {
           await queueMarketplaceAutoReviewAdvance(
             run.id,

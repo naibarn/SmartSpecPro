@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import * as marketplaceAutoReviewService from "../../services/marketplaceAutoReviewService";
+import * as marketplaceAutoReviewWorkerJob from "../../services/marketplaceAutoReviewWorkerJob";
 
 import {
   isMarketplaceAutoReviewAdvanceOutboxJobType,
@@ -93,6 +94,83 @@ describe("marketplaceAutoReviewJob", () => {
       expect(queueAdvance).not.toHaveBeenCalled();
     } finally {
       queueAdvance.mockRestore();
+    }
+  });
+
+  it("queues a targeted worker reconciliation for staged media tasks without artifacts", async () => {
+    const enqueueWorkerJob = vi.spyOn(
+      marketplaceAutoReviewWorkerJob,
+      "enqueueMarketplaceAutoReviewWorkerJob"
+    );
+    let limitCall = 0;
+    const stagedRun = {
+      id: "mar_staged_provider_run",
+      userId: 1,
+      tenantId: "tenant-1",
+      status: "waiting_provider",
+      updatedAt: new Date("2026-11-11T00:00:00.000Z"),
+      currentStage: "image_generation",
+      stageIndex: 5,
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        initializationControl: { status: "completed" },
+        stagedSequentialStoryboard: {
+          shots: [
+            {
+              shotId: 4,
+              imageArtifactHash: null,
+              imageArtifactUrl: null,
+            },
+          ],
+        },
+        stagedPipeline: {
+          tasks: {
+            "image:4": {
+              taskId: "media-task-shot-4",
+              status: "submitted",
+            },
+          },
+        },
+      },
+    };
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => {
+        limitCall += 1;
+        return limitCall === 1 ? [] : limitCall === 2 ? [stagedRun] : [];
+      },
+    };
+
+    try {
+      await runMarketplaceAutoReviewJob({
+        db: { select: () => chain },
+        runHyperframesWorker: async () => ({
+          processed: 0,
+          disabled: false,
+          runtimeDeferred: false,
+        }),
+      });
+
+      expect(enqueueWorkerJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "tenant-1",
+          userId: 1,
+          runId: stagedRun.id,
+          operation: expect.objectContaining({
+            operation: "advance_run",
+            runId: stagedRun.id,
+            targetShotIds: [4],
+            operationId: expect.stringMatching(/^staged_provider_poll:/),
+          }),
+          idempotencyKey: expect.stringContaining(":provider-poll:"),
+          priority: expect.any(Number),
+          scheduledAt: expect.any(Date),
+        })
+      );
+    } finally {
+      enqueueWorkerJob.mockRestore();
     }
   });
 
