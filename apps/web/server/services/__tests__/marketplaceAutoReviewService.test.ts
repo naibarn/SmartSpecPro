@@ -2463,6 +2463,25 @@ describe("marketplace auto review audio/video planning", () => {
     ).toThrow(/blocked claims/);
   });
 
+  it("does not rerun character-reference generation gates when finalizing already approved clips", () => {
+    const metadata = readyRenderGateMetadata({
+      referenceAnchors: { requiredRoles: ["product", "character"] },
+      characterIdentityAssetPack: {
+        status: "limited",
+        sourceKind: "none",
+        allowedFaceUsage: "hands_only",
+        allowedVoiceUsage: "native_audio",
+      },
+    });
+
+    expect(() =>
+      assertMarketplaceAutoReviewGovernanceReadyForTest(metadata, "render")
+    ).toThrow(/character identity asset pack blocks visual generation/);
+    expect(() =>
+      assertMarketplaceAutoReviewGovernanceReadyForTest(metadata, "finalize")
+    ).not.toThrow();
+  });
+
   it("blocks visual spend when the environment pack is missing or incomplete", () => {
     const baseGovernance = {
       productReferenceAssetPack: {

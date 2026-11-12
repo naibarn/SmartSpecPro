@@ -7240,6 +7240,7 @@ function collectMarketplaceAutoReviewGovernanceBlockers(
     }
   }
   if (
+    phase !== "finalize" &&
     marketplaceAutoReviewReferenceRoleRequired(metadata, "character") &&
     !characterIdentityAllowsVisualGeneration(metadata)
   ) {
@@ -34702,7 +34703,11 @@ function assertPublishableRenderArtifact(input: {
       "Render duration is outside the Marketplace Auto Review distribution profile"
     );
   }
-  assertMarketplaceAutoReviewGovernanceReady(input.metadata, "render");
+  // This assertion runs after the media file exists. The spend/generation
+  // gate still runs before rendering starts; finalization packages already
+  // approved clips and must not re-apply a missing reference requirement for
+  // work that has already completed.
+  assertMarketplaceAutoReviewGovernanceReady(input.metadata, "finalize");
 }
 
 function buildRenderFinalizationMetadata(params: {
