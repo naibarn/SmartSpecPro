@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "After release g469, submit one fresh confirmed video-prompt request on run mar_670133124534765cf0d36d3637b6ee89 and verify the new prompt is persisted without waiting for the same shot render. The prior request expired and was not automatically replayed because prompt generation can incur credits.",
+      "next_action": "Replace test calls to the removed runtime story-plan builder with valid test fixtures; reconcile strict fail-closed validation cases; rerun the exact Marketplace test files and checkpoint only passing code.",
       "checkpoint_sha": "bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0",
       "merged_main_sha": "bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-marketplace-video-prompt-queue-deploy"
+      "session_id": "codex-marketplace-review-fallback-audit"
     }
   },
   "pre_commit": {
@@ -42,16 +42,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 57,
-  "updated_at": "2026-11-10T10:47:24.951084+00:00",
+  "generation": 66,
+  "updated_at": "2026-11-13T03:44:24.843079+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "After release g469, submit one fresh confirmed video-prompt request on run mar_670133124534765cf0d36d3637b6ee89 and verify the new prompt is persisted without waiting for the same shot render. The prior request expired and was not automatically replayed because prompt generation can incur credits.",
+    "next_action": "Replace test calls to the removed runtime story-plan builder with valid test fixtures; reconcile strict fail-closed validation cases; rerun the exact Marketplace test files and checkpoint only passing code.",
     "merged_main_sha": "bf2cd27c16c1211f53375b8d9aa25eb3cc0d6bc0",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
-      "The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits."
+      "The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.",
+      "The current Marketplace diff is not ready for integration: marketplaceAutoReviewStagedPipeline.test.ts aborts before tests because it imports removed buildStagedStoryArcPlan; the broader Vitest run also reported failures that still need exact-file triage."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
