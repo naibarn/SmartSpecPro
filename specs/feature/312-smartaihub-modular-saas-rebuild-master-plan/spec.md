@@ -2,7 +2,7 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.13
+revision: R1.14
 date: 2026-11-13
 status: PARTIALLY_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
@@ -10,7 +10,7 @@ scope: Architecture, census, module allocation, migration ordering, acceptance g
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.13, 2026-11-13):** Earlier R0.x–R1.12 proposal text is retained for provenance. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
+> **Current-revision note (R1.14, 2026-11-13):** Earlier R0.x–R1.13 proposal text is retained for provenance. R1.14 controls compact, usable mobile Chat layout and prevents toolbar/model/theme controls from displacing or covering the conversation and composer. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -279,3 +279,12 @@ Acceptance SHALL include authenticated visual and interaction review of the depl
 - Chat timestamps and numeric usage/credit values SHALL be formatted for the selected locale. The selected language SHALL remain stored under `smartaihub.locale` and SHALL be restored after a module remount, route transition or page reload.
 - User-provided names/content and provider/model identifiers SHALL retain their original values; locale switching changes interface copy and formatting, not user data or provider identifiers.
 - Acceptance SHALL switch Thai/English while Chat is open and verify all interface regions, accessible control names, shell status/error states, timestamp and numeric formatting, plus persistence after reload. This change does not alter chat content, authentication, tenant scope, model/provider selection, queue/credit behavior, themes or deployment targets.
+
+## R1.14 — Compact responsive mobile Chat layout (2026-11-13)
+
+- At mobile widths (viewport width at or below 48rem), the Chat top controls SHALL wrap into deliberate compact rows. The model selector SHALL keep its natural control height and SHALL NOT stretch vertically to fill unused toolbar space.
+- Welcome/example prompts SHALL use a single-column layout on mobile; they SHALL NOT retain a two-column desktop grid that squeezes or overflows the available width.
+- The theme selector SHALL move into normal toolbar/content flow on mobile and SHALL NOT float over the composer, obscure conversation actions, or force additional page scrolling. Desktop placement may remain fixed at the lower-right.
+- The conversation area SHALL begin near the top of the usable mobile viewport, preserve the available conversation height, and allow its content to scroll independently. The message composer and send action SHALL remain visible, reachable, and usable above mobile safe-area insets.
+- Tablet and desktop layouts SHALL retain their established multi-column/workspace behavior while preventing horizontal overflow and control overlap. Responsive rules SHALL be scoped to the Chat module and SHALL NOT change authentication, workspace authorization, enabled-model filtering, Queue dispatch, provider admission, credit settlement, or deployment target.
+- Acceptance SHALL inspect the deployed exact-SHA Chat surface on narrow mobile, tablet and desktop viewports for toolbar wrapping, model-selector height, prompt-card columns, independent conversation scrolling, composer/theme reachability, safe-area spacing, and absence of horizontal or vertical control overlap. Build and asset parity do not substitute for this rendered visual check; if no authenticated browser is available, record that review as pending and leave SPEC acceptance partial.

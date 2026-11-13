@@ -5,7 +5,8 @@
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
       "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
-      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
     ],
     "required": false,
     "status": "PARTIAL"
@@ -31,9 +32,9 @@
   "blockers": [
     {
       "class": "HUMAN_UAT_PENDING",
-      "description": "Authenticated visual and chat/credit acceptance has not been recorded against exact development release f31c0667d985873c2202f619e19a978bf45c0728. This remains an open UAT evidence gap.",
+      "description": "Authenticated responsive visual and full Chat acceptance has not been recorded against development release e541abf7fe9010a216b709fa3b0b48dcaec71854. The release is deployed and its assets match the build, but rendered mobile/tablet/desktop interaction review remains open.",
       "id": "authenticated-chat-uat",
-      "next_action": "Use the normal owner account/MFA session to review f31c0667d985873c2202f619e19a978bf45c0728 at desktop/tablet/mobile: switch Thai/English while Chat is open, verify all UI/accessibility text, timestamps/numbers and locale persistence after reload, then continue Chat/credit UAT; do not store credentials.",
+      "next_action": "Open https://aimarkethubs.com/chat using the normal signed-in MFA session on release e541abf7fe9010a216b709fa3b0b48dcaec71854. On a narrow mobile viewport verify toolbar wrapping, model-selector height, one-column prompt cards, conversation scrolling, composer/send reachability and theme placement; then review tablet/desktop plus existing locale, theme, history, response and credit acceptance. Record results without credentials.",
       "requirements": [
         "REQ-98B30E4A4A11",
         "REQ-FB597F9F6A31",
@@ -43,20 +44,26 @@
         "REQ-63FAA80C0131",
         "REQ-6D79BA4D5C04",
         "REQ-B87850387915",
-        "REQ-D17E7B43470B"
+        "REQ-D17E7B43470B",
+        "REQ-31B82DBC9983",
+        "REQ-25B63B857B2A",
+        "REQ-C9DA6B43F8F5",
+        "REQ-4B0F359717F0",
+        "REQ-C444B27F6E69",
+        "REQ-B270C2B89DC1"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
-    "expected_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01"
+    "expected_canonical_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+    "expected_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4"
   },
   "continuation": {
-    "next_action": "Perform authenticated Thai/English Chat acceptance on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch language while Chat is open; inspect every UI region, Astryx accessibility labels, dates/numbers and persistence after remount/reload at desktop/tablet/mobile. Keep acceptance partial until recorded. Then continue existing Chat/credit UAT, upload contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark.",
-    "next_ready_workunit": "authenticated-chat-uat-responsive-review-and-attachment-api",
-    "reactivation_predicate": "Use the normal owner signed-in account/MFA session on exact development release f31c0667d985873c2202f619e19a978bf45c0728 at aimarkethubs.com. Verify Thai/English across all Chat and shell states, accessibility names, localized timestamps/numbers and persisted selection after reload at desktop/tablet/mobile; record evidence without credentials.",
-    "resume_point": "2026-11-13: smartaihub-platform/main@f31c0667d985873c2202f619e19a978bf45c0728 is integrated and deployed to https://aimarkethubs.com (modular-debian-dev). Release modular-debian-dev-f31c0667d985873c2202f619e19a978bf45c0728-locale-propagation; release-manifest SHA-256 1877dbd7d0348ef3c40769e0defbdafd2c1005ce2fda83ce50697b72b5003b9c. Core/Shell/Chat artifact digests and served Chat/Shell asset parity are recorded in handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md. Typechecks and builds passed; no tests were run. Authenticated Thai/English and responsive UAT remains open; continue existing Chat/credit, upload, Cloud Execution status, Queue/DO and matched benchmark gaps. The previous service on port 3100 remains rollback.",
-    "waiting_predicate": "Only authenticated visual/interaction acceptance requires the normal owner MFA session on f31c0667d985873c2202f619e19a978bf45c0728; no credential reset or MFA bypass is needed. Continue independent implementation of Cloud Execution status, upload contract, Queue/DO reliability proof and matched performance benchmark. Keep smartaihub.app and production smartsihub.com untouched."
+    "next_action": "Perform authenticated rendered review of https://aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854, starting with mobile: verify compact toolbar/model selector, one-column prompts, independent conversation scrolling, composer/send access, theme not overlapping, safe-area spacing and no overflow. Then confirm tablet/desktop and finish the previously open Chat, locale/theme/history/credit UAT. Continue upload-contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark gaps.",
+    "next_ready_workunit": "authenticated-mobile-chat-visual-review-and-chat-acceptance",
+    "reactivation_predicate": "Use the normal owner signed-in MFA session at aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854; review narrow mobile, tablet and desktop, record rendered layout and full Chat acceptance. Do not store credentials. Keep acceptance partial until evidence is recorded.",
+    "resume_point": "2026-11-13: smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854 is integrated and deployed to https://aimarkethubs.com (modular-debian-dev). Release modular-debian-dev-e541abf7fe9010a216b709fa3b0b48dcaec71854-mobile-chat-layout; release-manifest SHA-256 20b2f602ec5965c931421a74df8e2c4922331364bd695f6efae4180798c7243c. Core/Shell/Chat builds and Wrangler dry-runs, Chat typecheck, release-controller health smoke and deployed Chat asset byte-parity passed; details and artifact digests are in specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md. No tests were run. Authenticated rendered mobile/tablet/desktop review remains pending. Continue existing Chat/credit, locale/theme, upload, Cloud Execution status, Queue/DO and matched benchmark gaps. The previous service on port 3100 remains rollback.",
+    "waiting_predicate": "Only authenticated rendered review requires the normal owner MFA session on release e541abf7fe9010a216b709fa3b0b48dcaec71854; inspect mobile first, then tablet/desktop and record results without credentials. Continue independent implementation of Cloud Execution status, upload contract, Queue/DO reliability proof and matched performance benchmark. Keep smartaihub.app and production smartsihub.com untouched."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -80,10 +87,10 @@
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
       "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
     ],
-    "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
-    "rationale": "smartaihub-platform/main at fc97012613dcf65a7ece07c75df9d8aea2f852d5 is integrated and deployed to the authorized modular-debian-dev target. Chat package tests/typecheck/build, exact-SHA Core/Shell/Chat builds, the release-controller unit gate, public asset hashes and local/public health smoke pass. Authenticated responsive visual acceptance remains unperformed, and the existing Queue, upload, credit-UAT and benchmark gaps remain open; production smartsihub.com remains inactive.",
+    "next_action": "Perform authenticated rendered review of https://aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854, starting with mobile: verify compact toolbar/model selector, one-column prompts, independent conversation scrolling, composer/send access, theme not overlapping, safe-area spacing and no overflow. Then confirm tablet/desktop and finish the previously open Chat, locale/theme/history/credit UAT. Continue upload-contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark gaps.",
+    "rationale": "Release e541abf7fe9010a216b709fa3b0b48dcaec71854 is integrated and deployed to the authorized modular-debian-dev target; scoped build/typecheck, release smoke and exact asset parity pass. Rendered authenticated responsive acceptance remains pending, along with the existing Queue, upload, credit-UAT and benchmark gaps; production smartsihub.com remains inactive.",
     "residual_requirements": [
-      "Authenticated desktop/tablet/mobile Chat UAT on release fc97012613dcf65a7ece07c75df9d8aea2f852d5, including panel tab switching, history selection, workspace/account access, collapse/expand context restoration, composer/theme reachability, queued text response/history and exact credit-ledger delta",
+      "Authenticated responsive Chat UAT on e541abf7fe9010a216b709fa3b0b48dcaec71854: mobile toolbar/model selector, one-column prompts, composer/theme reachability, conversation scrolling, plus workspace/history, enabled models, queued response and credit delta; then check tablet and desktop.",
       "Replace the hard-coded Cloud Execution · Always On claim with live state or a neutral label",
       "Authenticated image/file upload contract, server-side validation and persisted attachment association before enabling file submission",
       "Local Workerd Queue redelivery, duplicate delivery, provider-account Durable Object contention and restart persistence proof",
@@ -92,7 +99,7 @@
       "Remaining active-module inventory and independent build/deploy/rollback evidence",
       "Managed Cloudflare Queue scaling and production isolation acceptance remain unverified; smartsihub.com stays inactive",
       "Replay-safe Chat turn append behavior before any automatic retry",
-      "Authenticated R1.12 sidebar footer, language and all seven Astryx themes visual/interaction UAT at desktop/tablet/mobile on release fc97012613dcf65a7ece07c75df9d8aea2f852d5"
+      "Authenticated R1.12-R1.14 sidebar/footer, locale and responsive layout UAT at desktop/tablet/mobile on e541abf7fe9010a216b709fa3b0b48dcaec71854; R1.14 implementation is deployed, rendered visual acceptance is pending."
     ]
   },
   "dependencies": {
@@ -102,7 +109,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
+    "artifact_digest": "sha256:20b2f602ec5965c931421a74df8e2c4922331364bd695f6efae4180798c7243c",
     "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
@@ -119,10 +126,11 @@
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
       "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
-      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
     ],
     "required": false,
-    "source_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+    "source_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
     "status": "PASS"
   },
   "disposition": {
@@ -141,18 +149,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 70,
+  "generation": 73,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+    "digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-13T00:26:02.389856Z",
+      "last_evidence_at": "2026-11-13T03:15:04.549207Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.13",
+    "revision": "1.14",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -209,9 +217,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+    "canonical_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
     "integrated": true,
-    "integrated_at": "2026-11-13T07:18:00+07:00"
+    "integrated_at": "2026-11-13T10:03:23+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -266,10 +274,10 @@
         "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
         "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
       ],
-      "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
-      "rationale": "smartaihub-platform/main at fc97012613dcf65a7ece07c75df9d8aea2f852d5 is integrated and deployed to the authorized modular-debian-dev target. Chat package tests/typecheck/build, exact-SHA Core/Shell/Chat builds, the release-controller unit gate, public asset hashes and local/public health smoke pass. Authenticated responsive visual acceptance remains unperformed, and the existing Queue, upload, credit-UAT and benchmark gaps remain open; production smartsihub.com remains inactive.",
+      "next_action": "Perform authenticated rendered review of https://aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854, starting with mobile: verify compact toolbar/model selector, one-column prompts, independent conversation scrolling, composer/send access, theme not overlapping, safe-area spacing and no overflow. Then confirm tablet/desktop and finish the previously open Chat, locale/theme/history/credit UAT. Continue upload-contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark gaps.",
+      "rationale": "Release e541abf7fe9010a216b709fa3b0b48dcaec71854 is integrated and deployed to the authorized modular-debian-dev target; scoped build/typecheck, release smoke and exact asset parity pass. Rendered authenticated responsive acceptance remains pending, along with the existing Queue, upload, credit-UAT and benchmark gaps; production smartsihub.com remains inactive.",
       "residual_requirements": [
-        "Authenticated desktop/tablet/mobile Chat UAT on release fc97012613dcf65a7ece07c75df9d8aea2f852d5, including panel tab switching, history selection, workspace/account access, collapse/expand context restoration, composer/theme reachability, queued text response/history and exact credit-ledger delta",
+        "Authenticated responsive Chat UAT on e541abf7fe9010a216b709fa3b0b48dcaec71854: mobile toolbar/model selector, one-column prompts, composer/theme reachability, conversation scrolling, plus workspace/history, enabled models, queued response and credit delta; then check tablet and desktop.",
         "Replace the hard-coded Cloud Execution · Always On claim with live state or a neutral label",
         "Authenticated image/file upload contract, server-side validation and persisted attachment association before enabling file submission",
         "Local Workerd Queue redelivery, duplicate delivery, provider-account Durable Object contention and restart persistence proof",
@@ -278,7 +286,7 @@
         "Remaining active-module inventory and independent build/deploy/rollback evidence",
         "Managed Cloudflare Queue scaling and production isolation acceptance remain unverified; smartsihub.com stays inactive",
         "Replay-safe Chat turn append behavior before any automatic retry",
-        "Authenticated R1.12 sidebar footer, language and all seven Astryx themes visual/interaction UAT at desktop/tablet/mobile on release fc97012613dcf65a7ece07c75df9d8aea2f852d5"
+        "Authenticated R1.12-R1.14 sidebar/footer, locale and responsive layout UAT at desktop/tablet/mobile on e541abf7fe9010a216b709fa3b0b48dcaec71854; R1.14 implementation is deployed, rendered visual acceptance is pending."
       ]
     },
     "disposition": {
@@ -481,6 +489,35 @@
         ],
         "verification_method": "Source review confirms workspace selector/create controls and account footer are outside the tab content; focused switching/collapse test verifies surrounding panel context. Authenticated UAT remains open."
       },
+      "REQ-25B63B857B2A": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L286"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L286",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "4a2e9b4436e7c94678519f262fa69df4558e63dc9ea1aab3264487a24f5f20fa",
+        "requirement_id": "REQ-25B63B857B2A",
+        "requirement_text": "- Welcome/example prompts SHALL use a single-column layout on mobile; they SHALL NOT retain a two-column desktop grid that squeezes or overflows the available width.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
+      },
       "REQ-272D8958200D": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -566,6 +603,35 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-31B82DBC9983": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L285"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L285",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "dd1abc48f6b98147acea9e52c6b72631846cb7c4e769199373b0b8d2dd4f6e45",
+        "requirement_id": "REQ-31B82DBC9983",
+        "requirement_text": "- At mobile widths (viewport width at or below 48rem), the Chat top controls SHALL wrap into deliberate compact rows. The model selector SHALL keep its natural control height and SHALL NOT stretch vertically to fill unused toolbar space.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
+      },
       "REQ-384BD5AE0734": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -628,6 +694,35 @@
           "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
         ],
         "verification_method": "Verify existing account login, authorized customer membership/data continuity, development isolation, Hono/no-Express boundary and truthful direct-Codex/Claude or SPEC-224 source/check/handoff evidence."
+      },
+      "REQ-4B0F359717F0": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L288"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L288",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "2970ef8c571af1472d2ebd32cdb346b8af0ed896c54b67b13af4a9f5ba42b8cf",
+        "requirement_id": "REQ-4B0F359717F0",
+        "requirement_text": "- The conversation area SHALL begin near the top of the usable mobile viewport, preserve the available conversation height, and allow its content to scroll independently. The message composer and send action SHALL remain visible, reachable, and usable above mobile safe-area insets.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
       },
       "REQ-4F88475454B1": {
         "applicability": "APPLICABLE",
@@ -1037,6 +1132,35 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-B270C2B89DC1": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L290"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L290",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "72ed04750e8f108d507a1b6cb83a5c4987c1d533513c9d4fe2ae75f2303499a0",
+        "requirement_id": "REQ-B270C2B89DC1",
+        "requirement_text": "- Acceptance SHALL inspect the deployed exact-SHA Chat surface on narrow mobile, tablet and desktop viewports for toolbar wrapping, model-selector height, prompt-card columns, independent conversation scrolling, composer/theme reachability, safe-area spacing, and absence of horizontal or vertical control overlap. Build and asset parity do not substitute for this rendered visual check; if no authenticated browser is available, record that review as pending and leave SPEC acceptance partial.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
+      },
       "REQ-B6FD5A53E627": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1119,6 +1243,35 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-C444B27F6E69": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L289"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L289",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "bc9b6d385a87dc2eb748876f90dd7215cfa1468eb20e1f9e851d2127b67037a9",
+        "requirement_id": "REQ-C444B27F6E69",
+        "requirement_text": "- Tablet and desktop layouts SHALL retain their established multi-column/workspace behavior while preventing horizontal overflow and control overlap. Responsive rules SHALL be scoped to the Chat module and SHALL NOT change authentication, workspace authorization, enabled-model filtering, Queue dispatch, provider admission, credit settlement, or deployment target.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
+      },
       "REQ-C7C0E67BDE2B": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1147,6 +1300,35 @@
           "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
         ],
         "verification_method": "Review idempotent environment-scoped default workspace provisioning, direct Chat route, workspace selector/create action, then complete authenticated interaction UAT separately."
+      },
+      "REQ-C9DA6B43F8F5": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L287"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L287",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "Authenticated rendered mobile/tablet/desktop visual review has not yet been recorded."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/main@e541abf7fe9010a216b709fa3b0b48dcaec71854: modules/chat/src/ui/ChatWorkspace.tsx, modules/chat/src/ui/main.tsx, modules/chat/src/ui/styles.css"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Open aimarkethubs.com/chat using the normal owner MFA session on e541abf7fe9010a216b709fa3b0b48dcaec71854; verify this responsive requirement at mobile, tablet and desktop and record rendered results without credentials.",
+        "requirement_digest": "a6aa147486a18d2a99278d18f731cb7107c5a165a38e18124ce1dc9700ff313b",
+        "requirement_id": "REQ-C9DA6B43F8F5",
+        "requirement_text": "- The theme selector SHALL move into normal toolbar/content flow on mobile and SHALL NOT float over the composer, obscure conversation actions, or force additional page scrolling. Desktop placement may remain fixed at the lower-right.",
+        "source_spec_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
+        ],
+        "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
       },
       "REQ-D17E7B43470B": {
         "applicability": "APPLICABLE",
@@ -1302,10 +1484,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-13T00:26:02.389856Z",
+    "reconciled_at": "2026-11-13T03:15:04.549207Z",
     "sources": [
       {
-        "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1320,22 +1502,22 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
       },
       {
-        "digest": "cd1b4aa261b87a698a7f8563d4d9cf847406d894a6c9cebe0fef4e0afcb792e9",
+        "digest": "9c3922699eeafaa9d72d3bcd879e3e7f66aa852f9868cc6778f2833da0112738",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
       },
       {
-        "digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
       },
       {
-        "digest": "5ba57cba960f201e9c36f5fcc13a637ff85bd5556516f7d1ef3919058b9de044",
+        "digest": "a06e0caadb58396174d0ffba39277bd8fa1b08da9a037b1366d997cabcbdac78",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "7398256d23bc9614bc063a70cf486113cec6e549c09139f15949b3c68ecd5731",
+        "digest": "09ded781cb12c7c6af192e207251792d338c81fc170559da0899e0db65e5cf2d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1380,7 +1562,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
       },
       {
-        "digest": "798b3f4422ded81fec0e46253dd39ab676ed5afa4ef6235ba0ab81c7789c6cc8",
+        "digest": "a76cfa2d52fb07d2638aeff8162e1494714c11903840e986e99a3c51a4a5eaf8",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
@@ -1395,7 +1577,7 @@
         "line": null,
         "section": "section-01-environment-database-boundary",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1409,7 +1591,7 @@
         "line": null,
         "section": "section-02-password-mfa-compatibility",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1423,7 +1605,7 @@
         "line": null,
         "section": "section-03-session-membership-routes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1437,7 +1619,7 @@
         "line": null,
         "section": "section-04-worker-proof-and-handoff",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1451,7 +1633,7 @@
         "line": null,
         "section": "section-05-chat-canonical-job-and-queue-admission",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1465,7 +1647,7 @@
         "line": null,
         "section": "section-06-provider-admission-and-queue-consumer",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1479,7 +1661,7 @@
         "line": null,
         "section": "section-07-chat-job-status-ui-and-runtime-proof",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1493,7 +1675,7 @@
         "line": null,
         "section": "section-08-chat-sidebar-tabs-and-collapse",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1507,7 +1689,7 @@
         "line": null,
         "section": "section-09-sidebar-footer-language-and-astryx-themes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1518,7 +1700,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "source_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -1552,7 +1734,7 @@
         "line": null,
         "section": "section-01-environment-database-boundary",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1565,7 +1747,7 @@
         "line": null,
         "section": "section-02-password-mfa-compatibility",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1578,7 +1760,7 @@
         "line": null,
         "section": "section-03-session-membership-routes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1591,7 +1773,7 @@
         "line": null,
         "section": "section-04-worker-proof-and-handoff",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1604,7 +1786,7 @@
         "line": null,
         "section": "section-05-chat-canonical-job-and-queue-admission",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1617,7 +1799,7 @@
         "line": null,
         "section": "section-06-provider-admission-and-queue-consumer",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1630,7 +1812,7 @@
         "line": null,
         "section": "section-07-chat-job-status-ui-and-runtime-proof",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1643,7 +1825,7 @@
         "line": null,
         "section": "section-08-chat-sidebar-tabs-and-collapse",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1656,7 +1838,7 @@
         "line": null,
         "section": "section-09-sidebar-footer-language-and-astryx-themes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "source_digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "value": "checkpointed"
       },
       {
@@ -1666,14 +1848,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "source_digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "digest": "f5c5f6937f10e0bc7e88b91b9f05eca4ba563c4c3643f9c653b2b230eb9291d4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1688,22 +1870,22 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/claude-spec.md"
       },
       {
-        "digest": "cd1b4aa261b87a698a7f8563d4d9cf847406d894a6c9cebe0fef4e0afcb792e9",
+        "digest": "9c3922699eeafaa9d72d3bcd879e3e7f66aa852f9868cc6778f2833da0112738",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
       },
       {
-        "digest": "2294ef72c01138839c97bf900d7f4a3cf5d922818a46b03714b88d213dbaff42",
+        "digest": "1c1c06c740810756f2aadbdb744fd9832d85edb5f6fff46be8710da79f0d2285",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
       },
       {
-        "digest": "5ba57cba960f201e9c36f5fcc13a637ff85bd5556516f7d1ef3919058b9de044",
+        "digest": "a06e0caadb58396174d0ffba39277bd8fa1b08da9a037b1366d997cabcbdac78",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "7398256d23bc9614bc063a70cf486113cec6e549c09139f15949b3c68ecd5731",
+        "digest": "09ded781cb12c7c6af192e207251792d338c81fc170559da0899e0db65e5cf2d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1748,7 +1930,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
       },
       {
-        "digest": "798b3f4422ded81fec0e46253dd39ab676ed5afa4ef6235ba0ab81c7789c6cc8",
+        "digest": "a76cfa2d52fb07d2638aeff8162e1494714c11903840e986e99a3c51a4a5eaf8",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       }
@@ -1759,16 +1941,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 33,
+    "applicable": 39,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
     "pass": 0,
-    "total": 63,
-    "unresolved": 62
+    "total": 69,
+    "unresolved": 68
   },
   "schema_version": 1,
-  "updated_at": "2026-11-13T00:31:07.300999Z",
+  "updated_at": "2026-11-13T03:16:36.107108Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1786,11 +1968,12 @@
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
       "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
-      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+    "sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
     "status": "PARTIAL",
     "task_regressions": []
   }
