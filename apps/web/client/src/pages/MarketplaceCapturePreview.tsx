@@ -75,8 +75,10 @@ export default function MarketplaceCapturePreview() {
       },
     });
     setForm(next);
-    const mainAssetImageIds = assets
-      .filter((asset) => asset.kind === "main_image" && String(asset.contentType ?? "").startsWith("image/"))
+    const imageAssets = assets
+      .filter((asset) => isProductImageAsset(asset) && String(asset.contentType ?? "").startsWith("image/"));
+    const mainAssetImageIds = imageAssets
+      .filter((asset) => asset.kind === "main_image")
       .map((asset) => asset.id);
     const descriptionAssetImageIds = assets
       .filter((asset) => asset.kind === "description_image" && String(asset.contentType ?? "").startsWith("image/"))
@@ -90,21 +92,27 @@ export default function MarketplaceCapturePreview() {
     const main = [...mainAssetImageIds, ...extractedMain].slice(0, 20);
     const rawPayload = (capture.rawPayloadJson ?? {}) as Record<string, unknown>;
     const heroImageUrl = firstString(rawPayload.heroImageUrl, extraction?.images?.heroImageUrl, extraction?.heroImageUrl);
-    const heroAssetId = firstString(
+    const requestedHeroes = [
+      heroImageUrl,
       extraction?.images?.coverAssetId,
       assets.find((asset) => asset?.metadataJson?.role === "hero")?.id,
-      heroImageUrl
-        ? assets.find((asset) => asset.url === heroImageUrl || asset.sourceUrl === heroImageUrl)?.id
-        : "",
-    );
+    ].filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
+    const heroAssetId = requestedHeroes
+      .map((requestedHero) => imageAssets.find((asset) =>
+        asset.id === requestedHero ||
+        asset.url === requestedHero ||
+        asset.sourceUrl === requestedHero ||
+        asset.metadataJson?.originalImageUrl === requestedHero
+      )?.id)
+      .find(Boolean);
     setImages({
       main,
       description: [...descriptionAssetImageIds, ...extractedDescription].slice(0, 20),
       review: [...reviewAssetImageIds, ...extractedReview].slice(0, 30),
       relatedExcluded: Array.isArray(extraction?.images?.excludedRelated) ? extraction.images.excludedRelated.filter(Boolean) : [],
-      coverAssetId: heroAssetId || main[0] || reviewAssetImageIds[0] || null,
+      coverAssetId: heroAssetId || mainAssetImageIds[0] || imageAssets[0]?.id || null,
     });
-  }, [assets.length, capture, extraction]);
+  }, [assets, capture, extraction]);
 
   if (captureQuery.isLoading) return <main className="p-8">Loading capture...</main>;
   if (!capture) return <main className="p-8">Capture not found</main>;
