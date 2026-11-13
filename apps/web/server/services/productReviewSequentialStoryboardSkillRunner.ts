@@ -3127,6 +3127,16 @@ export function buildSequentialSingleShotRefreshContractForTest(
   return buildSequentialSingleShotRefreshContract(input);
 }
 
+export function mapSequentialSingleShotRefreshOutputForTest(
+  parsed: {
+    start_frame_image_prompt: string;
+    video_prompt?: string;
+    camera_beats?: SequentialStoryboardCameraBeat[];
+  }
+) {
+  return mapSequentialSingleShotRefreshOutput(parsed);
+}
+
 /**
  * Field incident 2026-07-29 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
  * shots 1 and 8, both single-shot-refresh attempts): the weak-model JSON
@@ -3215,6 +3225,26 @@ function parseSequentialSingleShotRefreshOutput(
     video_prompt: videoPrompt,
     ...(cameraBeats && cameraBeats.length > 0
       ? { camera_beats: cameraBeats }
+      : {}),
+  };
+}
+
+function mapSequentialSingleShotRefreshOutput(parsed: {
+  start_frame_image_prompt: string;
+  video_prompt?: string;
+  camera_beats?: SequentialStoryboardCameraBeat[];
+}): {
+  startFrameImagePrompt: string;
+  videoPrompt?: string;
+  cameraBeats?: SequentialStoryboardCameraBeat[];
+} {
+  return {
+    startFrameImagePrompt: parsed.start_frame_image_prompt,
+    ...(parsed.video_prompt !== undefined
+      ? { videoPrompt: parsed.video_prompt }
+      : {}),
+    ...(parsed.camera_beats !== undefined
+      ? { cameraBeats: parsed.camera_beats }
       : {}),
   };
 }
@@ -3680,7 +3710,7 @@ export async function refreshSequentialShotPromptWithSkillDirect(
     );
   }
   return {
-    ...parsed,
+    ...mapSequentialSingleShotRefreshOutput(parsed),
     model: policy.modelId,
     provider: result.providerName,
     estimatedCredits: creditsUsed,

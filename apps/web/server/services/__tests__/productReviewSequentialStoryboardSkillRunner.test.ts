@@ -52,10 +52,39 @@ import {
   type PersistedLoopState,
   type LoopRoundReport,
   extractJsonStringFieldForTest,
+  mapSequentialSingleShotRefreshOutputForTest,
 } from "../productReviewSequentialStoryboardSkillRunner";
 
 const mockSyncSingleSkillIfChanged = vi.mocked(syncSingleSkillIfChanged);
 const mockGetSkillByIdAsync = vi.mocked(getSkillByIdAsync);
+
+describe("single-shot refresh output mapping", () => {
+  it("maps skill snake_case fields to the camelCase refresh result contract", () => {
+    const result = mapSequentialSingleShotRefreshOutputForTest({
+      start_frame_image_prompt: "  image prompt  ",
+      video_prompt: "  video prompt  ",
+      camera_beats: [{
+        beat_id: 1,
+        duration_seconds: 4,
+        camera: "push in",
+        movement: "slow push",
+        action: "presenter lifts product",
+      }],
+    });
+
+    expect(result).toEqual({
+      startFrameImagePrompt: "  image prompt  ",
+      videoPrompt: "  video prompt  ",
+      cameraBeats: [{
+        beat_id: 1,
+        duration_seconds: 4,
+        camera: "push in",
+        movement: "slow push",
+        action: "presenter lifts product",
+      }],
+    });
+  });
+});
 
 /* -------------------------------------------------------------------------- */
 /* Fixtures                                                                    */
