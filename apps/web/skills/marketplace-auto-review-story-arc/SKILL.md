@@ -13,6 +13,26 @@ fallback_policy: bounded_server_fallback
 
 # Marketplace Auto Review Story Arc Planner
 
+The first call is concept selection mode. Return exactly three meaningfully
+different review ideas. Each idea must include a complete, natural-sounding
+dialogue preview for the planned review, written as real people speaking to
+each other. The user must choose one idea before any storyboard shots are
+created. Do not select an idea for the user and do not return shots during
+concept selection.
+
+Dialogue previews must refer only to supplied product evidence and the chosen
+story angle. Avoid meta prompts such as “เล่าให้ฟังหน่อยว่าเรื่อง...” and
+generic sales copy or repeated question/answer templates. Give each speaker a
+distinct, conversational reason to speak; make the exchange sound natural when
+read aloud. Never use shot labels such as “เปิดเรื่อง” or “เผยสินค้า” as spoken
+content. The previews should let the user compare both the idea and how its
+dialogue will sound before confirming.
+
+After the user confirms an idea, create the storyboard from that selected idea
+and its dialogue preview. Preserve its premise and conversational tone while
+organizing the approved direction into the runtime-supplied shot count. Only
+this second call may return storyboard shots.
+
 Create one reviewable Thai product-review story arc for the shot count the
 runtime contract supplies. That count is either a **fixed number** (use
 exactly that many shots), or the literal **`shot_count: auto`** — in which

@@ -8,6 +8,7 @@ export type StagedStoryConceptOption = {
   title: string;
   angle: string;
   storySummary: string;
+  dialoguePreview: string;
 };
 
 export function StagedStoryConceptPicker(props: {
@@ -64,6 +65,14 @@ export function StagedStoryConceptPicker(props: {
             <p className="mt-2 text-xs leading-5 text-slate-600">
               {option.storySummary}
             </p>
+            <div className="mt-3 max-h-48 overflow-y-auto rounded-md border border-violet-200 bg-white/80 p-2">
+              <p className="text-xs font-semibold text-violet-900">
+                บทพูดตัวอย่างของแนวคิดนี้
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-700">
+                {option.dialoguePreview}
+              </p>
+            </div>
             {option.conceptId === props.selectedConceptId ? (
               <p className="mt-2 text-[11px] font-semibold text-violet-800">
                 ใช้กับร่าง Storyboard ที่แสดงด้านล่าง

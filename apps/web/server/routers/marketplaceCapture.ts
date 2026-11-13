@@ -786,17 +786,14 @@ export const marketplaceCaptureRouter = router({
           .optional()
           .nullable(),
         outputMode: z
-          .enum(["storyboard_images", "full_video"])
-          .default("storyboard_images"),
+          .enum(["storyboard_images", "full_video"]),
         frameStrategy: z
           .enum([
             "auto",
             "storyboard_3x3_split",
             "video_shot_start_stop",
             "sequential_shot_storyboard",
-          ])
-          .optional()
-          .default("auto"),
+          ]),
         // Feature 136 section 13 (§4 deliverable 2) — optional cinematic
         // prompt style layer for the sequential storyboard's start-frame /
         // video prompts (section-01 `frameStrategy` precedent: additive,
@@ -812,23 +809,18 @@ export const marketplaceCaptureRouter = router({
             "native_video_audio",
             "separate_tts_voiceover",
             "silent",
-          ])
-          .optional()
-          .default("auto"),
+          ]),
         summaryLanguage: z.enum(["th", "en"]).optional(),
         dialogueLanguage: z.enum(["th", "en"]).optional(),
         promptLanguage: z.enum(["th", "en"]).optional(),
-        shotCount: z.number().int().min(7).max(9).optional().default(9),
+        shotCount: z.number().int().min(7).max(9),
         overlayTextMode: z
-          .enum(["no_text", "allow_text"])
-          .optional()
-          .default("no_text"),
+          .enum(["no_text", "allow_text"]),
         imageModel: z
           .string()
           .min(1)
-          .max(120)
-          .optional()
-          .default("google-banana-2"),
+          .max(120),
+        videoModel: z.string().trim().min(1).max(120).optional(),
         qualityMode: z
           .enum(["fast_draft", "balanced", "premium_strict_qa"])
           .optional()
@@ -1994,6 +1986,7 @@ export const marketplaceCaptureRouter = router({
             title: z.string().trim().min(1).max(160),
             angle: z.string().trim().min(1).max(400),
             storySummary: z.string().trim().min(1).max(500),
+            dialoguePreview: z.string().trim().min(40).max(6000),
           })
           .optional(),
       })
@@ -2205,11 +2198,11 @@ export const marketplaceCaptureRouter = router({
         runId: z.string().min(1).max(64),
         referenceManifest: z.array(
           z.object({
-            index: z.number().optional(),
+            index: z.number().int().positive(),
             url: z.string().min(1),
-            role: z.string().optional(),
+            role: z.string().trim().min(1),
             label: z.string().optional(),
-            active: z.boolean().optional(),
+            active: z.boolean(),
             characterName: z.string().max(120).optional(),
             characterRole: z.enum(MARKETPLACE_CHARACTER_CAST_ROLES).optional(),
             vdCharacterId: z.string().max(64).optional(),

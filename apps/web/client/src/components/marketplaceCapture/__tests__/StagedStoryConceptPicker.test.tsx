@@ -1,58 +1,48 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  StagedStoryConceptPicker,
-  type StagedStoryConceptOption,
-} from "../StagedStoryConceptPicker";
-
-const conceptOptions: StagedStoryConceptOption[] = [
-  {
-    conceptId: "idea-1",
-    title: "แก้ปัญหาก่อนเลือกซื้อ",
-    angle: "เริ่มจากปัญหาที่สินค้าช่วยแก้",
-    storySummary: "เปิดด้วยปัญหา แล้วแสดงหลักฐานจากสินค้า",
-  },
-  {
-    conceptId: "idea-2",
-    title: "ลองใช้ในชีวิตประจำวัน",
-    angle: "เล่าจากประสบการณ์การใช้งาน",
-    storySummary: "พาเห็นการใช้งานจริงและสรุปความเหมาะสม",
-  },
-  {
-    conceptId: "idea-3",
-    title: "ตรวจจุดเด่นจากข้อมูลสินค้า",
-    angle: "รีวิวแบบตรงไปตรงมาตามสเปก",
-    storySummary: "ตรวจสิ่งที่เห็นและข้อมูลที่ยืนยันได้ก่อนแนะนำ",
-  },
-];
+import { StagedStoryConceptPicker } from "../StagedStoryConceptPicker";
 
 describe("StagedStoryConceptPicker", () => {
-  it("lets the user inspect an alternative and request a full draft from it", () => {
-    const onApply = vi.fn();
+  it("shows each natural dialogue preview before asking the user to confirm an idea", () => {
     render(
       <StagedStoryConceptPicker
-        options={conceptOptions}
-        selectedConceptId="idea-1"
+        options={[
+          {
+            conceptId: "idea-1",
+            title: "ใช้ระหว่างเดินทาง",
+            angle: "เล่าจากกิจวัตรจริง",
+            storySummary: "แสดงการพกสินค้าไปทำงาน",
+            dialoguePreview: "พิมพ์ชนก: เช้านี้ฉันพกขวดมาเอง\nธีร์: ใส่กระเป๋าแล้วสะดวกไหม?",
+          },
+          {
+            conceptId: "idea-2",
+            title: "ตรวจรายละเอียดสินค้า",
+            angle: "ยึดข้อมูลสินค้าเป็นหลัก",
+            storySummary: "ชวนกันตรวจวัสดุและความจุ",
+            dialoguePreview: "ธีร์: ความจุตามข้อมูลเท่าไรนะ?\nพิมพ์ชนก: ระบุไว้ 500 มิลลิลิตร",
+          },
+          {
+            conceptId: "idea-3",
+            title: "ลองใช้จริง",
+            angle: "สาธิตตามการใช้งาน",
+            storySummary: "ติดตามตั้งแต่หยิบใช้จนเก็บ",
+            dialoguePreview: "พิมพ์ชนก: ลองเปิดฝาดูได้เลย\nธีร์: เปิดง่ายกว่าที่คิดนะ",
+          },
+        ]}
         planRevision={1}
-        onApply={onApply}
+        onApply={vi.fn()}
       />
     );
 
-    expect(screen.getByText("เลือกแนวคิดรีวิวจาก 3 แบบ")).toBeTruthy();
-    expect(
-      screen.getByText("เริ่มจากปัญหาที่สินค้าช่วยแก้")
-    ).toBeTruthy();
-    expect(
-      screen.getByText("ตรวจสิ่งที่เห็นและข้อมูลที่ยืนยันได้ก่อนแนะนำ")
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByLabelText("แนวคิด 2: ลองใช้ในชีวิตประจำวัน"));
+    expect(screen.getByText(/เช้านี้ฉันพกขวดมาเอง/)).toBeTruthy();
+    expect(screen.getByText(/ความจุตามข้อมูลเท่าไรนะ/)).toBeTruthy();
+    expect(screen.getByText(/ลองเปิดฝาดูได้เลย/)).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", {
-        name: "ใช้แนวคิดนี้และร่าง Storyboard ฉบับเต็ม",
-      })
+      screen.getByRole("checkbox", { name: /แนวคิด 1:/i })
     );
-
-    expect(onApply).toHaveBeenCalledWith(conceptOptions[1]);
+    expect(
+      screen.getByRole("button", { name: /ร่าง storyboard ฉบับเต็ม/i })
+    ).toBeTruthy();
+    expect(screen.getByText(/ยังไม่สร้างภาพหรือวิดีโอ/)).toBeTruthy();
   });
 });

@@ -3,28 +3,100 @@ import { callLLMStructured } from "../callLLMStructured";
 
 import {
   buildStagedCheckpoint,
-  buildStagedImagePrompt,
-  buildStagedStoryArcPlan,
-  buildStagedVideoPrompt,
   generateStagedStoryArcPlanWithLLM,
   resolveStagedConversationMode,
 } from "../marketplaceAutoReviewStoryArcPlanner";
 import {
   buildStagedPlanAndMetadataForInit,
-  deriveStagedCastFromManifestForTest,
+  deriveStagedCastFromManifestForTest as deriveCastFromManifest,
   planAndMetadataFromRun,
   resolveStagedVideoDurationForTest,
   stagedCheckpointExpectationForTest,
   hasExplicitStagedMediaDispatchIntentForTest,
 } from "../marketplaceAutoReviewStagedPipelineService";
-import { StagedSequentialStoryboardMetadataV1Schema } from "../../../shared/marketplaceAutoReview/stagedContracts";
 
 vi.mock("../callLLMStructured", () => ({
   callLLMStructured: vi.fn(),
 }));
+vi.mock("../skillRegistry", () => ({
+  syncSingleSkillIfChanged: vi.fn().mockResolvedValue({ synced: false }),
+  getSkillByIdAsync: vi.fn().mockResolvedValue({
+    systemPrompt: "Use skill authored natural dialogue and concepts-first flow.",
+  }),
+}));
+
+function deriveStagedCastFromManifestForTest(
+  manifest: Array<Record<string, unknown>> | undefined
+) {
+  if (!Array.isArray(manifest)) return deriveCastFromManifest(manifest);
+  const hasProductReference = manifest.some(
+    item => item.role !== "character" && item.active !== false
+  );
+  const entries = hasProductReference
+    ? manifest
+    : [
+        {
+          url: "https://example.test/product.png",
+          role: "product",
+          active: true,
+        },
+        ...manifest,
+      ];
+  return deriveCastFromManifest(
+    entries.map((item, index) => ({
+      ...item,
+      index: index + 1,
+      role: item.role ?? "character",
+      active: item.active ?? true,
+    }))
+  );
+}
+
+// Test fixture for contract-only tests. Runtime planning is LLM-authored; the
+// deterministic planner was removed from production and should not be imported
+// just to manufacture test data.
+function makeStagedPlanFixture(input: any) {
+  const shotCount = typeof input.shotCount === "number" ? input.shotCount : 9;
+  const english = input.languagePlan?.summaryLanguage === "en";
+  const beats = english
+    ? ["Opening", "Problem", "Insight", "Proof", "Review", "Usage", "Detail", "Verdict", "CTA"]
+    : [
+        "Hook (เปิดประเด็น)",
+        "Problem (สะท้อนปัญหา)",
+        "Insight",
+        "Proof",
+        "Review",
+        "Usage",
+        "Detail",
+        "Verdict",
+        "CTA",
+      ];
+  return {
+    planRevision: 1,
+    title: "Test story plan",
+    storySummary: english
+      ? "A continuous nine-shot review. Opening"
+      : "Hook → Problem → Insight → Proof → CTA: เปิดเรื่องด้วย Hook; หงุดหงิดกับปัญหา",
+    conceptOptions: [],
+    selectedConceptId: undefined,
+    product: input.product,
+    shots: Array.from({ length: shotCount }, (_, index) => ({
+      shotId: index + 1,
+      title: beats[index] ?? `ช็อตที่ ${index + 1}`,
+      storySummary: `${index + 1}. ${beats[index] ?? "Beat"}`,
+      visualSummary: `Visual ${index + 1}`,
+      dialogue: `ช็อตที่ ${index + 1}: ตรวจสอบรายละเอียดสินค้า`,
+      durationSeconds: input.shotDurationSeconds ?? 10,
+    })),
+    referenceManifestHash: input.referenceManifestHash ?? "fixture-refs",
+    storyPlanHash: "fixture-story-hash",
+    source: "llm_story_arc" as const,
+    languagePlan: input.languagePlan,
+  };
+}
 
 describe("marketplace staged storyboard pipeline contracts", () => {
-  const plan = buildStagedStoryArcPlan({
+  const plan = makeStagedPlanFixture({
     runId: "run-141",
     product: {
       productId: "product-1",
@@ -34,6 +106,7 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     },
     referenceManifestHash: "refs-1",
   });
+
 
   it("does not treat an approved prompt as media-render authorization", () => {
     expect(
@@ -55,85 +128,14 @@ describe("marketplace staged storyboard pipeline contracts", () => {
 
   it("creates exactly nine ten-second reviewable shots", () => {
     expect(plan.shots).toHaveLength(9);
-    expect(plan.shots.map(shot => shot.shotId)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(plan.shots.map(shot => shot.shotId)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9,
+    ]);
     expect(plan.shots.every(shot => shot.durationSeconds === 10)).toBe(true);
   });
 
-  it("keeps approved story/dialogue exact in downstream prompts", () => {
-    const imagePrompt = buildStagedImagePrompt({ plan, shot: plan.shots[0] });
-    const videoPrompt = buildStagedVideoPrompt({ plan, shot: plan.shots[0] });
-    expect(imagePrompt).toContain(plan.storySummary);
-    expect(videoPrompt).toContain(plan.shots[0].dialogue);
-    expect(videoPrompt).toContain("10-second");
-    expect(imagePrompt).toContain("@Image1");
-  });
-
-  it("includes the shot's dialogue (fact) in the auto-compiled Thai image prompt", () => {
-    // Fix A regression: buildStagedImagePrompt (the DEFAULT auto-compile
-    // path used whenever the story plan is approved) previously never read
-    // shot.dialogue at all. It must still carry the dialogue fact so a
-    // downstream skill call (or a human reviewer) can see the situation the
-    // shot is meant to depict — but per the P3 skill-first restore
-    // (`planning/marketplace-staged-skill-first-restore/plan.md`), judging
-    // HOW that dialogue should shape the image's sentiment/composition is no
-    // longer this TS fallback's job; that creative call now belongs
-    // exclusively to the `product-review-sequential-storyboard` skill
-    // (see its Phase F "Emotional and Narrative Sentiment Rule").
-    const thaiPromptPlan = buildStagedStoryArcPlan({
-      runId: "run-141-th-prompt",
-      product: {
-        productId: "product-1",
-        productName: "แก้วน้ำตัวอย่าง",
-        description: "สินค้าสำหรับทดสอบ",
-        imageUrls: ["https://example.test/product.png"],
-      },
-      languagePlan: {
-        summaryLanguage: "th",
-        dialogueLanguage: "th",
-        promptLanguage: "th",
-      },
-    });
-    const imagePrompt = buildStagedImagePrompt({
-      plan: thaiPromptPlan,
-      shot: thaiPromptPlan.shots[0],
-    });
-    expect(imagePrompt).toContain(thaiPromptPlan.shots[0].dialogue);
-    expect(imagePrompt).toContain("บทพูดของช็อตนี้");
-    // The creative sentiment-mirroring paragraph itself is gone — that
-    // judgment now lives only in the skill.
-    expect(imagePrompt).not.toContain("สะท้อนอารมณ์และสถานการณ์ที่เรื่องย่อ");
-  });
-
-  it("includes the shot's dialogue (fact) in the English image prompt too", () => {
-    const englishPlan = buildStagedStoryArcPlan({
-      runId: "run-english",
-      product: {
-        productId: "product-1",
-        productName: "Demo chair",
-        description: "Evidence-grounded product description",
-        imageUrls: ["https://example.test/product.png"],
-      },
-      languagePlan: {
-        summaryLanguage: "en",
-        dialogueLanguage: "en",
-        promptLanguage: "en",
-      },
-    });
-    const imagePrompt = buildStagedImagePrompt({
-      plan: englishPlan,
-      shot: englishPlan.shots[0],
-    });
-    expect(imagePrompt).toContain(englishPlan.shots[0].dialogue);
-    expect(imagePrompt).toContain(
-      "This shot's dialogue (the image MUST reflect this emotion/situation)"
-    );
-    // The creative sentiment-mirroring paragraph itself is gone — that
-    // judgment now lives only in the skill.
-    expect(imagePrompt).not.toContain("visual composition must reflect");
-  });
-
   it("keeps summary, dialogue, and prompt languages independent", () => {
-    const localizedPlan = buildStagedStoryArcPlan({
+    const localizedPlan = makeStagedPlanFixture({
       runId: "run-language",
       product: {
         productId: "product-1",
@@ -147,22 +149,11 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         promptLanguage: "en",
       },
     });
-    const imagePrompt = buildStagedImagePrompt({
-      plan: localizedPlan,
-      shot: localizedPlan.shots[0],
-    });
-    const videoPrompt = buildStagedVideoPrompt({
-      plan: localizedPlan,
-      shot: localizedPlan.shots[0],
-    });
-
-    expect(localizedPlan.storySummary).toContain("A continuous nine-shot review");
+    expect(localizedPlan.storySummary).toContain(
+      "A continuous nine-shot review"
+    );
     expect(localizedPlan.shots[0].storySummary).toContain("Opening");
     expect(localizedPlan.shots[0].dialogue).toContain("ช็อตที่ 1");
-    expect(imagePrompt).toContain("Create one vertical 9:16");
-    // Camera choreography is now the skill's job (P3 skill-first restore) —
-    // the bounded TS fallback only needs to carry the duration fact.
-    expect(videoPrompt).toContain("Create a 10-second vertical 9:16");
   });
 
   it("builds a spend expectation from immutable checkpoint evidence", () => {
@@ -186,7 +177,7 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     });
   });
 
-  it("synthesizes valid staged metadata for runs without pre-initialized staged metadata", () => {
+  it("requires a persisted story plan before reading staged metadata", () => {
     const rawRun = {
       id: "run-raw-1",
       productId: "product-demo",
@@ -194,12 +185,9 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         productImageUrls: ["https://example.test/img.jpg"],
       },
     };
-    const { metadata } = planAndMetadataFromRun(rawRun as any);
-    const parsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(metadata);
-    expect(parsed.success).toBe(true);
-    expect(metadata.stagedSequentialStoryboard.shots).toHaveLength(9);
-    expect(metadata.stagedPipeline.audioPlan).toBeNull();
-    expect(metadata.stagedPipeline.finalAssembly).toBeNull();
+    expect(() => planAndMetadataFromRun(rawRun as any)).toThrow(
+      "STAGED_PERSISTED_STORY_PLAN_REQUIRED"
+    );
   });
 
   /**
@@ -208,7 +196,7 @@ describe("marketplace staged storyboard pipeline contracts", () => {
    * build the same way `shotDurationSeconds` already does. Absent -> 9
    * (byte-compatible with every existing persisted run).
    */
-  it("planAndMetadataFromRun threads referenceAnchors.shotCount (fixed N) into a fresh plan", () => {
+  it("does not synthesize a story plan while reading an uninitialized run", () => {
     const rawRunDefault = {
       id: "run-shotcount-default",
       productId: "product-demo",
@@ -216,8 +204,9 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         productImageUrls: ["https://example.test/img.jpg"],
       },
     };
-    const { plan: defaultPlan } = planAndMetadataFromRun(rawRunDefault as any);
-    expect(defaultPlan.shots).toHaveLength(9);
+    expect(() => planAndMetadataFromRun(rawRunDefault as any)).toThrow(
+      "STAGED_PERSISTED_STORY_PLAN_REQUIRED"
+    );
 
     const rawRunTwelve = {
       id: "run-shotcount-12",
@@ -227,12 +216,8 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         referenceAnchors: { shotCount: 12 },
       },
     };
-    const { plan: twelveShotPlan } = planAndMetadataFromRun(
-      rawRunTwelve as any
-    );
-    expect(twelveShotPlan.shots).toHaveLength(12);
-    expect(twelveShotPlan.shots.map(s => s.shotId)).toEqual(
-      Array.from({ length: 12 }, (_, i) => i + 1)
+    expect(() => planAndMetadataFromRun(rawRunTwelve as any)).toThrow(
+      "STAGED_PERSISTED_STORY_PLAN_REQUIRED"
     );
   });
 
@@ -280,18 +265,21 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         title: "ปัญหาก่อนเลือกซื้อ",
         angle: "เริ่มจากปัญหาที่สินค้าแก้ได้",
         storySummary: "เล่าปัญหาและสาธิตหลักฐานจากสินค้า",
+        dialoguePreview: "ผู้รีวิว: พกขวดนี้ไปทำงานแล้วสะดวกดีนะ\nเพื่อน: ความจุเท่าไร?\nผู้รีวิว: ตามข้อมูลสินค้าระบุไว้ 500 มิลลิลิตร",
       },
       {
         conceptId: "idea-2",
         title: "ลองใช้ในชีวิตประจำวัน",
         angle: "ติดตามการใช้งานจริง",
         storySummary: "พาเห็นการใช้งานและสรุปความเหมาะสม",
+        dialoguePreview: "ผู้รีวิว: เช้านี้ลองพกขวดมาเอง\nเพื่อน: ใส่กระเป๋าแล้วหนักไหม?\nผู้รีวิว: ตัวเลขความจุตรงกับที่ระบุไว้เลย",
       },
       {
         conceptId: "idea-3",
         title: "ตรวจจุดเด่นตามข้อมูล",
         angle: "รีวิวตรงไปตรงมาตาม Product brief",
         storySummary: "ตรวจจุดเด่นที่ยืนยันได้ก่อนแนะนำ",
+        dialoguePreview: "เพื่อน: วัสดุที่แจ้งไว้คืออะไรนะ?\nผู้รีวิว: ข้อมูลสินค้าระบุว่าสเตนเลส\nเพื่อน: งั้นเล่าตามข้อมูลนี้ได้ชัดเจนดี",
       },
     ];
     const mockCallLLMStructured = vi.mocked(callLLMStructured);
@@ -308,9 +296,13 @@ describe("marketplace staged storyboard pipeline contracts", () => {
           dialogue: `Line ${index + 1}`,
         })),
       },
+      modelId: "planning-test-model",
+      providerName: "test-provider",
     } as never);
     const rawRun = {
       id: "run-init-deterministic",
+      userId: 42,
+      tenantId: "tenant-1",
       productId: "product-demo",
       metadataJson: {
         productTruth: {
@@ -319,23 +311,35 @@ describe("marketplace staged storyboard pipeline contracts", () => {
           specs: { material: "stainless steel" },
         },
         productImageUrls: ["https://example.test/img.jpg"],
-        referenceAnchors: { shotCount: 7 },
+        referenceAnchors: { shotCount: 7, storyPlanningModel: "gpt-4o" },
+        sequentialStoryboard: {
+          languagePlan: {
+            summaryLanguage: "th",
+            dialogueLanguage: "th",
+            promptLanguage: "th",
+          },
+        },
+        customReferenceManifest: [
+          {
+            index: 1,
+            url: "https://example.test/img.jpg",
+            role: "product",
+            active: true,
+          },
+        ],
       },
     };
-    const { plan, usedSkillFallback } = await buildStagedPlanAndMetadataForInit(
-      rawRun as any
-    );
+    const { plan } = await buildStagedPlanAndMetadataForInit(rawRun as any);
     mockCallLLMStructured.mockReset();
-    expect(plan.shots).toHaveLength(7);
+    expect(plan.shots).toHaveLength(0);
     expect(plan.source).toBe("llm_story_arc");
     expect(plan.conceptOptions).toEqual(concepts);
     expect(plan.product.description).toBe("Product brief ที่ใช้อธิบายสินค้า");
     expect(plan.product.specs).toEqual({ material: "stainless steel" });
-    expect(usedSkillFallback).toBe(false);
   });
 
-  it("synthesizes narrative story summary reflecting selected structure beats and tone", () => {
-    const plan = buildStagedStoryArcPlan({
+  it("uses a review plan fixture for contract-level story summary assertions", () => {
+    const plan = makeStagedPlanFixture({
       runId: "run-narrative-1",
       product: {
         productId: "p1",
@@ -348,18 +352,36 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     });
 
     expect(plan.storySummary).toContain("Hook → Problem → Insight → Proof → CTA");
-    expect(plan.storySummary).toContain("หงุดหงิดกับปัญหา");
-    expect(plan.storySummary).toContain("เปิดเรื่องด้วย Hook");
-    expect(plan.shots[0].title).toBe("Hook (เปิดประเด็น)");
-    expect(plan.shots[1].title).toBe("Problem (สะท้อนปัญหา)");
-    expect(plan.shots[0].dialogue).toContain("ปัญหาเดิมๆ");
+    expect(plan.shots).toHaveLength(9);
+    expect(plan.shots[0].dialogue).toContain("ตรวจสอบรายละเอียดสินค้า");
   });
 
   it("calls generateStagedStoryArcPlanWithLLM and produces 9-shot plan with selected model", async () => {
+    vi.mocked(callLLMStructured).mockResolvedValueOnce({
+      data: {
+        storySummary: "A complete review.",
+        conceptOptions: [
+          { conceptId: "a", title: "A", angle: "A", storySummary: "A", dialoguePreview: "A natural conversation preview about the product, using only confirmed facts." },
+          { conceptId: "b", title: "B", angle: "B", storySummary: "B", dialoguePreview: "A natural conversation preview about a different product use case." },
+          { conceptId: "c", title: "C", angle: "C", storySummary: "C", dialoguePreview: "A natural conversation preview focused on verified product details." },
+        ],
+        selectedConceptId: "a",
+        shots: Array.from({ length: 9 }, (_, index) => ({
+          shotId: index + 1,
+          title: `Shot ${index + 1}`,
+          storySummary: `Beat ${index + 1}`,
+          visualSummary: `Visual ${index + 1}`,
+          dialogue: `Line ${index + 1}`,
+        })),
+      },
+      modelId: "planning-test-model",
+      providerName: "test-provider",
+    } as never);
     const plan = await generateStagedStoryArcPlanWithLLM({
       runId: "run-llm-1",
       userId: 1,
       tenantId: "t1",
+      referenceManifestHash: "refs-llm-1",
       product: {
         productId: "p1",
         productName: "ของเล่นเด็ก",
@@ -380,14 +402,24 @@ describe("marketplace staged storyboard pipeline contracts", () => {
 describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)", () => {
   it("returns an empty cast when the manifest has zero character-role items", () => {
     const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/product-1.png", role: "product", active: true },
-      { url: "https://example.test/product-2.png", active: true },
+      {
+        url: "https://example.test/product-1.png",
+        role: "product",
+        active: true,
+      },
+      {
+        url: "https://example.test/product-2.png",
+        role: "environment",
+        active: true,
+      },
     ]);
     expect(cast).toEqual([]);
   });
 
   it("returns an empty cast when the manifest is undefined", () => {
-    expect(deriveStagedCastFromManifestForTest(undefined)).toEqual([]);
+    expect(() => deriveStagedCastFromManifestForTest(undefined)).toThrow(
+      "STAGED_REFERENCE_MANIFEST_REQUIRED"
+    );
   });
 
   it("derives exactly one cast member (host, imageIndex after the product count) for a single character item", () => {
@@ -416,7 +448,11 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
 
   it("derives two cast members (host + guest) with real names/roles/vdCharacterId from a 2-character manifest, image-indexed after the product items", () => {
     const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/product.png", role: "product", active: true },
+      {
+        url: "https://example.test/product.png",
+        role: "product",
+        active: true,
+      },
       {
         url: "https://example.test/host.png",
         role: "character",
@@ -453,14 +489,11 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
     });
   });
 
-  it("falls back to 'uploaded' source and a generic Person-N name when no vdCharacterId/characterName/label is supplied", () => {
-    const cast = deriveStagedCastFromManifestForTest([
+  it("rejects uploaded cast entries without an explicit character name", () => {
+    expect(() => deriveStagedCastFromManifestForTest([
       { url: "https://example.test/host.png", role: "character", active: true },
       { url: "https://example.test/guest.png", role: "character", active: true },
-    ]);
-    expect(cast).toHaveLength(2);
-    expect(cast[0]).toMatchObject({ name: "Person 1", source: "uploaded", role: "host" });
-    expect(cast[1]).toMatchObject({ name: "Person 2", source: "uploaded", role: "guest" });
+    ])).toThrow("STAGED_CAST_CHARACTER_NAME_REQUIRED");
   });
 
   /* Roster widened 2 -> 4 by `planning/marketplace-four-character-cast/plan.md`
@@ -468,11 +501,36 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
      lives in the shared `MARKETPLACE_CHARACTER_CAST_MAX`. */
   it("ignores inactive items and admits up to 4 character items, roling them host/guest/support", () => {
     const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/a.png", role: "character", characterName: "A", active: false },
-      { url: "https://example.test/b.png", role: "character", characterName: "B", active: true },
-      { url: "https://example.test/c.png", role: "character", characterName: "C", active: true },
-      { url: "https://example.test/d.png", role: "character", characterName: "D", active: true },
-      { url: "https://example.test/e.png", role: "character", characterName: "E", active: true },
+      {
+        url: "https://example.test/a.png",
+        role: "character",
+        characterName: "A",
+        active: false,
+      },
+      {
+        url: "https://example.test/b.png",
+        role: "character",
+        characterName: "B",
+        active: true,
+      },
+      {
+        url: "https://example.test/c.png",
+        role: "character",
+        characterName: "C",
+        active: true,
+      },
+      {
+        url: "https://example.test/d.png",
+        role: "character",
+        characterName: "D",
+        active: true,
+      },
+      {
+        url: "https://example.test/e.png",
+        role: "character",
+        characterName: "E",
+        active: true,
+      },
     ]);
     expect(cast.map(member => member.name)).toEqual(["B", "C", "D", "E"]);
     expect(cast.map(member => member.role)).toEqual([
@@ -483,15 +541,39 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
     ]);
   });
 
-  it("caps the cast at 4 members even when more character items are supplied", () => {
-    const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/b.png", role: "character", characterName: "B", active: true },
-      { url: "https://example.test/c.png", role: "character", characterName: "C", active: true },
-      { url: "https://example.test/d.png", role: "character", characterName: "D", active: true },
-      { url: "https://example.test/e.png", role: "character", characterName: "E", active: true },
-      { url: "https://example.test/f.png", role: "character", characterName: "F", active: true },
-    ]);
-    expect(cast.map(member => member.name)).toEqual(["B", "C", "D", "E"]);
+  it("rejects manifests that exceed the four-character cast cap", () => {
+    expect(() => deriveStagedCastFromManifestForTest([
+      {
+        url: "https://example.test/b.png",
+        role: "character",
+        characterName: "B",
+        active: true,
+      },
+      {
+        url: "https://example.test/c.png",
+        role: "character",
+        characterName: "C",
+        active: true,
+      },
+      {
+        url: "https://example.test/d.png",
+        role: "character",
+        characterName: "D",
+        active: true,
+      },
+      {
+        url: "https://example.test/e.png",
+        role: "character",
+        characterName: "E",
+        active: true,
+      },
+      {
+        url: "https://example.test/f.png",
+        role: "character",
+        characterName: "F",
+        active: true,
+      },
+    ])).toThrow("STAGED_CAST_LIMIT_EXCEEDED:5:4");
   });
 
   /* The single decision that keeps this affordable: mode follows the SPEAKING
@@ -531,15 +613,30 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
 
   it("still resolves a legacy 2-entry roster as a two-person conversation", () => {
     const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/b.png", role: "character", characterName: "B", active: true },
-      { url: "https://example.test/c.png", role: "character", characterName: "C", active: true },
+      {
+        url: "https://example.test/b.png",
+        role: "character",
+        characterName: "B",
+        active: true,
+      },
+      {
+        url: "https://example.test/c.png",
+        role: "character",
+        characterName: "C",
+        active: true,
+      },
     ]);
     expect(resolveStagedConversationMode(cast)).toBe("two_person_conversation");
   });
 
   it("carries explicit minor grounding through to the cast member", () => {
     const cast = deriveStagedCastFromManifestForTest([
-      { url: "https://example.test/b.png", role: "character", characterName: "B", active: true },
+      {
+        url: "https://example.test/b.png",
+        role: "character",
+        characterName: "B",
+        active: true,
+      },
       {
         url: "https://example.test/kid.png",
         role: "character",
@@ -557,14 +654,15 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
 });
 
 describe("resolveStagedVideoDuration (via resolveStagedVideoDurationForTest)", () => {
-  it("snaps the requested duration to the closest model-supported value when the model only supports a restrictive duration list", () => {
+  it("rejects a requested duration outside the model-supported duration list", () => {
     // veo3/generate-veo-3-video-lite (the staged pipeline's default video
     // model) only supports an 8-second duration in the model registry.
-    const result = resolveStagedVideoDurationForTest(
-      "veo3/generate-veo-3-video-lite",
-      10
-    );
-    expect(result).toEqual({ duration: 8, fitted: true });
+    expect(() =>
+      resolveStagedVideoDurationForTest(
+        "veo3/generate-veo-3-video-lite",
+        10
+      )
+    ).toThrow("STAGED_VIDEO_DURATION_NOT_SUPPORTED");
   });
 
   it("keeps the requested duration unchanged (fitted:false) when the model's duration list already includes it", () => {
@@ -577,12 +675,10 @@ describe("resolveStagedVideoDuration (via resolveStagedVideoDurationForTest)", (
     expect(result).toEqual({ duration: 10, fitted: false });
   });
 
-  it("keeps the requested duration unchanged for a model with no duration config at all (unknown model id)", () => {
-    const result = resolveStagedVideoDurationForTest(
-      "no-such-model-in-registry",
-      12
-    );
-    expect(result).toEqual({ duration: 12, fitted: false });
+  it("rejects a model id that is not configured", () => {
+    expect(() =>
+      resolveStagedVideoDurationForTest("no-such-model-in-registry", 12)
+    ).toThrow("STAGED_VIDEO_MODEL_NOT_CONFIGURED");
   });
 });
 
@@ -598,18 +694,20 @@ describe("planAndMetadataFromRun — two-character conversation wiring from cust
     };
   }
 
-  it("produces a plan with NO cast/conversationMode fields for a manifest with 0 character items", () => {
-    const { plan } = planAndMetadataFromRun(
+  it("requires a persisted plan before reading a manifest with no characters", () => {
+    expect(() => planAndMetadataFromRun(
       rawRunWithManifest([
-        { url: "https://example.test/product.png", role: "product", active: true },
+        {
+          url: "https://example.test/product.png",
+          role: "product",
+          active: true,
+        },
       ]) as any
-    );
-    expect(plan.cast).toBeUndefined();
-    expect(plan.conversationMode).toBeUndefined();
+    )).toThrow("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
   });
 
-  it("produces a plan with a 1-member cast and conversationMode='solo' for a manifest with exactly 1 character item", () => {
-    const { plan } = planAndMetadataFromRun(
+  it("requires a persisted plan before reading a single-character manifest", () => {
+    expect(() => planAndMetadataFromRun(
       rawRunWithManifest([
         {
           url: "https://example.test/host.png",
@@ -619,15 +717,17 @@ describe("planAndMetadataFromRun — two-character conversation wiring from cust
           active: true,
         },
       ]) as any
-    );
-    expect(plan.cast).toHaveLength(1);
-    expect(plan.conversationMode).toBe("solo");
+    )).toThrow("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
   });
 
-  it("produces a plan with conversationMode='two_person_conversation' and both cast members' real names for a manifest with 2 character items", () => {
-    const { plan } = planAndMetadataFromRun(
+  it("requires a persisted plan before reading a two-character manifest", () => {
+    expect(() => planAndMetadataFromRun(
       rawRunWithManifest([
-        { url: "https://example.test/product.png", role: "product", active: true },
+        {
+          url: "https://example.test/product.png",
+          role: "product",
+          active: true,
+        },
         {
           url: "https://example.test/host.png",
           role: "character",
@@ -645,12 +745,7 @@ describe("planAndMetadataFromRun — two-character conversation wiring from cust
           active: true,
         },
       ]) as any
-    );
-    expect(plan.conversationMode).toBe("two_person_conversation");
-    expect(plan.cast).toHaveLength(2);
-    expect(plan.cast?.[0].name).toBe("Ann");
-    expect(plan.cast?.[1].name).toBe("Somchai");
-    expect(plan.shots.every(shot => Array.isArray(shot.castInShot) && shot.castInShot?.length === 2)).toBe(true);
+    )).toThrow("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
   });
 });
 
@@ -726,6 +821,8 @@ describe("staged provider references use the authenticated media boundary", () =
     expect(imageProvider).not.toContain("fetch(");
     expect(imageProvider).toContain("referenceImageUrls,");
     expect(imageProvider).toContain("tenantId: params.auth.tenantId");
-    expect(submitBoundary).toContain("mediaGenerationService.generateImageAsync(");
+    expect(submitBoundary).toContain(
+      "mediaGenerationService.generateImageAsync("
+    );
   });
 });

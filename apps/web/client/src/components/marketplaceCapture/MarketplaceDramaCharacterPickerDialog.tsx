@@ -317,6 +317,7 @@ export function MarketplaceDramaCharacterPickerDialog({
     // characters, and picking into a run that already has a host must not mint
     // a second one (`planning/marketplace-four-character-cast/plan.md` P1).
     const items: ReferenceManifestItem[] = selections.map((selection, index) => ({
+      index: index + 1,
       url: selection.portraitUrl,
       role: "character",
       label: selection.variantLabel

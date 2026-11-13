@@ -6,6 +6,7 @@ import {
   type StagedSafeReasonCode,
 } from "@shared/marketplaceAutoReview/stagedContracts";
 import { callLLMStructured } from "./callLLMStructured";
+import { getSkillByIdAsync, syncSingleSkillIfChanged } from "./skillRegistry";
 import {
   isMarketplaceCastLeadRole,
   type MarketplaceCharacterCastRole,
@@ -14,6 +15,10 @@ import {
   castIdForCharacterIndex,
   type ShotCastLook,
 } from "../../shared/marketplaceAutoReview/shotCast";
+
+function clean(value: string | null | undefined): string {
+  return value?.trim() ?? "";
+}
 
 export type StagedStoryArcProduct = {
   productId: string;
@@ -74,19 +79,8 @@ export function selectStagedSupportingCast(
  * Guarantee that no supporting character is rendered into a shot without a
  * reason to be there (`planning/marketplace-four-character-cast/plan.md` §3).
  *
- * Enforcement is by CONSTRUCTION, not by rejection: a supporting character the
- * model gave no `action` is removed from that shot's `castInShot`, so their
- * reference image is never sent and they simply are not in the frame. The
- * alternative — failing the shot and retrying — is the trap that
- * `pinApprovedCanonicalDesignDna` had to undo elsewhere in this codebase the
- * same week: a guard the model cannot reliably satisfy turns into a dead
- * feature. Worst case here is a supporting character appearing in fewer shots;
- * there is no path where the run dies.
- *
- * Also normalizes the legacy `castInShot === undefined` case. That used to mean
- * "everyone", which with a supporting tier would put a beatless extra in every
- * frame — so once a supporting cast exists, the list is always made explicit.
- * Runs with no supporting cast are left byte-identical.
+ * Validate model-authored cast and supporting beats without rewriting or
+ * dropping any of them. Invalid cast data fails plan generation directly.
  */
 export function enforceSupportingBeats<
   T extends {
@@ -98,52 +92,65 @@ export function enforceSupportingBeats<
   cast: StagedCastMember[] | null | undefined;
 }): { shots: T[]; droppedCastIdsByShot: Record<number, string[]> } {
   const supporting = selectStagedSupportingCast(params.cast);
-  const droppedCastIdsByShot: Record<number, string[]> = {};
   if (supporting.length === 0) {
-    return { shots: params.shots, droppedCastIdsByShot };
+    return { shots: params.shots, droppedCastIdsByShot: {} };
   }
-  const leadIds = selectStagedLeadCast(params.cast).map(member => member.castId);
+  const knownCastIds = new Set(
+    (params.cast ?? []).map(member => member.castId)
+  );
   const supportingIds = new Set(supporting.map(member => member.castId));
 
   const shots = params.shots.map((shot, index) => {
-    const declared =
-      Array.isArray(shot.castInShot) && shot.castInShot.length > 0
-        ? shot.castInShot
-        : // Legacy/absent -> everyone, made explicit now that "everyone"
-          // would include a supporting tier.
-          [...leadIds, ...supportingIds];
-    const beatByCastId = new Map(
-      (shot.supportingBeats ?? [])
-        .filter(beat => beat && typeof beat.action === "string" && beat.action.trim())
-        .map(beat => [beat.castId, beat])
-    );
-    const dropped: string[] = [];
-    const kept = declared.filter(castId => {
-      if (!supportingIds.has(castId)) return true;
-      if (beatByCastId.has(castId)) return true;
-      dropped.push(castId);
-      return false;
-    });
-    if (dropped.length > 0) {
-      droppedCastIdsByShot[index] = dropped;
+    if (!Array.isArray(shot.castInShot)) {
+      throw new Error(`STAGED_CAST_IN_SHOT_REQUIRED:shot-${index + 1}`);
     }
-    // Only keep beats for characters still in the shot. Note the key is
-    // DELETED rather than left unspread when nothing survives — `...shot`
-    // would otherwise carry the original (rejected) beats straight through,
-    // so a whitespace-only action would still reach the prompt.
-    const keptSet = new Set(kept);
-    const supportingBeats = (shot.supportingBeats ?? []).filter(
-      beat => beatByCastId.has(beat.castId) && keptSet.has(beat.castId)
+    const unknownCastId = shot.castInShot.find(
+      castId => !knownCastIds.has(castId)
     );
-    const next: T = { ...shot, castInShot: kept };
-    if (supportingBeats.length > 0) {
-      next.supportingBeats = supportingBeats;
-    } else {
-      delete next.supportingBeats;
+    if (unknownCastId) {
+      throw new Error(
+        `STAGED_CAST_MEMBER_NOT_FOUND:shot-${index + 1}:${unknownCastId}`
+      );
     }
-    return next;
+    const beats = shot.supportingBeats ?? [];
+    const beatByCastId = new Map<string, StagedSupportingBeat>();
+    for (const beat of beats) {
+      if (!supportingIds.has(beat.castId)) {
+        throw new Error(
+          `STAGED_SUPPORTING_BEAT_CAST_INVALID:shot-${index + 1}:${beat.castId}`
+        );
+      }
+      if (!shot.castInShot.includes(beat.castId)) {
+        throw new Error(
+          `STAGED_SUPPORTING_BEAT_CAST_NOT_IN_SHOT:shot-${index + 1}:${beat.castId}`
+        );
+      }
+      if (!clean(beat.action)) {
+        throw new Error(
+          `STAGED_SUPPORTING_BEAT_ACTION_REQUIRED:shot-${index + 1}:${beat.castId}`
+        );
+      }
+      if (beatByCastId.has(beat.castId)) {
+        throw new Error(
+          `STAGED_SUPPORTING_BEAT_DUPLICATE:shot-${index + 1}:${beat.castId}`
+        );
+      }
+      beatByCastId.set(beat.castId, beat);
+    }
+    for (const castId of shot.castInShot) {
+      if (supportingIds.has(castId) && !beatByCastId.has(castId)) {
+        throw new Error(
+          `STAGED_SUPPORTING_BEAT_REQUIRED:shot-${index + 1}:${castId}`
+        );
+      }
+    }
+    return {
+      ...shot,
+      castInShot: [...shot.castInShot],
+      supportingBeats: beats,
+    };
   });
-  return { shots, droppedCastIdsByShot };
+  return { shots, droppedCastIdsByShot: {} };
 }
 
 export type StagedDialogueTurn = {
@@ -193,7 +200,7 @@ export type StagedSupportingBeat = {
  */
 export function resolveStagedCastDescriptor(
   member: Pick<StagedCastMember, "role" | "descriptor">,
-  language: "th" | "en",
+  language: "th" | "en"
 ): string {
   const authored = clean(member.descriptor);
   if (authored) return authored;
@@ -257,7 +264,9 @@ function parseSpeakerNamedDialogue(
     const spokenLine = match?.[2]?.trim();
     return speakerName && spokenLine ? { speakerName, line: spokenLine } : null;
   });
-  return parsed.every((line): line is { speakerName: string; line: string } => !!line)
+  return parsed.every(
+    (line): line is { speakerName: string; line: string } => !!line
+  )
     ? parsed
     : undefined;
 }
@@ -310,18 +319,14 @@ export type StagedStoryArcLanguagePlan = {
   promptLanguage: "th" | "en";
 };
 
-// "bounded_story_arc_fallback" = deterministic TS builder (no LLM call).
-// "llm_story_arc" = generateStagedStoryArcPlanWithLLM's LLM path succeeded.
-// Previously the LLM path also hardcoded "bounded_story_arc_fallback",
-// making it impossible to tell from telemetry whether a plan came from the
-// LLM or the deterministic fallback.
-export type StagedStoryArcPlanSource = "bounded_story_arc_fallback" | "llm_story_arc";
+export type StagedStoryArcPlanSource = "llm_story_arc";
 
 export type StagedStoryConceptOption = {
   conceptId: string;
   title: string;
   angle: string;
   storySummary: string;
+  dialoguePreview: string;
 };
 
 export type StagedStoryArcPlan = {
@@ -333,6 +338,11 @@ export type StagedStoryArcPlan = {
   referenceManifestHash: string;
   storyPlanHash: string;
   source: StagedStoryArcPlanSource;
+  authoring: {
+    model: string;
+    provider: string;
+    creditsUsed: number;
+  };
   languagePlan?: StagedStoryArcLanguagePlan;
   conceptOptions?: StagedStoryConceptOption[];
   selectedConceptId?: string;
@@ -341,1082 +351,6 @@ export type StagedStoryArcPlan = {
   cast?: StagedCastMember[];
   conversationMode?: StagedConversationMode;
 };
-
-const SHOT_BEATS = [
-  ["เปิดเรื่อง", "เปิดภาพสินค้าแบบเต็มชิ้นจากมุมที่เห็นตัวตนของสินค้าได้ชัด"],
-  ["เผยสินค้า", "พาสายตาดูรูปทรงและรายละเอียดที่มีหลักฐานจากภาพอ้างอิง"],
-  [
-    "บริบทการใช้งาน",
-    "วางสินค้าในบริบทการใช้งานที่ไม่เพิ่มคุณสมบัติที่ไม่มีหลักฐาน",
-  ],
-  ["ฟังก์ชันหลัก", "แสดงการใช้งานหรือจุดเด่นที่เห็นได้จากข้อมูลสินค้า"],
-  ["ฟังก์ชันรอง", "ย้ำอีกหนึ่งมุมของสินค้าโดยคงรูปทรงและสีตามภาพอ้างอิง"],
-  [
-    "รายละเอียดวัสดุ",
-    "เข้าใกล้รายละเอียดพื้นผิว งานประกอบ หรือส่วนที่มองเห็นได้",
-  ],
-  [
-    "ความต่อเนื่อง",
-    "เชื่อมกลับมายังสินค้าชิ้นเดิมโดยไม่เปลี่ยนรุ่นหรืออุปกรณ์",
-  ],
-  ["สรุปการใช้งาน", "แสดงภาพรวมการใช้งานอย่างสงบและตรวจสอบได้"],
-  ["ปิดเรื่อง", "ปิดด้วยภาพสินค้าชัดเจนและคำชวนติดตามแบบไม่กล่าวอ้างเกินจริง"],
-] as const;
-
-const SHOT_BEATS_EN = [
-  ["Opening", "Open with a full product view from an angle that makes its identity clear."],
-  ["Reveal the product", "Guide attention across the shape and details supported by the reference images."],
-  ["Usage context", "Place the product in a believable use context without adding unsupported features."],
-  ["Primary function", "Show a use or visible benefit that is supported by the product evidence."],
-  ["Secondary function", "Reinforce another angle while preserving the reference color and proportions."],
-  ["Material detail", "Move closer to visible texture, construction, or a verifiable product detail."],
-  ["Continuity", "Return to the same product without changing its model, color, or accessories."],
-  ["Usage recap", "Show the overall use calmly and keep every claim grounded in the available evidence."],
-  ["Closing", "Close on a clear product view with a restrained call to action and no unsupported claim."],
-] as const;
-
-const TONE_LABELS_TH: Record<string, string> = {
-  irritated_problem: "หงุดหงิดกับปัญหา",
-  funny_light: "ตลกขำเบา ๆ",
-  warm_friendly: "จริงใจเป็นกันเอง",
-  energetic_excited: "ตื่นเต้นพลังสูง",
-  empathetic_soft: "อบอุ่นเห็นใจ",
-  expert_confident: "ผู้เชี่ยวชาญมั่นใจ",
-  straight_serious: "ตรงไปตรงมา จริงจัง",
-};
-
-const STORYTELLING_BEATS_TH: Record<string, readonly [string, string][]> = {
-  hook_problem_insight_proof_cta: [
-    ["Hook (เปิดประเด็น)", "เปิดฉากด้วย Hook ดึงดูดสายตาและชวนติดตามปัญหาที่ผู้ใช้อาจมองข้าม"],
-    ["Problem (สะท้อนปัญหา)", "แสดงปัญหาและจุดชวนหงุดหงิดที่พบบ่อยในการใช้งานจริง"],
-    ["Problem Deepen (ขยายปัญหา)", "เจาะลึกความยุ่งยากของปัญหาเดิมๆ ให้เห็นภาพและอารมณ์ชัดเจน"],
-    ["Insight (มุมมองทางออก)", "เสนออินไซต์หรือมุมมองใหม่ในการแก้ปัญหานั้น"],
-    ["Solution (เปิดตัวสินค้า)", "เปิดตัวสินค้าเป็นทางออกที่ตรงจุดเพื่อแก้ปัญหาที่กล่าวถึง"],
-    ["Proof (พิสูจน์ฟังก์ชัน)", "แสดงการใช้งานจริงและฟังก์ชันหลักของสินค้าให้เห็นผลลัพธ์"],
-    ["Proof Details (จุดเด่นวัสดุ)", "เข้าใกล้รายละเอียดวัสดุ งานประกอบ หรือคุณสมบัติที่ตรวจสอบได้"],
-    ["Result (ผลลัพธ์หลังใช้)", "แสดงผลลัพธ์และความพึงพอใจหลังได้รับการแก้ไขปัญหาด้วยสินค้า"],
-    ["CTA (สรุปและชวนติดตาม)", "สรุปจุดเด่นและคำแนะนำปิดท้ายแบบชัดเจน"],
-  ],
-  hook_problem_emotion_insight_solution_result_cta: [
-    ["Hook (เปิดเรื่อง)", "เปิดภาพสินค้ากระตุ้นความสนใจในทันที"],
-    ["Problem (ชี้ปัญหา)", "ระบุปัญหาจริงที่ผู้ใช้มักต้องเจอในชีวิตประจำวัน"],
-    ["Emotion (สะท้อนอารมณ์)", "สะท้อนความรู้สึกและอารมณ์ร่วมกับปัญหานั้น"],
-    ["Insight (อินไซต์ใหม่)", "นำเสนอข้อคิดหรือทางออกที่เฉลียวฉลาดในการรับมือ"],
-    ["Solution (สินค้าคือคำตอบ)", "เปิดตัวสินค้าเป็นคำตอบหลักเพื่อคลายกังวล"],
-    ["Demonstration (สาธิตการใช้)", "โชว์ฟังก์ชันและการใช้งานจริงของสินค้า"],
-    ["Material & Safety (วัสดุและความปลอดภัย)", "เน้นคุณภาพวัสดุและความปลอดภัยที่ตรวจสอบได้"],
-    ["Result (ผลลัพธ์ที่เปลี่ยนไป)", "แสดงผลลัพธ์ที่เปลี่ยนความรู้สึกและชีวิตให้ง่ายขึ้น"],
-    ["CTA (คำชวนติดตาม)", "ชวนติดตามและสรุปประโยชน์หลักอย่างตรงไปตรงมา"],
-  ],
-  product_review_situation_problem_try_result_fit: [
-    ["Situation (สถานการณ์)", "เริ่มต้นจากสถานการณ์จริงในชีวิตประจำวัน"],
-    ["Problem (ข้อจำกัดที่พบ)", "สะท้อนข้อจำกัดหรือปัญหาที่มักเจอในสถานการณ์นั้น"],
-    ["Discovery (การค้นพบ)", "ค้นพบสินค้าและทางเลือกใหม่ที่น่าสนใจ"],
-    ["Try (ทดลองใช้)", "ลองเปิดกล่องและเริ่มใช้งานสินค้าเป็นครั้งแรก"],
-    ["Function (ฟังก์ชันหลัก)", "โชว์ฟังก์ชันเด่นที่แก้ปัญหาได้จริง"],
-    ["Result (ผลการทดลอง)", "แสดงผลลัพธ์หลังใช้งานอย่างชัดเจน"],
-    ["Material (รายละเอียดวัสดุ)", "ตรวจสอบวัสดุและความคุ้มค่าที่มองเห็นได้"],
-    ["Who it fits (ความเหมาะสม)", "สรุปว่าสินค้าเหมาะกับใครและตอบโจทย์อย่างไร"],
-    ["CTA (สรุปรีวิว)", "ปิดท้ายด้วยสรุปการรีวิวและคำแนะนำ"],
-  ],
-  before_after_bridge: [
-    ["Before (ก่อนใช้)", "แสดงสภาพหรือปัญหาก่อนได้รับการแก้ไข"],
-    ["Pain Point (จุดลำบาก)", "เน้นย้ำความยุ่งยากและความหงุดหงิดเดิม"],
-    ["Bridge (ตัวเชื่อมความเปลี่ยนแปลง)", "แนะนำสินค้าเป็นตัวเชื่อมเปลี่ยนผ่าน"],
-    ["After (หลังใช้)", "แสดงสภาพและความสะดวกสบายหลังใช้สินค้า"],
-    ["Demonstration (การใช้งาน)", "พิสูจน์การทำงานจริงของสินค้า"],
-    ["Key Feature (จุดเด่นหลัก)", "โชว์ฟังก์ชันสำคัญที่สร้างความแตกต่าง"],
-    ["Safety & Quality (ความปลอดภัย)", "แสดงคุณภาพวัสดุและการประกอบอย่างมั่นใจ"],
-    ["Transformation (ผลลัพธ์)", "ย้ำผลลัพธ์ที่เปลี่ยนไปทางดีขึ้น"],
-    ["CTA (ข้อคิดปิดท้าย)", "ชวนตัดสินใจและติดตาม"],
-  ],
-  pas: [
-    ["Problem (ระบุปัญหา)", "ชี้ปัญหาหลักที่ผู้ใช้กำลังเผชิญ"],
-    ["Agitate (ตอกย้ำความยุ่งยาก)", "ขยายผลกระทบของปัญหาให้เห็นชัด"],
-    ["Agitate Deep (ผลกระทบต่อเนื่อง)", "แสดงความหงุดหงิดที่เกิดขึ้นหากไม่แก้ปัญหา"],
-    ["Solution (นำเสนอทางออก)", "เสนอสินค้าเป็นคำตอบอย่างตรงจุด"],
-    ["Feature 1 (คุณสมบัติ 1)", "โชว์คุณสมบัติเด่นชิ้นแรกในการแก้ปัญหา"],
-    ["Feature 2 (คุณสมบัติ 2)", "โชว์คุณสมบัติเสริมและความปลอดภัย"],
-    ["Proof (การพิสูจน์)", "ทดสอบการใช้งานจริงให้เห็นผล"],
-    ["Outcome (ผลลัพธ์)", "แสดงความโล่งใจและผลลัพธ์ที่ได้รับ"],
-    ["CTA (ปิดการรีวิว)", "คำชวนติดตามและสั่งซื้อ"],
-  ],
-  aida: [
-    ["Attention (เรียกร้องความสนใจ)", "เปิดฉากด้วยมุมมองสินค้าที่ดึงดูดสายตาทันที"],
-    ["Interest (สร้างความสนใจ)", "กระตุ้นความสนใจด้วยการชี้ปัญหาหรือความต้องการ"],
-    ["Desire (สร้างความอยากได้)", "แสดงความสะดวกและประโยชน์ที่น่าประทับใจ"],
-    ["Solution (แนะนำสินค้า)", "เปิดตัวสินค้าพร้อมฟังก์ชันหลัก"],
-    ["Demonstration (สาธิตฟังก์ชัน)", "โชว์การใช้งานจริงอย่างละเอียด"],
-    ["Details (รายละเอียดคุณภาพ)", "เน้นความประณีตของวัสดุและความปลอดภัย"],
-    ["Proof (หลักฐานความคุ้มค่า)", "แสดงผลลัพธ์และความพึงพอใจในการใช้"],
-    ["Action (ข้อเสนอและการกระทำ)", "แนะนำการเลือกซื้อและใช้งาน"],
-    ["CTA (สรุปปิดท้าย)", "ชวนติดตามและปิดการรีวิวอย่างสมบูรณ์"],
-  ],
-  relatable_story: [
-    ["Relatable Moment (โมเมนต์คุ้นเคย)", "เริ่มต้นด้วยพฤติกรรมหรือเรื่องราวใกล้ตัวที่ทุกคนคุ้นเคย"],
-    ["Unspoken Problem (ปัญหาที่ไม่ทันคิด)", "เผยปัญหาที่หลายคนมองข้ามหรือไม่ทันสังเกต"],
-    ["Frustration (อารมณ์ร่วม)", "สะท้อนความรู้สึกหงุดหงิดหรือความยุ่งยาก"],
-    ["Turning Point (จุดเปลี่ยน)", "เจอจุดเปลี่ยนเมื่อได้ลองใช้สินค้า"],
-    ["Solution (สินค้าทางเลือก)", "แนะนำสินค้าและวิธีใช้ง่ายๆ"],
-    ["Feature Demo (ฟังก์ชันเด่น)", "สาธิตจุดเด่นสินค้าอย่างเป็นธรรมชาติ"],
-    ["Quality Proof (พิสูจน์คุณภาพ)", "โชว์วัสดุและความปลอดภัยที่น่าเชื่อถือ"],
-    ["Shared Benefit (ประโยชน์ที่ได้รับ)", "สรุปความประทับใจและความสะดวกสบาย"],
-    ["CTA (ส่งท้ายเรื่องราว)", "ปิดท้ายด้วยข้อคิดดีๆ และชวนติดตาม"],
-  ],
-  problem_struggle_solution_transformation: [
-    ["Problem (ระบุปัญหา)", "เปิดเรื่องด้วยปัญหาสำคัญที่สร้างความยุ่งยาก"],
-    ["Struggle (ความพยายามแก้ไข)", "แสดงความพยายามและอุปสรรคในการแก้ปัญหาแบบเดิมๆ"],
-    ["Turning Point (จุดเปลี่ยน)", "พบบริบทใหม่หรือการค้นพบสินค้าที่น่าสนใจ"],
-    ["Solution (ทางออก)", "แนะนำสินค้าเป็นวิธีแก้ไขที่ตรงจุด"],
-    ["Function Demo (สาธิตการทำงาน)", "โชว์การใช้งานและคุณสมบัติเด่นของสินค้า"],
-    ["Quality Check (ตรวจสอบคุณภาพ)", "ตรวจสอบรายละเอียดวัสดุและความปลอดภัยที่น่าเชื่อถือ"],
-    ["Transformation (ความเปลี่ยนแปลง)", "แสดงภาพความสะดวกสบายและชีวิตที่ดีขึ้น"],
-    ["Proof of Benefit (ยืนยันผลลัพธ์)", "ย้ำผลลัพธ์และความคุ้มค่าหลังใช้งาน"],
-    ["CTA (คำชวนติดตาม)", "ชวนตัดสินใจและปิดท้ายการรีวิว"],
-  ],
-};
-
-// English mirror of STORYTELLING_BEATS_TH. Previously the selected structure
-// was silently ignored for English runs (only STORYTELLING_BEATS_TH was ever
-// consulted, gated on `summaryLanguage !== "en"`), so an English run lost the
-// user-selected storytelling structure without any warning.
-const STORYTELLING_BEATS_EN: Record<string, readonly [string, string][]> = {
-  hook_problem_insight_proof_cta: [
-    ["Hook", "Open with an attention-grabbing hook about a problem the user may be overlooking."],
-    ["Problem", "Show the common, frustrating problem people run into in real use."],
-    ["Problem Deepen", "Deepen the same problem so its difficulty and emotion are vivid and clear."],
-    ["Insight", "Offer an insight or new perspective for solving that problem."],
-    ["Solution", "Introduce the product as the precise solution to the stated problem."],
-    ["Proof", "Show real usage and the core function with a visible result."],
-    ["Proof Details", "Move close on material, construction, or a verifiable standout detail."],
-    ["Result", "Show the outcome and satisfaction after the problem is solved."],
-    ["CTA", "Summarize the highlights with a clear closing recommendation."],
-  ],
-  hook_problem_emotion_insight_solution_result_cta: [
-    ["Hook", "Open with a product shot that grabs attention immediately."],
-    ["Problem", "State a real problem users commonly face in daily life."],
-    ["Emotion", "Reflect the feeling and emotion tied to that problem."],
-    ["Insight", "Present a clever insight or new way to handle it."],
-    ["Solution", "Introduce the product as the main answer that eases the concern."],
-    ["Demonstration", "Demonstrate the product's function and real usage."],
-    ["Material & Safety", "Emphasize material quality and verifiable safety."],
-    ["Result", "Show the outcome that changed how it feels and made life easier."],
-    ["CTA", "Invite the viewer to follow and summarize the main benefit plainly."],
-  ],
-  product_review_situation_problem_try_result_fit: [
-    ["Situation", "Start from a real, everyday situation."],
-    ["Problem", "Reflect the limitation or problem commonly found in that situation."],
-    ["Discovery", "Discover the product and an interesting new option."],
-    ["Try", "Unbox it and try using the product for the first time."],
-    ["Function", "Show the standout function that truly solves the problem."],
-    ["Result", "Show the result after use clearly."],
-    ["Material", "Check the visible material quality and value."],
-    ["Who it fits", "Summarize who the product fits and how it answers their need."],
-    ["CTA", "Close with a summary of the review and a recommendation."],
-  ],
-  before_after_bridge: [
-    ["Before", "Show the condition or problem before it was solved."],
-    ["Pain Point", "Emphasize the old difficulty and frustration."],
-    ["Bridge", "Introduce the product as the bridge into the transition."],
-    ["After", "Show the condition and comfort after using the product."],
-    ["Demonstration", "Prove the product's real function."],
-    ["Key Feature", "Show the key function that makes the difference."],
-    ["Safety & Quality", "Show material quality and construction with confidence."],
-    ["Transformation", "Reinforce the positive change in the outcome."],
-    ["CTA", "Invite a decision and a follow."],
-  ],
-  pas: [
-    ["Problem", "Point out the main problem the user is facing."],
-    ["Agitate", "Expand the impact of the problem so it's clearly visible."],
-    ["Agitate Deep", "Show the frustration that continues if it's left unsolved."],
-    ["Solution", "Offer the product as the precise answer."],
-    ["Feature 1", "Show the first standout feature that solves the problem."],
-    ["Feature 2", "Show a supporting feature and its safety."],
-    ["Proof", "Test the real usage so the result is visible."],
-    ["Outcome", "Show the relief and result that was gained."],
-    ["CTA", "Close the review with an invite to follow and buy."],
-  ],
-  aida: [
-    ["Attention", "Open with a product view that grabs attention immediately."],
-    ["Interest", "Build interest by pointing out the problem or need."],
-    ["Desire", "Show the convenience and benefit in a compelling way."],
-    ["Solution", "Introduce the product along with its core function."],
-    ["Demonstration", "Demonstrate real usage in detail."],
-    ["Details", "Emphasize the refinement of the materials and safety."],
-    ["Proof", "Show the result and satisfaction from using it."],
-    ["Action", "Recommend the choice and the action to take."],
-    ["CTA", "Invite a follow and close the review fully."],
-  ],
-  relatable_story: [
-    ["Relatable Moment", "Start with a familiar behavior or story everyone relates to."],
-    ["Unspoken Problem", "Reveal a problem many overlook or don't notice in time."],
-    ["Frustration", "Reflect the shared feeling of frustration or difficulty."],
-    ["Turning Point", "Reach a turning point upon trying the product."],
-    ["Solution", "Introduce the product and how simple it is to use."],
-    ["Feature Demo", "Demonstrate the standout feature naturally."],
-    ["Quality Proof", "Show the trustworthy material and safety."],
-    ["Shared Benefit", "Summarize the impression and comfort gained."],
-    ["CTA", "Close with a good thought and an invite to follow."],
-  ],
-  problem_struggle_solution_transformation: [
-    ["Problem", "Open with the key problem that causes difficulty."],
-    ["Struggle", "Show the effort and obstacles from solving it the old way."],
-    ["Turning Point", "Find a new context or discover an interesting product."],
-    ["Solution", "Introduce the product as the precise fix."],
-    ["Function Demo", "Show the usage and standout features of the product."],
-    ["Quality Check", "Check the material details and trustworthy safety."],
-    ["Transformation", "Show the comfort and improved life that results."],
-    ["Proof of Benefit", "Reinforce the result and value gained after use."],
-    ["CTA", "Invite a decision and close the review."],
-  ],
-};
-
-function clean(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function bounded(value: string, max: number): string {
-  return value.slice(0, max).trim();
-}
-
-function buildShotDialogueTH(
-  shotId: number,
-  title: string,
-  productName: string,
-  toneKey?: string | null
-): string {
-  if (toneKey === "irritated_problem") {
-    if (shotId <= 3) {
-      return `เบื่อและหงุดหงิดไหมกับปัญหาเดิมๆ? ช็อตนี้พามาดูจุดชวนหัวเสียเรื่อง ${title} ก่อนที่จะเจอทางออกดีๆ`;
-    }
-    if (shotId <= 5) {
-      return `พอเปลี่ยนมาใช้ ${productName} ปัญหาก็จบไป ช่วยแก้ความหงุดหงิดเรื่อง ${title} ได้อย่างตรงจุด`;
-    }
-    if (shotId <= 7) {
-      return `ลองดูรายละเอียดวัสดุและการใช้งานจริงของ ${productName} ที่ปลอดภัย ไร้กังวลเรื่อง ${title}`;
-    }
-    return `หมดปัญหาหงุดหงิดเดิมๆ ทันที! สรุป ${productName} คุ้มค่า ปลอดภัย ตอบโจทย์ใช้งานจริง`;
-  }
-  if (toneKey === "funny_light") {
-    if (shotId <= 3) {
-      return `ถ้าชีวิตต้องเจอปัญหานี้บ่อยๆ ขอบอกเลยว่ามีเรื่องให้ขำ (แต่เจ็บจริง)... ช็อตนี้พาดู ${title}`;
-    }
-    if (shotId <= 5) {
-      return `จนกระทั่งได้ลอง ${productName} อารมณ์เปลี่ยนทันที ช่วยเรื่อง ${title} ได้แบบฮาๆ แต่เห็นผลจริง`;
-    }
-    if (shotId <= 7) {
-      return `ดูวัสดุและการใช้งานจริงกันชัดๆ ตลกแต่เอาเรื่อง คุ้มค่า ปลอดภัยตามภาพอ้างอิง`;
-    }
-    return `ฮาได้สบายใจ! สรุป ${productName} ตัวนี้ของมันต้องมี ตอบโจทย์ชีวิตสุดๆ`;
-  }
-  if (toneKey === "warm_friendly") {
-    if (shotId <= 3) {
-      return `วันนี้อยากมาแชร์เรื่องใกล้ตัวเรื่อง ${title} ที่หลายคนน่าจะเจอกันบ่อยๆ ครับ/ค่ะ`;
-    }
-    if (shotId <= 5) {
-      return `พอได้ลองใช้ ${productName} แล้วชอบมาก ช่วยเรื่อง ${title} ได้เป็นกันเองและลงตัวสุดๆ`;
-    }
-    if (shotId <= 7) {
-      return `พามาดูรายละเอียดวัสดุและการใช้งานกันใกล้ๆ จริงใจ ไม่จกตา ตรวจสอบได้ทุกมุม`;
-    }
-    return `แนะนำจากใจเลยครับ/ค่ะ ${productName} ตอบโจทย์และคุ้มค่าจริงๆ`;
-  }
-  if (toneKey === "energetic_excited") {
-    if (shotId <= 3) {
-      return `มาแล้วทุกคน! ช็อตนี้พามาดู ${title} ของ ${productName} ที่ต้องบอกว่าน่าตื่นเต้นมาก!`;
-    }
-    if (shotId <= 5) {
-      return `โชว์ฟังก์ชันกันเน้นๆ ${productName} ตัวนี้ใช้งานได้เจ๋งสุดๆ ปังมาก!`;
-    }
-    if (shotId <= 7) {
-      return `ดูงานประกอบและรายละเอียดวัสดุสิครับ จัดเต็ม ปลอดภัย คุณภาพแน่น!`;
-    }
-    return `สุดปัง! สรุป ${productName} ตัวนี้ไม่ทำให้ผิดหวัง ลุยเลย!`;
-  }
-  if (toneKey === "empathetic_soft") {
-    if (shotId <= 3) {
-      return `เข้าใจเลยว่าความกังวลเรื่อง ${title} มันสร้างความยุ่งยากใจมากแค่ไหน...`;
-    }
-    if (shotId <= 5) {
-      return `${productName} ออกแบบมาด้วยความใส่ใจ เพื่อช่วยผ่อนคลายความกังวลเรื่อง ${title}`;
-    }
-    if (shotId <= 7) {
-      return `รายละเอียดวัสดุอ่อนโยน ปลอดภัย ใส่ใจในทุกจุดเพื่อความสบายใจของคุณ`;
-    }
-    return `อบอุ่นใจทุกครั้งที่ใช้งาน สรุป ${productName} คือทางเลือกที่ดูแลคุณอย่างแท้จริง`;
-  }
-  if (toneKey === "expert_confident") {
-    if (shotId <= 3) {
-      return `การวิเคราะห์เรื่อง ${title} ชี้ให้เห็นปัจจัยสำคัญที่ต้องพิจารณาอย่างถี่ถ้วน`;
-    }
-    if (shotId <= 5) {
-      return `${productName} ตอบโจทย์ด้านประสิทธิภาพและฟังก์ชันการใช้งานตามมาตรฐานอย่างแม่นยำ`;
-    }
-    if (shotId <= 7) {
-      return `ตรวจสอบรายละเอียดโครงสร้างและวัสดุ มีหลักฐานยืนยันความปลอดภัยที่น่าเชื่อถือ`;
-    }
-    return `สรุปผลการทดสอบ ${productName} มีคุณภาพและประสิทธิภาพตามมาตรฐานที่มั่นใจได้`;
-  }
-  if (toneKey === "straight_serious") {
-    if (shotId <= 3) {
-      return `ตรงไปตรงมา ช็อตนี้แสดงปัญหาและข้อจำกัดเรื่อง ${title} โดยไม่อ้อมค้อม`;
-    }
-    if (shotId <= 5) {
-      return `การใช้งานจริงของ ${productName} แสดงผลลัพธ์และฟังก์ชันหลักชัดเจน`;
-    }
-    if (shotId <= 7) {
-      return `ตรวจสอบรายละเอียดวัสดุ ความแข็งแรง และความปลอดภัยตามข้อมูลจริง`;
-    }
-    return `สรุปตามจริง ${productName} ให้ผลลัพธ์ตามที่ระบุ คุ้มค่าตามข้อมูล`;
-  }
-  return `ช็อตที่ ${shotId} พาไปดู${title}ของ${productName} โดยยึดข้อมูลและภาพอ้างอิงที่ตรวจสอบได้`;
-}
-
-// Short host (opener/asker) line for the two-person conversation deterministic
-// fallback. The guest's line stays the existing tone-varying
-// `buildShotDialogueTH` content — this only adds a short question/prompt from
-// the host so the beat is now split across two speakers instead of replaced.
-function buildShotHostPromptTH(
-  shotId: number,
-  title: string,
-  productName: string
-): string {
-  if (shotId <= 3) {
-    return `เล่าให้ฟังหน่อยว่าเรื่อง ${title} เป็นยังไงบ้าง?`;
-  }
-  if (shotId <= 5) {
-    return `แล้ว ${productName} ช่วยเรื่องนี้ได้จริงไหม ลองโชว์ให้ดูหน่อย`;
-  }
-  if (shotId <= 7) {
-    return `ขอดูรายละเอียดวัสดุและการใช้งานจริงหน่อยได้ไหม?`;
-  }
-  return `สรุปแล้วคิดว่ายังไงกับ ${productName}?`;
-}
-
-function buildShotHostPromptEN(
-  shotId: number,
-  title: string,
-  productName: string
-): string {
-  if (shotId <= 3) {
-    return `Tell me more about ${title.toLowerCase()} — what's going on here?`;
-  }
-  if (shotId <= 5) {
-    return `Does ${productName} really help with this? Show me.`;
-  }
-  if (shotId <= 7) {
-    return `Can we take a closer look at the materials and how it's actually used?`;
-  }
-  return `So overall, what do you think about ${productName}?`;
-}
-
-function buildShotDialogueTurnsTH(
-  shotId: number,
-  title: string,
-  productName: string,
-  toneKey: string | null | undefined,
-  host: StagedCastMember,
-  guest: StagedCastMember
-): StagedDialogueTurn[] {
-  return [
-    {
-      castId: host.castId,
-      speakerName: host.name,
-      line: buildShotHostPromptTH(shotId, title, productName),
-    },
-    {
-      castId: guest.castId,
-      speakerName: guest.name,
-      line: buildShotDialogueTH(shotId, title, productName, toneKey),
-    },
-  ];
-}
-
-function buildShotDialogueTurnsEN(
-  shotId: number,
-  title: string,
-  productName: string,
-  host: StagedCastMember,
-  guest: StagedCastMember
-): StagedDialogueTurn[] {
-  return [
-    {
-      castId: host.castId,
-      speakerName: host.name,
-      line: buildShotHostPromptEN(shotId, title, productName),
-    },
-    {
-      castId: guest.castId,
-      speakerName: guest.name,
-      line: `Shot ${shotId} explores the ${title.toLowerCase()} of ${productName}, grounded in the approved references and verifiable information.`,
-    },
-  ];
-}
-
-function buildNarrativeStorySummaryTH(
-  productName: string,
-  structureKey?: string | null,
-  toneKey?: string | null,
-  revisionNotes?: string | null
-): string {
-  const toneLabel = TONE_LABELS_TH[toneKey ?? ""] ? ` - โทน${TONE_LABELS_TH[toneKey ?? ""]}` : "";
-  let baseSummary = "";
-
-  if (structureKey === "hook_problem_insight_proof_cta") {
-    baseSummary = `เรื่องย่อ (Hook → Problem → Insight → Proof → CTA${toneLabel}): เปิดเรื่องด้วย Hook ดึงดูดสายตาเกี่ยวกับ ${productName} สะท้อนปัญหาและความหงุดหงิดเดิมๆ ของผู้ใช้ที่พบบ่อย เสนออินไซต์และมุมมองทางออกใหม่ด้วยสินค้า พิสูจน์ด้วยฟังก์ชันการใช้งานและวัสดุความปลอดภัยที่ตรวจสอบได้ ปิดท้ายด้วยสรุปผลการใช้งานและคำชวนติดตามอย่างคุ้มค่า`;
-  } else if (structureKey === "hook_problem_emotion_insight_solution_result_cta") {
-    baseSummary = `เรื่องย่อ (Hook → Problem → Emotion → Insight → Solution → Result → CTA${toneLabel}): ดึงดูดความสนใจใน ${productName} ชี้ปัญหาและสะท้อนอารมณ์ความกังวลเดิม นำเสนออินไซต์และแนะนำสินค้าเป็นคำตอบหลัก แสดงผลการสาธิตใช้งานจริงและวัสดุปลอดภัย ปิดท้ายด้วยผลลัพธ์ที่ดีขึ้นและคำชวนติดตาม`;
-  } else if (structureKey === "product_review_situation_problem_try_result_fit") {
-    baseSummary = `เรื่องย่อ (Situation → Problem → Try → Result → Fit${toneLabel}): เริ่มจากสถานการณ์จริงในชีวิตประจำวันเกี่ยวกับการใช้ ${productName} สะท้อนข้อจำกัดที่พบ ลองเปิดกล่องทดลองใช้งาน โชว์ผลลัพธ์และวัสดุที่คุ้มค่า พร้อมสรุปความเหมาะสมตอบโจทย์ผู้ใช้งาน`;
-  } else if (structureKey === "before_after_bridge") {
-    baseSummary = `เรื่องย่อ (Before → After → Bridge${toneLabel}): แสดงปัญหาก่อนใช้งาน ${productName} แนะนำสินค้าเป็นตัวเชื่อมเปลี่ยนผ่านสู่ความสะดวกสบายหลังใช้ สาธิตฟังก์ชันสำคัญและตรวจสอบความปลอดภัย ปิดท้ายด้วยความเปลี่ยนแปลงที่ชัดเจน`;
-  } else if (structureKey === "pas") {
-    baseSummary = `เรื่องย่อ (PAS - Problem → Agitate → Solution${toneLabel}): ชี้ปัญหาหลักและตอกย้ำความยุ่งยากเดิม นำเสนอ ${productName} เป็นทางออกหลัก พิสูจน์ฟังก์ชันและการใช้งานจริงอย่างละเอียด ปิดท้ายด้วยผลลัพธ์และความคุ้มค่า`;
-  } else if (structureKey === "aida") {
-    baseSummary = `เรื่องย่อ (AIDA - Attention → Interest → Desire → Action${toneLabel}): ดึงดูดสายตากับ ${productName} กระตุ้นความสนใจและความอยากได้ด้วยฟังก์ชันเด่น สาธิตการใช้งานจริงและคุณภาพวัสดุ ปิดท้ายด้วยคำชวนสั่งซื้อและติดตาม`;
-  } else if (structureKey === "relatable_story") {
-    baseSummary = `เรื่องย่อ (Relatable Story${toneLabel}): เล่าโมเมนต์ใกล้ตัวเกี่ยวกับ ${productName} เผยปัญหาที่ไม่ทันคิด สู่จุดเปลี่ยนในการลองใช้งานจริง โชว์ความปลอดภัยและประโยชน์ที่ได้รับ ปิดท้ายด้วยข้อคิดดีๆ และคำแนะนำ`;
-  } else if (structureKey === "problem_struggle_solution_transformation") {
-    baseSummary = `เรื่องย่อ (Problem → Struggle → Solution → Transformation${toneLabel}): เปิดด้วยปัญหาและอุปสรรคในการแก้ไขแบบเดิม สู่จุดเปลี่ยนที่ค้นพบ ${productName} สาธิตการทำงานและตรวจสอบคุณภาพวัสดุ ยืนยันความเปลี่ยนแปลงที่ดีขึ้นและผลลัพธ์ที่คุ้มค่า`;
-  } else {
-    baseSummary = `เรื่องย่อ 9 ช็อต (${productName}${toneLabel}): เปิดเรื่องดึงดูดสายตา เผยรายละเอียดและฟังก์ชันหลักของสินค้าในบริบทการใช้งานจริง ตรวจสอบงานประกอบและวัสดุอย่างปลอดภัย ปิดท้ายด้วยสรุปการใช้งานที่ตรวจสอบได้`;
-  }
-
-  const notes = clean(revisionNotes);
-  if (notes) {
-    baseSummary += ` (ทิศทางปรับแก้ไข: ${notes})`;
-  }
-  return baseSummary;
-}
-
-function buildNarrativeStorySummaryEN(
-  productName: string,
-  structureKey?: string | null,
-  toneKey?: string | null,
-  revisionNotes?: string | null
-): string {
-  const toneText = toneKey ? ` in ${toneKey} tone` : "";
-  let baseSummary = "";
-  if (structureKey) {
-    const formattedStruct = structureKey.replace(/_/g, " ").toUpperCase();
-    baseSummary = `Nine-shot story arc (${formattedStruct}${toneText}): Open with an engaging hook for ${productName}, highlight real user problems and pain points, present the insight and product solution, demonstrate verifiable features and safe material construction, and close with a clear call to action.`;
-  } else {
-    baseSummary = `A continuous nine-shot review of ${productName}${toneText}, grounded in approved product references and verifiable information.`;
-  }
-  const notes = clean(revisionNotes);
-  if (notes) {
-    baseSummary += ` (Revision direction: ${notes})`;
-  }
-  return baseSummary;
-}
-
-// Additive (feature/marketplace-flexible-shots): mechanically resizes a
-// beats table to `targetCount` entries. This is a BOUNDED, purely mechanical
-// fallback — it never authors new creative content. It always keeps the
-// first beat (hook/opening) and the last beat (CTA/closing) fixed, and cycles
-// through the beats in between to fill whatever length is requested. When
-// `targetCount === beats.length` (the common/default 9-shot case) it returns
-// the table completely unchanged (byte-identical output).
-function resizeShotBeats(
-  beats: readonly (readonly [string, string])[],
-  targetCount: number
-): Array<[string, string]> {
-  if (targetCount === beats.length) {
-    return beats.map(beat => [beat[0], beat[1]] as [string, string]);
-  }
-  const first = beats[0];
-  const last = beats[beats.length - 1];
-  if (targetCount <= 1) {
-    return [first ? [first[0], first[1]] : ["", ""]];
-  }
-  if (targetCount === 2) {
-    return [
-      [first[0], first[1]],
-      [last[0], last[1]],
-    ];
-  }
-  const middle = beats.slice(1, beats.length - 1);
-  const middleTargetCount = targetCount - 2;
-  const resized: Array<[string, string]> = [[first[0], first[1]]];
-  for (let index = 0; index < middleTargetCount; index += 1) {
-    const source = middle.length > 0 ? middle[index % middle.length] : last;
-    resized.push([source[0], source[1]]);
-  }
-  resized.push([last[0], last[1]]);
-  return resized;
-}
-
-export function buildStagedStoryArcPlan(input: {
-  runId: string;
-  product: StagedStoryArcProduct;
-  referenceManifestHash?: string | null;
-  revision?: number;
-  previousStorySummary?: string | null;
-  languagePlan?: StagedStoryArcLanguagePlan;
-  reviewTone?: string | null;
-  storytellingStructure?: string | null;
-  // Additive (opt-in). Omitting this (or passing 0/1 members) reproduces
-  // today's output byte-for-byte — only >=2 members switch on
-  // two_person_conversation behavior.
-  cast?: StagedCastMember[];
-  // Additive (opt-in). Defaults to 10 to reproduce today's output exactly.
-  shotDurationSeconds?: number;
-  // Additive (opt-in, feature/marketplace-flexible-shots). Defaults to 9 (the
-  // beats table's natural length) to reproduce today's output exactly. For
-  // any other count, the beats table is mechanically resized via
-  // `resizeShotBeats` — this is a bounded deterministic fallback, never new
-  // authored content. The LLM path (`generateStagedStoryArcPlanWithLLM`) is
-  // the primary source of truth for non-default shot counts; this function
-  // only runs when the LLM path is skipped or fails.
-  shotCount?: number;
-}): StagedStoryArcPlan {
-  const productName = bounded(
-    clean(input.product.productName) || "สินค้า",
-    240
-  );
-  const productId = clean(input.product.productId);
-  const productDescription = bounded(clean(input.product.description), 500);
-  const languagePlan = input.languagePlan;
-  const summaryLanguage = languagePlan?.summaryLanguage === "en" ? "en" : "th";
-  const dialogueLanguage = languagePlan?.dialogueLanguage === "en" ? "en" : "th";
-  const structureKey = clean(input.storytellingStructure);
-  const toneKey = clean(input.reviewTone);
-  const customBeatsTH = STORYTELLING_BEATS_TH[structureKey];
-  const customBeatsEN = STORYTELLING_BEATS_EN[structureKey];
-  const baseShotBeats =
-    summaryLanguage === "en"
-      ? customBeatsEN ?? SHOT_BEATS_EN
-      : customBeatsTH ?? SHOT_BEATS;
-  const targetShotCount =
-    typeof input.shotCount === "number" &&
-    Number.isFinite(input.shotCount) &&
-    input.shotCount > 0
-      ? Math.max(1, Math.min(30, Math.round(input.shotCount)))
-      : baseShotBeats.length;
-  const shotBeats = resizeShotBeats(baseShotBeats, targetShotCount);
-
-  // Deterministic dialogue is a TWO-VOICE builder — it must read the leads,
-  // not the first two roster entries, now that the roster can hold supporting
-  // characters (`planning/marketplace-four-character-cast/plan.md`).
-  const cast = selectStagedLeadCast(input.cast);
-  const conversationMode = resolveStagedConversationMode(input.cast);
-  const [hostMember, guestMember] = cast;
-  const shotDurationSeconds = Math.max(
-    1,
-    Math.round(input.shotDurationSeconds ?? 10)
-  );
-
-  const revisionContext = clean(input.previousStorySummary);
-  const storySummary = bounded(
-    summaryLanguage === "en"
-      ? buildNarrativeStorySummaryEN(
-          productName,
-          structureKey,
-          toneKey,
-          revisionContext
-        )
-      : buildNarrativeStorySummaryTH(
-          productName,
-          structureKey,
-          toneKey,
-          revisionContext
-        ),
-    500
-  );
-  const shots = shotBeats.map(([title, visual], index) => {
-    const shotId = index + 1;
-    let dialogue: string;
-    let dialogueTurns: StagedDialogueTurn[] | undefined;
-    let castInShot: string[] | undefined;
-
-    if (
-      conversationMode === "two_person_conversation" &&
-      hostMember &&
-      guestMember
-    ) {
-      const turns =
-        dialogueLanguage === "en"
-          ? buildShotDialogueTurnsEN(shotId, title, productName, hostMember, guestMember)
-          : buildShotDialogueTurnsTH(
-              shotId,
-              title,
-              productName,
-              toneKey,
-              hostMember,
-              guestMember
-            );
-      dialogueTurns = turns;
-      dialogue = bounded(renderStagedDialogueFromTurns(turns), 640);
-      castInShot = [hostMember.castId, guestMember.castId];
-    } else {
-      dialogue = bounded(
-        dialogueLanguage === "en"
-          ? `Shot ${shotId} explores the ${title.toLowerCase()} of ${productName}, grounded in the approved references and verifiable information.`
-          : buildShotDialogueTH(shotId, title, productName, toneKey),
-        320
-      );
-    }
-
-    return {
-      shotId,
-      title,
-      storySummary: bounded(`${shotId}. ${title}: ${visual}`, 600),
-      visualSummary: bounded(visual, 400),
-      dialogue,
-      durationSeconds: shotDurationSeconds,
-      ...(dialogueTurns ? { dialogueTurns } : {}),
-      ...(castInShot ? { castInShot } : {}),
-    };
-  });
-  const product = {
-    productId,
-    productName,
-    description: productDescription || null,
-    ...(input.product.specs ? { specs: input.product.specs } : {}),
-    imageUrls: input.product.imageUrls.map(clean).filter(Boolean).slice(0, 5),
-  } satisfies StagedStoryArcProduct;
-  const referenceManifestHash =
-    clean(input.referenceManifestHash) ||
-    buildProductionStableHash({ productId, imageUrls: product.imageUrls });
-  const planRevision = Math.max(1, Math.floor(input.revision ?? 1));
-  const storyPlanHash = buildProductionStableHash({
-    runId: input.runId,
-    planRevision,
-    storySummary,
-    product,
-    shots,
-    referenceManifestHash,
-    ...(languagePlan ? { languagePlan } : {}),
-  });
-  const plan = {
-    planRevision,
-    title: `Marketplace Auto Review: ${productName}`,
-    storySummary,
-    product,
-    shots,
-    referenceManifestHash,
-    storyPlanHash,
-    source: "bounded_story_arc_fallback" as const,
-    ...(languagePlan ? { languagePlan } : {}),
-    ...(cast.length > 0 ? { cast, conversationMode } : {}),
-  };
-  const contract = validateStagedShotContract(
-    shots.map(shot => ({
-      shotId: shot.shotId,
-      durationSeconds: shot.durationSeconds,
-    })),
-    { expectedCount: targetShotCount }
-  );
-  if (!contract.valid) {
-    throw new Error(
-      `staged_story_plan_invalid:${contract.reasonCodes.join(",")}`
-    );
-  }
-  return plan;
-}
-
-export function buildStagedImagePrompt(input: {
-  plan: StagedStoryArcPlan;
-  shot: StagedStoryArcShot;
-  customManifest?: Array<{ url: string; role?: string; label?: string; active?: boolean }>;
-  /** This shot's per-shot look overrides, keyed by castId. Absent = default
-   *  looks, which is every pre-existing run. */
-  castLooks?: Record<string, ShotCastLook> | null;
-}): string {
-  const thai = input.plan.languagePlan?.promptLanguage === "th";
-
-  const activeItems = (input.customManifest || []).filter(
-    item => item && typeof item.url === "string" && item.url.trim() && item.active !== false
-  );
-  const productItems = activeItems.filter(item => item.role !== "character");
-  // Only THIS shot's characters — the same helper the dispatch path uses, so
-  // the `@ImageN` tags written below always match the images actually sent
-  // (`planning/marketplace-four-character-cast/plan.md` §5).
-  //
-  // The ORIGINAL manifest index is carried alongside, because `castId` and the
-  // `plan.cast` lookup are both positional over the FULL character list —
-  // indexing them by position in the filtered list would attribute shot 3's
-  // lone supporting character to `cast-1`.
-  const allCharacterItems = activeItems.filter(item => item.role === "character");
-  const shotCastIds = new Set(input.shot.castInShot ?? []);
-  const characterEntries = allCharacterItems
-    .map((item, castIndex) => ({ item, castIndex }))
-    .filter(
-      entry =>
-        shotCastIds.size === 0 ||
-        shotCastIds.has(castIdForCharacterIndex(entry.castIndex)),
-    );
-  const characterItems = characterEntries.map(entry => entry.item);
-
-  const hasProduct = productItems.length > 0;
-  const hasCharacter = characterItems.length > 0;
-  // Count-aware: only >=2 character reference items switch on the cast
-  // roster + two-shot staging rules. Exactly 0 or 1 character items keep the
-  // original single-tag `hasCharacter` behavior byte-for-byte.
-  //
-  // NOTE this is deliberately about how many people are IN THE FRAME, not how
-  // many of them speak — it drives the two-shot/over-the-shoulder staging
-  // language, which a host plus a silent supporting character needs just as
-  // much as two speakers. `resolveStagedConversationMode` (leads only) remains
-  // the authority for DIALOGUE.
-  const isConversation = characterItems.length >= 2;
-
-  const productTags = hasProduct
-    ? productItems.map((_, i) => `@Image${i + 1}`).join(", ")
-    : "@Image1";
-
-  const productCount = hasProduct ? productItems.length : 1;
-  const characterTags = hasCharacter
-    ? characterItems.map((_, i) => `@Image${productCount + i + 1}`).join(", ")
-    : "";
-
-  // Cast roster: names/roles/descriptors come from `plan.cast` (matched by
-  // position against the active character items); falls back to the
-  // manifest's own `label` or a generic "Person N" when `plan.cast` hasn't
-  // been wired by the caller yet.
-  // EVERY active character is in the frame and therefore in the roster — the
-  // old `.slice(0, 2)` silently dropped supporting characters from the prompt
-  // while still sending their reference images, which is precisely how an
-  // extra ends up standing in the shot with nothing to do
-  // (`planning/marketplace-four-character-cast/plan.md` P1).
-  // `tag` uses the position in THIS SHOT's ordered reference list (that is
-  // what the provider receives); `name`/`role`/`castId` come from the cast
-  // member's ORIGINAL roster position.
-  const castRoster = isConversation
-    ? characterEntries.map(({ item, castIndex }, i) => {
-        const castMember = input.plan.cast?.[castIndex];
-        const tag = `@Image${productCount + i + 1}`;
-        const name =
-          clean(castMember?.name) ||
-          clean(item.label) ||
-          `Person ${castIndex + 1}`;
-        const role =
-          castMember?.role ??
-          (castIndex === 0 ? "host" : castIndex === 1 ? "guest" : "support");
-        const descriptor = clean(castMember?.descriptor);
-        const castId = castMember?.castId ?? castIdForCharacterIndex(castIndex);
-        return { tag, name, role, descriptor, castId };
-      })
-    : [];
-
-  // `castRoster` is ALREADY this shot's cast — the old second filter here is
-  // gone with the per-shot selection above.
-  const rosterInShot = castRoster;
-
-  if (thai) {
-    const refLines = [
-      `ใช้ ${productTags} เป็นภาพอ้างอิงหลักของสินค้า โดยรักษารูปร่าง สี วัสดุ ฉลาก และสัดส่วนตามหลักฐานทุกประการ`,
-    ];
-    if (hasCharacter) {
-      refLines.push(
-        `ใช้ ${characterTags} เป็นภาพบุคคล/ตัวละครอ้างอิงหลัก (character identity lock) โดยรักษาใบหน้า ทรงผม รูปร่าง และลักษณะเฉพาะตัวของตัวละครหลักตามภาพอ้างอิงอย่างแม่นยำ`
-      );
-    } else {
-      refLines.push(
-        "ใช้ภาพบุคคล/ตัวละครอ้างอิงที่แนบมาเป็น identity lock หากมี โดยรักษารูปร่างและลักษณะตัวละครสอดคล้องกัน"
-      );
-    }
-
-    const conversationLines: string[] = [];
-    if (isConversation && rosterInShot.length > 0) {
-      conversationLines.push(
-        "นักแสดงในคลิปนี้:",
-        ...rosterInShot.map(entry =>
-          entry.descriptor
-            ? `${entry.tag} = ${entry.name} (${entry.role}) — ${entry.descriptor}`
-            : `${entry.tag} = ${entry.name} (${entry.role})`
-        )
-      );
-      // Supporting business, so the frame shows them DOING the thing the story
-      // planner authored rather than standing in shot
-      // (`planning/marketplace-four-character-cast/plan.md` §3).
-      const beatLines = (input.shot.supportingBeats ?? [])
-        .map(beat => {
-          const entry = rosterInShot.find(item => item.castId === beat.castId);
-          if (!entry || !clean(beat.action)) return null;
-          return `${entry.tag} (${entry.name}) กำลัง: ${clean(beat.action)}`;
-        })
-        .filter((line): line is string => line !== null);
-      if (beatLines.length > 0) {
-        conversationLines.push("การกระทำของตัวประกอบในช็อตนี้:", ...beatLines);
-      }
-    }
-
-    return [
-      `สร้างภาพรีวิวสินค้าแนวตั้ง 9:16 สำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
-      `เรื่องย่อที่ยืนยันแล้ว: ${input.plan.storySummary}`,
-      `เรื่องย่อของช็อต: ${input.shot.storySummary}`,
-      `ทิศทางภาพ: ${input.shot.visualSummary}`,
-      "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด",
-      "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
-      `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
-      ...refLines,
-      ...conversationLines,
-      "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
-      "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
-    ].join("\n");
-  }
-
-  const refLinesEng = [
-    `Use ${productTags} as the primary product reference and preserve the product's visible shape, color, materials, labels, and proportions exactly.`,
-  ];
-  if (hasCharacter) {
-    refLinesEng.push(
-      `Use ${characterTags} as the primary person/character reference image (character identity lock), preserving the character's facial features, identity, hairstyle, and appearance consistently.`
-    );
-  } else {
-    refLinesEng.push(
-      "If a person or character reference is supplied, preserve that identity consistently as a separate identity lock; never let it alter the product lock."
-    );
-  }
-
-  const conversationLinesEng: string[] = [];
-  if (isConversation && rosterInShot.length > 0) {
-    conversationLinesEng.push(
-      "Cast in this clip:",
-      ...rosterInShot.map(entry =>
-        entry.descriptor
-          ? `${entry.tag} = ${entry.name} (${entry.role}) — ${entry.descriptor}`
-          : `${entry.tag} = ${entry.name} (${entry.role})`
-      )
-    );
-    const beatLinesEng = (input.shot.supportingBeats ?? [])
-      .map(beat => {
-        const entry = rosterInShot.find(item => item.castId === beat.castId);
-        if (!entry || !clean(beat.action)) return null;
-        return `${entry.tag} (${entry.name}) is: ${clean(beat.action)}`;
-      })
-      .filter((line): line is string => line !== null);
-    if (beatLinesEng.length > 0) {
-      conversationLinesEng.push("Supporting action in this shot:", ...beatLinesEng);
-    }
-  }
-
-  return [
-    `Create one vertical 9:16 product-review image for shot ${input.shot.shotId}.`,
-    `Approved story summary: ${input.plan.storySummary}`,
-    `Approved shot brief: ${input.shot.storySummary}`,
-    `Visual direction: ${input.shot.visualSummary}`,
-    "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product.",
-    "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
-    `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
-    ...refLinesEng,
-    ...conversationLinesEng,
-    "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
-    "Keep the product clearly visible and do not render the dialogue as on-screen text.",
-  ].join("\n");
-}
-
-/**
- * Deterministic (no LLM call) two-voice descriptor for a two-person
- * conversation clip. Mirrors the style of
- * `buildMarketplaceAutoReviewVoiceProfileDescriptor` in
- * `marketplaceAutoReviewService.ts` (facts-only, no invented details) but
- * intentionally does NOT reuse that legacy single-narrator "VOICE
- * CONSISTENCY LOCK" line — that lock forbids switching narrator, which would
- * directly defeat a two-person conversation.
- *
- * NOTE (skill-first restore, `planning/marketplace-staged-skill-first-restore`):
- * this descriptor's text is no longer injected into `buildStagedVideoPrompt`
- * — directing HOW the two voices should sound/perform is the
- * `product-review-sequential-storyboard` skill's job (see its Two-Person
- * Conversation Mode section), not this deterministic fallback's. The
- * function stays exported (it has no callers left in this file) as a
- * facts-only building block in case a future caller needs a deterministic
- * cast-voice label without any performance direction attached.
- */
-export function buildStagedTwoVoiceDescriptor(
-  cast: StagedCastMember[]
-): string {
-  // Two VOICES — read the leads, never the first two roster entries.
-  const [host, guest] = selectStagedLeadCast(cast);
-  const describeMember = (
-    member: StagedCastMember | undefined,
-    fallbackName: string,
-    fallbackRole: "host" | "guest"
-  ): string => {
-    const name = clean(member?.name) || fallbackName;
-    const roleLabel = member?.role ?? fallbackRole;
-    const extra = [clean(member?.ageRange ?? undefined), clean(member?.descriptor)]
-      .filter(Boolean)
-      .join(", ");
-    return extra ? `${name} (${roleLabel}, ${extra})` : `${name} (${roleLabel})`;
-  };
-  const hostLabel = describeMember(host, "the host", "host");
-  const guestLabel = describeMember(guest, "the guest", "guest");
-  return `two distinct, consistent voices — ${hostLabel} and ${guestLabel} — each speaker keeps the exact same voice, timbre, tone, and pacing across every clip; never swap voices between the two speakers.`;
-}
-
-export function buildStagedVideoPrompt(input: {
-  plan: StagedStoryArcPlan;
-  shot: StagedStoryArcShot;
-}): string {
-  const thai = input.plan.languagePlan?.promptLanguage === "th";
-  const durationSeconds = input.shot.durationSeconds;
-
-  const isConversation = input.plan.conversationMode === "two_person_conversation";
-  // `dialogue` is the editable, hashed source of truth. `dialogueTurns` is a
-  // derived cache and can be stale on older runs, so never append both forms
-  // to a prompt. Vertical Drama uses the same pattern: resolve each spoken
-  // name against labeled character portraits, then bind it to the matching
-  // face in the accepted start frame.
-  const namedDialogue = parseSpeakerNamedDialogue(input.shot.dialogue);
-  const cast = input.plan.cast ?? [];
-  const usesSpeakerBinding =
-    isConversation || (namedDialogue !== undefined && cast.length > 0);
-  const normalizeName = (value: string) =>
-    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-  const castByName = new Map(
-    cast.map(member => [normalizeName(member.name), member])
-  );
-  const renderSpeaker = (speakerName: string) =>
-    castByName.get(normalizeName(speakerName))?.name ?? speakerName;
-
-  const conversationLinesTH: string[] = [];
-  const conversationLinesEng: string[] = [];
-  if (usesSpeakerBinding) {
-    const visibleSpeakerLines = (namedDialogue ?? []).map(line => {
-      const speakerName = renderSpeaker(line.speakerName);
-      const fallbackCueEn =
-        "not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed";
-      const fallbackCueTh =
-        "fallback แบบข้อความไม่สามารถตรวจยืนยันใบหน้าได้; ใช้เสียงบรรยายนอกจอและปิดปากตัวละครทุกคนในภาพ";
-      return { speakerName, fallbackCueEn, fallbackCueTh };
-    });
-    if (visibleSpeakerLines.length > 0) {
-      conversationLinesTH.push(
-        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
-        ...visibleSpeakerLines.map(
-          ({ speakerName, fallbackCueTh }) =>
-            `- ${speakerName}: ${fallbackCueTh}`
-        ),
-        "รหัส cast และป้าย @Image เป็นข้อมูลเฉพาะตอนเขียน Prompt เท่านั้น; ห้ามใช้แทนจุดสังเกตของคนในภาพจริง"
-      );
-      conversationLinesEng.push(
-        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
-        ...visibleSpeakerLines.map(
-          ({ speakerName, fallbackCueEn }) =>
-            `- ${speakerName}: ${fallbackCueEn}`
-        ),
-        "Cast IDs and @Image labels are authoring-only metadata; never use them as visual identifiers in the rendered video prompt."
-      );
-    }
-    if (namedDialogue) {
-      const cueForSpeaker = (speakerName: string, language: "th" | "en") => {
-        const cue = visibleSpeakerLines.find(
-          item => normalizeName(item.speakerName) === normalizeName(speakerName)
-        );
-        return language === "th"
-          ? cue?.fallbackCueTh ?? "ใช้เสียงบรรยายนอกจอเพราะยังจับคู่ใบหน้าไม่ได้"
-          : cue?.fallbackCueEn ?? "not visually resolved by this text-only fallback; use offscreen voice-over";
-      };
-      conversationLinesTH.push(
-        "บทพูดที่อนุมัติแล้ว (พูดแต่ละบรรทัดครั้งเดียว ตามลำดับและข้อความนี้เท่านั้น):",
-        ...namedDialogue.map((line, i) =>
-          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "th")}): "${line.line}"`
-        )
-      );
-      conversationLinesEng.push(
-        "Approved dialogue (speak each line exactly once, in this order, with no added or rewritten speech):",
-        ...namedDialogue.map((line, i) =>
-          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "en")}): "${line.line}"`
-        )
-      );
-    } else {
-      conversationLinesTH.push(
-        "บทพูดที่อนุมัติแล้ว (พูดข้อความนี้ครั้งเดียวตรงตามต้นฉบับ ห้ามเพิ่มหรือเขียนใหม่):",
-        input.shot.dialogue
-      );
-      conversationLinesEng.push(
-        "Approved dialogue (speak this exact text once; do not add or rewrite speech):",
-        input.shot.dialogue
-      );
-    }
-    conversationLinesTH.push(
-      "ล็อกผู้พูดกับใบหน้า: fallback นี้ไม่มีการตรวจภาพเพื่อจับคู่ใบหน้า จึงห้ามเดาตัวตนหรือสั่งขยับปาก ให้ใช้เสียงบรรยายนอกจอเท่านั้น"
-    );
-    conversationLinesEng.push(
-      "SPEAKER-TO-FACE LOCK: This text-only fallback has not visually matched the portraits to people in the accepted shot. Do not guess or assign visible lip movement; use offscreen voice-over and keep every visible mouth closed."
-    );
-  }
-
-  // Supporting business + optional short line
-  // (`planning/marketplace-four-character-cast/plan.md` §3). Kept in its own
-  // block, AFTER the lead turns, so a supporting line can never be mistaken
-  // for one of the two main voices or reorder the conversation.
-  const supportingBeats = (input.shot.supportingBeats ?? []).filter(beat =>
-    clean(beat.action)
-  );
-  if (supportingBeats.length > 0) {
-    const castNameById = new Map(
-      (input.plan.cast ?? []).map(member => [member.castId, member.name])
-    );
-    const describeBeat = (beat: StagedSupportingBeat) => {
-      const name = castNameById.get(beat.castId) || beat.castId;
-      const line = clean(beat.line);
-      return { name, action: clean(beat.action), line };
-    };
-    conversationLinesTH.push(
-      "ตัวประกอบในช็อตนี้ (ไม่ใช่ผู้พูดหลัก):",
-      ...supportingBeats.map(beat => {
-        const { name, action, line } = describeBeat(beat);
-        return line
-          ? `- ${name} กำลัง ${action} และพูดสั้น ๆ ว่า "${line}"`
-          : `- ${name} กำลัง ${action} โดยไม่มีบทพูด`;
-      })
-    );
-    conversationLinesEng.push(
-      "Supporting cast in this shot (not a main speaker):",
-      ...supportingBeats.map(beat => {
-        const { name, action, line } = describeBeat(beat);
-        return line
-          ? `- ${name} is ${action}, with one short line: "${line}"`
-          : `- ${name} is ${action}, with no spoken line`;
-      })
-    );
-  }
-
-  if (thai) {
-    return [
-      `สร้างวีดีโอรีวิวสินค้าแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีสำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
-      `ใช้ภาพที่ยอมรับแล้วของช็อตที่ ${input.shot.shotId} เป็นแหล่งภาพต้นฉบับที่ต้องคงเอกลักษณ์ไว้`,
-      ...(usesSpeakerBinding ? [] : [`บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`]),
-      `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
-      ...conversationLinesTH,
-      usesSpeakerBinding
-        ? `กล้อง/การกระทำ: ต่อจากภาพที่อนุมัติและแสดงการกระทำเดียวตามทิศทางนี้: ${input.shot.visualSummary}; คงสินค้าและตำแหน่งให้ต่อเนื่อง`
-        : `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
-      usesSpeakerBinding
-        ? `จังหวะ: เริ่มการกระทำช่วงต้น แสดงชัดช่วงกลาง แล้วหยุดอย่างเป็นธรรมชาติก่อนครบ ${durationSeconds} วินาที`
-        : `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
-      usesSpeakerBinding
-        ? "เสียง: พูดเฉพาะบทที่อนุมัติให้ตรงตามข้อความ ห้ามเพิ่มเสียงบรรยายหรือประโยคอื่น; ห้ามเพิ่มคำกล่าวอ้าง ข้อความ โลโก้ หรือลายน้ำ"
-        : "ใช้เสียงบทพูดที่ยืนยันแล้วตามตัวอักษร ไม่เพิ่มบทพูดอื่น; ห้ามเพิ่มคำกล่าวอ้าง ราคา ข้อความบนจอ caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
-    ].join("\n");
-  }
-  return [
-    `Create a ${durationSeconds}-second vertical 9:16 product-review video for shot ${input.shot.shotId}.`,
-    `Use the accepted image artifact for shot ${input.shot.shotId} as the exact visual source.`,
-    ...(usesSpeakerBinding ? [] : [`Approved dialogue (must not be rewritten): ${input.shot.dialogue}`]),
-    `Approved story context: ${input.shot.storySummary}`,
-    ...conversationLinesEng,
-    usesSpeakerBinding
-      ? `Camera/action: continue from the accepted image and show one clear action matching: ${input.shot.visualSummary}. Preserve product design and placement.`
-      : `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
-    usesSpeakerBinding
-      ? `Pacing: begin early, show the action clearly mid-shot, then settle naturally before ${durationSeconds} seconds.`
-      : `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
-    usesSpeakerBinding
-      ? "Audio: speak only the approved lines verbatim, naturally; add no narration or other speech."
-      : "Audio: speak only the approved dialogue exactly as written, with natural pacing and relevant room ambience; do not add narration or other lines.",
-    ...(usesSpeakerBinding
-      ? []
-      : ["If a person or character reference is supplied, preserve that identity consistently throughout the shot."]),
-    usesSpeakerBinding
-      ? "Photorealistic vertical 9:16 commercial video. No unsupported claims, on-screen text, captions, logos, watermarks, or marketplace UI."
-      : "Photorealistic commercial short-form video, vertical 9:16. Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
-  ].join("\n");
-}
 
 export function buildStagedCheckpoint(input: {
   checkpointId: string;
@@ -1444,8 +378,8 @@ export function buildStagedCheckpoint(input: {
     requestedByUserId: number;
     requestedAt?: string;
   } | null;
-  // Fail-open QC warnings from `assessStagedPlanAdherence` (tone/structure/
-  // conversation-turns adherence). Only meaningful on `story_plan`
+  // Non-blocking adherence warnings from `assessStagedPlanAdherence`
+  // (tone/structure/conversation turns). Only meaningful on `story_plan`
   // checkpoints; omit or pass an empty array everywhere else.
   adherenceWarnings?: string[];
 }): HumanApprovalCheckpointV1 {
@@ -1498,7 +432,9 @@ export function buildStagedPlanView(plan: StagedStoryArcPlan) {
     storySummary: plan.storySummary,
     source: plan.source,
     ...(plan.conceptOptions ? { conceptOptions: plan.conceptOptions } : {}),
-    ...(plan.selectedConceptId ? { selectedConceptId: plan.selectedConceptId } : {}),
+    ...(plan.selectedConceptId
+      ? { selectedConceptId: plan.selectedConceptId }
+      : {}),
     planRevision: plan.planRevision,
     storyPlanHash: plan.storyPlanHash,
     shots: plan.shots,
@@ -1508,9 +444,8 @@ export function buildStagedPlanView(plan: StagedStoryArcPlan) {
 }
 
 /**
- * Fail-open QC helper: never throws. Anything unparseable/absent counts as
- * satisfied (no warning). Uses the new staged reason codes to flag likely
- * adherence gaps for a plan — never blocks/kills the run by itself.
+ * Checks authored plan structure and returns non-blocking adherence warnings.
+ * Malformed plan input throws so QC errors cannot be hidden as a clean result.
  */
 export function assessStagedPlanAdherence(
   plan: StagedStoryArcPlan,
@@ -1521,39 +456,39 @@ export function assessStagedPlanAdherence(
   }
 ): { warnings: StagedSafeReasonCode[] } {
   const warnings: StagedSafeReasonCode[] = [];
-  try {
-    const structureKey = clean(options.storytellingStructure);
-    const toneKey = clean(options.reviewTone);
-    const conversationMode =
-      options.conversationMode ?? resolveStagedConversationMode(plan.cast ?? []);
-    const shots = Array.isArray(plan.shots) ? plan.shots : [];
+  const structureKey = clean(options.storytellingStructure);
+  const toneKey = clean(options.reviewTone);
+  const conversationMode =
+    options.conversationMode ?? resolveStagedConversationMode(plan.cast ?? []);
+  if (!Array.isArray(plan.shots) || plan.shots.length === 0) {
+    throw new Error("STAGED_PLAN_SHOTS_REQUIRED_FOR_ADHERENCE_CHECK");
+  }
+  const shots = plan.shots;
 
-    if (structureKey && shots.length >= 1) {
-      const hasEmptyBeat = shots.some(
-        shot => !clean(shot?.title) || !clean(shot?.storySummary)
-      );
-      if (hasEmptyBeat) {
-        warnings.push("staged_structure_beat_missing");
-      }
+  if (structureKey) {
+    const hasEmptyBeat = shots.some(
+      shot => !clean(shot?.title) || !clean(shot?.storySummary)
+    );
+    if (hasEmptyBeat) {
+      warnings.push("staged_structure_beat_missing");
     }
+  }
 
-    if (toneKey && shots.length > 0) {
-      const allDialogueBlank = shots.every(shot => !clean(shot?.dialogue));
-      if (allDialogueBlank) {
-        warnings.push("staged_tone_not_adhered");
-      }
+  if (toneKey) {
+    const allDialogueBlank = shots.every(shot => !clean(shot?.dialogue));
+    if (allDialogueBlank) {
+      warnings.push("staged_tone_not_adhered");
     }
+  }
 
-    if (conversationMode === "two_person_conversation" && shots.length > 0) {
-      const missingTurns = shots.some(
-        shot => !Array.isArray(shot?.dialogueTurns) || shot.dialogueTurns.length < 2
-      );
-      if (missingTurns) {
-        warnings.push("staged_conversation_turns_missing");
-      }
+  if (conversationMode === "two_person_conversation") {
+    const missingTurns = shots.some(
+      shot =>
+        !Array.isArray(shot?.dialogueTurns) || shot.dialogueTurns.length < 2
+    );
+    if (missingTurns) {
+      warnings.push("staged_conversation_turns_missing");
     }
-  } catch {
-    // fail-open: never throw, never block the run.
   }
   return { warnings };
 }
@@ -1563,7 +498,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   userId?: number;
   tenantId?: string;
   product: StagedStoryArcProduct;
-  referenceManifestHash?: string | null;
+  referenceManifestHash: string;
   revision?: number;
   previousStorySummary?: string | null;
   languagePlan?: StagedStoryArcLanguagePlan;
@@ -1581,59 +516,83 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   // of a fixed 9 shots, byte-identical prompt/schema behavior).
   shotCount?: number | "auto";
   selectedConcept?: StagedStoryConceptOption;
+  conceptsOnly?: boolean;
 }): Promise<StagedStoryArcPlan> {
   let chosenModel = input.model?.trim();
   if (!chosenModel || chosenModel === "__automatic__") {
-    try {
-      // "อัตโนมัติ" must draw from the admin-curated RECOMMENDED set, not the
-      // cheapest model that merely clears the capability floor.
-      // `selectQualityLargeContextEligibleModels` is sorted cheapest-first, so
-      // taking `[0]` here is what put `google/gemini-3.1-flash-lite` — the
-      // exact model behind the 2026-07-18 lead-beauty-gate incident — in
-      // charge of authoring the story. Vertical Drama's own resolver was moved
-      // to the recommended set on 2026-07-31 (owner override, see
-      // `resolveQualityLargeContextModelId`); the marketplace staged planner
-      // was left behind, and it now matters much more because a 4-person cast
-      // with supporting beats is exactly the kind of structured output a lite
-      // model gets wrong (`project_vd_weak_model_json_class`).
-      const { resolveQualityLargeContextModelId } = await import(
-        "./verticalDramaImproveScript"
-      );
-      const best = await resolveQualityLargeContextModelId();
-      if (best) {
-        chosenModel = best;
-      }
-    } catch {
-      // Fallback if DB query unavailable
-    }
+    // Automatic selection uses the configured recommended model resolver.
+    // A resolver error is an error for this run; never substitute a default.
+    const { resolveQualityLargeContextModelId } =
+      await import("./verticalDramaImproveScript");
+    chosenModel = (await resolveQualityLargeContextModelId())?.trim() || "";
   }
   if (!chosenModel || chosenModel === "__automatic__") {
-    chosenModel = "gemini-2.5-flash";
+    throw new Error("STAGED_STORY_PLAN_MODEL_NOT_CONFIGURED");
+  }
+  if (!Number.isSafeInteger(input.userId) || !input.tenantId?.trim()) {
+    throw new Error("STAGED_STORY_PLAN_OWNER_CONTEXT_REQUIRED");
+  }
+  const referenceManifestHash = clean(input.referenceManifestHash);
+  if (!referenceManifestHash) {
+    throw new Error("STAGED_STORY_PLAN_REFERENCE_MANIFEST_HASH_REQUIRED");
   }
 
-  const productName = bounded(clean(input.product.productName) || "สินค้า", 240);
-  const productDescription = bounded(clean(input.product.description), 500);
-  const structureKey = clean(input.storytellingStructure) || "hook_problem_insight_proof_cta";
+  const skillId = "marketplace-auto-review-story-arc";
+  const skillSync = await syncSingleSkillIfChanged(skillId);
+  if (skillSync.error) {
+    throw new Error(`STAGED_STORY_PLAN_SKILL_SYNC_FAILED:${skillSync.error}`);
+  }
+  const skill = await getSkillByIdAsync(skillId);
+  const skillInstructions = String(
+    skill?.systemPrompt ?? skill?.skillContent ?? ""
+  ).trim();
+  if (!skillInstructions) {
+    throw new Error("STAGED_STORY_PLAN_SKILL_NOT_AVAILABLE");
+  }
+
+  const productName = clean(input.product.productName);
+  if (!productName) throw new Error("STAGED_STORY_PLAN_PRODUCT_NAME_REQUIRED");
+  if (productName.length > 240)
+    throw new Error("STAGED_STORY_PLAN_PRODUCT_NAME_TOO_LONG");
+  const productDescription = clean(input.product.description);
+  if (productDescription.length > 500) {
+    throw new Error("STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_TOO_LONG");
+  }
+  const structureKey =
+    clean(input.storytellingStructure) || "hook_problem_insight_proof_cta";
   const toneKey = clean(input.reviewTone) || "irritated_problem";
   const revisionNotes = clean(input.previousStorySummary);
 
-  const userId = input.userId ?? 1;
-  const tenantId = input.tenantId ?? "system";
+  const userId = input.userId!;
+  const tenantId = input.tenantId!.trim();
 
-  const shotDurationSeconds = Math.max(
-    1,
-    Math.round(input.shotDurationSeconds ?? 10)
-  );
+  const shotDurationSeconds = input.shotDurationSeconds ?? 10;
+  if (
+    !Number.isInteger(shotDurationSeconds) ||
+    shotDurationSeconds < 1 ||
+    shotDurationSeconds > 60
+  ) {
+    throw new Error(
+      `STAGED_STORY_PLAN_SHOT_DURATION_INVALID:${shotDurationSeconds}`
+    );
+  }
   const dialogueWindowMinSeconds = Math.max(1, shotDurationSeconds - 3);
 
   // Additive (feature/marketplace-flexible-shots). See the `shotCount` doc
   // comment on the input type above.
   const isAutoShotCount = input.shotCount === "auto";
-  const fixedShotCount = isAutoShotCount
-    ? undefined
-    : typeof input.shotCount === "number" && Number.isFinite(input.shotCount)
-    ? Math.max(1, Math.min(30, Math.round(input.shotCount)))
-    : 9;
+  const fixedShotCount = isAutoShotCount ? undefined : (input.shotCount ?? 9);
+  if (
+    fixedShotCount !== undefined &&
+    (!Number.isInteger(fixedShotCount) ||
+      fixedShotCount < 7 ||
+      fixedShotCount > 30)
+  ) {
+    throw new Error(`STAGED_STORY_PLAN_SHOT_COUNT_INVALID:${fixedShotCount}`);
+  }
+  if (revisionNotes.length > 1200) {
+    throw new Error("STAGED_STORY_PLAN_REVISION_NOTES_TOO_LONG");
+  }
 
   // The DIALOGUE roster is the leads only — supporting characters are handed
   // to the model separately (they carry beats, not conversational turns), so
@@ -1661,20 +620,22 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎบทสนทนาสองคน (บังคับ): ทุกช็อตต้องเป็นบทสนทนาระหว่างสองคนนี้ตามบทบาท — คนที่มีบทบาท "host" เป็นผู้เปิดประเด็น/ถาม และคนที่มีบทบาท "guest" เป็นผู้ตอบ/รีวิว โดยยังต้องคงโครงสร้างการเล่าเรื่อง "${structureKey}" และโทน "${toneKey}" ของแต่ละช็อตให้ครบทุกประเด็น — งานของคุณคือแบ่งบทพูดของแต่ละ beat เดิมออกเป็นสองคนผลัดกันพูด ไม่ใช่แทนที่หรือละทิ้งโครงสร้าง/โทนที่กำหนดไว้\n\nสำหรับแต่ละช็อต ให้ส่งฟิลด์ "dialogueTurns" เป็น array ของ {castId, line} เรียงตามลำดับการพูดจริง (อย่างน้อย 2 turn ต่อช็อต) โดยค่า castId ต้องตรงกับที่กำหนดไว้ข้างต้นเป๊ะ (ฟิลด์ "dialogue" จะถูกสร้างจาก turns เหล่านี้โดยอัตโนมัติ ไม่ต้องส่งก็ได้)`
+          )}\n\nกฎบทสนทนาสองคน (บังคับ): ทุกช็อตต้องเป็นบทสนทนาระหว่างสองคนนี้ตามบทบาท — คนที่มีบทบาท "host" เป็นผู้เปิดประเด็น/ถาม และคนที่มีบทบาท "guest" เป็นผู้ตอบ/รีวิว โดยยังต้องคงโครงสร้างการเล่าเรื่อง "${structureKey}" และโทน "${toneKey}" ของแต่ละช็อตให้ครบทุกประเด็น — งานของคุณคือแบ่งบทพูดของแต่ละ beat เดิมออกเป็นสองคนผลัดกันพูด ไม่ใช่แทนที่หรือละทิ้งโครงสร้าง/โทนที่กำหนดไว้\n\nสำหรับแต่ละช็อต ให้ส่งฟิลด์ "dialogueTurns" เป็น array ของ {castId, line} เรียงตามลำดับการพูดจริง (อย่างน้อย 2 turn ต่อช็อต) และ "castInShot" เป็น castId ของทุกคนที่เห็นในช็อต โดยค่า castId ต้องตรงกับที่กำหนดไว้ข้างต้นเป๊ะ (ฟิลด์ "dialogue" จะสร้างจาก turns เหล่านี้หลังผ่านการตรวจสอบ)`
       : activeCast.length === 1
-      ? // Gap fix (flexible-shots/creation-casting audit 2026-07-30): a SOLO
-        // named cast member (e.g. one Drama Series character picked at
-        // creation) used to be omitted from the prompt entirely — the
-        // LLM-first path fired for cast>=1, but the model never learned the
-        // presenter's name/identity, so the solo requirement ("1 ตัว =
-        // พูดคนเดียวในนามตัวละครนั้น") silently degraded to a generic
-        // narrator. The roster is a FACT (skill-first compliant); how to
-        // speak as that presenter remains the model's judgment.
-        `\n\nผู้ดำเนินรายการคนเดียวในคลิปนี้ (Presenter): ${activeCast[0].name}${
-          activeCast[0].descriptor ? ` — ${clean(activeCast[0].descriptor)}` : ""
-        }\nบทพูดทุกช็อตเป็นบทพูดเดี่ยวของ "${activeCast[0].name}" ในมุมมองบุคคลที่หนึ่ง สอดคล้องกับตัวตนของผู้ดำเนินรายการคนนี้ โดยคงโครงสร้าง "${structureKey}" และโทน "${toneKey}" ครบทุกประเด็น (ไม่ต้องส่ง dialogueTurns)`
-      : "";
+        ? // Gap fix (flexible-shots/creation-casting audit 2026-07-30): a SOLO
+          // named cast member (e.g. one Drama Series character picked at
+          // creation) used to be omitted from the prompt entirely — the
+          // LLM-first path fired for cast>=1, but the model never learned the
+          // presenter's name/identity, so the solo requirement ("1 ตัว =
+          // พูดคนเดียวในนามตัวละครนั้น") silently degraded to a generic
+          // narrator. The roster is a FACT (skill-first compliant); how to
+          // speak as that presenter remains the model's judgment.
+          `\n\nผู้ดำเนินรายการคนเดียวในคลิปนี้ (Presenter): ${activeCast[0].name}${
+            activeCast[0].descriptor
+              ? ` — ${clean(activeCast[0].descriptor)}`
+              : ""
+          }\nบทพูดทุกช็อตเป็นบทพูดเดี่ยวของ "${activeCast[0].name}" ในมุมมองบุคคลที่หนึ่ง สอดคล้องกับตัวตนของผู้ดำเนินรายการคนนี้ โดยคงโครงสร้าง "${structureKey}" และโทน "${toneKey}" ครบทุกประเด็น ให้ส่ง castInShot ที่ระบุ castId ของผู้ดำเนินรายการในทุกช็อต (ไม่ต้องส่ง dialogueTurns)`
+        : "";
 
   /* Supporting tier (`planning/marketplace-four-character-cast/plan.md` §3).
      FACTS + a structural contract only — WHAT a supporting character does is
@@ -1695,7 +656,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะ "มีบทพูดสั้น ๆ ก็ได้ หรือไม่มีบทพูดเลยก็ได้" แต่ทุกครั้งที่ปรากฏในช็อตต้องมีเหตุผลที่ส่งเสริมเรื่องราว เช่น ทำให้บรรยากาศดีขึ้น เพิ่มจุดเสริมของเรื่อง หรือดึงอารมณ์คนดู ห้ามให้ตัวประกอบอยู่ในภาพเฉย ๆ โดยไม่ทำอะไรที่เกี่ยวข้องกับเรื่อง\n\nสำหรับแต่ละช็อต ให้ส่ง:\n- "castInShot": array ของ castId ทุกคนที่อยู่ในช็อตนั้นจริง ๆ (ตัวประกอบไม่จำเป็นต้องอยู่ครบทุกช็อต — ให้เลือกเฉพาะช็อตที่การมีอยู่ของเขาช่วยเรื่องราว)\n- "supportingBeats": array ของ {castId, action, line?} เฉพาะตัวประกอบที่อยู่ในช็อตนั้น โดย "action" คือสิ่งที่เขากำลังทำซึ่งเชื่อมกับเรื่องราวของช็อต (บังคับ) และ "line" คือบทพูดสั้น ๆ (ใส่หรือไม่ใส่ก็ได้)\n\nตัวประกอบคนใดที่อยู่ใน castInShot แต่ไม่มี action จะถูกตัดออกจากช็อตนั้นโดยอัตโนมัติ`
+          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" ที่มี {castId, action, line?} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง. Output ที่ขาด cast/action หรือมี castId ที่ไม่รู้จักจะถูกปฏิเสธ ไม่แก้หรือตัดข้อมูลให้อัตโนมัติ`
       : "";
 
   // Additive (feature/marketplace-flexible-shots): the shot-count instruction
@@ -1714,17 +675,24 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
     ? `\n\nROMANTIC PRODUCT TIE-IN LOCK: รูปแบบนี้เป็นละคร Tie-in โดยมี ${activeCast[0].name} (host) และ ${activeCast[1].name} (guest) เป็นคู่ตัวละครหลัก ให้ทั้งคู่พูดโต้ตอบ จีบกันอย่างหวานพอดีหรือแซวกันอย่างเป็นธรรมชาติและมีเสน่ห์ รูปแบบรีวิวกำหนดความสัมพันธ์และวิธีดำเนินเรื่อง ส่วนโทนที่เลือกกำหนดน้ำเสียงและวิธีพูด ต้องรักษาทั้งสองอย่างร่วมกัน ไม่ใช่บทรีวิวบรรยายตรง ๆ ตลอดคลิป ทุกช็อตต้องพาเรื่องไปข้างหน้าและทำให้สินค้าเป็นส่วนหนึ่งของเหตุการณ์จริง กระจายการสาธิตสินค้าและข้อมูล/ประโยชน์ที่ตรวจสอบได้จาก product facts ไปตลอดเรื่อง ห้ามให้มุกหรือความสัมพันธ์กลบเนื้อหารีวิว ผู้พูดต้องตรงกับ castId และ castInShot ของคนที่เห็นในภาพ ห้ามสลับบทหรือเดาว่าคนไหนพูด ใช้บทโรแมนติกได้ต่อเมื่อข้อมูลระบุชัดว่าทั้งคู่เป็นผู้ใหญ่และไม่มีใครเป็นผู้เยาว์; หากอายุไม่ชัดหรือมีผู้เยาว์ ให้คงเป็นการหยอกล้อแบบเพื่อนที่เหมาะสมกับวัย ห้ามแต่งคุณสมบัติหรือผลลัพธ์ของสินค้า`
     : "";
 
-  const systemPrompt = `คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
+  const conceptsOnlyInstruction = input.conceptsOnly
+    ? "ผู้ใช้ยังไม่ได้เลือกแนวคิด: ส่ง 3 แนวคิดพร้อมบทพูดตัวอย่างที่เป็นธรรมชาติครบทุกแนวคิด บทพูดต้องเป็นบทสนทนาที่นำไปใช้รีวิวสินค้าได้จริง ห้ามมี shots หรือสร้าง Storyboard จนกว่าผู้ใช้จะยืนยันแนวคิด"
+    : "ผู้ใช้ยืนยันแนวคิดแล้ว: ใช้แนวคิดและ dialoguePreview ที่แนบมาเป็นต้นฉบับหลัก รักษาน้ำเสียงและบทสนทนาที่เลือกไว้ แล้วจึงจัดเป็น Storyboard ฉบับเต็ม โดยให้บทพูดของทุกช็อตพัฒนาต่อจาก dialoguePreview นั้น";
+  const runtimeInstructions = `
+คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
 
 หน้าที่ของคุณคือวิเคราะห์ข้อมูลสินค้าและ Product brief ที่ได้รับ แล้วสร้างแนวคิดรีวิว 3 แบบที่แตกต่างกัน จากนั้นเลือกแนวคิดที่เหมาะที่สุด 1 แบบและวางแผนบทรีวิวฉบับเต็มตามแนวคิดนั้น:
 0. ${shotCountInstruction}
-1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle และ storySummary สั้น ๆ ซึ่งแตกต่างกันจริง
-2. เลือก selectedConceptId จาก conceptOptions แล้วให้ storySummary และ shots ฉบับเต็มตรงกับแนวคิดที่เลือก
+1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle, storySummary และ dialoguePreview ที่เขียนเป็นบทพูดจริง ไม่ใช่หัวข้อหรือคำอธิบาย
+2. ${conceptsOnlyInstruction}
 3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" โดยกำหนดชื่อช็อต (title) และสรุปการถ่ายทำ (visualSummary) ให้เห็นภาพชัดเจน
 4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
 5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
-7. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+7. บทพูดทุกแบบต้องเป็นภาษาพูดธรรมชาติ มีบทสนทนาที่ตอบรับกันตามบริบท ห้ามใช้คำถามเปิดหรือประโยคตอบแบบแม่แบบซ้ำ ห้ามใช้ถ้อยคำกว้าง ๆ เช่น “เล่าให้ฟังหน่อยว่าเรื่อง...” หรือ “เบื่อและหงุดหงิดไหมกับปัญหาเดิมๆ” ให้พูดถึงเหตุการณ์ การใช้งาน หรือรายละเอียดสินค้าที่มีหลักฐานจริงโดยตรง
+8. ห้ามใช้ placeholder เช่น “เผยสินค้า” เป็นเนื้อหาบทพูด แต่ใช้เป็นชื่อช็อตได้
+9. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+  const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
     {
@@ -1755,41 +723,50 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   );
 
   const ZodDialogueTurnSchema = z.object({
-    castId: z.string().min(1),
-    line: z.string(),
+    castId: z.string().min(1).max(80),
+    line: z.string().min(1).max(320),
   });
 
   // Supporting tier (`planning/marketplace-four-character-cast/plan.md` §3).
   // `action` required, `line` optional — the inverse of a dialogue turn.
   const ZodSupportingBeatSchema = z.object({
-    castId: z.string().min(1),
-    action: z.string(),
-    line: z.string().optional(),
+    castId: z.string().min(1).max(80),
+    action: z.string().min(1).max(240),
+    line: z.string().min(1).max(160).optional(),
   });
 
   const shotObjectSchema = z.object({
     shotId: z.number().int().min(1).max(30),
-    title: z.string(),
-    storySummary: z.string(),
-    visualSummary: z.string(),
-    dialogue: z.string().optional(),
-    dialogueTurns: z.array(ZodDialogueTurnSchema).optional(),
-    castInShot: z.array(z.string().min(1)).optional(),
+    title: z.string().min(1).max(120),
+    storySummary: z.string().min(1).max(600),
+    visualSummary: z.string().min(1).max(400),
+    dialogue: z.string().min(1).max(320).optional(),
+    dialogueTurns: z.array(ZodDialogueTurnSchema).min(2).optional(),
+    castInShot: z.array(z.string().min(1).max(80)).optional(),
     supportingBeats: z.array(ZodSupportingBeatSchema).optional(),
   });
 
   const ZodLLMPlanSchema = z.object({
     storySummary: z.string(),
-    conceptOptions: z.array(z.object({
-      conceptId: z.string().min(1),
-      title: z.string().min(1),
-      angle: z.string().min(1),
-      storySummary: z.string().min(1),
-    })).length(3),
-    selectedConceptId: z.string().min(1),
-    shots: isAutoShotCount
-      ? z.array(shotObjectSchema).min(7).max(30)
-      : z.array(shotObjectSchema).length(fixedShotCount ?? 9),
+    conceptOptions: z
+      .array(
+        z.object({
+          conceptId: z.string().min(1),
+          title: z.string().min(1),
+          angle: z.string().min(1),
+          storySummary: z.string().min(1),
+          dialoguePreview: z.string().trim().min(40).max(6000),
+        })
+      )
+      .length(3),
+    selectedConceptId: z.string().optional(),
+    ...(input.conceptsOnly
+      ? {}
+      : {
+          shots: isAutoShotCount
+            ? z.array(shotObjectSchema).min(7).max(30)
+            : z.array(shotObjectSchema).length(fixedShotCount ?? 9),
+        }),
   });
 
   try {
@@ -1800,123 +777,249 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
       zodSchema: ZodLLMPlanSchema,
       userId,
       tenantId,
-      maxRetries: 1,
+      maxRetries: 0,
+      disableProviderFallbacks: true,
       billingDescription: `Staged Story Arc Plan generation (${chosenModel})`,
     });
 
-    const rawShotCount = llmRes?.data?.shots?.length ?? 0;
+    const authoringModel = clean(llmRes.modelId);
+    const authoringProvider = clean(llmRes.providerName);
+    if (!authoringModel || !authoringProvider) {
+      throw new Error("STAGED_STORY_PLAN_PROVIDER_PROVENANCE_MISSING");
+    }
+
+    if (input.conceptsOnly) {
+      const planRevision = Math.max(1, Math.floor(input.revision ?? 1));
+      const conceptOptions = llmRes.data.conceptOptions.map(option => ({
+        conceptId: clean(option.conceptId),
+        title: clean(option.title),
+        angle: clean(option.angle),
+        storySummary: clean(option.storySummary),
+        dialoguePreview: clean(option.dialoguePreview),
+      }));
+      if (
+        conceptOptions.some(
+          option =>
+            !option.conceptId ||
+            !option.title ||
+            !option.angle ||
+            !option.storySummary ||
+            option.dialoguePreview.length < 40
+        ) ||
+        new Set(conceptOptions.map(option => option.conceptId)).size !== 3 ||
+        new Set(
+          conceptOptions.map(option =>
+            option.dialoguePreview
+              .replace(/^[^:：]{1,40}[:：]\s*/gm, "")
+              .replace(/[\s\p{P}\p{S}]/gu, "")
+              .toLocaleLowerCase()
+          )
+        ).size !== 3
+      ) {
+        throw new Error("STAGED_STORY_PLAN_CONCEPT_OPTIONS_INVALID");
+      }
+      const storySummary = conceptOptions
+        .map((option, index) => `${index + 1}. ${option.title}: ${option.storySummary}`)
+        .join("\n");
+      return {
+        planRevision,
+        title: `Review concepts (LLM: ${chosenModel})`,
+        storySummary,
+        conceptOptions,
+        product: {
+          productId: clean(input.product.productId),
+          productName,
+          description: productDescription || null,
+          ...(input.product.specs ? { specs: input.product.specs } : {}),
+          imageUrls: input.product.imageUrls.map(clean).filter(Boolean).slice(0, 5),
+        },
+        shots: [],
+        referenceManifestHash,
+        storyPlanHash: buildProductionStableHash({
+          runId: input.runId,
+          planRevision,
+          conceptOptions,
+          referenceManifestHash,
+        }),
+        source: "llm_story_arc",
+        authoring: {
+          model: authoringModel,
+          provider: authoringProvider,
+          creditsUsed: llmRes.creditsUsed,
+        },
+        languagePlan: input.languagePlan,
+        ...(activeCast.length > 0
+          ? { cast: activeCast, conversationMode }
+          : {}),
+      };
+    }
+
+    const generatedShots = Array.isArray((llmRes.data as any).shots)
+      ? (llmRes.data as any).shots
+      : [];
+    const rawShotCount = generatedShots.length;
     const rawShotCountOk = isAutoShotCount
       ? rawShotCount >= 7 && rawShotCount <= 30
       : rawShotCount === (fixedShotCount ?? 9);
 
     if (rawShotCountOk) {
       const planRevision = Math.max(1, Math.floor(input.revision ?? 1));
-      const referenceManifestHash =
-        clean(input.referenceManifestHash) ||
-        buildProductionStableHash({
-          productId: input.product.productId,
-          imageUrls: input.product.imageUrls,
-        });
-
-      const storySummary = bounded(llmRes.data.storySummary, 500);
-      const generatedConceptOptions = llmRes.data.conceptOptions.map(option => ({
-        conceptId: bounded(option.conceptId, 120),
-        title: bounded(option.title, 160),
-        angle: bounded(option.angle, 400),
-        storySummary: bounded(option.storySummary, 500),
-      }));
-      const selectedConceptId =
-        input.selectedConcept?.conceptId ?? clean(llmRes.data.selectedConceptId);
-      const conceptOptions = input.selectedConcept
-        ? [
-            input.selectedConcept,
-            ...generatedConceptOptions.filter(
-              option => option.conceptId !== input.selectedConcept?.conceptId
-            ),
-          ].slice(0, 3)
-        : generatedConceptOptions;
-      if (!conceptOptions.some(option => option.conceptId === selectedConceptId)) {
-        throw new Error("Story planner selected a concept outside its options");
+      const storySummary = clean(llmRes.data.storySummary);
+      if (!storySummary || storySummary.length > 500) {
+        throw new Error("STAGED_STORY_PLAN_SUMMARY_INVALID");
       }
-      const castById = new Map(activeCast.map(member => [member.castId, member]));
-      const shots = llmRes.data.shots.map((shot, idx) => {
+      const generatedConceptOptions = llmRes.data.conceptOptions.map(
+        option => ({
+          conceptId: clean(option.conceptId),
+          title: clean(option.title),
+          angle: clean(option.angle),
+          storySummary: clean(option.storySummary),
+          dialoguePreview: clean(option.dialoguePreview),
+        })
+      );
+      const selectedConceptId = input.selectedConcept?.conceptId ?? "";
+      const selectedOption = generatedConceptOptions.find(
+        option => option.conceptId === selectedConceptId
+      );
+      if (input.selectedConcept && !selectedOption) {
+        throw new Error("STAGED_STORY_PLAN_SELECTED_CONCEPT_NOT_RETURNED");
+      }
+      const conceptOptions = input.selectedConcept
+        ? generatedConceptOptions.map(option =>
+            option.conceptId === selectedConceptId
+              ? input.selectedConcept!
+              : option
+          )
+        : generatedConceptOptions;
+      const castById = new Map(
+        activeCast.map(member => [member.castId, member])
+      );
+      const shots = generatedShots.map((shot: z.infer<typeof shotObjectSchema>, idx: number) => {
         const shotId = idx + 1;
         let dialogueTurns: StagedDialogueTurn[] | undefined;
         let castInShot: string[] | undefined;
         let dialogue: string;
 
-        if (
-          conversationMode === "two_person_conversation" &&
-          Array.isArray(shot.dialogueTurns) &&
-          shot.dialogueTurns.length > 0
-        ) {
-          const resolvedTurns = shot.dialogueTurns
-            .map(turn => {
-              const member = castById.get(turn.castId);
-              if (!member) return null;
-              return {
-                castId: member.castId,
-                speakerName: member.name,
-                line: bounded(clean(turn.line), 320),
-              } satisfies StagedDialogueTurn;
-            })
-            .filter((turn): turn is StagedDialogueTurn => turn !== null);
-
-          if (resolvedTurns.length > 0) {
-            dialogueTurns = resolvedTurns;
-            dialogue = bounded(renderStagedDialogueFromTurns(resolvedTurns), 640);
-            castInShot = activeCast.map(member => member.castId);
-          } else {
-            dialogue = bounded(clean(shot.dialogue), 320);
+        if (conversationMode === "two_person_conversation") {
+          if (
+            !Array.isArray(shot.dialogueTurns) ||
+            shot.dialogueTurns.length < 2
+          ) {
+            throw new Error(
+              `STAGED_STORY_PLAN_DIALOGUE_TURNS_REQUIRED:shot-${shotId}`
+            );
           }
+          const resolvedTurns = shot.dialogueTurns.map(turn => {
+            const member = castById.get(turn.castId);
+            if (!member) {
+              throw new Error(
+                `STAGED_STORY_PLAN_DIALOGUE_SPEAKER_NOT_IN_CAST:shot-${shotId}:${turn.castId}`
+              );
+            }
+            if (!activeCast.some(lead => lead.castId === turn.castId)) {
+              throw new Error(
+                `STAGED_STORY_PLAN_DIALOGUE_SPEAKER_NOT_LEAD:shot-${shotId}:${turn.castId}`
+              );
+            }
+            return {
+              castId: member.castId,
+              speakerName: member.name,
+              line: clean(turn.line),
+            } satisfies StagedDialogueTurn;
+          });
+          if (resolvedTurns.some(turn => !turn.line)) {
+            throw new Error(
+              `STAGED_STORY_PLAN_DIALOGUE_LINE_REQUIRED:shot-${shotId}`
+            );
+          }
+          dialogueTurns = resolvedTurns;
+          dialogue = renderStagedDialogueFromTurns(resolvedTurns);
+          castInShot = activeCast.map(member => member.castId);
         } else {
-          dialogue = bounded(clean(shot.dialogue), 320);
+          dialogue = clean(shot.dialogue);
+          if (!dialogue)
+            throw new Error(
+              `STAGED_STORY_PLAN_DIALOGUE_REQUIRED:shot-${shotId}`
+            );
         }
 
-        // The model's own per-shot presence wins when it supplied one — that is
-        // the whole point of a supporting tier that is not in every frame. The
-        // two-person path's `castInShot = every lead` remains the fallback.
-        const declaredCastInShot = Array.isArray(shot.castInShot)
-          ? shot.castInShot.filter(castId => castById.has(castId))
-          : undefined;
-        const supportingBeats = (shot.supportingBeats ?? [])
-          .filter(beat => castById.has(beat.castId) && clean(beat.action))
-          .map(beat => ({
+        const declaredCastInShot = shot.castInShot;
+        if (activeCast.length > 0 && !declaredCastInShot) {
+          throw new Error(
+            `STAGED_STORY_PLAN_CAST_IN_SHOT_REQUIRED:shot-${shotId}`
+          );
+        }
+        if (declaredCastInShot) {
+          const invalidCastId = declaredCastInShot.find(
+            castId => !castById.has(castId)
+          );
+          if (invalidCastId) {
+            throw new Error(
+              `STAGED_STORY_PLAN_CAST_NOT_IN_ROSTER:shot-${shotId}:${invalidCastId}`
+            );
+          }
+          const missingSpeaker = (dialogueTurns ?? []).find(
+            turn => !declaredCastInShot.includes(turn.castId)
+          );
+          if (missingSpeaker) {
+            throw new Error(
+              `STAGED_STORY_PLAN_SPEAKER_NOT_IN_SHOT:shot-${shotId}:${missingSpeaker.castId}`
+            );
+          }
+        }
+        const supportingBeats = (shot.supportingBeats ?? []).map(beat => {
+          if (!castById.has(beat.castId)) {
+            throw new Error(
+              `STAGED_STORY_PLAN_SUPPORTING_CAST_NOT_IN_ROSTER:shot-${shotId}:${beat.castId}`
+            );
+          }
+          if (!clean(beat.action)) {
+            throw new Error(
+              `STAGED_STORY_PLAN_SUPPORTING_ACTION_REQUIRED:shot-${shotId}:${beat.castId}`
+            );
+          }
+          return {
             castId: beat.castId,
-            action: bounded(clean(beat.action), 240),
-            ...(clean(beat.line) ? { line: bounded(clean(beat.line), 160) } : {}),
-          }));
+            action: clean(beat.action),
+            ...(clean(beat.line) ? { line: clean(beat.line) } : {}),
+          };
+        });
 
         return {
           shotId,
-          title: bounded(shot.title, 120),
-          storySummary: bounded(shot.storySummary, 600),
-          visualSummary: bounded(shot.visualSummary, 400),
+          title: clean(shot.title),
+          storySummary: clean(shot.storySummary),
+          visualSummary: clean(shot.visualSummary),
           dialogue,
           durationSeconds: shotDurationSeconds,
           ...(dialogueTurns ? { dialogueTurns } : {}),
-          ...(declaredCastInShot?.length
-            ? { castInShot: declaredCastInShot }
-            : castInShot
-            ? { castInShot }
-            : {}),
+          ...(declaredCastInShot ? { castInShot: declaredCastInShot } : {}),
           ...(supportingBeats.length > 0 ? { supportingBeats } : {}),
         };
       });
 
-      // No idle extras: a supporting character the model gave no `action` is
-      // removed from that shot's cast, so their reference image is never sent
-      // (`planning/marketplace-four-character-cast/plan.md` §3). Enforced by
-      // construction — this can only ever shrink a shot's cast, never fail it.
-      const { shots: enforcedShots, droppedCastIdsByShot } = enforceSupportingBeats({
+      const { shots: enforcedShots } = enforceSupportingBeats({
         shots,
         cast: input.cast,
       });
-      const droppedShotCount = Object.keys(droppedCastIdsByShot).length;
-      if (droppedShotCount > 0) {
-        console.info(
-          `[generateStagedStoryArcPlanWithLLM] run=${input.runId} dropped beatless supporting cast from ${droppedShotCount} shot(s): ${JSON.stringify(droppedCastIdsByShot)}`
-        );
+
+      const normalizedDialogue = enforcedShots.map(shot =>
+        clean(shot.dialogue)
+          .replace(/^[^:：]{1,40}[:：]\s*/gm, "")
+          .replace(/[\s\p{P}\p{S}]/gu, "")
+          .toLocaleLowerCase()
+      );
+      if (new Set(normalizedDialogue).size !== normalizedDialogue.length) {
+        throw new Error("STAGED_STORY_PLAN_REPEATED_DIALOGUE");
+      }
+      if (
+        enforcedShots.some(shot =>
+          /เล่าให้ฟังหน่อยว่าเรื่อง|เบื่อและหงุดหงิดไหมกับปัญหาเดิม|ช็อตนี้พามาดูจุดชวนหัวเสีย|เผยสินค้า/.test(
+            shot.dialogue
+          )
+        )
+      ) {
+        throw new Error("STAGED_STORY_PLAN_GENERIC_DIALOGUE");
       }
 
       // Additive (feature/marketplace-flexible-shots): re-validate the final
@@ -1930,7 +1033,12 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
         isAutoShotCount ? {} : { expectedCount: fixedShotCount }
       );
 
-      if (contract.valid) {
+      if (!contract.valid) {
+        throw new Error(
+          `staged_story_plan_invalid:${contract.reasonCodes.join(",")}`
+        );
+      }
+      {
         const storyPlanHash = buildProductionStableHash({
           runId: input.runId,
           planRevision,
@@ -1951,27 +1059,37 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
             productName,
             description: productDescription || null,
             ...(input.product.specs ? { specs: input.product.specs } : {}),
-            imageUrls: input.product.imageUrls.map(clean).filter(Boolean).slice(0, 5),
+            imageUrls: input.product.imageUrls
+              .map(clean)
+              .filter(Boolean)
+              .slice(0, 5),
           },
           shots: enforcedShots,
           referenceManifestHash,
           storyPlanHash,
           source: "llm_story_arc",
+          authoring: {
+            model: authoringModel,
+            provider: authoringProvider,
+            creditsUsed: llmRes.creditsUsed,
+          },
           languagePlan: input.languagePlan,
-          ...(activeCast.length > 0 ? { cast: activeCast, conversationMode } : {}),
+          ...(activeCast.length > 0
+            ? { cast: activeCast, conversationMode }
+            : {}),
         };
       }
     }
   } catch (error) {
     console.warn(
-      `[generateStagedStoryArcPlanWithLLM] LLM call failed with model ${chosenModel}, falling back to deterministic planner:`,
+      `[generateStagedStoryArcPlanWithLLM] direct LLM call failed for model ${chosenModel}:`,
       error
+    );
+    throw new Error(
+      `STAGED_STORY_PLAN_SKILL_FAILED:${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
     );
   }
 
-  // Bounded deterministic fallback. When the LLM chose "auto" but failed, we
-  // cannot know what count it would have picked, so we fall back to the
-  // fixed default of 9 (today's behavior) rather than guessing — the
-  // fallback is mechanical, never a re-attempt at LLM judgment.
-  return buildStagedStoryArcPlan({ ...input, shotCount: fixedShotCount });
+  throw new Error("STAGED_STORY_PLAN_SKILL_RETURNED_NO_PLAN");
 }

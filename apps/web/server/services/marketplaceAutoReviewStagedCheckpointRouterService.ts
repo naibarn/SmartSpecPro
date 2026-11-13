@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
@@ -9,10 +9,7 @@ import {
 } from "./marketplaceAutoReviewStagedRemotionRender";
 
 import { getDb } from "../db";
-import {
-  marketplaceAutoReviewRuns,
-  workerJobs,
-} from "../../drizzle/schema";
+import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
 import {
   enqueueMarketplaceAutoReviewWorkerJob,
   enqueueMarketplaceAutoReviewWorkerJobInTransaction,
@@ -29,7 +26,6 @@ import { deriveStagedCastFromManifest } from "./marketplaceAutoReviewStagedPipel
 import {
   buildStagedCheckpoint,
   buildStagedPlanView,
-  buildStagedStoryArcPlan,
   generateStagedStoryArcPlanWithLLM,
   parseStagedDialogueTurns,
   type StagedStoryArcPlan,
@@ -44,15 +40,18 @@ import {
 import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
-  compileStagedImagePrompt,
-  compileStagedVideoPrompt,
   isCompleteStagedImagePrompt,
   isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
-import { generateMarketplaceAutoReviewVideoPrompt } from "./marketplaceAutoReviewVideoPromptSkillRunner";
+import {
+  generateMarketplaceAutoReviewVideoPrompt,
+  MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+  MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+  type MarketplaceVideoPromptSkillRun,
+} from "./marketplaceAutoReviewVideoPromptSkillRunner";
 import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
-  refreshSequentialShotPromptWithSkill,
+  refreshSequentialShotPromptWithSkillDirect,
   type SequentialStoryboardLanguage,
   type SequentialReferenceManifestEntry,
 } from "./productReviewSequentialStoryboardSkillRunner";
@@ -60,15 +59,17 @@ import {
   buildStagedAudioPlan,
   buildStagedFinalAssemblyHash,
 } from "./marketplaceAutoReviewStagedAudioAssembly";
-import type { MarketplaceCharacterCastRole } from "../../shared/hyperframes/characterCast";
 import {
-  buildStagedOperationEnvelope,
-} from "./marketplaceAutoReviewStagedCheckpointService";
+  MARKETPLACE_CHARACTER_CAST_MAX,
+  type MarketplaceCharacterCastRole,
+} from "../../shared/hyperframes/characterCast";
+import { buildStagedOperationEnvelope } from "./marketplaceAutoReviewStagedCheckpointService";
 import {
   initializeStagedMarketplaceAutoReviewRun,
   planAndMetadataFromRun,
   modelCost,
   modelProvider,
+  requireStagedLanguagePlanFromMetadata,
   resolveShotCastSelectionFromMetadata,
 } from "./marketplaceAutoReviewStagedPipelineService";
 import { buildShotOrderedReferenceItems } from "../../shared/marketplaceAutoReview/shotCast";
@@ -258,26 +259,46 @@ function isStagedCheckpointRetryable(
   return Boolean(checkpoint);
 }
 
+function requireStagedTenantId(
+  authTenantId?: string | null,
+  runTenantId?: string | null
+): string {
+  const authTenant = authTenantId?.trim() ?? "";
+  const runTenant = runTenantId?.trim() ?? "";
+  if (!authTenant || !runTenant) {
+    throw new Error("STAGED_TENANT_CONTEXT_REQUIRED");
+  }
+  if (authTenant !== runTenant) {
+    throw new Error("STAGED_TENANT_CONTEXT_MISMATCH");
+  }
+  return authTenant;
+}
+
 /**
  * Prompt authoring requires approval of the current story plan.
- * `planReview.status` is a legacy summary and cannot override a
- * newer story checkpoint that returned to `awaiting` after a shot/story edit.
+ * `planReview.status` is a legacy summary and cannot override a newer story
+ * checkpoint that returned to `awaiting` after a shot/story edit.
  */
-function assertStagedStoryPlanApproved(metadata: ReturnType<typeof parseStagedMetadata>) {
-  const currentStoryCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints
-    .filter(
-      checkpoint =>
-        checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
-    )
-    .reduce<(typeof metadata.stagedSequentialStoryboard.reviewCheckpoints)[number] | null>(
-      (latest, checkpoint) =>
-        !latest || checkpoint.revision > latest.revision ? checkpoint : latest,
-      null
-    );
-  const approved = currentStoryCheckpoint
-    ? currentStoryCheckpoint.state === "approved"
-    : record(metadata.planReview).status === "approved";
-  if (!approved) {
+function assertStagedStoryPlanApproved(
+  metadata: ReturnType<typeof parseStagedMetadata>
+) {
+  const currentStoryCheckpoint =
+    metadata.stagedSequentialStoryboard.reviewCheckpoints
+      .filter(
+        checkpoint =>
+          checkpoint.kind === "story_plan" && checkpoint.state !== "superseded"
+      )
+      .reduce<
+        | (typeof metadata.stagedSequentialStoryboard.reviewCheckpoints)[number]
+        | null
+      >(
+        (latest, checkpoint) =>
+          !latest || checkpoint.revision > latest.revision
+            ? checkpoint
+            : latest,
+        null
+      );
+  if (!currentStoryCheckpoint || currentStoryCheckpoint.state !== "approved") {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "staged_story_plan_not_approved",
@@ -295,8 +316,8 @@ function assertStoryPlanApprovedForPromptRefresh(
   metadata: ReturnType<typeof parseStagedMetadata>,
   targets: StagedAutoReviewGenerationTarget[]
 ) {
-  // Saved prompts are ready for media generation; only authoring a replacement
-  // prompt depends on confirmation of the latest story revision.
+  // A saved prompt is already a complete instruction for media generation.
+  // Only authoring a replacement prompt depends on the latest story revision.
   if (targets.some(target => target.refreshPrompt)) {
     assertStagedStoryPlanApproved(metadata);
   }
@@ -314,13 +335,13 @@ export function assertStoryPlanApprovedForPromptRefreshForTest(
 
 function tenantAccessClause(auth: StagedCheckpointAuth) {
   const tenantId = auth.tenantId?.trim();
-  // Staged checkpoint mutations are tenant-bound; fail closed if a caller
-  // reaches this service without a resolved tenant context.
-  if (!tenantId) return sql`false`;
-  return or(
-    eq(marketplaceAutoReviewRuns.tenantId, tenantId),
-    isNull(marketplaceAutoReviewRuns.tenantId)
-  );
+  if (!tenantId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_run_tenant_required",
+    });
+  }
+  return eq(marketplaceAutoReviewRuns.tenantId, tenantId);
 }
 
 async function requireOwnedRun(
@@ -355,16 +376,9 @@ function parseStagedMetadata(run: StagedCheckpointRun) {
   if (parsed.success) {
     return parsed.data;
   }
-  const fallback = planAndMetadataFromRun(run).metadata;
-  const fallbackParsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(
-    fallback
-  );
-  if (fallbackParsed.success) {
-    return fallbackParsed.data;
-  }
   throw new TRPCError({
     code: "PRECONDITION_FAILED",
-    message: "Staged checkpoint state is unavailable for this run",
+    message: "staged_metadata_initializing",
   });
 }
 
@@ -397,90 +411,63 @@ async function ensureStagedRunMetadata(
 
   const base = record(run.metadataJson);
   const initialization = record(base.initializationControl);
-  const initializationAlreadyQueued =
-    Number(initialization.schemaVersion) === 1 &&
-    ["queued", "running"].includes(String(initialization.status));
-  if (
-    !initializationAlreadyQueued &&
-    !STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))
-  ) {
-    const tenantId = String(run.tenantId ?? "").trim();
-    if (!tenantId) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "staged_run_tenant_missing",
-      });
-    }
-    const baseKey = `marketplace-auto-review:${run.id}:staged-metadata-init:v1`;
-    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
-      db,
-      tenantId,
-      baseKey
-    );
-    const activeStatuses = new Set([
-      "pending",
-      "queued",
-      "leased",
-      "claimed",
-      "preparing",
-      "running",
-      "waiting_external",
-      "retry_scheduled",
-    ]);
-    if (!existingJob || activeStatuses.has(String(existingJob.status))) {
-      await enqueueMarketplaceAutoReviewWorkerJob({
-        tenantId,
-        userId: run.userId,
-        runId: run.id,
-        operation: {
-          operation: "initialize_staged_metadata",
-          runId: run.id,
-        },
-        idempotencyKey: baseKey,
-        priority: 20,
-      });
-    } else {
-      const recoveryKey = `${baseKey}:recovery:${existingJob.id}`;
-      const recoveryJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
-        db,
-        tenantId,
-        recoveryKey
-      );
-      if (!recoveryJob) {
-        await enqueueMarketplaceAutoReviewWorkerJob({
-          tenantId,
-          userId: run.userId,
-          runId: run.id,
-          operation: {
-            operation: "initialize_staged_metadata",
-            runId: run.id,
-          },
-          idempotencyKey: recoveryKey,
-          priority: 20,
-        });
-      }
-    }
-  }
-
-  // A read request only gets a bounded deterministic projection while the
-  // durable worker writes the LLM-authored plan. Never invoke the story LLM
-  // from a query or mutation request.
-  const fallback = planAndMetadataFromRun(run).metadata;
-  const fallbackParsed = StagedSequentialStoryboardMetadataV1Schema.safeParse(
-    fallback
-  );
-  if (!fallbackParsed.success) {
+  const tenantId = String(run.tenantId ?? "").trim();
+  if (!tenantId) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Staged checkpoint state is unavailable for this run",
+      message: "staged_run_tenant_missing",
     });
   }
-  return { run, metadata: fallbackParsed.data, persisted: false };
+  if (STAGED_TERMINAL_RUN_STATUSES.has(String(run.status))) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_metadata_unavailable_for_terminal_run",
+    });
+  }
+
+  const baseKey = `marketplace-auto-review:${run.id}:staged-metadata-init:v1`;
+  const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    baseKey
+  );
+  const activeStatuses = new Set([
+    "pending",
+    "queued",
+    "leased",
+    "claimed",
+    "preparing",
+    "running",
+    "waiting_external",
+    "retry_scheduled",
+  ]);
+  if (existingJob && !activeStatuses.has(String(existingJob.status))) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `staged_metadata_initialization_${String(existingJob.status)}`,
+    });
+  }
+  if (!existingJob) {
+    const status = String(initialization.status ?? "missing");
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `staged_metadata_initialization_${status}`,
+    });
+  }
+
+  // Do not fabricate a temporary story/shot plan while the durable skill job
+  // is running. The query polls again and returns the persisted result when
+  // the one initialization job succeeds.
+  throw new TRPCError({
+    code: "PRECONDITION_FAILED",
+    message: "staged_metadata_initializing",
+  });
 }
 
-export async function initializeStagedMarketplaceAutoReviewMetadataForWorker(
-  input: { runId: string; auth: StagedCheckpointAuth }
-) {
+export async function initializeStagedMarketplaceAutoReviewMetadataForWorker(input: {
+  runId: string;
+  auth: StagedCheckpointAuth;
+}) {
   const db = await getDb();
   if (!db) {
     throw new TRPCError({
@@ -538,7 +525,10 @@ function requireStagedImageArtifactHash(shot: {
 function assertStagedVideoPromptImageReady(input: {
   shotId: number;
   shot:
-    | { imageArtifactUrl?: string | null; imageArtifactHash?: string | null }
+    | {
+        imageArtifactUrl?: string | null;
+        imageArtifactHash?: string | null;
+      }
     | undefined;
   checkpoints: Array<{
     shotId?: number | null;
@@ -568,6 +558,25 @@ function assertStagedVideoPromptImageReady(input: {
       message: `staged_video_prompt_requires_approved_image:shot-${input.shotId}`,
     });
   }
+}
+
+export function assertStagedVideoPromptImageReadyForTest(input: {
+  shotId: number;
+  shot:
+    | {
+        imageArtifactUrl?: string | null;
+        imageArtifactHash?: string | null;
+      }
+    | undefined;
+  checkpoints: Array<{
+    shotId?: number | null;
+    kind: string;
+    state: string;
+    revision?: number;
+    contentHash?: string | null;
+  }>;
+}) {
+  assertStagedVideoPromptImageReady(input);
 }
 
 function stagedTextOrEmpty(value: unknown): string {
@@ -648,16 +657,16 @@ export function removeStagedTasksInvalidatedByPromptForTest(
 
 function operationFromWorkerJob(
   job: { id: string; inputJson: Record<string, unknown> },
-  fallback: StagedCheckpointRun
+  run: StagedCheckpointRun
 ) {
   const operationId =
     typeof job.inputJson.operationId === "string"
       ? job.inputJson.operationId
       : job.id;
-  const metadata = parseStagedMetadata(fallback);
+  const metadata = parseStagedMetadata(run);
   return buildStagedOperationEnvelope({
     operationId,
-    runId: fallback.id,
+    runId: run.id,
     stateDigest: stagedMetadataStateDigest(metadata),
     planRevision: metadata.stagedSequentialStoryboard.planRevision,
   });
@@ -685,70 +694,16 @@ export async function getStagedAutoReviewCheckpointState(
     initialRun
   );
 
-  // Advance automatically on query whenever there is durable work waiting:
-  // story plan approved but image prompts not compiled yet (e.g. outbox
-  // delay), or any shot has a media task in flight that hasn't been
-  // reconciled into an artifact hash yet. Reconciliation itself happens only
-  // through the canonical path (reconcileImageProvider/reconcileVideoProvider
-  // in the pipeline service) so there is exactly one hash formula for a
-  // completed task, instead of the inline copy that used to live here
-  // computing a different hash for the same task and racing the canonical
-  // path's `db.update()` with no optimistic-concurrency check of its own.
-  const currentStoryCp = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-    c => c.kind === "story_plan" && c.state !== "superseded"
-  );
-  const baseRecord = record(run.metadataJson);
-  const pipelineTasksForTrigger = record(record(baseRecord.stagedPipeline).tasks);
-  const hasOutstandingStagedMediaTask = metadata.stagedSequentialStoryboard.shots.some(shot => {
-    const imgTask = record(pipelineTasksForTrigger[`image:${shot.shotId}`]);
-    if (
-      imgTask.taskId &&
-      imgTask.status !== "completed" &&
-      imgTask.status !== "failed" &&
-      !shot.imageArtifactHash
-    ) {
-      return true;
-    }
-    const vidTask = record(pipelineTasksForTrigger[`video:${shot.shotId}`]);
-    return Boolean(
-      vidTask.taskId &&
-        vidTask.status !== "completed" &&
-        vidTask.status !== "failed" &&
-        !shot.videoArtifactHash
-    );
-  });
-  if (
-    ((currentStoryCp?.state === "approved" || baseRecord.planReview?.status === "approved") &&
-      !metadata.stagedSequentialStoryboard.reviewCheckpoints.some(c => c.kind === "image_prompt")) ||
-    hasOutstandingStagedMediaTask
-  ) {
-    const { queueMarketplaceAutoReviewAdvance } = await import(
-      "./marketplaceAutoReviewService"
-    );
-    await queueMarketplaceAutoReviewAdvance(
-      runId,
-      { userId: auth.userId, tenantId: auth.tenantId ?? undefined },
-      {},
-      1_000
-    );
-  }
-
   const base = record(run.metadataJson);
   const anchors = record(base.referenceAnchors);
   const reviewTone =
-    typeof anchors.reviewTone === "string"
-      ? anchors.reviewTone
-      : typeof base.reviewTone === "string"
-      ? base.reviewTone
-      : null;
+    typeof anchors.reviewTone === "string" ? anchors.reviewTone : null;
   const storytellingStructure =
     typeof anchors.storytellingStructure === "string"
       ? anchors.storytellingStructure
-      : typeof base.storytellingStructure === "string"
-      ? base.storytellingStructure
       : null;
-  const languagePlan = record(
-    record((metadata as Record<string, any>).sequentialStoryboard).languagePlan
+  const languagePlan = requireStagedLanguagePlanFromMetadata(
+    metadata as Record<string, any>
   );
   const stagedPipeline =
     run.metadataJson && typeof run.metadataJson === "object"
@@ -817,66 +772,44 @@ export async function getStagedAutoReviewCheckpointState(
       supportingBeats: (detail as any).supportingBeats ?? null,
     };
   });
-  const customManifest = Array.isArray(base.customReferenceManifest)
-    ? base.customReferenceManifest
-    : Array.isArray(metadata.stagedSequentialStoryboard?.referenceManifest)
-    ? metadata.stagedSequentialStoryboard.referenceManifest
-    : [];
-
-  const rawProductImages = Array.isArray(stagedPipeline?.plan?.product?.imageUrls)
-    ? stagedPipeline.plan.product.imageUrls
-    : Array.isArray(base.productImageUrls)
-    ? base.productImageUrls
-    : [];
-
-  const referenceManifest = customManifest.length > 0
-    ? customManifest.map((entry: any, i: number) => ({
-        index: entry.index ?? i + 1,
-        url: String(entry.url || "").trim(),
-        role: String(entry.role || "product").trim(),
-        label: entry.label ? String(entry.label).trim() : undefined,
-        active: entry.active !== false,
-        // Gap fix (flexible-shots/creation-casting audit 2026-07-30): these
-        // per-character fields were persisted (both by creation-time seeding
-        // and by updateStagedAutoReviewReferenceManifest) but STRIPPED here
-        // on read — so the panel lost the VD read-only name lock and, worse,
-        // any panel manifest edit round-tripped the stripped entries back
-        // through the update mutation, silently destroying characterRole /
-        // vdCharacterId metadata on the persisted manifest.
-        characterName: entry.characterName
-          ? String(entry.characterName).trim()
+  const referenceManifest = requireStagedReferenceManifest(base).map(
+    (entry: any) => ({
+      index: entry.index,
+      url: entry.url.trim(),
+      role: entry.role,
+      label: entry.label ? String(entry.label).trim() : undefined,
+      active: entry.active,
+      // Gap fix (flexible-shots/creation-casting audit 2026-07-30): these
+      // per-character fields were persisted (both by creation-time seeding
+      // and by updateStagedAutoReviewReferenceManifest) but STRIPPED here
+      // on read — so the panel lost the VD read-only name lock and, worse,
+      // any panel manifest edit round-tripped the stripped entries back
+      // through the update mutation, silently destroying characterRole /
+      // vdCharacterId metadata on the persisted manifest.
+      characterName: entry.characterName
+        ? String(entry.characterName).trim()
+        : undefined,
+      characterRole:
+        entry.characterRole === "host" || entry.characterRole === "guest"
+          ? entry.characterRole
           : undefined,
-        characterRole:
-          entry.characterRole === "host" || entry.characterRole === "guest"
-            ? entry.characterRole
-            : undefined,
-        vdCharacterId: entry.vdCharacterId
-          ? String(entry.vdCharacterId).trim()
-          : undefined,
-        vdSeriesId: entry.vdSeriesId
-          ? String(entry.vdSeriesId).trim()
-          : undefined,
-        portraitAssetId: entry.portraitAssetId
-          ? String(entry.portraitAssetId).trim()
-          : undefined,
-        ageRange:
-          entry.ageRange === null
-            ? null
-            : entry.ageRange
+      vdCharacterId: entry.vdCharacterId
+        ? String(entry.vdCharacterId).trim()
+        : undefined,
+      vdSeriesId: entry.vdSeriesId
+        ? String(entry.vdSeriesId).trim()
+        : undefined,
+      portraitAssetId: entry.portraitAssetId
+        ? String(entry.portraitAssetId).trim()
+        : undefined,
+      ageRange:
+        entry.ageRange === null
+          ? null
+          : entry.ageRange
             ? String(entry.ageRange).trim()
             : undefined,
-      })).filter((entry: any) => entry.url)
-    : rawProductImages.map((url: string, i: number) => ({
-        index: i + 1,
-        url: String(url).trim(),
-        role: i === 0 ? "primary_product" : "product_angle",
-        label: i === 0 ? "ภาพสินค้าหลัก" : `มุมมองสินค้าที่ ${i + 1}`,
-        // Default to only the hero image so a fresh, uncustomized run
-        // doesn't send every product angle shot to the image model —
-        // the user opts additional angles in (or opts the hero out)
-        // explicitly via the checkboxes.
-        active: i === 0,
-      })).filter((entry: any) => entry.url);
+    })
+  );
 
   const workerOperationRows = await db
     .select({
@@ -889,7 +822,10 @@ export async function getStagedAutoReviewCheckpointState(
     .from(workerJobs)
     .where(
       and(
-        eq(workerJobs.tenantId, String(auth.tenantId ?? run.tenantId ?? "")),
+        eq(
+          workerJobs.tenantId,
+          requireStagedTenantId(auth.tenantId, run.tenantId)
+        ),
         eq(workerJobs.jobType, "marketplace.auto_review.execute"),
         sql`${workerJobs.inputJson}->>'runId' = ${run.id}`
       )
@@ -908,12 +844,12 @@ export async function getStagedAutoReviewCheckpointState(
       : [];
     return {
       jobId: job.id,
-      operation: typeof input.operation === "string" ? input.operation : "unknown",
+      operation:
+        typeof input.operation === "string" ? input.operation : "unknown",
       status: job.status,
-      shotId:
-        Number.isInteger(Number(operationInput.shotId))
-          ? Number(operationInput.shotId)
-          : null,
+      shotId: Number.isInteger(Number(operationInput.shotId))
+        ? Number(operationInput.shotId)
+        : null,
       targetShotIds: targets
         .map(target => Number(record(target).shotId))
         .filter(shotId => Number.isInteger(shotId) && shotId > 0),
@@ -924,9 +860,8 @@ export async function getStagedAutoReviewCheckpointState(
               (record(targets[0]).stage === "image" ||
                 record(targets[0]).stage === "video")
             ? record(targets[0]).stage
-          : null,
-      targetPromptOnly:
-        areAllWorkerTargetsPromptOnly(targets),
+            : null,
+      targetPromptOnly: areAllWorkerTargetsPromptOnly(targets),
       stage: typeof progress.stage === "string" ? progress.stage : null,
       progress: Number.isFinite(Number(progress.progress))
         ? Number(progress.progress)
@@ -947,11 +882,7 @@ export async function getStagedAutoReviewCheckpointState(
     planningArchitectureVersion: metadata.planningArchitectureVersion,
     humanApprovalPolicy: metadata.humanApprovalPolicy,
     referenceManifest,
-    languagePlan: {
-      summaryLanguage: languagePlan.summaryLanguage === "en" ? "en" : "th",
-      dialogueLanguage: languagePlan.dialogueLanguage === "en" ? "en" : "th",
-      promptLanguage: languagePlan.promptLanguage === "th" ? "th" : "en",
-    },
+    languagePlan,
     planRevision: metadata.stagedSequentialStoryboard.planRevision,
     stateDigest: stagedMetadataStateDigest(metadata),
     metadataInitializationPending: !persisted,
@@ -960,29 +891,7 @@ export async function getStagedAutoReviewCheckpointState(
     workerOperations,
     audioPlan:
       stagedPipeline?.audioPlan && typeof stagedPipeline.audioPlan === "object"
-        ? {
-            text:
-              typeof stagedPipeline.audioPlan.text === "string"
-                ? stagedPipeline.audioPlan.text.slice(0, 4000)
-                : "",
-            language:
-              typeof stagedPipeline.audioPlan.language === "string"
-                ? stagedPipeline.audioPlan.language
-                : "th",
-            model:
-              typeof stagedPipeline.audioPlan.model === "string"
-                ? stagedPipeline.audioPlan.model
-                : null,
-            provider:
-              typeof stagedPipeline.audioPlan.provider === "string"
-                ? stagedPipeline.audioPlan.provider
-                : null,
-            estimatedCredits: Number.isFinite(
-              Number(stagedPipeline.audioPlan.estimatedCredits)
-            )
-              ? Number(stagedPipeline.audioPlan.estimatedCredits)
-              : 0,
-          }
+        ? buildStagedAudioPlan(stagedPipeline.audioPlan as any)
         : null,
     finalAssembly:
       stagedPipeline?.finalAssembly &&
@@ -1012,30 +921,29 @@ export async function getStagedAutoReviewCheckpointState(
     finalRender: {
       settings: readStagedFinalRenderSettings(metadata),
       engine:
-        stagedTextOrEmpty((metadata as Record<string, any>).renderEngine) || null,
+        stagedTextOrEmpty((metadata as Record<string, any>).renderEngine) ||
+        null,
       jobId:
-        stagedTextOrEmpty((metadata as Record<string, any>).renderJobId) || null,
+        stagedTextOrEmpty((metadata as Record<string, any>).renderJobId) ||
+        null,
       submittedAt:
         Number((metadata as Record<string, any>).renderSubmittedAt) || null,
-      // `renderUrl` is what `buildRenderFinalizationMetadata` writes when a
-      // render completes (both the Remotion queue path and the legacy one);
-      // the other two are older/alternate spellings kept as fallbacks so a
-      // run finalized by an earlier build still shows its video.
+      // `renderUrl` is written only after render finalization. The published
+      // artifact URL remains visible while finalization is still pending.
       outputUrl:
         stagedTextOrEmpty((metadata as Record<string, any>).renderUrl) ||
-        stagedTextOrEmpty((metadata as Record<string, any>).renderOutputUrl) ||
-        stagedTextOrEmpty((metadata as Record<string, any>).finalVideoUrl) ||
         publishedRenderArtifactUrl ||
         null,
       /** True when the file is playable but Library finalization has not
        *  completed yet — the panel says so instead of implying it is done. */
       awaitingFinalization: Boolean(
         publishedRenderArtifactUrl &&
-          !stagedTextOrEmpty((metadata as Record<string, any>).renderUrl)
+        !stagedTextOrEmpty((metadata as Record<string, any>).renderUrl)
       ),
       probe:
         (metadata as Record<string, any>).renderArtifactProbe &&
-        typeof (metadata as Record<string, any>).renderArtifactProbe === "object"
+        typeof (metadata as Record<string, any>).renderArtifactProbe ===
+          "object"
           ? {
               durationSeconds:
                 Number(
@@ -1052,7 +960,8 @@ export async function getStagedAutoReviewCheckpointState(
                 ) || null,
               sizeBytes:
                 Number(
-                  (metadata as Record<string, any>).renderArtifactProbe.sizeBytes
+                  (metadata as Record<string, any>).renderArtifactProbe
+                    .sizeBytes
                 ) || null,
             }
           : null,
@@ -1117,15 +1026,19 @@ async function mutateOwnedCheckpoint(input: {
     assertStagedRunMutable(run);
     assertStagedMetadataPersisted(run);
     const metadata = parseStagedMetadata(run);
-    const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
-    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
-      tx,
-      tenantId,
-      input.idempotencyKey
-    );
+    const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
+    const existingJob =
+      await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+        tx,
+        tenantId,
+        input.idempotencyKey
+      );
     if (existingJob) {
       if (existingJob.jobType !== "marketplace.auto_review.execute") {
-        throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "idempotency_conflict",
+        });
       }
       return {
         runId: run.id,
@@ -1254,7 +1167,10 @@ async function mutateOwnedStagedMetadata(input: {
       });
     assertStagedMetadataPersisted(run);
     const existingMetadata = parseStagedMetadata(run);
-    if (input.terminalImageDispatchTargets && input.queueAdvance !== false) {
+    if (
+      input.terminalImageDispatchTargets &&
+      input.queueAdvance !== false
+    ) {
       assertTerminalImageDispatchAllowed(
         run,
         existingMetadata,
@@ -1269,15 +1185,19 @@ async function mutateOwnedStagedMetadata(input: {
     } else {
       assertStagedRunMutable(run);
     }
-    const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
-    const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
-      tx,
-      tenantId,
-      input.idempotencyKey
-    );
+    const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
+    const existingJob =
+      await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+        tx,
+        tenantId,
+        input.idempotencyKey
+      );
     if (existingJob) {
       if (existingJob.jobType !== "marketplace.auto_review.execute") {
-        throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "idempotency_conflict",
+        });
       }
       return {
         runId: run.id,
@@ -1286,7 +1206,8 @@ async function mutateOwnedStagedMetadata(input: {
       };
     }
     if (
-      stagedMetadataStateDigest(existingMetadata) !== input.expectedStateDigest &&
+      stagedMetadataStateDigest(existingMetadata) !==
+        input.expectedStateDigest &&
       !input.allowStateDrift?.(existingMetadata)
     ) {
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
@@ -1294,7 +1215,8 @@ async function mutateOwnedStagedMetadata(input: {
     const operationId = `staged-op-${nanoid(12)}`;
     const changed = await input.mutate(existingMetadata, operationId);
     const planRevisionChanged =
-      changed.planRevision !== existingMetadata.stagedSequentialStoryboard.planRevision;
+      changed.planRevision !==
+      existingMetadata.stagedSequentialStoryboard.planRevision;
     const changedMetadata =
       planRevisionChanged && changed.metadata.creativeQc
         ? { ...changed.metadata, creativeQc: createMarketplaceDraftQcState() }
@@ -1351,19 +1273,19 @@ async function mutateOwnedStagedMetadata(input: {
           tenantId,
           userId: input.auth.userId,
           runId: run.id,
-          operation: {
-            operation: "advance_run",
-            runId: run.id,
-            operationId,
-            ...(input.targetShotIds
-              ? { targetShotIds: input.targetShotIds }
-              : input.terminalImageDispatchTargets
-                ? {
-                    targetShotIds: input.terminalImageDispatchTargets.map(
-                      target => target.shotId
-                    ),
-                  }
-                : {}),
+        operation: {
+          operation: "advance_run",
+          runId: run.id,
+          operationId,
+          ...(input.targetShotIds
+            ? { targetShotIds: input.targetShotIds }
+            : input.terminalImageDispatchTargets
+            ? {
+                targetShotIds: input.terminalImageDispatchTargets.map(
+                  target => target.shotId
+                  ),
+                }
+              : {}),
           },
           idempotencyKey: input.idempotencyKey,
           priority: 40,
@@ -1373,7 +1295,10 @@ async function mutateOwnedStagedMetadata(input: {
     return {
       runId: run.id,
       operation,
-      status: input.queueAdvance === false ? ("completed" as const) : ("queued" as const),
+      status:
+        input.queueAdvance === false
+          ? ("completed" as const)
+          : ("queued" as const),
     };
   });
 }
@@ -1397,7 +1322,7 @@ export async function startStagedAutoReviewBulkGeneration(input: {
   const metadata = parseStagedMetadata(run);
   assertSavedImagePromptsAvailable(metadata, input.targets);
   assertStagedBulkGenerationAllowed(run, metadata, input.targets);
-  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
     db,
     tenantId,
@@ -1408,7 +1333,10 @@ export async function startStagedAutoReviewBulkGeneration(input: {
       existingJob.jobType !== "marketplace.auto_review.execute" ||
       record(existingJob.inputJson).operation !== "staged_bulk_generation"
     ) {
-      throw new TRPCError({ code: "CONFLICT", message: "idempotency_conflict" });
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "idempotency_conflict",
+      });
     }
     return {
       runId: run.id,
@@ -1422,6 +1350,12 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
   assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
+  if (input.targets.length === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_bulk_targets_required",
+    });
+  }
   const seenShots = new Set<number>();
   for (const target of input.targets) {
     if (seenShots.has(target.shotId)) {
@@ -1431,6 +1365,23 @@ export async function startStagedAutoReviewBulkGeneration(input: {
       });
     }
     seenShots.add(target.shotId);
+    if (target.promptOnly && !target.refreshPrompt) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `staged_prompt_generation_requires_refresh:shot-${target.shotId}`,
+      });
+    }
+    if (!target.promptOnly) {
+      const model = target.model?.trim();
+      if (!model) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `STAGED_${target.stage.toUpperCase()}_MODEL_REQUIRED`,
+        });
+      }
+      modelProvider(model);
+      modelCost(model);
+    }
     const shot = metadata.stagedSequentialStoryboard.shots.find(
       item => item.shotId === target.shotId
     );
@@ -1476,28 +1427,12 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     if (
       target.stage === "video" &&
       !target.promptOnly &&
-      (!shot.imageArtifactHash ||
-        (!target.replaceExisting &&
-          (shot.videoArtifactHash || shot.videoArtifactUrl)))
+      !target.replaceExisting &&
+      (shot.videoArtifactHash || shot.videoArtifactUrl)
     ) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "staged_bulk_video_target_not_ready",
-      });
-    }
-    if (
-      target.stage === "video" &&
-      !target.promptOnly &&
-      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-        checkpoint =>
-          checkpoint.shotId === target.shotId &&
-          checkpoint.kind === "image_result" &&
-          checkpoint.state !== "superseded"
-      )?.state !== "approved"
-    ) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "staged_image_result_not_approved",
       });
     }
   }
@@ -1552,7 +1487,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   assertSavedImagePromptsAvailable(metadata, input.targets);
   assertStagedBulkGenerationAllowed(run, metadata, input.targets);
   assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
-  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const requestHash = createHash("sha256")
     .update(input.requestIdempotencyKey)
     .digest("hex");
@@ -1568,14 +1503,36 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     };
   }
 
-  const promptByShot = new Map<number, string>();
+  const promptByShot = new Map<
+    number,
+    {
+      prompt: string;
+      model: string;
+      provider: string;
+      estimatedCredits: number;
+      skillRuns: MarketplaceVideoPromptSkillRun[];
+      generated: boolean;
+      detectedPeople?: Array<{ id: string; appearance: string }>;
+    }
+  >();
   const promptContextDigests = new Map<number, string>();
-  // Prompt-only repair is independent of in-flight media. Media-producing
-  // batches still defer before making any LLM calls so a retry never pays
-  // twice for targets processed earlier in the same batch.
+  // Validate the complete batch before any skill call. Prompt-only jobs can
+  // run alongside media work; media dispatch requires the shot to be settled.
   for (const target of input.targets) {
     if (!target.promptOnly) {
-      assertStagedShotMediaSettledBeforePromptApply(stagedPipeline, target.shotId);
+      const model = target.model?.trim();
+      if (!model) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `STAGED_${target.stage.toUpperCase()}_MODEL_REQUIRED`,
+        });
+      }
+      modelProvider(model);
+      modelCost(model);
+      assertStagedShotMediaSettledBeforePromptApply(
+        stagedPipeline,
+        target.shotId
+      );
     }
   }
   for (const target of input.targets) {
@@ -1597,42 +1554,111 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
         stagedTaskStatus(stagedPipeline, key) ?? ""
       )
     );
-    if (hasTaskInFlight && !target.promptOnly) continue;
+    if (hasTaskInFlight && !target.promptOnly) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `staged_media_task_in_flight:shot-${target.shotId}`,
+      });
+    }
+    if (target.promptOnly && !target.refreshPrompt) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `staged_prompt_generation_requires_refresh:shot-${target.shotId}`,
+      });
+    }
     if (
       target.stage === "image" &&
       !target.refreshPrompt &&
       !target.replaceExisting &&
       (shot.imageArtifactHash || shot.imageArtifactUrl)
     ) {
-      continue;
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `staged_image_already_exists:shot-${target.shotId}`,
+      });
     }
     if (
       target.stage === "video" &&
       !target.promptOnly &&
+      !target.replaceExisting &&
+      (shot.videoArtifactHash || shot.videoArtifactUrl)
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `staged_video_already_exists:shot-${target.shotId}`,
+      });
+    }
+    if (
+      target.stage === "video" &&
       (!shot.imageArtifactHash ||
-        (!target.replaceExisting &&
-          (shot.videoArtifactHash || shot.videoArtifactUrl)))
+        !safeArtifactUrl(shot.imageArtifactUrl) ||
+        metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+          checkpoint =>
+            checkpoint.shotId === target.shotId &&
+            checkpoint.kind === "image_result" &&
+            checkpoint.state !== "superseded"
+        )?.state !== "approved")
     ) {
-      continue;
-    }
-    if (
-      target.stage === "video" &&
-      !target.promptOnly &&
-      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-        checkpoint =>
-          checkpoint.shotId === target.shotId &&
-          checkpoint.kind === "image_result" &&
-          checkpoint.state !== "superseded"
-      )?.state !== "approved"
-    ) {
-      continue;
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `staged_video_prompt_requires_approved_image:shot-${target.shotId}`,
+      });
     }
     const currentPrompt =
       target.stage === "image"
         ? String(shot.imagePrompt ?? "").trim()
         : String(shot.videoPrompt ?? "").trim();
-    if (currentPrompt && !target.refreshPrompt) {
-      promptByShot.set(target.shotId, currentPrompt);
+    if (!target.refreshPrompt) {
+      if (!currentPrompt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `staged_${target.stage}_prompt_missing:shot-${target.shotId}`,
+        });
+      }
+      const activePromptCheckpoint =
+        metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+          checkpoint =>
+            checkpoint.shotId === target.shotId &&
+            checkpoint.kind ===
+              (target.stage === "image" ? "image_prompt" : "video_prompt") &&
+            checkpoint.state === "approved"
+        );
+      if (target.promptOnly && !activePromptCheckpoint) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `staged_${target.stage}_prompt_checkpoint_missing:shot-${target.shotId}`,
+        });
+      }
+      const model = target.model?.trim();
+      if (!target.promptOnly && !model) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `STAGED_${target.stage.toUpperCase()}_MODEL_REQUIRED`,
+        });
+      }
+      const resolvedModel = target.promptOnly
+        ? activePromptCheckpoint?.approvedModel
+        : model;
+      const resolvedProvider = target.promptOnly
+        ? activePromptCheckpoint?.approvedProvider
+        : modelProvider(resolvedModel!);
+      const estimatedCredits = target.promptOnly
+        ? activePromptCheckpoint?.estimatedCredits
+        : modelCost(resolvedModel!);
+      if (!resolvedModel || !resolvedProvider || estimatedCredits === null) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `staged_${target.stage}_prompt_provenance_missing:shot-${target.shotId}`,
+        });
+      }
+      promptByShot.set(target.shotId, {
+        prompt: currentPrompt,
+        model: resolvedModel,
+        provider: resolvedProvider,
+        estimatedCredits,
+        skillRuns: [],
+        generated: false,
+      });
       continue;
     }
     if (target.promptOnly) {
@@ -1659,11 +1685,14 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       model: target.promptModel,
       requestIdempotencyKey: `marketplace-auto-review-bulk:${requestHash}:shot-${target.shotId}:${target.stage}`,
     });
-    promptByShot.set(target.shotId, generatedPrompt);
+    promptByShot.set(target.shotId, { ...generatedPrompt, generated: true });
   }
 
   if (promptByShot.size === 0) {
-    return { runId: run.id, alreadyQueued: true, shotCount: 0 };
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_bulk_generation_produced_no_prompts",
+    });
   }
 
   const expectedStateDigest = stagedMetadataStateDigest(metadata);
@@ -1691,7 +1720,9 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
     allowStateDrift: input.targets.every(target => target.promptOnly)
       ? current =>
           input.targets.every(target => {
-            const expectedContextDigest = promptContextDigests.get(target.shotId);
+            const expectedContextDigest = promptContextDigests.get(
+              target.shotId
+            );
             const currentShot = current.stagedSequentialStoryboard.shots.find(
               shot => shot.shotId === target.shotId
             );
@@ -1711,26 +1742,32 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
           })
       : undefined,
     mutate(current, operationId) {
-      const nextTargets = input.targets.filter(target =>
-        promptByShot.has(target.shotId)
-      );
+      const nextTargets = input.targets;
       const replacementByShot = new Map<number, any>();
       const nextShots = current.stagedSequentialStoryboard.shots.map(shot => {
         const target = nextTargets.find(item => item.shotId === shot.shotId);
         if (!target) return shot;
-        const prompt = promptByShot.get(target.shotId) ?? "";
+        const preparedPrompt = promptByShot.get(target.shotId);
+        if (!preparedPrompt) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `staged_bulk_prompt_result_missing:shot-${target.shotId}`,
+          });
+        }
+        const prompt = preparedPrompt.prompt;
         const revision = shot.revision + 1;
         const imagePrompt = target.stage === "image";
         const kind = imagePrompt ? "image_prompt" : "video_prompt";
-        const checkpoints = current.stagedSequentialStoryboard.reviewCheckpoints.filter(
-          item => item.shotId === target.shotId && item.kind === kind
-        );
-        const previous =
-          checkpoints.find(item => item.state !== "superseded") ??
-          checkpoints[checkpoints.length - 1];
         const selectedModel = target.model?.trim() ?? "";
-        const resolvedModel =
-          selectedModel || previous?.approvedModel || "internal";
+        const resolvedModel = target.promptOnly
+          ? preparedPrompt.model
+          : selectedModel;
+        if (!resolvedModel) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `STAGED_${target.stage.toUpperCase()}_MODEL_REQUIRED`,
+          });
+        }
         const replacement = buildStagedCheckpoint({
           checkpointId: `${kind}:${run.id}:shot-${target.shotId}:r${revision}:bulk-${operationId}`,
           kind,
@@ -1741,23 +1778,23 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
                 revision,
                 shotId: target.shotId,
                 prompt,
-                referenceManifestHash:
-                  current.stagedSequentialStoryboard.referenceManifestHash ??
-                  "none",
+                referenceManifestHash: requireStagedReferenceManifestHash(
+                  current.stagedSequentialStoryboard.referenceManifestHash
+                ),
               })
             : buildStagedVideoPromptContentHash({
                 revision,
                 shotId: target.shotId,
                 prompt,
-                imageArtifactHash: shot.imageArtifactHash ?? "",
+                imageArtifactHash: requireStagedImageArtifactHash(shot),
               }),
+          provider: target.promptOnly
+            ? preparedPrompt.provider
+            : modelProvider(resolvedModel),
           model: resolvedModel,
-          provider: selectedModel
-            ? modelProvider(resolvedModel)
-            : (previous?.approvedProvider ?? "internal"),
-          estimatedCredits: selectedModel
-            ? modelCost(resolvedModel)
-            : (previous?.estimatedCredits ?? 0),
+          estimatedCredits: target.promptOnly
+            ? preparedPrompt.estimatedCredits
+            : modelCost(resolvedModel),
           referenceManifestHash:
             current.stagedSequentialStoryboard.referenceManifestHash,
           autoApprove: { userId: input.auth.userId },
@@ -1802,20 +1839,26 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
           const target = targetByShot.get(checkpoint.shotId);
           const invalidatedByImage =
             target?.stage === "image" &&
-            ["image_prompt", "image_result", "video_prompt", "video_result"].includes(
-              checkpoint.kind
-            );
+            [
+              "image_prompt",
+              "image_result",
+              "video_prompt",
+              "video_result",
+            ].includes(checkpoint.kind);
           const invalidatedByVideo =
             target?.stage === "video" &&
             ["video_prompt", "video_result"].includes(checkpoint.kind);
-          return (invalidatedByImage || invalidatedByVideo) &&
+          if (
+            (invalidatedByImage || invalidatedByVideo) &&
             checkpoint.state !== "superseded"
-            ? {
-                ...checkpoint,
-                state: "superseded" as const,
-                rejectionReasonCode: "staged_bulk_generation",
-              }
-            : checkpoint;
+          ) {
+            return {
+              ...checkpoint,
+              state: "superseded" as const,
+              rejectionReasonCode: "staged_bulk_generation",
+            };
+          }
+          return checkpoint;
         }
       );
       const tasks = removeStagedTasksInvalidatedByPrompt(
@@ -1828,29 +1871,32 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       const receiptEntries = Object.entries(existingReceipts).slice(-19);
       const bulkGenerationReceipts = Object.fromEntries([
         ...receiptEntries,
-        [requestHash, {
-          queuedAt: new Date().toISOString(),
-          shotIds: nextTargets.map(target => target.shotId),
-        }],
+        [
+          requestHash,
+          {
+            queuedAt: new Date().toISOString(),
+            shotIds: nextTargets.map(target => target.shotId),
+          },
+        ],
       ]);
       const generatedAt = new Date().toISOString();
       const promptGeneration = {
         ...record(record((current as any).stagedPipeline).promptGeneration),
       };
       for (const target of nextTargets) {
-        const currentPrompt =
-          target.stage === "image"
-            ? current.stagedSequentialStoryboard.shots.find(
-                shot => shot.shotId === target.shotId
-              )?.imagePrompt
-            : current.stagedSequentialStoryboard.shots.find(
-                shot => shot.shotId === target.shotId
-              )?.videoPrompt;
-        if (target.refreshPrompt || !String(currentPrompt ?? "").trim()) {
+        const prepared = promptByShot.get(target.shotId);
+        if (prepared?.generated) {
           promptGeneration[`${target.stage}:${target.shotId}`] = {
             generatedAt,
             operationId,
-            source: "product-review-sequential-storyboard-skill",
+            source: prepared.skillRuns.map(run => run.skill).join(" + "),
+            model: prepared.model,
+            provider: prepared.provider,
+            estimatedCredits: prepared.estimatedCredits,
+            skillRuns: prepared.skillRuns,
+            ...(prepared.detectedPeople
+              ? { detectedPeople: prepared.detectedPeople }
+              : {}),
           };
         }
       }
@@ -1962,8 +2008,8 @@ export async function editStagedAutoReviewShot(input: {
           kind: "story_plan",
           revision,
           contentHash: nextPlan.storyPlanHash,
-          model: "story-arc",
-          provider: "internal-bounded",
+          model: "user-edit",
+          provider: "user",
           estimatedCredits: 0,
           referenceManifestHash:
             metadata.stagedSequentialStoryboard.referenceManifestHash,
@@ -2074,8 +2120,8 @@ export async function editStagedAutoReviewShot(input: {
           kind: "story_plan",
           revision,
           contentHash: nextPlan.storyPlanHash,
-          model: "story-arc",
-          provider: "internal-bounded",
+          model: "user-edit",
+          provider: "user",
           estimatedCredits: 0,
           referenceManifestHash:
             metadata.stagedSequentialStoryboard.referenceManifestHash,
@@ -2136,16 +2182,18 @@ export async function editStagedAutoReviewShot(input: {
 
       const kind =
         input.imagePrompt !== undefined ? "image_prompt" : "video_prompt";
-      const currentPromptCheckpoint =
-        metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-          checkpoint =>
-            checkpoint.shotId === input.shotId &&
-            checkpoint.kind === kind &&
-            checkpoint.state !== "superseded"
-        );
       const revision = shot.revision + 1;
-      const content = (input.imagePrompt ?? input.videoPrompt ?? "").trim();
       const imagePrompt = input.imagePrompt !== undefined;
+      const content = imagePrompt
+        ? input.imagePrompt!.trim()
+        : input.videoPrompt!.trim();
+      if (!content) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `staged_${imagePrompt ? "image" : "video"}_prompt_required`,
+        });
+      }
+      if (!imagePrompt) requireStagedImageArtifactHash(shot);
       const replacement = buildStagedCheckpoint({
         checkpointId: `${kind}:${input.runId}:shot-${input.shotId}:r${revision}:op-${operationId}`,
         kind,
@@ -2156,19 +2204,19 @@ export async function editStagedAutoReviewShot(input: {
               revision,
               shotId: input.shotId,
               prompt: content,
-              referenceManifestHash:
-                metadata.stagedSequentialStoryboard.referenceManifestHash ??
-                "none",
+              referenceManifestHash: requireStagedReferenceManifestHash(
+                metadata.stagedSequentialStoryboard.referenceManifestHash
+              ),
             })
           : buildStagedVideoPromptContentHash({
               revision,
               shotId: input.shotId,
               prompt: content,
-              imageArtifactHash: shot.imageArtifactHash ?? "",
+              imageArtifactHash: requireStagedImageArtifactHash(shot),
             }),
-        model: currentPromptCheckpoint?.approvedModel ?? "internal",
-        provider: currentPromptCheckpoint?.approvedProvider ?? "internal",
-        estimatedCredits: currentPromptCheckpoint?.estimatedCredits ?? 0,
+        model: "user-edit",
+        provider: "user",
+        estimatedCredits: 0,
         referenceManifestHash:
           metadata.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
@@ -2252,13 +2300,40 @@ function stagedAbsoluteReferenceUrl(
   publicUrl?: string | null
 ): string {
   if (/^https?:\/\//i.test(value)) return value;
-  const base = publicUrl?.trim() || process.env.NODE_BASE_URL?.trim();
-  if (!base) return "";
-  try {
-    return new URL(value, `${base.replace(/\/+$/, "")}/`).toString();
-  } catch {
-    return "";
+  const base = publicUrl?.trim();
+  if (!base) throw new Error("MARKETPLACE_PUBLIC_BASE_URL_REQUIRED");
+  return new URL(value, `${base.replace(/\/+$/, "")}/`).toString();
+}
+
+function requireStagedReferenceManifest(
+  metadata: Record<string, any>
+): Array<Record<string, any>> {
+  const manifest = metadata.customReferenceManifest;
+  if (!Array.isArray(manifest) || manifest.length === 0) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_REQUIRED");
   }
+  return manifest.map((entry: unknown, index: number) => {
+    const item = record(entry);
+    if (
+      !Number.isSafeInteger(item.index) ||
+      item.index < 1 ||
+      typeof item.url !== "string" ||
+      !item.url.trim() ||
+      typeof item.role !== "string" ||
+      !item.role.trim() ||
+      typeof item.active !== "boolean"
+    ) {
+      throw new Error(`STAGED_REFERENCE_MANIFEST_ENTRY_INVALID:${index + 1}`);
+    }
+    return item;
+  });
+}
+
+function requireStagedReferenceManifestHash(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_HASH_REQUIRED");
+  }
+  return value.trim();
 }
 
 // Fix B (marketplace auto-review staged pipeline: shot images ignoring
@@ -2350,6 +2425,7 @@ export function buildStagedSingleShotRefreshInput(input: {
    *  adjustment (see `userInstruction` on `SequentialSingleShotRefreshInput`). */
   instruction?: string | null;
   model?: string | null;
+  requestIdempotencyKey?: string | null;
   /** Which prompt half is being (re)generated. Defaults to `"image"` for
    *  every pre-existing caller/test that never passed this. Only `"video"`
    *  changes behavior: the shot's own already-approved `imageArtifactUrl`
@@ -2362,8 +2438,7 @@ export function buildStagedSingleShotRefreshInput(input: {
   const staged = input.metadata.stagedSequentialStoryboard;
   const shot = staged.shots.find(item => item.shotId === input.shotId);
   const plan = (input.metadata as any).stagedPipeline?.plan as
-    | StagedStoryArcPlan
-    | undefined;
+    StagedStoryArcPlan | undefined;
   const planShot = plan?.shots.find(item => item.shotId === input.shotId);
   if (!shot || !plan || !planShot) {
     throw new TRPCError({
@@ -2371,14 +2446,9 @@ export function buildStagedSingleShotRefreshInput(input: {
       message: "staged_invalid_shot_contract",
     });
   }
-  const productImages = Array.isArray(plan.product?.imageUrls)
-    ? plan.product.imageUrls.map(value => String(value).trim()).filter(Boolean)
-    : [];
-  const customManifest = Array.isArray((input.metadata as any).customReferenceManifest)
-    ? (input.metadata as any).customReferenceManifest
-    : Array.isArray((input.metadata as any).stagedSequentialStoryboard?.referenceManifest)
-    ? (input.metadata as any).stagedSequentialStoryboard.referenceManifest
-    : [];
+  const customManifest = requireStagedReferenceManifest(
+    input.metadata as Record<string, any>
+  );
 
   // Per-shot cast + look overrides, resolved by the SAME helper the dispatch
   // path uses so the `@ImageN` tags the skill authors always address the
@@ -2389,44 +2459,50 @@ export function buildStagedSingleShotRefreshInput(input: {
     plan,
     shotId: input.shotId,
   });
-  const activeManifestItems = customManifest.filter(
-    (item: any) =>
-      item && typeof item.url === "string" && item.url.trim() && item.active !== false
-  );
-  const shotOrderedManifestItems =
-    activeManifestItems.length > 0
-      ? buildShotOrderedReferenceItems({
-          productItems: activeManifestItems.filter((item: any) => item.role !== "character"),
-          characterItems: activeManifestItems.filter((item: any) => item.role === "character"),
-          castInShot: shotCastSelection.castInShot,
-          castLooks: shotCastSelection.castLooks,
-        }).ordered
-      : [];
+  const activeManifestItems = customManifest.filter((item: any) => item.active);
+  if (!activeManifestItems.some((item: any) => item.role !== "character")) {
+    throw new Error("STAGED_ACTIVE_PRODUCT_REFERENCE_REQUIRED");
+  }
+  const shotOrderedManifestItems = buildShotOrderedReferenceItems({
+    productItems: activeManifestItems.filter(
+      (item: any) => item.role !== "character"
+    ),
+    characterItems: activeManifestItems.filter(
+      (item: any) => item.role === "character"
+    ),
+    castInShot: shotCastSelection.castInShot,
+    castLooks: shotCastSelection.castLooks,
+  }).ordered;
 
   const baseReferenceManifest: SequentialReferenceManifestEntry[] =
-    shotOrderedManifestItems.length > 0
-      ? shotOrderedManifestItems.map((item: any, idx: number) => ({
-          index: idx + 1,
-          role: item.role || "product",
-          url: String(item.url).trim(),
-          angleLabel: item.label || undefined,
-          evidenceOnly: false,
-          // Cast identity — the skill previously received `role`/`angleLabel`
-          // only, so with more than one character it had no way to know WHO
-          // `@Image2..@Image5` were. These are FACTS (who is in the frame),
-          // never creative direction.
-          characterName: item.characterName || undefined,
-          characterRole: item.characterRole || undefined,
-          variantLabel: item.variantLabel || undefined,
-          depictsMinor:
-            typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
-        }))
-      : productImages.slice(0, 1).map((url, index) => ({
-          index: index + 1,
-          role: index === 0 ? "product" : "product_angle",
-          url,
-          evidenceOnly: false,
-        }));
+    shotOrderedManifestItems.map((item: any, idx: number) => ({
+      index: idx + 1,
+      role: item.role,
+      url: String(item.url).trim(),
+      angleLabel:
+        typeof item.label === "string" && item.label.trim()
+          ? item.label
+          : undefined,
+      evidenceOnly: false,
+      // Cast identity — the skill receives the exact person mapping as facts.
+      characterName:
+        typeof item.characterName === "string" && item.characterName.trim()
+          ? item.characterName
+          : undefined,
+      characterRole:
+        typeof item.characterRole === "string" && item.characterRole.trim()
+          ? item.characterRole
+          : undefined,
+      variantLabel:
+        typeof item.variantLabel === "string" && item.variantLabel.trim()
+          ? item.variantLabel
+          : undefined,
+      depictsMinor:
+        typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
+    }));
+  if (baseReferenceManifest.length === 0) {
+    throw new Error("STAGED_ACTIVE_REFERENCE_SELECTION_REQUIRED");
+  }
   // Video-prompt generation must SEE the shot's own already-approved image
   // (the actual rendered start frame), not just the pre-generation reference
   // manifest — see doc comment on `stage` above. Appended as its own manifest
@@ -2434,25 +2510,28 @@ export function buildStagedSingleShotRefreshInput(input: {
   // unambiguous to the skill and its index never displaces the product/
   // character reference indices the skill already relies on.
   const approvedShotImageUrl =
-    input.stage === "video" ? (safeArtifactUrl(shot.imageArtifactUrl) ?? "") : "";
-  const referenceManifest: SequentialReferenceManifestEntry[] = approvedShotImageUrl
-    ? [
-        ...baseReferenceManifest,
-        {
-          index: baseReferenceManifest.length + 1,
-          role: "approved_shot_image",
-          url: approvedShotImageUrl,
-          evidenceOnly: false,
-        },
-      ]
-    : baseReferenceManifest;
-  const skillVisionUrls = referenceManifest
-    .map(entry => stagedAbsoluteReferenceUrl(entry.url, input.publicUrl))
-    .filter(Boolean);
+    input.stage === "video" ? safeArtifactUrl(shot.imageArtifactUrl) : null;
+  if (input.stage === "video" && !approvedShotImageUrl) {
+    throw new Error(`STAGED_APPROVED_SHOT_IMAGE_REQUIRED:${input.shotId}`);
+  }
+  const referenceManifest: SequentialReferenceManifestEntry[] =
+    input.stage === "video"
+      ? [
+          ...baseReferenceManifest,
+          {
+            index: baseReferenceManifest.length + 1,
+            role: "approved_shot_image",
+            url: approvedShotImageUrl!,
+            evidenceOnly: false,
+          },
+        ]
+      : baseReferenceManifest;
+  const skillVisionUrls = referenceManifest.map(entry =>
+    stagedAbsoluteReferenceUrl(entry.url, input.publicUrl)
+  );
   const productTruth = record((input.metadata as any).productTruth);
-  const languagePlan = record(
-    record((input.metadata as Record<string, any>).sequentialStoryboard)
-      .languagePlan
+  const languagePlan = requireStagedLanguagePlanFromMetadata(
+    input.metadata as Record<string, any>
   );
   const previousShot = plan.shots.find(
     item => item.shotId === input.shotId - 1
@@ -2478,14 +2557,12 @@ export function buildStagedSingleShotRefreshInput(input: {
     entry => entry.role === "character"
   );
   const guardianReferenceIndex =
-    (
-      characterManifestEntries.find(
-        entry => (entry as any).depictsMinor !== true
-      ) ?? characterManifestEntries[0]
+    characterManifestEntries.find(
+      entry => (entry as any).depictsMinor === false
     )?.index ?? null;
   const assemblyDocumented = deriveAssemblyDocumentationFromProductTruth({
     productName: plan.product.productName,
-    description: plan.product.description || "",
+    description: plan.product.description,
     specs: {},
   }).documented;
   const guardianPresenceDirective = buildStagedGuardianPresenceDirective({
@@ -2496,13 +2573,17 @@ export function buildStagedSingleShotRefreshInput(input: {
     buildStagedDemonstrationEvidenceDirective({ assemblyDocumented });
   const userInstruction = (input.instruction ?? "").trim() || null;
   return {
-    tenantId: input.tenantId || input.run.tenantId || "",
+    tenantId: requireStagedTenantId(input.tenantId, input.run.tenantId),
     userId: input.run.userId,
     runId: input.run.id,
     model: input.model ?? null,
+    ...(input.requestIdempotencyKey
+      ? { requestIdempotencyKey: input.requestIdempotencyKey }
+      : {}),
     publicUrl: input.publicUrl,
     originSurface: "marketplace_capture" as const,
     targetShotId: input.shotId,
+    ...(input.stage === "image" ? { promptTarget: "image" as const } : {}),
     imageBudget: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
     referenceManifest,
     skillVisionUrls,
@@ -2533,9 +2614,11 @@ export function buildStagedSingleShotRefreshInput(input: {
     guardianPresenceDirective: guardianPresenceDirective || undefined,
     demonstrationEvidenceDirective: demonstrationEvidenceDirective || undefined,
     userInstruction,
-    summaryLanguage: (languagePlan.summaryLanguage === "en" ? "en" : "th") as SequentialStoryboardLanguage,
-    dialogueLanguage: (languagePlan.dialogueLanguage === "en" ? "en" : "th") as SequentialStoryboardLanguage,
-    promptLanguage: (languagePlan.promptLanguage === "th" ? "th" : "en") as SequentialStoryboardLanguage,
+    summaryLanguage:
+      languagePlan.summaryLanguage as SequentialStoryboardLanguage,
+    dialogueLanguage:
+      languagePlan.dialogueLanguage as SequentialStoryboardLanguage,
+    promptLanguage: languagePlan.promptLanguage as SequentialStoryboardLanguage,
   };
 }
 
@@ -2557,23 +2640,11 @@ function buildStagedShotPromptContextDigest(input: {
       ([key]) => key !== "publicUrl" && key !== "skillVisionUrls"
     )
   );
-  // A video prompt queued during image rendering should be drafted against the
-  // accepted image that exists when its worker runs. The image artifact is a
-  // downstream result, not an authored story input, so it must not invalidate
-  // this queued request when the render settles.
-  const stableContext = {
-    ...context,
-    referenceManifest: Array.isArray(context.referenceManifest)
-      ? (context.referenceManifest as Array<Record<string, unknown>>).filter(
-          entry => entry.role !== "approved_shot_image"
-        )
-      : context.referenceManifest,
-  };
   const targetShot = input.metadata.stagedSequentialStoryboard.shots.find(
     shot => shot.shotId === input.shotId
   );
   return buildProductionStableHash({
-    ...stableContext,
+    ...context,
     targetShotRevision: targetShot?.revision ?? null,
   });
 }
@@ -2618,10 +2689,26 @@ async function generateCompleteStagedShotPrompt(input: {
   instruction?: string | null;
   model?: string | null;
   requestIdempotencyKey: string;
-}): Promise<string> {
+  onProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message: string;
+  }) => Promise<void>;
+}): Promise<{
+  prompt: string;
+  model: string;
+  provider: string;
+  estimatedCredits: number;
+  skillRuns: MarketplaceVideoPromptSkillRun[];
+  detectedPeople?: Array<{
+    id: string;
+    appearance: string;
+    confidence: number;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  }>;
+}> {
   const plan = record(record(input.metadata).stagedPipeline).plan as
-    | StagedStoryArcPlan
-    | undefined;
+    StagedStoryArcPlan | undefined;
   const planShot = plan?.shots.find(shot => shot.shotId === input.shotId);
   if (!plan || !planShot) {
     throw new TRPCError({
@@ -2633,128 +2720,117 @@ async function generateCompleteStagedShotPrompt(input: {
   const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
     shot => shot.shotId === input.shotId
   );
-  if (input.stage === "video") {
-    assertStagedVideoPromptImageReady({
-      shotId: input.shotId,
-      shot: stagedShot,
-      checkpoints: input.metadata.stagedSequentialStoryboard.reviewCheckpoints,
+  if (input.stage === "image") {
+    await input.onProgress?.({
+      progress: 20,
+      stage: "product-review-sequential-storyboard",
+      message: `กำลังสร้าง Prompt ภาพ · product-review-sequential-storyboard · Shot ${input.shotId}`,
     });
-    const approvedImageUrl = safeArtifactUrl(stagedShot.imageArtifactUrl)!;
-    const refreshInput = buildStagedSingleShotRefreshInput({
-      ...input,
-      stage: "video",
-    });
-    const tenantId = String(input.tenantId ?? input.run.tenantId ?? "").trim();
-    if (!tenantId) {
+    const tenantId = requireStagedTenantId(input.tenantId, input.run.tenantId);
+    if (!tenantId.trim()) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "MARKETPLACE_VIDEO_PROMPT_TENANT_REQUIRED",
+        message: "MARKETPLACE_IMAGE_PROMPT_TENANT_REQUIRED",
       });
     }
-    const productFacts = [
-      plan.product.description,
-      ...Object.entries(plan.product.specs ?? {}).map(([key, value]) =>
-        value === null || value === undefined || typeof value === "object"
-          ? ""
-          : `${key}: ${String(value)}`
-      ),
-    ].filter(
-      (fact): fact is string => typeof fact === "string" && fact.trim().length > 0
-    );
-    const generated = await generateMarketplaceAutoReviewVideoPrompt({
-      userId: input.run.userId,
-      tenantId,
-      publicUrl: input.publicUrl,
-      runId: input.run.id,
-      shotId: input.shotId,
-      approvedImageUrl,
-      promptModel: input.model,
-      requestIdempotencyKey: input.requestIdempotencyKey,
-      shot: planShot,
-      cast: plan.cast ?? [],
-      productName: plan.product.productName,
-      productFacts,
-      referenceManifest: refreshInput.referenceManifest,
-      instruction: input.instruction,
-    });
-    if (
-      !isCompleteStagedVideoPrompt(
-        generated.prompt,
-        planShot.dialogue,
-        planShot.dialogueTurns,
-        plan.cast,
-        generated.detectedPeople.map(person => person.id)
-      )
-    ) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: `MARKETPLACE_VIDEO_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`,
-      });
-    }
-    return generated.prompt;
-  }
-
-  let prompt = "";
-  try {
-    const refresh = await refreshSequentialShotPromptWithSkill(
+    const refresh = await refreshSequentialShotPromptWithSkillDirect(
       buildStagedSingleShotRefreshInput({
         ...input,
-        stage: input.stage,
+        tenantId,
+        stage: "image",
+        requestIdempotencyKey: input.requestIdempotencyKey,
       })
     );
-    prompt =
-      input.stage === "image"
-        ? refresh.startFrameImagePrompt.trim()
-        : String(refresh.videoPrompt ?? "").trim();
-  } catch (error) {
-    console.warn(
-      `[generateCompleteStagedShotPrompt] skill authoring failed for run=${input.run.id} shot=${input.shotId} stage=${input.stage}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    const prompt = refresh.startFrameImagePrompt.trim();
+    if (!isCompleteStagedImagePrompt(prompt)) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`,
+      });
+    }
+    return {
+      prompt,
+      model: refresh.model,
+      provider: refresh.provider,
+      estimatedCredits: refresh.estimatedCredits,
+      skillRuns: [
+        {
+          skill: "product-review-sequential-storyboard",
+          model: refresh.model,
+          provider: refresh.provider,
+          estimatedCredits: refresh.estimatedCredits,
+        },
+      ],
+    };
   }
 
-  const isComplete = () =>
-    input.stage === "image"
-      ? isCompleteStagedImagePrompt(prompt)
-      : isCompleteStagedVideoPrompt(
-          prompt,
-          planShot.dialogue,
-          planShot.dialogueTurns,
-          plan.cast
-        );
-  if (isComplete()) return prompt;
-
-  if (input.stage === "image") {
-    const customManifest = Array.isArray((input.metadata as any).customReferenceManifest)
-      ? (input.metadata as any).customReferenceManifest
-      : Array.isArray(input.metadata.stagedSequentialStoryboard.referenceManifest)
-        ? input.metadata.stagedSequentialStoryboard.referenceManifest
-        : [];
-    prompt = compileStagedImagePrompt({
-      plan,
-      shot: planShot,
-      customManifest,
-    }).prompt;
-    if (isCompleteStagedImagePrompt(prompt)) return prompt;
-  } else {
-    prompt = compileStagedVideoPrompt({
-      plan,
-      shot: planShot,
-      imageArtifactHash: stagedShot?.imageArtifactHash ?? "",
-    }).prompt;
-    if (
-      isCompleteStagedVideoPrompt(
-        prompt,
-        planShot.dialogue,
-        planShot.dialogueTurns,
-        plan.cast
-      )
-    ) return prompt;
-  }
-
-  throw new TRPCError({
-    code: "PRECONDITION_FAILED",
-    message: `staged_${input.stage}_prompt_incomplete`,
+  assertStagedVideoPromptImageReady({
+    shotId: input.shotId,
+    shot: stagedShot,
+    checkpoints: input.metadata.stagedSequentialStoryboard.reviewCheckpoints,
   });
+  const approvedImageUrl = safeArtifactUrl(stagedShot.imageArtifactUrl)!;
+  const refreshInput = buildStagedSingleShotRefreshInput({
+    ...input,
+    stage: "video",
+    requestIdempotencyKey: input.requestIdempotencyKey,
+  });
+  const productFacts = [
+    plan.product.description,
+    ...Object.entries(plan.product.specs ?? {}).map(([key, value]) =>
+      value === null || value === undefined || typeof value === "object"
+        ? ""
+        : `${key}: ${String(value)}`
+    ),
+  ].filter(
+    (fact): fact is string => typeof fact === "string" && fact.trim().length > 0
+  );
+  const tenantId = requireStagedTenantId(input.tenantId, input.run.tenantId);
+  if (!tenantId.trim()) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "MARKETPLACE_VIDEO_PROMPT_TENANT_REQUIRED",
+    });
+  }
+  const generated = await generateMarketplaceAutoReviewVideoPrompt({
+    userId: input.run.userId,
+    tenantId,
+    publicUrl: input.publicUrl,
+    runId: input.run.id,
+    shotId: input.shotId,
+    approvedImageUrl,
+    promptModel: input.model,
+    requestIdempotencyKey: input.requestIdempotencyKey,
+    shot: planShot,
+    cast: plan.cast ?? [],
+    productName: plan.product.productName,
+    productFacts,
+    referenceManifest: refreshInput.referenceManifest,
+    instruction: input.instruction,
+    onProgress: input.onProgress,
+  });
+  if (
+    !isCompleteStagedVideoPrompt(
+      generated.prompt,
+      planShot.dialogue,
+      generated.detectedPeople.map(person => person.id),
+      planShot.dialogueTurns,
+      plan.cast
+    )
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `MARKETPLACE_VIDEO_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`,
+    });
+  }
+  return {
+    prompt: generated.prompt,
+    model: generated.model,
+    provider: generated.provider,
+    estimatedCredits: generated.estimatedCredits,
+    skillRuns: generated.skillRuns,
+    detectedPeople: generated.detectedPeople,
+  };
 }
 
 /**
@@ -2774,6 +2850,11 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   runtime?: StagedCheckpointRuntime;
   /** Set only by the canonical worker executor after durable admission. */
   workerExecution?: boolean;
+  onProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message: string;
+  }) => Promise<void>;
   /** New capability — optional free-text per-shot instruction for
    *  AI-assisted prompt adjustment (e.g. "there's an 8-month-old baby in
    *  the scene"). Threaded through to the skill call as a distinct,
@@ -2791,7 +2872,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
   }
   const run = await requireOwnedRun(db, input.runId, input.auth);
   assertStagedMetadataPersisted(run);
-  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const resultIdempotencyKey = stagedResultIdempotencyKey(input.idempotencyKey);
   const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
     db,
@@ -2823,18 +2904,18 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     input.promptContextDigest.length > 0;
   const promptSnapshotMatches = Boolean(
     input.workerExecution &&
-      hasPromptSnapshot &&
-      shot?.revision === input.expectedShotRevision &&
-      buildStagedShotPromptContextDigest({
-        run,
-        metadata,
-        shotId: input.shotId,
-        stage: input.stage,
-        publicUrl: input.runtime?.publicUrl,
-        tenantId: input.auth.tenantId,
-        instruction: input.instruction,
-        model: input.model,
-      }) === input.promptContextDigest
+    hasPromptSnapshot &&
+    shot?.revision === input.expectedShotRevision &&
+    buildStagedShotPromptContextDigest({
+      run,
+      metadata,
+      shotId: input.shotId,
+      stage: input.stage,
+      publicUrl: input.runtime?.publicUrl,
+      tenantId: input.auth.tenantId,
+      instruction: input.instruction,
+      model: input.model,
+    }) === input.promptContextDigest
   );
   if (
     input.workerExecution && hasPromptSnapshot
@@ -2894,7 +2975,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     };
   }
 
-  const generatedPrompt = await generateCompleteStagedShotPrompt({
+  const generated = await generateCompleteStagedShotPrompt({
     run,
     metadata,
     shotId: input.shotId,
@@ -2904,6 +2985,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     model: input.model,
     stage: input.stage,
     requestIdempotencyKey: input.idempotencyKey,
+    onProgress: input.onProgress,
   });
 
   return mutateOwnedStagedMetadata({
@@ -2945,14 +3027,6 @@ export async function generateStagedAutoReviewShotPrompt(input: {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId
       );
-      const currentCheckpoint =
-        current.stagedSequentialStoryboard.reviewCheckpoints.find(
-          item =>
-            item.shotId === input.shotId &&
-            item.kind ===
-              (input.stage === "image" ? "image_prompt" : "video_prompt") &&
-            item.state !== "superseded"
-        );
       if (!currentShot) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -2965,16 +3039,16 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         ? buildStagedImagePromptContentHash({
             revision,
             shotId: input.shotId,
-            prompt: generatedPrompt,
-            referenceManifestHash:
-              current.stagedSequentialStoryboard.referenceManifestHash ??
-              "none",
+            prompt: generated.prompt,
+            referenceManifestHash: requireStagedReferenceManifestHash(
+              current.stagedSequentialStoryboard.referenceManifestHash
+            ),
           })
         : buildStagedVideoPromptContentHash({
             revision,
             shotId: input.shotId,
-            prompt: generatedPrompt,
-            imageArtifactHash: currentShot.imageArtifactHash ?? "",
+            prompt: generated.prompt,
+            imageArtifactHash: requireStagedImageArtifactHash(currentShot),
           });
       const replacement = buildStagedCheckpoint({
         checkpointId: `${imagePrompt ? "image_prompt" : "video_prompt"}:${input.runId}:shot-${input.shotId}:r${revision}:generate-${operationId}`,
@@ -2982,9 +3056,9 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         shotId: input.shotId,
         revision,
         contentHash,
-        model: currentCheckpoint?.approvedModel ?? "internal",
-        provider: currentCheckpoint?.approvedProvider ?? "internal",
-        estimatedCredits: currentCheckpoint?.estimatedCredits ?? 0,
+        model: generated.model,
+        provider: generated.provider,
+        estimatedCredits: generated.estimatedCredits,
         referenceManifestHash:
           current.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
@@ -3022,7 +3096,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         revision,
         ...(imagePrompt
           ? {
-              imagePrompt: generatedPrompt,
+              imagePrompt: generated.prompt,
               imagePromptHash: contentHash,
               imageArtifactHash: null,
               imageArtifactUrl: null,
@@ -3033,7 +3107,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
               state: "image_prompt_awaiting",
             }
           : {
-              videoPrompt: generatedPrompt,
+              videoPrompt: generated.prompt,
               videoPromptHash: contentHash,
               videoArtifactHash: null,
               videoArtifactUrl: null,
@@ -3052,7 +3126,14 @@ export async function generateStagedAutoReviewShotPrompt(input: {
               [`${input.stage}:${input.shotId}`]: {
                 generatedAt: new Date().toISOString(),
                 operationId,
-                source: "product-review-sequential-storyboard-skill",
+                source: generated.skillRuns.map(run => run.skill).join(" + "),
+                model: generated.model,
+                provider: generated.provider,
+                estimatedCredits: generated.estimatedCredits,
+                skillRuns: generated.skillRuns,
+                ...(generated.detectedPeople
+                  ? { detectedPeople: generated.detectedPeople }
+                  : {}),
               },
             },
           },
@@ -3083,7 +3164,8 @@ export async function editStagedAutoReviewAudioPlan(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
-    queueAdvance: input.storySummary !== undefined || input.dialogue !== undefined,
+    queueAdvance:
+      input.storySummary !== undefined || input.dialogue !== undefined,
     mutate(metadata, operationId) {
       const current =
         metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
@@ -3099,20 +3181,27 @@ export async function editStagedAutoReviewAudioPlan(input: {
           message: "checkpoint_not_awaiting",
         });
       }
+      const language = input.language ?? currentPlan.language;
+      const model = currentPlan.model;
+      const provider = currentPlan.provider;
+      const estimatedCredits = Number(currentPlan.estimatedCredits);
+      if (
+        typeof language !== "string" ||
+        typeof model !== "string" ||
+        typeof provider !== "string" ||
+        !Number.isFinite(estimatedCredits)
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "staged_audio_plan_incomplete",
+        });
+      }
       const nextPlan = buildStagedAudioPlan({
         text: input.text.trim().slice(0, 4000),
-        language: (input.language ?? currentPlan.language ?? "th")
-          .trim()
-          .slice(0, 12),
-        model: String(
-          currentPlan.model ?? current.approvedModel ?? "elevenlabs-tts"
-        ),
-        provider: String(
-          currentPlan.provider ?? current.approvedProvider ?? "media-provider"
-        ),
-        estimatedCredits: Number(
-          currentPlan.estimatedCredits ?? current.estimatedCredits ?? 0
-        ),
+        language: language.trim().slice(0, 12),
+        model,
+        provider,
+        estimatedCredits,
       });
       const revision = current.revision + 1;
       const replacement = buildStagedCheckpoint({
@@ -3182,12 +3271,15 @@ export async function redraftStagedAutoReviewPlan(input: {
 }) {
   const db = await getDb();
   if (!db) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
   }
   const run = await requireOwnedRun(db, input.runId, input.auth);
   assertStagedRunMutable(run);
   assertStagedMetadataPersisted(run);
-  const tenantId = String(input.auth.tenantId ?? run.tenantId ?? "").trim();
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const resultIdempotencyKey = stagedResultIdempotencyKey(input.idempotencyKey);
   const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
     db,
@@ -3206,13 +3298,37 @@ export async function redraftStagedAutoReviewPlan(input: {
   if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
-  const current = ((metadata as any).stagedPipeline?.plan ?? null) as Record<string, any> | null;
+  const current = ((metadata as any).stagedPipeline?.plan ?? null) as Record<
+    string,
+    any
+  > | null;
   if (!current || current.state === "superseded") {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "checkpoint_not_awaiting" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "checkpoint_not_awaiting",
+    });
   }
-  const redraftCount = Number(metadata.planReview.redraftCount) || 0;
+  if (
+    (!(typeof current.selectedConceptId === "string" && current.selectedConceptId.trim()) && !input.selectedConcept) ||
+    (Array.isArray(current.shots) && current.shots.length === 0 && !input.selectedConcept)
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_story_concept_selection_required",
+    });
+  }
+  const redraftCount = metadata.planReview.redraftCount;
+  if (!Number.isSafeInteger(redraftCount) || redraftCount < 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_redraft_count_invalid",
+    });
+  }
   if (redraftCount >= 3) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "staged_redraft_limit_reached" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_redraft_limit_reached",
+    });
   }
 
   if (!input.workerExecution) {
@@ -3242,6 +3358,7 @@ export async function redraftStagedAutoReviewPlan(input: {
 
   const anchors = record((metadata as Record<string, any>).referenceAnchors);
   const base = metadata as Record<string, any>;
+  const languagePlan = requireStagedLanguagePlanFromMetadata(base);
   const requestedShotCount = anchors.shotCount;
   const shotCount =
     requestedShotCount === "auto"
@@ -3259,21 +3376,15 @@ export async function redraftStagedAutoReviewPlan(input: {
       ? anchors.storyPlanningModel
       : undefined;
   const reviewTone =
-    typeof anchors.reviewTone === "string"
-      ? anchors.reviewTone
-      : typeof (metadata as Record<string, any>).reviewTone === "string"
-        ? (metadata as Record<string, any>).reviewTone
-        : undefined;
+    typeof anchors.reviewTone === "string" ? anchors.reviewTone : undefined;
   const storytellingStructure =
     typeof anchors.storytellingStructure === "string"
       ? anchors.storytellingStructure
-      : typeof (metadata as Record<string, any>).storytellingStructure === "string"
-        ? (metadata as Record<string, any>).storytellingStructure
-        : undefined;
+      : undefined;
   const nextPlan = await generateStagedStoryArcPlanWithLLM({
     runId: input.runId,
     userId: input.auth.userId,
-    tenantId: tenantId || "system",
+    tenantId,
     product: current.product,
     referenceManifestHash: current.referenceManifestHash,
     revision: metadata.planReview.planRevision + 1,
@@ -3283,20 +3394,7 @@ export async function redraftStagedAutoReviewPlan(input: {
     shotCount,
     shotDurationSeconds,
     model: input.model ?? storyPlanningModel,
-    languagePlan: {
-      summaryLanguage:
-        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).summaryLanguage === "en"
-          ? "en"
-          : "th",
-      dialogueLanguage:
-        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).dialogueLanguage === "en"
-          ? "en"
-          : "th",
-      promptLanguage:
-        record(record((metadata as Record<string, any>).sequentialStoryboard).languagePlan).promptLanguage === "th"
-          ? "th"
-          : "en",
-    },
+    languagePlan,
     previousStorySummary: input.notes?.trim()
       ? input.notes.trim().slice(0, 500)
       : null,
@@ -3307,8 +3405,8 @@ export async function redraftStagedAutoReviewPlan(input: {
     kind: "story_plan",
     revision: nextPlan.planRevision,
     contentHash: nextPlan.storyPlanHash,
-    model: "story-arc",
-    provider: "internal-bounded",
+    model: nextPlan.authoring.model,
+    provider: nextPlan.authoring.provider,
     estimatedCredits: 0,
     referenceManifestHash: nextPlan.referenceManifestHash,
   });
@@ -3318,11 +3416,16 @@ export async function redraftStagedAutoReviewPlan(input: {
     idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
     mutate(currentMetadata) {
-      const currentPlan = ((currentMetadata as any).stagedPipeline?.plan ?? null) as Record<string, any> | null;
+      const currentPlan = ((currentMetadata as any).stagedPipeline?.plan ??
+        null) as Record<string, any> | null;
       if (!currentPlan || currentPlan.state === "superseded") {
-        throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "staged_state_drift",
+        });
       }
-      const currentRedraftCount = Number(currentMetadata.planReview.redraftCount) || 0;
+      const currentRedraftCount =
+        Number(currentMetadata.planReview.redraftCount) || 0;
       return {
         metadata: {
           ...currentMetadata,
@@ -3407,6 +3510,13 @@ export async function editStagedAutoReviewFinalAssembly(input: {
           message: "checkpoint_not_awaiting",
         });
       }
+      const subtitlePresetId = input.subtitlePresetId?.trim();
+      if (!subtitlePresetId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "staged_subtitle_preset_required",
+        });
+      }
       const available = assembly.shots
         .map((shot: any) => Number(shot?.shotId))
         .filter(Number.isInteger);
@@ -3430,10 +3540,7 @@ export async function editStagedAutoReviewFinalAssembly(input: {
         shots: order.map(shotId => shotsById.get(shotId)),
         includeAudio: input.includeAudio,
         audio: input.includeAudio ? (assembly.audio ?? null) : null,
-        subtitlePresetId:
-          typeof input.subtitlePresetId === "string" && input.subtitlePresetId
-            ? input.subtitlePresetId
-            : (assembly.subtitlePresetId ?? "classic_box"),
+        subtitlePresetId,
       };
       const revision = current.revision + 1;
       const replacement = buildStagedCheckpoint({
@@ -3441,9 +3548,9 @@ export async function editStagedAutoReviewFinalAssembly(input: {
         kind: "final_assembly",
         revision,
         contentHash: buildStagedFinalAssemblyHash(nextAssembly),
-        model: current.approvedModel ?? "assembly",
-        provider: current.approvedProvider ?? "internal",
-        estimatedCredits: current.estimatedCredits ?? 0,
+        model: "user-edit",
+        provider: "user",
+        estimatedCredits: 0,
         referenceManifestHash:
           metadata.stagedSequentialStoryboard.referenceManifestHash,
         autoApprove: { userId: input.auth.userId },
@@ -3524,16 +3631,17 @@ export function computeRetryStagedAutoReviewFinalAssemblyMetadata(
       },
       stagedSequentialStoryboard: {
         ...metadata.stagedSequentialStoryboard,
-        reviewCheckpoints: metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
-          checkpoint =>
-            checkpoint.checkpointId === current.checkpointId
-              ? {
-                  ...checkpoint,
-                  state: "superseded" as const,
-                  rejectionReasonCode: "staged_final_assembly_retry",
-                }
-              : checkpoint
-        ),
+        reviewCheckpoints:
+          metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
+            checkpoint =>
+              checkpoint.checkpointId === current.checkpointId
+                ? {
+                    ...checkpoint,
+                    state: "superseded" as const,
+                    rejectionReasonCode: "staged_final_assembly_retry",
+                  }
+                : checkpoint
+          ),
       },
     } as unknown as typeof metadata,
     planRevision: metadata.planReview.planRevision,
@@ -3710,10 +3818,10 @@ export async function retryStagedAutoReviewShot(input: {
           ? isStagedCheckpointRetryable(currentImagePrompt) ||
             isStagedCheckpointRetryable(currentImageResult) ||
             (!currentImagePrompt && !currentImageResult)
-          : isStagedCheckpointRetryable(currentVideoPrompt) &&
-            (!currentVideoResult ||
-              currentVideoResult.state === "approved" ||
-              isStagedCheckpointRetryable(currentVideoResult)) ||
+          : (isStagedCheckpointRetryable(currentVideoPrompt) &&
+              (!currentVideoResult ||
+                currentVideoResult.state === "approved" ||
+                isStagedCheckpointRetryable(currentVideoResult))) ||
             !currentVideoPrompt;
       if (!retryableCheckpointAvailable && !providerCorrectionMatches) {
         throw new TRPCError({
@@ -3723,10 +3831,26 @@ export async function retryStagedAutoReviewShot(input: {
       }
       const revision = shot.revision + 1;
       const kind = input.stage === "image" ? "image_prompt" : "video_prompt";
-      const source =
-        input.stage === "image"
-          ? String((shot as any).imagePrompt ?? shot.storySummary)
-          : String((shot as any).videoPrompt ?? shot.storySummary);
+      const source = promptForStage.trim();
+      if (input.stage === "video") {
+        const approvedImage =
+          metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+            checkpoint =>
+              checkpoint.shotId === input.shotId &&
+              checkpoint.kind === "image_result" &&
+              checkpoint.state !== "superseded"
+          );
+        if (
+          approvedImage?.state !== "approved" ||
+          !safeArtifactUrl(shot.imageArtifactUrl)
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "staged_video_generation_requires_approved_image",
+          });
+        }
+        requireStagedImageArtifactHash(shot);
+      }
       let next = metadata;
       for (const checkpoint of metadata.stagedSequentialStoryboard
         .reviewCheckpoints) {
@@ -3744,22 +3868,15 @@ export async function retryStagedAutoReviewShot(input: {
           );
         }
       }
-      const previous =
-        metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-          item => item.shotId === input.shotId && item.kind === kind
-        );
-      // Prefer whatever model the user has selected in the UI right now.
-      // Falling back to the PREVIOUS checkpoint's approved model (as this
-      // used to do unconditionally) silently re-locks in a stale, possibly
-      // long-outdated model choice with no way for the caller to see or
-      // override it before generation is submitted.
-      const resolvedModel = selectedModel || previous?.approvedModel || "internal";
-      const resolvedProvider = selectedModel
-        ? modelProvider(resolvedModel)
-        : (previous?.approvedProvider ?? "internal");
-      const resolvedEstimatedCredits = selectedModel
-        ? modelCost(resolvedModel)
-        : (previous?.estimatedCredits ?? 0);
+      if (!selectedModel) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `STAGED_${input.stage.toUpperCase()}_MODEL_REQUIRED`,
+        });
+      }
+      const resolvedModel = selectedModel;
+      const resolvedProvider = modelProvider(resolvedModel);
+      const resolvedEstimatedCredits = modelCost(resolvedModel);
       // Every retry auto-approves unconditionally (see the `autoApprove`
       // field doc-comment above) — build the replacement already `approved`
       // via buildStagedCheckpoint's autoApprove param instead of building it
@@ -3775,15 +3892,15 @@ export async function retryStagedAutoReviewShot(input: {
                 revision,
                 shotId: input.shotId,
                 prompt: source,
-                referenceManifestHash:
-                  metadata.stagedSequentialStoryboard.referenceManifestHash ??
-                  "none",
+                referenceManifestHash: requireStagedReferenceManifestHash(
+                  metadata.stagedSequentialStoryboard.referenceManifestHash
+                ),
               })
             : buildStagedVideoPromptContentHash({
                 revision,
                 shotId: input.shotId,
                 prompt: source,
-                imageArtifactHash: shot.imageArtifactHash ?? "",
+                imageArtifactHash: requireStagedImageArtifactHash(shot),
               }),
         model: resolvedModel,
         provider: resolvedProvider,
@@ -3900,8 +4017,16 @@ export function applyStagedAutoReviewShotMediaUpload(input: {
   metadata: ReturnType<typeof parseStagedMetadata>;
   planRevision: number;
 } {
-  const { metadata, runId, shotId, stage, url, contentHash, userId, operationId } =
-    input;
+  const {
+    metadata,
+    runId,
+    shotId,
+    stage,
+    url,
+    contentHash,
+    userId,
+    operationId,
+  } = input;
   const shot = metadata.stagedSequentialStoryboard.shots.find(
     item => item.shotId === shotId
   );
@@ -3990,9 +4115,7 @@ export function applyStagedAutoReviewShotMediaUpload(input: {
       stagedPipeline: {
         ...(next as any).stagedPipeline,
         tasks: Object.fromEntries(
-          Object.entries(existingTasks).filter(
-            ([key]) => !tasksToDrop.has(key)
-          )
+          Object.entries(existingTasks).filter(([key]) => !tasksToDrop.has(key))
         ),
       },
       stagedSequentialStoryboard: {
@@ -4294,11 +4417,11 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
   runId: string;
   auth: StagedCheckpointAuth;
   referenceManifest: Array<{
-    index?: number;
+    index: number;
     url: string;
-    role?: string;
+    role: string;
     label?: string;
-    active?: boolean;
+    active: boolean;
     characterName?: string;
     characterRole?: MarketplaceCharacterCastRole;
     vdCharacterId?: string;
@@ -4331,33 +4454,67 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
   }
 
   const baseRecord = record(run.metadataJson);
-  const updatedManifest = input.referenceManifest
-    .map((item, idx) => ({
-      index: item.index || idx + 1,
-      url: String(item.url || "").trim(),
-      role: String(item.role || "product").trim(),
-      label: item.label ? String(item.label).trim() : undefined,
-      active: item.active !== false,
-      characterName: item.characterName ? String(item.characterName).trim() : undefined,
-      characterRole: item.characterRole,
-      vdCharacterId: item.vdCharacterId ? String(item.vdCharacterId).trim() : undefined,
-      // Look identity — the family root and the look's own label. Dropping
-      // these is what made per-shot look switching impossible before
-      // `planning/marketplace-four-character-cast/plan.md` §4.
-      vdBaseCharacterId: item.vdBaseCharacterId
-        ? String(item.vdBaseCharacterId).trim()
-        : undefined,
-      variantLabel: item.variantLabel ? String(item.variantLabel).trim() : undefined,
-      vdSeriesId: item.vdSeriesId ? String(item.vdSeriesId).trim() : undefined,
-      portraitAssetId: item.portraitAssetId ? String(item.portraitAssetId).trim() : undefined,
-      ageRange: item.ageRange === null ? null : (item.ageRange ? String(item.ageRange).trim() : undefined),
-      // Never coerced to a boolean: `undefined` means "not stated", which the
-      // guardian/minor-safety resolver must keep treating conservatively.
-      depictsMinor:
-        typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
-      descriptor: item.descriptor ? String(item.descriptor).trim() : undefined,
-    }))
-    .filter(item => item.url);
+  const updatedManifest = input.referenceManifest.map(item => ({
+    index: item.index,
+    url: item.url.trim(),
+    role: item.role.trim(),
+    label: item.label ? String(item.label).trim() : undefined,
+    active: item.active,
+    characterName: item.characterName
+      ? String(item.characterName).trim()
+      : undefined,
+    characterRole: item.characterRole,
+    vdCharacterId: item.vdCharacterId
+      ? String(item.vdCharacterId).trim()
+      : undefined,
+    // Look identity — the family root and the look's own label. Dropping
+    // these is what made per-shot look switching impossible before
+    // `planning/marketplace-four-character-cast/plan.md` §4.
+    vdBaseCharacterId: item.vdBaseCharacterId
+      ? String(item.vdBaseCharacterId).trim()
+      : undefined,
+    variantLabel: item.variantLabel
+      ? String(item.variantLabel).trim()
+      : undefined,
+    vdSeriesId: item.vdSeriesId ? String(item.vdSeriesId).trim() : undefined,
+    portraitAssetId: item.portraitAssetId
+      ? String(item.portraitAssetId).trim()
+      : undefined,
+    ageRange:
+      item.ageRange === null
+        ? null
+        : item.ageRange
+          ? String(item.ageRange).trim()
+          : undefined,
+    // Never coerced to a boolean: `undefined` means "not stated", which the
+    // guardian/minor-safety resolver must keep treating conservatively.
+    depictsMinor:
+      typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
+    descriptor: item.descriptor ? String(item.descriptor).trim() : undefined,
+  }));
+  if (updatedManifest.length === 0) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_REQUIRED");
+  }
+  if (updatedManifest.some(item => !item.url || !item.role)) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_ENTRY_INVALID");
+  }
+  if (!updatedManifest.some(item => item.role !== "character" && item.active)) {
+    throw new Error("STAGED_ACTIVE_PRODUCT_REFERENCE_REQUIRED");
+  }
+  if (
+    new Set(updatedManifest.map(item => item.index)).size !==
+    updatedManifest.length
+  ) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_INDEX_DUPLICATE");
+  }
+  const characterCount = updatedManifest.filter(
+    item => item.role === "character"
+  ).length;
+  if (characterCount > MARKETPLACE_CHARACTER_CAST_MAX) {
+    throw new Error(
+      `MARKETPLACE_CHARACTER_CAST_LIMIT_EXCEEDED:${MARKETPLACE_CHARACTER_CAST_MAX}`
+    );
+  }
 
   // `castId`s are POSITIONAL over the character entries (`cast-1`..`cast-4`,
   // minted by `deriveStagedCastFromManifest`). So the moment the character
@@ -4396,7 +4553,6 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
     customReferenceManifest: updatedManifest,
     stagedSequentialStoryboard: withResetShotCast({
       ...metadata.stagedSequentialStoryboard,
-      referenceManifest: updatedManifest,
     }),
   };
 
@@ -4405,7 +4561,6 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
     customReferenceManifest: updatedManifest,
     stagedSequentialStoryboard: withResetShotCast({
       ...record(baseRecord.stagedSequentialStoryboard),
-      referenceManifest: updatedManifest,
     }),
   };
 

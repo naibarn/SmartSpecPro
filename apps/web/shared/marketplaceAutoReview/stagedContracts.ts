@@ -43,6 +43,7 @@ export const STAGED_SAFE_REASON_CODES = [
   "staged_invalid_idempotency",
   "staged_invalid_shot_contract",
   "staged_video_duration_fitted_to_model",
+  "staged_video_result_checkpoint_missing",
   "staged_tone_not_adhered",
   "staged_structure_beat_missing",
   "staged_conversation_turns_missing",
@@ -51,29 +52,14 @@ export const STAGED_SAFE_REASON_CODES = [
   // @ImageN character tag. Never triggers a TS code-append — see
   // `handleImageProvider`'s validator comment.
   "staged_prompt_reference_mapping_incomplete",
-  // P2 (marketplace-staged-skill-first-restore): a shot's skill-authored
-  // prompt attempt failed (or returned empty) and the bounded deterministic
-  // fallback (`compileStagedImagePrompt`) was used instead.
-  "staged_prompt_skill_fallback",
-  // W1 (marketplace-flexible-shots-and-creation-casting): the story-arc plan
-  // is LLM-judgment when cast is present or shotCount="auto" (see
-  // `generateStagedStoryArcPlanWithLLM`), and the LLM attempt failed or
-  // returned an invalid shot contract, so the bounded deterministic fallback
-  // (`buildStagedStoryArcPlan`) was used instead.
-  "staged_story_skill_fallback",
-  // marketplace-staged-remotion-final-render: the Remotion render-queue
-  // submission (`submitStagedRemotionFinalRender`) failed or the feature was
-  // disabled, so the run fell back to the legacy Python renderer for this
-  // final render instead of blocking the run.
-  "staged_remotion_render_fallback",
+  // Skill or media execution failures stop at the named stage; no alternate
+  // prompt builder, model, provider, or renderer is substituted.
   // marketplace-staged-remotion-final-render: a `remotion_render_video`
   // worker job that this staged run submitted itself failed — surfaced on
   // the "render" stage's `blocked_needs_user` statusDetail, retryable.
   "staged_remotion_render_failed",
-  // worker-app-remotion-render-video §P3: the `remotion_render_video` worker
-  // job this staged run submitted sat `queued` (never claimed by a Lane B
-  // worker-app) past the queued TTL, so the run fell back to the legacy
-  // renderer instead of waiting indefinitely for an offline fleet.
+  // The `remotion_render_video` worker job remained queued past its claim TTL.
+  // Surface the failure; never submit the same render through another engine.
   "staged_remotion_worker_unavailable",
 ] as const;
 
@@ -106,10 +92,9 @@ export const HumanApprovalCheckpointV1Schema = z
       })
       .strict()
       .optional(),
-    // Additive, optional. Fail-open QC warnings from
-    // `assessStagedPlanAdherence` (tone/structure/conversation-turns
-    // adherence for the story_plan checkpoint) — informational only, never
-    // blocks approval. Absent on every checkpoint kind other than
+    // Additive, optional. Non-blocking plan-adherence warnings from
+    // `assessStagedPlanAdherence` (tone/structure/conversation turns for the
+    // story_plan checkpoint). Absent on every checkpoint kind other than
     // `story_plan`, and absent/empty when nothing was flagged, so existing
     // persisted checkpoints keep validating unchanged.
     adherenceWarnings: z.array(z.string()).optional(),
@@ -211,7 +196,7 @@ export const StagedSequentialStoryboardStateV1Schema = z
     // Additive (feature/marketplace-flexible-shots): staged runs may now use
     // 1..30 shots (fixed N chosen by the user, or model-decided within
     // 7..30 when shotCount="auto"). Old 9-shot runs still validate.
-    shots: z.array(StagedShotStateV1Schema).min(1).max(30),
+    shots: z.array(StagedShotStateV1Schema).min(0).max(30),
     reviewCheckpoints: z.array(HumanApprovalCheckpointV1Schema),
   })
   .passthrough();

@@ -19,7 +19,6 @@ import {
   assessStagedPlanAdherence,
   buildStagedCheckpoint,
   buildStagedPlanView,
-  buildStagedStoryArcPlan,
   generateStagedStoryArcPlanWithLLM,
   type StagedCastMember,
   type StagedStoryArcLanguagePlan,
@@ -29,16 +28,13 @@ import {
 import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
-  compileStagedImagePrompt,
-  compileStagedVideoPrompt,
   isCompleteStagedImagePrompt,
-  isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 // Safe as a normal top-level import: `productReviewSequentialStoryboardSkillRunner.ts`
 // does not import anything from this module, so there is no circular edge
 // here (unlike `buildStagedSingleShotRefreshInput` below, which does need a
 // lazy import — see the comment on that call site).
-import { refreshSequentialShotPromptWithSkill } from "./productReviewSequentialStoryboardSkillRunner";
+import { refreshSequentialShotPromptWithSkillDirect } from "./productReviewSequentialStoryboardSkillRunner";
 import {
   buildStagedAudioPlan,
   buildStagedFinalAssemblyHash,
@@ -79,8 +75,6 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Auth = { userId: number; tenantId?: string };
 type Runtime = { userToken?: string | null; publicUrl?: string | null };
 
-const STAGED_IMAGE_MODEL = "google-banana-2";
-const STAGED_VIDEO_MODEL = "veo3/generate-veo-3-video-lite";
 const STAGED_AUDIO_MODEL = "elevenlabs-tts";
 
 function record(value: unknown): Record<string, any> {
@@ -91,6 +85,21 @@ function record(value: unknown): Record<string, any> {
 
 function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function requireStagedTenantId(
+  authTenantId?: string | null,
+  runTenantId?: string | null
+): string {
+  const authTenant = text(authTenantId);
+  const runTenant = text(runTenantId);
+  if (!authTenant || !runTenant) {
+    throw new Error("STAGED_TENANT_CONTEXT_REQUIRED");
+  }
+  if (authTenant !== runTenant) {
+    throw new Error("STAGED_TENANT_CONTEXT_MISMATCH");
+  }
+  return authTenant;
 }
 
 async function resolveStagedUserToken(
@@ -115,79 +124,60 @@ async function resolveStagedUserToken(
   return token;
 }
 
-function stagedLanguagePlanFromMetadata(
+export function requireStagedLanguagePlanFromMetadata(
   metadata: Record<string, any>
 ): StagedStoryArcLanguagePlan {
   const languagePlan = record(
     record(metadata.sequentialStoryboard).languagePlan
   );
+  if (
+    (languagePlan.summaryLanguage !== "en" &&
+      languagePlan.summaryLanguage !== "th") ||
+    (languagePlan.dialogueLanguage !== "en" &&
+      languagePlan.dialogueLanguage !== "th") ||
+    (languagePlan.promptLanguage !== "en" &&
+      languagePlan.promptLanguage !== "th")
+  ) {
+    throw new Error("STAGED_LANGUAGE_PLAN_REQUIRED");
+  }
   return {
-    summaryLanguage: languagePlan.summaryLanguage === "en" ? "en" : "th",
-    dialogueLanguage: languagePlan.dialogueLanguage === "en" ? "en" : "th",
-    promptLanguage: languagePlan.promptLanguage === "th" ? "th" : "en",
+    summaryLanguage: languagePlan.summaryLanguage,
+    dialogueLanguage: languagePlan.dialogueLanguage,
+    promptLanguage: languagePlan.promptLanguage,
   };
 }
 
 export function modelProvider(modelId: string): string {
-  // `getModelById` is the DB-merged registry (same source the model-picker
-  // dropdown and reference-image caps use); `mediaGenerationService.getModel`
-  // only knows the older hardcoded catalog and is missing newer DB-only
-  // models entirely (e.g. gpt-image-2-*), which made every caller of this
-  // function fall through to the generic "media-provider" placeholder for
-  // them — including `isKieAiProvider`, which then skipped Kie.ai-specific
-  // reference-image handling for those models.
-  return (
-    text(getModelById(modelId)?.provider) ||
-    text(mediaGenerationService.getModel(modelId)?.provider) ||
-    "media-provider"
-  );
+  const provider = text(getModelById(modelId)?.provider);
+  if (!provider)
+    throw new Error(`STAGED_MODEL_PROVIDER_NOT_CONFIGURED:${modelId}`);
+  return provider;
 }
 
 export function modelCost(modelId: string): number {
-  const registryValue = Number(getModelById(modelId)?.creditCost);
-  if (Number.isFinite(registryValue) && registryValue >= 0) return registryValue;
-  const value = Number(mediaGenerationService.getModel(modelId)?.creditCost);
-  return Number.isFinite(value) && value >= 0 ? value : 1;
+  const cost = Number(getModelById(modelId)?.creditCost);
+  if (!Number.isFinite(cost) || cost < 0) {
+    throw new Error(`STAGED_MODEL_CREDIT_COST_NOT_CONFIGURED:${modelId}`);
+  }
+  return cost;
 }
 
-// Video dispatch used to hardcode `resolution: "1080p"` for every model.
-// Kie.ai rejects the whole task submission for models whose config doesn't
-// list 1080p as a supported option. Prefer 1080p when the model actually
-// supports it, otherwise fall back to whatever its highest supported option
-// is; models with no resolution config at all keep the old "1080p" default.
+function requireStagedModel(value: unknown, stage: "image" | "video"): string {
+  const model = text(value);
+  if (!model) throw new Error(`STAGED_${stage.toUpperCase()}_MODEL_REQUIRED`);
+  return model;
+}
+
+// The review UI selects a video model but has no resolution control. Use
+// 1080p only when that exact option is declared by the model; otherwise fail
+// before dispatch instead of silently choosing another quality.
 function resolveVideoResolution(modelId: string): string {
   const model = getModelById(modelId);
   const options = model ? deriveModelResolutionOptions(model) : undefined;
-  if (!options || options.length === 0) return "1080p";
-  if (options.some(o => o.value === "1080p")) return "1080p";
-  return options[options.length - 1].value;
+  if (options?.some(o => o.value === "1080p")) return "1080p";
+  throw new Error(`STAGED_VIDEO_RESOLUTION_1080P_NOT_SUPPORTED:${modelId}`);
 }
 
-// Video dispatch used to hardcode `duration: 10` for every model. Some
-// models (e.g. Veo 3.1 Lite) only support a fixed duration list that may not
-// include the story plan's requested `shot.durationSeconds` (now a
-// model-flexible 4-20s range, not a hardcoded 10 — see
-// `STAGED_SHOT_DURATION_MIN/MAX_SECONDS` in stagedContracts.ts), which would
-// make the whole task submission fail the same way an unsupported resolution
-// does. Snap the requested duration to the closest value the selected
-// model's `durations` list actually supports (nearest by absolute
-// difference; the larger value wins on a tie). Models with no `durations`
-// list at all (unconstrained) keep the requested value as-is, mirroring
-// `resolveVideoResolution`'s "no config at all" fallback.
-/**
- * A model's supported durations live in TWO independent places and the two
- * disagree for most rows: the `media_models.durations` column (what this
- * fitter used to read exclusively) and `configJson.inputFields[key=duration]
- * .options` (what `server/routers/media.ts`'s request validator reads). Field
- * incident 2026-07-30: `veo3/generate-veo-3-video-lite` had neither, so a
- * 10-second shot sailed past both checks and Kie.ai rejected the submission
- * with "Duration must be 4, 6 or 8 seconds" — a burnt dispatch (refunded, but
- * the shot simply never rendered) that repeated on every retry.
- *
- * Reading the column first and falling back to configJson means a model only
- * escapes fitting when NEITHER source declares anything, and it can no longer
- * matter which of the two an operator happened to fill in.
- */
 function resolveStagedModelDurationOptions(
   model: ReturnType<typeof getModelById>
 ): number[] {
@@ -220,21 +210,16 @@ function resolveStagedVideoDuration(
   requestedSeconds: number
 ): { duration: number; fitted: boolean } {
   const model = getModelById(modelId);
+  if (!model) throw new Error(`STAGED_VIDEO_MODEL_NOT_CONFIGURED:${modelId}`);
   const options = resolveStagedModelDurationOptions(model);
-  if (!options || options.length === 0)
-    return { duration: requestedSeconds, fitted: false };
+  if (!options.length) {
+    throw new Error(`STAGED_VIDEO_DURATION_OPTIONS_MISSING:${modelId}`);
+  }
   if (options.includes(requestedSeconds))
     return { duration: requestedSeconds, fitted: false };
-  let closest = options[0];
-  let closestDiff = Math.abs(options[0] - requestedSeconds);
-  for (const candidate of options.slice(1)) {
-    const diff = Math.abs(candidate - requestedSeconds);
-    if (diff < closestDiff || (diff === closestDiff && candidate > closest)) {
-      closest = candidate;
-      closestDiff = diff;
-    }
-  }
-  return { duration: closest, fitted: true };
+  throw new Error(
+    `STAGED_VIDEO_DURATION_NOT_SUPPORTED:${modelId}:${requestedSeconds}:${options.join(",")}`
+  );
 }
 
 function stagedPlanFromMetadata(
@@ -250,15 +235,25 @@ function buildProductFromMetadata(
   metadata: Record<string, any>
 ) {
   const truth = record(metadata.productTruth);
-  const urls = Array.isArray(metadata.productImageUrls)
-    ? metadata.productImageUrls.map(text).filter(Boolean)
-    : [];
+  const productName = text(truth.productName);
+  if (!productName) throw new Error("STAGED_PRODUCT_NAME_MISSING");
+  if (!Array.isArray(metadata.productImageUrls)) {
+    throw new Error("STAGED_PRODUCT_IMAGE_URLS_MISSING");
+  }
+  const urls = metadata.productImageUrls.map((value: unknown) => {
+    const url = text(value);
+    if (!url) throw new Error("STAGED_PRODUCT_IMAGE_URL_INVALID");
+    return url;
+  });
+  if (urls.length === 0 || urls.length > 5) {
+    throw new Error(`STAGED_PRODUCT_IMAGE_URL_COUNT_INVALID:${urls.length}`);
+  }
   return {
     productId: run.productId,
-    productName: text(truth.productName) || run.productId,
+    productName,
     description: text(truth.description) || null,
     specs: record(truth.specs),
-    imageUrls: urls.slice(0, 5),
+    imageUrls: urls,
   };
 }
 
@@ -286,17 +281,33 @@ export function deriveStagedCastFromManifest(
       }>
     | undefined
 ): StagedCastMember[] {
-  const active = (manifest ?? []).filter(
-    (item): item is Record<string, any> =>
-      !!item && typeof item.url === "string" && item.url.trim() !== "" && item.active !== false
-  );
-  const productCount = Math.max(
-    1,
-    active.filter(item => item.role !== "character").length
-  );
-  const characterItems = active
-    .filter(item => item.role === "character")
-    .slice(0, MARKETPLACE_CHARACTER_CAST_MAX);
+  if (!Array.isArray(manifest)) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_REQUIRED");
+  }
+  for (const [index, item] of manifest.entries()) {
+    if (!item || typeof item !== "object") {
+      throw new Error(`STAGED_REFERENCE_MANIFEST_ENTRY_INVALID:${index + 1}`);
+    }
+    if (typeof item.url !== "string" || !item.url.trim()) {
+      throw new Error(`STAGED_REFERENCE_URL_REQUIRED:${index + 1}`);
+    }
+    if (!["product", "character", "environment"].includes(String(item.role))) {
+      throw new Error(`STAGED_REFERENCE_ROLE_INVALID:${index + 1}`);
+    }
+    if (typeof item.active !== "boolean") {
+      throw new Error(`STAGED_REFERENCE_ACTIVE_REQUIRED:${index + 1}`);
+    }
+  }
+  const active = manifest.filter(item => item.active);
+  const productCount = active.filter(item => item.role !== "character").length;
+  if (productCount === 0)
+    throw new Error("STAGED_ACTIVE_PRODUCT_REFERENCE_REQUIRED");
+  const characterItems = active.filter(item => item.role === "character");
+  if (characterItems.length > MARKETPLACE_CHARACTER_CAST_MAX) {
+    throw new Error(
+      `STAGED_CAST_LIMIT_EXCEEDED:${characterItems.length}:${MARKETPLACE_CHARACTER_CAST_MAX}`
+    );
+  }
   // Roles come from the shared assigner, not from index position — with a
   // 4-person roster the old `i === 0 ? host : guest` produced three guests
   // (`planning/marketplace-four-character-cast/plan.md` P1).
@@ -304,23 +315,35 @@ export function deriveStagedCastFromManifest(
     characterItems.map(item => ({
       characterRole:
         typeof item.characterRole === "string" ? item.characterRole : undefined,
-    })),
+    }))
   );
   return characterItems.map((item, i) => {
+    const name = text(item.characterName) || text(item.label);
+    if (!name) {
+      throw new Error(`STAGED_CAST_CHARACTER_NAME_REQUIRED:${i + 1}`);
+    }
     return {
       castId: `cast-${i + 1}`,
-      name: text(item.characterName) || text(item.label) || `Person ${i + 1}`,
-      source: text(item.vdCharacterId) ? ("vd_character" as const) : ("uploaded" as const),
+      name,
+      source: text(item.vdCharacterId)
+        ? ("vd_character" as const)
+        : ("uploaded" as const),
       vdCharacterId: text(item.vdCharacterId) || undefined,
       vdSeriesId: text(item.vdSeriesId) || undefined,
-      role: rolled[i]?.characterRole ?? "support",
+      role: (() => {
+        const role = rolled[i]?.characterRole;
+        if (role !== "host" && role !== "guest" && role !== "support") {
+          throw new Error(`STAGED_CAST_ROLE_REQUIRED:${i + 1}`);
+        }
+        return role;
+      })(),
       descriptor: text(item.descriptor) || undefined,
       ageRange:
         item.ageRange === null
           ? null
           : typeof item.ageRange === "string" && item.ageRange.trim()
-          ? item.ageRange.trim()
-          : null,
+            ? item.ageRange.trim()
+            : null,
       // Minor grounding rides along so the guardian resolver never has to
       // guess (`project_marketplace_minor_safety_qa_grounding`).
       depictsMinor:
@@ -344,36 +367,95 @@ export function deriveStagedCastFromManifest(
  * Callers should never reach into either shape directly — the two are merged
  * here so the dispatch path and both prompt builders cannot drift.
  *
- * Both fields absent is the legacy state and means "everyone, default looks".
+ * Missing cast selections are errors when the plan contains a cast roster.
  */
 export function resolveShotCastSelectionFromMetadata(params: {
   metadata: Record<string, any> | null | undefined;
-  plan: { shots?: Array<{ shotId?: number; castInShot?: string[] }> } | null | undefined;
+  plan:
+    | {
+        cast?: Array<{ castId: string }>;
+        shots?: Array<{ shotId?: number; castInShot?: string[] }>;
+      }
+    | null
+    | undefined;
   shotId: number;
-}): { castInShot: string[] | undefined; castLooks: Record<string, ShotCastLook> | undefined } {
+}): {
+  castInShot: string[];
+  castLooks: Record<string, ShotCastLook> | undefined;
+} {
   const planShot = (params.plan?.shots ?? []).find(
-    shot => Number(shot?.shotId) === Number(params.shotId),
+    shot => Number(shot?.shotId) === Number(params.shotId)
   );
   const stateShots = Array.isArray(
-    (params.metadata as any)?.stagedSequentialStoryboard?.shots,
+    (params.metadata as any)?.stagedSequentialStoryboard?.shots
   )
     ? ((params.metadata as any).stagedSequentialStoryboard.shots as Array<any>)
     : [];
   const stateShot = stateShots.find(
-    shot => Number(shot?.shotId) === Number(params.shotId),
+    shot => Number(shot?.shotId) === Number(params.shotId)
   );
 
-  const castInShot = Array.isArray(stateShot?.castInShot)
-    ? (stateShot.castInShot as string[])
-    : Array.isArray(planShot?.castInShot)
-    ? planShot!.castInShot
-    : undefined;
+  let castInShot: string[];
+  if (
+    stateShot &&
+    Object.prototype.hasOwnProperty.call(stateShot, "castInShot")
+  ) {
+    if (!Array.isArray(stateShot.castInShot)) {
+      throw new Error(
+        `STAGED_SHOT_CAST_SELECTION_INVALID:shot-${params.shotId}`
+      );
+    }
+    castInShot = stateShot.castInShot as string[];
+  } else if (Array.isArray(planShot?.castInShot)) {
+    castInShot = planShot.castInShot;
+  } else if (params.plan?.cast?.length) {
+    throw new Error(
+      `STAGED_SHOT_CAST_SELECTION_REQUIRED:shot-${params.shotId}`
+    );
+  } else {
+    castInShot = [];
+  }
+
+  if (castInShot.some(castId => typeof castId !== "string" || !castId.trim())) {
+    throw new Error(`STAGED_SHOT_CAST_SELECTION_INVALID:shot-${params.shotId}`);
+  }
+  if (new Set(castInShot).size !== castInShot.length) {
+    throw new Error(
+      `STAGED_SHOT_CAST_SELECTION_DUPLICATE:shot-${params.shotId}`
+    );
+  }
+  const castIds = new Set(
+    (params.plan?.cast ?? []).map(member => member.castId)
+  );
+  const invalidCastId = castInShot.find(castId => !castIds.has(castId));
+  if (invalidCastId) {
+    throw new Error(
+      `STAGED_SHOT_CAST_NOT_IN_ROSTER:shot-${params.shotId}:${invalidCastId}`
+    );
+  }
 
   const rawLooks = stateShot?.castLooks;
-  const castLooks =
-    rawLooks && typeof rawLooks === "object" && !Array.isArray(rawLooks)
-      ? (rawLooks as Record<string, ShotCastLook>)
-      : undefined;
+  if (
+    rawLooks !== undefined &&
+    (!rawLooks || typeof rawLooks !== "object" || Array.isArray(rawLooks))
+  ) {
+    throw new Error(`STAGED_SHOT_CAST_LOOKS_INVALID:shot-${params.shotId}`);
+  }
+  const castLooks = rawLooks as Record<string, ShotCastLook> | undefined;
+  if (castLooks) {
+    for (const [castId, look] of Object.entries(castLooks)) {
+      if (!castIds.has(castId)) {
+        throw new Error(
+          `STAGED_SHOT_CAST_LOOK_NOT_IN_ROSTER:shot-${params.shotId}:${castId}`
+        );
+      }
+      if (!look || typeof look !== "object" || Array.isArray(look)) {
+        throw new Error(
+          `STAGED_SHOT_CAST_LOOK_INVALID:shot-${params.shotId}:${castId}`
+        );
+      }
+    }
+  }
 
   return { castInShot, castLooks };
 }
@@ -396,7 +478,7 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
     rating: null,
     sold: null,
     reviews: null,
-    description: plan.product.description || "",
+    description: plan.product.description,
     specs: plan.product.specs ?? {},
     imageUrls: plan.product.imageUrls,
   };
@@ -406,7 +488,7 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
     productTruth: truth,
     storyboardGuide: plan.storySummary,
     voiceoverScript: plan.shots.map(shot => shot.dialogue).join("\n"),
-    productDetail: plan.product.description || plan.product.productName,
+    productDetail: plan.product.description,
     shots: plan.shots.map(shot => ({
       id: `shot-${shot.shotId}`,
       order: shot.shotId,
@@ -470,31 +552,27 @@ function finalAssemblyFor(
 ) {
   const configured = record(metadata).stagedPipeline?.finalAssembly;
   if (
-    configured &&
-    Array.isArray(configured.shots) &&
-    configured.shots.length === plan.shots.length
+    !configured ||
+    !Array.isArray(configured.shots) ||
+    configured.planRevision !== plan.planRevision ||
+    configured.shots.length !== plan.shots.length ||
+    typeof configured.includeAudio !== "boolean"
   ) {
-    const { contentHash: _contentHash, ...assembly } = configured;
-    return assembly;
+    throw new Error("STAGED_FINAL_ASSEMBLY_CONFIGURATION_MISSING_OR_INVALID");
   }
-  return {
-    planRevision: plan.planRevision,
-    shots: metadata.stagedSequentialStoryboard.shots.map(shot => ({
-      shotId: shot.shotId,
-      imageArtifactHash: shot.imageArtifactHash,
-      videoArtifactHash: shot.videoArtifactHash,
-      dialogue: shot.dialogue,
-    })),
-    audio: {
-      plan: record(metadata).stagedPipeline?.audioPlan ?? null,
-      artifactHash: text(record(metadata).stagedPipeline?.audioUrl)
-        ? buildProductionStableHash({
-            audioUrl: text(record(metadata).stagedPipeline?.audioUrl),
-          })
-        : null,
-    },
-    includeAudio: true,
-  };
+  const actualShotIds = metadata.stagedSequentialStoryboard.shots.map(
+    shot => shot.shotId
+  );
+  const configuredShotIds = configured.shots.map((shot: any) => shot.shotId);
+  if (
+    configuredShotIds.some(
+      (shotId: unknown, index: number) => shotId !== actualShotIds[index]
+    )
+  ) {
+    throw new Error("STAGED_FINAL_ASSEMBLY_SHOT_ORDER_MISMATCH");
+  }
+  const { contentHash: _contentHash, ...assembly } = configured;
+  return assembly;
 }
 
 function withCheckpoint(
@@ -567,13 +645,8 @@ async function persistRun(params: {
     })
     .where(eq(marketplaceAutoReviewRuns.id, params.run.id))
     .returning();
-  return (
-    next ??
-    ({
-      ...params.run,
-      metadataJson: params.metadata,
-    } as MarketplaceAutoReviewRun)
-  );
+  if (!next) throw new Error(`STAGED_RUN_PERSIST_FAILED:${params.run.id}`);
+  return next;
 }
 
 async function upsertStage(params: {
@@ -621,14 +694,25 @@ async function upsertStage(params: {
 function checkpointExpectation(
   checkpoint: HumanApprovalCheckpointV1
 ): StagedCheckpointApprovalExpectationV1 {
+  if (
+    !checkpoint.approvedModel?.trim() ||
+    !checkpoint.approvedProvider?.trim() ||
+    !checkpoint.approvedSafetyVerdict?.trim() ||
+    !checkpoint.approvedReferenceManifestHash?.trim() ||
+    checkpoint.estimatedCredits === null
+  ) {
+    throw new Error(
+      `STAGED_CHECKPOINT_APPROVAL_PROVENANCE_MISSING:${checkpoint.checkpointId}`
+    );
+  }
   return {
     revision: checkpoint.revision,
     contentHash: checkpoint.contentHash,
-    model: checkpoint.approvedModel || "internal",
-    provider: checkpoint.approvedProvider || "internal",
-    safetyVerdict: checkpoint.approvedSafetyVerdict || "passed",
-    referenceManifestHash: checkpoint.approvedReferenceManifestHash || "none",
-    estimatedCredits: checkpoint.estimatedCredits ?? 0,
+    model: checkpoint.approvedModel,
+    provider: checkpoint.approvedProvider,
+    safetyVerdict: checkpoint.approvedSafetyVerdict,
+    referenceManifestHash: checkpoint.approvedReferenceManifestHash,
+    estimatedCredits: checkpoint.estimatedCredits,
   };
 }
 
@@ -666,7 +750,10 @@ async function consumeCheckpoint(params: {
       )
     : undefined;
   if (!freshCheckpoint) throw new Error("checkpoint_revision_mismatch");
-  const freshGuard = assertStagedProviderSpendAllowed(freshCheckpoint, expected);
+  const freshGuard = assertStagedProviderSpendAllowed(
+    freshCheckpoint,
+    expected
+  );
   if (!freshGuard.ok) throw new Error(freshGuard.reasonCode);
   const transitioned = transitionStagedCheckpoint(params.checkpoint, {
     type: "consume",
@@ -720,7 +807,10 @@ async function reserveAndSubmit(params: {
   if (amount > 0) {
     credit = await deductCredits({
       userId: params.auth.userId,
-      tenantId: params.auth.tenantId ?? params.run.tenantId ?? "default",
+      tenantId: requireStagedTenantId(
+        params.auth.tenantId,
+        params.run.tenantId
+      ),
       amount,
       description: params.description,
       idempotencyKey: `staged:${params.run.id}:${params.mediaType}:${params.unitId}`,
@@ -758,24 +848,31 @@ async function reserveAndSubmit(params: {
             );
   } catch (error) {
     if (credit?.transactionId && amount > 0) {
-      await refundCredits({
-        userId: params.auth.userId,
-        amount,
-        originalTransactionId: credit.transactionId,
-        idempotencyKey: `staged:${params.run.id}:${params.mediaType}:${params.unitId}:refund`,
-        description: `Marketplace staged ${params.mediaType} provider submission failed`,
-        sourceType:
-          params.mediaType === "image"
-            ? "media_image"
-            : params.mediaType === "video"
-              ? "media_video"
-              : "media_audio",
-        metadata: {
-          runId: params.run.id,
-          unitId: params.unitId,
-          reason: "provider_submit_failed",
-        },
-      }).catch(() => undefined);
+      try {
+        await refundCredits({
+          userId: params.auth.userId,
+          amount,
+          originalTransactionId: credit.transactionId,
+          idempotencyKey: `staged:${params.run.id}:${params.mediaType}:${params.unitId}:refund`,
+          description: `Marketplace staged ${params.mediaType} provider submission failed`,
+          sourceType:
+            params.mediaType === "image"
+              ? "media_image"
+              : params.mediaType === "video"
+                ? "media_video"
+                : "media_audio",
+          metadata: {
+            runId: params.run.id,
+            unitId: params.unitId,
+            reason: "provider_submit_failed",
+          },
+        });
+      } catch (refundError) {
+        throw new AggregateError(
+          [error, refundError],
+          `MARKETPLACE_STAGED_${params.mediaType.toUpperCase()}_SUBMISSION_AND_REFUND_FAILED:${params.unitId}`
+        );
+      }
     }
     throw error;
   }
@@ -883,16 +980,20 @@ function updateStagedTaskCreditSummary<T extends Record<string, any>>(
     if (taskId) byTaskId.set(taskId, task);
   }
   const tasks = [...byTaskId.values()];
+  const creditAmountForTask = (task: Record<string, any>) => {
+    const amount = task.creditAmount;
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
+      throw new Error(`STAGED_TASK_CREDIT_AMOUNT_INVALID:${text(task.taskId)}`);
+    }
+    return amount;
+  };
   const reservedCredits = tasks.reduce(
-    (sum, task) => sum + Math.max(0, Number(task.creditAmount) || 0),
+    (sum, task) => sum + creditAmountForTask(task),
     0
   );
   const refundedCredits = tasks.reduce(
     (sum, task) =>
-      sum +
-      (task.refundTransactionId
-        ? Math.max(0, Number(task.creditAmount) || 0)
-        : 0),
+      sum + (task.refundTransactionId ? creditAmountForTask(task) : 0),
     0
   );
   const previous = record(metadata.creditSummary);
@@ -939,25 +1040,17 @@ function updateStagedTaskCreditSummary<T extends Record<string, any>>(
 }
 
 // Additive (feature/marketplace-flexible-shots): shared read of the story-arc
-// planning context (tone/structure/duration/shot-count) off a run's
-// persisted `metadataJson`. Used by both the sync deterministic path
-// (`planAndMetadataFromRun`) and the async LLM-first path
-// (`buildStagedPlanAndMetadataForInit`) so the two never drift.
+// planning context (tone/structure/duration/shot-count) from the run's
+// canonical `referenceAnchors` for LLM authoring and redrafts.
 function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
   const anchors = record(base.referenceAnchors);
   const reviewFormat =
     typeof anchors.reviewFormat === "string" ? anchors.reviewFormat : undefined;
   const reviewTone =
-    typeof anchors.reviewTone === "string"
-      ? anchors.reviewTone
-      : typeof base.reviewTone === "string"
-      ? base.reviewTone
-      : undefined;
+    typeof anchors.reviewTone === "string" ? anchors.reviewTone : undefined;
   const storytellingStructure =
     typeof anchors.storytellingStructure === "string"
       ? anchors.storytellingStructure
-      : typeof base.storytellingStructure === "string"
-      ? base.storytellingStructure
       : undefined;
   // User-chosen per-shot duration (advanced overrides). Omitted -> undefined
   // -> buildStagedStoryArcPlan's own default of 10, i.e. byte-identical to
@@ -1003,10 +1096,7 @@ function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
   };
 }
 
-// Additive (feature/marketplace-flexible-shots): extracted from
-// `planAndMetadataFromRun` so the async LLM-first path
-// (`buildStagedPlanAndMetadataForInit`) can build the same fresh-run
-// metadata shape from whatever plan it produced (LLM or deterministic).
+// Builds fresh run metadata from the single LLM-authored plan.
 function buildFreshStagedMetadataFromPlan(input: {
   run: MarketplaceAutoReviewRun;
   base: Record<string, any>;
@@ -1020,14 +1110,17 @@ function buildFreshStagedMetadataFromPlan(input: {
     kind: "story_plan",
     revision: plan.planRevision,
     contentHash: plan.storyPlanHash,
-    model: "story-arc",
-    provider: "internal-bounded",
+    model: plan.authoring.model,
+    provider: plan.authoring.provider,
     estimatedCredits: 0,
     referenceManifestHash: plan.referenceManifestHash,
-    adherenceWarnings: assessStagedPlanAdherence(plan, {
-      reviewTone,
-      storytellingStructure,
-    }).warnings,
+    adherenceWarnings:
+      plan.shots.length === 0
+        ? []
+        : assessStagedPlanAdherence(plan, {
+            reviewTone,
+            storytellingStructure,
+          }).warnings,
   });
   const metadata = {
     ...base,
@@ -1081,69 +1174,31 @@ export function planAndMetadataFromRun(run: MarketplaceAutoReviewRun): {
   metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>;
 } {
   const base = record(run.metadataJson);
-  const {
-    reviewTone,
-    storytellingStructure,
-    shotDurationSeconds,
-    shotCount,
-    storyPlanningModel,
-    cast,
-  } = stagedPlanContextFromMetadataBase(base);
   const existingPlan = stagedPlanFromMetadata(base);
-  const plan =
-    existingPlan ||
-    buildStagedStoryArcPlan({
-      runId: run.id,
-      product: buildProductFromMetadata(run, base),
-      referenceManifestHash: buildProductionStableHash({
-        referenceAnchors: base.referenceAnchors ?? {},
-        productImageUrls: base.productImageUrls ?? [],
-      }),
-      languagePlan: stagedLanguagePlanFromMetadata(base),
-      reviewTone,
-      storytellingStructure,
-      cast,
-      shotDurationSeconds,
-      // Deterministic-only path: "auto" cannot be honored without LLM
-      // judgment, so it falls back to the default (undefined -> 9), same as
-      // every other caller of this sync deterministic builder.
-      shotCount: typeof shotCount === "number" ? shotCount : undefined,
-    });
+  if (!existingPlan) {
+    throw new Error("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
+  }
   const existing = StagedSequentialStoryboardMetadataV1Schema.safeParse(base);
-  if (existing.success)
-    return {
-      plan,
-      metadata: existing.data as typeof existing.data & Record<string, any>,
-    };
-  const metadata = buildFreshStagedMetadataFromPlan({
-    run,
-    base,
-    plan,
-    reviewTone,
-    storytellingStructure,
-  });
-  return { plan, metadata };
+  if (!existing.success) {
+    throw new Error("STAGED_PERSISTED_METADATA_INVALID");
+  }
+  return {
+    plan: existingPlan,
+    metadata: existing.data as typeof existing.data & Record<string, any>,
+  };
 }
 
-// Additive (feature/marketplace-flexible-shots): async LLM-first plan
-// builder for a BRAND NEW run (i.e. `base` does not yet parse as staged
-// metadata — mirrors `planAndMetadataFromRun`'s cold-start branch exactly,
-// including returning an ALREADY-PERSISTED plan as-is when one exists).
+// Additive (feature/marketplace-flexible-shots): async LLM plan builder for a
+// BRAND NEW run (i.e. `base` does not yet parse as staged metadata). An
+// already-persisted plan is reused only when its full metadata is valid.
 // Used only by `initializeStagedMarketplaceAutoReviewRun` and
-// `redraftStagedMarketplaceAutoReviewRun`, which are both already async —
-// `planAndMetadataFromRun` itself stays sync/deterministic for its other
-// (synchronous) call sites (`advanceStagedMarketplaceAutoReviewRun`'s
-// self-heal fallback and the checkpoint router's fallback), which only ever
-// re-derive metadata for a run that already has a persisted plan (returned
-// as-is, no new plan is ever built there) or fall back deterministically —
-// never a fresh-run LLM call.
+// `redraftStagedMarketplaceAutoReviewRun`.
 export async function buildStagedPlanAndMetadataForInit(
   run: MarketplaceAutoReviewRun,
   options?: { revision?: number; previousStorySummary?: string | null }
 ): Promise<{
   plan: StagedStoryArcPlan;
   metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>;
-  usedSkillFallback: boolean;
 }> {
   const base = record(run.metadataJson);
   const {
@@ -1158,20 +1213,20 @@ export async function buildStagedPlanAndMetadataForInit(
   const existingPlan = stagedPlanFromMetadata(base);
   if (existingPlan) {
     const existing = StagedSequentialStoryboardMetadataV1Schema.safeParse(base);
-    if (existing.success) {
-      return {
-        plan: existingPlan,
-        metadata: existing.data as typeof existing.data & Record<string, any>,
-        usedSkillFallback: false,
-      };
+    if (!existing.success) {
+      throw new Error("STAGED_PERSISTED_METADATA_INVALID");
     }
+    return {
+      plan: existingPlan,
+      metadata: existing.data as typeof existing.data & Record<string, any>,
+    };
   }
   const product = buildProductFromMetadata(run, base);
   const referenceManifestHash = buildProductionStableHash({
     referenceAnchors: base.referenceAnchors ?? {},
     productImageUrls: base.productImageUrls ?? [],
   });
-  const languagePlan = stagedLanguagePlanFromMetadata(base);
+  const languagePlan = requireStagedLanguagePlanFromMetadata(base);
   const plan = await generateStagedStoryArcPlanWithLLM({
     runId: run.id,
     userId: run.userId ?? undefined,
@@ -1188,12 +1243,8 @@ export async function buildStagedPlanAndMetadataForInit(
     shotDurationSeconds,
     shotCount,
     model: storyPlanningModel,
+    conceptsOnly: true,
   });
-  // `generateStagedStoryArcPlanWithLLM` never throws — on any failure it
-  // internally falls back to `buildStagedStoryArcPlan` and stamps
-  // `source: "bounded_story_arc_fallback"`. That's how we detect the
-  // fallback happened without duplicating its try/catch here.
-  const usedSkillFallback = plan.source !== "llm_story_arc";
   const metadata = buildFreshStagedMetadataFromPlan({
     run,
     base,
@@ -1201,7 +1252,7 @@ export async function buildStagedPlanAndMetadataForInit(
     reviewTone,
     storytellingStructure,
   });
-  return { plan, metadata, usedSkillFallback };
+  return { plan, metadata };
 }
 
 function stagedMetadataForPlan(input: {
@@ -1217,14 +1268,17 @@ function stagedMetadataForPlan(input: {
     kind: "story_plan",
     revision: input.plan.planRevision,
     contentHash: input.plan.storyPlanHash,
-    model: "story-arc",
-    provider: "internal-bounded",
+    model: input.plan.authoring.model,
+    provider: input.plan.authoring.provider,
     estimatedCredits: 0,
     referenceManifestHash: input.plan.referenceManifestHash,
-    adherenceWarnings: assessStagedPlanAdherence(input.plan, {
-      reviewTone: input.reviewTone,
-      storytellingStructure: input.storytellingStructure,
-    }).warnings,
+    adherenceWarnings:
+      input.plan.shots.length === 0
+        ? []
+        : assessStagedPlanAdherence(input.plan, {
+            reviewTone: input.reviewTone,
+            storytellingStructure: input.storytellingStructure,
+          }).warnings,
   });
   const metadata = {
     ...input.base,
@@ -1287,9 +1341,9 @@ function stagedMetadataForPlan(input: {
         ...(Array.isArray(
           record(input.base.stagedSequentialStoryboard).reviewCheckpoints
         )
-          ? record(input.base.stagedSequentialStoryboard).reviewCheckpoints.filter(
-              (cp: any) => cp.kind !== "story_plan"
-            )
+          ? record(
+              input.base.stagedSequentialStoryboard
+            ).reviewCheckpoints.filter((cp: any) => cp.kind !== "story_plan")
           : []),
       ],
     },
@@ -1313,8 +1367,10 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     storyPlanningModel,
     cast,
   } = stagedPlanContextFromMetadataBase(base);
-  const current =
-    stagedPlanFromMetadata(base) || planAndMetadataFromRun(params.run).plan;
+  const current = stagedPlanFromMetadata(base);
+  if (!current) {
+    throw new Error("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
+  }
   const notes = text(params.notes).slice(0, 1200);
   const resolvedShotDurationSeconds =
     shotDurationSeconds ?? current.shots[0]?.durationSeconds;
@@ -1323,7 +1379,13 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     product: current.product,
     referenceManifestHash: current.referenceManifestHash,
     revision: current.planRevision + 1,
-    languagePlan: current.languagePlan ?? stagedLanguagePlanFromMetadata(base),
+    languagePlan: current.languagePlan
+      ? requireStagedLanguagePlanFromMetadata({
+          sequentialStoryboard: { languagePlan: current.languagePlan },
+        })
+      : (() => {
+          throw new Error("STAGED_LANGUAGE_PLAN_REQUIRED");
+        })(),
     previousStorySummary: notes ? notes.slice(0, 500) : undefined,
     reviewFormat,
     reviewTone,
@@ -1331,9 +1393,9 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     cast,
     shotDurationSeconds: resolvedShotDurationSeconds,
   };
-  // Keep redrafts on the LLM path so they can honor a selected review idea
-  // and return a fresh set of alternatives. The planner falls back to a
-  // bounded plan if model generation fails.
+  // Keep redrafts on the direct LLM path so they can honor a selected review
+  // idea and return a fresh set of alternatives. Fail the operation if the
+  // skill call or its output is invalid.
   const nextPlan = await generateStagedStoryArcPlanWithLLM({
     ...sharedPlanInput,
     userId: params.run.userId ?? undefined,
@@ -1342,8 +1404,10 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     selectedConcept: params.selectedConcept,
     model: storyPlanningModel,
   });
-  const usedSkillFallback = nextPlan.source !== "llm_story_arc";
-  const currentRedraftCount = Number(record(base.planReview).redraftCount) || 0;
+  const currentRedraftCount = record(base.planReview).redraftCount;
+  if (!Number.isInteger(currentRedraftCount) || currentRedraftCount < 0) {
+    throw new Error("STAGED_REDRAFT_COUNT_INVALID");
+  }
   const metadata = stagedMetadataForPlan({
     run: params.run,
     base,
@@ -1375,11 +1439,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
       statusDetail: {
         state: "awaiting_story_plan_review",
         severity: "info",
-        reasonCodes: [
-          "story_plan_redraft_ready",
-          ...(usedSkillFallback ? ["staged_story_skill_fallback"] : []),
-          ...adherence.warnings,
-        ],
+        reasonCodes: ["story_plan_redraft_ready", ...adherence.warnings],
         safeMessage:
           "ร่างเนื้อเรื่องใหม่พร้อมตรวจแล้ว ระบบยังไม่ใช้เครดิตสร้างภาพ",
         nextAction: "ตรวจและยืนยันเนื้อเรื่องใหม่",
@@ -1397,23 +1457,27 @@ export async function initializeStagedMarketplaceAutoReviewRun(params: {
 }) {
   // Additive (feature/marketplace-flexible-shots): LLM-first story authoring
   // when cast is present (dialogue is creative content — skill-first rule)
-  // or shotCount="auto" (shot count itself is LLM judgment). Falls back to
-  // the bounded deterministic planner internally on failure; see
-  // `buildStagedPlanAndMetadataForInit`'s doc comment for why this is the
-  // only place (besides redraft) this async path is used.
-  const { plan, metadata, usedSkillFallback } =
-    await buildStagedPlanAndMetadataForInit(params.run);
-  const anchorsForAdherence = record(record(params.run.metadataJson).referenceAnchors);
-  const adherence = assessStagedPlanAdherence(plan, {
-    storytellingStructure:
-      typeof anchorsForAdherence.storytellingStructure === "string"
-        ? anchorsForAdherence.storytellingStructure
-        : undefined,
-    reviewTone:
-      typeof anchorsForAdherence.reviewTone === "string"
-        ? anchorsForAdherence.reviewTone
-        : undefined,
-  });
+  // or shotCount="auto" (shot count itself is LLM judgment). A skill error
+  // fails initialization; deterministic story content is never substituted.
+  const { plan, metadata } = await buildStagedPlanAndMetadataForInit(
+    params.run
+  );
+  const anchorsForAdherence = record(
+    record(params.run.metadataJson).referenceAnchors
+  );
+  const adherence =
+    plan.shots.length > 0
+      ? assessStagedPlanAdherence(plan, {
+          storytellingStructure:
+            typeof anchorsForAdherence.storytellingStructure === "string"
+              ? anchorsForAdherence.storytellingStructure
+              : undefined,
+          reviewTone:
+            typeof anchorsForAdherence.reviewTone === "string"
+              ? anchorsForAdherence.reviewTone
+              : undefined,
+        })
+      : { warnings: [] };
   const next = await persistRun({
     db: params.db,
     run: params.run,
@@ -1431,15 +1495,20 @@ export async function initializeStagedMarketplaceAutoReviewRun(params: {
       planningArchitecture: "staged_two_skill_v2",
       storyPlan: buildStagedPlanView(plan),
       statusDetail: {
-        state: "awaiting_story_plan_review",
+        state: plan.shots.length > 0 ? "awaiting_story_plan_review" : "awaiting_story_concept_selection",
         severity: "info",
         reasonCodes: [
-          "story_plan_approval_required",
-          ...(usedSkillFallback ? ["staged_story_skill_fallback"] : []),
+          plan.shots.length > 0
+            ? "story_plan_approval_required"
+            : "story_concept_selection_required",
           ...adherence.warnings,
         ],
-        safeMessage: "ตรวจเนื้อเรื่องก่อน ระบบยังไม่ใช้เครดิตสร้างภาพ",
-        nextAction: "ตรวจและยืนยันเนื้อเรื่อง",
+        safeMessage:
+          plan.shots.length > 0
+            ? "ตรวจเนื้อเรื่องก่อน ระบบยังไม่ใช้เครดิตสร้างภาพ"
+            : "เลือกแนวคิดรีวิวก่อน ระบบจึงจะร่างช็อตและบทพูด",
+        nextAction:
+          plan.shots.length > 0 ? "ตรวจและยืนยันเนื้อเรื่อง" : "เลือกแนวคิดรีวิว",
         userActionRequired: true,
         retryable: true,
       },
@@ -1457,45 +1526,9 @@ async function compileImagePromptCheckpoints(params: {
   auth: Auth;
 }) {
   let next = params.metadata;
-  // Same read-and-filter pattern as `handleImageProvider` below: the
-  // manifest lives at the metadata top level (or, as a fallback, mirrored
-  // onto `stagedSequentialStoryboard.referenceManifest`). Read it once here
-  // so every shot's compiled prompt (and its content hash) reflects the same
-  // character reference set the actual image generation call will use.
-  const customManifest = Array.isArray((params.metadata as any).customReferenceManifest)
-    ? (params.metadata as any).customReferenceManifest
-    : Array.isArray(
-        (params.metadata as any).stagedSequentialStoryboard?.referenceManifest
-      )
-    ? (params.metadata as any).stagedSequentialStoryboard.referenceManifest
-    : [];
-  // Repair pre-auto-approve image-prompt checkpoints before compiling any
-  // missing prompts. The compile pass persists after each LLM call, so this
-  // also makes the legacy checkpoint recovery durable if the worker is
-  // interrupted while it is authoring the rest of the storyboard.
-  for (const shot of params.plan.shots) {
-    const existingPrompt = checkpointFor(next, "image_prompt", shot.shotId);
-    if (existingPrompt?.state !== "awaiting") continue;
-    const healed = selfHealAwaitingCheckpoint(
-      next,
-      existingPrompt,
-      params.auth.userId
-    );
-    if (healed === next) continue;
-    next = healed;
-    await persistRun({
-      db: params.db,
-      run: params.run,
-      metadata: next as any,
-      status: "running",
-      currentStage: "prompt_plan",
-      stageIndex: 4,
-    });
-  }
-  // Shots whose skill-authored attempt failed and fell back to the
-  // deterministic compiler this pass — surfaced non-blockingly on the
-  // `prompt_plan` stage below (`staged_prompt_skill_fallback`).
-  const skillFallbackShotIds: number[] = [];
+  const imageModel = requireStagedModel(params.metadata.imageModel, "image");
+  // An awaiting checkpoint always requires an explicit user decision. This
+  // worker only authors missing prompts; it never repairs approval state.
   for (const shot of params.plan.shots) {
     const shotState = next.stagedSequentialStoryboard.shots.find(
       item => item.shotId === shot.shotId
@@ -1507,88 +1540,42 @@ async function compileImagePromptCheckpoints(params: {
     // approved again.
     if (shotState?.state !== "story_awaiting" && existingPrompt) continue;
 
-    // Skill-first prompt authoring (project rule — see
-    // `feedback_skill_first_authoring`): both
-    // `marketplace-auto-review-story-arc` and
-    // `marketplace-auto-review-shot-video-director` declare
-    // `execution_mode: llm-only` + `fallback_policy: bounded_server_fallback`,
-    // meaning the LLM must author the prompt and the deterministic TS
-    // template (`compileStagedImagePrompt`) is only the bounded fallback.
-    // Try the exact same single-shot skill seam the per-shot "Generate
-    // Prompt" button already uses (`generateStagedAutoReviewShotPrompt`)
-    // before falling back. One shot's failure must never abort the others
-    // — each attempt is independently try/caught.
-    let prompt: string;
-    let hash: string;
-    let authoringSource: "skill" | "deterministic_fallback" = "deterministic_fallback";
-    try {
-      // `buildStagedSingleShotRefreshInput` lives in
-      // `marketplaceAutoReviewStagedCheckpointRouterService.ts`, which
-      // already imports FROM this module at the top level (see the
-      // `recordStagedProviderFailureAndRefund` comment near the top of this
-      // file for the general circular-import precedent in the other
-      // direction). Importing it back here as a normal top-level import
-      // would create the same circular edge a second time, in the
-      // direction that module doesn't already tolerate — so this import
-      // MUST stay a lazy dynamic import inside the function body, resolved
-      // at runtime long after both modules have finished evaluating, never
-      // at module-top-level.
-      const { buildStagedSingleShotRefreshInput } = await import(
-        "./marketplaceAutoReviewStagedCheckpointRouterService"
+    // This pass has one authoritative path: call the installed storyboard
+    // skill once for each missing shot and surface any error to the worker.
+    const { buildStagedSingleShotRefreshInput } =
+      await import("./marketplaceAutoReviewStagedCheckpointRouterService");
+    const refreshInput = buildStagedSingleShotRefreshInput({
+      run: params.run as any,
+      metadata: next as any,
+      shotId: shot.shotId,
+      publicUrl: params.runtime.publicUrl,
+      tenantId: params.auth.tenantId,
+      requestIdempotencyKey: `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}`,
+      stage: "image",
+    });
+    const refresh =
+      await refreshSequentialShotPromptWithSkillDirect(refreshInput);
+    const prompt = refresh.startFrameImagePrompt.trim();
+    if (!isCompleteStagedImagePrompt(prompt)) {
+      throw new Error(
+        `MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${shot.shotId}`
       );
-      const refreshInput = buildStagedSingleShotRefreshInput({
-        run: params.run as any,
-        metadata: next as any,
-        shotId: shot.shotId,
-        publicUrl: params.runtime.publicUrl,
-        tenantId: params.auth.tenantId,
-        stage: "image",
-      });
-      const refresh = await refreshSequentialShotPromptWithSkill(refreshInput);
-      const skillPrompt = String(refresh.startFrameImagePrompt ?? "").trim();
-      if (!isCompleteStagedImagePrompt(skillPrompt)) {
-        throw new Error("staged_prompt_skill_authoring_incomplete");
-      }
-      prompt = skillPrompt;
-      hash = buildStagedImagePromptContentHash({
-        revision: params.plan.planRevision,
-        shotId: shot.shotId,
-        prompt,
-        referenceManifestHash: params.plan.referenceManifestHash,
-      });
-      authoringSource = "skill";
-    } catch (error) {
-      console.warn(
-        `[compileImagePromptCheckpoints] skill authoring failed for run=${params.run.id} shot=${shot.shotId}, falling back to deterministic compiler: ${error instanceof Error ? error.message : String(error)}`
-      );
-      const compiled = compileStagedImagePrompt({
-        plan: params.plan,
-        shot,
-        customManifest,
-      });
-      prompt = compiled.prompt;
-      hash = compiled.contentHash;
-      if (!isCompleteStagedImagePrompt(prompt)) {
-        throw new Error("staged_image_prompt_fallback_incomplete");
-      }
-      skillFallbackShotIds.push(shot.shotId);
     }
-    console.info(
-      `[compileImagePromptCheckpoints] run=${params.run.id} shot=${shot.shotId} authoringSource=${authoringSource}`
-    );
+    const hash = buildStagedImagePromptContentHash({
+      revision: params.plan.planRevision,
+      shotId: shot.shotId,
+      prompt,
+      referenceManifestHash: params.plan.referenceManifestHash,
+    });
     const checkpoint = buildStagedCheckpoint({
       checkpointId: `image-prompt:${params.run.id}:shot-${shot.shotId}:r${params.plan.planRevision}`,
       kind: "image_prompt",
       shotId: shot.shotId,
       revision: params.plan.planRevision,
       contentHash: hash,
-      model: text(record(params.metadata).imageModel) || STAGED_IMAGE_MODEL,
-      provider: modelProvider(
-        text(record(params.metadata).imageModel) || STAGED_IMAGE_MODEL
-      ),
-      estimatedCredits: modelCost(
-        text(record(params.metadata).imageModel) || STAGED_IMAGE_MODEL
-      ),
+      model: imageModel,
+      provider: modelProvider(imageModel),
+      estimatedCredits: modelCost(imageModel),
       referenceManifestHash: params.plan.referenceManifestHash,
       autoApprove: { userId: params.run.userId },
     });
@@ -1606,7 +1593,7 @@ async function compileImagePromptCheckpoints(params: {
           ...record(record(next.stagedPipeline).promptGeneration),
           [`image:${shot.shotId}`]: {
             generatedAt: new Date().toISOString(),
-            source: authoringSource,
+            source: "skill",
           },
         },
       },
@@ -1662,16 +1649,9 @@ async function compileImagePromptCheckpoints(params: {
       statusDetail: {
         state: "awaiting_image_prompt_review",
         severity: "info",
-        reasonCodes: [
-          "image_prompt_approval_required_per_shot",
-          ...(skillFallbackShotIds.length > 0
-            ? ["staged_prompt_skill_fallback"]
-            : []),
-        ],
+        reasonCodes: ["image_prompt_approval_required_per_shot"],
         safeMessage:
-          skillFallbackShotIds.length > 0
-            ? `ตรวจ Prompt ของแต่ละช็อตก่อนยืนยันสร้างภาพ ระบบยังไม่ใช้เครดิตภาพ (ช็อตที่ ${skillFallbackShotIds.join(", ")} ใช้ prompt สำรองเนื่องจาก skill เขียน prompt ไม่สำเร็จ)`
-            : "ตรวจ Prompt ของแต่ละช็อตก่อนยืนยันสร้างภาพ ระบบยังไม่ใช้เครดิตภาพ",
+          "ตรวจ Prompt ของแต่ละช็อตก่อนยืนยันสร้างภาพ ระบบยังไม่ใช้เครดิตภาพ",
         nextAction: "ตรวจ Prompt ช็อตที่ต้องการ แล้วกดยืนยันสร้างภาพ",
         userActionRequired: true,
         retryable: true,
@@ -1697,14 +1677,15 @@ async function handleImageProvider(params: {
   if (!checkpoint) throw new Error("checkpoint_not_ready");
   // Use the model/provider the user explicitly approved via the UI to avoid
   // checkpoint_model_mismatch when the UI model selection differs from metadata.imageModel.
-  const model = text(checkpoint.approvedModel) || text(record(metadata).imageModel) || STAGED_IMAGE_MODEL;
-  const provider = text(checkpoint.approvedProvider) || modelProvider(model);
+  const model = requireStagedModel(checkpoint.approvedModel, "image");
+  const provider = text(checkpoint.approvedProvider);
+  if (!provider) throw new Error(`STAGED_IMAGE_PROVIDER_REQUIRED:${model}`);
   const expected = checkpointExpectation(checkpoint);
   const guard = assertStagedProviderSpendAllowed(checkpoint, {
     ...expected,
     model,
     provider,
-    estimatedCredits: checkpoint.estimatedCredits ?? modelCost(model),
+    estimatedCredits: expected.estimatedCredits,
   });
   if (!guard.ok) throw new Error(guard.reasonCode);
   const prompt = text(
@@ -1719,9 +1700,7 @@ async function handleImageProvider(params: {
       revision: checkpoint.revision,
       shotId: params.shotId,
       prompt,
-      referenceManifestHash:
-        checkpoint.approvedReferenceManifestHash ||
-        params.plan.referenceManifestHash,
+      referenceManifestHash: expected.referenceManifestHash,
     }) !== checkpoint.contentHash
   ) {
     throw new Error(`checkpoint_hash_mismatch:shot:${params.shotId}`);
@@ -1737,9 +1716,10 @@ async function handleImageProvider(params: {
   const consumedRecord = record(consumed);
   const customManifest = Array.isArray(consumedRecord.customReferenceManifest)
     ? consumedRecord.customReferenceManifest
-    : Array.isArray((consumedRecord as any).stagedSequentialStoryboard?.referenceManifest)
-    ? (consumedRecord as any).stagedSequentialStoryboard.referenceManifest
     : [];
+  if (customManifest.length === 0) {
+    throw new Error("STAGED_REFERENCE_MANIFEST_REQUIRED");
+  }
 
   let referenceImageUrls: string[] = [];
   let characterItems: any[] = [];
@@ -1747,10 +1727,16 @@ async function handleImageProvider(params: {
 
   if (customManifest.length > 0) {
     const activeItems = customManifest.filter(
-      (item: any) => item && typeof item.url === "string" && item.url.trim() && item.active !== false
+      (item: any) =>
+        item &&
+        typeof item.url === "string" &&
+        item.url.trim() &&
+        item.active !== false
     );
     productItems = activeItems.filter((item: any) => item.role !== "character");
-    const allCharacterItems = activeItems.filter((item: any) => item.role === "character");
+    const allCharacterItems = activeItems.filter(
+      (item: any) => item.role === "character"
+    );
 
     // Per-shot cast (`planning/marketplace-four-character-cast/plan.md` §5).
     // This used to send EVERY character in the manifest to EVERY shot, which
@@ -1777,16 +1763,8 @@ async function handleImageProvider(params: {
   }
 
   if (referenceImageUrls.length === 0) {
-    // No manifest customization at all yet: default to just the hero
-    // product image, matching the same "hero only by default" the review
-    // UI shows — sending every product angle shot here would silently
-    // contradict what the checkboxes just displayed as selected.
-    referenceImageUrls = buildProductFromMetadata(params.run, consumedRecord)
-      .imageUrls.filter(Boolean)
-      .slice(0, 1);
+    throw new Error("STAGED_ACTIVE_REFERENCE_SELECTION_REQUIRED");
   }
-  if (referenceImageUrls.length === 0)
-    throw new Error("staged_reference_missing");
 
   // Keep managed storage references intact here. mediaGenerationService
   // resolves them with the tenant-scoped download broker before submitting to
@@ -1804,14 +1782,14 @@ async function handleImageProvider(params: {
   // prompt. That is a code-append and is exactly the violation those rules
   // forbid. Replaced with a fail-closed VALIDATOR: never rewrite the
   // prompt; only detect and report a gap so it stays visible. The prompt
-  // dispatched to the provider is `prompt`, byte-identical to whatever the
-  // skill (or its bounded deterministic fallback) compiled.
+  // dispatched to the provider is `prompt`, byte-identical to the skill output.
   const missingCharacterReferenceTags: string[] = [];
   if (characterItems.length > 0) {
     const productCount = productItems.length > 0 ? productItems.length : 1;
     for (let i = 0; i < characterItems.length; i += 1) {
       const charTag = `@Image${productCount + i + 1}`;
-      if (!prompt.includes(charTag)) missingCharacterReferenceTags.push(charTag);
+      if (!prompt.includes(charTag))
+        missingCharacterReferenceTags.push(charTag);
     }
   }
 
@@ -1952,13 +1930,12 @@ async function reconcileImageProvider(params: {
           identity: taskInfo.taskId,
         })
       : null;
-  const settledResultUrl = durableTask?.durableUrl || text(task.resultUrl);
   if (task.status === "pending" || task.status === "processing")
     return params.metadata;
   if (task.status === "failed" || task.status === "cancelled") {
     throw new Error(`staged_image_provider_failed:shot:${params.shotId}`);
   }
-  const url = settledResultUrl;
+  const url = text(durableTask?.durableUrl);
   if (!url)
     throw new Error(`staged_image_artifact_missing:shot:${params.shotId}`);
   const artifactHash = buildProductionStableHash({ taskId: task.id, url });
@@ -1979,16 +1956,15 @@ async function reconcileImageProvider(params: {
     shotId: params.shotId,
     revision: params.plan.planRevision,
     contentHash: artifactHash,
-    model:
-      imagePrompt?.approvedModel ||
-      text(record(params.metadata).imageModel) ||
-      STAGED_IMAGE_MODEL,
-    provider:
-      imagePrompt?.approvedProvider || modelProvider(STAGED_IMAGE_MODEL),
+    model: requireStagedModel(imagePrompt?.approvedModel, "image"),
+    provider: text(imagePrompt?.approvedProvider),
     estimatedCredits: 0,
     referenceManifestHash: params.plan.referenceManifestHash,
     autoApprove: { userId: params.run.userId },
   });
+  if (!imageResultCheckpoint.approvedProvider) {
+    throw new Error("STAGED_IMAGE_RESULT_PROVIDER_MISSING");
+  }
   next = replaceCheckpoint(next, imageResultCheckpoint);
   await persistRun({
     db: params.db,
@@ -2019,146 +1995,6 @@ async function reconcileImageProvider(params: {
   return next;
 }
 
-async function compileVideoPrompt(params: {
-  db: Db;
-  run: MarketplaceAutoReviewRun;
-  auth: Auth;
-  runtime: Runtime;
-  metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>;
-  plan: StagedStoryArcPlan;
-  shotId: number;
-}) {
-  const shot = params.plan.shots.find(item => item.shotId === params.shotId);
-  if (!shot) throw new Error("staged_invalid_shot_contract");
-  const imageArtifactHash =
-    params.metadata.stagedSequentialStoryboard.shots.find(
-      item => item.shotId === params.shotId
-    )?.imageArtifactHash;
-  if (!imageArtifactHash) throw new Error("staged_image_artifact_missing");
-  let prompt: string;
-  let authoringSource: "skill" | "deterministic_fallback" = "skill";
-  try {
-    // Generate motion only after the image is approved, so the skill receives
-    // the accepted frame as a visual reference and preserves its composition.
-    const { buildStagedSingleShotRefreshInput } = await import(
-      "./marketplaceAutoReviewStagedCheckpointRouterService"
-    );
-    const refresh = await refreshSequentialShotPromptWithSkill(
-      buildStagedSingleShotRefreshInput({
-        run: params.run as any,
-        metadata: params.metadata as any,
-        shotId: params.shotId,
-        publicUrl: params.runtime.publicUrl,
-        tenantId: params.auth.tenantId,
-        stage: "video",
-      })
-    );
-    const skillPrompt = String(refresh.videoPrompt ?? "").trim();
-    if (
-      !isCompleteStagedVideoPrompt(
-        skillPrompt,
-        shot.dialogue,
-        shot.dialogueTurns,
-        params.plan.cast
-      )
-    ) {
-      throw new Error("staged_video_prompt_skill_authoring_incomplete");
-    }
-    prompt = skillPrompt;
-  } catch (error) {
-    console.warn(
-      `[compileVideoPrompt] skill authoring failed for run=${params.run.id} shot=${params.shotId}, falling back to deterministic compiler: ${error instanceof Error ? error.message : String(error)}`
-    );
-    const compiled = compileStagedVideoPrompt({
-      plan: params.plan,
-      shot,
-      imageArtifactHash,
-    });
-    prompt = compiled.prompt;
-    authoringSource = "deterministic_fallback";
-    if (
-      !isCompleteStagedVideoPrompt(
-        prompt,
-        shot.dialogue,
-        shot.dialogueTurns,
-        params.plan.cast
-      )
-    ) {
-      throw new Error("staged_video_prompt_fallback_incomplete");
-    }
-  }
-  const hash = buildStagedVideoPromptContentHash({
-    revision: params.plan.planRevision,
-    shotId: params.shotId,
-    prompt,
-    imageArtifactHash,
-  });
-  const model = text(record(params.metadata).videoModel) || STAGED_VIDEO_MODEL;
-  const checkpoint = buildStagedCheckpoint({
-    checkpointId: `video-prompt:${params.run.id}:shot-${params.shotId}:r${params.plan.planRevision}`,
-    kind: "video_prompt",
-    shotId: params.shotId,
-    revision: params.plan.planRevision,
-    contentHash: hash,
-    model,
-    provider: modelProvider(model),
-    estimatedCredits: modelCost(model),
-    referenceManifestHash: params.plan.referenceManifestHash,
-    autoApprove: { userId: params.run.userId },
-  });
-  let next = updateShot(params.metadata, params.shotId, {
-    state: "video_prompt_awaiting",
-    videoPromptHash: hash,
-    videoPrompt: prompt,
-  });
-  next = replaceCheckpoint(next, checkpoint);
-  next = {
-    ...next,
-    stagedPipeline: {
-      ...record(next.stagedPipeline),
-      promptGeneration: {
-        ...record(record(next.stagedPipeline).promptGeneration),
-        [`video:${params.shotId}`]: {
-          generatedAt: new Date().toISOString(),
-          source: authoringSource,
-        },
-      },
-    },
-  };
-  await persistRun({
-    db: params.db,
-    run: params.run,
-    metadata: next as any,
-    status: "running",
-    currentStage: "video_generation",
-    stageIndex: 7,
-  });
-  await upsertStage({
-    db: params.db,
-    runId: params.run.id,
-    stageKey: "video_generation",
-    status: "blocked_needs_user",
-    output: {
-      shotId: params.shotId,
-      statusDetail: {
-        state: "awaiting_video_prompt_review",
-        severity: "info",
-        reasonCodes: [
-          "video_prompt_approval_required",
-          ...(authoringSource === "deterministic_fallback"
-            ? ["staged_video_prompt_skill_fallback"]
-            : []),
-        ],
-        safeMessage: `ยืนยัน Prompt วิดีโอช็อตที่ ${params.shotId} ก่อนใช้เครดิตวิดีโอ`,
-        nextAction: `ตรวจ Prompt วิดีโอช็อตที่ ${params.shotId} แล้วกดยืนยัน`,
-        userActionRequired: true,
-        retryable: true,
-      },
-    },
-  });
-  return next;
-}
-
 async function handleVideoProvider(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -2176,21 +2012,27 @@ async function handleVideoProvider(params: {
     "video_prompt",
     params.shotId
   );
-  if (!shotState?.imageArtifactUrl || !checkpoint)
+  if (
+    !shotState?.imageArtifactUrl ||
+    !shotState.imageArtifactHash ||
+    !checkpoint
+  )
     throw new Error(`checkpoint_not_ready:shot:${params.shotId}`);
   const shot = params.plan.shots.find(item => item.shotId === params.shotId);
   if (!shot) throw new Error("staged_invalid_shot_contract");
-  const model = text(checkpoint.approvedModel) || text(record(params.metadata).videoModel) || STAGED_VIDEO_MODEL;
-  const provider = text(checkpoint.approvedProvider) || modelProvider(model);
+  const model = requireStagedModel(checkpoint.approvedModel, "video");
+  const provider = text(checkpoint.approvedProvider);
+  if (!provider) throw new Error(`STAGED_VIDEO_PROVIDER_REQUIRED:${model}`);
+  const expected = checkpointExpectation(checkpoint);
   const durationResolution = resolveStagedVideoDuration(
     model,
     shot.durationSeconds
   );
   const guard = assertStagedProviderSpendAllowed(checkpoint, {
-    ...checkpointExpectation(checkpoint),
+    ...expected,
     model,
     provider,
-    estimatedCredits: checkpoint.estimatedCredits ?? modelCost(model),
+    estimatedCredits: expected.estimatedCredits,
   });
   if (!guard.ok) throw new Error(guard.reasonCode);
   const prompt = text(
@@ -2205,7 +2047,7 @@ async function handleVideoProvider(params: {
       revision: checkpoint.revision,
       shotId: params.shotId,
       prompt,
-      imageArtifactHash: shotState.imageArtifactHash || "",
+      imageArtifactHash: shotState.imageArtifactHash,
     }) !== checkpoint.contentHash
   ) {
     throw new Error(`checkpoint_hash_mismatch:shot:${params.shotId}`);
@@ -2284,18 +2126,6 @@ async function handleVideoProvider(params: {
     output: {
       shotId: params.shotId,
       taskPending: true,
-      ...(durationResolution.fitted
-        ? {
-            statusDetail: {
-              state: "video_duration_fitted_to_model",
-              severity: "info",
-              reasonCodes: ["staged_video_duration_fitted_to_model"],
-              safeMessage: `ปรับความยาววิดีโอช็อตที่ ${params.shotId} จาก ${shot.durationSeconds} วินาที เป็น ${durationResolution.duration} วินาที ให้ตรงกับความยาวที่โมเดลรองรับ`,
-              userActionRequired: false,
-              retryable: false,
-            },
-          }
-        : {}),
     },
   });
   return next;
@@ -2340,12 +2170,11 @@ async function reconcileVideoProvider(params: {
           identity: taskInfo.taskId,
         })
       : null;
-  const settledResultUrl = durableTask?.durableUrl || text(task.resultUrl);
   if (task.status === "pending" || task.status === "processing")
     return params.metadata;
   if (task.status === "failed" || task.status === "cancelled")
     throw new Error(`staged_video_provider_failed:shot:${params.shotId}`);
-  const url = settledResultUrl;
+  const url = text(durableTask?.durableUrl);
   if (!url)
     throw new Error(`staged_video_artifact_missing:shot:${params.shotId}`);
   const hash = buildProductionStableHash({ taskId: task.id, url });
@@ -2382,15 +2211,18 @@ async function reconcileVideoProvider(params: {
       shotId: params.shotId,
       revision: params.plan.planRevision,
       contentHash: hash,
-      model: videoPromptCheckpoint?.approvedModel ?? STAGED_VIDEO_MODEL,
-      provider:
-        videoPromptCheckpoint?.approvedProvider ??
-        modelProvider(STAGED_VIDEO_MODEL),
+      model: requireStagedModel(videoPromptCheckpoint?.approvedModel, "video"),
+      provider: text(videoPromptCheckpoint?.approvedProvider),
       estimatedCredits: 0,
       referenceManifestHash: params.plan.referenceManifestHash,
       autoApprove: { userId: params.run.userId },
     })
   ) as any;
+  if (
+    !record(checkpointFor(next, "video_result", params.shotId)).approvedProvider
+  ) {
+    throw new Error("STAGED_VIDEO_RESULT_PROVIDER_MISSING");
+  }
   await persistRun({
     db: params.db,
     run: params.run,
@@ -2488,8 +2320,8 @@ async function createFinalAssemblyCheckpoint(params: {
       kind: "final_assembly",
       revision: params.plan.planRevision,
       contentHash: hash,
-      model: "assembly",
-      provider: "internal",
+      model: "remotion-render",
+      provider: "remotion",
       estimatedCredits:
         params.run.outputMode === "storyboard_images"
           ? 0
@@ -2534,40 +2366,6 @@ async function createFinalAssemblyCheckpoint(params: {
   return next;
 }
 
-/**
- * Auto-approves a checkpoint still sitting in `awaiting`. Every non-story
- * checkpoint is now born already `approved` (see `buildStagedCheckpoint`'s
- * `autoApprove` param), so this branch can only be reached by a checkpoint
- * that predates this change. `expected` is derived from the checkpoint's own
- * current fields via `checkpointExpectation`, so this mirrors the checkpoint
- * back at itself and cannot legitimately fail.
- */
-function selfHealAwaitingCheckpoint(
-  metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>,
-  checkpoint: HumanApprovalCheckpointV1,
-  userId: number
-): StagedSequentialStoryboardMetadataV1 & Record<string, any> {
-  const transitioned = transitionStagedCheckpoint(checkpoint, {
-    type: "approve",
-    expected: checkpointExpectation(checkpoint),
-    userId,
-    approvedAt: new Date().toISOString(),
-  });
-  if (!transitioned.ok) {
-    // Should be unreachable (see above) — log loudly instead of silently
-    // leaving the shot blocked, so a call site this fallback doesn't cover
-    // stays visible instead of masked.
-    console.warn(
-      `[advanceStagedMarketplaceAutoReviewRun] self-heal could not approve checkpoint ${checkpoint.checkpointId}: ${transitioned.reasonCode}`
-    );
-    return metadata;
-  }
-  console.warn(
-    `[advanceStagedMarketplaceAutoReviewRun] self-healed awaiting checkpoint ${checkpoint.checkpointId} (kind=${checkpoint.kind}, shotId=${checkpoint.shotId ?? "run"}) — predates the auto-approve change`
-  );
-  return replaceCheckpoint(metadata, transitioned.checkpoint) as any;
-}
-
 export async function advanceStagedMarketplaceAutoReviewRun(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -2579,6 +2377,12 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   const { plan, metadata: initialMetadata } = planAndMetadataFromRun(
     params.run
   );
+  if (
+    plan.shots.length === 0 ||
+    (plan.conceptOptions?.length && !plan.selectedConceptId)
+  ) {
+    throw new Error("STAGED_STORY_CONCEPT_SELECTION_REQUIRED");
+  }
   let metadata = initialMetadata;
   if (!StagedSequentialStoryboardMetadataV1Schema.safeParse(metadata).success) {
     throw new Error("staged_state_drift");
@@ -2596,11 +2400,15 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     storyCheckpoint.state === "awaiting" ||
     storyCheckpoint.state === "rejected" ||
     storyCheckpoint.state === "superseded";
-  // A targeted advance is an explicit dispatch or a poll for an existing task.
-  // Dispatch still requires mediaDispatchIntent; polling reconciles its taskId
-  // first, so a poll cannot submit duplicate media.
+  // A shot-scoped advance is either an explicit media dispatch (the
+  // checkpoint carries mediaDispatchIntent) or a poll for an existing
+  // provider task. Both are independent of later story edits. The loop below
+  // requires explicit intent before creating a task and reconciles a taskId
+  // before considering dispatch, so a poll cannot submit duplicate media.
   if (storyPlanNeedsReview && params.targetShotIds === undefined) {
-    const advanceAnchors = record(record(params.run.metadataJson).referenceAnchors);
+    const advanceAnchors = record(
+      record(params.run.metadataJson).referenceAnchors
+    );
     const advanceAdherence = assessStagedPlanAdherence(plan, {
       storytellingStructure:
         typeof advanceAnchors.storytellingStructure === "string"
@@ -2705,40 +2513,6 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       "image_prompt",
       shot.shotId
     );
-    if (imagePromptCheckpoint?.state === "awaiting") {
-      // Every non-story checkpoint is now born already `approved` (see
-      // buildStagedCheckpoint's autoApprove param); a checkpoint can only
-      // land here in "awaiting" if it predates that change. Heal it and
-      // persist immediately, then move on to the next shot instead of
-      // falling through to dispatch in this same pass — consumeCheckpoint
-      // re-fetches the run fresh from the database right before spending,
-      // and would still see this checkpoint as "awaiting" there since the
-      // heal above only exists in memory until persisted, aborting the
-      // whole pass. Dispatch happens on the next pass instead, seconds
-      // later via the existing sweep/debounce/poll triggers.
-      const healed = selfHealAwaitingCheckpoint(
-        metadata,
-        imagePromptCheckpoint,
-        params.auth.userId
-      );
-      if (healed !== metadata) {
-        metadata = healed;
-        await persistRun({
-          db: params.db,
-          run: params.run,
-          metadata: metadata as any,
-          status: "running",
-          currentStage: "prompt_plan",
-          stageIndex: 4,
-        });
-        continue;
-      }
-      imagePromptCheckpoint = checkpointFor(
-        metadata,
-        "image_prompt",
-        shot.shotId
-      );
-    }
     // `consumeCheckpoint` runs before provider reference preparation and
     // submission. If either fails, the approved checkpoint stays consumed
     // while no provider task exists. A later sweep must not consume it again
@@ -2747,7 +2521,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     // checkpoint and dispatches it through the Worker Jobs path.
     const imageCheckpointConsumed = Boolean(
       imagePromptCheckpoint?.consumedAt ||
-        imagePromptCheckpoint?.consumedByOperationId
+      imagePromptCheckpoint?.consumedByOperationId
     );
     if (
       imagePromptCheckpoint?.state === "approved" &&
@@ -2785,77 +2559,9 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       }
       continue;
     }
-    let imageResultCheckpoint = checkpointFor(
-      metadata,
-      "image_result",
-      shot.shotId
-    );
-    if (imageResultCheckpoint?.state === "awaiting") {
-      // Same self-heal race described above for image_prompt: persist
-      // before moving on instead of falling through to the same-pass
-      // video-prompt compile below.
-      const healed = selfHealAwaitingCheckpoint(
-        metadata,
-        imageResultCheckpoint,
-        params.auth.userId
-      );
-      if (healed !== metadata) {
-        metadata = healed;
-        await persistRun({
-          db: params.db,
-          run: params.run,
-          metadata: metadata as any,
-          status: "running",
-          currentStage: "storyboard_review",
-          stageIndex: 6,
-        });
-        continue;
-      }
-      imageResultCheckpoint = checkpointFor(
-        metadata,
-        "image_result",
-        shot.shotId
-      );
-    }
-    const existingVideoPromptCheckpoint = checkpointFor(
-      metadata,
-      "video_prompt",
-      shot.shotId
-    );
-    if (
-      imageResultCheckpoint?.state === "approved" &&
-      (!existingVideoPromptCheckpoint ||
-        !String(shotState?.videoPrompt ?? "").trim())
-    ) {
-      try {
-        metadata = await compileVideoPrompt({
-          db: params.db,
-          run: params.run,
-          auth: params.auth,
-          runtime: params.runtime,
-          metadata,
-          plan,
-          shotId: shot.shotId,
-        });
-      } catch (error) {
-        // compileVideoPrompt's own throws don't embed a shot id — append one
-        // so recordStagedProviderFailureAndRefund attributes the correction
-        // to this shot, then move on instead of aborting the pass.
-        const wrapped = new Error(
-          `${error instanceof Error ? error.message : "staged_video_prompt_compile_failed"}:shot:${shot.shotId}`
-        );
-        console.warn(
-          `[advanceStagedMarketplaceAutoReviewRun] compileVideoPrompt failed for run=${params.run.id} shot=${shot.shotId}: ${wrapped.message}`
-        );
-        metadata = (await recordStagedProviderFailureAndRefund({
-          db: params.db,
-          run: params.run,
-          auth: params.auth,
-          error: wrapped,
-        })) as any;
-      }
-      continue;
-    }
+    // Video prompts are generated only by the explicit per-shot prompt
+    // operation. Advancing/reconciling approved images must never start
+    // additional skill calls or spend credits for other shots.
     const videoTask = taskRecord(metadata, shot.shotId, "video");
     if (
       videoTask?.taskId &&
@@ -2895,39 +2601,11 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       "video_prompt",
       shot.shotId
     );
-    if (videoPromptCheckpoint?.state === "awaiting") {
-      // Same self-heal race described above for image_prompt: persist
-      // before moving on instead of falling through to the same-pass
-      // handleVideoProvider dispatch (which also calls consumeCheckpoint's
-      // fresh-DB guard).
-      const healed = selfHealAwaitingCheckpoint(
-        metadata,
-        videoPromptCheckpoint,
-        params.auth.userId
-      );
-      if (healed !== metadata) {
-        metadata = healed;
-        await persistRun({
-          db: params.db,
-          run: params.run,
-          metadata: metadata as any,
-          status: "running",
-          currentStage: "video_generation",
-          stageIndex: 7,
-        });
-        continue;
-      }
-      videoPromptCheckpoint = checkpointFor(
-        metadata,
-        "video_prompt",
-        shot.shotId
-      );
-    }
     // Match the image guard above: don't repeatedly re-consume a checkpoint
     // whose previous provider hand-off failed before a task id was recorded.
     const videoCheckpointConsumed = Boolean(
       videoPromptCheckpoint?.consumedAt ||
-        videoPromptCheckpoint?.consumedByOperationId
+      videoPromptCheckpoint?.consumedByOperationId
     );
     if (
       videoPromptCheckpoint?.state === "approved" &&
@@ -2989,29 +2667,6 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
       shot.shotId
     );
     if (!videoResultCheckpoint && shotState?.videoArtifactHash) {
-      const replacement = buildStagedCheckpoint({
-        checkpointId: `video-result:${params.run.id}:shot-${shot.shotId}:r${plan.planRevision}:recovered`,
-        kind: "video_result",
-        shotId: shot.shotId,
-        revision: shotState.revision,
-        contentHash: shotState.videoArtifactHash,
-        model: videoPromptCheckpoint?.approvedModel ?? STAGED_VIDEO_MODEL,
-        provider:
-          videoPromptCheckpoint?.approvedProvider ??
-          modelProvider(STAGED_VIDEO_MODEL),
-        estimatedCredits: 0,
-        referenceManifestHash: plan.referenceManifestHash,
-        autoApprove: { userId: params.run.userId },
-      });
-      metadata = replaceCheckpoint(metadata, replacement) as any;
-      await persistRun({
-        db: params.db,
-        run: params.run,
-        metadata: metadata as any,
-        status: "running",
-        currentStage: "video_generation",
-        stageIndex: 7,
-      });
       await upsertStage({
         db: params.db,
         runId: params.run.id,
@@ -3020,41 +2675,17 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         output: {
           shotId: shot.shotId,
           statusDetail: {
-            state: "awaiting_video_result_review",
-            safeMessage: `ตรวจผลวิดีโอช็อตที่ ${shot.shotId} ก่อนทำงานต่อ`,
+            state: "video_result_checkpoint_missing",
+            severity: "error",
+            reasonCodes: ["staged_video_result_checkpoint_missing"],
+            safeMessage: `พบไฟล์วิดีโอช็อตที่ ${shot.shotId} แต่ไม่มี checkpoint สำหรับตรวจผล ระบบจึงไม่สร้างสถานะอนุมัติแทนให้อัตโนมัติ`,
             userActionRequired: true,
-            retryable: true,
+            retryable: false,
           },
         },
       });
-      continue;
-    }
-    if (videoResultCheckpoint?.state === "awaiting") {
-      // Same self-heal race described above for image_prompt: persist
-      // before moving on so the heal isn't silently discarded if a later
-      // shot in this same pass throws (e.g. its own consumeCheckpoint
-      // guard) and aborts the pass before anything else gets persisted.
-      const healed = selfHealAwaitingCheckpoint(
-        metadata,
-        videoResultCheckpoint,
-        params.auth.userId
-      );
-      if (healed !== metadata) {
-        metadata = healed;
-        await persistRun({
-          db: params.db,
-          run: params.run,
-          metadata: metadata as any,
-          status: "running",
-          currentStage: "video_generation",
-          stageIndex: 7,
-        });
-        continue;
-      }
-      videoResultCheckpoint = checkpointFor(
-        metadata,
-        "video_result",
-        shot.shotId
+      throw new Error(
+        `STAGED_VIDEO_RESULT_CHECKPOINT_MISSING:shot-${shot.shotId}`
       );
     }
     if (videoResultCheckpoint && videoResultCheckpoint.state !== "approved") {
@@ -3080,7 +2711,8 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     }
   }
 
-  // A shot-scoped dispatch must not advance siblings or final assembly.
+  // A recovery dispatched for one shot must not also run final assembly or
+  // advance sibling checkpoints as a side effect of that same worker job.
   if (params.targetShotIds !== undefined) {
     return { run: params.run, finalAssemblyApproved: false };
   }
@@ -3152,15 +2784,24 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     !allShotCheckpointsHave(metadata, "video_result", "approved")
   )
     return { run: params.run, finalAssemblyApproved: false };
-  const resolvedAudioStrategy =
-    text(record(metadata).resolvedAudioStrategy) || "silent";
+  const resolvedAudioStrategy = text(record(metadata).resolvedAudioStrategy);
+  if (
+    resolvedAudioStrategy !== "silent" &&
+    resolvedAudioStrategy !== "native_video_audio" &&
+    resolvedAudioStrategy !== "separate_tts_voiceover"
+  ) {
+    throw new Error("STAGED_RESOLVED_AUDIO_STRATEGY_REQUIRED");
+  }
   if (resolvedAudioStrategy === "separate_tts_voiceover") {
     const audioCheckpoint = checkpointFor(metadata, "audio_plan");
     if (!audioCheckpoint) {
       const textContent = plan.shots.map(shot => shot.dialogue).join(" ");
+      const audioLanguage = requireStagedLanguagePlanFromMetadata(
+        metadata as Record<string, any>
+      ).dialogueLanguage;
       const audioPlan = buildStagedAudioPlan({
         text: textContent,
-        language: "th",
+        language: audioLanguage,
         model: STAGED_AUDIO_MODEL,
         provider: modelProvider(STAGED_AUDIO_MODEL),
         estimatedCredits: modelCost(STAGED_AUDIO_MODEL),
@@ -3291,7 +2932,8 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
             speed: 1,
             auditContext: {
               userId: params.auth.userId,
-              tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
+              tenantId:
+                params.auth.tenantId ?? params.run.tenantId ?? undefined,
               traceId: operationId,
               source: "marketplace_auto_review_staged",
               stage: "audio_generation",

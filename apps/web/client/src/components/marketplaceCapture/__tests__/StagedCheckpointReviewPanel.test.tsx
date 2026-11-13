@@ -42,8 +42,16 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: () => ({
           data: {
             models: [
-              { id: "google-banana-2", name: "Google Banana 2", provider: "google" },
-              { id: "veo3/generate-veo-3-video-lite", name: "Veo 3", provider: "google" },
+              {
+                id: "google-banana-2",
+                name: "Google Banana 2",
+                provider: "google",
+              },
+              {
+                id: "veo3/generate-veo-3-video-lite",
+                name: "Veo 3",
+                provider: "google",
+              },
             ],
             defaults: { image: "google-banana-2", video: "veo3/generate-veo-3-video-lite" },
           },
@@ -111,6 +119,7 @@ function props() {
     onEdit: vi.fn(),
     onGeneratePrompt: vi.fn(),
     onGenerateAndDispatch: vi.fn(),
+    onSubmitFinalRender: vi.fn(),
     onRetry: vi.fn(),
     onUploadShotMedia: vi.fn().mockResolvedValue(undefined),
   };
@@ -664,6 +673,10 @@ describe("StagedCheckpointReviewPanel", () => {
         name: `สร้าง Prompt วิดีโอช็อตที่ ${shotId}`,
       });
       expect(videoPromptButton).toBeDisabled();
+      expect(videoPromptButton).toHaveAttribute(
+        "title",
+        "ต้องสร้างและอนุมัติภาพช็อตนี้ก่อน เพื่อให้ระบบตรวจจับคนและจับคู่ผู้พูด"
+      );
       expect(
         screen.getByRole("button", { name: `สร้างภาพช็อตที่ ${shotId}` })
       ).toBeDisabled();
@@ -671,16 +684,16 @@ describe("StagedCheckpointReviewPanel", () => {
         screen.getByRole("button", { name: `สร้างวิดีโอช็อตที่ ${shotId}` })
       ).toBeDisabled();
     }
-
-    clickAndConfirmGeneration(
-      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
-    );
     expect(
       screen.getAllByText(
         /ขั้นตอนถัดไป: สร้างภาพช็อตนี้และรอให้ระบบอนุมัติ/
       )
     ).toHaveLength(3);
-    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+
+    clickAndConfirmGeneration(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+    expect(input.onGeneratePrompt).toHaveBeenNthCalledWith(1, {
       shotId: 1,
       stage: "image",
     });
@@ -826,6 +839,7 @@ describe("StagedCheckpointReviewPanel", () => {
     const input = props();
     input.state = {
       ...input.state,
+      // A stale summary must not override the current awaiting checkpoint.
       planReview: { status: "approved", redraftCount: 0 },
       checkpoints: [
         {
@@ -855,9 +869,7 @@ describe("StagedCheckpointReviewPanel", () => {
       name: "สร้างภาพช็อตที่ 1",
     });
     expect(imageButton).not.toBeDisabled();
-    expect(
-      screen.getByText(/Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่าง/)
-    ).toBeTruthy();
+    expect(screen.getByText("Prompt พร้อมแล้ว กดปุ่มสร้างภาพด้านล่างเพื่อส่งงานเข้า Worker และรอผลที่นี่")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
     ).not.toBeDisabled();
@@ -866,11 +878,7 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onGenerateAndDispatch).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
     expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shotId: 1,
-        stage: "image",
-        replaceExisting: true,
-      })
+      expect.objectContaining({ shotId: 1, stage: "image", replaceExisting: true })
     );
   });
 
@@ -922,11 +930,7 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(videoButton).not.toBeDisabled();
     clickAndConfirmGeneration(videoButton);
     expect(input.onGenerateAndDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shotId: 1,
-        stage: "video",
-        replaceExisting: true,
-      })
+      expect.objectContaining({ shotId: 1, stage: "video", replaceExisting: true })
     );
   });
 
@@ -1619,20 +1623,18 @@ describe("StagedCheckpointReviewPanel", () => {
       };
       render(<StagedCheckpointReviewPanel {...input} />);
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "สร้าง Prompt วิดีโอทุกช็อต (2)" })
+      const bulkVideoPromptButton = screen.getByRole("button", {
+        name: "สร้าง Prompt วิดีโอทุกช็อต (2)",
+      });
+      expect(bulkVideoPromptButton).toBeDisabled();
+      expect(bulkVideoPromptButton).toHaveAttribute(
+        "title",
+        "ต้องสร้างและอนุมัติภาพก่อน (2 ช็อต)"
       );
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
       expect(
-        screen.getByTestId("staged-generation-confirmation-dialog").textContent
-      ).toContain("ผลนั้นกับ Prompt ใหม่");
-      fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
-
-      expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
-      expect(input.onBulkGenerate).toHaveBeenCalledWith([
-        expect.objectContaining({ shotId: 1, stage: "video", promptOnly: true }),
-        expect.objectContaining({ shotId: 2, stage: "video", promptOnly: true }),
-      ]);
+        screen.queryByTestId("staged-generation-confirmation-dialog")
+      ).toBeNull();
     });
 
     it("keeps prompt refresh batches available even when every shot already has an image", () => {
@@ -2172,28 +2174,15 @@ describe("StagedCheckpointReviewPanel", () => {
       ).toBeTruthy();
     });
   });
-});
 
-describe("Marketplace final video combine action", () => {
-  function completedVideoState(videoCount: number) {
-    const input = props() as any;
-    input.onSubmitFinalRender = vi.fn();
-    input.state.shots = Array.from({ length: 9 }, (_, index) => ({
-      shotId: index + 1,
-      title: `ช็อต ${index + 1}`,
-      storySummary: `เรื่องย่อ ${index + 1}`,
-      dialogue: "บทพูด",
-      imagePrompt: "image prompt",
-      videoPrompt: "video prompt",
-      imageArtifactUrl: `https://example.test/image-${index + 1}.png`,
-      imageArtifactHash: `image-hash-${index + 1}`,
-      videoArtifactUrl:
-        index < videoCount ? `https://example.test/shot-${index + 1}.mp4` : null,
-      videoArtifactHash: index < videoCount ? `video-hash-${index + 1}` : null,
-    }));
-    input.state.checkpoints = [
-      ...input.state.checkpoints,
-      ...input.state.shots
+  describe("final Remotion render readiness", () => {
+    function approvedVideoCheckpoints(shots: any[]) {
+      shots.forEach((shot: any) => {
+        if (shot.videoArtifactUrl && !shot.videoArtifactHash) {
+          shot.videoArtifactHash = `video-hash-${shot.shotId}`;
+        }
+      });
+      return shots
         .filter((shot: any) => shot.videoArtifactUrl)
         .map((shot: any) => ({
           checkpointId: `video-result:run-1:shot-${shot.shotId}:r1`,
@@ -2203,123 +2192,163 @@ describe("Marketplace final video combine action", () => {
           revision: 1,
           contentHash: shot.videoArtifactHash,
           consumed: true,
-        })),
-    ];
-    input.state.finalRender = undefined;
-    return input;
-  }
+        }));
+    }
 
-  it("shows and enables the combine action when all 9 approved shot videos exist without finalRender state", () => {
-    const input = completedVideoState(9);
-    input.loading = true;
-    render(<StagedCheckpointReviewPanel {...input} />);
+    function renderState(readyVideoCount: number, queuedClipCount: number) {
+      const input = props() as any;
+      input.state.shots = Array.from({ length: 9 }, (_, index) => ({
+        shotId: index + 1,
+        title: `ช็อต ${index + 1}`,
+        storySummary: `เรื่องย่อ ${index + 1}`,
+        dialogue: "บทพูด",
+        imagePrompt: "image prompt",
+        videoPrompt: "video prompt",
+        imageArtifactUrl: "https://example.test/image.png",
+        imageArtifactHash: "image-hash",
+        videoArtifactUrl:
+          index < readyVideoCount ? "https://example.test/shot.mp4" : null,
+        videoArtifactHash: index < readyVideoCount ? `video-hash-${index + 1}` : null,
+      }));
+      input.state.checkpoints = approvedVideoCheckpoints(input.state.shots);
+      input.state.finalRender = {
+        settings: {
+          subtitlePresetId: "classic_box",
+          aiDisclosureEnabled: false,
+          overlayText: null,
+          overlayImage: null,
+        },
+        clipCount: queuedClipCount,
+        jobId: null,
+      };
+      return input;
+    }
 
-    const actionBanner = screen.getByTestId("staged-final-render-action");
-    const loadingMessage = screen.getByText("กำลังโหลด checkpoint…");
-    expect(
-      (actionBanner.compareDocumentPosition(loadingMessage) &
-        Node.DOCUMENT_POSITION_FOLLOWING) !==
-        0
-    ).toBe(true);
-    const button = screen.getByRole("button", {
-      name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
+    it("explains the missing shots and blocks the combine action until all 9 videos are ready", () => {
+      const input = renderState(7, 0);
+      input.state.shots[7].videoArtifactUrl = "https://example.test/shot.mp4";
+      input.state.shots[8].videoArtifactUrl = "https://example.test/shot.mp4";
+      input.state.shots[4].videoArtifactUrl = null;
+      input.state.shots[6].videoArtifactUrl = null;
+      input.state.checkpoints = approvedVideoCheckpoints(input.state.shots);
+      render(<StagedCheckpointReviewPanel {...input} />);
+
+      expect(screen.getByText(/วิดีโอที่ตรวจรับแล้ว 7\/9 ช็อต/)).toBeTruthy();
+      expect(screen.getByText("ยังไม่มีวิดีโอช็อต 5, 7")).toBeTruthy();
+      const combineButtons = screen.getAllByRole("button", {
+        name: "รอวิดีโอครบ 9 ช็อต",
+      });
+      expect(combineButtons).toHaveLength(1);
+      combineButtons.forEach(button =>
+        expect(button).toHaveAttribute("aria-disabled", "true")
+      );
+      expect(input.onSubmitFinalRender).not.toHaveBeenCalled();
     });
-    expect(button).toBeEnabled();
-    fireEvent.click(button);
-    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
-  });
 
-  it("keeps one combine action above the shot list", () => {
-    const input = completedVideoState(9);
-    render(<StagedCheckpointReviewPanel {...input} />);
+    it("shows the combine action at the top and enables it from approved shot videos even before final assembly metadata exists", () => {
+      const input = renderState(9, 9);
+      input.state.finalRender.clipCount = 0;
+      input.loading = true;
+      render(<StagedCheckpointReviewPanel {...input} />);
 
-    const shotList = document.getElementById("staged-auto-review-shot-list");
-    const actionBanner = screen.getByTestId("staged-final-render-action");
-    expect(screen.queryByTestId("staged-final-render-action-bottom")).toBeNull();
-    expect(screen.getAllByTestId("staged-final-render-action")).toHaveLength(1);
-    expect(shotList).toBeTruthy();
-    expect(
-      (actionBanner.compareDocumentPosition(shotList!) &
-        Node.DOCUMENT_POSITION_FOLLOWING) !==
-        0
-    ).toBe(true);
-    const button = screen.getByRole("button", {
-      name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
+      const actionPanel = screen.getByTestId("staged-final-render-action");
+      const loadingMessage = screen.getByText("กำลังโหลด checkpoint…");
+      expect(
+        (actionPanel.compareDocumentPosition(loadingMessage) &
+          Node.DOCUMENT_POSITION_FOLLOWING) !==
+          0
+      ).toBe(true);
+      const button = screen.getByRole("button", {
+        name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
+      });
+      expect(button).toBeEnabled();
+      expect(button.closest("[data-testid='staged-final-render-action']")).toBeTruthy();
+      fireEvent.click(button);
+      expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
     });
-    expect(button).toBeEnabled();
-    fireEvent.click(button);
-    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
-  });
 
+    it("does not mark a shot ready when its approved video checkpoint is missing or superseded by a newer pending review", () => {
+      const input = renderState(9, 0);
+      input.state.checkpoints.push({
+        checkpointId: "video-result:run-1:shot-4:r2",
+        kind: "video_result",
+        shotId: 4,
+        state: "awaiting",
+        revision: 2,
+        contentHash: "video-hash-4",
+      });
+      render(<StagedCheckpointReviewPanel {...input} />);
 
-  it("shows the completed video, download, and rerender action in the single panel", () => {
-    const input = completedVideoState(9);
-    const outputUrl = "https://example.test/final.mp4";
-    input.state.finalRender = {
-      outputUrl,
-      jobId: "completed-render-job",
-      settings: {
-        subtitlePresetId: "classic_box",
-        aiDisclosureEnabled: false,
-        overlayText: null,
-        overlayImage: null,
-      },
-    };
-    render(<StagedCheckpointReviewPanel {...input} />);
-
-    const actionPanel = screen.getByTestId("staged-final-render-action");
-    expect(
-      screen.queryByTestId("staged-final-render-action-bottom")
-    ).toBeNull();
-    const video = actionPanel.querySelector("video");
-    expect(video).toHaveAttribute("src", outputUrl);
-    expect(video).toHaveAttribute("controls");
-    expect(
-      screen.getByRole("link", { name: "ดาวน์โหลดวิดีโอรวม" })
-    ).toHaveAttribute("href", outputUrl);
-    const rerenderButton = screen.getByRole("button", {
-      name: "สั่งรวมวิดีโอใหม่",
+      expect(screen.getByText(/วิดีโอที่ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
+      expect(
+        screen
+          .getAllByRole("status")
+          .some(status =>
+            status.textContent?.replace(/\s/g, "").includes("ยังตรวจรับวิดีโอช็อต4")
+          )
+      ).toBe(true);
+      const combineButtons = screen.getAllByRole("button", {
+        name: "รอวิดีโอครบ 9 ช็อต",
+      });
+      expect(combineButtons).toHaveLength(1);
+      combineButtons.forEach(button =>
+        expect(button).toHaveAttribute("aria-disabled", "true")
+      );
     });
-    expect(rerenderButton).toBeEnabled();
-    fireEvent.click(rerenderButton);
-    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
-  });
 
-  it("keeps the action visible and explains the missing shot when videos are incomplete", () => {
-    const input = completedVideoState(8);
-    render(<StagedCheckpointReviewPanel {...input} />);
+    it("keeps the combine action visible when all shot videos are approved before final render state exists", () => {
+      const input = props();
+      (input as any).onSubmitFinalRender = vi.fn();
+      const state = (input as any).state;
+      state.shots = Array.from({ length: 9 }, (_, index) => ({
+        shotId: index + 1,
+        title: `ช็อต ${index + 1}`,
+        storySummary: `เรื่องย่อ ${index + 1}`,
+        dialogue: "บทพูด",
+        imagePrompt: "image prompt",
+        videoPrompt: "video prompt",
+        imageArtifactUrl: `https://example.test/image-${index + 1}.png`,
+        imageArtifactHash: `image-hash-${index + 1}`,
+        videoArtifactUrl: `https://example.test/shot-${index + 1}.mp4`,
+        videoArtifactHash: `video-hash-${index + 1}`,
+      }));
+      state.checkpoints = approvedVideoCheckpoints(state.shots);
+      state.finalRender = undefined;
+      render(<StagedCheckpointReviewPanel {...input} />);
 
-    expect(screen.getByTestId("staged-final-render-action")).toBeTruthy();
-    expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
-    const combineButtons = screen.getAllByRole("button", {
-      name: "รอวิดีโอครบ 9 ช็อต",
+      const actionPanel = screen.getByTestId("staged-final-render-action");
+      const button = screen.getByRole("button", {
+        name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
+      });
+      expect(actionPanel).toBeTruthy();
+      expect(button).toBeEnabled();
+      fireEvent.click(button);
+      expect((input as any).onSubmitFinalRender).toHaveBeenCalledTimes(1);
     });
-    expect(combineButtons).toHaveLength(1);
-    combineButtons.forEach(button =>
-      expect(button).toHaveAttribute("aria-disabled", "true")
-    );
-  });
 
+    it("shows the completed video, download, and rerender action in one panel", () => {
+      const input = renderState(9, 9);
+      const outputUrl = "https://example.test/final.mp4";
+      input.state.finalRender.outputUrl = outputUrl;
+      input.state.finalRender.jobId = "completed-render-job";
+      render(<StagedCheckpointReviewPanel {...input} />);
 
-  it("requires the latest video checkpoint to be approved", () => {
-    const input = completedVideoState(9);
-    input.state.checkpoints.push({
-      checkpointId: "video-result:run-1:shot-4:r2",
-      kind: "video_result",
-      shotId: 4,
-      state: "awaiting",
-      revision: 2,
-      contentHash: "video-hash-4",
+      const actionPanel = screen.getByTestId("staged-final-render-action");
+      expect(screen.queryByTestId("staged-final-render-action-bottom")).toBeNull();
+      expect(screen.getAllByTestId("staged-final-render-action")).toHaveLength(1);
+      const player = actionPanel.querySelector("video");
+      expect(player).toHaveAttribute("src", outputUrl);
+      expect(player).toHaveAttribute("controls");
+      expect(player).toHaveAttribute("data-testid", "staged-final-render-video");
+      expect(
+        screen.getByRole("link", { name: "ดาวน์โหลดวิดีโอรวม" })
+      ).toHaveAttribute("href", outputUrl);
+      const rerenderButton = screen.getByRole("button", {
+        name: "สั่งรวมวิดีโอใหม่",
+      });
+      expect(rerenderButton).toBeEnabled();
+      fireEvent.click(rerenderButton);
+      expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
     });
-    render(<StagedCheckpointReviewPanel {...input} />);
-
-    expect(screen.getByText(/ตรวจรับแล้ว 8\/9 ช็อต/)).toBeTruthy();
-    const combineButtons = screen.getAllByRole("button", {
-      name: "รอวิดีโอครบ 9 ช็อต",
-    });
-    expect(combineButtons).toHaveLength(1);
-    combineButtons.forEach(button =>
-      expect(button).toHaveAttribute("aria-disabled", "true")
-    );
   });
 });

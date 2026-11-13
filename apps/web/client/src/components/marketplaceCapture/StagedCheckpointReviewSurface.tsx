@@ -56,6 +56,16 @@ export function StagedCheckpointReviewSurface(props: {
     ) {
       return 'ต้องสร้างภาพของช็อตนี้และรอให้ระบบอนุมัติก่อน จึงจะสร้าง Prompt วิดีโอและจับคู่ผู้พูดกับคนในภาพได้';
     }
+    if (message === "staged_metadata_initializing") {
+      return "กำลังเตรียมแผนเนื้อเรื่องใน Worker — หน้านี้จะตรวจสถานะให้อัตโนมัติ";
+    }
+    if (message.startsWith("staged_metadata_initialization_")) {
+      const status = message.replace("staged_metadata_initialization_", "");
+      return `เตรียมแผนเนื้อเรื่องไม่สำเร็จ (${status}) — ตรวจงานในคิว Worker แล้วสั่งเริ่มใหม่ด้วยตนเอง`;
+    }
+    if (message === "staged_metadata_unavailable_for_terminal_run") {
+      return "งานนี้จบแล้วและไม่มีแผนเนื้อเรื่องที่บันทึกไว้ จึงไม่สามารถเปิดหน้าตรวจ checkpoint ได้";
+    }
     if (
       message === "staged_image_result_not_approved" ||
       message === "staged_image_artifact_missing"
@@ -597,7 +607,12 @@ export function StagedCheckpointReviewSurface(props: {
         runId={runId}
         state={state}
         loading={stateQuery.isLoading}
-        error={actionError ?? stateQuery.error?.message ?? null}
+        error={
+          actionError ??
+          (stateQuery.error?.message
+            ? friendlyActionError(stateQuery.error.message)
+            : null)
+        }
         notice={actionNotice}
         pending={Boolean(pendingMutation)}
         pendingAction={pendingMutation}
