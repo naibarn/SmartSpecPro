@@ -1346,9 +1346,12 @@ export async function startStagedAutoReviewBulkGeneration(input: {
     };
   }
 
-  if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
-    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
-  }
+  // This mutation only admits a durable job. Its targets and prerequisites
+  // have just been validated against the latest persisted metadata above,
+  // and the worker validates them again before applying anything. Comparing
+  // the whole-storyboard digest here made an unrelated shot update reject an
+  // otherwise valid job (the common case when users generate prompts for
+  // several shots while worker results are being saved).
   assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
   if (input.targets.length === 0) {
     throw new TRPCError({
@@ -2918,9 +2921,10 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     }) === input.promptContextDigest
   );
   if (
-    input.workerExecution && hasPromptSnapshot
+    input.workerExecution &&
+    (hasPromptSnapshot
       ? !promptSnapshotMatches
-      : stagedMetadataStateDigest(metadata) !== input.expectedStateDigest
+      : stagedMetadataStateDigest(metadata) !== input.expectedStateDigest)
   ) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }

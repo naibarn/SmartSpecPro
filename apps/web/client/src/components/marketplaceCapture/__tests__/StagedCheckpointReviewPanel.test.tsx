@@ -1564,7 +1564,7 @@ describe("StagedCheckpointReviewPanel", () => {
   });
 
   describe("bulk generate actions", () => {
-    it("creates fresh image prompts and images for every shot, including shots with existing images", () => {
+    it("creates fresh image prompts for every shot, including shots with existing images", () => {
       const input = props();
       input.onBulkGenerate = vi.fn();
       input.state = {
@@ -1586,7 +1586,7 @@ describe("StagedCheckpointReviewPanel", () => {
       render(<StagedCheckpointReviewPanel {...input} />);
 
       const bulkButton = screen.getByRole("button", {
-        name: "⚡ สร้าง Prompt + ภาพทุกช็อต (2 ช็อต)",
+        name: "สร้าง Prompt ภาพทุกช็อต (2)",
       });
       expect(input.onBulkGenerate).not.toHaveBeenCalled();
       fireEvent.click(bulkButton);
@@ -1595,8 +1595,37 @@ describe("StagedCheckpointReviewPanel", () => {
 
       expect(input.onBulkGenerate).toHaveBeenCalledTimes(1);
       expect(input.onBulkGenerate).toHaveBeenCalledWith([
-        expect.objectContaining({ shotId: 1, stage: "image", refreshPrompt: true }),
-        expect.objectContaining({ shotId: 2, stage: "image", refreshPrompt: true }),
+        expect.objectContaining({ shotId: 1, stage: "image", promptOnly: true, refreshPrompt: true }),
+        expect.objectContaining({ shotId: 2, stage: "image", promptOnly: true, refreshPrompt: true }),
+      ]);
+    });
+
+    it("creates images for every shot from the saved prompts", () => {
+      const input = props();
+      input.onBulkGenerate = vi.fn();
+      input.state = {
+        ...input.state,
+        planReview: { ...input.state.planReview, status: "approved" },
+        shots: [
+          { ...input.state.shots[0], shotId: 1, imageArtifactUrl: null },
+          { ...input.state.shots[0], shotId: 2, imageArtifactUrl: "/media/old.png" },
+        ],
+        checkpoints: [1, 2].map(shotId => ({
+          ...baseCheckpoint,
+          checkpointId: `image-prompt-${shotId}`,
+          shotId,
+          state: "approved",
+        })),
+      };
+      render(<StagedCheckpointReviewPanel {...input} />);
+
+      clickAndConfirmGeneration(
+        screen.getByRole("button", { name: "สร้างภาพทุกช็อต (2)" })
+      );
+
+      expect(input.onBulkGenerate).toHaveBeenCalledWith([
+        expect.objectContaining({ shotId: 1, stage: "image", model: "google-banana-2", replaceExisting: true }),
+        expect.objectContaining({ shotId: 2, stage: "image", model: "google-banana-2", replaceExisting: true }),
       ]);
     });
 
@@ -1651,8 +1680,53 @@ describe("StagedCheckpointReviewPanel", () => {
       render(<StagedCheckpointReviewPanel {...input} />);
 
       expect(
-        screen.getByRole("button", { name: /สร้าง Prompt \+ ภาพทุกช็อต/ })
+        screen.getByRole("button", { name: /สร้าง Prompt ภาพทุกช็อต/ })
       ).toBeTruthy();
+    });
+
+    it("creates videos for every shot from the saved video prompts", () => {
+      const input = props();
+      input.onBulkGenerate = vi.fn();
+      input.state = {
+        ...input.state,
+        planReview: { ...input.state.planReview, status: "approved" },
+        shots: [1, 2].map(shotId => ({
+          ...input.state.shots[0],
+          shotId,
+          imageArtifactUrl: `/media/shot-${shotId}.png`,
+          imageArtifactHash: `image-${shotId}`,
+          videoPrompt: `Video prompt ${shotId}`,
+        })),
+        checkpoints: [
+          baseCheckpoint,
+          ...[1, 2].map(shotId => ({
+            ...baseCheckpoint,
+            checkpointId: `image-result-${shotId}`,
+            kind: "image_result",
+            shotId,
+            state: "approved",
+            contentHash: `image-${shotId}`,
+          })),
+          ...[1, 2].map(shotId => ({
+            ...baseCheckpoint,
+            checkpointId: `video-prompt-${shotId}`,
+            kind: "video_prompt",
+            shotId,
+            state: "approved",
+            contentHash: `video-prompt-${shotId}`,
+          })),
+        ],
+      };
+      render(<StagedCheckpointReviewPanel {...input} />);
+
+      clickAndConfirmGeneration(
+        screen.getByRole("button", { name: "สร้างวิดีโอทุกช็อต (2)" })
+      );
+
+      expect(input.onBulkGenerate).toHaveBeenCalledWith([
+        expect.objectContaining({ shotId: 1, stage: "video", model: "veo3/generate-veo-3-video-lite", replaceExisting: true }),
+        expect.objectContaining({ shotId: 2, stage: "video", model: "veo3/generate-veo-3-video-lite", replaceExisting: true }),
+      ]);
     });
 
     it("does not render the bulk action when onBulkGenerate is not provided", () => {

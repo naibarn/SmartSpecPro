@@ -35,6 +35,7 @@ import { buildStagedCheckpoint } from "../marketplaceAutoReviewStoryArcPlanner";
 import { stagedMetadataStateDigest } from "../marketplaceAutoReviewStagedCheckpointOperations";
 import {
   executeStagedAutoReviewBulkGeneration,
+  generateStagedAutoReviewShotPrompt,
   startStagedAutoReviewBulkGeneration,
 } from "../marketplaceAutoReviewStagedCheckpointRouterService";
 import { selectMarketplaceAutoReviewTargetShots } from "../marketplaceAutoReviewTargetShotScope";
@@ -43,6 +44,22 @@ function terminalRun(
   status: "completed" | "failed" | "cancelled",
   prompt: string
 ) {
+  const plan = {
+    product: {
+      productName: "Coffee machine",
+      description: "A compact home coffee machine.",
+    },
+    shots: [
+      {
+        shotId: 1,
+        title: "Coffee machine product review",
+        storySummary: "The hosts demonstrate the coffee machine.",
+        dialogue: "",
+        durationSeconds: 4,
+        visualSummary: "A home coffee machine on a counter.",
+      },
+    ],
+  };
   const storyCheckpoint = buildStagedCheckpoint({
     checkpointId: "story-plan:run-141:r1",
     kind: "story_plan",
@@ -94,7 +111,26 @@ function terminalRun(
         },
       ],
     },
-    stagedPipeline: { tasks: {} },
+    stagedPipeline: { tasks: {}, plan },
+    sequentialStoryboard: {
+      languagePlan: {
+        summaryLanguage: "th",
+        dialogueLanguage: "th",
+        promptLanguage: "en",
+      },
+    },
+    productTruth: {
+      productName: "Coffee machine",
+      productCategory: "appliance",
+    },
+    customReferenceManifest: [
+      {
+        index: 1,
+        url: "https://example.test/product.png",
+        role: "product",
+        active: true,
+      },
+    ],
   };
   const run = {
     id: "run-141",
@@ -180,6 +216,71 @@ describe("saved image prompt dispatch from terminal staged runs", () => {
       })
     ).rejects.toMatchObject({ message: "staged_image_prompt_missing" });
     expect(workerJobMocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("queues the latest validated target even when another shot changed the client digest", async () => {
+    const { run } = terminalRun(
+      "failed",
+      "Create a product review image for shot one."
+    );
+    databaseMocks.getDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => [run] }) }),
+      }),
+    });
+
+    const result = await startStagedAutoReviewBulkGeneration({
+      runId: run.id,
+      expectedStateDigest: "stale-because-another-shot-updated",
+      idempotencyKey: "image-dispatch-stale-digest",
+      targets: [{ shotId: 1, stage: "image", model: "google-banana-2" }],
+      auth: { userId: 42, tenantId: "tenant-1" },
+    });
+
+    expect(result).toMatchObject({
+      workerJobId: "worker-job-1",
+      status: "queued",
+    });
+    expect(workerJobMocks.enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues a shot prompt from the latest shot context when another shot changed the client digest", async () => {
+    const { run } = terminalRun(
+      "failed",
+      "Create a product review image for shot one."
+    );
+    run.status = "review";
+    databaseMocks.getDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => [run] }) }),
+      }),
+    });
+
+    const result = await generateStagedAutoReviewShotPrompt({
+      runId: run.id,
+      shotId: 1,
+      stage: "image",
+      expectedStateDigest: "stale-because-another-shot-updated",
+      idempotencyKey: "prompt-generation-stale-digest",
+      auth: { userId: 42, tenantId: "tenant-1" },
+    });
+
+    expect(result).toMatchObject({
+      workerJobId: "worker-job-1",
+      operation: "staged_prompt_generation",
+      status: "queued",
+    });
+    expect(workerJobMocks.enqueue).toHaveBeenCalledTimes(1);
+    expect(workerJobMocks.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: expect.objectContaining({
+          operation: "staged_prompt_generation",
+          shotId: 1,
+          expectedShotRevision: 1,
+          promptContextDigest: expect.any(String),
+        }),
+      })
+    );
   });
 
   it("reopens the failed run and queues image work for that shot alone", async () => {

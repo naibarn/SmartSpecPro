@@ -747,12 +747,9 @@ export function StagedCheckpointReviewPanel(props: {
     replaceExisting?: boolean;
   }) => void;
   onRetry: (input: StagedCheckpointRetry) => void;
-  // Fires once with the full target list (not once per shot) — the caller
-  // is responsible for awaiting each shot's mutation sequentially and
-  // chaining the fresh stateDigest from each response into the next call.
-  // See StagedCheckpointReviewSurface for the implementation; firing these
-  // concurrently against one shared digest is the exact bug this replaces
-  // (only the first call would land, every other would 409).
+  // Fires once with the full target list (not once per shot). The server
+  // admits one durable Worker Job, which processes the batch and validates
+  // the latest target state before dispatching paid media work.
   onBulkGenerate?: (targets: StagedBulkGenerateTarget[]) => void;
   onLanguagePlanChange?: (plan: {
     summaryLanguage: "th" | "en";
@@ -900,8 +897,7 @@ export function StagedCheckpointReviewPanel(props: {
         props.pendingAction === id ||
         (props.pendingAction === "generate-prompt" &&
           id.startsWith("generate-prompt-")) ||
-        (props.pendingAction === "bulk-generate" &&
-          (id === "bulk-generate" || id === "bulk-video-prompt-generate"));
+        (props.pendingAction === "bulk-generate" && id.startsWith("bulk-"));
       if (mutationStarted) releaseGenerationActionLock(id);
     }
   }, [props.pendingAction, releaseGenerationActionLock]);
@@ -1689,21 +1685,25 @@ export function StagedCheckpointReviewPanel(props: {
     ) ?? workflowSteps.find(step => step.status === "locked");
   const promptModel =
     selectedModel === "__automatic__" ? undefined : selectedModel;
+  const bulkImagePromptTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
+    if (!props.state || !isRunEditable(props.state)) return [];
+    return props.state.shots.map(shot => ({
+      shotId: shot.shotId,
+      stage: "image" as const,
+      promptModel,
+      refreshPrompt: true,
+      promptOnly: true,
+    }));
+  }, [props.state?.shots, props.state?.runStatus, promptModel]);
   const bulkImageGenerationTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
     if (!props.state || !isRunEditable(props.state)) return [];
     return props.state.shots.map(shot => ({
       shotId: shot.shotId,
       stage: "image" as const,
       model: selectedImageModel,
-      promptModel,
-      refreshPrompt: true,
+      replaceExisting: true,
     }));
-  }, [
-    props.state?.shots,
-    props.state?.runStatus,
-    selectedImageModel,
-    promptModel,
-  ]);
+  }, [props.state?.shots, props.state?.runStatus, selectedImageModel]);
   const bulkVideoPromptTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
     if (!props.state || !isRunEditable(props.state)) return [];
     return props.state.shots.map(shot => ({
@@ -1754,6 +1754,35 @@ export function StagedCheckpointReviewPanel(props: {
       );
     }
   );
+  const bulkVideoGenerationTargets = useMemo<StagedBulkGenerateTarget[]>(() => {
+    if (!props.state || !isRunEditable(props.state)) return [];
+    return props.state.shots.map(shot => ({
+      shotId: shot.shotId,
+      stage: "video" as const,
+      model: selectedVideoModel,
+      replaceExisting: true,
+    }));
+  }, [props.state?.shots, props.state?.runStatus, selectedVideoModel]);
+  const videoGenerationShotsNotReady =
+    props.state?.shots.filter(
+      shot =>
+        !shot.imageArtifactHash ||
+        !shot.imageArtifactUrl ||
+        !props.state?.checkpoints.some(
+          checkpoint =>
+            checkpoint.shotId === shot.shotId &&
+            checkpoint.kind === "image_result" &&
+            checkpoint.state === "approved" &&
+            checkpoint.contentHash === shot.imageArtifactHash
+        ) ||
+        !shot.videoPrompt?.trim() ||
+        !props.state?.checkpoints.some(
+          checkpoint =>
+            checkpoint.shotId === shot.shotId &&
+            checkpoint.kind === "video_prompt" &&
+            checkpoint.state === "approved"
+        )
+    ).length ?? 0;
   const isShotPromptPipelineBusy = (shotId: number) =>
     props.state?.workerOperations?.some(job => {
       if (!activeWorkerStatuses.includes(job.status)) return false;
@@ -1794,9 +1823,10 @@ export function StagedCheckpointReviewPanel(props: {
     (props.pendingAction === "retry-audio" && id.startsWith("retry-audio"));
   const isLocallyLockedGenerationAction = (id: string): boolean =>
     locallyLockedGenerationActions.has(id) ||
-    ((id === "bulk-generate" || id === "bulk-video-prompt-generate") &&
-      (locallyLockedGenerationActions.has("bulk-generate") ||
-        locallyLockedGenerationActions.has("bulk-video-prompt-generate")));
+    (id.startsWith("bulk-") &&
+      Array.from(locallyLockedGenerationActions).some(lockedId =>
+        lockedId.startsWith("bulk-")
+      ));
 
   const action = (
     id: string,
@@ -2228,27 +2258,59 @@ export function StagedCheckpointReviewPanel(props: {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {bulkImageGenerationTargets.length > 0 && props.onBulkGenerate
+                  {bulkImagePromptTargets.length > 0 && props.onBulkGenerate
                     ? action(
-                        "bulk-generate",
-                        `⚡ สร้าง Prompt + ภาพทุกช็อต (${bulkImageGenerationTargets.length} ช็อต)`,
-                        () => props.onBulkGenerate!(bulkImageGenerationTargets),
+                        "bulk-image-prompt-generate",
+                        `สร้าง Prompt ภาพทุกช็อต (${bulkImagePromptTargets.length})`,
+                        () => props.onBulkGenerate!(bulkImagePromptTargets),
                         "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
                         {
                           disabled:
                             activeBulkGeneration ||
                             Boolean(activeImagePromptWorkerOperation) ||
-                            bulkImageGenerationHasInFlight ||
                             !storyPlanApproved,
                           confirmation: {
-                            title: "ยืนยันสร้าง Prompt และภาพทุกช็อต",
-                            description: `ระบบจะส่งงานสร้าง Prompt และภาพจำนวน ${bulkImageGenerationTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                            title: "ยืนยันสร้าง Prompt ภาพทุกช็อต",
+                            description: `ระบบจะสร้าง Prompt ภาพครบ ${bulkImagePromptTargets.length} ช็อตใน Worker งานเดียว โดยใช้เนื้อเรื่องล่าสุดที่ยืนยันแล้ว`,
                           },
                           title: activeBulkGeneration
-                            ? "กำลังเตรียมงานชุดนี้ใน Worker"
+                            ? "กำลังทำงานชุดนี้ใน Worker"
+                            : !storyPlanApproved
+                              ? "ยืนยันเนื้อเรื่องก่อนสร้าง Prompt ภาพ"
+                              : "สร้าง Prompt ภาพครบทุกช็อตใน Worker งานเดียว",
+                        }
+                      )
+                    : null}
+                  {bulkImageGenerationTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-image-generation",
+                        `สร้างภาพทุกช็อต (${bulkImageGenerationTargets.length})`,
+                        () => props.onBulkGenerate!(bulkImageGenerationTargets),
+                        "rounded-lg border border-violet-300 bg-white px-3.5 py-1.5 text-xs font-bold text-violet-800 shadow-xs transition",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            bulkImageGenerationHasInFlight ||
+                            !storyPlanApproved ||
+                            props.state!.shots.some(
+                              shot =>
+                                !shot.imagePrompt?.trim() ||
+                                !props.state!.checkpoints.some(
+                                  checkpoint =>
+                                    checkpoint.shotId === shot.shotId &&
+                                    checkpoint.kind === "image_prompt" &&
+                                    checkpoint.state === "approved"
+                                )
+                            ),
+                          confirmation: {
+                            title: "ยืนยันสร้างภาพทุกช็อต",
+                            description: `ส่งสร้างภาพครบ ${bulkImageGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลภาพเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                          },
+                          title: !storyPlanApproved
+                            ? "ยืนยันเนื้อเรื่องก่อนสร้างภาพ"
                             : bulkImageGenerationHasInFlight
-                              ? "รอให้งานภาพหรือวิดีโอที่กำลังทำอยู่เสร็จก่อน แล้วจึงส่งชุดสร้างภาพทั้งหมด"
-                              : "สร้าง Prompt ใหม่และส่งสร้างภาพทุกช็อตเข้า Worker Jobs",
+                              ? "รอให้งานภาพหรือวิดีโอที่กำลังทำอยู่เสร็จก่อน"
+                              : "สร้างภาพจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
                         }
                       )
                     : null}
@@ -2272,6 +2334,28 @@ export function StagedCheckpointReviewPanel(props: {
                             : videoPromptShotsWithoutApprovedImage > 0
                               ? `ต้องสร้างและอนุมัติภาพก่อน (${videoPromptShotsWithoutApprovedImage} ช็อต)`
                               : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
+                        }
+                      )
+                    : null}
+                  {bulkVideoGenerationTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-video-generation",
+                        `สร้างวิดีโอทุกช็อต (${bulkVideoGenerationTargets.length})`,
+                        () => props.onBulkGenerate!(bulkVideoGenerationTargets),
+                        "rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-sky-800",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            videoGenerationShotsNotReady > 0,
+                          confirmation: {
+                            title: "ยืนยันสร้างวิดีโอทุกช็อต",
+                            description: `ส่งสร้างวิดีโอครบ ${bulkVideoGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลวิดีโอเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                          },
+                          title: activeBulkGeneration
+                            ? "กำลังทำงานชุดนี้ใน Worker"
+                            : videoGenerationShotsNotReady > 0
+                              ? `ต้องมีภาพที่อนุมัติและ Prompt วิดีโอครบก่อน (${videoGenerationShotsNotReady} ช็อต)`
+                              : "สร้างวิดีโอจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
                         }
                       )
                     : null}

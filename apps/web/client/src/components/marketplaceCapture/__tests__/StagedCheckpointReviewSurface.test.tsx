@@ -25,6 +25,7 @@ const mockBulkGenerateMutate = vi.fn();
 // (state query hasn't produced data yet) without a separate mock module.
 // Reset to `null` (no override, plain `stateFixture()` wins) after each test.
 let mockStateDigestOverride: Record<string, unknown> | null = null;
+let mockStateFixtureOverride: Record<string, unknown> | null = null;
 
 // Controllable mutateAsync for generateStagedAutoReviewShotPrompt — backs
 // per-shot background prompt authoring. Media generation itself is admitted
@@ -134,7 +135,7 @@ function stateFixture() {
         shotId: 1,
         state: "approved",
         revision: 1,
-        contentHash: "image-result-hash-1",
+        contentHash: "shot-1-image-hash",
         estimatedCredits: 0,
         consumed: true,
       },
@@ -194,7 +195,11 @@ vi.mock("@/lib/trpc", () => ({
         // successful fetch) without needing a separate mock module per
         // test — see the "missing stateDigest" describe block below.
         useQuery: () => ({
-          data: { ...stateFixture(), ...(mockStateDigestOverride ?? {}) },
+          data: {
+            ...stateFixture(),
+            ...(mockStateFixtureOverride ?? {}),
+            ...(mockStateDigestOverride ?? {}),
+          },
           isLoading: false,
           error: null,
           refetch: vi.fn().mockResolvedValue(undefined),
@@ -314,6 +319,11 @@ vi.mock("@/lib/trpc", () => ({
                 name: "Google Banana 2",
                 provider: "google",
               },
+              {
+                id: "veo3/generate-veo-3-video-lite",
+                name: "Veo 3 Video Lite",
+                provider: "google",
+              },
             ],
             defaults: {
               image: "google-banana-2",
@@ -355,13 +365,16 @@ describe("StagedCheckpointReviewSurface — concept confirmation navigation", ()
 });
 
 describe("StagedCheckpointReviewSurface — bulk background generation", () => {
-  beforeEach(() => mockBulkGenerateMutate.mockClear());
+  beforeEach(() => {
+    mockBulkGenerateMutate.mockClear();
+    mockStateFixtureOverride = null;
+  });
 
   it("submits every missing shot in one worker job instead of firing per-shot requests", async () => {
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     const bulkButton = screen.getByRole("button", {
-      name: "⚡ สร้าง Prompt + ภาพทุกช็อต (2 ช็อต)",
+      name: "สร้าง Prompt ภาพทุกช็อต (2)",
     });
     fireEvent.click(bulkButton);
     fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
@@ -372,15 +385,53 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
         runId: "run-1",
         expectedStateDigest: "digest-0",
         targets: [
-          expect.objectContaining({ shotId: 1, stage: "image", refreshPrompt: true }),
-          expect.objectContaining({ shotId: 2, stage: "image", refreshPrompt: true }),
+          expect.objectContaining({ shotId: 1, stage: "image", promptOnly: true, refreshPrompt: true }),
+          expect.objectContaining({ shotId: 2, stage: "image", promptOnly: true, refreshPrompt: true }),
         ],
       })
     );
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("submits image generation for every shot as one worker batch from saved prompts", async () => {
+    render(<StagedCheckpointReviewSurface runId="run-1" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้างภาพทุกช็อต (2)" })
+    );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+
+    await waitFor(() => expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1));
+    expect(mockBulkGenerateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          expect.objectContaining({ shotId: 1, stage: "image", replaceExisting: true }),
+          expect.objectContaining({ shotId: 2, stage: "image", replaceExisting: true }),
+        ],
+      })
+    );
+  });
+
   it("bulk video-prompt generation queues prompt-only targets without submitting video renders", async () => {
+    const state = stateFixture();
+    mockStateFixtureOverride = {
+      shots: state.shots.map(shot => ({
+        ...shot,
+        imageArtifactUrl: `/media/shot-${shot.shotId}.png`,
+        imageArtifactHash: `image-hash-${shot.shotId}`,
+      })),
+      checkpoints: [
+        ...state.checkpoints,
+        ...state.shots.map(shot => ({
+          checkpointId: `image-result-${shot.shotId}`,
+          kind: "image_result",
+          shotId: shot.shotId,
+          state: "approved",
+          revision: 1,
+          contentHash: `image-hash-${shot.shotId}`,
+        })),
+      ],
+    };
     render(<StagedCheckpointReviewSurface runId="run-1" />);
 
     fireEvent.click(
@@ -410,6 +461,57 @@ describe("StagedCheckpointReviewSurface — bulk background generation", () => {
     expect(mockGeneratePromptMutate).not.toHaveBeenCalled();
     expect(mockRetryMutate).not.toHaveBeenCalled();
     expect(mockRetryMutateAsync).not.toHaveBeenCalled();
+    mockStateFixtureOverride = null;
+  });
+
+  it("submits saved video prompts for every shot as one worker batch", async () => {
+    const state = stateFixture();
+    mockStateFixtureOverride = {
+      shots: state.shots.map(shot => ({
+        ...shot,
+        videoPrompt: `saved video prompt ${shot.shotId}`,
+        imageArtifactUrl: `/media/shot-${shot.shotId}.png`,
+        imageArtifactHash: `image-hash-${shot.shotId}`,
+      })),
+      checkpoints: [
+        ...state.checkpoints,
+        ...state.shots.flatMap(shot => [
+          {
+            checkpointId: `image-result-${shot.shotId}`,
+            kind: "image_result",
+            shotId: shot.shotId,
+            state: "approved",
+            revision: 1,
+            contentHash: `image-hash-${shot.shotId}`,
+          },
+          {
+            checkpointId: `video-prompt-${shot.shotId}`,
+            kind: "video_prompt",
+            shotId: shot.shotId,
+            state: "approved",
+            revision: 1,
+            contentHash: `video-prompt-hash-${shot.shotId}`,
+          },
+        ]),
+      ],
+    };
+    render(<StagedCheckpointReviewSurface runId="run-1" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้างวิดีโอทุกช็อต (2)" })
+    );
+    fireEvent.click(screen.getByTestId("staged-generation-confirm-submit"));
+
+    await waitFor(() => expect(mockBulkGenerateMutate).toHaveBeenCalledTimes(1));
+    expect(mockBulkGenerateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targets: [
+          expect.objectContaining({ shotId: 1, stage: "video", replaceExisting: true }),
+          expect.objectContaining({ shotId: 2, stage: "video", replaceExisting: true }),
+        ],
+      })
+    );
+    mockStateFixtureOverride = null;
   });
 });
 
