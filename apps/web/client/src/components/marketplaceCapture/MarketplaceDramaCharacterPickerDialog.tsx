@@ -31,6 +31,13 @@
 
 import { useEffect, useState } from "react";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
@@ -518,40 +525,71 @@ export function MarketplaceDramaCharacterPickerDialog({
                             </div>
                           </label>
                           {character.looks.length > 0 ? (
-                            <select
-                              className="shrink-0 rounded border border-slate-300 bg-white px-1.5 py-1.5 text-[11px] text-slate-800"
-                              value={lookIndex ?? ""}
-                              // Was `disabled={selected}` — ticking a character
-                              // FROZE their look, so the only way to change it
-                              // was to untick and start over, and a character
-                              // with looks looked broken
-                              // (`planning/marketplace-four-character-cast/plan.md`).
-                              // Changing a look now re-points the existing
-                              // selection in place.
-                              onChange={event => {
-                                const rawValue = event.target.value;
-                                const nextIndex =
-                                  rawValue === "" ? null : Number(rawValue);
+                            <Select
+                              value={lookIndex == null ? "base" : String(lookIndex)}
+                              onValueChange={value => {
+                                const nextIndex = value === "base" ? null : Number(value);
                                 setLookChoiceByCharacterId(prev => ({
                                   ...prev,
                                   [character.characterId]: nextIndex,
                                 }));
                                 applyLookToSelection(character, nextIndex);
                               }}
-                              aria-label={`เลือกลุคของ ${character.name}`}
-                              data-testid={`picker-look-${character.characterId}`}
                             >
-                              <option value="">ภาพต้นแบบ</option>
-                              {character.looks.map((lookOption, index) => (
-                                <option
-                                  key={index}
-                                  value={index}
-                                  disabled={!lookOption.portraitUrl}
-                                >
-                                  {lookOption.variantLabel || `ลุคที่ ${index + 1}`}
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger
+                                className="h-auto w-36 shrink-0 px-2 py-1.5 text-[11px] sm:w-44"
+                                aria-label={`เลือกลุคของ ${character.name}`}
+                                data-testid={`picker-look-${character.characterId}`}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent
+                                align="end"
+                                className="max-h-72 w-64"
+                              >
+                                <SelectItem value="base" className="min-h-14 py-1.5">
+                                  <figure className="flex items-center gap-3">
+                                    {character.portraitUrl ? (
+                                      <AuthenticatedMediaImage
+                                        src={character.portraitUrl}
+                                        alt=""
+                                        className="h-12 w-9 shrink-0 rounded object-cover object-top"
+                                      />
+                                    ) : (
+                                      <p className="flex h-12 w-9 shrink-0 items-center justify-center rounded bg-slate-100 text-[9px] text-slate-500">
+                                        ไม่มีภาพ
+                                      </p>
+                                    )}
+                                    <figcaption>ภาพต้นแบบ</figcaption>
+                                  </figure>
+                                </SelectItem>
+                                {character.looks.map((lookOption, index) => (
+                                  <SelectItem
+                                    key={index}
+                                    value={String(index)}
+                                    disabled={!lookOption.portraitUrl}
+                                    className="min-h-14 py-1.5"
+                                  >
+                                    <figure className="flex items-center gap-3">
+                                      {lookOption.portraitUrl ? (
+                                        <AuthenticatedMediaImage
+                                          src={lookOption.portraitUrl}
+                                          alt=""
+                                          className="h-12 w-9 shrink-0 rounded object-cover object-top"
+                                        />
+                                      ) : (
+                                        <p className="flex h-12 w-9 shrink-0 items-center justify-center rounded bg-slate-100 text-[9px] text-slate-500">
+                                          ไม่มีภาพ
+                                        </p>
+                                      )}
+                                      <figcaption>
+                                        {lookOption.variantLabel || `ลุคที่ ${index + 1}`}
+                                      </figcaption>
+                                    </figure>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           ) : null}
                         </div>
                       );
