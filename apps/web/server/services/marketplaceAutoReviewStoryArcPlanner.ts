@@ -349,6 +349,11 @@ export type StagedStoryArcShot = {
   title: string;
   storySummary: string;
   visualSummary: string;
+  /** Optional authored direction kept separate so later prompt stages do not
+   * flatten every shot into the same static camera/movement defaults. */
+  cameraDirection?: string;
+  movementDirection?: string;
+  transition?: string;
   dialogue: string;
   durationSeconds: number;
   // Additive (opt-in): only populated when `conversationMode ===
@@ -530,6 +535,15 @@ export function buildStagedImagePrompt(input: {
       `เรื่องย่อที่ยืนยันแล้ว: ${input.plan.storySummary}`,
       `เรื่องย่อของช็อต: ${input.shot.storySummary}`,
       `ทิศทางภาพ: ${input.shot.visualSummary}`,
+      ...(input.shot.cameraDirection
+        ? [`มุมกล้อง/การเคลื่อนกล้อง: ${input.shot.cameraDirection}`]
+        : []),
+      ...(input.shot.movementDirection
+        ? [`การกระทำที่ต้องเห็น: ${input.shot.movementDirection}`]
+        : []),
+      ...(input.shot.transition
+        ? [`จังหวะเชื่อมฉาก: ${input.shot.transition}`]
+        : []),
       "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด",
       "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
       `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
@@ -580,6 +594,15 @@ export function buildStagedImagePrompt(input: {
     `Approved story summary: ${input.plan.storySummary}`,
     `Approved shot brief: ${input.shot.storySummary}`,
     `Visual direction: ${input.shot.visualSummary}`,
+    ...(input.shot.cameraDirection
+      ? [`Camera framing and movement: ${input.shot.cameraDirection}`]
+      : []),
+    ...(input.shot.movementDirection
+      ? [`Visible action: ${input.shot.movementDirection}`]
+      : []),
+    ...(input.shot.transition
+      ? [`Scene transition: ${input.shot.transition}`]
+      : []),
     "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product.",
     "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
     `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
@@ -767,9 +790,12 @@ export function buildStagedVideoPrompt(input: {
       ...(usesSpeakerBinding ? [] : [`บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`]),
       `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
       ...conversationLinesTH,
+      ...(input.shot.cameraDirection ? [`มุมกล้องที่วางแผนไว้: ${input.shot.cameraDirection}`] : []),
+      ...(input.shot.movementDirection ? [`การกระทำของช็อต: ${input.shot.movementDirection}`] : []),
+      ...(input.shot.transition ? [`การเชื่อมจาก/ไปฉาก: ${input.shot.transition}`] : []),
       usesSpeakerBinding
-        ? `กล้อง/การกระทำ: ต่อจากภาพที่อนุมัติและแสดงการกระทำเดียวตามทิศทางนี้: ${input.shot.visualSummary}; คงสินค้าและตำแหน่งให้ต่อเนื่อง`
-        : `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
+        ? `กล้อง/การกระทำ: ต่อจากภาพที่อนุมัติและแสดงการกระทำหลักตามทิศทางนี้: ${input.shot.visualSummary}; คงความต่อเนื่องของสินค้าและทำให้เห็นการเคลื่อนไหวชัดเจน`
+        : `เริ่มจากภาพที่ยอมรับแล้วและแสดงการกระทำหลักตามทิศทางภาพนี้: ${input.shot.visualSummary}; คงรูปทรง สี วัสดุ และตำแหน่งสินค้าให้ต่อเนื่องขณะเคลื่อนไหว`,
       usesSpeakerBinding
         ? `จังหวะ: เริ่มการกระทำช่วงต้น แสดงชัดช่วงกลาง แล้วหยุดอย่างเป็นธรรมชาติก่อนครบ ${durationSeconds} วินาที`
         : `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
@@ -784,9 +810,12 @@ export function buildStagedVideoPrompt(input: {
     ...(usesSpeakerBinding ? [] : [`Approved dialogue (must not be rewritten): ${input.shot.dialogue}`]),
     `Approved story context: ${input.shot.storySummary}`,
     ...conversationLinesEng,
+    ...(input.shot.cameraDirection ? [`Planned camera: ${input.shot.cameraDirection}`] : []),
+    ...(input.shot.movementDirection ? [`Shot action: ${input.shot.movementDirection}`] : []),
+    ...(input.shot.transition ? [`Scene transition: ${input.shot.transition}`] : []),
     usesSpeakerBinding
-      ? `Camera/action: continue from the accepted image and show one clear action matching: ${input.shot.visualSummary}. Preserve product design and placement.`
-      : `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
+      ? `Camera/action: continue from the accepted image and show the main action matching: ${input.shot.visualSummary}. Preserve product design and placement while keeping the action visibly alive.`
+      : `Camera and action: start from the accepted image, then show the main action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent during motion.`,
     usesSpeakerBinding
       ? `Pacing: begin early, show the action clearly mid-shot, then settle naturally before ${durationSeconds} seconds.`
       : `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
@@ -1128,7 +1157,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
     : "";
 
   const conceptsOnlyInstruction = input.conceptsOnly
-    ? "ผู้ใช้ยังไม่ได้เลือกแนวคิด: ส่ง 3 แนวคิดพร้อมบทพูดตัวอย่างที่เป็นธรรมชาติครบทุกแนวคิด บทพูดต้องเป็นบทสนทนาที่นำไปใช้รีวิวสินค้าได้จริง ห้ามมี shots หรือสร้าง Storyboard จนกว่าผู้ใช้จะยืนยันแนวคิด"
+    ? "ผู้ใช้ยังไม่ได้เลือกแนวคิด: ส่ง 3 แนวคิดพร้อมบทพูดตัวอย่างที่เป็นธรรมชาติครบทุกแนวคิด แต่ละแนวคิดต้องมี hook ที่เห็นหรือได้ยินแล้วอยากดูต่อ และมีการกระทำ/สถานการณ์จริงที่ทำให้สินค้าเข้าไปอยู่ในเรื่อง บทพูดต้องนำไปใช้รีวิวสินค้าได้จริง ห้ามมี shots หรือสร้าง Storyboard จนกว่าผู้ใช้จะยืนยันแนวคิด"
     : "ผู้ใช้ยืนยันแนวคิดแล้ว: ใช้แนวคิดและ dialoguePreview ที่แนบมาเป็นต้นฉบับหลัก รักษาน้ำเสียงและบทสนทนาที่เลือกไว้ แล้วจึงจัดเป็น Storyboard ฉบับเต็ม โดยให้บทพูดของทุกช็อตพัฒนาต่อจาก dialoguePreview นั้น";
   const storySummaryInstruction = input.conceptsOnly
     ? "โหมดเลือกแนวคิด: อย่าส่ง storySummary ระดับบนสุด; แต่ละ conceptOptions ต้องมี storySummary ของแนวคิดนั้น"
@@ -1140,7 +1169,10 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 0. ${shotCountInstruction}
 1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle, storySummary และ dialoguePreview ที่เขียนเป็นบทพูดจริง ไม่ใช่หัวข้อหรือคำอธิบาย
 2. ${conceptsOnlyInstruction}
-3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" แต่ละช็อตต้องมี title, storySummary (สรุปหน้าที่ของช็อตในเรื่อง), visualSummary (สิ่งที่เห็นในภาพ) และ dialogue แยกกันให้ชัดเจน
+3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" แต่ละช็อตต้องมี title, storySummary (สรุปหน้าที่ของช็อตในเรื่อง), visualSummary (สิ่งที่เห็นในภาพ), cameraDirection (ระยะ/มุม/การเคลื่อนกล้อง), movementDirection (การกระทำที่เห็นชัดของคนหรือสินค้า) และ dialogue แยกกันให้ชัดเจน; transition ระบุเมื่อมีการเปลี่ยนฉากหรือเชื่อมการกระทำ
+3.1 ทุกช็อตต้องมีภาพที่กำลังเกิดการกระทำ ไม่ใช่แค่ตัวละครยืนหรือนั่งคุย: ให้เริ่มการกระทำที่เห็นได้ทันที เช่น เดินเข้าหาสินค้า หยิบ/เปิด/ทดลอง/เปรียบเทียบ/ส่งต่อสินค้า เคลื่อนที่ไปยังจุดใช้งาน หรือมีปฏิกิริยาจริงจากผลที่สังเกตได้ เลือกเฉพาะการกระทำที่ทำได้จริงและสอดคล้องกับข้อมูลสินค้า
+3.2 วางจังหวะภาพตลอดเรื่องให้ชวนดู: สลับภาพกว้าง/กลาง/ใกล้และมุมกล้องตามเนื้อหา, เปลี่ยนตำแหน่งหรือฉากเมื่อเรื่องพาไป, ให้ตัวละครมี blocking และปฏิสัมพันธ์กับสินค้า; อย่าใช้มุมเดิมและการนั่งสนทนาคู่แบบเดิมซ้ำหลายช็อตติดกัน และอย่าใส่การเคลื่อนกล้องโดยไม่มีเหตุผล
+3.3 แต่ละช็อตต้องเพิ่มข้อมูลหรือเปลี่ยนสถานการณ์จากช็อตก่อนหน้า: เปิดด้วยภาพหรือการกระทำที่หยุดสายตา, พาปัญหาไปสู่การทดลอง/หลักฐาน/ผลลัพธ์ แล้วจบด้วยข้อสรุปหรือ CTA บทพูดต้องเป็นประโยคที่คนพูดกันจริงและสัมพันธ์กับสิ่งที่กำลังทำ ไม่บรรยายชื่อหัวข้อหรือถามตอบแบบแม่แบบ
 4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
 5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
@@ -1197,6 +1229,9 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
     title: z.string().min(1).max(120),
     storySummary: z.string().min(1).max(600).optional(),
     visualSummary: z.string().min(1).max(400),
+    cameraDirection: z.string().min(1).max(240).optional(),
+    movementDirection: z.string().min(1).max(240).optional(),
+    transition: z.string().min(1).max(180).optional(),
     dialogue: z.string().min(1).max(320).optional(),
     dialogueTurns: z.array(ZodDialogueTurnSchema).min(2).optional(),
     castInShot: z.array(z.string().min(1).max(80)).optional(),
@@ -1452,6 +1487,15 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           storySummary:
             clean(shot.storySummary) || clean(shot.visualSummary),
           visualSummary: clean(shot.visualSummary),
+          ...(clean(shot.cameraDirection)
+            ? { cameraDirection: clean(shot.cameraDirection) }
+            : {}),
+          ...(clean(shot.movementDirection)
+            ? { movementDirection: clean(shot.movementDirection) }
+            : {}),
+          ...(clean(shot.transition)
+            ? { transition: clean(shot.transition) }
+            : {}),
           dialogue,
           durationSeconds: shotDurationSeconds,
           ...(dialogueTurns ? { dialogueTurns } : {}),

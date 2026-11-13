@@ -595,6 +595,15 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Shot title: ${clean(input.shot.title, 200)}`,
     `Approved story beat: ${clean(input.shot.storySummary, 900)}`,
     `Approved visual direction: ${clean(input.shot.visualSummary, 900)}`,
+    input.shot.cameraDirection
+      ? `Planned camera framing and movement: ${clean(input.shot.cameraDirection, 240)}`
+      : null,
+    input.shot.movementDirection
+      ? `Required visible action: ${clean(input.shot.movementDirection, 240)}`
+      : null,
+    input.shot.transition
+      ? `Planned scene transition: ${clean(input.shot.transition, 180)}`
+      : null,
     `Character portrait identity map (images after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,

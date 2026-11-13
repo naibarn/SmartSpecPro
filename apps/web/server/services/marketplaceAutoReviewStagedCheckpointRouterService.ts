@@ -2599,7 +2599,18 @@ export function buildStagedSingleShotRefreshInput(input: {
       demonstration_type: classifyStagedDemonstrationType(planShot.dialogue),
       depicts_minor: false,
       guardian_required: false,
-      visual_summary: planShot.visualSummary,
+      visual_summary: [
+        planShot.visualSummary,
+        planShot.cameraDirection
+          ? `Camera/framing: ${planShot.cameraDirection}`
+          : null,
+        planShot.movementDirection
+          ? `Visible action: ${planShot.movementDirection}`
+          : null,
+        planShot.transition ? `Transition: ${planShot.transition}` : null,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join("; "),
     },
     previousShotVisualSummary: previousShot?.visualSummary ?? null,
     nextShotVisualSummary: nextShot?.visualSummary ?? null,

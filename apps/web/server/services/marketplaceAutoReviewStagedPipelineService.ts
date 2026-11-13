@@ -498,9 +498,14 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
       durationSeconds: 10,
       storyboardGuide: shot.storySummary,
       voiceover: shot.dialogue,
-      camera: "stable vertical product-review framing",
+      camera:
+        shot.cameraDirection ||
+        `Use a shot-specific framing and angle that makes this action clear: ${shot.visualSummary}`,
       visual: shot.visualSummary,
-      movement: "restrained continuity-preserving motion",
+      movement:
+        shot.movementDirection ||
+        `Show the action described for this shot: ${shot.visualSummary}`,
+      ...(shot.transition ? { transition: shot.transition } : {}),
       productRole: "evidence-grounded product presentation",
     })),
   };
