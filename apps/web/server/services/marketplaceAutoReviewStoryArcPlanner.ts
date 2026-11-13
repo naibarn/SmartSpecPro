@@ -42,6 +42,30 @@ function boundStagedStoryPlanProductDescription(
   return `${bounded.trimEnd()}…`;
 }
 
+function buildStagedStoryPlanSummary(input: {
+  summary?: string | null;
+  selectedConcept?: StagedStoryConceptOption;
+  shots: Array<{
+    title?: string | null;
+    storySummary?: string | null;
+    visualSummary?: string | null;
+  }>;
+}): string {
+  const authoredSummary = clean(input.summary);
+  if (authoredSummary) return authoredSummary;
+
+  const shotSummary = input.shots
+    .map((shot, index) => {
+      const title = clean(shot.title) || `Shot ${index + 1}`;
+      const summary = clean(shot.storySummary) || clean(shot.visualSummary);
+      return summary ? `${title}: ${summary}` : "";
+    })
+    .filter(Boolean)
+    .join(" ");
+  const summary = shotSummary || clean(input.selectedConcept?.storySummary);
+  return Array.from(summary).slice(0, 500).join("").trim();
+}
+
 export type StagedStoryArcProduct = {
   productId: string;
   productName: string;
@@ -1116,13 +1140,13 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 0. ${shotCountInstruction}
 1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle, storySummary และ dialoguePreview ที่เขียนเป็นบทพูดจริง ไม่ใช่หัวข้อหรือคำอธิบาย
 2. ${conceptsOnlyInstruction}
-3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" โดยกำหนดชื่อช็อต (title) และสรุปการถ่ายทำ (visualSummary) ให้เห็นภาพชัดเจน
+3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" แต่ละช็อตต้องมี title, storySummary (สรุปหน้าที่ของช็อตในเรื่อง), visualSummary (สิ่งที่เห็นในภาพ) และ dialogue แยกกันให้ชัดเจน
 4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
 5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
 7. บทพูดทุกแบบต้องเป็นภาษาพูดธรรมชาติ มีบทสนทนาที่ตอบรับกันตามบริบท ห้ามใช้คำถามเปิดหรือประโยคตอบแบบแม่แบบซ้ำ ห้ามใช้ถ้อยคำกว้าง ๆ เช่น “เล่าให้ฟังหน่อยว่าเรื่อง...” หรือ “เบื่อและหงุดหงิดไหมกับปัญหาเดิมๆ” ให้พูดถึงเหตุการณ์ การใช้งาน หรือรายละเอียดสินค้าที่มีหลักฐานจริงโดยตรง
 8. ห้ามใช้ placeholder เช่น “เผยสินค้า” เป็นเนื้อหาบทพูด แต่ใช้เป็นชื่อช็อตได้
-9. ${storySummaryInstruction}${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+9. ${storySummaryInstruction}${!input.conceptsOnly ? " ต้องส่งเป็น storySummary ระดับบนสุด โดยสรุปเรื่องย่อรวมทุกช็อต" : ""}${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
@@ -1167,9 +1191,11 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   });
 
   const shotObjectSchema = z.object({
-    shotId: z.number().int().min(1).max(30),
+    // Shot ids are assigned from output order below; do not reject a plan
+    // because the model omitted this redundant field.
+    shotId: z.number().int().min(1).max(30).optional(),
     title: z.string().min(1).max(120),
-    storySummary: z.string().min(1).max(600),
+    storySummary: z.string().min(1).max(600).optional(),
     visualSummary: z.string().min(1).max(400),
     dialogue: z.string().min(1).max(320).optional(),
     dialogueTurns: z.array(ZodDialogueTurnSchema).min(2).optional(),
@@ -1178,7 +1204,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   });
 
   const ZodLLMPlanSchema = z.object({
-    storySummary: input.conceptsOnly ? z.string().optional() : z.string(),
+    storySummary: z.string().optional(),
     conceptOptions: z
       .array(
         z.object({
@@ -1295,7 +1321,11 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 
     if (rawShotCountOk) {
       const planRevision = Math.max(1, Math.floor(input.revision ?? 1));
-      const storySummary = clean(llmRes.data.storySummary);
+      const storySummary = buildStagedStoryPlanSummary({
+        summary: llmRes.data.storySummary,
+        selectedConcept: input.selectedConcept,
+        shots: generatedShots,
+      });
       if (!storySummary || storySummary.length > 500) {
         throw new Error("STAGED_STORY_PLAN_SUMMARY_INVALID");
       }
@@ -1419,7 +1449,8 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
         return {
           shotId,
           title: clean(shot.title),
-          storySummary: clean(shot.storySummary),
+          storySummary:
+            clean(shot.storySummary) || clean(shot.visualSummary),
           visualSummary: clean(shot.visualSummary),
           dialogue,
           durationSeconds: shotDurationSeconds,

@@ -120,6 +120,48 @@ describe("generateStagedStoryArcPlanWithLLM concepts", () => {
     );
   });
 
+  it("normalizes omitted story summaries and shot ids from a confirmed concept draft", async () => {
+    const selectedConcept = concepts[0];
+    const incompletePlan = {
+      conceptOptions: concepts,
+      selectedConceptId: selectedConcept.conceptId,
+      shots: planData.shots.map(({ title, visualSummary, dialogue }) => ({
+        title,
+        visualSummary,
+        dialogue,
+      })),
+    };
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: incompletePlan,
+      modelId: "planning-test-model",
+      providerName: "test-provider",
+    } as never);
+
+    const plan = await generateStagedStoryArcPlanWithLLM({
+      runId: "run-selected-concept-normalized",
+      userId: 7,
+      tenantId: "tenant-1",
+      model: "planning-test-model",
+      referenceManifestHash: "refs-selected-normalized",
+      selectedConcept,
+      product: {
+        productId: "product-1",
+        productName: "Travel bottle",
+        imageUrls: [],
+      },
+    });
+
+    const call = mockCallLLMStructured.mock.calls.at(-1)?.[0] as {
+      zodSchema: { safeParse: (value: unknown) => { success: boolean } };
+    };
+    expect(call.zodSchema.safeParse(incompletePlan).success).toBe(true);
+    expect(plan.storySummary).toContain("Shot 1");
+    expect(plan.shots.map(shot => shot.shotId)).toEqual(
+      Array.from({ length: 9 }, (_, index) => index + 1)
+    );
+    expect(plan.shots[0]?.storySummary).toBe("Visual 1");
+  });
+
   it("bounds long marketplace descriptions to the planner's 500-character contract", async () => {
     const longDescription = "รายละเอียดสินค้า ".repeat(100);
     await generateStagedStoryArcPlanWithLLM({
