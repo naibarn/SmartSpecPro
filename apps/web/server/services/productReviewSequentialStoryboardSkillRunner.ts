@@ -3174,7 +3174,8 @@ export function extractJsonStringFieldForTest(
 }
 
 function parseSequentialSingleShotRefreshOutput(
-  raw: unknown
+  raw: unknown,
+  promptTarget: SequentialSingleShotRefreshInput["promptTarget"] = "video"
 ): {
   start_frame_image_prompt: string;
   video_prompt?: string;
@@ -3189,6 +3190,7 @@ function parseSequentialSingleShotRefreshOutput(
   if (!startFrameImagePrompt) return null;
   const videoPrompt =
     typeof value.video_prompt === "string" ? value.video_prompt.trim() : undefined;
+  if (promptTarget !== "image" && !videoPrompt) return null;
   const cameraBeats = Array.isArray(value.camera_beats)
     ? value.camera_beats
         .map((entry, index) => {
@@ -3247,6 +3249,59 @@ function mapSequentialSingleShotRefreshOutput(parsed: {
       ? { cameraBeats: parsed.camera_beats }
       : {}),
   };
+}
+
+function parseSequentialSingleShotRefreshContent(
+  rawContent: string,
+  promptTarget: SequentialSingleShotRefreshInput["promptTarget"],
+): {
+  parsed: ReturnType<typeof parseSequentialSingleShotRefreshOutput>;
+  recoveredFromMalformedJson: boolean;
+  jsonSyntaxError: unknown | null;
+} {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(rawContent);
+  } catch (jsonSyntaxError) {
+    const imagePrompt = extractJsonStringField(
+      rawContent,
+      "start_frame_image_prompt",
+    );
+    const videoPrompt =
+      promptTarget === "image"
+        ? undefined
+        : extractJsonStringField(rawContent, "video_prompt");
+    if (!imagePrompt || (promptTarget !== "image" && !videoPrompt)) {
+      return {
+        parsed: null,
+        recoveredFromMalformedJson: false,
+        jsonSyntaxError,
+      };
+    }
+    return {
+      parsed: parseSequentialSingleShotRefreshOutput(
+        {
+          start_frame_image_prompt: imagePrompt,
+          ...(videoPrompt ? { video_prompt: videoPrompt } : {}),
+        },
+        promptTarget,
+      ),
+      recoveredFromMalformedJson: true,
+      jsonSyntaxError,
+    };
+  }
+  return {
+    parsed: parseSequentialSingleShotRefreshOutput(raw, promptTarget),
+    recoveredFromMalformedJson: false,
+    jsonSyntaxError: null,
+  };
+}
+
+export function parseSequentialSingleShotRefreshOutputForTest(
+  rawContent: string,
+  promptTarget: SequentialSingleShotRefreshInput["promptTarget"],
+) {
+  return parseSequentialSingleShotRefreshContent(rawContent, promptTarget).parsed;
 }
 
 /**
@@ -3697,14 +3752,40 @@ export async function refreshSequentialShotPromptWithSkillDirect(
       },
     });
   }
-  let parsedRaw: unknown;
-  try {
-    parsedRaw = JSON.parse(rawContent);
-  } catch (error) {
-    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_INVALID_JSON", { cause: error });
+  const parseResult = parseSequentialSingleShotRefreshContent(
+    rawContent,
+    input.promptTarget,
+  );
+  if (parseResult.recoveredFromMalformedJson) {
+    console.warn(
+      "[productReviewSequentialStoryboardSkillRunner] recovered required prompt fields from malformed single-shot skill JSON",
+      {
+        targetShotId: input.targetShotId,
+        promptTarget: input.promptTarget,
+        responseLength: rawContent.length,
+      },
+    );
   }
-  const parsed = parseSequentialSingleShotRefreshOutput(parsedRaw);
+  const parsed = parseResult.parsed;
   if (!parsed) {
+    if (parseResult.jsonSyntaxError) {
+      const parseErrorMessage =
+        parseResult.jsonSyntaxError instanceof Error
+          ? parseResult.jsonSyntaxError.message.slice(0, 160)
+          : String(parseResult.jsonSyntaxError).slice(0, 160);
+      console.error(
+        "[productReviewSequentialStoryboardSkillRunner] single-shot skill returned invalid JSON and required prompt fields could not be recovered",
+        {
+          targetShotId: input.targetShotId,
+          promptTarget: input.promptTarget,
+          responseLength: rawContent.length,
+          parseError: parseErrorMessage,
+        },
+      );
+      throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_INVALID_JSON", {
+        cause: parseResult.jsonSyntaxError,
+      });
+    }
     throw new Error(
       `MARKETPLACE_SINGLE_SHOT_SKILL_OUTPUT_INVALID:shot-${input.targetShotId}`
     );

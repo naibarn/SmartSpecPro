@@ -53,6 +53,7 @@ import {
   type LoopRoundReport,
   extractJsonStringFieldForTest,
   mapSequentialSingleShotRefreshOutputForTest,
+  parseSequentialSingleShotRefreshOutputForTest,
 } from "../productReviewSequentialStoryboardSkillRunner";
 
 const mockSyncSingleSkillIfChanged = vi.mocked(syncSingleSkillIfChanged);
@@ -83,6 +84,29 @@ describe("single-shot refresh output mapping", () => {
         action: "presenter lifts product",
       }],
     });
+  });
+});
+
+describe("single-shot refresh malformed JSON recovery", () => {
+  it("keeps the required image prompt when optional camera-beat JSON is malformed", () => {
+    const parsed = parseSequentialSingleShotRefreshOutputForTest(
+      '{"start_frame_image_prompt":"A clear product shot","camera_beats":[{"beat_id":1},]}',
+      "image",
+    );
+
+    expect(parsed).toEqual({
+      start_frame_image_prompt: "A clear product shot",
+      video_prompt: undefined,
+    });
+  });
+
+  it("does not salvage an incomplete video response", () => {
+    const parsed = parseSequentialSingleShotRefreshOutputForTest(
+      '{"start_frame_image_prompt":"A clear product shot","camera_beats":[broken]}',
+      "video",
+    );
+
+    expect(parsed).toBeNull();
   });
 });
 
