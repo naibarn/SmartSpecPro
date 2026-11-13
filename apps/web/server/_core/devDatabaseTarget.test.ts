@@ -56,6 +56,24 @@ describe("development database selection", () => {
       .toThrow("PRODUCTION_DEBUG_REQUIRES_DEDICATED_READONLY_ROLE");
   });
 
+  it("accepts canonical smartspec for the explicit tenant-shared dev profile only", () => {
+    const selected = resolveApplicationDatabaseUrl({ ...base,
+      SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec_dev@localhost/smartspec",
+      APP_URL: "https://aimarkethubs.com", SMARTSPEC_DEV_TENANT_DOMAIN: "aimarkethubs.com" });
+    expect(selected).toBe("postgresql://smartspec_dev@localhost/smartspec");
+    expect(() => resolveApplicationDatabaseUrl({ ...base,
+      SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec@localhost/smartspec",
+      APP_URL: "https://aimarkethubs.com", SMARTSPEC_DEV_TENANT_DOMAIN: "aimarkethubs.com" }))
+      .toThrow("SEPARATE_LOGIN");
+    expect(() => resolveApplicationDatabaseUrl({ ...base,
+      SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec_dev@localhost/smartspec",
+      APP_URL: "https://aimarkethubs.com", SMARTSPEC_DEV_TENANT_DOMAIN: "smartaihub.app" }))
+      .toThrow("TENANT_DOMAIN_MISMATCH");
+  });
+
   it("does not permit production app instances to change targets through the dev selector", () => {
     expect(resolveApplicationDatabaseUrl({ NODE_ENV: "production", SMARTSPEC_ENVIRONMENT: "production",
       SMARTSPEC_DEV_DATABASE_MODE: "production-readonly", DATABASE_URL: "postgresql://runtime@db/app",

@@ -12,6 +12,20 @@ export function selectDevWebDatabase(config) {
     return { ...config, SMARTSPEC_DEV_DATABASE_MODE: mode };
   }
 
+  if (mode === "shared-tenant") {
+    let url;
+    let appUrl;
+    try { url = new URL(config.DATABASE_URL || ""); } catch { throw new Error("Shared development database URL is required"); }
+    try { appUrl = new URL(config.APP_URL || ""); } catch { throw new Error("Shared development application URL is required"); }
+    if (!/^postgres(?:ql)?:$/.test(url.protocol) || url.pathname !== "/smartspec" || !url.username.endsWith("_dev")) {
+      throw new Error("Shared development requires the canonical smartspec database and a separate _dev login");
+    }
+    if (!config.SMARTSPEC_DEV_TENANT_DOMAIN || appUrl.hostname !== config.SMARTSPEC_DEV_TENANT_DOMAIN) {
+      throw new Error("Shared development tenant domain must match APP_URL");
+    }
+    return { ...config, SMARTSPEC_DEV_DATABASE_MODE: mode };
+  }
+
   if (mode === "production-readonly") {
     let url;
     try { url = new URL(config.SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL || ""); } catch { throw new Error("Production debug read-only database URL is required"); }
@@ -22,7 +36,7 @@ export function selectDevWebDatabase(config) {
     return { ...config, DATABASE_URL: url.toString() };
   }
 
-  throw new Error("Choose development or production-readonly; shared-production is disabled");
+  throw new Error("Choose development, shared-tenant, or production-readonly; shared-production is disabled");
 }
 
 export function shouldRunDevSchemaMigrations(config) {

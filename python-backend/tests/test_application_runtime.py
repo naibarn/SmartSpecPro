@@ -10,6 +10,9 @@ def test_standard_and_production_readonly_debug_profiles_remain_compatible():
     shared = get_application_runtime_profile("development", {"SMARTSPEC_DEV_DATABASE_MODE": "production-readonly"})
     assert not shared.owns_background_work
     assert not shared.initialize_schema
+    tenant_shared = get_application_runtime_profile("development", {"SMARTSPEC_DEV_DATABASE_MODE": "shared-tenant"})
+    assert not tenant_shared.owns_background_work
+    assert not tenant_shared.initialize_schema
 
 @pytest.mark.unit
 def test_on_demand_http_api_does_not_own_schema_seed_or_background_watchers():

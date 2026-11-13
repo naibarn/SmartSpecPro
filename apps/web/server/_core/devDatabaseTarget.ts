@@ -32,6 +32,20 @@ export function resolveApplicationDatabaseUrl(env: NodeJS.ProcessEnv = process.e
     }
     return raw;
   }
+  if (mode === "shared-tenant") {
+    const raw = env.DATABASE_URL ?? "";
+    let url: URL;
+    let appUrl: URL;
+    try { url = new URL(raw); } catch { throw new Error("SHARED_DEVELOPMENT_DATABASE_URL_REQUIRED"); }
+    try { appUrl = new URL(env.APP_URL ?? ""); } catch { throw new Error("SHARED_DEVELOPMENT_APP_URL_REQUIRED"); }
+    if (!/^(postgres|postgresql):$/.test(url.protocol) || url.pathname !== "/smartspec" || !url.username.endsWith("_dev")) {
+      throw new Error("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+    }
+    if (!env.SMARTSPEC_DEV_TENANT_DOMAIN || appUrl.hostname !== env.SMARTSPEC_DEV_TENANT_DOMAIN) {
+      throw new Error("SHARED_DEVELOPMENT_TENANT_DOMAIN_MISMATCH");
+    }
+    return raw;
+  }
   if (mode !== "production-readonly") throw new Error("DEVELOPMENT_DATABASE_MODE_DENIED");
 
   const raw = env.SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL ?? "";

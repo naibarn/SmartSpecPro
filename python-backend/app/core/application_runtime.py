@@ -19,7 +19,7 @@ def get_application_runtime_profile(
     if mode == "standard":
         shared_debug = (
             environment == "development"
-            and values.get("SMARTSPEC_DEV_DATABASE_MODE") == "production-readonly"
+            and values.get("SMARTSPEC_DEV_DATABASE_MODE") in {"production-readonly", "shared-tenant"}
         )
         return ApplicationRuntimeProfile(
             mode, not shared_debug, environment != "production" and not shared_debug

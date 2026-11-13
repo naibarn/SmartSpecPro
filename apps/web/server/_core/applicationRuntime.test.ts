@@ -5,6 +5,7 @@ describe("application request-runtime ownership", () => {
   it("preserves the standard runtime and production-readonly debug ownership", () => {
     expect(getApplicationRuntimeProfile({ NODE_ENV: "production" })).toEqual({ mode: "standard", ownsBackgroundWork: true, serveSpaAssets: true });
     expect(getApplicationRuntimeProfile({ NODE_ENV: "development", SMARTSPEC_ENVIRONMENT: "development", SMARTSPEC_DEV_DATABASE_MODE: "production-readonly" })).toMatchObject({ ownsBackgroundWork: false, serveSpaAssets: true });
+    expect(getApplicationRuntimeProfile({ NODE_ENV: "development", SMARTSPEC_ENVIRONMENT: "development", SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant" })).toMatchObject({ ownsBackgroundWork: false, serveSpaAssets: true });
   });
   it("admits an explicitly on-demand production HTTP runtime without scheduler or SPA ownership", () => {
     expect(getApplicationRuntimeProfile({ NODE_ENV: "production", SMARTAIHUB_APPLICATION_RUNTIME: "cloudflare-http", CLOUDFLARE_CONTAINER_POLICY: "on-demand" }))

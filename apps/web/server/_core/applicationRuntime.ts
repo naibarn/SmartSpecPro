@@ -1,4 +1,4 @@
-import { isSharedProductionDebug } from "./sharedProductionDebug";
+import { isSharedProductionDataRuntime } from "./sharedProductionDebug";
 
 export type ApplicationRuntimeProfile = Readonly<{
   mode: "standard" | "cloudflare-http";
@@ -11,7 +11,7 @@ export type ApplicationRuntimeProfile = Readonly<{
  * This selector does not provision a container or grant deployment authority. */
 export function getApplicationRuntimeProfile(env: NodeJS.ProcessEnv = process.env): ApplicationRuntimeProfile {
   const mode = env.SMARTAIHUB_APPLICATION_RUNTIME ?? "standard";
-  if (mode === "standard") return { mode, ownsBackgroundWork: !isSharedProductionDebug(env), serveSpaAssets: true };
+  if (mode === "standard") return { mode, ownsBackgroundWork: !isSharedProductionDataRuntime(env), serveSpaAssets: true };
   if (mode !== "cloudflare-http" || env.NODE_ENV !== "production" || env.CLOUDFLARE_CONTAINER_POLICY !== "on-demand") {
     throw new Error("APPLICATION_RUNTIME_CONFIGURATION_DENIED");
   }

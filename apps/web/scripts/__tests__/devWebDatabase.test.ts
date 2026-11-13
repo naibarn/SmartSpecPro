@@ -24,6 +24,20 @@ describe("dev web database selection", () => {
       SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL: "postgresql://smartspec@localhost/smartspec",
       SMARTSPEC_DEV_TENANT_DOMAIN: "smartaihub.app" })).toThrow("dedicated _debug_ro");
   });
+
+  it("accepts the canonical database only in the explicit tenant-shared mode", () => {
+    const shared = selectDevWebDatabase({ ...dev, SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec_dev@localhost/smartspec", APP_URL: "https://aimarkethubs.com",
+      SMARTSPEC_DEV_TENANT_DOMAIN: "aimarkethubs.com" });
+    expect(shared.DATABASE_URL).toBe("postgresql://smartspec_dev@localhost/smartspec");
+    expect(shouldRunDevSchemaMigrations(shared)).toBe(false);
+    expect(() => selectDevWebDatabase({ ...dev, SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec@localhost/smartspec", APP_URL: "https://aimarkethubs.com",
+      SMARTSPEC_DEV_TENANT_DOMAIN: "aimarkethubs.com" })).toThrow("separate _dev login");
+    expect(() => selectDevWebDatabase({ ...dev, SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      DATABASE_URL: "postgresql://smartspec_dev@localhost/smartspec", APP_URL: "https://aimarkethubs.com",
+      SMARTSPEC_DEV_TENANT_DOMAIN: "smartaihub.app" })).toThrow("must match APP_URL");
+  });
 });
 
 describe("development schema startup repair", () => {
@@ -35,6 +49,10 @@ describe("development schema startup repair", () => {
     expect(shouldRunDevSchemaMigrations({
       SMARTSPEC_ENVIRONMENT: "development",
       SMARTSPEC_DEV_DATABASE_MODE: "production-readonly",
+    })).toBe(false);
+    expect(shouldRunDevSchemaMigrations({
+      SMARTSPEC_ENVIRONMENT: "development",
+      SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
     })).toBe(false);
     expect(shouldRunDevSchemaMigrations({
       SMARTSPEC_ENVIRONMENT: "production",

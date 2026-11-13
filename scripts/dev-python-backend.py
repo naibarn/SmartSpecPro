@@ -40,8 +40,19 @@ def main() -> None:
         database = urlsplit(os.environ.get("DATABASE_URL", ""))
         if not (database.path.endswith("_dev") or database.path.endswith("_dev_web")):
             raise SystemExit("Development mode requires an isolated _dev database")
+    elif mode == "shared-tenant":
+        database = urlsplit(os.environ.get("DATABASE_URL", ""))
+        app_url = urlsplit(os.environ.get("APP_URL", ""))
+        tenant_domain = os.environ.get("SMARTSPEC_DEV_TENANT_DOMAIN", "")
+        if (database.scheme not in {"postgres", "postgresql", "postgresql+asyncpg"}
+                or database.path != "/smartspec"
+                or not database.username
+                or not database.username.endswith("_dev")):
+            raise SystemExit("Shared development requires the canonical smartspec database and a separate _dev login")
+        if not tenant_domain or app_url.hostname != tenant_domain:
+            raise SystemExit("Shared development tenant domain must match APP_URL")
     else:
-        raise SystemExit("Choose SMARTSPEC_DEV_DATABASE_MODE=development or production-readonly")
+        raise SystemExit("Choose SMARTSPEC_DEV_DATABASE_MODE=development, shared-tenant, or production-readonly")
     if os.environ.get("PYTHON_DOTENV_DISABLED") != "1":
         raise SystemExit("Disable production dotenv discovery for this dev service")
     os.execv(sys.executable, [sys.executable, "-m", "uvicorn", "app.main:app",

@@ -39,6 +39,23 @@ class DevPythonDatabaseModeTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.run_launcher(self.env(SMARTSPEC_DEV_DATABASE_MODE="production-readonly", SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL="postgresql+asyncpg://smartspec@localhost/smartspec"))
 
+    def test_shared_tenant_mode_uses_canonical_db_with_dev_login(self):
+        self.run_launcher(self.env(SMARTSPEC_DEV_DATABASE_MODE="shared-tenant",
+                                   DATABASE_URL="postgresql+asyncpg://smartspec_dev@localhost/smartspec",
+                                   APP_URL="https://aimarkethubs.com",
+                                   SMARTSPEC_DEV_TENANT_DOMAIN="aimarkethubs.com"))
+
+    def test_shared_tenant_mode_rejects_prod_login_or_domain_mismatch(self):
+        for changes in [
+            {"DATABASE_URL": "postgresql+asyncpg://smartspec@localhost/smartspec"},
+            {"SMARTSPEC_DEV_TENANT_DOMAIN": "smartaihub.app"},
+        ]:
+            with self.assertRaises(SystemExit):
+                values = {"APP_URL": "https://aimarkethubs.com",
+                          "SMARTSPEC_DEV_TENANT_DOMAIN": "aimarkethubs.com"}
+                values.update(changes)
+                self.run_launcher(self.env(SMARTSPEC_DEV_DATABASE_MODE="shared-tenant", **values))
+
     def test_production_launcher_and_dotenv_fallback_stay_rejected(self):
         for change in [{"ENVIRONMENT": "production"}, {"PYTHON_DOTENV_DISABLED": "0"}]:
             with self.assertRaises(SystemExit):
