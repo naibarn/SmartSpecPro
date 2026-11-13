@@ -301,6 +301,24 @@ button, input, textarea, select {
   background: #f8fafc;
 }
 
+.production-shot-dialogue {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #0f172a;
+  line-height: 1.5;
+}
+
+.production-shot-dialogue-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .production-shot-assets {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));

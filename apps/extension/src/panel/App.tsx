@@ -422,8 +422,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.4";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.152";
-const EXTENSION_BUILD_LABEL = "2026-11-07 07:44 +07";
+const EXTENSION_VERSION = "0.1.153";
+const EXTENSION_BUILD_LABEL = "2026-11-14";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -6264,9 +6264,14 @@ export default function App() {
                           <strong>Shot {shot.shotId}</strong>
                           {shot.title ? <div className="muted">{shot.title}</div> : null}
                           {shot.storySummary ? <div className="muted">{shot.storySummary}</div> : null}
-                          {shot.dialogue ? <div className="muted">{shot.dialogue}</div> : null}
                         </div>
                       </div>
+                      <section className="production-shot-dialogue" aria-label={`Shot ${shot.shotId} dialogue`}>
+                        <strong>Dialogue / บทพูด</strong>
+                        <p className="production-shot-dialogue-text">
+                          {shot.dialogue || "No dialogue saved for this shot yet."}
+                        </p>
+                      </section>
                       <div className="production-shot-assets">
                         {productionMediaCard({
                           label: "Generated image",
