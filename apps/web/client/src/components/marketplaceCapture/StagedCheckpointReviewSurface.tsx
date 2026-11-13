@@ -19,6 +19,7 @@ export function StagedCheckpointReviewSurface(props: {
   runId?: string | null;
   enabled?: boolean;
   className?: string;
+  onStoryConceptConfirmed?: () => void;
 }) {
   const runId = props.runId?.trim() ?? "";
   const enabled = Boolean(runId && props.enabled !== false);
@@ -111,6 +112,9 @@ export function StagedCheckpointReviewSurface(props: {
   } = {
     onSuccess: async (_result, rawVariables) => {
       setActionError(null);
+      const selectedConcept = (
+        rawVariables as { selectedConcept?: unknown } | null
+      )?.selectedConcept;
       const targets = (rawVariables as { targets?: Array<{
         shotId: number;
         stage: "image" | "video";
@@ -123,6 +127,7 @@ export function StagedCheckpointReviewSurface(props: {
           : null
       );
       await stateQuery.refetch();
+      if (selectedConcept) await props.onStoryConceptConfirmed?.();
     },
     onError: (error: { message: string }) => {
       setActionNotice(null);

@@ -68,6 +68,10 @@ let capturedRetryMutationOptions: {
   onError?: (e: { message: string }) => void;
 } | null = null;
 
+let capturedRedraftMutationOptions: {
+  onSuccess?: (result: unknown, variables: unknown) => Promise<void>;
+} | null = null;
+
 // Controllable mutateAsync for uploadStagedAutoReviewShotMedia — the manual
 // drag-and-drop / tap-to-browse shot media replacement mutation.
 const mockUploadShotMediaMutateAsync = vi.fn(
@@ -242,7 +246,14 @@ vi.mock("@/lib/trpc", () => ({
       retryStagedAutoReviewFinalAssembly: {
         useMutation: () => genericMutation(),
       },
-      redraftStagedAutoReviewPlan: { useMutation: () => genericMutation() },
+      redraftStagedAutoReviewPlan: {
+        useMutation: (options?: {
+          onSuccess?: (result: unknown, variables: unknown) => Promise<void>;
+        }) => {
+          capturedRedraftMutationOptions = options ?? null;
+          return genericMutation();
+        },
+      },
       saveAutoReviewSequentialLanguagePlan: {
         useMutation: () => genericMutation(),
       },
@@ -317,6 +328,31 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 import { StagedCheckpointReviewSurface } from "../StagedCheckpointReviewSurface";
+
+describe("StagedCheckpointReviewSurface — concept confirmation navigation", () => {
+  it("signals the parent only after a selected concept is accepted", async () => {
+    const onStoryConceptConfirmed = vi.fn();
+    render(
+      <StagedCheckpointReviewSurface
+        runId="run-1"
+        onStoryConceptConfirmed={onStoryConceptConfirmed}
+      />
+    );
+
+    expect(capturedRedraftMutationOptions?.onSuccess).toBeTypeOf("function");
+    await capturedRedraftMutationOptions!.onSuccess!({}, {
+      selectedConcept: {
+        conceptId: "concept-2",
+        title: "ใช้จริงทุกวัน",
+        angle: "เล่าจากประสบการณ์ใช้งาน",
+        storySummary: "ทดลองใช้และเห็นผลจากชีวิตประจำวัน",
+        dialoguePreview: "พิมพ์ชนก: ลองใช้มาสักพักแล้ว รู้สึกว่าหยิบใช้สะดวกขึ้นจริงนะ",
+      },
+    });
+
+    expect(onStoryConceptConfirmed).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("StagedCheckpointReviewSurface — bulk background generation", () => {
   beforeEach(() => mockBulkGenerateMutate.mockClear());

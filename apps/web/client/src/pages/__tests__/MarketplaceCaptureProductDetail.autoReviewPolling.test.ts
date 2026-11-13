@@ -87,6 +87,27 @@ describe("MarketplaceCaptureProductDetail auto review polling", () => {
     expect(startMutation).toContain("setOptimisticAutoStoryboardStart(false)");
   });
 
+  it("keeps the setup route open until the user confirms one of the story concepts", () => {
+    const startMutation = sourceBetween(
+      "const startAutoStoryboardReviewMutation =",
+      "const selectAutoReviewImageAttemptMutation ="
+    );
+    const setupRouteBranch = startMutation.indexOf(
+      "if (startedRunId && isAutoReviewJobSetupRoute)"
+    );
+    const workbenchNavigation = startMutation.indexOf(
+      "window.location.assign("
+    );
+
+    expect(setupRouteBranch).toBeGreaterThanOrEqual(0);
+    expect(workbenchNavigation).toBeGreaterThan(setupRouteBranch);
+    expect(startMutation.slice(setupRouteBranch, workbenchNavigation)).toContain(
+      "setConceptSelectionRunId(startedRunId)"
+    );
+    expect(source).toContain("onStoryConceptConfirmed={() => {");
+    expect(source).toContain("<StagedCheckpointReviewSurface");
+  });
+
   it("surfaces a Marketplace Intelligence bridge from product detail", () => {
     expect(source).toContain('aria-label="Market Intelligence"');
     expect(source).toContain("MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS");

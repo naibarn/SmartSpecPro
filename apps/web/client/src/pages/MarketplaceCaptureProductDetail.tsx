@@ -64,6 +64,7 @@ import { MarketplaceInsightsSection } from "@/components/marketplace/Marketplace
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
 import { MarketplaceAutoReviewProductImagePicker } from "@/components/marketplaceCapture/MarketplaceAutoReviewProductImagePicker";
+import { StagedCheckpointReviewSurface } from "@/components/marketplaceCapture/StagedCheckpointReviewSurface";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
 import {
   AutoStoryboardAdvancedOverrides,
@@ -2789,6 +2790,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [showAutoReviewHistory, setShowAutoReviewHistory] = useState(false);
   const [optimisticAutoStoryboardStart, setOptimisticAutoStoryboardStart] =
     useState(false);
+  const [conceptSelectionRunId, setConceptSelectionRunId] = useState("");
   const autoStoryboardStartAttemptRef = useRef(0);
   const autoStoryboardStalePlanRetryKeysRef = useRef(new Set<string>());
   const [collapsedAutoReviewRunIds, setCollapsedAutoReviewRunIds] = useState<
@@ -3674,8 +3676,16 @@ export default function MarketplaceCaptureProductDetail() {
         setShowAutoReviewRuns(true);
         setShowAutoReviewHistory(false);
         setOptimisticAutoStoryboardStart(false);
+        const startedRunId = compactText(result.run?.id);
+        if (startedRunId && isAutoReviewJobSetupRoute) {
+          setConceptSelectionRunId(startedRunId);
+          toast.success(
+            "ได้ Job สำหรับร่างไอเดียแล้ว เลือกและยืนยันแนวคิดด้านล่างก่อนเปิด Storyboard"
+          );
+          return;
+        }
         if (
-          compactText(result.run?.id) &&
+          startedRunId &&
           (compactText(
             asRecord(result.run?.metadataJson).planningArchitecture
           ) === "staged_two_skill_v2" ||
@@ -3684,11 +3694,10 @@ export default function MarketplaceCaptureProductDetail() {
               isSequentialFrameStrategy(
                 result.run?.frameStrategy ??
                   autoStoryboardPlan?.defaults.frameStrategy
-              )) ||
-            isAutoReviewJobSetupRoute)
+              )))
         ) {
           window.location.assign(
-            `/marketplace/auto-review/${encodeURIComponent(compactText(result.run?.id))}`
+            `/marketplace/auto-review/${encodeURIComponent(startedRunId)}`
           );
           return;
         }
@@ -5850,6 +5859,7 @@ export default function MarketplaceCaptureProductDetail() {
     });
     if (!confirmed) return;
     const startAttemptKey = Date.now().toString(36);
+    setConceptSelectionRunId("");
     setAutoReviewLaunchMode("auto_storyboard_review");
     autoStoryboardStartAttemptRef.current += 1;
     setOptimisticAutoStoryboardStart(true);
@@ -5868,7 +5878,7 @@ export default function MarketplaceCaptureProductDetail() {
     });
     toast.info(
       isAutoReviewJobSetupRoute
-        ? "กำลังสร้างไอเดียรีวิวจากข้อมูลสินค้า แล้วจะเปิด Job Workbench ให้เลือกและตรวจเนื้อหา"
+        ? "กำลังร่างไอเดีย 3 แบบ หน้านี้จะยังไม่เปลี่ยนจนกว่าคุณจะเลือกและยืนยันไอเดีย"
         : "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว กำลังรอ backend สร้าง run ใหม่"
     );
     void autoReviewRuns.refetch();
@@ -6948,6 +6958,16 @@ export default function MarketplaceCaptureProductDetail() {
               }
               qualityModeRepairRounds={autoStoryboardQualityModeRounds}
             />
+            {conceptSelectionRunId ? (
+              <StagedCheckpointReviewSurface
+                runId={conceptSelectionRunId}
+                onStoryConceptConfirmed={() => {
+                  window.location.assign(
+                    `/marketplace/auto-review/${encodeURIComponent(conceptSelectionRunId)}`
+                  );
+                }}
+              />
+            ) : null}
             <AutoStoryboardFrameStrategyCard
               enabled={sequentialStrategyEnabled}
               defaultFrameStrategy={autoStoryboardDefaultFrameStrategy}
