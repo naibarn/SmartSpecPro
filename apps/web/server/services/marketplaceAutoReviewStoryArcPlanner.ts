@@ -1106,6 +1106,9 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   const conceptsOnlyInstruction = input.conceptsOnly
     ? "ผู้ใช้ยังไม่ได้เลือกแนวคิด: ส่ง 3 แนวคิดพร้อมบทพูดตัวอย่างที่เป็นธรรมชาติครบทุกแนวคิด บทพูดต้องเป็นบทสนทนาที่นำไปใช้รีวิวสินค้าได้จริง ห้ามมี shots หรือสร้าง Storyboard จนกว่าผู้ใช้จะยืนยันแนวคิด"
     : "ผู้ใช้ยืนยันแนวคิดแล้ว: ใช้แนวคิดและ dialoguePreview ที่แนบมาเป็นต้นฉบับหลัก รักษาน้ำเสียงและบทสนทนาที่เลือกไว้ แล้วจึงจัดเป็น Storyboard ฉบับเต็ม โดยให้บทพูดของทุกช็อตพัฒนาต่อจาก dialoguePreview นั้น";
+  const storySummaryInstruction = input.conceptsOnly
+    ? "โหมดเลือกแนวคิด: อย่าส่ง storySummary ระดับบนสุด; แต่ละ conceptOptions ต้องมี storySummary ของแนวคิดนั้น"
+    : "เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน";
   const runtimeInstructions = `
 คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
 
@@ -1119,7 +1122,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
 7. บทพูดทุกแบบต้องเป็นภาษาพูดธรรมชาติ มีบทสนทนาที่ตอบรับกันตามบริบท ห้ามใช้คำถามเปิดหรือประโยคตอบแบบแม่แบบซ้ำ ห้ามใช้ถ้อยคำกว้าง ๆ เช่น “เล่าให้ฟังหน่อยว่าเรื่อง...” หรือ “เบื่อและหงุดหงิดไหมกับปัญหาเดิมๆ” ให้พูดถึงเหตุการณ์ การใช้งาน หรือรายละเอียดสินค้าที่มีหลักฐานจริงโดยตรง
 8. ห้ามใช้ placeholder เช่น “เผยสินค้า” เป็นเนื้อหาบทพูด แต่ใช้เป็นชื่อช็อตได้
-9. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+9. ${storySummaryInstruction}${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
@@ -1175,7 +1178,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   });
 
   const ZodLLMPlanSchema = z.object({
-    storySummary: z.string(),
+    storySummary: input.conceptsOnly ? z.string().optional() : z.string(),
     conceptOptions: z
       .array(
         z.object({

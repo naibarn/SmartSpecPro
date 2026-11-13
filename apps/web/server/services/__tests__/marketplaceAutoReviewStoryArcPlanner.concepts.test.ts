@@ -97,6 +97,29 @@ describe("generateStagedStoryArcPlanWithLLM concepts", () => {
     });
   });
 
+  it("does not require a full-story summary in concepts-only output", async () => {
+    await generateStagedStoryArcPlanWithLLM({
+      runId: "run-concepts-schema",
+      userId: 7,
+      tenantId: "tenant-1",
+      model: "planning-test-model",
+      referenceManifestHash: "refs-concepts-schema",
+      product: {
+        productId: "product-1",
+        productName: "Travel bottle",
+        imageUrls: [],
+      },
+      conceptsOnly: true,
+    });
+
+    const call = mockCallLLMStructured.mock.calls.at(-1)?.[0] as {
+      zodSchema: { safeParse: (value: unknown) => { success: boolean } };
+    };
+    expect(call.zodSchema.safeParse({ conceptOptions: concepts }).success).toBe(
+      true
+    );
+  });
+
   it("bounds long marketplace descriptions to the planner's 500-character contract", async () => {
     const longDescription = "รายละเอียดสินค้า ".repeat(100);
     await generateStagedStoryArcPlanWithLLM({
