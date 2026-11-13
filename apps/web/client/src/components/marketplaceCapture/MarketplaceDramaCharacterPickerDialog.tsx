@@ -482,8 +482,12 @@ export function MarketplaceDramaCharacterPickerDialog({
                             {effectivePortraitUrl ? (
                               <AuthenticatedMediaImage
                                 src={effectivePortraitUrl}
-                                alt=""
-                                className="h-8 w-8 shrink-0 rounded-full object-cover"
+                                alt={`${character.name} — ${look?.variantLabel || "ภาพต้นแบบ"}`}
+                                className={
+                                  character.looks.length > 0
+                                    ? "h-14 w-12 shrink-0 rounded-md object-cover"
+                                    : "h-8 w-8 shrink-0 rounded-full object-cover"
+                                }
                               />
                             ) : (
                               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[9px] text-slate-700">
