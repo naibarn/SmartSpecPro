@@ -24218,7 +24218,9 @@ async function buildSeededStagedCharacterCastManifest(params: {
     .map((url, i) => ({
       index: i + 1,
       url: String(url || "").trim(),
-      role: i === 0 ? "primary_product" : "product_angle",
+      // The staged pipeline accepts only the canonical "product" role.
+      // Preserve the hero/angle distinction in the label instead.
+      role: "product",
       label: i === 0 ? "ภาพสินค้าหลัก" : `มุมมองสินค้าที่ ${i + 1}`,
       active: i === 0,
     }))

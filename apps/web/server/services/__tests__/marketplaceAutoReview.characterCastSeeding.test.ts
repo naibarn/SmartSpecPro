@@ -44,6 +44,26 @@ const PRODUCT_IMAGE_URLS = [
 ];
 
 describe("buildSeededStagedCharacterCastManifest (W2 seeding)", () => {
+  it("uses roles accepted by the staged pipeline for product references", async () => {
+    const result = await buildSeededStagedCharacterCastManifestForTest({
+      db: fakeDb([]),
+      auth: AUTH,
+      productImageUrls: PRODUCT_IMAGE_URLS,
+      characterCast: [{ characterName: "พิมพ์ชนก", url: "https://cdn.example.com/person.png" }],
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.slice(0, PRODUCT_IMAGE_URLS.length).map(item => item.role)).toEqual([
+      "product",
+      "product",
+    ]);
+    expect(result!.slice(0, PRODUCT_IMAGE_URLS.length).map(item => item.label)).toEqual([
+      "ภาพสินค้าหลัก",
+      "มุมมองสินค้าที่ 2",
+    ]);
+    expect(() => deriveStagedCastFromManifestForTest(result!)).not.toThrow();
+  });
+
   it("returns null when there is neither a cast NOR an uploaded anchor", async () => {
     const result = await buildSeededStagedCharacterCastManifestForTest({
       db: fakeDb([]),
