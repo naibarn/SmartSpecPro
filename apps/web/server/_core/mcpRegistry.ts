@@ -2530,6 +2530,18 @@ async function getMediaStatus(args: Record<string, unknown>, ctx: McpExecutionCo
   };
 }
 
+type McpCallerSourceUser = NonNullable<Awaited<ReturnType<typeof getUserById>>>;
+
+function toMcpCallerUser(user: McpCallerSourceUser) {
+  // The MCP auth lookup intentionally selects a minimal row; these nullable
+  // migration fields are not selected and stay null in the router context.
+  return {
+    ...user,
+    tenantIdentityMigrationReason: null,
+    tenantIdentityMigratedAt: null,
+  };
+}
+
 async function cancelMediaTask(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
   const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
   if (!taskId) throw new Error("task_id is required");
@@ -2538,12 +2550,13 @@ async function cancelMediaTask(args: Record<string, unknown>, ctx: McpExecutionC
   const caller = mediaRouter.createCaller({
     req: { ip: "127.0.0.1", headers: {} } as any,
     res: {} as any,
-    user,
+    user: toMcpCallerUser(user),
     userToken: null,
     privateVaultToken: null,
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   const result = await caller.cancelTask({ taskId });
   return { task_id: taskId, status: result.status ?? "canceled" };
@@ -2951,12 +2964,13 @@ async function createHermesCaller(ctx: McpExecutionContext) {
     caller: hermesConnectionsRouter.createCaller({
       req: { ip: "127.0.0.1", headers: {} } as any,
       res: {} as any,
-      user,
+      user: toMcpCallerUser(user),
       userToken: null,
       privateVaultToken: null,
       protectedSurfaceToken: null,
       tenantId: ctx.session.tenantId,
       publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
     }),
   };
 }
@@ -3021,12 +3035,13 @@ async function executeHermesMedia(args: Record<string, unknown>, ctx: McpExecuti
   const caller = mediaRouter.createCaller({
     req: { ip: "127.0.0.1", headers: {} } as any,
     res: {} as any,
-    user,
+    user: toMcpCallerUser(user),
     userToken: null,
     privateVaultToken: null,
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   const references = Array.isArray(args.reference_image_urls)
     ? args.reference_image_urls.filter((value): value is string => typeof value === "string").slice(0, 9)
@@ -3079,12 +3094,13 @@ async function submitRemotionRender(args: Record<string, unknown>, ctx: McpExecu
       smartaihubRemotionWorkerId: workerId,
     } as any,
     res: {} as any,
-    user,
+    user: toMcpCallerUser(user),
     userToken: null,
     privateVaultToken: null,
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   return caller.queueRender({ projectId, profile });
 }

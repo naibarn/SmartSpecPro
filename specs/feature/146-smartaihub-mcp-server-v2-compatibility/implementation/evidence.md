@@ -159,3 +159,17 @@ the authenticated tenant/user context.
 
 No commit was created because the checkout contains unrelated dirty work; all
 changes remain recoverable in the worktree.
+
+## Refreshed PR #403 context compatibility repair — 2026-10-10
+
+After refreshing PR #403 to `origin/main` `96016bd2207f65e97ef89d680d294ae633ad6bad`, CI run `38030855623` exposed four `TrpcContext` diagnostics in MCP-internal callers: the canonical context now requires `trustedAppContext`, but the four `createCaller` contexts in `mcpRegistry.ts` omitted it. These internal MCP contexts now provide `trustedAppContext: null`; they continue to use the authenticated MCP session tenant and do not derive tenant scope from request headers.
+
+Focused verification on the repaired worktree:
+
+- `pnpm --filter @smartspec/remotion-render run build`: PASS (required generated schema prerequisite).
+- Focused MCP registry/security/protocol/routes tests: PASS — 4 files, 33 tests; 1 file skipped, 3 tests skipped.
+- `npm run security:mcp146`: PASS — 23 files scanned, 0 findings.
+- `git diff --check`: PASS.
+- `npm run check:mcp146`: NOT_COMPLETED locally. The script invokes the full web `npm run check` with an 8 GiB TypeScript heap; it was stopped to honor the repository's local full-typecheck/RAM restriction. Exact-head CI is required for this gate.
+
+The refreshed pre-fix run `38030855623` still failed on the missing context field and has no MCP live URL/token. Its full production audit also failed on the then-current HyperFrames `sprintf-js` chain. The new #403 head must rerun CI after the four-field fix and the separate #405 dependency candidate. Live acceptance remains BLOCKED_EXTERNAL until an authorized non-production `MCP_SMOKE_URL`, least-privilege `MCP_SMOKE_TOKEN`, test tenant and identity are provisioned.
