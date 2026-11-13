@@ -352,6 +352,410 @@ export type StagedStoryArcPlan = {
   conversationMode?: StagedConversationMode;
 };
 
+export function buildStagedImagePrompt(input: {
+  plan: StagedStoryArcPlan;
+  shot: StagedStoryArcShot;
+  customManifest?: Array<{ url: string; role?: string; label?: string; active?: boolean }>;
+  /** This shot's per-shot look overrides, keyed by castId. Absent = default
+   *  looks, which is every pre-existing run. */
+  castLooks?: Record<string, ShotCastLook> | null;
+}): string {
+  const thai = input.plan.languagePlan?.promptLanguage === "th";
+
+  const activeItems = (input.customManifest || []).filter(
+    item => item && typeof item.url === "string" && item.url.trim() && item.active !== false
+  );
+  const productItems = activeItems.filter(item => item.role !== "character");
+  // Only THIS shot's characters — the same helper the dispatch path uses, so
+  // the `@ImageN` tags written below always match the images actually sent
+  // (`planning/marketplace-four-character-cast/plan.md` §5).
+  //
+  // The ORIGINAL manifest index is carried alongside, because `castId` and the
+  // `plan.cast` lookup are both positional over the FULL character list —
+  // indexing them by position in the filtered list would attribute shot 3's
+  // lone supporting character to `cast-1`.
+  const allCharacterItems = activeItems.filter(item => item.role === "character");
+  const shotCastIds = new Set(input.shot.castInShot ?? []);
+  const characterEntries = allCharacterItems
+    .map((item, castIndex) => ({ item, castIndex }))
+    .filter(
+      entry =>
+        shotCastIds.size === 0 ||
+        shotCastIds.has(castIdForCharacterIndex(entry.castIndex)),
+    );
+  const characterItems = characterEntries.map(entry => entry.item);
+
+  const hasProduct = productItems.length > 0;
+  const hasCharacter = characterItems.length > 0;
+  // Count-aware: only >=2 character reference items switch on the cast
+  // roster + two-shot staging rules. Exactly 0 or 1 character items keep the
+  // original single-tag `hasCharacter` behavior byte-for-byte.
+  //
+  // NOTE this is deliberately about how many people are IN THE FRAME, not how
+  // many of them speak — it drives the two-shot/over-the-shoulder staging
+  // language, which a host plus a silent supporting character needs just as
+  // much as two speakers. `resolveStagedConversationMode` (leads only) remains
+  // the authority for DIALOGUE.
+  const isConversation = characterItems.length >= 2;
+
+  const productTags = hasProduct
+    ? productItems.map((_, i) => `@Image${i + 1}`).join(", ")
+    : "@Image1";
+
+  const productCount = hasProduct ? productItems.length : 1;
+  const characterTags = hasCharacter
+    ? characterItems.map((_, i) => `@Image${productCount + i + 1}`).join(", ")
+    : "";
+
+  // Cast roster: names/roles/descriptors come from `plan.cast` (matched by
+  // position against the active character items); falls back to the
+  // manifest's own `label` or a generic "Person N" when `plan.cast` hasn't
+  // been wired by the caller yet.
+  // EVERY active character is in the frame and therefore in the roster — the
+  // old `.slice(0, 2)` silently dropped supporting characters from the prompt
+  // while still sending their reference images, which is precisely how an
+  // extra ends up standing in the shot with nothing to do
+  // (`planning/marketplace-four-character-cast/plan.md` P1).
+  // `tag` uses the position in THIS SHOT's ordered reference list (that is
+  // what the provider receives); `name`/`role`/`castId` come from the cast
+  // member's ORIGINAL roster position.
+  const castRoster = isConversation
+    ? characterEntries.map(({ item, castIndex }, i) => {
+        const castMember = input.plan.cast?.[castIndex];
+        const tag = `@Image${productCount + i + 1}`;
+        const name =
+          clean(castMember?.name) ||
+          clean(item.label) ||
+          `Person ${castIndex + 1}`;
+        const role =
+          castMember?.role ??
+          (castIndex === 0 ? "host" : castIndex === 1 ? "guest" : "support");
+        const descriptor = clean(castMember?.descriptor);
+        const castId = castMember?.castId ?? castIdForCharacterIndex(castIndex);
+        return { tag, name, role, descriptor, castId };
+      })
+    : [];
+
+  // `castRoster` is ALREADY this shot's cast — the old second filter here is
+  // gone with the per-shot selection above.
+  const rosterInShot = castRoster;
+
+  if (thai) {
+    const refLines = [
+      `ใช้ ${productTags} เป็นภาพอ้างอิงหลักของสินค้า โดยรักษารูปร่าง สี วัสดุ ฉลาก และสัดส่วนตามหลักฐานทุกประการ`,
+    ];
+    if (hasCharacter) {
+      refLines.push(
+        `ใช้ ${characterTags} เป็นภาพบุคคล/ตัวละครอ้างอิงหลัก (character identity lock) โดยรักษาใบหน้า ทรงผม รูปร่าง และลักษณะเฉพาะตัวของตัวละครหลักตามภาพอ้างอิงอย่างแม่นยำ`
+      );
+    } else {
+      refLines.push(
+        "ใช้ภาพบุคคล/ตัวละครอ้างอิงที่แนบมาเป็น identity lock หากมี โดยรักษารูปร่างและลักษณะตัวละครสอดคล้องกัน"
+      );
+    }
+
+    const conversationLines: string[] = [];
+    if (isConversation && rosterInShot.length > 0) {
+      conversationLines.push(
+        "นักแสดงในคลิปนี้:",
+        ...rosterInShot.map(entry =>
+          entry.descriptor
+            ? `${entry.tag} = ${entry.name} (${entry.role}) — ${entry.descriptor}`
+            : `${entry.tag} = ${entry.name} (${entry.role})`
+        )
+      );
+      // Supporting business, so the frame shows them DOING the thing the story
+      // planner authored rather than standing in shot
+      // (`planning/marketplace-four-character-cast/plan.md` §3).
+      const beatLines = (input.shot.supportingBeats ?? [])
+        .map(beat => {
+          const entry = rosterInShot.find(item => item.castId === beat.castId);
+          if (!entry || !clean(beat.action)) return null;
+          return `${entry.tag} (${entry.name}) กำลัง: ${clean(beat.action)}`;
+        })
+        .filter((line): line is string => line !== null);
+      if (beatLines.length > 0) {
+        conversationLines.push("การกระทำของตัวประกอบในช็อตนี้:", ...beatLines);
+      }
+    }
+
+    return [
+      `สร้างภาพรีวิวสินค้าแนวตั้ง 9:16 สำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
+      `เรื่องย่อที่ยืนยันแล้ว: ${input.plan.storySummary}`,
+      `เรื่องย่อของช็อต: ${input.shot.storySummary}`,
+      `ทิศทางภาพ: ${input.shot.visualSummary}`,
+      "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด",
+      "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
+      `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
+      ...refLines,
+      ...conversationLines,
+      "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
+      "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
+    ].join("\n");
+  }
+
+  const refLinesEng = [
+    `Use ${productTags} as the primary product reference and preserve the product's visible shape, color, materials, labels, and proportions exactly.`,
+  ];
+  if (hasCharacter) {
+    refLinesEng.push(
+      `Use ${characterTags} as the primary person/character reference image (character identity lock), preserving the character's facial features, identity, hairstyle, and appearance consistently.`
+    );
+  } else {
+    refLinesEng.push(
+      "If a person or character reference is supplied, preserve that identity consistently as a separate identity lock; never let it alter the product lock."
+    );
+  }
+
+  const conversationLinesEng: string[] = [];
+  if (isConversation && rosterInShot.length > 0) {
+    conversationLinesEng.push(
+      "Cast in this clip:",
+      ...rosterInShot.map(entry =>
+        entry.descriptor
+          ? `${entry.tag} = ${entry.name} (${entry.role}) — ${entry.descriptor}`
+          : `${entry.tag} = ${entry.name} (${entry.role})`
+      )
+    );
+    const beatLinesEng = (input.shot.supportingBeats ?? [])
+      .map(beat => {
+        const entry = rosterInShot.find(item => item.castId === beat.castId);
+        if (!entry || !clean(beat.action)) return null;
+        return `${entry.tag} (${entry.name}) is: ${clean(beat.action)}`;
+      })
+      .filter((line): line is string => line !== null);
+    if (beatLinesEng.length > 0) {
+      conversationLinesEng.push("Supporting action in this shot:", ...beatLinesEng);
+    }
+  }
+
+  return [
+    `Create one vertical 9:16 product-review image for shot ${input.shot.shotId}.`,
+    `Approved story summary: ${input.plan.storySummary}`,
+    `Approved shot brief: ${input.shot.storySummary}`,
+    `Visual direction: ${input.shot.visualSummary}`,
+    "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product.",
+    "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
+    `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
+    ...refLinesEng,
+    ...conversationLinesEng,
+    "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
+    "Keep the product clearly visible and do not render the dialogue as on-screen text.",
+  ].join("\n");
+}
+
+/**
+ * Deterministic (no LLM call) two-voice descriptor for a two-person
+ * conversation clip. Mirrors the style of
+ * `buildMarketplaceAutoReviewVoiceProfileDescriptor` in
+ * `marketplaceAutoReviewService.ts` (facts-only, no invented details) but
+ * intentionally does NOT reuse that legacy single-narrator "VOICE
+ * CONSISTENCY LOCK" line — that lock forbids switching narrator, which would
+ * directly defeat a two-person conversation.
+ *
+ * NOTE (skill-first restore, `planning/marketplace-staged-skill-first-restore`):
+ * this descriptor's text is no longer injected into `buildStagedVideoPrompt`
+ * — directing HOW the two voices should sound/perform is the
+ * `product-review-sequential-storyboard` skill's job (see its Two-Person
+ * Conversation Mode section), not this deterministic fallback's. The
+ * function stays exported (it has no callers left in this file) as a
+ * facts-only building block in case a future caller needs a deterministic
+ * cast-voice label without any performance direction attached.
+ */
+
+export function buildStagedTwoVoiceDescriptor(
+  cast: StagedCastMember[]
+): string {
+  // Two VOICES — read the leads, never the first two roster entries.
+  const [host, guest] = selectStagedLeadCast(cast);
+  const describeMember = (
+    member: StagedCastMember | undefined,
+    fallbackName: string,
+    fallbackRole: "host" | "guest"
+  ): string => {
+    const name = clean(member?.name) || fallbackName;
+    const roleLabel = member?.role ?? fallbackRole;
+    const extra = [clean(member?.ageRange ?? undefined), clean(member?.descriptor)]
+      .filter(Boolean)
+      .join(", ");
+    return extra ? `${name} (${roleLabel}, ${extra})` : `${name} (${roleLabel})`;
+  };
+  const hostLabel = describeMember(host, "the host", "host");
+  const guestLabel = describeMember(guest, "the guest", "guest");
+  return `two distinct, consistent voices — ${hostLabel} and ${guestLabel} — each speaker keeps the exact same voice, timbre, tone, and pacing across every clip; never swap voices between the two speakers.`;
+}
+
+export function buildStagedVideoPrompt(input: {
+  plan: StagedStoryArcPlan;
+  shot: StagedStoryArcShot;
+}): string {
+  const thai = input.plan.languagePlan?.promptLanguage === "th";
+  const durationSeconds = input.shot.durationSeconds;
+
+  const isConversation = input.plan.conversationMode === "two_person_conversation";
+  // `dialogue` is the editable, hashed source of truth. `dialogueTurns` is a
+  // derived cache and can be stale on older runs, so never append both forms
+  // to a prompt. Vertical Drama uses the same pattern: resolve each spoken
+  // name against labeled character portraits, then bind it to the matching
+  // face in the accepted start frame.
+  const namedDialogue = parseSpeakerNamedDialogue(input.shot.dialogue);
+  const cast = input.plan.cast ?? [];
+  const usesSpeakerBinding =
+    isConversation || (namedDialogue !== undefined && cast.length > 0);
+  const normalizeName = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const castByName = new Map(
+    cast.map(member => [normalizeName(member.name), member])
+  );
+  const renderSpeaker = (speakerName: string) =>
+    castByName.get(normalizeName(speakerName))?.name ?? speakerName;
+
+  const conversationLinesTH: string[] = [];
+  const conversationLinesEng: string[] = [];
+  if (usesSpeakerBinding) {
+    const visibleSpeakerLines = (namedDialogue ?? []).map(line => {
+      const speakerName = renderSpeaker(line.speakerName);
+      const fallbackCueEn =
+        "not visually resolved by this text-only fallback; use offscreen voice-over and keep every visible mouth closed";
+      const fallbackCueTh =
+        "fallback แบบข้อความไม่สามารถตรวจยืนยันใบหน้าได้; ใช้เสียงบรรยายนอกจอและปิดปากตัวละครทุกคนในภาพ";
+      return { speakerName, fallbackCueEn, fallbackCueTh };
+    });
+    if (visibleSpeakerLines.length > 0) {
+      conversationLinesTH.push(
+        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
+        ...visibleSpeakerLines.map(
+          ({ speakerName, fallbackCueTh }) =>
+            `- ${speakerName}: ${fallbackCueTh}`
+        ),
+        "รหัส cast และป้าย @Image เป็นข้อมูลเฉพาะตอนเขียน Prompt เท่านั้น; ห้ามใช้แทนจุดสังเกตของคนในภาพจริง"
+      );
+      conversationLinesEng.push(
+        "SPEAKER VISUAL MAP FOR THIS SHOT (safe fallback):",
+        ...visibleSpeakerLines.map(
+          ({ speakerName, fallbackCueEn }) =>
+            `- ${speakerName}: ${fallbackCueEn}`
+        ),
+        "Cast IDs and @Image labels are authoring-only metadata; never use them as visual identifiers in the rendered video prompt."
+      );
+    }
+    if (namedDialogue) {
+      const cueForSpeaker = (speakerName: string, language: "th" | "en") => {
+        const cue = visibleSpeakerLines.find(
+          item => normalizeName(item.speakerName) === normalizeName(speakerName)
+        );
+        return language === "th"
+          ? cue?.fallbackCueTh ?? "ใช้เสียงบรรยายนอกจอเพราะยังจับคู่ใบหน้าไม่ได้"
+          : cue?.fallbackCueEn ?? "not visually resolved by this text-only fallback; use offscreen voice-over";
+      };
+      conversationLinesTH.push(
+        "บทพูดที่อนุมัติแล้ว (พูดแต่ละบรรทัดครั้งเดียว ตามลำดับและข้อความนี้เท่านั้น):",
+        ...namedDialogue.map((line, i) =>
+          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "th")}): "${line.line}"`
+        )
+      );
+      conversationLinesEng.push(
+        "Approved dialogue (speak each line exactly once, in this order, with no added or rewritten speech):",
+        ...namedDialogue.map((line, i) =>
+          `${i + 1}. ${renderSpeaker(line.speakerName)} (${cueForSpeaker(line.speakerName, "en")}): "${line.line}"`
+        )
+      );
+    } else {
+      conversationLinesTH.push(
+        "บทพูดที่อนุมัติแล้ว (พูดข้อความนี้ครั้งเดียวตรงตามต้นฉบับ ห้ามเพิ่มหรือเขียนใหม่):",
+        input.shot.dialogue
+      );
+      conversationLinesEng.push(
+        "Approved dialogue (speak this exact text once; do not add or rewrite speech):",
+        input.shot.dialogue
+      );
+    }
+    conversationLinesTH.push(
+      "ล็อกผู้พูดกับใบหน้า: fallback นี้ไม่มีการตรวจภาพเพื่อจับคู่ใบหน้า จึงห้ามเดาตัวตนหรือสั่งขยับปาก ให้ใช้เสียงบรรยายนอกจอเท่านั้น"
+    );
+    conversationLinesEng.push(
+      "SPEAKER-TO-FACE LOCK: This text-only fallback has not visually matched the portraits to people in the accepted shot. Do not guess or assign visible lip movement; use offscreen voice-over and keep every visible mouth closed."
+    );
+  }
+
+  // Supporting business + optional short line
+  // (`planning/marketplace-four-character-cast/plan.md` §3). Kept in its own
+  // block, AFTER the lead turns, so a supporting line can never be mistaken
+  // for one of the two main voices or reorder the conversation.
+  const supportingBeats = (input.shot.supportingBeats ?? []).filter(beat =>
+    clean(beat.action)
+  );
+  if (supportingBeats.length > 0) {
+    const castNameById = new Map(
+      (input.plan.cast ?? []).map(member => [member.castId, member.name])
+    );
+    const describeBeat = (beat: StagedSupportingBeat) => {
+      const name = castNameById.get(beat.castId) || beat.castId;
+      const line = clean(beat.line);
+      return { name, action: clean(beat.action), line };
+    };
+    conversationLinesTH.push(
+      "ตัวประกอบในช็อตนี้ (ไม่ใช่ผู้พูดหลัก):",
+      ...supportingBeats.map(beat => {
+        const { name, action, line } = describeBeat(beat);
+        return line
+          ? `- ${name} กำลัง ${action} และพูดสั้น ๆ ว่า "${line}"`
+          : `- ${name} กำลัง ${action} โดยไม่มีบทพูด`;
+      })
+    );
+    conversationLinesEng.push(
+      "Supporting cast in this shot (not a main speaker):",
+      ...supportingBeats.map(beat => {
+        const { name, action, line } = describeBeat(beat);
+        return line
+          ? `- ${name} is ${action}, with one short line: "${line}"`
+          : `- ${name} is ${action}, with no spoken line`;
+      })
+    );
+  }
+
+  if (thai) {
+    return [
+      `สร้างวีดีโอรีวิวสินค้าแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีสำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
+      `ใช้ภาพที่ยอมรับแล้วของช็อตที่ ${input.shot.shotId} เป็นแหล่งภาพต้นฉบับที่ต้องคงเอกลักษณ์ไว้`,
+      ...(usesSpeakerBinding ? [] : [`บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`]),
+      `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
+      ...conversationLinesTH,
+      usesSpeakerBinding
+        ? `กล้อง/การกระทำ: ต่อจากภาพที่อนุมัติและแสดงการกระทำเดียวตามทิศทางนี้: ${input.shot.visualSummary}; คงสินค้าและตำแหน่งให้ต่อเนื่อง`
+        : `เปิดจากภาพที่ยอมรับแล้วของช็อตนี้ กล้อง${input.shot.visualSummary} และทำการกระทำหลักเพียงหนึ่งอย่างตามทิศทางภาพ โดยคงรูปทรง สี วัสดุ และตำแหน่งของสินค้าให้ต่อเนื่อง`,
+      usesSpeakerBinding
+        ? `จังหวะ: เริ่มการกระทำช่วงต้น แสดงชัดช่วงกลาง แล้วหยุดอย่างเป็นธรรมชาติก่อนครบ ${durationSeconds} วินาที`
+        : `จังหวะเวลา: ช่วงต้นตั้งภาพและเริ่มการกระทำ ช่วงกลางแสดงการเคลื่อนไหวให้เห็นชัด ช่วงท้ายหยุดอย่างเป็นธรรมชาติภายใน ${durationSeconds} วินาที; การเคลื่อนไหวต้องนุ่มนวลและสมจริง`,
+      usesSpeakerBinding
+        ? "เสียง: พูดเฉพาะบทที่อนุมัติให้ตรงตามข้อความ ห้ามเพิ่มเสียงบรรยายหรือประโยคอื่น; ห้ามเพิ่มคำกล่าวอ้าง ข้อความ โลโก้ หรือลายน้ำ"
+        : "ใช้เสียงบทพูดที่ยืนยันแล้วตามตัวอักษร ไม่เพิ่มบทพูดอื่น; ห้ามเพิ่มคำกล่าวอ้าง ราคา ข้อความบนจอ caption โลโก้ ลายน้ำ หรือ UI ที่ไม่มีหลักฐาน",
+    ].join("\n");
+  }
+  return [
+    `Create a ${durationSeconds}-second vertical 9:16 product-review video for shot ${input.shot.shotId}.`,
+    `Use the accepted image artifact for shot ${input.shot.shotId} as the exact visual source.`,
+    ...(usesSpeakerBinding ? [] : [`Approved dialogue (must not be rewritten): ${input.shot.dialogue}`]),
+    `Approved story context: ${input.shot.storySummary}`,
+    ...conversationLinesEng,
+    usesSpeakerBinding
+      ? `Camera/action: continue from the accepted image and show one clear action matching: ${input.shot.visualSummary}. Preserve product design and placement.`
+      : `Camera and action: start from the accepted image, then show one clear action matching this shot's visual direction: ${input.shot.visualSummary}. Keep the product's shape, color, materials, and placement consistent.`,
+    usesSpeakerBinding
+      ? `Pacing: begin early, show the action clearly mid-shot, then settle naturally before ${durationSeconds} seconds.`
+      : `Timing: establish the frame and begin the action early, show the movement clearly through the middle, and settle naturally before the ${durationSeconds}-second shot ends. Use smooth, physically coherent motion.`,
+    usesSpeakerBinding
+      ? "Audio: speak only the approved lines verbatim, naturally; add no narration or other speech."
+      : "Audio: speak only the approved dialogue exactly as written, with natural pacing and relevant room ambience; do not add narration or other lines.",
+    ...(usesSpeakerBinding
+      ? []
+      : ["If a person or character reference is supplied, preserve that identity consistently throughout the shot."]),
+    usesSpeakerBinding
+      ? "Photorealistic vertical 9:16 commercial video. No unsupported claims, on-screen text, captions, logos, watermarks, or marketplace UI."
+      : "Photorealistic commercial short-form video, vertical 9:16. Do not add unsupported claims, price text, captions, logos, watermarks, or marketplace UI.",
+  ].join("\n");
+}
+
 export function buildStagedCheckpoint(input: {
   checkpointId: string;
   kind: HumanApprovalCheckpointV1["kind"];
