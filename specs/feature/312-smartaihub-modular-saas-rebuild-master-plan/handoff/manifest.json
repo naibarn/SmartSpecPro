@@ -4,7 +4,8 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
-      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
+      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
     ],
     "required": false,
     "status": "PARTIAL"
@@ -30,27 +31,32 @@
   "blockers": [
     {
       "class": "HUMAN_UAT_PENDING",
-      "description": "Authenticated visual and credit-ledger acceptance has not been recorded against exact development release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4. This is an open UAT evidence gap, not a sign-in credential failure.",
+      "description": "Authenticated visual and chat/credit acceptance has not been recorded against exact development release f31c0667d985873c2202f619e19a978bf45c0728. This remains an open UAT evidence gap.",
       "id": "authenticated-chat-uat",
-      "next_action": "Use the normal owner account/MFA session to review release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 at desktop/tablet/mobile, exercise Chat and panel behavior, send one controlled queued text turn, reload history, and verify the exact credit-ledger delta; record evidence without storing credentials.",
+      "next_action": "Use the normal owner account/MFA session to review f31c0667d985873c2202f619e19a978bf45c0728 at desktop/tablet/mobile: switch Thai/English while Chat is open, verify all UI/accessibility text, timestamps/numbers and locale persistence after reload, then continue Chat/credit UAT; do not store credentials.",
       "requirements": [
         "REQ-98B30E4A4A11",
         "REQ-FB597F9F6A31",
         "REQ-272D8958200D",
-        "REQ-BA91299B7E6E"
+        "REQ-BA91299B7E6E",
+        "REQ-10502EC1FA83",
+        "REQ-63FAA80C0131",
+        "REQ-6D79BA4D5C04",
+        "REQ-B87850387915",
+        "REQ-D17E7B43470B"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
-    "expected_spec_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b"
+    "expected_canonical_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+    "expected_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01"
   },
   "continuation": {
-    "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
+    "next_action": "Perform authenticated Thai/English Chat acceptance on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch language while Chat is open; inspect every UI region, Astryx accessibility labels, dates/numbers and persistence after remount/reload at desktop/tablet/mobile. Keep acceptance partial until recorded. Then continue existing Chat/credit UAT, upload contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark.",
     "next_ready_workunit": "authenticated-chat-uat-responsive-review-and-attachment-api",
-    "reactivation_predicate": "Use the normal owner account/MFA session or owner-provided UAT evidence against the exact deployed fc97012613dcf65a7ece07c75df9d8aea2f852d5 release. Verify footer bottom pinning, language and all seven Astryx themes across desktop/tablet/mobile; do not store credentials.",
-    "resume_point": "2026-11-12: smartaihub-platform/main@fc97012613dcf65a7ece07c75df9d8aea2f852d5 is integrated and deployed to https://aimarkethubs.com (modular-debian-dev). Release modular-debian-dev-fc97012613dcf65a7ece07c75df9d8aea2f852d5-sidebar-footer-astryx-themes; receipt SHA-256 f31449e5f991ffe205f2885f13ab6a168d5555ac87483ce6787eb4470e91ba25. Chat package tests (4 files/33 tests), typecheck, build, exact-source Core/Shell/Chat builds, release-controller tests (11), asset hash checks and local/public smoke pass. SPEC-312 R1.12 records pinned sidebar footer, persisted language and seven working Astryx themes. Authenticated responsive visual acceptance remains open; continue the existing Chat/credit UAT, upload, Cloud Execution status, Queue/DO resilience and matched benchmark gaps.",
-    "waiting_predicate": "The normal owner signed-in account/MFA session is needed only for authenticated visual/credit acceptance; no credential reset or MFA bypass is needed. Continue independent implementation of the truthful Cloud Execution status, upload contract, Queue/DO reliability proof and matched performance benchmark. Keep smartaihub.app and smartsihub.com untouched."
+    "reactivation_predicate": "Use the normal owner signed-in account/MFA session on exact development release f31c0667d985873c2202f619e19a978bf45c0728 at aimarkethubs.com. Verify Thai/English across all Chat and shell states, accessibility names, localized timestamps/numbers and persisted selection after reload at desktop/tablet/mobile; record evidence without credentials.",
+    "resume_point": "2026-11-13: smartaihub-platform/main@f31c0667d985873c2202f619e19a978bf45c0728 is integrated and deployed to https://aimarkethubs.com (modular-debian-dev). Release modular-debian-dev-f31c0667d985873c2202f619e19a978bf45c0728-locale-propagation; release-manifest SHA-256 1877dbd7d0348ef3c40769e0defbdafd2c1005ce2fda83ce50697b72b5003b9c. Core/Shell/Chat artifact digests and served Chat/Shell asset parity are recorded in handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md. Typechecks and builds passed; no tests were run. Authenticated Thai/English and responsive UAT remains open; continue existing Chat/credit, upload, Cloud Execution status, Queue/DO and matched benchmark gaps. The previous service on port 3100 remains rollback.",
+    "waiting_predicate": "Only authenticated visual/interaction acceptance requires the normal owner MFA session on f31c0667d985873c2202f619e19a978bf45c0728; no credential reset or MFA bypass is needed. Continue independent implementation of Cloud Execution status, upload contract, Queue/DO reliability proof and matched performance benchmark. Keep smartaihub.app and production smartsihub.com untouched."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -96,7 +102,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:76ee4453c400ecd964f724f34d31b52c5d134e11e5b2de1d0aa6731bd8bdf3fe",
+    "artifact_digest": null,
     "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
     "evidence": [
       "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
@@ -112,10 +118,11 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
-      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
+      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
     ],
     "required": false,
-    "source_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+    "source_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
     "status": "PASS"
   },
   "disposition": {
@@ -134,18 +141,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 67,
+  "generation": 70,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+    "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-12T16:01:15.291826Z",
+      "last_evidence_at": "2026-11-13T00:26:02.389856Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.12",
+    "revision": "1.13",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -166,7 +173,8 @@
       "78018b7a50c05234071e31f6b1361a70440915a3",
       "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
       "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
-      "fc97012613dcf65a7ece07c75df9d8aea2f852d5"
+      "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+      "f31c0667d985873c2202f619e19a978bf45c0728"
     ],
     "mapping": [],
     "source_paths": [
@@ -201,9 +209,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+    "canonical_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
     "integrated": true,
-    "integrated_at": "2026-11-12T15:44:30Z"
+    "integrated_at": "2026-11-13T07:18:00+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -386,6 +394,35 @@
           "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md"
         ],
         "verification_method": "Exact-source Chat package tests/typecheck/build and deployed public health/asset smoke pass; full authenticated desktop/tablet/mobile acceptance remains open."
+      },
+      "REQ-10502EC1FA83": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L281"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L281",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/modules/chat/src/ui/i18n.tsx",
+          "smartaihub-platform/apps/saas-shell/src/App.tsx",
+          "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Perform the authenticated Thai/English acceptance on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728 at desktop, tablet and mobile; retain acceptance as partial until recorded.",
+        "requirement_digest": "442e356230412fe1def8e13168852b917d4c4e003ed9d33ebca4c69a304e9730",
+        "requirement_id": "REQ-10502EC1FA83",
+        "requirement_text": "- Acceptance SHALL switch Thai/English while Chat is open and verify all interface regions, accessible control names, shell status/error states, timestamp and numeric formatting, plus persistence after reload. This change does not alter chat content, authentication, tenant scope, model/provider selection, queue/credit behavior, themes or deployment targets.",
+        "source_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "verification_method": "Automated scoped typechecks/builds, exact-source Worker dry-runs, release smoke and served asset parity passed. Required signed-in visual/interaction checks across every UI area, formatting and reload persistence have not been performed."
       },
       "REQ-1147B298B5F9": {
         "applicability": "APPLICABLE",
@@ -792,6 +829,68 @@
         ],
         "verification_method": "Focused component behavior and release assets are verified; test authenticated visual layout at desktop/tablet/mobile before acceptance."
       },
+      "REQ-63FAA80C0131": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L278"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L278",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/modules/chat/src/ui/i18n.tsx",
+          "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+          "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
+          "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
+          "smartaihub-platform/apps/saas-shell/src/App.tsx",
+          "smartaihub-platform/apps/saas-shell/src/pages/ChatPage.tsx",
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Authenticated user should switch Thai/English while Chat is open and review every region and accessible label on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728.",
+        "requirement_digest": "cdc536c578fefc989bdf7b369e651fef4ec6260d380718fb908295044fc9393e",
+        "requirement_id": "REQ-63FAA80C0131",
+        "requirement_text": "- The Thai/English selector SHALL update all static, customer-facing text in the mounted Chat interface immediately, including navigation, workspace controls, model selection, conversation history and details, composer, attachment notices, loading/readiness/error states and accessible names. The host shell's Chat loading, module error, sign-out error and service-unavailable states SHALL follow the same selected locale.",
+        "source_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "verification_method": "Chat and shell scoped typechecks/builds, exact-SHA Worker dry-runs, deployment smoke, and served Chat/Shell asset byte-parity. Authenticated visual confirmation of every region/accessibility label remains open."
+      },
+      "REQ-6D79BA4D5C04": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L279"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L279",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/modules/chat/src/ui/i18n.tsx",
+          "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+          "smartaihub-platform/modules/chat/src/ui/ConversationList.tsx",
+          "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Authenticated user should switch locale, inspect date/number formatting, navigate/remount Chat and reload on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728.",
+        "requirement_digest": "a3a7b220e6682ed5ed993e528735271c4fc840ac84e9b8641239ce6b3c66cf24",
+        "requirement_id": "REQ-6D79BA4D5C04",
+        "requirement_text": "- Chat timestamps and numeric usage/credit values SHALL be formatted for the selected locale. The selected language SHALL remain stored under `smartaihub.locale` and SHALL be restored after a module remount, route transition or page reload.",
+        "source_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "verification_method": "Scoped Chat and shell typechecks/builds, exact-SHA Worker dry-runs, deployment smoke, and served asset byte-parity. Authenticated reload/remount review remains open."
+      },
       "REQ-753B40F87552": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -965,6 +1064,35 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-B87850387915": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L280"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L280",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform/modules/chat/src/ui/i18n.tsx",
+          "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
+          "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "During authenticated locale UAT on release f31c0667d985873c2202f619e19a978bf45c0728, confirm existing user text and provider/model identifiers remain unchanged after switching language.",
+        "requirement_digest": "957f8671a2380d259a991970a8da2d223695f85eb52ead07f5e4e9fb3428e9cc",
+        "requirement_id": "REQ-B87850387915",
+        "requirement_text": "- User-provided names/content and provider/model identifiers SHALL retain their original values; locale switching changes interface copy and formatting, not user data or provider identifiers.",
+        "source_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
+        ],
+        "verification_method": "Source review confirms locale translation is applied to static interface labels/formatters and preserves user-authored content plus provider/model identifiers; exact-SHA Chat build and deployed asset parity passed."
+      },
       "REQ-BA91299B7E6E": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1029,24 +1157,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+        "evidence_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
         "final_state": "PARTIAL",
         "implementation_evidence": [
+          "smartaihub-platform/modules/chat/src/ui/i18n.tsx",
           "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
-          "smartaihub-platform/modules/chat/src/ui/workspace.test.tsx",
-          "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated desktop/tablet/mobile browser review on release fc97012613dcf65a7ece07c75df9d8aea2f852d5; verify the pinned footer and responsive reachability.",
+        "next_action": "On release f31c0667d985873c2202f619e19a978bf45c0728, verify the selector placement, language change and persisted selection after authenticated reload at desktop/tablet/mobile.",
         "requirement_digest": "4057e9abb797a17112f767c0c922b2244b0651b7d91944e0180b2705848bed8e",
         "requirement_id": "REQ-D17E7B43470B",
         "requirement_text": "- The Thai/English language selector SHALL appear immediately above the account row, use the existing `smartaihub.locale` preference, and retain its selected state across reloads.",
-        "source_spec_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "source_spec_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "successor_mapping": [],
         "verification_evidence": [
-          "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
+          "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
         ],
-        "verification_method": "Focused UI test switches language and verifies smartaihub.locale plus document language; initialization reads the persisted preference. Authenticated visual review remains open."
+        "verification_method": "Scoped build and deployed asset review confirm locale persistence uses smartaihub.locale and is shared with the host shell. Authenticated reload and pinned-footer visual review remain open."
       },
       "REQ-D4E61B7642C0": {
         "applicability": "APPLICABLE",
@@ -1174,10 +1302,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-12T16:01:15.291826Z",
+    "reconciled_at": "2026-11-13T00:26:02.389856Z",
     "sources": [
       {
-        "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1207,7 +1335,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "b613213291e5e56cefb85c7344c4186fa7b7965bc7b2173ba7b7f7b9e4fa4002",
+        "digest": "7398256d23bc9614bc063a70cf486113cec6e549c09139f15949b3c68ecd5731",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1252,7 +1380,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
       },
       {
-        "digest": "48768cdfeb2c287d4572c2f3d8259087e476fecf9ac6f78eefcdd2f56186226c",
+        "digest": "798b3f4422ded81fec0e46253dd39ab676ed5afa4ef6235ba0ab81c7789c6cc8",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
@@ -1390,7 +1518,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -1538,14 +1666,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1575,7 +1703,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "b613213291e5e56cefb85c7344c4186fa7b7965bc7b2173ba7b7f7b9e4fa4002",
+        "digest": "7398256d23bc9614bc063a70cf486113cec6e549c09139f15949b3c68ecd5731",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1620,7 +1748,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
       },
       {
-        "digest": "48768cdfeb2c287d4572c2f3d8259087e476fecf9ac6f78eefcdd2f56186226c",
+        "digest": "798b3f4422ded81fec0e46253dd39ab676ed5afa4ef6235ba0ab81c7789c6cc8",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       }
@@ -1631,16 +1759,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 29,
+    "applicable": 33,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
     "pass": 0,
-    "total": 59,
-    "unresolved": 58
+    "total": 63,
+    "unresolved": 62
   },
   "schema_version": 1,
-  "updated_at": "2026-11-12T16:01:15.291826Z",
+  "updated_at": "2026-11-13T00:31:07.300999Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1657,11 +1785,12 @@
       "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
       "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
-      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
+      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
+      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+    "sha": "f31c0667d985873c2202f619e19a978bf45c0728",
     "status": "PARTIAL",
     "task_regressions": []
   }

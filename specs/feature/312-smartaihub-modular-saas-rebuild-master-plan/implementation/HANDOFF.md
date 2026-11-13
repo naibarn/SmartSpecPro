@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `48`
-- Updated (UTC): `2026-11-12T15:51:41.579193+00:00`
+- State generation: `49`
+- Updated (UTC): `2026-11-13T00:30:17.723850+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `fc97012613dcf65a7ece07c75df9d8aea2f852d5`
+- Latest recorded merged Main SHA: `f31c0667d985873c2202f619e19a978bf45c0728`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-09-sidebar-footer-language-and-astryx-themes`
-- Next action: Authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify pinned profile/settings/sign-out footer, language placement and switching, every Astryx theme and persistence, and Chat usability. Keep overall SPEC-312 acceptance partial.
+- Next action: Authenticated review on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch Thai/English while Chat is open, check every UI region/accessibility label/date/number, reload and confirm persistence at desktop/tablet/mobile. Keep overall SPEC-312 acceptance partial.
 
 ## Sections
 
@@ -25,7 +25,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-06-provider-admission-and-queue-consumer | checkpointed | — | — | 78018b7a50c05234071e31f6b1361a70440915a3 | 78018b7a50c05234071e31f6b1361a70440915a3 | Enabled-model catalog, provider admission, credit reservation/settlement and consumer are integrated. Do not replay; live provider/credit UAT plus Durable Object contention/restart proof remain open with section 07. |
 | section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | Authenticated browser UAT on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5: verify Chat entry/workspace, enabled model/Auto, queued response/history and credit delta; review navigation placeholders, tabs/collapse, pinned account/language footer, all Astryx themes, and responsive layout at desktop/tablet/mobile. Keep Cloud Execution status, upload, Queue/DO recovery and matched benchmark gaps open. |
 | section-08-chat-sidebar-tabs-and-collapse | checkpointed | — | — | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | Authenticated browser UAT on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5: review menu/history tab switching, history selection, workspace/account controls, collapse/expand context restoration and composer/theme reachability at desktop/tablet/mobile. Keep parent acceptance partial. |
-| section-09-sidebar-footer-language-and-astryx-themes | checkpointed | — | — | fc97012613dcf65a7ece07c75df9d8aea2f852d5 | fc97012613dcf65a7ece07c75df9d8aea2f852d5 | Authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify pinned profile/settings/sign-out footer, language placement and switching, every Astryx theme and persistence, and Chat usability. Keep overall SPEC-312 acceptance partial. |
+| section-09-sidebar-footer-language-and-astryx-themes | checkpointed | — | — | f31c0667d985873c2202f619e19a978bf45c0728 | f31c0667d985873c2202f619e19a978bf45c0728 | Authenticated review on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch Thai/English while Chat is open, check every UI region/accessibility label/date/number, reload and confirm persistence at desktop/tablet/mobile. Keep overall SPEC-312 acceptance partial. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -36,6 +36,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.
 - Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.
 - Authenticated desktop/tablet/mobile visual and interaction UAT for release fc97012613dcf65a7ece07c75df9d8aea2f852d5 is not recorded; verify panel tabs, history, workspace/account, collapse/expand, pinned sidebar footer, language switching/persistence, all seven Astryx themes/persistence, composer, Chat response/history and credit-ledger delta using the normal owner MFA session.
+- Authenticated desktop/tablet/mobile UAT of complete Thai/English propagation, Astryx-generated accessibility labels, localized date/number formats, and locale persistence on release f31c0667d985873c2202f619e19a978bf45c0728.
 
 ## Resume
 

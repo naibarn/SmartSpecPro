@@ -69,9 +69,9 @@
     },
     "section-09-sidebar-footer-language-and-astryx-themes": {
       "status": "checkpointed",
-      "next_action": "Authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify pinned profile/settings/sign-out footer, language placement and switching, every Astryx theme and persistence, and Chat usability. Keep overall SPEC-312 acceptance partial.",
-      "checkpoint_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
-      "merged_main_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5"
+      "next_action": "Authenticated review on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch Thai/English while Chat is open, check every UI region/accessibility label/date/number, reload and confirm persistence at desktop/tablet/mobile. Keep overall SPEC-312 acceptance partial.",
+      "checkpoint_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
+      "merged_main_sha": "f31c0667d985873c2202f619e19a978bf45c0728"
     }
   },
   "pre_commit": {
@@ -83,12 +83,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 48,
-  "updated_at": "2026-11-12T15:51:41.579193+00:00",
+  "generation": 49,
+  "updated_at": "2026-11-13T00:30:17.723850+00:00",
   "progress": {
     "active_section": "section-09-sidebar-footer-language-and-astryx-themes",
-    "next_action": "Authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify pinned profile/settings/sign-out footer, language placement and switching, every Astryx theme and persistence, and Chat usability. Keep overall SPEC-312 acceptance partial.",
-    "merged_main_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+    "next_action": "Authenticated review on aimarkethubs.com release f31c0667d985873c2202f619e19a978bf45c0728: switch Thai/English while Chat is open, check every UI region/accessibility label/date/number, reload and confirm persistence at desktop/tablet/mobile. Keep overall SPEC-312 acceptance partial.",
+    "merged_main_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
@@ -96,7 +96,8 @@
       "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
       "ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.",
       "Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.",
-      "Authenticated desktop/tablet/mobile visual and interaction UAT for release fc97012613dcf65a7ece07c75df9d8aea2f852d5 is not recorded; verify panel tabs, history, workspace/account, collapse/expand, pinned sidebar footer, language switching/persistence, all seven Astryx themes/persistence, composer, Chat response/history and credit-ledger delta using the normal owner MFA session."
+      "Authenticated desktop/tablet/mobile visual and interaction UAT for release fc97012613dcf65a7ece07c75df9d8aea2f852d5 is not recorded; verify panel tabs, history, workspace/account, collapse/expand, pinned sidebar footer, language switching/persistence, all seven Astryx themes/persistence, composer, Chat response/history and credit-ledger delta using the normal owner MFA session.",
+      "Authenticated desktop/tablet/mobile UAT of complete Thai/English propagation, Astryx-generated accessibility labels, localized date/number formats, and locale persistence on release f31c0667d985873c2202f619e19a978bf45c0728."
     ]
   }
 }

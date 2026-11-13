@@ -2,15 +2,15 @@
 spec_id: 312
 semantic_id: smartaihub.modular-saas-rebuild-program
 title: SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory
-revision: R1.12
-date: 2026-11-12
+revision: R1.13
+date: 2026-11-13
 status: PARTIALLY_IMPLEMENTED
 scope: Architecture, census, module allocation, migration ordering, acceptance governance
 ---
 
 # SPEC-312 — Modular SaaS Rebuild: Master Program and Complete Inventory
 
-> **Current-revision note (R1.12, 2026-11-12):** Earlier R0.x–R1.11 proposal text is retained for provenance. R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
+> **Current-revision note (R1.13, 2026-11-13):** Earlier R0.x–R1.12 proposal text is retained for provenance. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI, responsive behavior and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.
 
 ## 0. Owner decision
 
@@ -272,3 +272,10 @@ Acceptance SHALL include authenticated visual and interaction review of the depl
 - The Chat theme selector SHALL offer every Astryx theme supported by the installed design-system release: Neutral, Butter, Chocolate, Gothic, Matcha, Stone and Y2K. Selecting a theme SHALL apply that theme's Astryx tokens/styles to the Chat surface and persist the selection across reloads. Neutral is the default; Gothic uses dark mode.
 - Theme packages and their generated registry/CSS SHALL be loaded by the independently built Chat module. They SHALL remain compatible with the installed Astryx Core release and SHALL NOT require a monolithic shell build or a return to Express.
 - Acceptance SHALL verify footer ordering and bottom pinning, language persistence, all seven theme choices changing the active Astryx theme, theme persistence, and reachable controls at desktop, tablet and mobile widths. This UI change does not alter identity, tenant scope, queue/credit behavior or deployment targets.
+
+## R1.13 — Complete Thai/English locale propagation (2026-11-13)
+
+- The Thai/English selector SHALL update all static, customer-facing text in the mounted Chat interface immediately, including navigation, workspace controls, model selection, conversation history and details, composer, attachment notices, loading/readiness/error states and accessible names. The host shell's Chat loading, module error, sign-out error and service-unavailable states SHALL follow the same selected locale.
+- Chat timestamps and numeric usage/credit values SHALL be formatted for the selected locale. The selected language SHALL remain stored under `smartaihub.locale` and SHALL be restored after a module remount, route transition or page reload.
+- User-provided names/content and provider/model identifiers SHALL retain their original values; locale switching changes interface copy and formatting, not user data or provider identifiers.
+- Acceptance SHALL switch Thai/English while Chat is open and verify all interface regions, accessible control names, shell status/error states, timestamp and numeric formatting, plus persistence after reload. This change does not alter chat content, authentication, tenant scope, model/provider selection, queue/credit behavior, themes or deployment targets.

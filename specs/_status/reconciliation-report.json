@@ -6042,7 +6042,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+        "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
         "problem": null,
         "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -6051,7 +6051,7 @@
           "duplicate_ids": [],
           "duplicate_revisions": []
         },
-        "revision": "1.12",
+        "revision": "1.13",
         "root_kind": "CANONICAL",
         "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
         "spec_id": "312",
@@ -142999,7 +142999,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
+      "canonical_sha": "f31c0667d985873c2202f619e19a978bf45c0728",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -143062,6 +143062,10 @@
         "requirement REQ-1147B298B5F9 is PARTIAL",
         "requirement REQ-0BF02EAE0CE5 is PARTIAL",
         "requirement REQ-5DCD6E80443A is PARTIAL",
+        "requirement REQ-63FAA80C0131 is PARTIAL",
+        "requirement REQ-6D79BA4D5C04 is PARTIAL",
+        "requirement REQ-B87850387915 is PARTIAL",
+        "requirement REQ-10502EC1FA83 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -143197,7 +143201,7 @@
           "excerpt": "status: PARTIALLY_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+          "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
           "value": "PARTIALLY_IMPLEMENTED"
         }
       ],
@@ -143210,29 +143214,34 @@
           "excerpt": "status: PARTIALLY_IMPLEMENTED",
           "line": 7,
           "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-          "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+          "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
           "value": "PARTIALLY_IMPLEMENTED"
         }
       ],
       "deployment": "PASS",
-      "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+      "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-12T16:01:15.291826Z",
+      "last_reconciled": "2026-11-13T00:26:02.389856Z",
       "lifecycle": "CONTINUATION_REQUIRED",
       "next_action": "Run authenticated browser review on aimarkethubs.com release fc97012613dcf65a7ece07c75df9d8aea2f852d5 at desktop, tablet and mobile: verify the account/settings/sign-out footer remains pinned while the left-panel tab scrolls; switch language; select each of the seven Astryx themes and reload; and confirm Chat/composer/theme reachability. Then continue the existing Cloud Execution status, upload contract, Queue/Durable Object recovery, authenticated Chat/credit UAT and matched Legacy/Core benchmark work.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "primary_blocker": {
         "class": "HUMAN_UAT_PENDING",
-        "description": "Authenticated visual and credit-ledger acceptance has not been recorded against exact development release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4. This is an open UAT evidence gap, not a sign-in credential failure.",
+        "description": "Authenticated visual and chat/credit acceptance has not been recorded against exact development release f31c0667d985873c2202f619e19a978bf45c0728. This remains an open UAT evidence gap.",
         "id": "authenticated-chat-uat",
-        "next_action": "Use the normal owner account/MFA session to review release e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 at desktop/tablet/mobile, exercise Chat and panel behavior, send one controlled queued text turn, reload history, and verify the exact credit-ledger delta; record evidence without storing credentials.",
+        "next_action": "Use the normal owner account/MFA session to review f31c0667d985873c2202f619e19a978bf45c0728 at desktop/tablet/mobile: switch Thai/English while Chat is open, verify all UI/accessibility text, timestamps/numbers and locale persistence after reload, then continue Chat/credit UAT; do not store credentials.",
         "requirements": [
           "REQ-98B30E4A4A11",
           "REQ-FB597F9F6A31",
           "REQ-272D8958200D",
-          "REQ-BA91299B7E6E"
+          "REQ-BA91299B7E6E",
+          "REQ-10502EC1FA83",
+          "REQ-63FAA80C0131",
+          "REQ-6D79BA4D5C04",
+          "REQ-B87850387915",
+          "REQ-D17E7B43470B"
         ]
       },
       "problem": null,
@@ -143374,14 +143383,14 @@
             "excerpt": "status: PARTIALLY_IMPLEMENTED",
             "line": 7,
             "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-            "source_digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+            "source_digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
             "value": "PARTIALLY_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "68ec66680e322f45d5f80343272ee61db4c323e2c6202c810378c7a96441d78b",
+            "digest": "ca70949cde7e6fa200c787a1dac44b63d2fcf07332b24d0c099cb3c20a753c01",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
           },
@@ -143411,7 +143420,7 @@
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
           },
           {
-            "digest": "b613213291e5e56cefb85c7344c4186fa7b7965bc7b2173ba7b7f7b9e4fa4002",
+            "digest": "7398256d23bc9614bc063a70cf486113cec6e549c09139f15949b3c68ecd5731",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
           },
@@ -143456,7 +143465,7 @@
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-08-chat-sidebar-tabs-and-collapse.md"
           },
           {
-            "digest": "48768cdfeb2c287d4572c2f3d8259087e476fecf9ac6f78eefcdd2f56186226c",
+            "digest": "798b3f4422ded81fec0e46253dd39ab676ed5afa4ef6235ba0ab81c7789c6cc8",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
           }
@@ -143467,11 +143476,11 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 58,
+        "open": 62,
         "pass": 0,
-        "total": 59
+        "total": 63
       },
-      "revision": "1.12",
+      "revision": "1.13",
       "root_kind": "CANONICAL",
       "section_status_claims": [
         {
