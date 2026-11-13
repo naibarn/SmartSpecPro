@@ -97,6 +97,30 @@ describe("generateStagedStoryArcPlanWithLLM concepts", () => {
     });
   });
 
+  it("bounds long marketplace descriptions to the planner's 500-character contract", async () => {
+    const longDescription = "รายละเอียดสินค้า ".repeat(100);
+    await generateStagedStoryArcPlanWithLLM({
+      runId: "run-long-description",
+      userId: 7,
+      tenantId: "tenant-1",
+      model: "planning-test-model",
+      referenceManifestHash: "refs-long-description",
+      product: {
+        productId: "product-1",
+        productName: "Travel bottle",
+        description: longDescription,
+        specs: { volume: "500 ml" },
+        imageUrls: [],
+      },
+      conceptsOnly: true,
+    });
+
+    const call = mockCallLLMStructured.mock.calls[0]?.[0] as {
+      userMessage: string;
+    };
+    expect(JSON.parse(call.userMessage).productDescription).toHaveLength(500);
+  });
+
   it("rejects missing model provenance instead of labeling the response with the requested model", async () => {
     mockCallLLMStructured.mockResolvedValueOnce({
       data: planData,

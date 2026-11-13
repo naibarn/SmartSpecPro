@@ -20,6 +20,28 @@ function clean(value: string | null | undefined): string {
   return value?.trim() ?? "";
 }
 
+const STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_MAX_CHARS = 500;
+
+function boundStagedStoryPlanProductDescription(
+  value: string | null | undefined
+): string {
+  const description = clean(value);
+  if (description.length <= STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_MAX_CHARS) {
+    return description;
+  }
+  let bounded = "";
+  for (const character of description) {
+    if (
+      bounded.length + character.length >
+      STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_MAX_CHARS - 1
+    ) {
+      break;
+    }
+    bounded += character;
+  }
+  return `${bounded.trimEnd()}…`;
+}
+
 export type StagedStoryArcProduct = {
   productId: string;
   productName: string;
@@ -958,8 +980,10 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   if (!productName) throw new Error("STAGED_STORY_PLAN_PRODUCT_NAME_REQUIRED");
   if (productName.length > 240)
     throw new Error("STAGED_STORY_PLAN_PRODUCT_NAME_TOO_LONG");
-  const productDescription = clean(input.product.description);
-  if (productDescription.length > 500) {
+  const productDescription = boundStagedStoryPlanProductDescription(
+    input.product.description
+  );
+  if (productDescription.length > STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_MAX_CHARS) {
     throw new Error("STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_TOO_LONG");
   }
   const structureKey =
