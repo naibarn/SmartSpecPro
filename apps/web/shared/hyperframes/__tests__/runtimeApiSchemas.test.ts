@@ -115,6 +115,26 @@ describe("HyperFrames runtime API schemas", () => {
     ]);
   });
 
+  it("accepts the tie-in drama review format independently from tone", () => {
+    const input = StartAutoStoryboardReviewInputSchema.parse({
+      productId: "product_1",
+      referenceAnchors: {
+        productImageUrl: "https://cdn.example.test/product.png",
+        reviewFormat: "drama_tie_in",
+        reviewTone: "warm_honest",
+      },
+    });
+
+    expect(input.referenceAnchors?.reviewFormat).toBe("drama_tie_in");
+    expect(input.referenceAnchors?.reviewTone).toBe("warm_honest");
+    expect(
+      StartAutoStoryboardReviewInputSchema.safeParse({
+        productId: "product_1",
+        referenceAnchors: { reviewFormat: "unknown_format" },
+      }).success
+    ).toBe(false);
+  });
+
   it("accepts server-owned video segment preview inputs with MCP metadata", () => {
     const input = GetVideoSegmentPlanPreviewInputSchema.parse({
       productId: "product_1",

@@ -248,6 +248,7 @@ export const MarketplaceAutoReviewReferenceAnchorsSchema = z
     productImageUrl: z.string().min(1),
     productImageRef: z.string().min(1),
     productImageIndex: z.number().int().nonnegative(),
+    reviewFormat: z.enum(["drama_tie_in"]).nullable().optional(),
     characterImageUrl: NullableStringSchema,
     characterImageRef: NullableStringSchema,
     environmentImageUrl: NullableStringSchema,

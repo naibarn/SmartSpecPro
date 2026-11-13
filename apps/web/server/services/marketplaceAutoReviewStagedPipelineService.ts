@@ -945,6 +945,8 @@ function updateStagedTaskCreditSummary<T extends Record<string, any>>(
 // (`buildStagedPlanAndMetadataForInit`) so the two never drift.
 function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
   const anchors = record(base.referenceAnchors);
+  const reviewFormat =
+    typeof anchors.reviewFormat === "string" ? anchors.reviewFormat : undefined;
   const reviewTone =
     typeof anchors.reviewTone === "string"
       ? anchors.reviewTone
@@ -991,6 +993,7 @@ function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
       : undefined;
   const cast = deriveStagedCastFromManifest(base.customReferenceManifest);
   return {
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     shotDurationSeconds,
@@ -1144,6 +1147,7 @@ export async function buildStagedPlanAndMetadataForInit(
 }> {
   const base = record(run.metadataJson);
   const {
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     shotDurationSeconds,
@@ -1177,6 +1181,7 @@ export async function buildStagedPlanAndMetadataForInit(
     revision: options?.revision,
     previousStorySummary: options?.previousStorySummary,
     languagePlan,
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     cast,
@@ -1300,6 +1305,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
 }) {
   const base = record(params.run.metadataJson);
   const {
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     shotDurationSeconds,
@@ -1319,6 +1325,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     revision: current.planRevision + 1,
     languagePlan: current.languagePlan ?? stagedLanguagePlanFromMetadata(base),
     previousStorySummary: notes ? notes.slice(0, 500) : undefined,
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     cast,

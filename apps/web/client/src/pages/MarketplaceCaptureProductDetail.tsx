@@ -326,6 +326,7 @@ type AutoReviewReviewTone =
   | "empathetic_soft"
   | "expert_confident"
   | "straight_serious";
+type AutoReviewFormat = "" | "drama_tie_in";
 type AutoReviewStorytellingStructure =
   | ""
   | "hook_problem_emotion_insight_solution_result_cta"
@@ -518,6 +519,12 @@ const AUTO_REVIEW_REVIEW_TONES: Array<
   { id: "empathetic_soft", label: "อบอุ่นเห็นใจ" },
   { id: "expert_confident", label: "ผู้เชี่ยวชาญมั่นใจ" },
   { id: "straight_serious", label: "ตรงไปตรงมา จริงจัง" },
+];
+const AUTO_REVIEW_FORMATS: Array<
+  AutoReviewCharacterChoice & { id: AutoReviewFormat }
+> = [
+  { id: "", label: "รีวิวทั่วไป" },
+  { id: "drama_tie_in", label: "ละคร Tie-in: คู่พระนางจีบ/แซวกัน" },
 ];
 const AUTO_REVIEW_STORYTELLING_STRUCTURES: Array<
   AutoReviewCharacterChoice & { id: AutoReviewStorytellingStructure }
@@ -2859,6 +2866,9 @@ export default function MarketplaceCaptureProductDetail() {
             })),
     [autoReviewCharacterCast, autoReviewModeUsesCast]
   );
+  const autoReviewHasTieInLeadCast = (["host", "guest"] as const).every(role =>
+    autoReviewCharacterCastPayload.some(member => member.characterRole === role)
+  );
   const autoStoryboardOverridesWithCast = useMemo(
     () =>
       autoReviewCharacterCastPayload.length > 0
@@ -2886,6 +2896,8 @@ export default function MarketplaceCaptureProductDetail() {
     useState("friendly_everyday");
   const [autoReviewTone, setAutoReviewTone] =
     useState<AutoReviewReviewTone>("");
+  const [autoReviewFormat, setAutoReviewFormat] =
+    useState<AutoReviewFormat>("");
   const [autoReviewStorytellingStructure, setAutoReviewStorytellingStructure] =
     useState<AutoReviewStorytellingStructure>("");
   const [autoReviewCreativePresets, setAutoReviewCreativePresets] = useState<
@@ -4953,6 +4965,9 @@ export default function MarketplaceCaptureProductDetail() {
   const selectedReviewTone = AUTO_REVIEW_REVIEW_TONES.find(
     option => option.id === autoReviewTone
   );
+  const selectedReviewFormat = AUTO_REVIEW_FORMATS.find(
+    option => option.id === autoReviewFormat
+  );
   const selectedStorytellingStructure =
     AUTO_REVIEW_STORYTELLING_STRUCTURES.find(
       option => option.id === autoReviewStorytellingStructure
@@ -5516,6 +5531,7 @@ export default function MarketplaceCaptureProductDetail() {
         schemaVersion: 2,
         creationIntent,
         requiredRoles,
+        ...(autoReviewFormat ? { reviewFormat: autoReviewFormat } : {}),
         ...(autoReviewTone ? { reviewTone: autoReviewTone } : {}),
         ...(autoReviewStorytellingStructure
           ? { storytellingStructure: autoReviewStorytellingStructure }
@@ -5701,6 +5717,7 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewStagedShotCount,
       autoReviewStorytellingStructure,
       autoReviewTone,
+      autoReviewFormat,
       autoStoryboardOverrides,
       characterAnchor,
       characterAnchorUrl,
@@ -5734,6 +5751,17 @@ export default function MarketplaceCaptureProductDetail() {
         "Missing product anchor URL. กรุณาเลือก Hero/Product image ก่อนเริ่ม Auto Storyboard Review"
       );
       return;
+    }
+    if (autoReviewFormat === "drama_tie_in") {
+      if (
+        autoReviewCharacterMode !== "uploaded_reference" ||
+        !autoReviewHasTieInLeadCast
+      ) {
+        toast.error(
+          "ละคร Tie-in ต้องเลือกนักแสดงและกำหนดบทบาท host กับ guest ในส่วน Character / Presenter ก่อนเริ่ม เพื่อให้ระบบผูกบทพูดกับคนในภาพได้ถูกต้อง"
+        );
+        return;
+      }
     }
     if (
       autoReviewCharacterMode === "uploaded_reference" &&
@@ -5974,6 +6002,7 @@ export default function MarketplaceCaptureProductDetail() {
     [
       activeAutoReviewRun,
       autoReviewAudioStrategy,
+      autoReviewFormat,
       autoReviewCharacterCastPayload,
       autoReviewFrameStrategy,
       autoReviewImageModel,
@@ -6697,11 +6726,32 @@ export default function MarketplaceCaptureProductDetail() {
           </p>
         </div>
         <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+          {selectedReviewFormat?.label || "รีวิวทั่วไป"} /{" "}
           {selectedReviewTone?.label || "Auto"} /{" "}
           {selectedStorytellingStructure?.label || "Auto"}
         </span>
       </div>
       <div className="mt-4 grid gap-4">
+        {renderCharacterChoiceGroup(
+          "รูปแบบรีวิว (แยกจากโทน)",
+          AUTO_REVIEW_FORMATS,
+          autoReviewFormat,
+          value => {
+            const format = value as AutoReviewFormat;
+            setAutoReviewFormat(format);
+            if (format === "drama_tie_in") {
+              setAutoReviewCharacterMode("uploaded_reference");
+            }
+          }
+        )}
+        {autoReviewFormat === "drama_tie_in" ? (
+          <p className="-mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs leading-5 text-violet-900">
+            ระบบจะเขียนบทสนทนาจีบหรือแซวกันระหว่างนักแสดงหลัก 2 คน
+            และสอดแทรกการสาธิตกับข้อมูลสินค้าจริงตลอดเรื่อง กรุณาเลือก Cast
+            ให้ครบ 2 คน; หากอายุไม่ชัดหรือเป็นผู้เยาว์
+            บทสนทนาจะเป็นมิตรและไม่โรแมนติก
+          </p>
+        ) : null}
         {renderCharacterChoiceGroup(
           "อารมณ์ / โทนการพูด",
           AUTO_REVIEW_REVIEW_TONES,
@@ -6764,10 +6814,14 @@ export default function MarketplaceCaptureProductDetail() {
         </p>
       ) : null}
       <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-        {autoReviewTone ||
+        {autoReviewFormat ||
+        autoReviewTone ||
         autoReviewStorytellingStructure ||
         selectedCreativePresetLabels.length > 0
           ? compactStringList([
+              autoReviewFormat
+                ? `Format: ${selectedReviewFormat?.label ?? autoReviewFormat}`
+                : null,
               autoReviewTone
                 ? `Tone: ${selectedReviewTone?.label ?? autoReviewTone}`
                 : null,

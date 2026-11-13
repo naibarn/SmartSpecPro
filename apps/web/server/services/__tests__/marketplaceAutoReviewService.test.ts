@@ -1436,6 +1436,7 @@ describe("marketplace auto review audio/video planning", () => {
         creationIntent: "auto_review_video",
         requiredRoles: ["product"],
         characterMode: "hands_only",
+        reviewFormat: "drama_tie_in",
         reviewTone: "funny_light",
         storytellingStructure:
           "hook_problem_emotion_insight_solution_result_cta",
@@ -1446,15 +1447,21 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(anchors.reviewTone).toBe("funny_light");
+    expect(anchors.reviewFormat).toBe("drama_tie_in");
     expect(anchors.storytellingStructure).toBe(
       "hook_problem_emotion_insight_solution_result_cta"
     );
 
     const directive = creativeDirectionDirectiveForTest({
+      reviewFormat: anchors.reviewFormat,
       reviewTone: anchors.reviewTone,
       storytellingStructure: anchors.storytellingStructure,
     });
     expect(directive).toContain("USER-SELECTED CREATIVE DIRECTION LOCK");
+    expect(directive).toContain("ละคร Tie-in: คู่พระนางจีบ/แซวกัน");
+    expect(directive).toContain("Review tone: ตลกขำเบา ๆ");
+    expect(directive).toContain("selected review tone controls delivery");
+    expect(directive).toContain("both leads are explicitly adults");
     expect(directive).toContain("ตลกขำเบา ๆ");
     expect(directive).toContain("Light comedic review");
     expect(directive).toContain(

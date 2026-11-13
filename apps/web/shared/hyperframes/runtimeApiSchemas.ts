@@ -192,6 +192,7 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
             z.array(z.unknown()),
           ])
           .optional(),
+        reviewFormat: z.enum(["drama_tie_in"]).optional().nullable(),
         reviewTone: z
           .enum([
             "warm_honest",

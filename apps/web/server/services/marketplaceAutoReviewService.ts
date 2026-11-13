@@ -381,6 +381,7 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
     | "uploaded_reference";
   characterBrief?: string | null;
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
+  reviewFormat?: string | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   creativePresets?: AutoReviewCreativePresetSelection[] | null;
@@ -437,6 +438,7 @@ type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   characterMode?: string | null;
   characterBrief?: string | null;
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
+  reviewFormat?: string | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   creativePresets: AutoReviewCreativePresetSelection[];
@@ -5450,11 +5452,29 @@ const MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES: Record<
   },
 };
 
+const MARKETPLACE_AUTO_REVIEW_FORMAT_DIRECTIVES: Record<
+  string,
+  { label: string; directive: string }
+> = {
+  drama_tie_in: {
+    label: "ละคร Tie-in: คู่พระนางจีบ/แซวกัน",
+    directive:
+      "Write this as a product-integrated two-lead drama: the named host and guest exchange natural, sweet flirtation or playful teasing, while every beat still advances a useful product review. The selected review tone controls delivery; this format controls the relationship and story device, and the planner must combine both. Let the product trigger or shape the banter, and distribute hands-on demonstrations, verified product details, benefits, and fit across the story instead of mentioning the product only at the end. Keep every spoken line assigned to the exact cast member; never guess a speaker from appearance. Only use romantic flirtation when both leads are explicitly adults and neither depicts a minor; otherwise keep the relationship platonic and age-appropriate. Never invent product features, performance, or outcomes.",
+  },
+};
+
 function normalizeMarketplaceAutoReviewReviewTone(
   value: unknown
 ): string | null {
   const key = cleanText(value).toLowerCase();
   return MARKETPLACE_AUTO_REVIEW_TONE_DIRECTIVES[key] ? key : null;
+}
+
+function normalizeMarketplaceAutoReviewReviewFormat(
+  value: unknown
+): string | null {
+  const key = cleanText(value).toLowerCase();
+  return MARKETPLACE_AUTO_REVIEW_FORMAT_DIRECTIVES[key] ? key : null;
 }
 
 function normalizeMarketplaceAutoReviewStorytellingStructure(
@@ -5467,13 +5487,19 @@ function normalizeMarketplaceAutoReviewStorytellingStructure(
 function buildMarketplaceAutoReviewCreativeDirectionDirective(
   anchors: Pick<
     ResolvedMarketplaceAutoReviewReferenceAnchors,
-    "reviewTone" | "storytellingStructure" | "creativePresets"
+    | "reviewFormat"
+    | "reviewTone"
+    | "storytellingStructure"
+    | "creativePresets"
   >,
   options: { videoModel?: string | null } = {}
 ): string {
   const tone =
     anchors.reviewTone &&
     MARKETPLACE_AUTO_REVIEW_TONE_DIRECTIVES[anchors.reviewTone];
+  const format =
+    anchors.reviewFormat &&
+    MARKETPLACE_AUTO_REVIEW_FORMAT_DIRECTIVES[anchors.reviewFormat];
   const structure =
     anchors.storytellingStructure &&
     MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES[
@@ -5483,9 +5509,10 @@ function buildMarketplaceAutoReviewCreativeDirectionDirective(
     selections: anchors.creativePresets,
     videoModel: options.videoModel,
   });
-  if (!tone && !structure && !presetDirective) return "";
+  if (!format && !tone && !structure && !presetDirective) return "";
   return [
     "USER-SELECTED CREATIVE DIRECTION LOCK:",
+    format ? `Review format: ${format.label}. ${format.directive}` : "",
     tone ? `Review tone: ${tone.label}. ${tone.directive}` : "",
     structure
       ? `Storytelling structure: ${structure.label}. ${structure.directive}`
@@ -5498,6 +5525,7 @@ function buildMarketplaceAutoReviewCreativeDirectionDirective(
 }
 
 export function creativeDirectionDirectiveForTest(input: {
+  reviewFormat?: string | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   creativePresets?: unknown;
@@ -5505,6 +5533,9 @@ export function creativeDirectionDirectiveForTest(input: {
 }): string {
   return buildMarketplaceAutoReviewCreativeDirectionDirective(
     {
+      reviewFormat: normalizeMarketplaceAutoReviewReviewFormat(
+        input.reviewFormat
+      ),
       reviewTone: normalizeMarketplaceAutoReviewReviewTone(input.reviewTone),
       storytellingStructure:
         normalizeMarketplaceAutoReviewStorytellingStructure(
@@ -6303,6 +6334,9 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
   const characterPreset = normalizeMarketplaceAutoReviewCharacterPreset(
     params.referenceAnchors?.characterPreset
   );
+  const reviewFormat = normalizeMarketplaceAutoReviewReviewFormat(
+    params.referenceAnchors?.reviewFormat
+  );
   const reviewTone = normalizeMarketplaceAutoReviewReviewTone(
     params.referenceAnchors?.reviewTone
   );
@@ -6468,6 +6502,7 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     characterMode,
     characterBrief,
     characterPreset,
+    reviewFormat,
     reviewTone,
     storytellingStructure,
     creativePresets,
@@ -7584,6 +7619,9 @@ function referenceAnchorsInputSnapshot(
       : Object.keys(asRecord(anchors.characterPreset)).length > 0
         ? asRecord(anchors.characterPreset)
         : cleanText(anchors.characterPreset),
+    reviewFormat: normalizeMarketplaceAutoReviewReviewFormat(
+      anchors.reviewFormat
+    ),
     reviewTone: normalizeMarketplaceAutoReviewReviewTone(anchors.reviewTone),
     storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
       anchors.storytellingStructure
@@ -14030,6 +14068,7 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
         characterPreset: params.referenceAnchors.characterPreset,
         characterImageRef: params.referenceAnchors.characterImageRef,
         environmentImageRef: params.referenceAnchors.environmentImageRef,
+        reviewFormat: params.referenceAnchors.reviewFormat,
         reviewTone: params.referenceAnchors.reviewTone,
         storytellingStructure: params.referenceAnchors.storytellingStructure,
         creativePresets: params.referenceAnchors.creativePresets,
@@ -17114,6 +17153,7 @@ function buildFeature117ContractMetadata(input: {
       characterMode: anchors.characterMode ?? null,
       characterBrief: anchors.characterBrief ?? null,
       characterPreset: anchors.characterPreset ?? null,
+      reviewFormat: anchors.reviewFormat ?? null,
       reviewTone: anchors.reviewTone ?? null,
       storytellingStructure: anchors.storytellingStructure ?? null,
       creativePresets: anchors.creativePresets,

@@ -1567,6 +1567,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   revision?: number;
   previousStorySummary?: string | null;
   languagePlan?: StagedStoryArcLanguagePlan;
+  reviewFormat?: string | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   model?: string | null;
@@ -1639,6 +1640,10 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   // this block's two-voice contract stays exactly as it was.
   const activeCast = selectStagedLeadCast(input.cast);
   const conversationMode = resolveStagedConversationMode(input.cast);
+  const isDramaTieIn = clean(input.reviewFormat) === "drama_tie_in";
+  if (isDramaTieIn && conversationMode !== "two_person_conversation") {
+    throw new Error("STAGED_TIE_IN_TWO_LEADS_REQUIRED");
+  }
   // The roster's defaulted descriptors follow the run's own summary language,
   // so an English script never gets a Thai role note spliced into it.
   const rosterLanguage: "th" | "en" =
@@ -1651,8 +1656,8 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
             member =>
               `- castId "${member.castId}": ${member.name} (${member.role} — ${resolveStagedCastDescriptor(
                 member,
-                rosterLanguage,
-              )})`
+                rosterLanguage
+              )}; ageRange: ${member.ageRange || "unknown"}; depictsMinor: ${member.depictsMinor === true ? "yes" : member.depictsMinor === false ? "no" : "unknown"})`
           )
           .join(
             "\n"
@@ -1705,6 +1710,9 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   const selectedConceptInstruction = input.selectedConcept
     ? `\nแนวคิดที่ผู้ใช้เลือกไว้ (ต้องใช้เป็นแนวทางหลัก): ${JSON.stringify(input.selectedConcept)}`
     : "";
+  const reviewFormatInstruction = isDramaTieIn
+    ? `\n\nROMANTIC PRODUCT TIE-IN LOCK: รูปแบบนี้เป็นละคร Tie-in โดยมี ${activeCast[0].name} (host) และ ${activeCast[1].name} (guest) เป็นคู่ตัวละครหลัก ให้ทั้งคู่พูดโต้ตอบ จีบกันอย่างหวานพอดีหรือแซวกันอย่างเป็นธรรมชาติและมีเสน่ห์ รูปแบบรีวิวกำหนดความสัมพันธ์และวิธีดำเนินเรื่อง ส่วนโทนที่เลือกกำหนดน้ำเสียงและวิธีพูด ต้องรักษาทั้งสองอย่างร่วมกัน ไม่ใช่บทรีวิวบรรยายตรง ๆ ตลอดคลิป ทุกช็อตต้องพาเรื่องไปข้างหน้าและทำให้สินค้าเป็นส่วนหนึ่งของเหตุการณ์จริง กระจายการสาธิตสินค้าและข้อมูล/ประโยชน์ที่ตรวจสอบได้จาก product facts ไปตลอดเรื่อง ห้ามให้มุกหรือความสัมพันธ์กลบเนื้อหารีวิว ผู้พูดต้องตรงกับ castId และ castInShot ของคนที่เห็นในภาพ ห้ามสลับบทหรือเดาว่าคนไหนพูด ใช้บทโรแมนติกได้ต่อเมื่อข้อมูลระบุชัดว่าทั้งคู่เป็นผู้ใหญ่และไม่มีใครเป็นผู้เยาว์; หากอายุไม่ชัดหรือมีผู้เยาว์ ให้คงเป็นการหยอกล้อแบบเพื่อนที่เหมาะสมกับวัย ห้ามแต่งคุณสมบัติหรือผลลัพธ์ของสินค้า`
+    : "";
 
   const systemPrompt = `คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
 
@@ -1716,13 +1724,14 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
 5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
-7. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+7. เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
 
   const userMessage = JSON.stringify(
     {
       productName,
       productDescription: productDescription || undefined,
       productSpecs: input.product.specs,
+      ...(isDramaTieIn ? { reviewFormat: "drama_tie_in" } : {}),
       storytellingStructure: structureKey,
       reviewTone: toneKey,
       revisionNotes: revisionNotes || undefined,
@@ -1735,6 +1744,8 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
               castId: member.castId,
               name: member.name,
               role: member.role,
+              ageRange: member.ageRange ?? null,
+              depictsMinor: member.depictsMinor ?? null,
             })),
           }
         : {}),
