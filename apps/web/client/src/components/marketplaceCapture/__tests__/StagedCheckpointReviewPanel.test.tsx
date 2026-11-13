@@ -2229,25 +2229,59 @@ describe("Marketplace final video combine action", () => {
     expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a combine action after the shot list for users reviewing the last shot", () => {
+  it("keeps one combine action above the shot list", () => {
     const input = completedVideoState(9);
     render(<StagedCheckpointReviewPanel {...input} />);
 
     const shotList = document.getElementById("staged-auto-review-shot-list");
-    const bottomAction = screen.getByTestId(
-      "staged-final-render-action-bottom"
-    );
+    const actionBanner = screen.getByTestId("staged-final-render-action");
+    expect(screen.queryByTestId("staged-final-render-action-bottom")).toBeNull();
+    expect(screen.getAllByTestId("staged-final-render-action")).toHaveLength(1);
     expect(shotList).toBeTruthy();
     expect(
-      (shotList!.compareDocumentPosition(bottomAction) &
+      (actionBanner.compareDocumentPosition(shotList!) &
         Node.DOCUMENT_POSITION_FOLLOWING) !==
         0
     ).toBe(true);
     const button = screen.getByRole("button", {
-      name: "รวมวิดีโอทั้ง 9 ช็อตตอนนี้",
+      name: "รวม 9 ช็อตเป็นวิดีโอเดียว",
     });
     expect(button).toBeEnabled();
     fireEvent.click(button);
+    expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
+  });
+
+
+  it("shows the completed video, download, and rerender action in the single panel", () => {
+    const input = completedVideoState(9);
+    const outputUrl = "https://example.test/final.mp4";
+    input.state.finalRender = {
+      outputUrl,
+      jobId: "completed-render-job",
+      settings: {
+        subtitlePresetId: "classic_box",
+        aiDisclosureEnabled: false,
+        overlayText: null,
+        overlayImage: null,
+      },
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    const actionPanel = screen.getByTestId("staged-final-render-action");
+    expect(
+      screen.queryByTestId("staged-final-render-action-bottom")
+    ).toBeNull();
+    const video = actionPanel.querySelector("video");
+    expect(video).toHaveAttribute("src", outputUrl);
+    expect(video).toHaveAttribute("controls");
+    expect(
+      screen.getByRole("link", { name: "ดาวน์โหลดวิดีโอรวม" })
+    ).toHaveAttribute("href", outputUrl);
+    const rerenderButton = screen.getByRole("button", {
+      name: "สั่งรวมวิดีโอใหม่",
+    });
+    expect(rerenderButton).toBeEnabled();
+    fireEvent.click(rerenderButton);
     expect(input.onSubmitFinalRender).toHaveBeenCalledTimes(1);
   });
 
@@ -2260,7 +2294,7 @@ describe("Marketplace final video combine action", () => {
     const combineButtons = screen.getAllByRole("button", {
       name: "รอวิดีโอครบ 9 ช็อต",
     });
-    expect(combineButtons).toHaveLength(2);
+    expect(combineButtons).toHaveLength(1);
     combineButtons.forEach(button =>
       expect(button).toHaveAttribute("aria-disabled", "true")
     );
@@ -2283,7 +2317,7 @@ describe("Marketplace final video combine action", () => {
     const combineButtons = screen.getAllByRole("button", {
       name: "รอวิดีโอครบ 9 ช็อต",
     });
-    expect(combineButtons).toHaveLength(2);
+    expect(combineButtons).toHaveLength(1);
     combineButtons.forEach(button =>
       expect(button).toHaveAttribute("aria-disabled", "true")
     );

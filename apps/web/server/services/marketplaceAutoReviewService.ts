@@ -36063,11 +36063,9 @@ function stagedFinalAssemblySubtitlePresetId(metadata: RunMetadata): string {
  * top-level guard short-circuits before this is ever called again.
  */
 /**
- * Strips the top-level render refs (`renderJobId`/`renderEngine`/
- * `renderSubmittedAt`) from a run's metadata — extracted as a pure function
- * so the terminal-failed-job clearing in `reconcileStagedRemotionFinalRender`
- * (and the equivalent clear in `retryStagedAutoReviewFinalAssembly`) is
- * unit-testable without DB mocking (repo `...ForTest` convention).
+ * Clears prior render references and evidence before a new final-render
+ * attempt, while retaining storyboard, credit, and render-attempt state.
+ * Extracted as a pure function for focused retry-policy tests.
  */
 export function clearStagedRenderRefsFromMetadataForTest(
   metadata: RunMetadata
@@ -36076,10 +36074,43 @@ export function clearStagedRenderRefsFromMetadataForTest(
     renderJobId: _clearedRenderJobId,
     renderEngine: _clearedRenderEngine,
     renderSubmittedAt: _clearedRenderSubmittedAt,
+    renderUrl: _clearedRenderUrl,
+    renderResultUrl: _clearedRenderResultUrl,
+    resultLibraryItemId: _clearedResultLibraryItemId,
+    renderArtifactProbe: _clearedRenderArtifactProbe,
+    finalRenderQaEnvelope: _clearedFinalRenderQaEnvelope,
+    finalMediaQaEnvelope: _clearedFinalMediaQaEnvelope,
+    renderStorageEnvelope: _clearedRenderStorageEnvelope,
+    renderDistributionProfile: _clearedRenderDistributionProfile,
+    mediaArtifactInspection: _clearedMediaArtifactInspection,
+    qaArtifactManifest: _clearedQaArtifactManifest,
+    publishableAssetPackage: _clearedPublishableAssetPackage,
+    warningOverlayVerification: _clearedWarningOverlayVerification,
     ...metadataWithoutRenderRefs
   } = metadata as Record<string, unknown>;
   return metadataWithoutRenderRefs as RunMetadata;
 }
+
+export function clearStagedRenderRefsFromResultJsonForTest(
+  resultJson: unknown
+): Record<string, unknown> {
+  const {
+    renderUrl: _clearedRenderUrl,
+    libraryItemId: _clearedLibraryItemId,
+    jobId: _clearedJobId,
+    cached: _clearedCached,
+    publishableAssetPackage: _clearedPublishableAssetPackage,
+    ...resultWithoutRenderRefs
+  } = asRecord(resultJson);
+  return resultWithoutRenderRefs;
+}
+
+function isStagedRemotionRenderJobTerminal(status: string): boolean {
+  return ["completed", "failed", "canceled", "expired"].includes(status);
+}
+
+export const isStagedRemotionRenderJobTerminalForTest =
+  isStagedRemotionRenderJobTerminal;
 
 /**
  * Finds the rendered MP4 on a completed `remotion_render_video` worker job.
@@ -36730,7 +36761,7 @@ export async function submitStagedAutoReviewFinalRender(input: {
       .limit(1);
     if (
       existingJob &&
-      !["failed", "canceled", "expired"].includes(existingJob.status)
+      !isStagedRemotionRenderJobTerminal(existingJob.status)
     ) {
       return { jobId: existingJobId, created: false };
     }
@@ -36744,6 +36775,8 @@ export async function submitStagedAutoReviewFinalRender(input: {
       db,
       runId: run.id,
       renderJobId: null,
+      resultLibraryItemId: null,
+      resultJson: clearStagedRenderRefsFromResultJsonForTest(run.resultJson),
       metadataJson: metadata,
     });
   }

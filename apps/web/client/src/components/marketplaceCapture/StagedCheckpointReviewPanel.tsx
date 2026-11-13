@@ -1417,12 +1417,10 @@ export function StagedCheckpointReviewPanel(props: {
   const finalCheckpoint = runCheckpoint("final_assembly");
   const finalRenderSettings = props.state?.finalRender?.settings ?? null;
   const renderJobId = props.state?.finalRender?.jobId ?? null;
-  // Settings are frozen once a job is queued: the worker already holds a
-  // frozen copy of the template, so editing them afterwards would show the
-  // user values that do not match the video being produced. Re-submitting
-  // stays available (it returns the existing job id rather than double
-  // charging), and a failed/reconciled render clears `jobId` so the form
-  // unlocks again.
+  // Settings are frozen while a render job is referenced: the worker already
+  // holds a frozen copy of the template. A completed result can be rendered
+  // again with the same settings; an active job is reused to prevent duplicate
+  // submissions.
   const renderSettingsLocked = Boolean(renderJobId);
   const effectiveAiDisclosure =
     aiDisclosureDraft ?? finalRenderSettings?.aiDisclosureEnabled ?? false;
@@ -1934,25 +1932,21 @@ export function StagedCheckpointReviewPanel(props: {
       </div>
           {props.state?.outputMode === "full_video" ? (
             <Banner
+              className="mb-4"
               data-testid="staged-final-render-action"
               aria-label="รวมทุกช็อตเป็นวิดีโอเดียว"
               status={
                 finalVideoUrl
                   ? "success"
-                  : canSubmitFinalRender
+                  : canSubmitFinalRender || renderJobId
                     ? "info"
                     : "warning"
               }
               elevation="low"
-              style={{
-                position: "sticky",
-                top: "var(--spacing-2)",
-                zIndex: 20,
-                marginBlockEnd: "var(--spacing-4)",
-              }}
+              collapsible={false}
               title={
                 finalVideoUrl
-                  ? "วิดีโอรวมพร้อมแล้ว"
+                  ? "วิดีโอรวมเสร็จแล้ว"
                   : renderJobId
                     ? "กำลังรวมวิดีโอ"
                     : canSubmitFinalRender
@@ -1975,10 +1969,12 @@ export function StagedCheckpointReviewPanel(props: {
               endContent={
                 finalVideoUrl ? (
                   <Button
-                    label="ดูวิดีโอรวมที่เสร็จแล้ว"
-                    href={`#staged-final-video-${props.runId}`}
+                    label="สั่งรวมวิดีโอใหม่"
                     variant="primary"
                     size="lg"
+                    isLoading={isThisActionRunning("submit-final-render")}
+                    isDisabled={!canSubmitFinalRender}
+                    onClick={() => props.onSubmitFinalRender?.()}
                   />
                 ) : (
                   <Button
@@ -1997,7 +1993,71 @@ export function StagedCheckpointReviewPanel(props: {
                   />
                 )
               }
-            />
+            >
+              {finalVideoUrl ? (
+                <figure className="m-0 space-y-2 p-4" aria-label="วิดีโอรวม">
+                  {props.state?.finalRender?.awaitingFinalization ? (
+                    <figcaption className="text-xs text-amber-800">
+                      ไฟล์เล่นและดาวน์โหลดได้แล้ว ระบบกำลังตรวจขั้นตอนบันทึกเข้า Library
+                    </figcaption>
+                  ) : null}
+                  {failedMediaUrls[finalVideoUrl] ? (
+                    <p
+                      className="flex min-h-32 w-full max-w-xs items-center justify-center rounded border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800"
+                      role="alert"
+                    >
+                      ไฟล์วิดีโอผลลัพธ์หมดอายุหรือเปิดไม่ได้แล้ว
+                    </p>
+                  ) : (
+                    <video
+                      id={`staged-final-video-${props.runId}`}
+                      data-testid="staged-final-render-video"
+                      key={finalVideoUrl}
+                      className="block aspect-[9/16] max-h-[70vh] w-full max-w-xs rounded border border-emerald-200 bg-black object-contain"
+                      src={finalVideoUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      onError={() =>
+                        setFailedMediaUrls(current => ({
+                          ...current,
+                          [finalVideoUrl]: true,
+                        }))
+                      }
+                    />
+                  )}
+                  <figcaption className="flex flex-wrap items-center gap-3 text-xs text-emerald-950">
+                    <a
+                      className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
+                      href={finalVideoUrl}
+                      download={`marketplace-review-${props.runId}.mp4`}
+                    >
+                      ดาวน์โหลดวิดีโอรวม
+                    </a>
+                    <span>
+                      {[
+                        finalVideoProbe?.width && finalVideoProbe?.height
+                          ? `${finalVideoProbe.width}×${finalVideoProbe.height}`
+                          : null,
+                        finalVideoProbe?.durationSeconds
+                          ? `${Math.round(finalVideoProbe.durationSeconds)} วินาที`
+                          : null,
+                        finalVideoProbe?.sizeBytes
+                          ? `${(finalVideoProbe.sizeBytes / 1024 / 1024).toFixed(1)} MB`
+                          : null,
+                        renderJobId ? `job ${renderJobId}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </figcaption>
+                </figure>
+              ) : renderJobId ? (
+                <p className="px-4 pb-3 text-sm text-slate-700" role="status">
+                  ส่งงานแล้ว · job {renderJobId} กำลังรอหรือกำลัง render ใน Worker App
+                </p>
+              ) : null}
+            </Banner>
           ) : null}
       {props.loading ? (
         <p className="mt-3 text-sm text-slate-600" role="status">
@@ -2517,112 +2577,6 @@ export function StagedCheckpointReviewPanel(props: {
                 </p>
               </div>
 
-              {finalVideoUrl ? (
-                <div className="mt-3 rounded border border-emerald-300 bg-emerald-50 p-3">
-                  <p className="text-sm font-medium text-emerald-900">
-                    วิดีโอฉบับสมบูรณ์ render เสร็จแล้ว
-                  </p>
-                  {props.state.finalRender.awaitingFinalization ? (
-                    <p className="mt-1 text-xs text-amber-800">
-                      ไฟล์พร้อมเล่น/ดาวน์โหลดแล้ว แต่ยังไม่ผ่านขั้นบันทึกเข้า
-                      Library (ระบบยังตรวจหลักฐานข้อความคำเตือนบนวิดีโอไม่ผ่าน)
-                    </p>
-                  ) : null}
-                  {/* `controls` gives play/pause/seek/volume AND the browser's
-                      native fullscreen button; `controlsList` keeps the menu
-                      but we ship our own download link too so the file name is
-                      meaningful instead of a storage hash. */}
-                  {failedMediaUrls[finalVideoUrl] ? (
-                    <div className="mt-2 flex min-h-32 w-full max-w-xs items-center justify-center rounded border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800">
-                      ไฟล์วิดีโอผลลัพธ์หมดอายุหรือเปิดไม่ได้แล้ว
-                    </div>
-                  ) : (
-                    <video
-                      id={`staged-final-video-${props.runId}`}
-                      key={finalVideoUrl}
-                      className="mt-2 w-full max-w-xs rounded border border-emerald-200 bg-black"
-                      src={finalVideoUrl}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      onError={() =>
-                        setFailedMediaUrls(current => ({
-                          ...current,
-                          [finalVideoUrl]: true,
-                        }))
-                      }
-                    />
-                  )}
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <a
-                      className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
-                      href={finalVideoUrl}
-                      download={`marketplace-review-${props.runId}.mp4`}
-                    >
-                      ดาวน์โหลดวิดีโอ
-                    </a>
-                    <button
-                      type="button"
-                      className="rounded border border-emerald-700 px-3 py-2 text-sm text-emerald-900"
-                      onClick={() => {
-                        // Fullscreen must come from a user gesture, and the
-                        // element may not support the standard API on iOS
-                        // Safari (webkitEnterFullscreen on the video element
-                        // is the only thing that works there).
-                        const el = document.getElementById(
-                          `staged-final-video-${props.runId}`
-                        ) as (HTMLVideoElement & {
-                          webkitEnterFullscreen?: () => void;
-                        }) | null;
-                        const target = el ?? null;
-                        if (target?.requestFullscreen) {
-                          void target.requestFullscreen().catch(() => undefined);
-                        } else if (target?.webkitEnterFullscreen) {
-                          target.webkitEnterFullscreen();
-                        }
-                      }}
-                    >
-                      เล่นเต็มจอ
-                    </button>
-                    <a
-                      className="text-xs text-sky-900 underline"
-                      href={finalVideoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      เปิดในแท็บใหม่
-                    </a>
-                  </div>
-                  <p className="mt-2 text-[11px] text-emerald-900">
-                    {[
-                      finalVideoProbe?.width && finalVideoProbe?.height
-                        ? `${finalVideoProbe.width}×${finalVideoProbe.height}`
-                        : null,
-                      finalVideoProbe?.durationSeconds
-                        ? `${Math.round(finalVideoProbe.durationSeconds)} วินาที`
-                        : null,
-                      finalVideoProbe?.sizeBytes
-                        ? `${(finalVideoProbe.sizeBytes / 1024 / 1024).toFixed(1)} MB`
-                        : null,
-                      renderJobId ? `job ${renderJobId}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-              ) : renderJobId ? (
-                <div className="mt-3 rounded border border-slate-300 bg-white p-2 text-xs text-slate-700">
-                  <p>
-                    ส่งงานแล้ว · engine{" "}
-                    {props.state.finalRender.engine ?? "remotion_queue"} · job{" "}
-                    <code>{renderJobId}</code>
-                  </p>
-                  <p className="mt-1">
-                    งานรออยู่ในคิว Worker Jobs ให้เครื่อง Worker ดึงไป render —
-                    สถานะจะอัปเดตอัตโนมัติ
-                  </p>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {props.state.correctionRequired ? (
@@ -4488,63 +4442,6 @@ export function StagedCheckpointReviewPanel(props: {
               );
             })}
           </div>
-            {props.state.outputMode === "full_video" ? (
-              <Banner
-                className="sticky bottom-2 z-30 mt-4"
-                data-testid="staged-final-render-action-bottom"
-                status={
-                  finalVideoUrl
-                    ? "success"
-                    : canSubmitFinalRender
-                      ? "info"
-                      : "warning"
-                }
-                elevation="med"
-                title={
-                  finalVideoUrl
-                    ? "วิดีโอรวมพร้อมแล้ว"
-                    : canSubmitFinalRender
-                      ? "วิดีโอครบแล้ว — ขั้นต่อไป: รวมเป็นไฟล์เดียว"
-                      : `กำลังเตรียมวิดีโอ ${renderReadyShotCount}/${renderShotCount} ช็อต`
-                }
-                description={
-                  <>
-                    ตรวจรับแล้ว {renderReadyShotCount}/{renderShotCount} ช็อต
-                    {missingRenderShotIds.length > 0
-                      ? ` · ยังไม่มีวิดีโอช็อต ${missingRenderShotIds.join(", ")}`
-                      : ""}
-                    {unapprovedRenderShotIds.length > 0
-                      ? ` · รอตรวจรับช็อต ${unapprovedRenderShotIds.join(", ")}`
-                      : ""}
-                  </>
-                }
-                endContent={
-                  finalVideoUrl ? (
-                    <Button
-                      label="ดูวิดีโอรวมที่เสร็จแล้ว"
-                      href={`#staged-final-video-${props.runId}`}
-                      variant="primary"
-                      size="lg"
-                    />
-                  ) : (
-                    <Button
-                      label={
-                        renderJobId
-                          ? "ตรวจสอบงานรวมวิดีโอ"
-                          : canSubmitFinalRender
-                            ? `รวมวิดีโอทั้ง ${renderShotCount} ช็อตตอนนี้`
-                            : `รอวิดีโอครบ ${renderShotCount} ช็อต`
-                      }
-                      variant="primary"
-                      size="lg"
-                      isLoading={isThisActionRunning("submit-final-render")}
-                      isDisabled={!renderJobId && !canSubmitFinalRender}
-                      onClick={() => props.onSubmitFinalRender?.()}
-                    />
-                  )
-                }
-              />
-            ) : null}
         </>
       ) : null}
     </section>
