@@ -9,6 +9,7 @@
   "workerBuild.status.published": "Published",
   "workerBuild.status.failed": "Failed",
   "workerBuild.details": "View build details",
+  "workerBuild.progress": "View build progress",
   "workerBuild.failedHint": "Check build details or retry importing the installer.",
   "workerBuild.retry": "Retry verification and import",
   "workerBuild.requestFailed": "The operation failed. Check GitHub settings and try again.",

@@ -9,6 +9,7 @@
   "workerBuild.status.published": "เผยแพร่แล้ว",
   "workerBuild.status.failed": "ไม่สำเร็จ",
   "workerBuild.details": "ดูรายละเอียด build",
+  "workerBuild.progress": "ดูความคืบหน้า build",
   "workerBuild.failedHint": "ตรวจรายละเอียด build หรือกดลองนำไฟล์เข้าอีกครั้ง",
   "workerBuild.retry": "ลองตรวจสอบและนำไฟล์เข้าอีกครั้ง",
   "workerBuild.requestFailed": "ดำเนินการไม่สำเร็จ กรุณาตรวจการตั้งค่า GitHub และลองอีกครั้ง",

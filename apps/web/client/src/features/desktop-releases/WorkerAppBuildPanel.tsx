@@ -9,6 +9,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 type WorkerBuild = {
   id: string;
+  repository?: string;
   version: string;
   status: "queued" | "building" | "syncing" | "published" | "failed";
   runUrl: string | null;
@@ -81,6 +82,12 @@ export function WorkerAppBuildPanel() {
   };
   const active =
     build && ["queued", "building", "syncing"].includes(build.status);
+  const workflowUrl =
+    build?.repository &&
+    /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(build.repository)
+      ? `https://github.com/${build.repository}/actions/workflows/worker-app-windows-release.yml`
+      : null;
+  const progressUrl = build?.runUrl ?? workflowUrl;
   return (
     <Section>
       <VStack gap={3}>
@@ -99,9 +106,9 @@ export function WorkerAppBuildPanel() {
             {t(`dashboard:workerBuild.status.${build.status}`)}
           </Text>
         )}
-        {build?.runUrl && (
-          <Link href={build.runUrl} isExternalLink>
-            {t("dashboard:workerBuild.details")}
+        {progressUrl && (
+          <Link href={progressUrl} isExternalLink>
+            {t("dashboard:workerBuild.progress")}
           </Link>
         )}
         {build?.status === "failed" && (
