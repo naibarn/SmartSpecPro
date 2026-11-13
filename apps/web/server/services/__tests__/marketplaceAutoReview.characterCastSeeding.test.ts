@@ -19,6 +19,7 @@ import { describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import {
+  buildStagedProductReferenceImageUrlsForTest,
   buildSeededStagedCharacterCastManifestForTest,
 } from "../marketplaceAutoReviewService";
 import { deriveStagedCastFromManifestForTest } from "../marketplaceAutoReviewStagedPipelineService";
@@ -44,6 +45,22 @@ const PRODUCT_IMAGE_URLS = [
 ];
 
 describe("buildSeededStagedCharacterCastManifest (W2 seeding)", () => {
+  it("keeps staged product references within the five-image contract and prioritizes the selected anchor", () => {
+    const images = Array.from(
+      { length: 22 },
+      (_, index) => `https://cdn.example.com/product-${index + 1}.png`
+    );
+    const selected = images[17];
+
+    expect(buildStagedProductReferenceImageUrlsForTest(images, selected)).toEqual([
+      selected,
+      images[0],
+      images[1],
+      images[2],
+      images[3],
+    ]);
+  });
+
   it("uses roles accepted by the staged pipeline for product references", async () => {
     const result = await buildSeededStagedCharacterCastManifestForTest({
       db: fakeDb([]),

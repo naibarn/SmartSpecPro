@@ -13867,6 +13867,26 @@ export function buildMarketplaceAutoReviewProductTruthScaffoldForTest(
   return buildAutoReviewProductTruthScaffold(bundle, shotCount);
 }
 
+/** Keep the staged worker's product input within its five-reference contract,
+ * with the user's selected product anchor first. Product truth itself retains
+ * the full gallery for review and provenance. */
+function buildStagedProductReferenceImageUrls(
+  productImageUrls: string[],
+  selectedProductImageUrl?: unknown
+): string[] {
+  return uniqRefs([selectedProductImageUrl, ...productImageUrls]).slice(0, 5);
+}
+
+export function buildStagedProductReferenceImageUrlsForTest(
+  productImageUrls: string[],
+  selectedProductImageUrl?: unknown
+): string[] {
+  return buildStagedProductReferenceImageUrls(
+    productImageUrls,
+    selectedProductImageUrl
+  );
+}
+
 function resolveMarketplaceAutoReviewVoiceoverDurationSeconds(
   value: unknown
 ): (typeof MARKETPLACE_AUTO_REVIEW_VOICEOVER_DURATION_OPTIONS)[number] {
@@ -24585,6 +24605,10 @@ export async function startMarketplaceAutoReviewRun(
     bundle,
     requestedShotCount
   );
+  const stagedProductImageUrls = buildStagedProductReferenceImageUrls(
+    baseFallbackPlan.productTruth.imageUrls,
+    input.referenceAnchors?.productImageUrl
+  );
   // Resolve selected Drama Series portraits before reference-anchor checks.
   // A server-seeded cast manifest is a valid character reference for staged
   // Workbench runs even when the user did not upload a separate portrait.
@@ -24602,7 +24626,7 @@ export async function startMarketplaceAutoReviewRun(
       ? await buildSeededStagedCharacterCastManifest({
           db,
           auth,
-          productImageUrls: baseFallbackPlan.productTruth.imageUrls,
+          productImageUrls: stagedProductImageUrls,
           characterCast: input.characterCast ?? [],
           uploadedCharacterAnchorUrl,
           publicUrl: runtime.publicUrl,
@@ -24783,7 +24807,7 @@ export async function startMarketplaceAutoReviewRun(
             ]
           : [],
       productTruth: currentPlan.productTruth,
-      productImageUrls: currentPlan.productTruth.imageUrls,
+      productImageUrls: stagedProductImageUrls,
       // Creation-time drama casting (W2, see `seededCharacterCastManifest`
       // above). Only overridden on the call(s) where seeding actually ran;
       // otherwise falls through to whatever the previous metadata already
