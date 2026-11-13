@@ -2258,107 +2258,6 @@ export function StagedCheckpointReviewPanel(props: {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {bulkImagePromptTargets.length > 0 && props.onBulkGenerate
-                    ? action(
-                        "bulk-image-prompt-generate",
-                        `สร้าง Prompt ภาพทุกช็อต (${bulkImagePromptTargets.length})`,
-                        () => props.onBulkGenerate!(bulkImagePromptTargets),
-                        "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
-                        {
-                          disabled:
-                            activeBulkGeneration ||
-                            Boolean(activeImagePromptWorkerOperation) ||
-                            !storyPlanApproved,
-                          confirmation: {
-                            title: "ยืนยันสร้าง Prompt ภาพทุกช็อต",
-                            description: `ระบบจะสร้าง Prompt ภาพครบ ${bulkImagePromptTargets.length} ช็อตใน Worker งานเดียว โดยใช้เนื้อเรื่องล่าสุดที่ยืนยันแล้ว`,
-                          },
-                          title: activeBulkGeneration
-                            ? "กำลังทำงานชุดนี้ใน Worker"
-                            : !storyPlanApproved
-                              ? "ยืนยันเนื้อเรื่องก่อนสร้าง Prompt ภาพ"
-                              : "สร้าง Prompt ภาพครบทุกช็อตใน Worker งานเดียว",
-                        }
-                      )
-                    : null}
-                  {bulkImageGenerationTargets.length > 0 && props.onBulkGenerate
-                    ? action(
-                        "bulk-image-generation",
-                        `สร้างภาพทุกช็อต (${bulkImageGenerationTargets.length})`,
-                        () => props.onBulkGenerate!(bulkImageGenerationTargets),
-                        "rounded-lg border border-violet-300 bg-white px-3.5 py-1.5 text-xs font-bold text-violet-800 shadow-xs transition",
-                        {
-                          disabled:
-                            activeBulkGeneration ||
-                            bulkImageGenerationHasInFlight ||
-                            !storyPlanApproved ||
-                            props.state!.shots.some(
-                              shot =>
-                                !shot.imagePrompt?.trim() ||
-                                !props.state!.checkpoints.some(
-                                  checkpoint =>
-                                    checkpoint.shotId === shot.shotId &&
-                                    checkpoint.kind === "image_prompt" &&
-                                    checkpoint.state === "approved"
-                                )
-                            ),
-                          confirmation: {
-                            title: "ยืนยันสร้างภาพทุกช็อต",
-                            description: `ส่งสร้างภาพครบ ${bulkImageGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลภาพเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
-                          },
-                          title: !storyPlanApproved
-                            ? "ยืนยันเนื้อเรื่องก่อนสร้างภาพ"
-                            : bulkImageGenerationHasInFlight
-                              ? "รอให้งานภาพหรือวิดีโอที่กำลังทำอยู่เสร็จก่อน"
-                              : "สร้างภาพจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
-                        }
-                      )
-                    : null}
-                  {bulkVideoPromptTargets.length > 0 && props.onBulkGenerate
-                    ? action(
-                        "bulk-video-prompt-generate",
-                        `สร้าง Prompt วิดีโอทุกช็อต (${bulkVideoPromptTargets.length})`,
-                        () => props.onBulkGenerate!(bulkVideoPromptTargets),
-                        "rounded-lg border border-sky-400 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-sky-100 shadow-xs transition",
-                        {
-                          disabled:
-                            activeBulkGeneration ||
-                            Boolean(activeImagePromptWorkerOperation) ||
-                            videoPromptShotsWithoutApprovedImage > 0,
-                          confirmation: {
-                            title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
-                            description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก${bulkVideoPromptWillSupersedeMedia ? " มีบางช็อตกำลังเรนเดอร์อยู่ ผล render เดิมอาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่" : ""}`,
-                          },
-                          title: activeBulkGeneration
-                            ? "กำลังเตรียมงานชุดนี้ใน Worker"
-                            : videoPromptShotsWithoutApprovedImage > 0
-                              ? `ต้องสร้างและอนุมัติภาพก่อน (${videoPromptShotsWithoutApprovedImage} ช็อต)`
-                              : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
-                        }
-                      )
-                    : null}
-                  {bulkVideoGenerationTargets.length > 0 && props.onBulkGenerate
-                    ? action(
-                        "bulk-video-generation",
-                        `สร้างวิดีโอทุกช็อต (${bulkVideoGenerationTargets.length})`,
-                        () => props.onBulkGenerate!(bulkVideoGenerationTargets),
-                        "rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-sky-800",
-                        {
-                          disabled:
-                            activeBulkGeneration ||
-                            videoGenerationShotsNotReady > 0,
-                          confirmation: {
-                            title: "ยืนยันสร้างวิดีโอทุกช็อต",
-                            description: `ส่งสร้างวิดีโอครบ ${bulkVideoGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลวิดีโอเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
-                          },
-                          title: activeBulkGeneration
-                            ? "กำลังทำงานชุดนี้ใน Worker"
-                            : videoGenerationShotsNotReady > 0
-                              ? `ต้องมีภาพที่อนุมัติและ Prompt วิดีโอครบก่อน (${videoGenerationShotsNotReady} ช็อต)`
-                              : "สร้างวิดีโอจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
-                        }
-                      )
-                    : null}
                   <p className="text-xs text-slate-300">
                     {completedWorkflowSteps}/{workflowSteps.length} ขั้นตอนผ่าน
                   </p>
@@ -3791,6 +3690,123 @@ export function StagedCheckpointReviewPanel(props: {
                 </div>
               </div>
             ) : null}
+
+            <section
+              className="mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3"
+              aria-label="สร้างงานทุกช็อต"
+            >
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-violet-950">
+                  สร้างงานทุกช็อต
+                </h3>
+                <p className="mt-0.5 text-xs text-violet-800">
+                  เลือกงานชุดที่จะทำกับช็อตทั้งหมด
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                  {bulkImagePromptTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-image-prompt-generate",
+                        `สร้าง Prompt ภาพทุกช็อต (${bulkImagePromptTargets.length})`,
+                        () => props.onBulkGenerate!(bulkImagePromptTargets),
+                        "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            Boolean(activeImagePromptWorkerOperation) ||
+                            !storyPlanApproved,
+                          confirmation: {
+                            title: "ยืนยันสร้าง Prompt ภาพทุกช็อต",
+                            description: `ระบบจะสร้าง Prompt ภาพครบ ${bulkImagePromptTargets.length} ช็อตใน Worker งานเดียว โดยใช้เนื้อเรื่องล่าสุดที่ยืนยันแล้ว`,
+                          },
+                          title: activeBulkGeneration
+                            ? "กำลังทำงานชุดนี้ใน Worker"
+                            : !storyPlanApproved
+                              ? "ยืนยันเนื้อเรื่องก่อนสร้าง Prompt ภาพ"
+                              : "สร้าง Prompt ภาพครบทุกช็อตใน Worker งานเดียว",
+                        }
+                      )
+                    : null}
+                  {bulkImageGenerationTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-image-generation",
+                        `สร้างภาพทุกช็อต (${bulkImageGenerationTargets.length})`,
+                        () => props.onBulkGenerate!(bulkImageGenerationTargets),
+                        "rounded-lg border border-violet-300 bg-white px-3.5 py-1.5 text-xs font-bold text-violet-800 shadow-xs transition",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            bulkImageGenerationHasInFlight ||
+                            !storyPlanApproved ||
+                            props.state!.shots.some(
+                              shot =>
+                                !shot.imagePrompt?.trim() ||
+                                !props.state!.checkpoints.some(
+                                  checkpoint =>
+                                    checkpoint.shotId === shot.shotId &&
+                                    checkpoint.kind === "image_prompt" &&
+                                    checkpoint.state === "approved"
+                                )
+                            ),
+                          confirmation: {
+                            title: "ยืนยันสร้างภาพทุกช็อต",
+                            description: `ส่งสร้างภาพครบ ${bulkImageGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลภาพเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                          },
+                          title: !storyPlanApproved
+                            ? "ยืนยันเนื้อเรื่องก่อนสร้างภาพ"
+                            : bulkImageGenerationHasInFlight
+                              ? "รอให้งานภาพหรือวิดีโอที่กำลังทำอยู่เสร็จก่อน"
+                              : "สร้างภาพจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
+                        }
+                      )
+                    : null}
+                  {bulkVideoPromptTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-video-prompt-generate",
+                        `สร้าง Prompt วิดีโอทุกช็อต (${bulkVideoPromptTargets.length})`,
+                        () => props.onBulkGenerate!(bulkVideoPromptTargets),
+                        "rounded-lg border border-sky-400 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-sky-100 shadow-xs transition",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            Boolean(activeImagePromptWorkerOperation) ||
+                            videoPromptShotsWithoutApprovedImage > 0,
+                          confirmation: {
+                            title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
+                            description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก${bulkVideoPromptWillSupersedeMedia ? " มีบางช็อตกำลังเรนเดอร์อยู่ ผล render เดิมอาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่" : ""}`,
+                          },
+                          title: activeBulkGeneration
+                            ? "กำลังเตรียมงานชุดนี้ใน Worker"
+                            : videoPromptShotsWithoutApprovedImage > 0
+                              ? `ต้องสร้างและอนุมัติภาพก่อน (${videoPromptShotsWithoutApprovedImage} ช็อต)`
+                              : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
+                        }
+                      )
+                    : null}
+                  {bulkVideoGenerationTargets.length > 0 && props.onBulkGenerate
+                    ? action(
+                        "bulk-video-generation",
+                        `สร้างวิดีโอทุกช็อต (${bulkVideoGenerationTargets.length})`,
+                        () => props.onBulkGenerate!(bulkVideoGenerationTargets),
+                        "rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-sky-800",
+                        {
+                          disabled:
+                            activeBulkGeneration ||
+                            videoGenerationShotsNotReady > 0,
+                          confirmation: {
+                            title: "ยืนยันสร้างวิดีโอทุกช็อต",
+                            description: `ส่งสร้างวิดีโอครบ ${bulkVideoGenerationTargets.length} ช็อตจาก Prompt ที่บันทึกไว้เข้า Worker งานเดียว ผลวิดีโอเดิมจะถูกแทนที่ และอาจใช้เครดิตตามโมเดลที่เลือก`,
+                          },
+                          title: activeBulkGeneration
+                            ? "กำลังทำงานชุดนี้ใน Worker"
+                            : videoGenerationShotsNotReady > 0
+                              ? `ต้องมีภาพที่อนุมัติและ Prompt วิดีโอครบก่อน (${videoGenerationShotsNotReady} ช็อต)`
+                              : "สร้างวิดีโอจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
+                        }
+                      )
+                    : null}
+              </div>
+            </section>
 
             <div
               id="staged-auto-review-shot-list"

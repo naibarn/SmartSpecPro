@@ -188,7 +188,7 @@ describe("StagedCheckpointReviewPanel", () => {
 
   it("hides the per-shot image-prompt approve action (auto-approved server-side now) but keeps reject and prompt editing available", () => {
     const input = props();
-    render(<StagedCheckpointReviewPanel {...input} />);
+    const { container } = render(<StagedCheckpointReviewPanel {...input} />);
     expect(
       screen.getByText(
         "ตรวจเนื้อเรื่อง → ตรวจ Prompt ภาพ → Storyboard Review / ผลภาพ → ยืนยัน Prompt วิดีโอ → ตรวจผลวิดีโอ → ตรวจเสียง → ตรวจและยืนยันการประกอบ"
@@ -196,6 +196,15 @@ describe("StagedCheckpointReviewPanel", () => {
     ).toBeTruthy();
     expect(screen.getByText("Checkpoint progress")).toBeTruthy();
     expect(screen.getByText("ถัดไป: Prompt ภาพ")).toBeTruthy();
+    const bulkActions = screen.getByRole("region", {
+      name: "สร้างงานทุกช็อต",
+    });
+    const shotList = container.querySelector("#staged-auto-review-shot-list");
+    expect(shotList).not.toBeNull();
+    expect(
+      bulkActions.compareDocumentPosition(shotList!) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     // image_prompt checkpoints now auto-approve at construction — neither
     // render site (the media placeholder or the "1 · Prompt ภาพ" action bar)
     // exposes an approve trigger for them anymore.
