@@ -19,6 +19,7 @@ const stagedSelectedConceptSchema = z
     title: z.string().trim().min(1).max(160),
     angle: z.string().trim().min(1).max(400),
     storySummary: z.string().trim().min(1).max(500),
+    dialoguePreview: z.string().trim().min(40).max(6000),
   })
   .strict();
 

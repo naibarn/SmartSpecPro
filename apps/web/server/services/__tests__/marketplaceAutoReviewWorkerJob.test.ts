@@ -42,6 +42,28 @@ describe("Marketplace Auto Review worker job admission", () => {
     workerRuntimeMocks.advanceRun.mockResolvedValue({ runId: "run-auto-review-1" });
   });
 
+  it("accepts dialogue previews when a staged story concept is selected", () => {
+    const dialoguePreview = "พิมพ์ชนก: วันนี้ลองใช้แล้วรู้สึกสบายผิวขึ้นมาก ธีร์: ดีเลย เล่าให้ฟังหน่อยว่าใช้ยังไง";
+
+    const parsed = marketplaceAutoReviewWorkerInputSchema.parse({
+      operation: "staged_story_redraft",
+      runId: "run-auto-review-1",
+      expectedStateDigest: "state-digest-1",
+      requestIdempotencyKey: "request-story-redraft-1",
+      selectedConcept: {
+        conceptId: "concept-1",
+        title: "รีวิวจากประสบการณ์จริง",
+        angle: "เล่าความรู้สึกหลังทดลองใช้",
+        storySummary: "ตัวละครคุยกันถึงประสบการณ์ใช้สินค้าในชีวิตประจำวัน",
+        dialoguePreview,
+      },
+    });
+
+    expect(parsed).toMatchObject({
+      selectedConcept: { dialoguePreview },
+    });
+  });
+
   it("omits undefined optional prompt fields before canonical job validation", async () => {
     await enqueueMarketplaceAutoReviewWorkerJob({
       tenantId: "tenant-marketplace",
