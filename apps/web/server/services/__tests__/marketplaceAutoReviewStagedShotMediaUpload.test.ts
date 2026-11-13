@@ -229,29 +229,60 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
     expect(shot1.videoArtifactUrl).toBeNull();
   });
 
-  it("(c) uploading a video for a shot with no approved image throws staged_image_artifact_missing (PRECONDITION_FAILED)", async () => {
+  it("(c) accepts a completed video upload even without an image artifact and preserves the existing video prompt", async () => {
     const { applyStagedAutoReviewShotMediaUpload } = await import(
       "../marketplaceAutoReviewStagedCheckpointRouterService"
     );
-    const metadata = planFixtureMetadata();
+    const videoPrompt = buildStagedCheckpointFixture({
+      checkpointId: "cp-video-prompt-1",
+      kind: "video_prompt",
+      scope: "shot",
+      shotId: 1,
+      state: "approved",
+    });
+    const baseMetadata = planFixtureMetadata({
+      stagedSequentialStoryboard: {
+        ...planFixtureMetadata().stagedSequentialStoryboard,
+        reviewCheckpoints: [videoPrompt],
+      },
+    } as any);
+    const metadata = {
+      ...baseMetadata,
+      stagedSequentialStoryboard: {
+        ...baseMetadata.stagedSequentialStoryboard,
+        shots: baseMetadata.stagedSequentialStoryboard.shots.map(shot =>
+          shot.shotId === 1
+            ? { ...shot, videoPrompt: "Keep this approved video prompt" }
+            : shot
+        ),
+      },
+    };
 
-    expect(() =>
-      applyStagedAutoReviewShotMediaUpload({
-        metadata,
-        runId: "run-1",
-        shotId: 1,
-        stage: "video",
-        url: "https://cdn.example.test/manual-upload-1.mp4",
-        contentHash: "manual-hash-video-1",
-        userId: 42,
-        operationId: "op-2",
-      })
-    ).toThrowError(
-      expect.objectContaining({
-        code: "PRECONDITION_FAILED",
-        message: "staged_image_artifact_missing",
-      })
+    const result = applyStagedAutoReviewShotMediaUpload({
+      metadata,
+      runId: "run-1",
+      shotId: 1,
+      stage: "video",
+      url: "https://cdn.example.test/manual-upload-1.mp4",
+      contentHash: "manual-hash-video-1",
+      userId: 42,
+      operationId: "op-2",
+    });
+
+    const shot1 = result.metadata.stagedSequentialStoryboard.shots.find(
+      shot => shot.shotId === 1
+    ) as any;
+    const checkpoints =
+      result.metadata.stagedSequentialStoryboard.reviewCheckpoints;
+    expect(shot1.imageArtifactHash).toBeNull();
+    expect(shot1.videoArtifactHash).toBe("manual-hash-video-1");
+    expect(shot1.videoArtifactUrl).toBe(
+      "https://cdn.example.test/manual-upload-1.mp4"
     );
+    expect(shot1.videoPrompt).toBe("Keep this approved video prompt");
+    expect(
+      checkpoints.find(c => c.checkpointId === "cp-video-prompt-1")?.state
+    ).toBe("approved");
   });
 
   it("(d) uploading a video when an approved image exists sets videoArtifactUrl/Hash, supersedes only video-kind checkpoints, and leaves image-kind checkpoints for that shot untouched", async () => {
@@ -298,7 +329,11 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
         ...baseMetadata.stagedSequentialStoryboard,
         shots: baseMetadata.stagedSequentialStoryboard.shots.map(shot =>
           shot.shotId === 1
-            ? { ...shot, imageArtifactHash: "existing-image-hash" }
+            ? {
+                ...shot,
+                imageArtifactHash: "existing-image-hash",
+                videoPrompt: "Existing video prompt",
+              }
             : shot
         ),
       },
@@ -322,8 +357,8 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
     // Image-kind checkpoints for the shot are untouched.
     expect(byId("cp-image-prompt-1")?.state).toBe("approved");
     expect(byId("cp-image-result-1")?.state).toBe("approved");
-    // Only the video-kind checkpoint is superseded.
-    expect(byId("cp-video-prompt-1")?.state).toBe("superseded");
+    // Uploading a rendered video does not invalidate its prompt.
+    expect(byId("cp-video-prompt-1")?.state).toBe("approved");
 
     const newCheckpoint = checkpoints.find(
       c => c.kind === "video_result" && c.state === "approved" && c.shotId === 1
@@ -343,6 +378,7 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
     );
     // Image fields are untouched by a video-stage upload.
     expect(shot1.imageArtifactHash).toBe("existing-image-hash");
+    expect(shot1.videoPrompt).toBeDefined();
   });
 
   it("throws staged_invalid_shot_contract for an unknown shotId", async () => {

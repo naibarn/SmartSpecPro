@@ -633,7 +633,11 @@ export function assertStagedShotMediaSettledBeforePromptApply(
 
 function removeStagedTasksInvalidatedByPrompt(
   stagedPipeline: Record<string, any> | null | undefined,
-  targets: Array<{ shotId: number; stage: "image" | "video" }>
+  targets: Array<{
+    shotId: number;
+    stage: "image" | "video";
+    promptOnly?: boolean;
+  }>
 ) {
   const tasks = record(stagedPipeline?.tasks);
   return Object.fromEntries(
@@ -642,7 +646,9 @@ function removeStagedTasksInvalidatedByPrompt(
         !targets.some(
           target =>
             key === `${target.stage}:${target.shotId}` ||
-            (target.stage === "image" && key === `video:${target.shotId}`)
+            (target.stage === "image" &&
+              !target.promptOnly &&
+              key === `video:${target.shotId}`)
         )
     )
   );
@@ -1810,7 +1816,7 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
             : {}),
         });
         replacementByShot.set(target.shotId, replacement);
-        return imagePrompt
+        return imagePrompt && !target.promptOnly
           ? {
               ...shot,
               revision,
@@ -1824,7 +1830,14 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
               videoArtifactUrl: null,
               state: "image_prompt_awaiting",
             }
-          : {
+          : imagePrompt
+            ? {
+                ...shot,
+                revision,
+                imagePrompt: prompt,
+                imagePromptHash: replacement.contentHash,
+              }
+            : {
               ...shot,
               revision,
               videoPrompt: prompt,
@@ -1842,12 +1855,14 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
           const target = targetByShot.get(checkpoint.shotId);
           const invalidatedByImage =
             target?.stage === "image" &&
-            [
-              "image_prompt",
-              "image_result",
-              "video_prompt",
-              "video_result",
-            ].includes(checkpoint.kind);
+            (target.promptOnly
+              ? checkpoint.kind === "image_prompt"
+              : [
+                  "image_prompt",
+                  "image_result",
+                  "video_prompt",
+                  "video_result",
+                ].includes(checkpoint.kind));
           const invalidatedByVideo =
             target?.stage === "video" &&
             ["video_prompt", "video_result"].includes(checkpoint.kind);
@@ -1866,7 +1881,10 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       );
       const tasks = removeStagedTasksInvalidatedByPrompt(
         record((current as any).stagedPipeline),
-        nextTargets
+        nextTargets.map(target => ({
+          ...target,
+          promptOnly: target.promptOnly,
+        }))
       );
       const existingReceipts = record(
         record((current as any).stagedPipeline).bulkGenerationReceipts
@@ -2228,7 +2246,8 @@ export async function editStagedAutoReviewShot(input: {
         metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
           checkpoint => {
             const invalidatedByEdit = imagePrompt
-              ? checkpoint.shotId === input.shotId
+              ? checkpoint.shotId === input.shotId &&
+                checkpoint.kind === "image_prompt"
               : checkpoint.shotId === input.shotId &&
                 (checkpoint.kind === "video_prompt" ||
                   checkpoint.kind === "video_result");
@@ -2250,13 +2269,6 @@ export async function editStagedAutoReviewShot(input: {
           ? {
               imagePrompt: content,
               imagePromptHash: replacement.contentHash,
-              imageArtifactHash: null,
-              imageArtifactUrl: null,
-              videoPrompt: null,
-              videoPromptHash: null,
-              videoArtifactHash: null,
-              videoArtifactUrl: null,
-              state: "image_prompt_awaiting",
             }
           : {
               videoPrompt: content,
@@ -2272,7 +2284,7 @@ export async function editStagedAutoReviewShot(input: {
           (pipeline.tasks ?? {}) as Record<string, unknown>
         ).filter(([key]) =>
           imagePrompt
-            ? key !== `image:${input.shotId}` && key !== `video:${input.shotId}`
+            ? key !== `image:${input.shotId}`
             : key !== `video:${input.shotId}`
         )
       );
@@ -3083,12 +3095,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
           const invalidatedByImage =
             imagePrompt &&
             item.shotId === input.shotId &&
-            [
-              "image_prompt",
-              "image_result",
-              "video_prompt",
-              "video_result",
-            ].includes(item.kind);
+            item.kind === "image_prompt";
           const invalidatedByVideo =
             !imagePrompt &&
             item.shotId === input.shotId &&
@@ -3104,7 +3111,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         });
       const tasks = removeStagedTasksInvalidatedByPrompt(
         record((current as any).stagedPipeline),
-        [{ shotId: input.shotId, stage: input.stage }]
+        [{ shotId: input.shotId, stage: input.stage, promptOnly: true }]
       );
       const nextShot = {
         ...currentShot,
@@ -3113,13 +3120,6 @@ export async function generateStagedAutoReviewShotPrompt(input: {
           ? {
               imagePrompt: generated.prompt,
               imagePromptHash: contentHash,
-              imageArtifactHash: null,
-              imageArtifactUrl: null,
-              videoPrompt: null,
-              videoPromptHash: null,
-              videoArtifactHash: null,
-              videoArtifactUrl: null,
-              state: "image_prompt_awaiting",
             }
           : {
               videoPrompt: generated.prompt,
@@ -4051,30 +4051,18 @@ export function applyStagedAutoReviewShotMediaUpload(input: {
       message: "staged_invalid_shot_contract",
     });
 
-  // A video needs SOME image to belong to.
-  if (stage === "video" && !shot.imageArtifactHash) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_image_artifact_missing",
-    });
-  }
-
   const revision = shot.revision + 1;
 
-  // Supersede prior non-superseded checkpoints for this shot. Mirrors
-  // retryStagedAutoReviewShot's supersede set exactly: an image-stage
-  // replacement supersedes ALL 4 shot-scoped kinds (a new image invalidates
-  // any video prompt/result built against the old one); a video-stage
-  // replacement supersedes only the video-kind checkpoints, leaving the
-  // shot's approved image_prompt/image_result checkpoints untouched.
+  // Supersede prior non-superseded checkpoints for this shot. Replacing an
+  // image invalidates all shot media derived from it. Replacing a video only
+  // supersedes the prior video result; the video prompt is independent of the
+  // uploaded file and remains available as the approved prompt draft.
   let next = metadata;
   for (const checkpoint of metadata.stagedSequentialStoryboard
     .reviewCheckpoints) {
     if (
       checkpoint.shotId === shotId &&
-      (stage === "image" ||
-        checkpoint.kind === "video_prompt" ||
-        checkpoint.kind === "video_result") &&
+      (stage === "image" || checkpoint.kind === "video_result") &&
       checkpoint.state !== "superseded"
     ) {
       next = replaceCheckpointState(
