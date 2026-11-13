@@ -3523,3 +3523,166 @@ export async function refreshSequentialShotPromptWithSkill(
         "product-review-sequential-storyboard single-shot refresh failed"
       );
 }
+
+export async function refreshSequentialShotPromptWithSkillDirect(
+  input: SequentialSingleShotRefreshInput
+): Promise<{
+  startFrameImagePrompt: string;
+  videoPrompt?: string;
+  cameraBeats?: SequentialStoryboardCameraBeat[];
+  model: string;
+  provider: string;
+  estimatedCredits: number;
+}> {
+  if (!input.requestIdempotencyKey?.trim()) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_IDEMPOTENCY_KEY_REQUIRED");
+  }
+  const synced = await syncSingleSkillIfChanged(
+    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID
+  );
+  if (synced.error) {
+    throw new Error(
+      `${PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID} skill sync failed: ${synced.error}`
+    );
+  }
+  const skill = await getSkillByIdAsync(
+    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID
+  );
+  if (!skill) {
+    throw new Error(
+      `${PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID} skill not found or not enabled`
+    );
+  }
+  const policy = await resolveSkillExecutionPolicy({
+    skill,
+    conversationModel: input.model ?? null,
+  });
+  if (!policy.modelId || /^wllm_[A-Za-z0-9_-]{8,128}$/.test(policy.modelId)) {
+    throw new Error("MARKETPLACE_SKILL_DIRECT_EXECUTION_MODEL_NOT_CONFIGURED");
+  }
+  const provider = await getProviderForModel(policy.modelId, {
+    preferredProviderId: policy.preferredProviderId,
+    strictProviderPin: policy.strictProviderPin,
+    allowFreeModels: policy.allowFreeModels,
+  });
+  if (!provider) {
+    throw new Error(`MARKETPLACE_SKILL_PROVIDER_NOT_CONFIGURED:${policy.modelId}`);
+  }
+  if (
+    input.skillVisionUrls.length === 0 ||
+    input.skillVisionUrls.some(url => !/^https?:\/\//i.test(url.trim()))
+  ) {
+    throw new Error("MARKETPLACE_SKILL_DIRECT_EXECUTION_REFERENCES_INVALID");
+  }
+  const providerReferenceImages = await resolveExternalMediaReferenceUrls(
+    input.skillVisionUrls,
+    { userId: input.userId, tenantId: input.tenantId },
+    input.publicUrl,
+  );
+  if (
+    !providerReferenceImages ||
+    providerReferenceImages.length !== input.skillVisionUrls.length ||
+    providerReferenceImages.some(url => !url.trim())
+  ) {
+    throw new Error("MARKETPLACE_SKILL_DIRECT_EXECUTION_REFERENCE_RESOLUTION_FAILED");
+  }
+  const { systemPromptBase } = composeSequentialStoryboardSystemPromptBase({
+    skill,
+    runtimeContract: buildSequentialSingleShotRefreshContract(input),
+    productCategory: input.productCategory,
+  });
+  const userPrompt = buildCustomSkillUserPrompt(
+    {
+      single_shot_mode: true,
+      target_shot_id: input.targetShotId,
+      shot_contract: input.shotContract,
+    },
+    { referenceImageCount: providerReferenceImages.length }
+  );
+  const result = await executeWithFallback({
+    model: policy.modelId,
+    messages: buildSequentialStoryboardVisionMessages({
+      systemPrompt: systemPromptBase,
+      userPrompt,
+      referenceImages: providerReferenceImages,
+    }),
+    skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+    stream: false,
+    userId: input.userId,
+    tenantId: input.tenantId,
+    preferredProvider: provider.providerId,
+    strictProviderPin: true,
+    maxTokens: 2000,
+    temperature: 0.4,
+    disableProviderFallbacks: true,
+    allowFreeModels: policy.allowFreeModels,
+  });
+  if (result.type !== "success") {
+    throw new Error(
+      `MARKETPLACE_SINGLE_SHOT_SKILL_FAILED:${result.type === "error" ? result.error : "direct_provider_execution_failed"}`
+    );
+  }
+  if (!result.providerName.trim()) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_PROVIDER_MISSING");
+  }
+  const rawContent = extractSequentialStoryboardLlmContent(result.response);
+  if (!rawContent) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_EMPTY_OUTPUT");
+  }
+  const promptTokens = Number(result.response?.usage?.prompt_tokens);
+  const completionTokens = Number(result.response?.usage?.completion_tokens);
+  if (
+    !Number.isFinite(promptTokens) ||
+    promptTokens < 0 ||
+    !Number.isFinite(completionTokens) ||
+    completionTokens < 0
+  ) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_USAGE_REQUIRED");
+  }
+  const usage = { promptTokens, completionTokens };
+  const creditsUsed = await calculateCreditsForLLMDynamic(
+    usage.promptTokens,
+    usage.completionTokens,
+    policy.modelId
+  );
+  if (!Number.isFinite(creditsUsed) || creditsUsed < 0) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_USAGE_COST_INVALID");
+  }
+  if (creditsUsed > 0) {
+    await deductCredits({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      amount: creditsUsed,
+      description: `Marketplace Auto Review · ${PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID} · Shot ${input.targetShotId}`,
+      idempotencyKey: input.requestIdempotencyKey,
+      skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+      sourceType: "skill",
+      metadata: {
+        feature: "marketplace_auto_review",
+        runId: input.runId ?? null,
+        targetShotId: input.targetShotId,
+        model: policy.modelId,
+        provider: result.providerName,
+        executionMode: "direct_single_attempt",
+      },
+    });
+  }
+  let parsedRaw: unknown;
+  try {
+    parsedRaw = JSON.parse(rawContent);
+  } catch (error) {
+    throw new Error("MARKETPLACE_SINGLE_SHOT_SKILL_INVALID_JSON", { cause: error });
+  }
+  const parsed = parseSequentialSingleShotRefreshOutput(parsedRaw);
+  if (!parsed) {
+    throw new Error(
+      `MARKETPLACE_SINGLE_SHOT_SKILL_OUTPUT_INVALID:shot-${input.targetShotId}`
+    );
+  }
+  return {
+    ...parsed,
+    model: policy.modelId,
+    provider: result.providerName,
+    estimatedCredits: creditsUsed,
+  };
+}
