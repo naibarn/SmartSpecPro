@@ -1,34 +1,41 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const appSource = readFileSync(
-  new URL("../../App.tsx", import.meta.url),
+  resolve(process.cwd(), "client/src/App.tsx"),
   "utf8"
 );
 const workflowSource = readFileSync(
-  new URL("../MarketplaceAutoReviewWorkflowPage.tsx", import.meta.url),
+  resolve(
+    process.cwd(),
+    "client/src/pages/MarketplaceAutoReviewWorkflowPage.tsx"
+  ),
   "utf8"
 );
 const surfaceSource = readFileSync(
-  new URL(
-    "../../components/marketplaceCapture/StagedCheckpointReviewSurface.tsx",
-    import.meta.url
+  resolve(
+    process.cwd(),
+    "client/src/components/marketplaceCapture/StagedCheckpointReviewSurface.tsx"
   ),
   "utf8"
 );
 const panelSource = readFileSync(
-  new URL(
-    "../../components/marketplaceCapture/StagedCheckpointReviewPanel.tsx",
-    import.meta.url
+  resolve(
+    process.cwd(),
+    "client/src/components/marketplaceCapture/StagedCheckpointReviewPanel.tsx"
   ),
   "utf8"
 );
 const productSource = readFileSync(
-  new URL("../MarketplaceCaptureProductDetail.tsx", import.meta.url),
+  resolve(
+    process.cwd(),
+    "client/src/pages/MarketplaceCaptureProductDetail.tsx"
+  ),
   "utf8"
 );
 const storyboardSource = readFileSync(
-  new URL("../StoryboardReviewPage.tsx", import.meta.url),
+  resolve(process.cwd(), "client/src/pages/StoryboardReviewPage.tsx"),
   "utf8"
 );
 
@@ -74,5 +81,18 @@ describe("Marketplace staged auto-review workflow page wiring", () => {
     expect(productSource).not.toContain("<StagedCheckpointReviewPanel");
     expect(productSource).not.toContain("StagedCheckpointReviewSurface");
     expect(storyboardSource).not.toContain("<StagedCheckpointReviewPanel");
+  });
+
+  it("keeps workbench context compact and opens the related product in a new tab", () => {
+    expect(workflowSource).toContain('aria-label="ข้อมูล Job Workbench"');
+    expect(workflowSource).toContain("href={productDetailHref}");
+    expect(workflowSource).toContain('target="_blank"');
+    expect(workflowSource).toContain('rel="noopener noreferrer"');
+    expect(workflowSource).not.toContain(
+      "พื้นที่ทำงานสำหรับตรวจและยืนยันทีละ checkpoint"
+    );
+    expect(workflowSource).not.toContain(
+      "หน้านี้คือรายละเอียดของงานที่เลือก: ใช้ตรวจ Prompt และผลลัพธ์"
+    );
   });
 });

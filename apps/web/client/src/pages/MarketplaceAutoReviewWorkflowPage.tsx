@@ -5,9 +5,10 @@ import {
   Film,
   Loader2,
   Package,
-  Sparkles,
   Square,
 } from "lucide-react";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Link } from "@astryxdesign/core/Link";
 import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { StagedCheckpointReviewSurface } from "@/components/marketplaceCapture/StagedCheckpointReviewSurface";
@@ -238,6 +239,9 @@ export default function MarketplaceAutoReviewWorkflowPage() {
         : typeof product?.name === "string"
           ? product.name
           : "Marketplace product";
+  const productDetailHref = productId
+    ? `/marketplace-capture/products/${encodeURIComponent(productId)}`
+    : null;
   const outputLinks = safeOutputLinks(run);
   const storyboardLink =
     outputLinks.find((link: any) => link.kind === "storyboard_review") ?? null;
@@ -443,9 +447,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
               type="button"
               className="max-w-[15rem] truncate transition hover:text-slate-950"
               onClick={() =>
-                setLocation(
-                  `/marketplace-capture/products/${encodeURIComponent(productId)}`
-                )
+                setLocation(productDetailHref ?? "/marketplace-capture")
               }
             >
               {productName}
@@ -484,71 +486,91 @@ export default function MarketplaceAutoReviewWorkflowPage() {
           />
           <div className="min-w-0 order-1 xl:order-2">
             <header className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-violet-950/10">
-              <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-7">
-                <div className="min-w-0">
+              <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
+                <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    className="inline-flex min-h-11 items-center rounded-lg text-sm text-slate-300 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                    className="inline-flex min-h-11 items-center rounded-lg text-xs text-slate-300 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
                     onClick={() =>
                       setLocation(
-                        productId
-                          ? `/marketplace-capture/products/${encodeURIComponent(productId)}`
-                          : "/marketplace-capture"
+                        productDetailHref ?? "/marketplace-capture"
                       )
                     }
                   >
                     <ArrowLeft className="mr-1.5 h-4 w-4" /> กลับไปหน้าสินค้า
                   </button>
-                  <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
-                    <Sparkles className="h-4 w-4" /> Marketplace Auto Review
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                      Job Workbench
+                    </h1>
+                    <p className="text-xs leading-5 text-slate-300">
+                      ตรวจ Prompt และผลลัพธ์รายช็อต · กลับมาทำต่อจาก Run เดิมได้
+                    </p>
                   </div>
-                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                    Job Workbench
-                  </h1>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                    พื้นที่ทำงานสำหรับตรวจและยืนยันทีละ checkpoint
-                    ก่อนใช้เครดิตขั้นถัดไป แก้ไขงานเดิมหรือกลับมาต่อได้จาก run
-                    นี้โดยไม่ต้องเริ่มใหม่
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
-                      <Package className="h-3.5 w-3.5" /> {productName}
-                    </span>
+                  <section
+                    aria-label="ข้อมูล Job Workbench"
+                    className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-300"
+                  >
+                    <HStack
+                      as="span"
+                      gap={1.5}
+                      className="max-w-full rounded-full border border-white/10 bg-white/10 px-2.5 py-1"
+                    >
+                      <Package
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 shrink-0"
+                      />
+                      {productDetailHref ? (
+                        <Link
+                          href={productDetailHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          isExternalLink
+                          newTabLabel="(เปิดในแท็บใหม่)"
+                          type="inherit"
+                          color="inherit"
+                          maxLines={1}
+                        >
+                          {productName}
+                        </Link>
+                      ) : (
+                        productName
+                      )}
+                    </HStack>
                     {productId ? (
                       <span
-                        className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5"
+                        className="max-w-[18rem] truncate rounded-full border border-white/10 bg-white/10 px-2.5 py-1"
                         title={productId}
                       >
                         รหัสสินค้า {productId}
                       </span>
                     ) : null}
-                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                    <span
+                      className="max-w-[18rem] truncate rounded-full border border-white/10 bg-white/10 px-2.5 py-1"
+                      title={`Run ${runId}`}
+                    >
                       Run {runId}
                     </span>
-                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                    <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1">
                       ขั้นตอน {stageLabel(run?.currentStage)}
                     </span>
-                  </div>
-                  <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-300">
-                    หน้านี้คือรายละเอียดของงานที่เลือก: ใช้ตรวจ Prompt และผลลัพธ์
-                    แยกรายช็อต ส่วนหน้ารวมงานใช้ค้นงานย้อนหลังและกรองตามสินค้า
-                  </p>
+                  </section>
                   {run ? (
-                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                    <p className="mt-2 text-[11px] leading-4 text-slate-400">
                       สร้าง {formatDateTime(run.createdAt)} · อัปเดตล่าสุด{" "}
                       {formatDateTime(run.updatedAt ?? run.createdAt)}
                     </p>
                   ) : null}
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-1.5">
                     <a
-                      className="inline-flex min-h-10 items-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                       href="/marketplace/auto-review"
                     >
                       ดูงานทั้งหมด / ค้นหางานเก่า
                     </a>
                     {isStaged || hasLegacyShots ? (
                       <a
-                        className="inline-flex min-h-10 items-center rounded-lg border border-sky-300/40 bg-sky-400/15 px-3 py-2 text-xs font-medium text-sky-100 transition hover:bg-sky-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                        className="inline-flex min-h-11 items-center rounded-lg border border-sky-300/40 bg-sky-400/15 px-2.5 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-400/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                         href={
                           isStaged
                             ? "#staged-auto-review-shot-list"
@@ -560,9 +582,9 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                     ) : null}
                   </div>
                 </div>
-                <div className="flex min-w-[13rem] flex-col items-start gap-3 sm:items-end">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:max-w-[35%] lg:justify-end">
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium ${statusClass(status, isStaged)}`}
+                    className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium ${statusClass(status, isStaged)}`}
                   >
                     {status === "completed" ? (
                       <CheckCircle2 className="h-4 w-4" />
@@ -571,10 +593,10 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                     )}
                     {statusLabel(status, isStaged)}
                   </span>
-                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <div className="flex flex-wrap gap-1.5">
                     {storyboardLink ? (
                       <a
-                        className="inline-flex min-h-11 items-center rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                        className="inline-flex min-h-11 items-center rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-medium text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                         href={storyboardLink.url}
                       >
                         <Film className="mr-1.5 h-4 w-4" />
@@ -583,7 +605,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                     ) : null}
                     {videoEditorLink ? (
                       <a
-                        className="inline-flex min-h-11 items-center rounded-lg border border-white/20 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                        className="inline-flex min-h-11 items-center rounded-lg border border-white/20 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
                         href={videoEditorLink.url}
                       >
                         <ExternalLink className="mr-1.5 h-4 w-4" />
@@ -593,7 +615,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                     {canCancel && !cancelArmed ? (
                       <button
                         type="button"
-                        className="inline-flex min-h-11 items-center rounded-lg border border-red-300/60 px-3 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:opacity-60"
+                        className="inline-flex min-h-11 items-center rounded-lg border border-red-300/60 px-2.5 py-1.5 text-xs font-medium text-red-200 transition hover:bg-red-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:opacity-60"
                         onClick={() => {
                           setCancelError(null);
                           setCancelArmed(true);
@@ -639,17 +661,17 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   ) : null}
                 </div>
               </div>
-              <div className="border-t border-white/10 bg-white/[0.04] px-5 py-3 text-xs text-slate-300 sm:px-7">
+              <div className="border-t border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] leading-4 text-slate-300 sm:px-5">
                 <span className="font-medium text-white">ลำดับการทำงาน:</span>{" "}
                 ตรวจเนื้อเรื่อง → Prompt ภาพ → ผลภาพ → Prompt วิดีโอ → ผลวิดีโอ
                 → เสียง → การประกอบ
               </div>
             </header>
             <section
-              className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+              className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
               aria-label="สรุปการทำงานและเครดิต"
             >
-              <div className="rounded-xl border border-violet-200 bg-white p-4 shadow-sm">
+              <div className="rounded-lg border border-violet-200 bg-white p-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
                   1 · ตรวจ
                 </p>
@@ -657,7 +679,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   อ่านเนื้อหาและ Prompt ให้ตรงเป้าหมาย
                 </p>
               </div>
-              <div className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm">
+              <div className="rounded-lg border border-amber-200 bg-white p-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
                   2 · ยืนยัน
                 </p>
@@ -665,7 +687,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   กดยืนยันเฉพาะ checkpoint ที่พร้อมใช้เครดิต
                 </p>
               </div>
-              <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
+              <div className="rounded-lg border border-emerald-200 bg-white p-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
                   3 · ส่งต่อ
                 </p>
@@ -673,7 +695,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   เมื่อ output พร้อม จึงไปแก้ละเอียดต่อใน Storyboard Review
                 </p>
               </div>
-              <div className="rounded-xl border border-sky-200 bg-white p-4 shadow-sm">
+              <div className="rounded-lg border border-sky-200 bg-white p-3 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
                   เครดิต
                 </p>
