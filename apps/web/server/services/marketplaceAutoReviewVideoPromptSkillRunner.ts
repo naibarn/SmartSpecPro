@@ -402,13 +402,20 @@ function buildAuthoritativeSpeakerSections(input: {
     if (explicitId && !explicitPerson) {
       throw matchError("detected-person-id");
     }
-    let person = explicitPerson;
+    // Vision models occasionally repeat one detected ID for two speakers.
+    // Keep a valid, unused explicit ID authoritative; when it collides with a
+    // prior speaker, recover only from a clear image-position match below.
+    let person =
+      explicitPerson && !usedPersonIds.has(explicitPerson.id)
+        ? explicitPerson
+        : undefined;
     if (!person) {
       const targetX = positionTargetX(analysis.position);
       if (targetX === undefined) {
         throw matchError("speaker-position");
       }
       const positionalCandidates = input.detectedPeople
+        .filter(candidate => !usedPersonIds.has(candidate.id))
         .map(candidate => ({
           person: candidate,
           distance: Math.abs(
@@ -419,13 +426,12 @@ function buildAuthoritativeSpeakerSections(input: {
       const nearestCandidate = positionalCandidates[0];
       const nextCandidate = positionalCandidates[1];
       person =
-        input.detectedPeople.length === 1
-          ? input.detectedPeople[0]
-          : nearestCandidate &&
-              (!nextCandidate ||
-                nextCandidate.distance - nearestCandidate.distance >= 0.08)
-            ? nearestCandidate.person
-            : undefined;
+        positionalCandidates.length === 1 ||
+        (nearestCandidate &&
+          (!nextCandidate ||
+            nextCandidate.distance - nearestCandidate.distance >= 0.08))
+          ? nearestCandidate?.person
+          : undefined;
     }
     if (!person || usedPersonIds.has(person.id)) {
       throw matchError("detected-person-binding");
