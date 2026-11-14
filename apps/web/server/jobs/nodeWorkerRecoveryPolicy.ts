@@ -47,10 +47,6 @@ export function decideNodeWorkerRecovery(
     || snapshot.heartbeatAgeMs == null
     || snapshot.heartbeatAgeMs > NODE_WORKER_HEARTBEAT_STALE_MS
     || (
-      snapshot.activeJobCount > 0
-      && snapshot.activeLeaseValidCount === 0
-    )
-    || (
       snapshot.queuedUnconsumedCount > 0
       && snapshot.oldestQueuedUnconsumedAgeMs != null
       && snapshot.oldestQueuedUnconsumedAgeMs > NODE_WORKER_DISPATCH_BACKLOG_STALE_MS
@@ -66,8 +62,11 @@ export function decideNodeWorkerRecovery(
   if (!snapshot.serviceActive) {
     return { action: "restart", reason: "service_inactive" };
   }
+  // An expired job lease is recovered by the canonical job reconciler. Killing
+  // this process here would also interrupt unrelated jobs whose leases remain
+  // valid, leaving those jobs stranded until their own leases expire.
   if (snapshot.activeJobCount > 0 && snapshot.activeLeaseValidCount === 0) {
-    return { action: "restart", reason: "active_lease_expired" };
+    return { action: "healthy", reason: "active_lease_expired" };
   }
   if (snapshot.heartbeatAgeMs == null || snapshot.heartbeatAgeMs > NODE_WORKER_HEARTBEAT_STALE_MS) {
     if (snapshot.activeLeaseValidCount > 0) {

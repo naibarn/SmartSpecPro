@@ -42,18 +42,18 @@ describe("node worker recovery policy", () => {
     });
   });
 
-  it("restarts after the active job lease has expired", () => {
+  it("leaves expired lease recovery to the canonical reconciler", () => {
     expect(decideNodeWorkerRecovery(snapshot({
       heartbeatAgeMs: 31_000,
       activeJobCount: 1,
       activeLeaseValidCount: 0,
     }))).toMatchObject({
-      action: "restart",
+      action: "healthy",
       reason: "active_lease_expired",
     });
   });
 
-  it("restarts when an active job remains after every lease has expired", () => {
+  it("does not restart the worker when active job leases have expired", () => {
     expect(decideNodeWorkerRecovery({
       serviceActive: true,
       serviceAgeMs: 300_000,
@@ -63,7 +63,7 @@ describe("node worker recovery policy", () => {
       activeJobCount: 1,
       activeLeaseValidCount: 0,
       restartsInWindow: 0,
-    })).toEqual({ action: "restart", reason: "active_lease_expired" });
+    })).toEqual({ action: "healthy", reason: "active_lease_expired" });
   });
 
   it("allows startup time before treating a missing heartbeat as stale", () => {
