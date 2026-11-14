@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 80 unresolved of 81
-- Next action: Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify compact 48×48 thumbnails and uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file mixed/additive selection, send/history/retry, credit, validation boundaries, cross-scope denial and desktop/tablet/mobile behavior. Keep SPEC-312 acceptance partial until observed.
-- Manifest generation: 92
+- Requirements: 0 pass / 82 unresolved of 83
+- Next action: Retry authenticated 2.6 MB PNG upload/send on release 10f83cd1ee5cb8f7305b45bfbc88959614b583ec, then inspect queued reply/history. Keep all remaining image/document, credit, isolation and responsive acceptance open until observed.
+- Manifest generation: 97
 
 ## Source-declared status and relationship claims
 
