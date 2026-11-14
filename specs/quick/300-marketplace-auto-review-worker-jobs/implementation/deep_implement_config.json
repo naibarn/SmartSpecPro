@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main.",
-      "checkpoint_sha": "3bc102c29af2fbf49f89ba6a3b93522a35f7c409",
-      "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
+      "next_action": "Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user.",
+      "checkpoint_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
+      "merged_main_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-marketplace-auto-speaker-attribution"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 73,
-  "updated_at": "2026-11-14T15:54:51.776505+00:00",
+  "generation": 74,
+  "updated_at": "2026-11-14T16:17:52.263351+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main.",
-    "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
+    "next_action": "Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user.",
+    "merged_main_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
