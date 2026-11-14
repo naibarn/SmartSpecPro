@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "เมื่อมีคำสั่ง deploy โดยตรง ให้ตรวจ target/runtime ใน deployment-targets.json แล้ว release ไปยัง legacy-debian-dev; จากนั้นทำ authenticated browser UAT สำหรับ UI mapping ผู้พูดรายช็อต",
+      "next_action": "ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified",
       "checkpoint_sha": "3bc102c29af2fbf49f89ba6a3b93522a35f7c409",
-      "merged_main_sha": "3bc102c29af2fbf49f89ba6a3b93522a35f7c409",
+      "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-marketplace-review-fallback-audit"
     }
@@ -42,18 +42,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 71,
-  "updated_at": "2026-11-14T14:44:21.484891+00:00",
+  "generation": 72,
+  "updated_at": "2026-11-14T15:24:35.776434+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "เมื่อมีคำสั่ง deploy โดยตรง ให้ตรวจ target/runtime ใน deployment-targets.json แล้ว release ไปยัง legacy-debian-dev; จากนั้นทำ authenticated browser UAT สำหรับ UI mapping ผู้พูดรายช็อต",
-    "merged_main_sha": "3bc102c29af2fbf49f89ba6a3b93522a35f7c409",
+    "next_action": "ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified",
+    "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
       "The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
-      "UI manual speaker mapping ถูก integrate ใน 3bc102c29af2fbf49f89ba6a3b93522a35f7c409; ยังไม่ได้ deploy เพราะคำสั่งปัจจุบันขอสร้าง UI ไม่ได้สั่ง release",
       "Authenticated browser UAT และ live provider video-prompt generation ยังไม่ผ่านการยืนยัน"
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
