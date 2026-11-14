@@ -1659,7 +1659,9 @@ export const shotVideoPromptOutputSchema = z
      * pre-existing response (and every model that ignores the instruction)
      * validates unchanged.
      */
-    audio_direction: z.string().optional(),
+    // Vision models sometimes serialize this optional field as null. Treat
+    // that as absence; the result path normalizes nullish values to undefined.
+    audio_direction: z.string().nullish(),
     /**
      * Model-family-aware, vision-grounded video prompt quality upgrade
      * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
