@@ -1,6 +1,7 @@
 {
   "acceptance": {
     "evidence": [
+      "handoff/evidence/chat-multi-attachments-implementation-20261114.md",
       "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
       "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
       "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
@@ -34,49 +35,46 @@
   "blockers": [
     {
       "class": "HUMAN_UAT_PENDING",
-      "description": "Authenticated responsive visual and full Chat acceptance has not been recorded against development release 137dc60748aa88cfc19c23ae3e0b09bce60fcb91. The release is deployed and its assets match the build, but rendered mobile/tablet/desktop and theme-menu interaction review remains open.",
+      "description": "Authenticated rendered Chat acceptance has not been recorded on the current thumbnail-fix release. The compact-size CSS is verified in the deployed asset, but the signed-in browser must confirm thumbnail rendering and full uncropped square, portrait and landscape Lightbox images, plus the remaining attachment flow and responsive behavior.",
       "id": "authenticated-chat-uat",
-      "next_action": "Open https://aimarkethubs.com/chat using the normal signed-in MFA session on release 137dc60748aa88cfc19c23ae3e0b09bce60fcb91. Hard reload; verify the lower-right theme menu at desktop and compact widths, all seven choices, and resize/flip. Then review responsive layout and existing Chat acceptance. Record results without credentials.",
+      "next_action": "Open https://aimarkethubs.com/chat in the normal signed-in MFA session, hard reload release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview, verify thumbnails are at most 48×48 CSS pixels and Lightbox displays full 1:1, 9:16 and 16:9 images without crop/stretch. Continue 10-file selection, upload/send/history/retry, credit, validation, scope and desktop/tablet/mobile checks. Record only observed results; do not include credentials.",
       "requirements": [
-        "REQ-98B30E4A4A11",
-        "REQ-FB597F9F6A31",
-        "REQ-272D8958200D",
+        "REQ-8CA98A2980F0",
+        "REQ-E185061CC305",
+        "REQ-BDF9B9185DFB",
+        "REQ-A8FF57BBE1D1",
+        "REQ-2140E5BE408F",
+        "REQ-C9F5DE94046C",
         "REQ-BA91299B7E6E",
         "REQ-10502EC1FA83",
         "REQ-63FAA80C0131",
         "REQ-6D79BA4D5C04",
-        "REQ-B87850387915",
-        "REQ-D17E7B43470B",
-        "REQ-31B82DBC9983",
-        "REQ-25B63B857B2A",
-        "REQ-C9DA6B43F8F5",
-        "REQ-4B0F359717F0",
-        "REQ-C444B27F6E69",
-        "REQ-B270C2B89DC1"
+        "REQ-B87850387915"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
-    "expected_spec_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835"
+    "expected_canonical_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
+    "expected_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716"
   },
   "continuation": {
-    "next_action": "Hard reload aimarkethubs.com/chat on release 36134d0bd35eaa2997b76c7e301c7855150aa2b2; use the signed-in MFA session to preview, remove, upload, send and reload image history with an enabled vision model at desktop/tablet/mobile. Then design bounded document-byte credit reservation before implementing text/Markdown/CSV/JSON attachments. Keep SPEC-312 acceptance partial.",
+    "next_action": "Hard reload https://aimarkethubs.com/chat on release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview. In the signed-in MFA session, verify thumbnails remain at most 48×48 CSS pixels and click 1:1, 9:16 and 16:9 images to confirm the full uncropped image fits the Lightbox; then continue the remaining authenticated attachment UAT (10-file selection, removal, send/history/retry, credit, validation, cross-scope and responsive layout). Keep SPEC-312 acceptance partial until observed.",
     "next_ready_workunit": "authenticated-image-attachment-chat-uat-and-document-attachment-credit-design",
-    "reactivation_predicate": "Authenticated UAT observes image preview/removal, private upload, queued vision response, restored image history and retry preservation on the exact deployed SHA; document support stays unavailable until its payload is included in bounded credit reservation/settlement and verified.",
-    "resume_point": "2026-11-14: smartaihub-platform/main@36134d0bd35eaa2997b76c7e301c7855150aa2b2 integrated and deployed to https://aimarkethubs.com (modular-debian-dev). Private queued image attachment path is implemented and health/module/asset smoke passed; evidence: specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md. Authenticated image send/history UAT remains pending; document attachments are not implemented pending safe credit reservation design. Keep smartaihub.app and production smartsihub.com untouched.",
-    "waiting_predicate": "Only authenticated rendered review needs the normal owner MFA session on release 137dc60748aa88cfc19c23ae3e0b09bce60fcb91; hard reload, verify the theme selector at desktop/compact viewports and resize, then check mobile/tablet/desktop layout. Continue independent upload-contract, Cloud Execution status, Queue/DO reliability proof and matched performance benchmark. Keep smartaihub.app and production smartsihub.com untouched."
+    "reactivation_predicate": "Authenticated UAT observes 48×48-or-smaller image previews and full uncropped 1:1, 9:16, 16:9 Lightbox display on current deployed SHA, followed by the remaining image/document attachment, queue, credit, history and responsive acceptance.",
+    "resume_point": "2026-11-14: smartaihub-platform/main@fb3c66dd21938259a145e838f055b4a59b0abae0 deployed to https://aimarkethubs.com (modular-debian-dev). Corrected the invalid Astryx spacing token so the shipped image thumbnail is 48×48 CSS pixels; Lightbox uses contain sizing. Exact-SHA Core/Shell/Chat builds, local/public health, auth-boundary and public CSS asset checks passed. Authenticated visual browser UAT for preview scale and square/portrait/landscape ratios remains pending. Evidence: handoff/evidence/chat-multi-attachments-implementation-20261114.md. Keep smartaihub.app and production smartsihub.com untouched.",
+    "waiting_predicate": "The fixed thumbnail CSS and Lightbox contain sizing are deployed and the served stylesheet is verified. Only signed-in browser review can establish the rendered thumbnail size and uncropped square/portrait/landscape display; then complete the remaining authenticated attachment acceptance."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+      "handoff/evidence/chat-multi-attachments-implementation-20261114.md"
     ],
-    "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments. Verify multi-select/additive batches of 10 mixed image/text files, thumbnails and full-screen Lightbox, send/history/retry, credit reservation/debit, validation boundaries, cross-scope denial, and desktop/tablet/mobile. Keep SPEC-312 acceptance partial until observed.",
-    "rationale": "Section 10 implementation for compact thumbnails, Lightbox, multi-file image/text attachment upload, private authenticated storage/history, queued multimodal delivery, enabled image-model gating and bounded attachment-byte credit reservation is integrated and deployed to the authorized modular-debian-dev target. Exact-SHA typechecks/builds and public runtime/static-asset checks passed. Authenticated browser interaction/provider/credit UAT remains unobserved.",
+    "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify compact 48×48 thumbnails and uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file mixed/additive selection, send/history/retry, credit, validation boundaries, cross-scope denial and desktop/tablet/mobile behavior. Keep SPEC-312 acceptance partial until observed.",
+    "rationale": "The invalid Astryx spacing token caused the browser to ignore thumbnail bounds and display the image at intrinsic size. It is now 48×48 CSS pixels, and the Lightbox preserves the full image with contain sizing. Exact-SHA module builds and deployment health/asset checks passed. Authenticated rendered browser interaction and remaining provider/credit acceptance have not been observed.",
     "residual_requirements": [
       "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
+      "Verify compact thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox ratios",
       "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
       "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
       "Queue/DO delivery, duplicate, contention and restart proof",
@@ -91,13 +89,13 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:a4bc3940f71a82df051be5b9dd2f7f64e5cbf56bead8d623e24d0d323e787a61",
+    "artifact_digest": "sha256:a1016c18e0328a4cd44bac75d4ef4456e54c3aebeab533b7e19219f5b0c76e03",
     "environment": "modular-debian-dev / aimarkethubs.com",
     "evidence": [
       "handoff/evidence/chat-multi-attachments-implementation-20261114.md"
     ],
     "required": true,
-    "source_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+    "source_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
     "status": "PASS"
   },
   "disposition": {
@@ -116,13 +114,13 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 86,
+  "generation": 92,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
+    "digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-14T03:01:46.999870Z",
+      "last_evidence_at": "2026-11-14T08:12:50.393495Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
@@ -150,6 +148,7 @@
       "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
       "f271a2b669de97b1ae85788f3233902b47db018b",
       "f31c0667d985873c2202f619e19a978bf45c0728",
+      "fb3c66dd21938259a145e838f055b4a59b0abae0",
       "fc97012613dcf65a7ece07c75df9d8aea2f852d5"
     ],
     "mapping": [],
@@ -193,9 +192,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+    "canonical_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
     "integrated": true,
-    "integrated_at": "2026-11-14T02:53:06.275356Z"
+    "integrated_at": "2026-11-14T15:02:56+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -232,12 +231,13 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        "handoff/evidence/chat-multi-attachments-implementation-20261114.md"
       ],
-      "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments. Verify multi-select/additive batches of 10 mixed image/text files, thumbnails and full-screen Lightbox, send/history/retry, credit reservation/debit, validation boundaries, cross-scope denial, and desktop/tablet/mobile. Keep SPEC-312 acceptance partial until observed.",
-      "rationale": "Section 10 implementation for compact thumbnails, Lightbox, multi-file image/text attachment upload, private authenticated storage/history, queued multimodal delivery, enabled image-model gating and bounded attachment-byte credit reservation is integrated and deployed to the authorized modular-debian-dev target. Exact-SHA typechecks/builds and public runtime/static-asset checks passed. Authenticated browser interaction/provider/credit UAT remains unobserved.",
+      "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify compact 48×48 thumbnails and uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file mixed/additive selection, send/history/retry, credit, validation boundaries, cross-scope denial and desktop/tablet/mobile behavior. Keep SPEC-312 acceptance partial until observed.",
+      "rationale": "The invalid Astryx spacing token caused the browser to ignore thumbnail bounds and display the image at intrinsic size. It is now 48×48 CSS pixels, and the Lightbox preserves the full image with contain sizing. Exact-SHA module builds and deployment health/asset checks passed. Authenticated rendered browser interaction and remaining provider/credit acceptance have not been observed.",
       "residual_requirements": [
         "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
+        "Verify compact thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox ratios",
         "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
         "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
         "Queue/DO delivery, duplicate, contention and restart proof",
@@ -283,20 +283,20 @@
         "blocker": null,
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+          "SPEC-312 R1.16 implementation and release evidence: handoff/evidence/chat-multi-attachments-implementation-20261114.md; current deployed source SHA fb3c66dd21938259a145e838f055b4a59b0abae0."
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
-        "requirement_digest": "350c0ec01eabbb8e893a001e0ff110f1e74293889c467237c850e46d8d84e61b",
+        "next_action": "Complete authenticated Chat UAT against the current fb3c66dd21938259a145e838f055b4a59b0abae0 release, including 48×48 thumbnail and full uncropped 1:1, 9:16 and 16:9 Lightbox review, before marking R1.16 complete.",
+        "requirement_digest": "7a3f4840891575c56e1ca3d8b00f17a6a7ec75a666a307f35ef002abb9fe94cb",
         "requirement_id": "R1.16",
-        "requirement_text": "> **Current-revision note (R1.16, 2026-11-14):** Earlier R0.x–R1.15 proposal text is retained for provenance. R1.16 adds authenticated, workspace-scoped image/document uploads, compact image thumbnails with full-screen Lightbox viewing, private object storage and queued multimodal delivery; selection supports at least 10 files per turn, and Auto selection must use only models whose live OpenRouter metadata confirms image input. R1.15 requires the Astryx theme menu to keep every option inside the visible viewport, opening above a lower-right desktop control and flipping when available space requires it. R1.14 controls compact, usable mobile Chat layout and prevents toolbar/model/theme controls from displacing or covering the conversation and composer. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.",
-        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "requirement_text": "> **Current-revision note (R1.16, 2026-11-14):** Earlier R0.x–R1.15 proposal text is retained for provenance. R1.16 adds authenticated, workspace-scoped image/document uploads, compact image thumbnails (maximum 48×48 CSS pixels) with full-screen Lightbox viewing, private object storage and queued multimodal delivery; Lightbox images must use `contain` sizing and preserve their full 1:1, 9:16 or 16:9 aspect ratio. Selection supports at least 10 files per turn, and Auto selection must use only models whose live OpenRouter metadata confirms image input. R1.15 requires the Astryx theme menu to keep every option inside the visible viewport, opening above a lower-right desktop control and flipping when available space requires it. R1.14 controls compact, usable mobile Chat layout and prevents toolbar/model/theme controls from displacing or covering the conversation and composer. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "successor_mapping": [],
         "verification_evidence": [
-          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+          "Exact-SHA Core/Shell/Chat build and public served CSS checks confirm the 48×48 preview rule; signed-in rendered UAT for image ratios and full attachment acceptance remains pending."
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -504,20 +504,20 @@
         "blocker": null,
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
         "requirement_digest": "6e72187fdebebce11ddcd3ac018aa604295f3c593e6572d68733c2f55989b7aa",
         "requirement_id": "REQ-2140E5BE408F",
         "requirement_text": "- Chat turns SHALL still enter the canonical `worker_jobs` + outbox + Cloudflare Queue pipeline. The worker SHALL load attachment bytes from private object storage only after a valid job claim and send text/image content to OpenRouter in a provider-compatible format. Before provider execution, credit reservation SHALL include a bounded conservative allowance for all attached bytes; final charges SHALL settle against measured provider usage on the existing worker path.",
-        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "successor_mapping": [],
         "verification_evidence": [
-          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -1199,6 +1199,32 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-8CA98A2980F0": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L300"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L300",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
+        "requirement_digest": "397425d34fa0efbbf35b407fad98240b49b0392a7f1feb6fa2c012fc4eee5915",
+        "requirement_id": "REQ-8CA98A2980F0",
+        "requirement_text": "- Chat SHALL show each selected image in a compact thumbnail no larger than 48×48 CSS pixels, with filename, size and remove action; selecting or attaching an image SHALL NOT render it at intrinsic/full-screen size. Clicking a thumbnail SHALL open a full-screen Lightbox that preserves the complete image without cropping or stretching, including 1:1, 9:16 and 16:9 source ratios. Preview object URLs SHALL be released when an attachment is removed, sent or the composer unmounts.",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
       "REQ-9243A49EB447": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1361,20 +1387,20 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
         "requirement_digest": "0aff6e45de86d32df157610456233ef4e95f4bc657a1cfebdab8feabf0e48998",
         "requirement_id": "REQ-A8FF57BBE1D1",
         "requirement_text": "- A turn SHALL reference only attachments successfully uploaded under its caller/workspace. Attachment references SHALL be persisted with the user message/job, retained across Queue retries and replay, and available in history through authenticated reads. Failed upload or enqueue SHALL preserve the draft and selected attachments and SHALL NOT silently drop them.",
-        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "successor_mapping": [],
         "verification_evidence": [
-          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
@@ -1540,20 +1566,20 @@
         "blocker": null,
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
         "requirement_digest": "c03dce96ee9a00472a59f0a339656c9e90632d5fc198f1afb649575cc46a3c7b",
         "requirement_id": "REQ-BDF9B9185DFB",
         "requirement_text": "- Chat SHALL accept at least 10 image/document attachments per turn, selected individually or together in multi-select batches, within a 10 MiB aggregate limit. Supported image types are JPEG, PNG and WebP (4 MiB each); supported text documents include plain text, Markdown, CSV and JSON (1 MiB each). The server SHALL validate media type, image file signatures, byte limits and normalized filename; unsupported types SHALL be rejected with localized actionable copy.",
-        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "successor_mapping": [],
         "verification_evidence": [
-          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
         ],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
@@ -1653,20 +1679,20 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
         "requirement_digest": "313ac3607f7bde459692f29d20fc9d35257378196c6f36b7e141730dfb5abd7c",
         "requirement_id": "REQ-C9F5DE94046C",
         "requirement_text": "- Explicit and Auto model selection SHALL reject or exclude models unless live provider catalog metadata confirms image input for image turns. Text-only turns SHALL retain current model behavior. An unavailable vision model SHALL produce an actionable localized error and preserve the draft/attachments.",
-        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "successor_mapping": [],
         "verification_evidence": [
-          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
@@ -1755,6 +1781,32 @@
           "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/theme-menu-viewport-fit-release-20261114.md"
         ],
         "verification_method": "Scoped Chat typecheck/build and deployed exact-SHA health/asset parity passed. Authenticated rendered interaction review remains pending."
+      },
+      "REQ-E185061CC305": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L307"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L307",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main fb3c66dd21938259a145e838f055b4a59b0abae0; handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "On the signed-in MFA session at https://aimarkethubs.com/chat, hard reload release fb3c66dd21938259a145e838f055b4a59b0abae0 and verify 48×48 thumbnails, then open square, portrait and landscape images in the Lightbox and confirm their full uncropped ratios. Continue remaining authenticated attachment acceptance; keep PARTIAL until observed.",
+        "requirement_digest": "a81d3100d418c7b94f1bea218fb05368852b527a4f411271999410a666aa3a8d",
+        "requirement_id": "REQ-E185061CC305",
+        "requirement_text": "- Acceptance SHALL cover immediate thumbnails at or below 48×48 CSS pixels, full-screen Lightbox/gallery navigation with uncropped 1:1, 9:16 and 16:9 images, removal, individual and multi-select batches of at least 10 files, supported and rejected types, file-size/count boundaries, authenticated upload/history reads, cross-scope denial, successful queued image/document response, replay/redelivery, image-capable Auto filtering, explicit text-only model rejection, attachment-aware credit reservation/settlement and responsive composer behavior. Upload/provider failures SHALL preserve user input; upload acknowledgement alone SHALL NOT be presented as a successful AI response.",
+        "source_spec_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Exact-SHA Core/Shell/Chat builds passed; modular-debian-dev local/public health, auth boundary, manifest/entry and served Chat CSS (48×48 thumbnail token) checks passed. Authenticated browser UAT for preview scale and uncropped 1:1, 9:16 and 16:9 Lightbox ratios, plus remaining attachment acceptance, is pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
       "REQ-E45855A2AF36": {
         "applicability": "APPLICABLE",
@@ -1893,10 +1945,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-14T03:01:46.999870Z",
+    "reconciled_at": "2026-11-14T08:12:50.393495Z",
     "sources": [
       {
-        "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
+        "digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1931,7 +1983,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "2421b744ec2039fb301e1af4a5d5f6a1250d69e78e78d6a2979a332b1a0d4ab0",
+        "digest": "1ccc961c1e6cd9e675f6c14940f295206674b70a8e247861d9ec8ac961ab10a4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1981,7 +2033,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "ccecfbfa923bb53995c6c84d63fa8086d9cb11f2f5e7d2516242b0607f6b04e5",
+        "digest": "1cda46d624a17228b2e79ea8f313a0147ab52f5ee7bc7c399440a83864c2fc40",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
       },
@@ -2133,7 +2185,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
+        "source_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -2294,14 +2346,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
+        "source_digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
+        "digest": "ee42971c1a366b287fa95d71e41e709b9995da123773b23721ad6da6cbc53716",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2336,7 +2388,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "2421b744ec2039fb301e1af4a5d5f6a1250d69e78e78d6a2979a332b1a0d4ab0",
+        "digest": "1ccc961c1e6cd9e675f6c14940f295206674b70a8e247861d9ec8ac961ab10a4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -2386,7 +2438,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "ccecfbfa923bb53995c6c84d63fa8086d9cb11f2f5e7d2516242b0607f6b04e5",
+        "digest": "1cda46d624a17228b2e79ea8f313a0147ab52f5ee7bc7c399440a83864c2fc40",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
       }
@@ -2406,17 +2458,17 @@
     "unresolved": 80
   },
   "schema_version": 1,
-  "updated_at": "2026-11-14T03:01:46.999870Z",
+  "updated_at": "2026-11-14T08:14:00.197573Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "TypeScript checks: @smartaihub/chat and @smartaihub/saas-core",
-      "Independent package builds: @smartaihub/chat and @smartaihub/saas-core",
-      "Exact-SHA canonical build and public asset checks recorded in handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+      "smartaihub-platform @ fb3c66dd21938259a145e838f055b4a59b0abae0: exact-SHA Core, Shell and Chat builds passed.",
+      "Aimarkethubs release controller local/public health, auth boundary, module manifest and entry checks passed; public Chat CSS confirms 48×48 thumbnail sizing.",
+      "Authenticated rendered browser UAT for preview scale and 1:1, 9:16, 16:9 Lightbox ratios remains pending; see handoff/evidence/chat-multi-attachments-implementation-20261114.md."
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+    "sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
     "status": "PARTIAL",
     "task_regressions": []
   }

@@ -75,9 +75,9 @@
     },
     "section-10-authenticated-chat-attachments": {
       "status": "checkpointed",
-      "next_action": "Run authenticated attachment UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments (source SHA 063b50e0482b6833cf47d5225999c98e78b2c239): select 10 mixed images/text files both together and additively; verify compact thumbnails, fullscreen Lightbox navigation, removal, preview restoration after reload, text extraction in queued provider response, credit reserve/debit, retries and responsive desktop/tablet/mobile. Verify invalid MIME/signature/count/size rejection and cross-workspace reads. Build/typecheck/public asset evidence is recorded; browser UAT remains pending, so keep section and SPEC acceptance partial.",
+      "next_action": "Authenticated attachment UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify 48x48 thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file selection, upload/send/history/retry, credit, validation, cross-workspace denial and desktop/tablet/mobile. Build and public CSS evidence is recorded; rendered browser UAT remains pending, so keep SPEC acceptance partial.",
       "checkpoint_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
-      "merged_main_sha": "063b50e0482b6833cf47d5225999c98e78b2c239"
+      "merged_main_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0"
     }
   },
   "pre_commit": {
@@ -89,12 +89,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 62,
-  "updated_at": "2026-11-14T03:00:27.306834+00:00",
+  "generation": 63,
+  "updated_at": "2026-11-14T08:14:22.635261+00:00",
   "progress": {
     "active_section": "section-10-authenticated-chat-attachments",
-    "next_action": "Run authenticated attachment UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments (source SHA 063b50e0482b6833cf47d5225999c98e78b2c239): select 10 mixed images/text files both together and additively; verify compact thumbnails, fullscreen Lightbox navigation, removal, preview restoration after reload, text extraction in queued provider response, credit reserve/debit, retries and responsive desktop/tablet/mobile. Verify invalid MIME/signature/count/size rejection and cross-workspace reads. Build/typecheck/public asset evidence is recorded; browser UAT remains pending, so keep section and SPEC acceptance partial.",
-    "merged_main_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+    "next_action": "Authenticated attachment UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify 48x48 thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file selection, upload/send/history/retry, credit, validation, cross-workspace denial and desktop/tablet/mobile. Build and public CSS evidence is recorded; rendered browser UAT remains pending, so keep SPEC acceptance partial.",
+    "merged_main_sha": "fb3c66dd21938259a145e838f055b4a59b0abae0",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",

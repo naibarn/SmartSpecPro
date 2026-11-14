@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `62`
-- Updated (UTC): `2026-11-14T03:00:27.306834+00:00`
+- State generation: `63`
+- Updated (UTC): `2026-11-14T08:14:22.635261+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `063b50e0482b6833cf47d5225999c98e78b2c239`
+- Latest recorded merged Main SHA: `fb3c66dd21938259a145e838f055b4a59b0abae0`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-10-authenticated-chat-attachments`
-- Next action: Run authenticated attachment UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments (source SHA 063b50e0482b6833cf47d5225999c98e78b2c239): select 10 mixed images/text files both together and additively; verify compact thumbnails, fullscreen Lightbox navigation, removal, preview restoration after reload, text extraction in queued provider response, credit reserve/debit, retries and responsive desktop/tablet/mobile. Verify invalid MIME/signature/count/size rejection and cross-workspace reads. Build/typecheck/public asset evidence is recorded; browser UAT remains pending, so keep section and SPEC acceptance partial.
+- Next action: Authenticated attachment UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify 48x48 thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file selection, upload/send/history/retry, credit, validation, cross-workspace denial and desktop/tablet/mobile. Build and public CSS evidence is recorded; rendered browser UAT remains pending, so keep SPEC acceptance partial.
 
 ## Sections
 
@@ -26,7 +26,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 063b50e0482b6833cf47d5225999c98e78b2c239 | Authenticated browser UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments: verify workspace, enabled model/Auto, queued response/history/credit delta, and responsive Chat at desktop/tablet/mobile. Section 10 attachment implementation is now deployed; verify its preview/send/history/retry behavior in the same pass. Keep Queue/DO recovery, Cloud Execution status and matched benchmark gaps open. |
 | section-08-chat-sidebar-tabs-and-collapse | checkpointed | — | — | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | 063b50e0482b6833cf47d5225999c98e78b2c239 | Authenticated browser UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments: review menu/history tab switching, selection, workspace/account controls, and collapse/expand restoration at desktop/tablet/mobile. Keep parent acceptance partial. |
 | section-09-sidebar-footer-language-and-astryx-themes | checkpointed | — | — | e541abf7fe9010a216b709fa3b0b48dcaec71854 | 063b50e0482b6833cf47d5225999c98e78b2c239 | Authenticated rendered review on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments: verify mobile toolbar/model selector, single-column prompts, conversation scroll, composer/send/theme reachability and safe-area spacing; then check tablet/desktop, locale/theme persistence, history, queued response and credit delta. Keep parent acceptance partial. |
-| section-10-authenticated-chat-attachments | checkpointed | — | — | 063b50e0482b6833cf47d5225999c98e78b2c239 | 063b50e0482b6833cf47d5225999c98e78b2c239 | Run authenticated attachment UAT on aimarkethubs.com deployment modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments (source SHA 063b50e0482b6833cf47d5225999c98e78b2c239): select 10 mixed images/text files both together and additively; verify compact thumbnails, fullscreen Lightbox navigation, removal, preview restoration after reload, text extraction in queued provider response, credit reserve/debit, retries and responsive desktop/tablet/mobile. Verify invalid MIME/signature/count/size rejection and cross-workspace reads. Build/typecheck/public asset evidence is recorded; browser UAT remains pending, so keep section and SPEC acceptance partial. |
+| section-10-authenticated-chat-attachments | checkpointed | — | — | 063b50e0482b6833cf47d5225999c98e78b2c239 | fb3c66dd21938259a145e838f055b4a59b0abae0 | Authenticated attachment UAT on aimarkethubs.com release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview: verify 48x48 thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox display, then 10-file selection, upload/send/history/retry, credit, validation, cross-workspace denial and desktop/tablet/mobile. Build and public CSS evidence is recorded; rendered browser UAT remains pending, so keep SPEC acceptance partial. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
