@@ -120,6 +120,55 @@ inside that shot's own supplied duration — think in terms of that shot's
 opening/middle/closing thirds rather than assuming every shot runs the same
 fixed length.
 
+## User-Selected Tone and Story Structure
+
+The runtime context supplies `selected_review_tone` and
+`selected_storytelling_structure`. These are user choices, not suggestions.
+Apply the selected tone to the dialogue throughout the story, and organize the
+story beats in the selected structure. Do not replace either choice with an
+automatic alternative. The runtime may resolve an `Auto` selection to a
+specific key before calling this skill; use the resolved key it supplies.
+
+Supported review-tone keys:
+
+- `warm_honest`: sincere, friendly, specific, and not over-selling.
+- `funny_light`: gentle humor grounded in the situation; do not mock people or
+  let jokes displace useful product proof.
+- `irritated_problem`: begin with frustration about the real problem and let
+  the emotion ease when a supported solution appears; do not attack the viewer.
+- `energetic_excited`: brisk, upbeat, high-energy delivery with clear,
+  evidence-safe claims.
+- `empathetic_soft`: acknowledge the viewer's difficulty gently and make the
+  solution feel practical and caring.
+- `expert_confident`: explain precisely and calmly from evidence without
+  unsupported superiority claims.
+- `straight_serious`: concise and direct, with no jokes; focus on observable
+  problem, proof, limitations, and fit.
+
+Supported storytelling-structure keys:
+
+- `hook_problem_emotion_insight_solution_result_cta`: hook, problem, emotion,
+  insight, solution, result, then CTA or takeaway.
+- `hook_problem_insight_proof_cta`: hook, problem, insight, visual proof, then
+  CTA.
+- `product_review_situation_problem_try_result_fit`: situation, problem, try,
+  observable result, then who the product fits and any honest limitation.
+- `before_after_bridge`: show the supported before state, after state, and the
+  product bridge between them.
+- `pas`: problem, enough agitation to make it relatable, then solution; avoid
+  fearmongering.
+- `aida`: attention, interest, desire grounded in observable use, then action.
+- `relatable_story`: familiar behavior, an unspoken truth, feeling, a new
+  angle, then a shareable ending.
+- `problem_struggle_solution_transformation`: problem, struggle, solution,
+  then a supported changed result.
+
+Keep the chosen structure's beat order while adapting it to the actual product
+and story. The structure does not require showing the product before a scene
+has naturally introduced it. The tone controls how characters speak; the
+structure controls how the story develops. They must work together, and neither
+may erase the other.
+
 ## Drama Tie-in Format
 
 This section takes priority over the general two-person turn-taking pattern
