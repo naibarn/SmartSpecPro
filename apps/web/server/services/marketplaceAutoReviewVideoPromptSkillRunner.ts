@@ -368,10 +368,15 @@ function positionTargetX(value: string): number | undefined {
 }
 
 function buildAuthoritativeSpeakerSections(input: {
+  shotId: number;
   dialogue: Array<{ speaker: string; line: string }>;
   detectedPeople: readonly VerticalDramaDetectedShotPerson[];
   frameAnalysisPeople: readonly MarketplaceSpeakerVisualEntry[];
 }): string {
+  const matchError = (reason: string) =>
+    new Error(
+      `MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING:shot-${input.shotId}:${reason}`
+    );
   const normalizedName = (value: string) =>
     value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
   const usedPersonIds = new Set<string>();
@@ -387,7 +392,7 @@ function buildAuthoritativeSpeakerSections(input: {
       person => normalizedName(person.name) === speakerKey
     );
     if (matches.length !== 1) {
-      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+      throw matchError("speaker-label");
     }
     const analysis = matches[0];
     const explicitId = analysis?.detected_person_id?.trim();
@@ -404,7 +409,7 @@ function buildAuthoritativeSpeakerSections(input: {
             targetX
         ) > 0.4)
     ) {
-      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+      throw matchError("speaker-position");
     }
     const positionalCandidates =
       targetX === undefined
@@ -429,7 +434,7 @@ function buildAuthoritativeSpeakerSections(input: {
           : undefined;
     const person = explicitId ? explicitPerson : positionalPerson;
     if (!person || usedPersonIds.has(person.id)) {
-      throw new Error("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING");
+      throw matchError("detected-person-binding");
     }
     usedPersonIds.add(person.id);
     const position = detectedPersonPosition(person);
@@ -604,10 +609,10 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     input.shot.transition
       ? `Planned scene transition: ${clean(input.shot.transition, 180)}`
       : null,
-    `Character portrait identity map (images after Image 1):\n${portraitManifest}`,
+    `CHARACTER IDENTITY MAP (portraits attached after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
-    "Before writing the prompt, compare each attached portrait with the detected people in Image 1. In the JSON frame_analysis.people array, include every dialogue speaker by exact cast name, observed position, and detected_person_id using the exact person-N ID supplied above. Do not infer the identity from cast order or left-to-right order. If the visual match is ambiguous, omit that speaker from frame_analysis.people rather than guessing.",
+    "SHOT-LOCAL SPEAKER MAP (mandatory): Before writing the prompt, compare each attached portrait with the detected people in Image 1. In JSON frame_analysis.people, include every dialogue speaker using the exact speaker label from Approved dialogue as name, the observed position, and detected_person_id copied from the matching person-N entry above. Do not add honorifics, translate, abbreviate, or otherwise rewrite names. Do not infer identity from cast order, dialogue order, or left-to-right order. If a visual match is ambiguous, omit that speaker rather than guessing; the application will request a safe correction.",
     "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
@@ -806,7 +811,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     }
     throw error;
   }
-  const promptCredits = await chargeActualUsage({
+  let promptCredits = await chargeActualUsage({
     userId: input.userId,
     tenantId: input.tenantId,
     runId: input.runId,
@@ -819,19 +824,94 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   });
 
   const approvedTurns = parseDialogue(input.shot.dialogue);
-  const positionSource = generated.data.frame_analysis?.position_source
-    ?.trim()
-    .toLowerCase();
-  if (approvedTurns.length && positionSource && positionSource !== "image") {
-    throw new Error("MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED");
+  const buildSpeakerSections = (data: typeof generated.data) => {
+    const positionSource = data.frame_analysis?.position_source
+      ?.trim()
+      .toLowerCase();
+    if (approvedTurns.length && positionSource && positionSource !== "image") {
+      throw new Error(
+        `MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED:shot-${input.shotId}`
+      );
+    }
+    return buildAuthoritativeSpeakerSections({
+      shotId: input.shotId,
+      dialogue: approvedTurns,
+      detectedPeople: detection.people,
+      frameAnalysisPeople: (data.frame_analysis?.people ??
+        []) as MarketplaceSpeakerVisualEntry[],
+    });
+  };
+  let speakerSections: string;
+  try {
+    speakerSections = buildSpeakerSections(generated.data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const repairable =
+      message.startsWith("MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING") ||
+      message.startsWith("MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED");
+    if (!repairable || approvedTurns.length === 0) throw error;
+
+    await assertCreditPreflight({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      skillSlug: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+    });
+    await input.onProgress?.({
+      progress: 65,
+      stage: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+      message: `กำลังแก้การจับคู่ผู้พูดกับบุคคลในภาพ · Shot ${input.shotId}`,
+    });
+    const repairUsage = { current: null as Usage | null };
+    const repairInstruction = [
+      "SPEAKER MAP CORRECTION REQUIRED: Your previous frame_analysis could not be safely matched to the approved dialogue.",
+      "Return the same complete JSON contract and preserve the approved prompt content, but correct frame_analysis.people.",
+      "For every approved dialogue speaker that is visibly matched to a portrait, use the exact approved speaker label as name, the visually verified position, and the exact detected_person_id from the detected-person map.",
+      "Do not guess, use cast/order assumptions, rename speakers, or omit a speaker that can be visually matched. If a speaker cannot be confidently identified from the supplied images, omit that person and do not invent a binding.",
+      `Approved speaker labels: ${approvedTurns.map(turn => turn.speaker).join(" | ")}`,
+      `Detected people: ${formatDetectedPeople(detection.people)}`,
+    ].join("\n");
+    let repaired: Awaited<
+      ReturnType<typeof generateVerticalDramaShotVideoPromptDirect>
+    >;
+    try {
+      repaired = await generateVerticalDramaShotVideoPromptDirect({
+        model: videoPromptModel.modelId,
+        userId: input.userId,
+        tenantId: input.tenantId,
+        publicUrl: input.publicUrl,
+        userPromptText: `${promptInput}\n\n${repairInstruction}`,
+        images: imageInputs,
+        onUsage: collectUsageObserver(repairUsage),
+      });
+    } catch (repairError) {
+      if (repairUsage.current) {
+        promptCredits += await chargeActualUsage({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          runId: input.runId,
+          shotId: input.shotId,
+          skillSlug: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+          modelId: videoPromptModel.modelId,
+          requestIdempotencyKey: `${input.requestIdempotencyKey}:speaker-map-repair`,
+          usage: repairUsage.current,
+        });
+      }
+      throw repairError;
+    }
+    promptCredits += await chargeActualUsage({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      runId: input.runId,
+      shotId: input.shotId,
+      skillSlug: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+      modelId: videoPromptModel.modelId,
+      providerName: repaired.providerName,
+      requestIdempotencyKey: `${input.requestIdempotencyKey}:speaker-map-repair`,
+      usage: repairUsage.current,
+    });
+    generated = repaired;
+    speakerSections = buildSpeakerSections(generated.data);
   }
-  const frameAnalysisPeople = (generated.data.frame_analysis?.people ??
-    []) as MarketplaceSpeakerVisualEntry[];
-  const speakerSections = buildAuthoritativeSpeakerSections({
-    dialogue: approvedTurns,
-    detectedPeople: detection.people,
-    frameAnalysisPeople,
-  });
   const prompt = replaceGeneratedSpeakerSections(
     generated.data.prompt.trim(),
     speakerSections,

@@ -1683,6 +1683,7 @@ export const shotVideoPromptOutputSchema = z
               .object({
                 name: z.string(),
                 position: z.string(),
+                detected_person_id: z.string().optional(),
                 view_role: z.string().optional(),
                 note: z.string().optional(),
                 action: z.string().optional(),

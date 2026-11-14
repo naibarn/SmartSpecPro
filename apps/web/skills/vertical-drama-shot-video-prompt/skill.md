@@ -70,6 +70,7 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
       {
         "name": "string (character name from the CHARACTER IDENTITY MAP)",
         "position": "left | center-left | center | center-right | right",
+        "detected_person_id": "string (optional — exact person-N ID from the caller's detected-person map)",
         "view_role": "start_frame | barrier_reference (required in Dual View mode; omitted otherwise)",
         "note": "string (optional — short pose/orientation audit cue, never appearance prose)",
         "action": "string (optional — concise visible action/pose cue observed in the start frame, never identity prose)",
@@ -211,6 +212,19 @@ shot-local person binding. Apply this identity priority to every dialogue line:
 - The `action` field is optional and describes only an observed action/pose;
   it is not an identity claim. The matched portrait plus the actual start
   frame remain authoritative for name and position.
+
+### Caller-supplied detected-person map — MANDATORY when provided
+
+When the caller supplies a detected-person map with IDs such as `person-1`,
+and approved dialogue with speaker labels, treat those labels as the exact
+character names to use in `frame_analysis.people[].name`. Include one entry
+for each visible dialogue speaker, copy the matching ID exactly into
+`detected_person_id`, and report that same person's observed screen position.
+Match portraits to detected people by visual identity. Never derive an ID from
+cast order, speaker order, or left-to-right order. Do not add honorifics,
+translate, abbreviate, or otherwise rewrite the approved speaker label. If a
+speaker cannot be matched confidently, omit that speaker instead of guessing;
+the caller will request a safe correction before accepting the prompt.
 
 For DUAL VIEW, every person entry MUST include `view_role`: `start_frame` for
 characters assigned to Image 1 and `barrier_reference` for characters assigned
