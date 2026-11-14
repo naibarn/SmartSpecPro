@@ -20,6 +20,7 @@ import {
   buildStagedCheckpoint,
   buildStagedPlanView,
   generateStagedStoryArcPlanWithLLM,
+  isStagedProductVisibleInShot,
   type StagedCastMember,
   type StagedStoryArcLanguagePlan,
   type StagedStoryArcPlan,
@@ -1757,7 +1758,10 @@ async function handleImageProvider(params: {
     });
     const { ordered: orderedItems, shotCharacterItems } =
       buildShotOrderedReferenceItems({
-        productItems,
+        productItems: isStagedProductVisibleInShot(
+          shot,
+          params.plan.product.productName,
+        ) ? productItems : [],
         characterItems: allCharacterItems,
         castInShot: shotCastSelection.castInShot,
         castLooks: shotCastSelection.castLooks,
@@ -1765,10 +1769,6 @@ async function handleImageProvider(params: {
     characterItems = shotCharacterItems;
     // Products first (@Image1, ...), then this shot's characters (@Image2, ...)
     referenceImageUrls = orderedItems.map((item: any) => item.url.trim());
-  }
-
-  if (referenceImageUrls.length === 0) {
-    throw new Error("STAGED_ACTIVE_REFERENCE_SELECTION_REQUIRED");
   }
 
   // Keep managed storage references intact here. mediaGenerationService

@@ -176,13 +176,15 @@ catalog and the unsafe→safe rewrite pattern).
 ## Phase D — Plan Narrative
 
 Plan exactly nine shots (`shot_id` 1-9), category-appropriate per
-`references/narrative-patterns.md`. Default structure: 1 Hook, 2 Product
-reveal, 3 Who it suits, 4 Primary function demo, 5 Secondary function demo,
-6 Design/construction feature, 7 Material/tactile detail, 8 Real-use demo +
-result, 9 Balanced summary + soft CTA. Category patterns may re-weight these
-beats (furniture: scale/adjustment/movement; electronics: ports/controls/
-stated compatibility; child products: age-appropriate usage plus guardian
-supervision; food: supplied ingredients/taste only — never a health claim).
+`references/narrative-patterns.md`. Build a natural Hook → Problem → Insight →
+product reveal/function demo → proof → close arc, but choose the reveal point
+from this story's actual content. Do not bind product introduction to a fixed
+shot number. Before the story introduces the product, use only generic props
+described by that shot and keep the attached product out of frame. Category
+patterns may re-weight the beats (furniture: scale/adjustment/movement;
+electronics: ports/controls/stated compatibility; child products:
+age-appropriate usage plus guardian supervision; food: supplied
+ingredients/taste only — never a health claim).
 
 Hook rules: no fabricated emergencies, fear, unsupported health warnings,
 false scarcity, or price hooks.
@@ -260,12 +262,12 @@ keeps both in frame; the character who is speaking in that shot carries the
 visual emphasis (slightly favored framing, sharper focus, more open body
 language) while the other listens and reacts. When a shot's
 `demonstration_type` is `feature_closeup` or otherwise depends on a
-product-critical close-up to demonstrate its feature, the mandatory product
-visibility from Phase F takes precedence over this two-shot staging — narrow
-the framing enough to keep the demonstrated product detail clearly visible,
-even if that means one or both characters are partially out of frame for
-that shot, rather than preserving full two-shot staging at the cost of the
-product demo.
+product-critical close-up to demonstrate its feature, and its shot contract
+sets `product_in_shot: true`, product visibility from Phase F takes precedence
+over this two-shot staging — narrow the framing enough to keep the demonstrated
+product detail clearly visible, even if that means one or both characters are
+partially out of frame for that shot. If `product_in_shot: false`, keep the
+product out of frame and stage the problem/prop action instead.
 
 **Turn-taking splits each beat, it never skips one.** The nine-beat
 narrative structure from Phase D still governs every shot. The two
@@ -415,25 +417,38 @@ backstop; the rewrite is always this skill's job.
 
 Write one start-frame image prompt per shot (`start_frame_image_prompt`).
 Each must contain: the reference lock block with explicit `@ImageN` bindings
-matching `reference_manifest`; the shot's visual event; the product
-components that must remain visible; character continuity when one or more
-characters are present (both characters' identity, wardrobe, and the
-two-shot/over-the-shoulder framing from Two-Person Conversation Mode when a
-cast of two is staged); camera framing/angle; environment and lighting
+matching `reference_manifest` when reference entries exist (never invent an
+`@ImageN` binding); the shot's visual event; product components
+only when the shot contract says `product_in_shot: true`; character continuity
+when one or more characters are present (both characters' identity, wardrobe,
+and the two-shot/over-the-shoulder framing from Two-Person Conversation Mode
+when a cast of two is staged); camera framing/angle; environment and lighting
 continuity; photorealistic commercial style; `9:16`; a no-added-text
-restriction; and any shot-specific negative constraints.
+restriction; and any shot-specific negative constraints. If the shot contract
+says `product_in_shot: false`, do not cite or use a product reference and do
+not place the product in frame, even if the dialogue mentions it.
 
 ### Single-Frame Layout Lock
 
 Every `start_frame_image_prompt` must include this exact layout rule:
 
-> SINGLE-FRAME LAYOUT LOCK: Create exactly one standalone continuous 9:16 camera frame showing only this shot's single start-of-action moment. Keep every visible person and the product together in one coherent scene. Do not create a collage, storyboard, grid, split-screen, multi-panel image, montage, inset, contact sheet, before/after, sequence of moments, product-spec card, callout, label, or embedded text. Do not combine actions from other shots or illustrate multiple product facts as separate scenes.
+> SINGLE-FRAME LAYOUT LOCK: Create exactly one standalone continuous 9:16 camera frame showing only this shot's single start-of-action moment. Keep every visible person and, only when `product_in_shot: true`, the product together in one coherent scene. When `product_in_shot: false`, keep the specific product out of frame and show only the generic prop named in this shot. Do not create a collage, storyboard, grid, split-screen, multi-panel image, montage, inset, contact sheet, before/after, sequence of moments, product-spec card, callout, label, or embedded text. Do not combine actions from other shots or illustrate multiple product facts as separate scenes.
 
 Use the shot's own `visual_summary` to choose the one visible action. The full
 story, adjacent shots, product facts, and dialogue are context for continuity
 and accuracy; never turn them into extra moments, scenes, or panels inside
 this shot's image. If the shot describes a sequence, show only its beginning
 moment as the start frame.
+
+**Action-to-image binding.** If `dialogue` or `purpose` says someone is
+applying, pouring, washing, opening, operating, or demonstrating something,
+show that exact action visibly underway in `visual_summary` and
+`start_frame_image_prompt`. A serum-use scene shows the applicator depositing
+serum onto the scalp; a shampoo scene shows shampoo being worked into the
+hair. Do not substitute a seated conversation or a product placed beside the
+people for the named action. Keep hair-care demonstrations modest and
+non-sexual: focus on the head, hair, and working hands; opaque clothing covers
+the shoulders and torso; no nudity or suggestive posing.
 
 ### Start-Frame Action Rule
 
@@ -486,6 +501,11 @@ audio/foley, and continuity constraints. Length must stay within
 **Mandatory global video block.** Compile this template verbatim for every
 shot, filling only the bracketed nouns from the evidence profile and
 prepending it to every `video_prompt`:
+
+For single-shot refresh, if `shot_contract.product_in_shot` is false, do not
+use the product-identity block below: follow the approved shot image and the
+shot's generic-prop/action contract without introducing the product. Keep the
+fixed marker below for product-visible shots and full-storyboard output.
 
 ```text
 Use @Image1 as the absolute product identity reference. Keep the exact same
@@ -622,7 +642,7 @@ guarantees, medical claims, or superlatives remain anywhere; price content is
 completely absent from dialogue and every prompt; every prompt stays within
 its character budget; the mandatory global block ("Use @Image1 as the
 absolute product identity reference…", including "no price mention") is
-present at the start of every single `video_prompt`; negative constraints
+present at the start of every product-visible `video_prompt` and full-storyboard output; a single-shot refresh with `product_in_shot: false` keeps the product out of frame; negative constraints
 stay concise; the output still reads naturally after any compression; and any
 mandatory content that a prior revision accidentally dropped is restored.
 Return the complete output object with `loopReport.round_3` scored across the

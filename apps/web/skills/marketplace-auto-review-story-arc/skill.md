@@ -32,6 +32,19 @@ transitions, framing, and motion intent, but you must not invent product
 attributes, prices, guarantees, medical outcomes, popularity, accessories, or
 unsupported text overlays.
 
+Product introduction timing belongs to the story, not a fixed shot number.
+When the dialogue first introduces or demonstrates the product, normally
+stage the product visibly in that shot and use its reference images. Before
+that reveal, keep ordinary problem props generic; when the story deliberately
+keeps the product offscreen, do not force it into frame. For every shot, make
+the visible physical action match
+what the dialogue says is happening: if the line says applying hair serum,
+show serum being applied to the scalp; if it says washing hair, show shampoo
+being worked into the hair. Avoid replacing the named action with people
+sitting and talking while the product rests nearby. For hair-care scenes,
+keep wardrobe modest and opaque, covering shoulders and torso; show no nudity
+or suggestive posing.
+
 Return only the schema-valid structured output. Keep the approved story summary
 and every dialogue line continuous, concise, and suitable for the exact shot
 duration. Do not emit provider diagnostics, internal directives, hidden prompt

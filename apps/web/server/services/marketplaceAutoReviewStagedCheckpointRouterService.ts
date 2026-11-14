@@ -27,6 +27,7 @@ import {
   buildStagedCheckpoint,
   buildStagedPlanView,
   generateStagedStoryArcPlanWithLLM,
+  isStagedProductVisibleInShot,
   parseStagedDialogueTurns,
   type StagedStoryArcPlan,
   type StagedStoryConceptOption,
@@ -2475,13 +2476,11 @@ export function buildStagedSingleShotRefreshInput(input: {
     shotId: input.shotId,
   });
   const activeManifestItems = customManifest.filter((item: any) => item.active);
-  if (!activeManifestItems.some((item: any) => item.role !== "character")) {
-    throw new Error("STAGED_ACTIVE_PRODUCT_REFERENCE_REQUIRED");
-  }
   const shotOrderedManifestItems = buildShotOrderedReferenceItems({
-    productItems: activeManifestItems.filter(
-      (item: any) => item.role !== "character"
-    ),
+    productItems: isStagedProductVisibleInShot(
+      planShot,
+      plan.product.productName,
+    ) ? activeManifestItems.filter((item: any) => item.role !== "character") : [],
     characterItems: activeManifestItems.filter(
       (item: any) => item.role === "character"
     ),
@@ -2515,9 +2514,6 @@ export function buildStagedSingleShotRefreshInput(input: {
       depictsMinor:
         typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
     }));
-  if (baseReferenceManifest.length === 0) {
-    throw new Error("STAGED_ACTIVE_REFERENCE_SELECTION_REQUIRED");
-  }
   // Video-prompt generation must SEE the shot's own already-approved image
   // (the actual rendered start frame), not just the pre-generation reference
   // manifest — see doc comment on `stage` above. Appended as its own manifest
@@ -2606,6 +2602,10 @@ export function buildStagedSingleShotRefreshInput(input: {
     shotContract: {
       purpose: planShot.title,
       story_summary: planShot.storySummary,
+      product_in_shot: isStagedProductVisibleInShot(
+        planShot,
+        plan.product.productName,
+      ),
       dialogue: planShot.dialogue,
       duration_seconds: planShot.durationSeconds,
       demonstration_type: classifyStagedDemonstrationType(planShot.dialogue),

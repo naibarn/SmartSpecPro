@@ -349,6 +349,10 @@ export type StagedStoryArcShot = {
   title: string;
   storySummary: string;
   visualSummary: string;
+  /** True only when the specific marketplace product is physically visible
+   * in this shot. New plans always author this; older plans infer it from the
+   * visual direction so dialogue alone cannot pull the product into frame. */
+  productInShot?: boolean;
   /** Optional authored direction kept separate so later prompt stages do not
    * flatten every shot into the same static camera/movement defaults. */
   cameraDirection?: string;
@@ -363,6 +367,26 @@ export type StagedStoryArcShot = {
   /** Per-shot business for the supporting tier. See `StagedSupportingBeat`. */
   supportingBeats?: StagedSupportingBeat[];
 };
+
+export function isStagedProductVisibleInShot(
+  shot: Pick<StagedStoryArcShot, "productInShot" | "visualSummary" | "movementDirection">,
+  productName?: string | null,
+): boolean {
+  if (typeof shot.productInShot === "boolean") return shot.productInShot;
+
+  const visualText = `${shot.visualSummary} ${shot.movementDirection ?? ""}`
+    .normalize("NFKC")
+    .toLocaleLowerCase();
+  // Legacy plans have no explicit visibility field. Preserve their authored
+  // staging: a clearly generic prop (such as the plain basin in the opening
+  // of a pet-fountain story) must not be replaced by the attached product.
+  if (/\b(?:ordinary|generic|plain|unbranded)\b.{0,50}\b(?:bowl|basin|container|prop)\b|กะละมัง|ภาชนะน้ำเปล่า|ชาม(?:น้ำ)?(?:ธรรมดา|เปล่า)|ชามกว้าง/u.test(visualText)) {
+    return false;
+  }
+  const normalizedProductName = clean(productName).normalize("NFKC").toLocaleLowerCase();
+  if (normalizedProductName && visualText.includes(normalizedProductName)) return true;
+  return /\b(?:product|appliance|machine|device|fountain)\b|สินค้า|ผลิตภัณฑ์|ตัวเครื่อง|น้ำพุแมว|เครื่องชงกาแฟ|สินค้าอ้างอิง/u.test(visualText);
+}
 
 export type StagedStoryArcLanguagePlan = {
   summaryLanguage: "th" | "en";
@@ -416,7 +440,13 @@ export function buildStagedImagePrompt(input: {
   const activeItems = (input.customManifest || []).filter(
     item => item && typeof item.url === "string" && item.url.trim() && item.active !== false
   );
-  const productItems = activeItems.filter(item => item.role !== "character");
+  const showProduct = isStagedProductVisibleInShot(
+    input.shot,
+    input.plan.product.productName,
+  );
+  const productItems = showProduct
+    ? activeItems.filter(item => item.role !== "character")
+    : [];
   // Only THIS shot's characters — the same helper the dispatch path uses, so
   // the `@ImageN` tags written below always match the images actually sent
   // (`planning/marketplace-four-character-cast/plan.md` §5).
@@ -451,9 +481,9 @@ export function buildStagedImagePrompt(input: {
 
   const productTags = hasProduct
     ? productItems.map((_, i) => `@Image${i + 1}`).join(", ")
-    : "@Image1";
+    : "";
 
-  const productCount = hasProduct ? productItems.length : 1;
+  const productCount = hasProduct ? productItems.length : 0;
   const characterTags = hasCharacter
     ? characterItems.map((_, i) => `@Image${productCount + i + 1}`).join(", ")
     : "";
@@ -492,9 +522,9 @@ export function buildStagedImagePrompt(input: {
   const rosterInShot = castRoster;
 
   if (thai) {
-    const refLines = [
-      `ใช้ ${productTags} เป็นภาพอ้างอิงหลักของสินค้า โดยรักษารูปร่าง สี วัสดุ ฉลาก และสัดส่วนตามหลักฐานทุกประการ`,
-    ];
+    const refLines = hasProduct
+      ? [`ใช้ ${productTags} เป็นภาพอ้างอิงหลักของสินค้า โดยรักษารูปร่าง สี วัสดุ ฉลาก และสัดส่วนตามหลักฐานทุกประการ`]
+      : ["ช็อตนี้ยังไม่เห็นสินค้าจริง ให้แสดงเฉพาะพร็อพทั่วไปตามทิศทางภาพ ห้ามแทนพร็อพด้วยสินค้าจากภาพอ้างอิง"];
     if (hasCharacter) {
       refLines.push(
         `ใช้ ${characterTags} เป็นภาพบุคคล/ตัวละครอ้างอิงหลัก (character identity lock) โดยรักษาใบหน้า ทรงผม รูปร่าง และลักษณะเฉพาะตัวของตัวละครหลักตามภาพอ้างอิงอย่างแม่นยำ`
@@ -531,39 +561,45 @@ export function buildStagedImagePrompt(input: {
     }
 
     return [
-      `สร้างภาพรีวิวสินค้าแนวตั้ง 9:16 สำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
+      `สร้างภาพแนวตั้ง 9:16 สำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
       `เรื่องย่อที่ยืนยันแล้ว: ${input.plan.storySummary}`,
       `เรื่องย่อของช็อต: ${input.shot.storySummary}`,
       `ทิศทางภาพ: ${input.shot.visualSummary}`,
       ...(input.shot.cameraDirection
         ? [`มุมกล้อง/การเคลื่อนกล้อง: ${input.shot.cameraDirection}`]
         : []),
-      ...(input.shot.movementDirection
-        ? [`การกระทำที่ต้องเห็น: ${input.shot.movementDirection}`]
-        : []),
+      `การกระทำที่ต้องเห็นอย่างชัดเจน: ${input.shot.movementDirection || input.shot.visualSummary}`,
       ...(input.shot.transition
         ? [`จังหวะเชื่อมฉาก: ${input.shot.transition}`]
         : []),
-      "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด",
+      hasProduct
+        ? "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด"
+        : "จัดองค์ประกอบตามการกระทำหลักของช็อต โดยคงพร็อพให้เป็นของทั่วไปและไม่ให้สินค้าจริงเข้าฉาก",
+      `แสดงการกระทำนี้กำลังเกิดขึ้นจริง ณ จังหวะต้นของภาพ: ${input.shot.movementDirection || input.shot.visualSummary}. ให้มือและท่าทางทำสิ่งที่บทพูดระบุโดยตรง ห้ามแทนด้วยการนั่งคุยหรือวางสินค้าไว้ข้างหน้าเฉย ๆ`,
+      ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${input.shot.dialogue}`)
+        ? ["การดูแลเส้นผมต้องดูเป็นกิจวัตรจริงและสุภาพ: เห็นเฉพาะศีรษะ/เส้นผมกับมือที่กำลังทำงาน เสื้อผ้าทึบแสงปกปิดไหล่และลำตัว ไม่มีภาพเปลือยหรือท่าทางเชิงยั่วยุ"]
+        : []),
       "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
       `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
       ...refLines,
       ...conversationLines,
       "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
-      "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
+      hasProduct
+        ? "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ"
+        : "ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ",
     ].join("\n");
   }
 
-  const refLinesEng = [
-    `Use ${productTags} as the primary product reference and preserve the product's visible shape, color, materials, labels, and proportions exactly.`,
-  ];
+  const refLinesEng = hasProduct
+    ? [`Use ${productTags} as the primary product reference and preserve the product's visible shape, color, materials, labels, and proportions exactly.`]
+    : ["No product reference applies to this shot. Show only the generic prop described in the visual direction; do not replace it with the attached product."];
   if (hasCharacter) {
     refLinesEng.push(
       `Use ${characterTags} as the primary person/character reference image (character identity lock), preserving the character's facial features, identity, hairstyle, and appearance consistently.`
     );
   } else {
     refLinesEng.push(
-      "If a person or character reference is supplied, preserve that identity consistently as a separate identity lock; never let it alter the product lock."
+      "If a person or character reference is supplied, preserve that identity consistently as a separate identity lock."
     );
   }
 
@@ -590,26 +626,32 @@ export function buildStagedImagePrompt(input: {
   }
 
   return [
-    `Create one vertical 9:16 product-review image for shot ${input.shot.shotId}.`,
+    `Create one vertical 9:16 ${hasProduct ? "product-review image" : "story image"} for shot ${input.shot.shotId}.`,
     `Approved story summary: ${input.plan.storySummary}`,
     `Approved shot brief: ${input.shot.storySummary}`,
     `Visual direction: ${input.shot.visualSummary}`,
     ...(input.shot.cameraDirection
       ? [`Camera framing and movement: ${input.shot.cameraDirection}`]
       : []),
-    ...(input.shot.movementDirection
-      ? [`Visible action: ${input.shot.movementDirection}`]
-      : []),
+    `Visible action: ${input.shot.movementDirection || input.shot.visualSummary}`,
     ...(input.shot.transition
       ? [`Scene transition: ${input.shot.transition}`]
       : []),
-    "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product.",
+    hasProduct
+      ? "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product."
+      : "Compose the frame around the shot's main action. Keep any prop generic as described and leave the specific product out of frame.",
+    `Show this exact action visibly in progress at the start-frame moment: ${input.shot.movementDirection || input.shot.visualSummary}. Hands and body posture must perform what the dialogue says; do not replace it with people sitting and talking or a product merely placed beside them.`,
+    ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${input.shot.dialogue}`)
+      ? ["For hair-care actions, show a natural, modest routine: focus on the head/hair and working hands; wear opaque clothing that covers shoulders and torso; no nudity or suggestive posing."]
+      : []),
     "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
     `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
     ...refLinesEng,
     ...conversationLinesEng,
     "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
-    "Keep the product clearly visible and do not render the dialogue as on-screen text.",
+    hasProduct
+      ? "Keep the product clearly visible and do not render the dialogue as on-screen text."
+      : "Do not show the specific product; do not render the dialogue as on-screen text.",
   ].join("\n");
 }
 
@@ -1173,6 +1215,8 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 3.1 ทุกช็อตต้องมีภาพที่กำลังเกิดการกระทำ ไม่ใช่แค่ตัวละครยืนหรือนั่งคุย: ให้เริ่มการกระทำที่เห็นได้ทันที เช่น เดินเข้าหาสินค้า หยิบ/เปิด/ทดลอง/เปรียบเทียบ/ส่งต่อสินค้า เคลื่อนที่ไปยังจุดใช้งาน หรือมีปฏิกิริยาจริงจากผลที่สังเกตได้ เลือกเฉพาะการกระทำที่ทำได้จริงและสอดคล้องกับข้อมูลสินค้า
 3.2 วางจังหวะภาพตลอดเรื่องให้ชวนดู: สลับภาพกว้าง/กลาง/ใกล้และมุมกล้องตามเนื้อหา, เปลี่ยนตำแหน่งหรือฉากเมื่อเรื่องพาไป, ให้ตัวละครมี blocking และปฏิสัมพันธ์กับสินค้า; อย่าใช้มุมเดิมและการนั่งสนทนาคู่แบบเดิมซ้ำหลายช็อตติดกัน และอย่าใส่การเคลื่อนกล้องโดยไม่มีเหตุผล
 3.3 แต่ละช็อตต้องเพิ่มข้อมูลหรือเปลี่ยนสถานการณ์จากช็อตก่อนหน้า: เปิดด้วยภาพหรือการกระทำที่หยุดสายตา, พาปัญหาไปสู่การทดลอง/หลักฐาน/ผลลัพธ์ แล้วจบด้วยข้อสรุปหรือ CTA บทพูดต้องเป็นประโยคที่คนพูดกันจริงและสัมพันธ์กับสิ่งที่กำลังทำ ไม่บรรยายชื่อหัวข้อหรือถามตอบแบบแม่แบบ
+3.4 ทุกช็อตต้องส่ง productInShot เป็น boolean: true เมื่อเรื่องเริ่มแนะนำ/สาธิตสินค้าและจัดฉากให้สินค้าจริงมองเห็นในภาพ; false ระหว่างเล่าปัญหาด้วยพร็อพทั่วไปหรือเมื่อเรื่องตั้งใจให้สินค้าอยู่นอกจอ ตัดสินจากบทพูดร่วมกับ visualSummary/movementDirection ของเรื่องนี้ ห้ามกำหนดตามเลขช็อต ภาพอ้างอิงสินค้าจะใช้เฉพาะช็อตที่เป็น true เท่านั้น
+3.5 movementDirection ต้องเป็นการกระทำทางกายภาพที่เห็นได้ชัดและทำตามบทพูด/visualSummary จริง เช่น เมื่อบทพูดบอกว่าหยอดเซรั่ม ให้เห็นมือกำลังหยอดลงบนหนังศีรษะ; เมื่อบอกว่าสระผม ให้เห็นมือกำลังชโลมหรือนวดแชมพูบนเส้นผม ไม่ใช้ภาพคนนั่งคุยหรือวางสินค้าไว้ข้างหน้าแทนการกระทำ ฉากดูแลเส้นผมให้แต่งกายสุภาพมิดชิด ปกปิดไหล่และลำตัว ไม่มีภาพเปลือยหรือท่าทางยั่วยุ
 4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
 5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
 6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
@@ -1229,8 +1273,9 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
     title: z.string().min(1).max(120),
     storySummary: z.string().min(1).max(600).optional(),
     visualSummary: z.string().min(1).max(400),
+    productInShot: z.boolean(),
     cameraDirection: z.string().min(1).max(240).optional(),
-    movementDirection: z.string().min(1).max(240).optional(),
+    movementDirection: z.string().min(1).max(240),
     transition: z.string().min(1).max(180).optional(),
     dialogue: z.string().min(1).max(320).optional(),
     dialogueTurns: z.array(ZodDialogueTurnSchema).min(2).optional(),
@@ -1487,12 +1532,11 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           storySummary:
             clean(shot.storySummary) || clean(shot.visualSummary),
           visualSummary: clean(shot.visualSummary),
+          productInShot: shot.productInShot,
           ...(clean(shot.cameraDirection)
             ? { cameraDirection: clean(shot.cameraDirection) }
             : {}),
-          ...(clean(shot.movementDirection)
-            ? { movementDirection: clean(shot.movementDirection) }
-            : {}),
+          movementDirection: clean(shot.movementDirection),
           ...(clean(shot.transition)
             ? { transition: clean(shot.transition) }
             : {}),
