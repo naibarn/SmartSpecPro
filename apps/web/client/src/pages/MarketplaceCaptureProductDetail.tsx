@@ -7369,12 +7369,12 @@ export default function MarketplaceCaptureProductDetail() {
                   >
                     <Button
                       type="button"
-                      className="min-h-11 !bg-violet-700 !text-white shadow-md hover:!bg-violet-800 focus-visible:ring-violet-300"
+                      className="min-h-11 bg-slate-900 text-white shadow-md hover:bg-slate-800 focus-visible:ring-sky-300"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       {isThaiLocale
-                        ? "ตั้งค่างานรีวิววิดีโอใหม่"
-                        : "Set up a new video review job"}
+                        ? "ตั้งค่ารีวิววิดีโอ"
+                        : "Set up video review"}
                     </Button>
                   </Link>
                   {latestJobWorkbenchRunId ? (
