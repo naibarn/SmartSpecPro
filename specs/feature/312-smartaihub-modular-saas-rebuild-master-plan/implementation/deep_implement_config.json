@@ -72,6 +72,12 @@
       "next_action": "Authenticated rendered review on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: verify the mobile toolbar/model selector, single-column prompts, independent conversation scroll, composer/send/theme reachability and safe-area spacing; then check tablet/desktop, locale and theme persistence, history, queued response and credit delta. Keep SPEC-312 acceptance partial and continue Queue/DO, upload, Cloud Execution and matched benchmark gaps.",
       "checkpoint_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
       "merged_main_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854"
+    },
+    "section-10-authenticated-chat-attachments": {
+      "status": "checkpointed",
+      "next_action": "Run authenticated image attachment UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Then design and implement bounded document-byte credit reservation before enabling text/Markdown/CSV/JSON attachments.",
+      "checkpoint_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+      "merged_main_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2"
     }
   },
   "pre_commit": {
@@ -83,20 +89,22 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T18:41:59.131242+00:00",
-  "generation": 53,
-  "updated_at": "2026-11-13T03:18:31.211820+00:00",
+  "generation": 56,
+  "updated_at": "2026-11-14T01:43:08.372774+00:00",
   "progress": {
-    "active_section": "section-09-sidebar-footer-language-and-astryx-themes",
-    "next_action": "Authenticated rendered review on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: verify the mobile toolbar/model selector, single-column prompts, independent conversation scroll, composer/send/theme reachability and safe-area spacing; then check tablet/desktop, locale and theme persistence, history, queued response and credit delta. Keep SPEC-312 acceptance partial and continue Queue/DO, upload, Cloud Execution and matched benchmark gaps.",
-    "merged_main_sha": "e541abf7fe9010a216b709fa3b0b48dcaec71854",
+    "active_section": "section-10-authenticated-chat-attachments",
+    "next_action": "Run authenticated image attachment UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Then design and implement bounded document-byte credit reservation before enabling text/Markdown/CSV/JSON attachments.",
+    "merged_main_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
     "gaps": [
       "Core role cannot DELETE expired session-JTI rows; a separately bounded cleanup owner is required before high-volume production.",
       "No numeric latency target or same-database Legacy/Core p50/p95 benchmark exists; do not claim a measured speed improvement until a matched benchmark is run.",
       "Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.",
       "Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.",
       "ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.",
-      "Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.",
-      "Authenticated rendered responsive mobile/tablet/desktop review of release e541abf7fe9010a216b709fa3b0b48dcaec71854 is pending; user MFA browser is required to confirm actual layout."
+      "Authenticated rendered responsive mobile/tablet/desktop review of release e541abf7fe9010a216b709fa3b0b48dcaec71854 is pending; user MFA browser is required to confirm actual layout.",
+      "Text, Markdown, CSV and JSON attachments remain unimplemented; credit reservation currently has not been proven to include their bytes, so do not enable document sending.",
+      "Authenticated browser UAT for image preview, upload, queued vision completion and restored history remains unobserved.",
+      "Authenticated image attachment UAT on the deployed aimarkethubs.com release is pending; verify preview/removal, upload, queued vision send, history restoration, retries and responsive behavior."
     ]
   }
 }

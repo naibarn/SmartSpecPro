@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `53`
-- Updated (UTC): `2026-11-13T03:18:31.211820+00:00`
+- State generation: `56`
+- Updated (UTC): `2026-11-14T01:43:08.372774+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
-- Latest recorded merged Main SHA: `e541abf7fe9010a216b709fa3b0b48dcaec71854`
+- Latest recorded merged Main SHA: `36134d0bd35eaa2997b76c7e301c7855150aa2b2`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-09-sidebar-footer-language-and-astryx-themes`
-- Next action: Authenticated rendered review on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: verify the mobile toolbar/model selector, single-column prompts, independent conversation scroll, composer/send/theme reachability and safe-area spacing; then check tablet/desktop, locale and theme persistence, history, queued response and credit delta. Keep SPEC-312 acceptance partial and continue Queue/DO, upload, Cloud Execution and matched benchmark gaps.
+- Active section: `section-10-authenticated-chat-attachments`
+- Next action: Run authenticated image attachment UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Then design and implement bounded document-byte credit reservation before enabling text/Markdown/CSV/JSON attachments.
 
 ## Sections
 
@@ -26,6 +26,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-07-chat-job-status-ui-and-runtime-proof | checkpointed | — | — | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | 651e7f6ec7f8f85a77c84eff81de02acc0f95f4f | Authenticated browser UAT on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: verify workspace, enabled model/Auto, queued response/history and credit delta; review all responsive Chat controls at desktop/tablet/mobile. Keep upload, Cloud Execution status, Queue/DO recovery and matched benchmark gaps open. |
 | section-08-chat-sidebar-tabs-and-collapse | checkpointed | — | — | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | e2e6d6bfedebfc2dc37cf98281e302b39c1820c4 | Authenticated browser UAT on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: review menu/history tab switching, selection, workspace/account controls and collapse/expand restoration at desktop/tablet/mobile. Keep parent acceptance partial. |
 | section-09-sidebar-footer-language-and-astryx-themes | checkpointed | — | — | e541abf7fe9010a216b709fa3b0b48dcaec71854 | e541abf7fe9010a216b709fa3b0b48dcaec71854 | Authenticated rendered review on aimarkethubs.com release e541abf7fe9010a216b709fa3b0b48dcaec71854: verify the mobile toolbar/model selector, single-column prompts, independent conversation scroll, composer/send/theme reachability and safe-area spacing; then check tablet/desktop, locale and theme persistence, history, queued response and credit delta. Keep SPEC-312 acceptance partial and continue Queue/DO, upload, Cloud Execution and matched benchmark gaps. |
+| section-10-authenticated-chat-attachments | checkpointed | — | — | 36134d0bd35eaa2997b76c7e301c7855150aa2b2 | 36134d0bd35eaa2997b76c7e301c7855150aa2b2 | Run authenticated image attachment UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Then design and implement bounded document-byte credit reservation before enabling text/Markdown/CSV/JSON attachments. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -34,8 +35,10 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Local Workerd Queue delivery/redelivery, provider-account Durable Object contention and restart persistence are unproven end to end.
 - Managed Cloudflare Queue autoscaling and load behavior remain unverified while modular-cloudflare-prod stays inactive.
 - ChatWorkspace.tsx hard-codes “Cloud Execution · Always On” without a live runtime-status source; replace it with data-backed status or a neutral label before accepting the UI.
-- Image/file pickers select and display files, but Chat has no authenticated upload contract; keep attachment submission blocked until server-side type/size validation and persisted scoped association are implemented.
 - Authenticated rendered responsive mobile/tablet/desktop review of release e541abf7fe9010a216b709fa3b0b48dcaec71854 is pending; user MFA browser is required to confirm actual layout.
+- Text, Markdown, CSV and JSON attachments remain unimplemented; credit reservation currently has not been proven to include their bytes, so do not enable document sending.
+- Authenticated browser UAT for image preview, upload, queued vision completion and restored history remains unobserved.
+- Authenticated image attachment UAT on the deployed aimarkethubs.com release is pending; verify preview/removal, upload, queued vision send, history restoration, retries and responsive behavior.
 
 ## Resume
 
