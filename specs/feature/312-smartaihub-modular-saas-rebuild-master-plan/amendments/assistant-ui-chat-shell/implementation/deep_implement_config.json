@@ -1,0 +1,72 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-pin-assistant-ui-and-adapter-contract",
+    "section-02-canonical-thread-message-runtime",
+    "section-03-transcript-composer-and-attachment-rendering",
+    "section-04-responsive-shell-and-truthful-inspector",
+    "section-05-integration-tests-and-regression-proof",
+    "section-06-development-release-and-spec-handoff"
+  ],
+  "sections_state": {
+    "section-01-pin-assistant-ui-and-adapter-contract": {
+      "status": "checkpointed",
+      "next_action": "Build the ExternalStoreRuntime hook around canonical Chat messages and conversation selection, delegating sends to the existing worker-job path.",
+      "checkpoint_sha": "28c2438364747a3d68025a940338e6c93b759a49",
+      "merged_main_sha": "28c2438364747a3d68025a940338e6c93b759a49"
+    },
+    "section-02-canonical-thread-message-runtime": {
+      "status": "checkpointed",
+      "next_action": "Replace the transcript/composer presentation with assistant-ui primitives while retaining Astryx styling, message metadata, compact previews, attachments, and canonical sendChatTurn behavior.",
+      "checkpoint_sha": "ba12de364fa65cf2dbc058348ef19313624ba100",
+      "merged_main_sha": "ba12de364fa65cf2dbc058348ef19313624ba100"
+    },
+    "section-03-transcript-composer-and-attachment-rendering": {
+      "status": "checkpointed",
+      "next_action": "Audit the three-panel shell across desktop, tablet and mobile, correct any overflow/occlusion, and replace unsupported inspector claims with API-backed details before documenting section 04 proof.",
+      "checkpoint_sha": "ed2f12139baab301747842f97f0cfc3f490c8f08",
+      "merged_main_sha": "ed2f12139baab301747842f97f0cfc3f490c8f08"
+    },
+    "section-04-responsive-shell-and-truthful-inspector": {
+      "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+      "status": "checkpointed",
+      "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+      "next_action": "Complete section 05 regression proof, rerun package checks against this integrated SHA, then prepare the authorized modular-debian-dev release with exact target verification."
+    },
+    "section-05-integration-tests-and-regression-proof": {
+      "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+      "status": "checkpointed",
+      "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+      "next_action": "Verify the modular-debian-dev target and controller, release exact integrated SHA e31402ecbbd12fe0c3bc23ae00dac89286c52a43 to aimarkethubs.com, then record service health and authenticated UAT status."
+    },
+    "section-06-development-release-and-spec-handoff": {
+      "status": "in_progress",
+      "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-14T16:58:03.541870+00:00",
+  "generation": 11,
+  "updated_at": "2026-11-14T17:44:04.538919+00:00",
+  "progress": {
+    "active_section": "section-06-development-release-and-spec-handoff",
+    "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified.",
+    "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+    "gaps": [
+      "Authenticated browser UAT for text/attachment send and desktop/tablet/mobile rendering remains pending; no authenticated browser session or browser automation executable is available in this run."
+    ]
+  }
+}

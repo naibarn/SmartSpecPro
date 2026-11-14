@@ -1,0 +1,33 @@
+# Section 05 — integration tests and regression proof
+
+## Deliverable
+
+Extend existing Chat Vitest coverage for adapter mappings and critical user flows, then run focused Chat package tests, typecheck and build/Wrangler dry-run. Add only tests supported by the actual test harness and do not claim authenticated behavior from mocked transport.
+
+## Owned paths
+
+- `smartaihub-platform/modules/chat/src/ui/*.test.tsx`
+- `smartaihub-platform/modules/chat/src/ui/*.test.ts`
+- New adapter-focused tests in `modules/chat/src/ui/`
+
+## Acceptance
+
+- Verify stable thread/message IDs, multiple thread selection, Core send/poll/result mapping, attachments, retry and no automatic resubmission on remount/reconnect.
+- Preserve existing workspace, provider catalog, queue/credit UI, attachment and responsive tests.
+- Confirm no accidental provider/API key, tenant header, server-only import or retired system was added to the client module.
+- Run Chat typecheck/build and check produced module remains independently consumable by Shell.
+
+## Prerequisites and gaps
+
+Browser authentication/MFA may not be available to this process; browser UAT must be reported separately from tests and health checks.
+
+## Implementation evidence — 2026-11-15
+
+- `pnpm --filter @smartaihub/chat exec vitest run --config vitest.config.ts --reporter=dot`: **40 passed / 40 passed**, 6 test files.
+- `pnpm --filter @smartaihub/chat typecheck`: passed.
+- `pnpm --filter @smartaihub/chat build`: passed; Wrangler dry-run resolved `CHAT_TARGET_ID=modular-debian-dev` and `CORE_BASE_URL=https://aimarkethubs.com`.
+- The Vite main client chunk is `514.68 kB` minified, above the configured 500 kB warning threshold; retain as a performance follow-up.
+- Modular release controller verified local Core/Chat/Shell health and public Shell root/login, Chat health and module manifest; the unauthenticated Chat session returned the expected `401`.
+- Public versioned Chat JavaScript and CSS assets both returned `200`; detailed deployment receipt and exact-source artifact digests are recorded in [release evidence](implementation/evidence/modular-debian-dev-release-e31402e.md).
+- Authenticated browser chat/attachment behavior and rendered desktop/tablet/mobile viewport review remain pending because this execution has no authenticated browser session or browser automation executable.
+- Test/build source: `e31402ecbbd12fe0c3bc23ae00dac89286c52a43`.
