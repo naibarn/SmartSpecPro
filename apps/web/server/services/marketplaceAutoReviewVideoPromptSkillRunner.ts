@@ -983,6 +983,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
   productName: string;
   productFacts: string[];
   detectedPeople: readonly VerticalDramaDetectedShotPerson[];
+  speakerVisualBindings?: Record<string, string>;
   characterPortraits: ReadonlyArray<{
     imageNumber: number;
     characterName: string;
@@ -1050,6 +1051,42 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
         .map((line, index) => `${index + 1}. ${line.speaker}: "${line.line}"`)
         .join("\n")
     : "(No spoken dialogue is approved for this shot.)";
+  const uniqueSpeakers = Array.from(new Set(dialogue.map(line => line.speaker)));
+  const savedSpeakerMap = input.speakerVisualBindings
+    ? uniqueSpeakers.map(speaker => {
+        const personId = input.speakerVisualBindings?.[speaker];
+        const person = input.detectedPeople.find(
+          candidate => candidate.id === personId
+        );
+        return personId && person
+          ? { speaker, personId, person }
+          : null;
+      })
+    : [];
+  const verifiedSpeakerMap = savedSpeakerMap.filter(
+    (binding): binding is NonNullable<typeof binding> => binding !== null
+  );
+  const hasCompleteSavedSpeakerMap = Boolean(
+    input.speakerVisualBindings &&
+      uniqueSpeakers.length > 0 &&
+      Object.keys(input.speakerVisualBindings).length === uniqueSpeakers.length &&
+      verifiedSpeakerMap.length === uniqueSpeakers.length &&
+      new Set(verifiedSpeakerMap.map(binding => binding.personId)).size ===
+        uniqueSpeakers.length
+  );
+  if (input.speakerVisualBindings && !hasCompleteSavedSpeakerMap) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_SAVED_SPEAKER_BINDINGS_INVALID");
+  }
+  const speakerMatchingInstruction = hasCompleteSavedSpeakerMap
+    ? [
+        "SAVED SPEAKER-TO-PERSON MATCH (authoritative and already reviewed):",
+        ...verifiedSpeakerMap.map(
+          binding =>
+            `- ${binding.speaker} = ${binding.personId}, ${detectedPersonPosition(binding.person)}`
+        ),
+        "Do not run visual matching again, change these assignments, or infer identity from cast/dialogue order. In JSON frame_analysis.people, echo the exact saved speaker label, detected_person_id, and position above. The application will use this saved mapping as the source of truth.",
+      ].join("\n")
+    : "SHOT-LOCAL SPEAKER MAP (mandatory): Before writing the prompt, compare each attached portrait with the detected people in Image 1. In JSON frame_analysis.people, include every dialogue speaker using the exact speaker label from Approved dialogue as name, the observed position, and detected_person_id copied from the matching person-N entry above. Do not add honorifics, translate, abbreviate, or otherwise rewrite names. Do not infer identity from cast order, dialogue order, or left-to-right order. If a visual match is ambiguous, omit that speaker rather than guessing; the application will request a safe correction.";
   const facts = input.productFacts
     .map(fact => clean(fact, 240))
     .filter(Boolean);
@@ -1079,7 +1116,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `CHARACTER IDENTITY MAP (portraits attached after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
-    "SHOT-LOCAL SPEAKER MAP (mandatory): Before writing the prompt, compare each attached portrait with the detected people in Image 1. In JSON frame_analysis.people, include every dialogue speaker using the exact speaker label from Approved dialogue as name, the observed position, and detected_person_id copied from the matching person-N entry above. Do not add honorifics, translate, abbreviate, or otherwise rewrite names. Do not infer identity from cast order, dialogue order, or left-to-right order. If a visual match is ambiguous, omit that speaker rather than guessing; the application will request a safe correction.",
+    speakerMatchingInstruction,
     "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Keep the product and scene consistent with Image 1. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
@@ -1145,19 +1182,10 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       }
       return { entry, url };
     });
-  const detectionModel = await resolveDirectVisionModel(
-    MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-    input.promptModel
-  );
   const videoPromptModel = await resolveDirectVisionModel(
     MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
     input.promptModel
   );
-  await assertCreditPreflight({
-    userId: input.userId,
-    tenantId: input.tenantId,
-    skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-  });
   await assertCreditPreflight({
     userId: input.userId,
     tenantId: input.tenantId,
@@ -1167,6 +1195,15 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   let detectionSkillRun = input.detectedPeopleSkillRun;
   let detectionCredits = 0;
   if (!detectedPeople) {
+    const detectionModel = await resolveDirectVisionModel(
+      MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+      input.promptModel
+    );
+    await assertCreditPreflight({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+    });
     await input.onProgress?.({
       progress: 15,
       stage: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
@@ -1195,7 +1232,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   await input.onProgress?.({
     progress: 50,
     stage: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
-    message: `ตรวจจับบุคคลแล้ว ${detectedPeople.length} คน · กำลังสร้าง Prompt วิดีโอ · ${MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL} · Shot ${input.shotId}`,
+    message: `${input.detectedPeople ? "ใช้ผลตรวจจับและการจับคู่ที่บันทึกไว้แล้ว" : "ตรวจจับบุคคลแล้ว"} ${detectedPeople.length} คน · กำลังสร้าง Prompt วิดีโอ · ${MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL} · Shot ${input.shotId}`,
   });
   const imageInputs: VisionAwareImageInput[] = [
     {
@@ -1215,6 +1252,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     productName: input.productName,
     productFacts: input.productFacts,
     detectedPeople,
+    speakerVisualBindings: input.speakerVisualBindings,
     characterPortraits: characterPortraits.map((item, index) => ({
       imageNumber: index + 2,
       characterName: item.entry.characterName!,
@@ -1272,7 +1310,12 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     const positionSource = data.frame_analysis?.position_source
       ?.trim()
       .toLowerCase();
-    if (approvedTurns.length && positionSource && positionSource !== "image") {
+    if (
+      !input.speakerVisualBindings &&
+      approvedTurns.length &&
+      positionSource &&
+      positionSource !== "image"
+    ) {
       throw new Error(
         `MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED:shot-${input.shotId}`
       );

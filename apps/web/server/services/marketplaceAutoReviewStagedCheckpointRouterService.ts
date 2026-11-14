@@ -2577,6 +2577,55 @@ function buildStagedSpeakerBindingsSourceHash(input: {
   });
 }
 
+function readCurrentStagedDetectedPeople(input: {
+  shotId: number;
+  imageArtifactHash?: string | null;
+  metadata: Record<string, any>;
+}): {
+  detectedPeople: Array<{
+    id: string;
+    appearance: string;
+    confidence: number;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  }>;
+  detectionSkillRun?: MarketplaceVideoPromptSkillRun;
+} | undefined {
+  if (!input.imageArtifactHash) return undefined;
+  const promptGeneration = record(
+    record(input.metadata.stagedPipeline).promptGeneration
+  );
+  // Older video-prompt generations stored their start-frame detection under
+  // video:<shot>. Reuse it just like the newer standalone detection record so
+  // prompt generation does not repeat detection after a saved speaker match.
+  for (const key of [
+    `person_detection:${input.shotId}`,
+    `video:${input.shotId}`,
+  ]) {
+    const detection = record(promptGeneration[key]);
+    if (
+      detection.sourceImageHash !== input.imageArtifactHash ||
+      !Array.isArray(detection.detectedPeople)
+    ) {
+      continue;
+    }
+    const detectionSkillRun = Array.isArray(detection.skillRuns)
+      ? detection.skillRuns
+          .map((skillRun: unknown) => record(skillRun))
+          .find(
+            (skillRun: Record<string, any>) =>
+              skillRun.skill === MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL
+          )
+      : undefined;
+    return {
+      detectedPeople: detection.detectedPeople,
+      ...(detectionSkillRun
+        ? { detectionSkillRun: detectionSkillRun as MarketplaceVideoPromptSkillRun }
+        : {}),
+    };
+  }
+  return undefined;
+}
+
 function readCurrentStagedSpeakerVisualBindings(input: {
   shot: Record<string, any>;
   metadata: Record<string, any>;
@@ -3087,15 +3136,11 @@ async function generateCompleteStagedShotPrompt(input: {
     (fact): fact is string => typeof fact === "string" && fact.trim().length > 0
   );
   const tenantId = requireStagedTenantId(input.tenantId, input.run.tenantId);
-  const promptGeneration = record(
-    record(input.metadata).stagedPipeline
-  ).promptGeneration;
-  const savedDetection = record(
-    record(promptGeneration)[`person_detection:${input.shotId}`]
-  );
-  const hasCurrentSavedDetection =
-    savedDetection.sourceImageHash === stagedShot.imageArtifactHash &&
-    Array.isArray(savedDetection.detectedPeople);
+  const savedDetection = readCurrentStagedDetectedPeople({
+    shotId: input.shotId,
+    imageArtifactHash: stagedShot.imageArtifactHash,
+    metadata: input.metadata as unknown as Record<string, any>,
+  });
   const savedBindings = readCurrentStagedSpeakerVisualBindings({
     shot: stagedShot as unknown as Record<string, any>,
     metadata: input.metadata as unknown as Record<string, any>,
@@ -3119,12 +3164,10 @@ async function generateCompleteStagedShotPrompt(input: {
     requestIdempotencyKey: input.requestIdempotencyKey,
     shot: planShot,
     speakerVisualBindings: savedBindings,
-    ...(hasCurrentSavedDetection
+    ...(savedDetection
       ? {
           detectedPeople: savedDetection.detectedPeople,
-          detectedPeopleSkillRun: Array.isArray(savedDetection.skillRuns)
-            ? savedDetection.skillRuns[0]
-            : undefined,
+          detectedPeopleSkillRun: savedDetection.detectionSkillRun,
         }
       : {}),
     cast: plan.cast ?? [],
