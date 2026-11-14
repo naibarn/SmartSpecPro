@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
+import fs from "fs";
+import path from "path";
+import { parseSkillFile } from "@smartspec/skills";
+import { z } from "zod";
 
-import type {
-  VisionAwareImageInput,
-  VisionAwareCallResponse,
+import {
+  executeVisionAwareJsonCallWithRetry,
+  type VisionAwareImageInput,
+  type VisionAwareCallResponse,
 } from "./verticalDramaStoryBible";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
+import { selectHighConfidenceVerticalDramaSpeakerSuggestions } from "./verticalDramaSpeakerVisualAttribution";
+import type {
+  VerticalDramaDetectedShotPerson,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
 import { detectVerticalDramaShotPeopleDirect } from "./verticalDramaSpeakerVisualDetection";
 import { generateVerticalDramaShotVideoPromptDirect } from "./verticalDramaVideoMotionPromptGeneration";
 import {
@@ -25,10 +38,11 @@ import type {
   StagedDialogueTurn,
   StagedStoryArcShot,
 } from "./marketplaceAutoReviewStoryArcPlanner";
-import type { VerticalDramaDetectedShotPerson } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
 export const MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL =
   "vertical-drama-speaker-visual-detection";
+export const MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL =
+  "vertical-drama-speaker-visual-attribution";
 export const MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL =
   "vertical-drama-shot-video-prompt";
 
@@ -54,6 +68,12 @@ export type MarketplaceVideoPromptSkillRun = {
   model: string;
   provider: string;
   estimatedCredits: number;
+};
+
+export type MarketplaceSpeakerVisualReference = {
+  speakerLabel: string;
+  castId: string;
+  url: string;
 };
 
 export type GenerateMarketplaceAutoReviewVideoPromptInput = {
@@ -88,6 +108,8 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
   approvedImageUrl: string;
   promptModel?: string | null;
   requestIdempotencyKey: string;
+  dialogue?: string;
+  speakerReferences?: readonly MarketplaceSpeakerVisualReference[];
   onProgress?: (progress: MarketplaceVideoPromptProgress) => Promise<void>;
 }): Promise<{
   detectedPeople: VerticalDramaDetectedShotPerson[];
@@ -95,6 +117,14 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
   provider: string;
   estimatedCredits: number;
   skillRun: MarketplaceVideoPromptSkillRun;
+  speakerVisualBindings: Record<string, string>;
+  speakerVisualMatchIssue?:
+    | "dialogue_invalid"
+    | "speaker_reference_missing"
+    | "no_people_detected"
+    | "ambiguous_match"
+    | "attribution_unavailable";
+  attributionSkillRun?: MarketplaceVideoPromptSkillRun;
 }> {
   const approvedFrame = absoluteUrl(input.approvedImageUrl, input.publicUrl);
   const detectionModel = await resolveDirectVisionModel(
@@ -150,6 +180,41 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
     requestIdempotencyKey: input.requestIdempotencyKey,
     usage: usage.current,
   });
+  let speakerVisualBindings: Record<string, string> = {};
+  let speakerVisualMatchIssue:
+    | "dialogue_invalid"
+    | "speaker_reference_missing"
+    | "no_people_detected"
+    | "ambiguous_match"
+    | "attribution_unavailable"
+    | undefined;
+  let attributionSkillRun: MarketplaceVideoPromptSkillRun | undefined;
+  if (input.dialogue !== undefined && input.speakerReferences !== undefined) {
+    try {
+      const attribution = await matchMarketplaceAutoReviewShotSpeakers({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        publicUrl: input.publicUrl,
+        runId: input.runId,
+        shotId: input.shotId,
+        requestIdempotencyKey: input.requestIdempotencyKey,
+        approvedImageUrl: approvedFrame,
+        dialogue: input.dialogue,
+        people: detection.people,
+        references: input.speakerReferences,
+        promptModel: input.promptModel,
+        onProgress: input.onProgress,
+      });
+      speakerVisualBindings = attribution.bindings;
+      speakerVisualMatchIssue = attribution.issue;
+      attributionSkillRun = attribution.skillRun;
+    } catch (error) {
+      console.warn("[MarketplaceSpeakerAttribution] Matching unavailable:",
+        error instanceof Error ? error.message : error
+      );
+      speakerVisualMatchIssue = "attribution_unavailable";
+    }
+  }
   return {
     detectedPeople: detection.people,
     model: detectionModel.modelId,
@@ -159,6 +224,252 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
       skill: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
       model: detectionModel.modelId,
       provider: detection.providerName,
+      estimatedCredits,
+    },
+    speakerVisualBindings,
+    ...(speakerVisualMatchIssue ? { speakerVisualMatchIssue } : {}),
+    ...(attributionSkillRun ? { attributionSkillRun } : {}),
+  };
+}
+
+const marketplaceSpeakerAttributionSchema = z
+  .object({
+    speakers: z
+      .array(
+        z
+          .object({
+            speaker_label: z.string().trim().min(1).max(120),
+            candidates: z
+              .array(
+                z
+                  .object({
+                    person_id: z.string().trim().min(1).max(64),
+                    identity_confidence: z.number().min(0).max(1),
+                    evidence: z.string().max(240),
+                  })
+                  .strict()
+              )
+              .max(3),
+          })
+          .strict()
+      )
+      .max(12),
+  })
+  .strict();
+
+function loadSpeakerVisualAttributionSkill(): string {
+  const folder = path.join("skills", MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL);
+  for (const dir of resolveSkillDirCandidates(folder)) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (!manifestPath || !fs.existsSync(manifestPath)) continue;
+    const { content } = parseSkillFile(fs.readFileSync(manifestPath, "utf8"));
+    if (content?.trim()) return content;
+  }
+  throw new Error(
+    `MARKETPLACE_SKILL_BODY_NOT_FOUND:${MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL}`
+  );
+}
+
+function normalizeSpeakerLabel(value: string): string {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+async function matchMarketplaceAutoReviewShotSpeakers(input: {
+  userId: number;
+  tenantId: string;
+  publicUrl?: string | null;
+  runId: string;
+  shotId: number;
+  requestIdempotencyKey: string;
+  approvedImageUrl: string;
+  dialogue: string;
+  people: VerticalDramaDetectedShotPerson[];
+  references: readonly MarketplaceSpeakerVisualReference[];
+  promptModel?: string | null;
+  onProgress?: (progress: MarketplaceVideoPromptProgress) => Promise<void>;
+}): Promise<{
+  bindings: Record<string, string>;
+  issue?:
+    | "dialogue_invalid"
+    | "speaker_reference_missing"
+    | "no_people_detected"
+    | "ambiguous_match"
+    | "attribution_unavailable";
+  skillRun?: MarketplaceVideoPromptSkillRun;
+}> {
+  let dialogue: Array<{ speaker: string; line: string }>;
+  try {
+    dialogue = parseDialogue(input.dialogue);
+  } catch {
+    return { bindings: {}, issue: "dialogue_invalid" };
+  }
+  const speakers = Array.from(
+    new Map(dialogue.map(turn => [normalizeSpeakerLabel(turn.speaker), turn.speaker])).values()
+  );
+  if (!speakers.length) return { bindings: {}, issue: "dialogue_invalid" };
+  if (!input.people.length) return { bindings: {}, issue: "no_people_detected" };
+
+  const referencesByLabel = new Map<string, MarketplaceSpeakerVisualReference[]>();
+  for (const reference of input.references) {
+    const key = normalizeSpeakerLabel(reference.speakerLabel);
+    const entries = referencesByLabel.get(key) ?? [];
+    entries.push(reference);
+    referencesByLabel.set(key, entries);
+  }
+  const exactReferences = speakers.map(speaker => {
+    const entries = referencesByLabel.get(normalizeSpeakerLabel(speaker)) ?? [];
+    return entries.length === 1 ? entries[0] : undefined;
+  });
+  if (
+    exactReferences.some(reference => !reference?.url.trim()) ||
+    new Set(exactReferences.map(reference => reference?.url.trim())).size !== speakers.length
+  ) {
+    return { bindings: {}, issue: "speaker_reference_missing" };
+  }
+
+  const model = await resolveDirectVisionModel(
+    MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+    input.promptModel
+  );
+  await assertCreditPreflight({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    skillSlug: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+  });
+  await input.onProgress?.({
+    progress: 55,
+    stage: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+    message: `กำลังจับคู่ผู้พูดกับภาพตัวละครตามบท · Shot ${input.shotId}`,
+  });
+
+  const images: VisionAwareImageInput[] = [
+    {
+      url: input.approvedImageUrl,
+      label: "CURRENT APPROVED SHOT IMAGE. Match only the listed detected person IDs in this image.",
+    },
+    ...exactReferences.map((reference, index) => ({
+      url: absoluteUrl(reference!.url, input.publicUrl),
+      label: `CAST PORTRAIT FOR EXACT DIALOGUE SPEAKER ${JSON.stringify(speakers[index])} (${reference!.castId}). This image is the visual identity reference for that exact label.`,
+    })),
+  ];
+  const usage = { current: null as Usage | null };
+  let outcome: Awaited<
+    ReturnType<typeof executeVisionAwareJsonCallWithRetry<z.infer<typeof marketplaceSpeakerAttributionSchema>>>
+  >;
+  try {
+    outcome = await executeVisionAwareJsonCallWithRetry<
+      z.infer<typeof marketplaceSpeakerAttributionSchema>
+    >({
+      model: model.modelId,
+      systemPrompt: `${loadSpeakerVisualAttributionSkill()}\n\nACTIVE MODE: marketplace_cast_portrait. Follow the Marketplace cast portrait mode rules. The exact Name: line entries below link approved dialogue labels to the supplied cast portrait labeled for each speaker. Use visual face/appearance identity only to link each portrait to one detected person in the current frame. Never assign by dialogue order, sentence meaning, gaze, mouth pose, or screen position. Do not infer which person is actively speaking from a still frame. Abstain if any speaker does not have one clear visual match.\n\nSTRICT RESPONSE CONTRACT: Return one JSON object only: {"speakers":[{"speaker_label":"exact supplied label","candidates":[{"person_id":"exact supplied detected-person ID","identity_confidence":0.0,"evidence":"short visual identity reason"}]}]}. Include each supplied speaker label once. Return no candidate when uncertain.`,
+      userPromptText: JSON.stringify({
+        mode: "marketplace_cast_portrait",
+        shot_number: input.shotId,
+        approved_dialogue: dialogue,
+        detected_people: input.people.map(person => ({
+          id: person.id,
+          bounding_box: person.boundingBox,
+          appearance: person.appearance,
+          detection_confidence: person.confidence,
+        })),
+        cast_portrait_references: exactReferences.map((reference, index) => ({
+          speaker_label: speakers[index],
+          cast_id: reference!.castId,
+          image_index: index + 2,
+        })),
+        output_instructions:
+          "Use each exact speaker_label from approved_dialogue, and return only person_id values from detected_people. A person may map to at most one speaker. Identity must be supported by visual similarity between that speaker's labeled cast portrait and the detected person. Dialogue text supplies labels and lines only; it is not identity or active-speech evidence.",
+      }),
+      hasVision: true,
+      images,
+      userId: input.userId,
+      tenantId: input.tenantId,
+      publicUrl: input.publicUrl,
+      schema: marketplaceSpeakerAttributionSchema,
+      firstAttemptMaxTokens: 1600,
+      retryMaxTokens: 2200,
+      singleAttempt: true,
+      onUsage: collectUsageObserver(usage),
+    });
+  } catch (error) {
+    if (usage.current) {
+      await chargeActualUsage({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        runId: input.runId,
+        shotId: input.shotId,
+        skillSlug: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+        modelId: model.modelId,
+        requestIdempotencyKey: input.requestIdempotencyKey,
+        usage: usage.current,
+      });
+    }
+    console.warn("[MarketplaceSpeakerAttribution] Skill call failed:",
+      error instanceof Error ? error.message : error
+    );
+    return { bindings: {}, issue: "attribution_unavailable" };
+  }
+
+  const estimatedCredits = await chargeActualUsage({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    runId: input.runId,
+    shotId: input.shotId,
+    skillSlug: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+    modelId: outcome.response.model?.trim() || model.modelId,
+    providerName: outcome.providerName,
+    requestIdempotencyKey: input.requestIdempotencyKey,
+    usage: usage.current,
+  });
+  const requestedSpeakerKeys = new Set(speakers.map(normalizeSpeakerLabel));
+  const returnedSpeakerKeys = outcome.data.speakers.map(result =>
+    normalizeSpeakerLabel(result.speaker_label)
+  );
+  if (
+    returnedSpeakerKeys.length !== requestedSpeakerKeys.size ||
+    new Set(returnedSpeakerKeys).size !== requestedSpeakerKeys.size ||
+    returnedSpeakerKeys.some(key => !requestedSpeakerKeys.has(key))
+  ) {
+    return {
+      bindings: {},
+      issue: "ambiguous_match",
+      skillRun: {
+        skill: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+        model: outcome.response.model?.trim() || model.modelId,
+        provider: outcome.providerName,
+        estimatedCredits,
+      },
+    };
+  }
+  const suggestions = selectHighConfidenceVerticalDramaSpeakerSuggestions({
+    speakers: speakers.map(speakerLabel => ({ speakerLabel })),
+    people: input.people,
+    output: outcome.data,
+  });
+  const bindings = Object.fromEntries(
+    suggestions.map(suggestion => [suggestion.speakerLabel, suggestion.personId])
+  );
+  if (
+    speakers.some(speaker => !bindings[speaker]) ||
+    new Set(Object.values(bindings)).size !== speakers.length
+  ) {
+    return {
+      bindings: {},
+      issue: "ambiguous_match",
+      skillRun: {
+        skill: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+        model: outcome.response.model?.trim() || model.modelId,
+        provider: outcome.providerName,
+        estimatedCredits,
+      },
+    };
+  }
+  return {
+    bindings,
+    skillRun: {
+      skill: MARKETPLACE_VERTICAL_DRAMA_ATTRIBUTION_SKILL,
+      model: outcome.response.model?.trim() || model.modelId,
+      provider: outcome.providerName,
       estimatedCredits,
     },
   };

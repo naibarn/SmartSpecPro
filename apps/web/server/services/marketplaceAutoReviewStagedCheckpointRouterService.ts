@@ -49,6 +49,7 @@ import {
   isMarketplaceAutoReviewVideoPromptComplete,
   MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
   MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
+  type MarketplaceSpeakerVisualReference,
   type MarketplaceVideoPromptSkillRun,
 } from "./marketplaceAutoReviewVideoPromptSkillRunner";
 import {
@@ -770,6 +771,13 @@ export async function getStagedAutoReviewCheckpointState(
       (videoDetectionRecord.sourceImageHash === shot.imageArtifactHash
         ? videoDetectionRecord.detectedPeople
         : null);
+    const plan = record(stagedPipeline?.plan) as unknown as StagedStoryArcPlan;
+    const currentBindings = readCurrentStagedSpeakerVisualBindings({
+      shot: shot as unknown as Record<string, any>,
+      metadata: metadata as unknown as Record<string, any>,
+      plan,
+      shotId: shot.shotId,
+    });
     return {
       shotId: shot.shotId,
       revision: shot.revision,
@@ -817,10 +825,11 @@ export async function getStagedAutoReviewCheckpointState(
               },
             }))
         : [],
-      speakerVisualBindings:
-        (shot as any).speakerVisualBindingsImageHash === shot.imageArtifactHash
-          ? record((shot as any).speakerVisualBindings)
-          : {},
+      speakerVisualBindings: currentBindings ?? {},
+      speakerVisualMatchIssue:
+        currentFrameDetection && typeof standaloneDetection.speakerVisualMatchIssue === "string"
+          ? standaloneDetection.speakerVisualMatchIssue
+          : null,
     };
   });
   const referenceManifest = requireStagedReferenceManifest(base).map(
@@ -2178,6 +2187,10 @@ export async function editStagedAutoReviewShot(input: {
           throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_speaker_visual_bindings" });
         }
         const revision = shot.revision + 1;
+        const bindingsSourceHash = buildStagedSpeakerBindingsSourceHash({
+          imageArtifactHash: shot.imageArtifactHash,
+          dialogue: shot.dialogue,
+        });
         const invalidatedCheckpoints = metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
           checkpoint =>
             checkpoint.shotId === input.shotId &&
@@ -2216,6 +2229,8 @@ export async function editStagedAutoReviewShot(input: {
                       videoArtifactUrl: null,
                       speakerVisualBindings: bindings,
                       speakerVisualBindingsImageHash: shot.imageArtifactHash,
+                      speakerVisualBindingsMatchType: "manual",
+                      speakerVisualBindingsSourceHash: bindingsSourceHash,
                     }
                   : item
               ),
@@ -2474,6 +2489,135 @@ function requireStagedReferenceManifest(
     }
     return item;
   });
+}
+
+function buildStagedShotSpeakerReferences(input: {
+  metadata: Record<string, any>;
+  plan: StagedStoryArcPlan;
+  shotId: number;
+}): MarketplaceSpeakerVisualReference[] {
+  try {
+    const customManifest = requireStagedReferenceManifest(input.metadata);
+    const activeCharacters = customManifest.filter(
+      item => item.active && item.role === "character"
+    );
+    const selection = resolveShotCastSelectionFromMetadata({
+      metadata: input.metadata,
+      plan: input.plan,
+      shotId: input.shotId,
+    });
+    const selectedCharacters = buildShotOrderedReferenceItems({
+      productItems: [],
+      characterItems: activeCharacters,
+      castInShot: selection.castInShot,
+      castLooks: selection.castLooks,
+    }).shotCharacterItems;
+    const normalizeName = (value: string) =>
+      value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    return (input.plan.cast ?? []).flatMap(member => {
+      if (!selection.castInShot.includes(member.castId)) return [];
+      const matchingItems = selectedCharacters.filter(item => {
+        const name =
+          typeof item.characterName === "string" && item.characterName.trim()
+            ? item.characterName.trim()
+            : typeof item.label === "string"
+              ? item.label.trim()
+              : "";
+        return name && normalizeName(name) === normalizeName(member.name);
+      });
+      if (matchingItems.length !== 1) return [];
+      const url = typeof matchingItems[0].url === "string"
+        ? matchingItems[0].url.trim()
+        : "";
+      return url
+        ? [{ speakerLabel: member.name, castId: member.castId, url }]
+        : [];
+    });
+  } catch (error) {
+    console.warn("[MarketplaceSpeakerAttribution] Cast references unavailable:",
+      error instanceof Error ? error.message : error
+    );
+    return [];
+  }
+}
+
+function stagedDialogueSpeakerLabels(dialogue: string): string[] {
+  return Array.from(
+    new Set(
+      dialogue
+        .split(/\r?\n/)
+        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
+        .filter((speaker): speaker is string => Boolean(speaker))
+    )
+  );
+}
+
+function buildStagedSpeakerBindingsSourceHash(input: {
+  imageArtifactHash?: string | null;
+  dialogue: string;
+  speakerReferences?: readonly MarketplaceSpeakerVisualReference[];
+}): string {
+  const speakerLabels = stagedDialogueSpeakerLabels(input.dialogue).sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const speakerReferences = input.speakerReferences
+    ? [...input.speakerReferences]
+        .map(reference => ({
+          speakerLabel: reference.speakerLabel.trim(),
+          castId: reference.castId.trim(),
+          url: reference.url.trim(),
+        }))
+        .sort((a, b) => a.speakerLabel.localeCompare(b.speakerLabel))
+    : null;
+  return buildProductionStableHash({
+    kind: "marketplace-speaker-visual-bindings-v1",
+    imageArtifactHash: input.imageArtifactHash ?? null,
+    speakerLabels,
+    speakerReferences,
+  });
+}
+
+function readCurrentStagedSpeakerVisualBindings(input: {
+  shot: Record<string, any>;
+  metadata: Record<string, any>;
+  plan: StagedStoryArcPlan;
+  shotId: number;
+}): Record<string, string> | undefined {
+  const shot = input.shot;
+  if (
+    !shot.imageArtifactHash ||
+    shot.speakerVisualBindingsImageHash !== shot.imageArtifactHash
+  ) {
+    return undefined;
+  }
+  const bindings = record(shot.speakerVisualBindings) as Record<string, string>;
+  const speakers = stagedDialogueSpeakerLabels(String(shot.dialogue ?? ""));
+  if (
+    Object.keys(bindings).length !== speakers.length ||
+    speakers.some(speaker => typeof bindings[speaker] !== "string") ||
+    new Set(Object.values(bindings)).size !== speakers.length
+  ) {
+    return undefined;
+  }
+  const isAuto = shot.speakerVisualBindingsMatchType === "auto";
+  const references = isAuto
+    ? buildStagedShotSpeakerReferences({
+        metadata: input.metadata,
+        plan: input.plan,
+        shotId: input.shotId,
+      })
+    : undefined;
+  const expectedHash = buildStagedSpeakerBindingsSourceHash({
+    imageArtifactHash: shot.imageArtifactHash,
+    dialogue: String(shot.dialogue ?? ""),
+    speakerReferences: references,
+  });
+  const savedHash =
+    typeof shot.speakerVisualBindingsSourceHash === "string"
+      ? shot.speakerVisualBindingsSourceHash
+      : "";
+  if (savedHash && savedHash !== expectedHash) return undefined;
+  return bindings;
 }
 
 function requireStagedReferenceManifestHash(value: unknown): string {
@@ -2952,11 +3096,12 @@ async function generateCompleteStagedShotPrompt(input: {
   const hasCurrentSavedDetection =
     savedDetection.sourceImageHash === stagedShot.imageArtifactHash &&
     Array.isArray(savedDetection.detectedPeople);
-  const savedBindings =
-    (stagedShot as any)?.speakerVisualBindingsImageHash ===
-      stagedShot.imageArtifactHash
-      ? (stagedShot as any)?.speakerVisualBindings
-      : undefined;
+  const savedBindings = readCurrentStagedSpeakerVisualBindings({
+    shot: stagedShot as unknown as Record<string, any>,
+    metadata: input.metadata as unknown as Record<string, any>,
+    plan,
+    shotId: input.shotId,
+  });
   if (!tenantId.trim()) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -3136,6 +3281,13 @@ export async function detectStagedAutoReviewShotPeople(input: {
       message: "staged_image_artifact_missing",
     });
   }
+  const stagedPipeline = record((metadata as any).stagedPipeline);
+  const plan = record(stagedPipeline.plan) as unknown as StagedStoryArcPlan;
+  const speakerReferences = buildStagedShotSpeakerReferences({
+    metadata: metadata as unknown as Record<string, any>,
+    plan,
+    shotId: input.shotId,
+  });
   const detection = await detectMarketplaceAutoReviewShotPeople({
     userId: input.auth.userId,
     tenantId,
@@ -3144,8 +3296,33 @@ export async function detectStagedAutoReviewShotPeople(input: {
     shotId: input.shotId,
     approvedImageUrl,
     requestIdempotencyKey: input.idempotencyKey,
+    dialogue: shot.dialogue,
+    speakerReferences,
     onProgress: input.onProgress,
   });
+
+  const dialogueSpeakers = Array.from(new Set(
+    shot.dialogue
+      .split(/\r?\n/)
+      .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
+      .filter((speaker): speaker is string => Boolean(speaker))
+  ));
+  const autoBindings = detection.speakerVisualBindings;
+  const completeAutoBindings =
+    dialogueSpeakers.length > 0 &&
+    Object.keys(autoBindings).length === dialogueSpeakers.length &&
+    dialogueSpeakers.every(speaker => typeof autoBindings[speaker] === "string") &&
+    new Set(Object.values(autoBindings)).size === dialogueSpeakers.length &&
+    Object.values(autoBindings).every(personId =>
+      detection.detectedPeople.some(person => person.id === personId)
+    );
+  const autoBindingsSourceHash = completeAutoBindings
+    ? buildStagedSpeakerBindingsSourceHash({
+        imageArtifactHash,
+        dialogue: shot.dialogue,
+        speakerReferences,
+      })
+    : null;
 
   return mutateOwnedStagedMetadata({
     runId: run.id,
@@ -3157,7 +3334,24 @@ export async function detectStagedAutoReviewShotPeople(input: {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
         item => item.shotId === input.shotId
       );
-      return currentShot?.imageArtifactHash === imageArtifactHash;
+      const currentReferences = buildStagedShotSpeakerReferences({
+        metadata: current as unknown as Record<string, any>,
+        plan: record(record((current as any).stagedPipeline).plan) as unknown as StagedStoryArcPlan,
+        shotId: input.shotId,
+      });
+      return (
+        currentShot?.imageArtifactHash === imageArtifactHash &&
+        currentShot.dialogue === shot.dialogue &&
+        currentShot.speakerVisualBindingsImageHash ===
+          (shot as any).speakerVisualBindingsImageHash &&
+        (currentShot as any).speakerVisualBindingsMatchType ===
+          (shot as any).speakerVisualBindingsMatchType &&
+        (currentShot as any).speakerVisualBindingsSourceHash ===
+          (shot as any).speakerVisualBindingsSourceHash &&
+        JSON.stringify(record(currentShot.speakerVisualBindings)) ===
+          JSON.stringify(record((shot as any).speakerVisualBindings)) &&
+        JSON.stringify(currentReferences) === JSON.stringify(speakerReferences)
+      );
     },
     mutate(current) {
       const currentShot = current.stagedSequentialStoryboard.shots.find(
@@ -3166,6 +3360,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
       if (
         !currentShot ||
         currentShot.imageArtifactHash !== imageArtifactHash ||
+        currentShot.dialogue !== shot.dialogue ||
         !current.stagedSequentialStoryboard.reviewCheckpoints.some(
           checkpoint =>
             checkpoint.kind === "image_result" &&
@@ -3184,20 +3379,61 @@ export async function detectStagedAutoReviewShotPeople(input: {
           detectedPeople: detection.detectedPeople,
           model: detection.model,
           provider: detection.provider,
-          estimatedCredits: detection.estimatedCredits,
-          skillRuns: [detection.skillRun],
+          estimatedCredits:
+            detection.estimatedCredits +
+            (detection.attributionSkillRun?.estimatedCredits ?? 0),
+          speakerVisualMatchIssue: detection.speakerVisualMatchIssue ?? null,
+          skillRuns: [
+            detection.skillRun,
+            ...(detection.attributionSkillRun
+              ? [detection.attributionSkillRun]
+              : []),
+          ],
         },
       };
+      const invalidatedCheckpoints = current.stagedSequentialStoryboard.reviewCheckpoints.map(
+        checkpoint =>
+          checkpoint.shotId === input.shotId &&
+          ["video_prompt", "video_result"].includes(checkpoint.kind) &&
+          checkpoint.state !== "superseded"
+            ? {
+                ...checkpoint,
+                state: "superseded" as const,
+                rejectionReasonCode: "staged_speaker_binding_updated",
+              }
+            : checkpoint
+      );
+      const tasks = removeStagedTasksInvalidatedByPrompt(
+        record((current as any).stagedPipeline),
+        [{ shotId: input.shotId, stage: "video" }]
+      );
       const nextShot = { ...currentShot } as Record<string, any>;
+      nextShot.revision = currentShot.revision + 1;
+      nextShot.state = "video_prompt_awaiting";
+      nextShot.videoPrompt = null;
+      nextShot.videoPromptHash = null;
+      nextShot.videoArtifactHash = null;
+      nextShot.videoArtifactUrl = null;
       // A new detection can assign different IDs. Invalidate any mapping
       // against the previous detection before exposing the new choices.
-      delete nextShot.speakerVisualBindings;
-      delete nextShot.speakerVisualBindingsImageHash;
+      if (completeAutoBindings) {
+        nextShot.speakerVisualBindings = autoBindings;
+        nextShot.speakerVisualBindingsImageHash = imageArtifactHash;
+        nextShot.speakerVisualBindingsMatchType = "auto";
+        nextShot.speakerVisualBindingsSourceHash = autoBindingsSourceHash;
+      } else {
+        delete nextShot.speakerVisualBindings;
+        delete nextShot.speakerVisualBindingsImageHash;
+        delete nextShot.speakerVisualBindingsMatchType;
+        delete nextShot.speakerVisualBindingsSourceHash;
+      }
       return {
         metadata: {
           ...current,
           stagedPipeline: {
             ...record((current as any).stagedPipeline),
+            tasks,
+            finalAssembly: null,
             promptGeneration,
           },
           stagedSequentialStoryboard: {
@@ -3205,6 +3441,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
             shots: current.stagedSequentialStoryboard.shots.map(item =>
               item.shotId === input.shotId ? (nextShot as typeof item) : item
             ),
+            reviewCheckpoints: invalidatedCheckpoints,
           },
         },
         planRevision: current.planReview.planRevision,

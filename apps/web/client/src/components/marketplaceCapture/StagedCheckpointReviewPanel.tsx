@@ -273,6 +273,13 @@ export type StagedReviewState = {
       boundingBox: { x: number; y: number; width: number; height: number };
     }>;
     speakerVisualBindings?: Record<string, string>;
+    speakerVisualMatchIssue?:
+      | "dialogue_invalid"
+      | "speaker_reference_missing"
+      | "no_people_detected"
+      | "ambiguous_match"
+      | "attribution_unavailable"
+      | null;
   }>;
   checkpoints: StagedCheckpoint[];
   correctionRequired?: {
@@ -399,6 +406,7 @@ function ShotSpeakerBindingPanel(props: {
   detecting?: boolean;
   detectionFailed?: boolean;
   detectionCompleted?: boolean;
+  speakerVisualMatchIssue?: StagedReviewState["shots"][number]["speakerVisualMatchIssue"];
   dialoguePendingSave?: boolean;
   onDetect?: () => void;
   onSave: (bindings: Record<string, string>) => void;
@@ -426,7 +434,7 @@ function ShotSpeakerBindingPanel(props: {
         <VStack gap={1}>
           <Heading level={4}>จับคู่ผู้พูดกับคนในภาพ</Heading>
           <Text type="supporting" color="secondary">
-            ตรวจจับคนจากภาพเริ่มต้นที่อนุมัติ แล้วเลือกให้ตรงกับผู้พูด ระบบจะใช้ผลที่บันทึกไว้สร้าง Prompt วิดีโอ
+            ตรวจจับคนจากภาพเริ่มต้น แล้ว AI เทียบภาพตัวละครกับชื่อผู้พูดในบทและบันทึกคู่ที่มั่นใจให้อัตโนมัติ หากจับคู่ไม่ชัด เลือกเองแล้วบันทึกได้
           </Text>
         </VStack>
         <HStack gap={3} wrap="wrap" vAlign="center">
@@ -438,10 +446,10 @@ function ShotSpeakerBindingPanel(props: {
             isDisabled={props.disabled || props.dialoguePendingSave || props.detecting || !props.onDetect}
             onClick={props.onDetect}
             label={props.detecting
-              ? "กำลังตรวจจับคนในภาพ"
+              ? "กำลังตรวจจับและจับคู่ผู้พูด"
               : people.length
-                ? "ตรวจจับคนในภาพอีกครั้ง"
-                : "ตรวจจับคนในภาพด้วย AI"}
+                ? "ตรวจจับและจับคู่ผู้พูดอีกครั้ง"
+                : "ตรวจจับและจับคู่ผู้พูดด้วย AI"}
           />
           {props.dialoguePendingSave ? (
             <Text type="supporting" color="primary" role="status">
@@ -457,11 +465,23 @@ function ShotSpeakerBindingPanel(props: {
             </Text>
           ) : hasSavedMapping ? (
             <Text type="supporting" color="primary" role="status">
-              บันทึกการจับคู่แล้ว · ระบบจะใช้รายชื่อนี้สร้าง Prompt วิดีโอของช็อตนี้
+              จับคู่ผู้พูดครบแล้ว · ระบบจะใช้คู่ที่บันทึกไว้กับบทพูดนี้สร้าง Prompt วิดีโอ
+            </Text>
+          ) : props.speakerVisualMatchIssue === "speaker_reference_missing" ? (
+            <Text type="supporting" color="primary" role="status">
+              ตรวจพบ {people.length} คน แต่ไม่มีภาพตัวละครที่ตรงกับชื่อผู้พูดทุกคน · เลือกคนจากกรอบภาพแล้วกดบันทึกการจับคู่
+            </Text>
+          ) : props.speakerVisualMatchIssue === "dialogue_invalid" ? (
+            <Text type="supporting" color="primary" role="status">
+              จับคู่จากบทพูดไม่ได้ · ตรวจให้แต่ละบรรทัดใช้รูปแบบ “ชื่อตัวละคร: บทพูด” แล้วกดตรวจจับและจับคู่ใหม่
+            </Text>
+          ) : props.speakerVisualMatchIssue === "ambiguous_match" || props.speakerVisualMatchIssue === "attribution_unavailable" ? (
+            <Text type="supporting" color="primary" role="status">
+              ตรวจพบ {people.length} คน แต่ AI ยังยืนยันคู่ผู้พูดจากภาพอ้างอิงไม่ได้ · เลือกคนจากกรอบภาพแล้วกดบันทึกการจับคู่
             </Text>
           ) : people.length ? (
             <Text type="supporting" color="primary" role="status">
-              พบ {people.length} คนจากภาพนี้ · เลือกผู้พูดและกดบันทึกก่อนสร้าง Prompt วิดีโอ
+              พบ {people.length} คนจากภาพนี้ · เลือกผู้พูดที่ตรงกับบทพูดและกดบันทึกก่อนสร้าง Prompt วิดีโอ
             </Text>
           ) : props.detectionCompleted ? (
             <Text type="supporting" color="primary" role="status">
@@ -4153,6 +4173,7 @@ export function StagedCheckpointReviewPanel(props: {
                       imageUrl={shot.imageArtifactUrl}
                       people={shot.detectedPeople}
                       bindings={shot.speakerVisualBindings}
+                      speakerVisualMatchIssue={shot.speakerVisualMatchIssue}
                       disabled={props.pending}
                       dialoguePendingSave={
                         drafts[dialogueKey] !== undefined &&

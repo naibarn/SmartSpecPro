@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified",
+      "next_action": "Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main.",
       "checkpoint_sha": "3bc102c29af2fbf49f89ba6a3b93522a35f7c409",
       "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-marketplace-review-fallback-audit"
+      "session_id": "codex-marketplace-auto-speaker-attribution"
     }
   },
   "pre_commit": {
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 72,
-  "updated_at": "2026-11-14T15:24:35.776434+00:00",
+  "generation": 73,
+  "updated_at": "2026-11-14T15:54:51.776505+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified",
+    "next_action": "Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main.",
     "merged_main_sha": "79f9d352f33291580961ab8065f2c3f173f090f8",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",

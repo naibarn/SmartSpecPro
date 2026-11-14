@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `72`
-- Updated (UTC): `2026-11-14T15:24:35.776434+00:00`
+- State generation: `73`
+- Updated (UTC): `2026-11-14T15:54:51.776505+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `79f9d352f33291580961ab8065f2c3f173f090f8`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified
+- Next action: Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-review-fallback-audit | /mnt/SmartSpecDev/projects/SmartSpecPro | 3bc102c29af2fbf49f89ba6a3b93522a35f7c409 | 79f9d352f33291580961ab8065f2c3f173f090f8 | ทำ authenticated browser UAT สำหรับ UI manual speaker mapping; release smartspec-web-79f9d352f33291580961ab8065f2c3f173f090f8-af4687b9dddb generation 561 deployed and runtime/public asset verified |
+| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | 3bc102c29af2fbf49f89ba6a3b93522a35f7c409 | 79f9d352f33291580961ab8065f2c3f173f090f8 | Complete skill-first Marketplace speaker-to-cast visual attribution; bind saved auto/manual speaker mappings to the approved image, exact dialogue speaker labels, and applicable portrait references; run focused non-test syntax checks, then commit and reconcile origin/main. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
