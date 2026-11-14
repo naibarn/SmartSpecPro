@@ -47,7 +47,7 @@
     },
     "section-06-development-release-and-spec-handoff": {
       "status": "checkpointed",
-      "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified.",
+      "next_action": "Resume authenticated UAT in a supported browser-control environment: sign in interactively without sharing credentials, then verify real send/response, PNG + text attachments, persistence/reconnect, security ownership and the three viewport screenshots; resolve streaming only against a versioned persisted Core event contract.",
       "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
       "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43"
     }
@@ -61,14 +61,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-14T16:58:03.541870+00:00",
-  "generation": 12,
-  "updated_at": "2026-11-14T17:45:15.256546+00:00",
+  "generation": 13,
+  "updated_at": "2026-11-14T18:02:25.765171+00:00",
   "progress": {
     "active_section": "section-06-development-release-and-spec-handoff",
-    "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified.",
+    "next_action": "Resume authenticated UAT in a supported browser-control environment: sign in interactively without sharing credentials, then verify real send/response, PNG + text attachments, persistence/reconnect, security ownership and the three viewport screenshots; resolve streaming only against a versioned persisted Core event contract.",
     "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
     "gaps": [
-      "Authenticated browser UAT for text/attachment send and desktop/tablet/mobile rendering remains pending; no authenticated browser session or browser automation executable is available in this run."
+      "Authenticated UAT is blocked in this runtime: Orca computer capabilities returned accessibility_error, and accessibility/screenshots permissions are unsupported; no authenticated browser request was made.",
+      "Current Core/Chat has no persisted event-stream contract; streaming output acceptance remains unimplemented and must not be claimed."
     ]
   }
 }

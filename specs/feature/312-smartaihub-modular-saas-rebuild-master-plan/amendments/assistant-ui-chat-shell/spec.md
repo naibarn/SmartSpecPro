@@ -60,3 +60,7 @@ Adopt `@assistant-ui/react` as the reusable React presentation and interaction f
 ## Known implementation gap at amendment start
 
 The current module uses custom React state/Astryx rendering; Core-backed conversations/messages and queued job status exist, but the client has no token-stream event subscription and no full Agent/Run/Attempt/Task/Mission/artifact read contract. The current interface also contains placeholder “coming soon” affordances. These facts constrain what may be claimed during the first migration slice.
+
+## Authenticated UAT status — 2026-11-15
+
+The deployed source and public module assets were verified, and unauthenticated protected API requests returned `401`. Authenticated browser UAT is blocked because the computer-control runtime reports accessibility and screenshot capabilities as unsupported; no real user request was submitted. See `implementation/evidence/authenticated-uat-20261115.md` for the per-scenario matrix. Core currently exposes queued worker-job polling but no persisted event-stream contract, so streaming acceptance remains unverified and must not be represented as working.

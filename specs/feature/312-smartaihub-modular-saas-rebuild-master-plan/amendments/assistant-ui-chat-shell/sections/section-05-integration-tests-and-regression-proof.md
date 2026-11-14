@@ -29,5 +29,5 @@ Browser authentication/MFA may not be available to this process; browser UAT mus
 - The Vite main client chunk is `514.68 kB` minified, above the configured 500 kB warning threshold; retain as a performance follow-up.
 - Modular release controller verified local Core/Chat/Shell health and public Shell root/login, Chat health and module manifest; the unauthenticated Chat session returned the expected `401`.
 - Public versioned Chat JavaScript and CSS assets both returned `200`; detailed deployment receipt and exact-source artifact digests are recorded in [release evidence](implementation/evidence/modular-debian-dev-release-e31402e.md).
-- Authenticated browser chat/attachment behavior and rendered desktop/tablet/mobile viewport review remain pending because this execution has no authenticated browser session or browser automation executable.
+- Authenticated browser attempt and per-scenario PASS/BLOCKED/NOT TESTED matrix: [UAT report](implementation/evidence/authenticated-uat-20261115.md). Orca reported accessibility/screenshots unsupported; no authenticated request was made.
 - Test/build source: `e31402ecbbd12fe0c3bc23ae00dac89286c52a43`.
