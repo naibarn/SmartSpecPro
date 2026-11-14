@@ -46,8 +46,10 @@
       "next_action": "Verify the modular-debian-dev target and controller, release exact integrated SHA e31402ecbbd12fe0c3bc23ae00dac89286c52a43 to aimarkethubs.com, then record service health and authenticated UAT status."
     },
     "section-06-development-release-and-spec-handoff": {
-      "status": "in_progress",
-      "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified."
+      "status": "checkpointed",
+      "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified.",
+      "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+      "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43"
     }
   },
   "pre_commit": {
@@ -59,8 +61,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-14T16:58:03.541870+00:00",
-  "generation": 11,
-  "updated_at": "2026-11-14T17:44:04.538919+00:00",
+  "generation": 12,
+  "updated_at": "2026-11-14T17:45:15.256546+00:00",
   "progress": {
     "active_section": "section-06-development-release-and-spec-handoff",
     "next_action": "Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified.",

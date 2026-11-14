@@ -3,8 +3,8 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `11`
-- Updated (UTC): `2026-11-14T17:44:04.538919+00:00`
+- State generation: `12`
+- Updated (UTC): `2026-11-14T17:45:15.256546+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-transcript-composer-and-attachment-rendering | checkpointed | — | — | ed2f12139baab301747842f97f0cfc3f490c8f08 | ed2f12139baab301747842f97f0cfc3f490c8f08 | Audit the three-panel shell across desktop, tablet and mobile, correct any overflow/occlusion, and replace unsupported inspector claims with API-backed details before documenting section 04 proof. |
 | section-04-responsive-shell-and-truthful-inspector | checkpointed | — | — | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | Complete section 05 regression proof, rerun package checks against this integrated SHA, then prepare the authorized modular-debian-dev release with exact target verification. |
 | section-05-integration-tests-and-regression-proof | checkpointed | — | — | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | Verify the modular-debian-dev target and controller, release exact integrated SHA e31402ecbbd12fe0c3bc23ae00dac89286c52a43 to aimarkethubs.com, then record service health and authenticated UAT status. |
-| section-06-development-release-and-spec-handoff | in_progress | — | — | — | — | Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified. |
+| section-06-development-release-and-spec-handoff | checkpointed | — | — | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | e31402ecbbd12fe0c3bc23ae00dac89286c52a43 | Run authenticated UAT on aimarkethubs.com for text send, multiple image and .txt/.md attachments, lightbox, desktop/tablet/mobile layout, language and theme changes; record outcome without closing the parent SPEC until verified. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
