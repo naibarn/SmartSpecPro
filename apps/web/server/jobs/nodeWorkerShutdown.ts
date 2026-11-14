@@ -1,4 +1,7 @@
-export const NODE_WORKER_SHUTDOWN_GRACE_MS = 20_000;
+// Long marketplace/media jobs may legitimately spend several minutes in a
+// provider call. Let them finish within the worker's one-hour hard timeout;
+// systemd's stop timeout must remain longer than this grace period.
+export const NODE_WORKER_SHUTDOWN_GRACE_MS = 62 * 60_000;
 
 export type NodeWorkerDrainResult = "drained" | "timed_out";
 

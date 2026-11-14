@@ -133,6 +133,10 @@ export function inferJobFamily(input: {
 }): JobFamily {
   const type = input.jobType.toLowerCase();
   const queue = typeof input.input?.queue === "string" ? input.input.queue.toLowerCase() : "";
+  // Auto Review runs staged storyboard and video-prompt work under one
+  // canonical job type, so classify it by its actual workload family instead
+  // of applying the short general-job deadline.
+  if (type === "marketplace.auto_review.execute") return "video";
   if (queue === "video" || type.includes("video") || input.executionClass === "video") return "video";
   if (queue === "image" || type.includes("image") || type.includes("character_prompt") || type.includes("cover")) return "image";
   if (queue === "audio" || type.includes("audio") || type.includes("speech") || type.includes("tts")) return "audio";
@@ -449,6 +453,18 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.input);
   if (storyDeadlineMs !== null) {
     return Math.min(storyDeadlineMs, VERTICAL_DRAMA_STORY_MAX_DEADLINE_MS);
+  }
+  if (input.jobType === "marketplace.auto_review.execute") {
+    // Older Auto Review jobs were persisted as the 10-minute general family.
+    // Keep their retry/recovery path usable after the family is corrected.
+    const stored = Number(input.retryPolicy.deadlineMs);
+    return Math.min(
+      HARD_MAX_DEADLINE_MINUTES.video * 60_000,
+      Math.max(
+        Number.isFinite(stored) && stored > 0 ? stored : 0,
+        DEFAULT_WORKER_JOB_DEADLINE_SETTINGS.families.video.retryMinutes * 60_000,
+      ),
+    );
   }
   const family = inferJobFamily(input);
   const stored = Number(input.retryPolicy.deadlineMs);

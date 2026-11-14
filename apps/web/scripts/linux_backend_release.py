@@ -1157,6 +1157,7 @@ def promote_artifact(
             f"WorkingDirectory={current_link}\n"
             f"Environment=RELEASE={source_sha}\n"
             f"Environment=SMARTSPEC_DEPLOYMENT_TARGET={target_id}\n"
+            "TimeoutStopSec=65min\n"
         )
         node_executable = str(NODE_EXECUTABLE)
         web_node_security_dropin = (
