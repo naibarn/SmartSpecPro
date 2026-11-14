@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user.",
-      "checkpoint_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
-      "merged_main_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
+      "next_action": "Run authenticated browser UAT on the deployed Marketplace Auto Review page: click 'จับคู่บทพูดกับคนในภาพทุกช็อต', verify eligible shots enqueue and report progress, manually correct/save any mismatch, then verify video prompt creation consumes the saved mappings. Runtime release generation 563 and deployed UI bundle marker are verified.",
+      "checkpoint_sha": "a7a29103a91763ff4d18f90f525fc6e68e804880",
+      "merged_main_sha": "a7a29103a91763ff4d18f90f525fc6e68e804880",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-marketplace-auto-speaker-attribution"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 74,
-  "updated_at": "2026-11-14T16:17:52.263351+00:00",
+  "generation": 77,
+  "updated_at": "2026-11-14T16:47:03.964209+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user.",
-    "merged_main_sha": "9ee71414e9889dbefc0b27aa0770309c9a0e6769",
+    "next_action": "Run authenticated browser UAT on the deployed Marketplace Auto Review page: click 'จับคู่บทพูดกับคนในภาพทุกช็อต', verify eligible shots enqueue and report progress, manually correct/save any mismatch, then verify video prompt creation consumes the saved mappings. Runtime release generation 563 and deployed UI bundle marker are verified.",
+    "merged_main_sha": "a7a29103a91763ff4d18f90f525fc6e68e804880",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",

@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `74`
-- Updated (UTC): `2026-11-14T16:17:52.263351+00:00`
+- State generation: `77`
+- Updated (UTC): `2026-11-14T16:47:03.964209+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `9ee71414e9889dbefc0b27aa0770309c9a0e6769`
+- Latest recorded merged Main SHA: `a7a29103a91763ff4d18f90f525fc6e68e804880`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user.
+- Next action: Run authenticated browser UAT on the deployed Marketplace Auto Review page: click 'จับคู่บทพูดกับคนในภาพทุกช็อต', verify eligible shots enqueue and report progress, manually correct/save any mismatch, then verify video prompt creation consumes the saved mappings. Runtime release generation 563 and deployed UI bundle marker are verified.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | 9ee71414e9889dbefc0b27aa0770309c9a0e6769 | 9ee71414e9889dbefc0b27aa0770309c9a0e6769 | Refresh the current Marketplace Auto Review page; on an approved shot frame click AI detect/match, review the automatic speaker-to-person assignments, manually choose and save any ambiguous speaker, then create the video prompt. Live provider-backed generation and authenticated browser UAT remain to be exercised by the user. |
+| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | a7a29103a91763ff4d18f90f525fc6e68e804880 | a7a29103a91763ff4d18f90f525fc6e68e804880 | Run authenticated browser UAT on the deployed Marketplace Auto Review page: click 'จับคู่บทพูดกับคนในภาพทุกช็อต', verify eligible shots enqueue and report progress, manually correct/save any mismatch, then verify video prompt creation consumes the saved mappings. Runtime release generation 563 and deployed UI bundle marker are verified. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
