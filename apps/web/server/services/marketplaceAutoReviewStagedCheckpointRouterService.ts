@@ -42,10 +42,11 @@ import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
   isCompleteStagedImagePrompt,
-  isCompleteStagedVideoPrompt,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 import {
+  detectMarketplaceAutoReviewShotPeople,
   generateMarketplaceAutoReviewVideoPrompt,
+  isMarketplaceAutoReviewVideoPromptComplete,
   MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
   MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
   type MarketplaceVideoPromptSkillRun,
@@ -752,9 +753,23 @@ export async function getStagedAutoReviewCheckpointState(
 
   const stagedShots = metadata.stagedSequentialStoryboard.shots.map(shot => {
     const detail = stagedPipeline?.plan?.shots?.[shot.shotId - 1] ?? {};
-    const generatedDetection = record(
-      record(stagedPipeline?.promptGeneration)[`video:${shot.shotId}`]
-    ).detectedPeople;
+    const promptGeneration = record(stagedPipeline?.promptGeneration);
+    const standaloneDetection = record(
+      promptGeneration[`person_detection:${shot.shotId}`]
+    );
+    const currentFrameDetection =
+      standaloneDetection.sourceImageHash === shot.imageArtifactHash &&
+      Array.isArray(standaloneDetection.detectedPeople)
+        ? standaloneDetection.detectedPeople
+        : null;
+    const videoDetectionRecord = record(
+      promptGeneration[`video:${shot.shotId}`]
+    );
+    const generatedDetection =
+      currentFrameDetection ??
+      (videoDetectionRecord.sourceImageHash === shot.imageArtifactHash
+        ? videoDetectionRecord.detectedPeople
+        : null);
     return {
       shotId: shot.shotId,
       revision: shot.revision,
@@ -802,7 +817,10 @@ export async function getStagedAutoReviewCheckpointState(
               },
             }))
         : [],
-      speakerVisualBindings: record((shot as any).speakerVisualBindings),
+      speakerVisualBindings:
+        (shot as any).speakerVisualBindingsImageHash === shot.imageArtifactHash
+          ? record((shot as any).speakerVisualBindings)
+          : {},
     };
   });
   const referenceManifest = requireStagedReferenceManifest(base).map(
@@ -1943,7 +1961,12 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
             estimatedCredits: prepared.estimatedCredits,
             skillRuns: prepared.skillRuns,
             ...(prepared.detectedPeople
-              ? { detectedPeople: prepared.detectedPeople }
+              ? {
+                  detectedPeople: prepared.detectedPeople,
+                  sourceImageHash: current.stagedSequentialStoryboard.shots.find(
+                    shot => shot.shotId === target.shotId
+                  )?.imageArtifactHash,
+                }
               : {}),
           };
         }
@@ -2003,6 +2026,7 @@ export async function editStagedAutoReviewShot(input: {
   dialogue?: string;
   imagePrompt?: string;
   videoPrompt?: string;
+  speakerVisualBindings?: Record<string, string>;
   auth: StagedCheckpointAuth;
 }) {
   if (
@@ -2024,6 +2048,7 @@ export async function editStagedAutoReviewShot(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
+    queueAdvance: input.speakerVisualBindings === undefined,
     mutate(metadata, operationId) {
       const storyEdit =
         input.storySummary !== undefined || input.dialogue !== undefined;
@@ -2133,7 +2158,16 @@ export async function editStagedAutoReviewShot(input: {
           shot.dialogue.split(/\r?\n/).map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim()).filter(Boolean)
         ));
         const bindings = input.speakerVisualBindings;
-        const detected = record(record((metadata as any).stagedPipeline?.promptGeneration)[`video:${input.shotId}`]).detectedPeople;
+        const promptGeneration = record((metadata as any).stagedPipeline?.promptGeneration);
+        const standaloneDetection = record(promptGeneration[`person_detection:${input.shotId}`]);
+        const videoDetection = record(promptGeneration[`video:${input.shotId}`]);
+        const detected =
+          standaloneDetection.sourceImageHash === shot.imageArtifactHash &&
+          Array.isArray(standaloneDetection.detectedPeople)
+            ? standaloneDetection.detectedPeople
+            : videoDetection.sourceImageHash === shot.imageArtifactHash
+              ? videoDetection.detectedPeople
+              : null;
         const detectedIds = new Set(Array.isArray(detected) ? detected.map((person: any) => person?.id).filter((id: unknown): id is string => typeof id === "string") : []);
         const selectedIds = Object.values(bindings);
         if (
@@ -2143,12 +2177,49 @@ export async function editStagedAutoReviewShot(input: {
         ) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_speaker_visual_bindings" });
         }
+        const revision = shot.revision + 1;
+        const invalidatedCheckpoints = metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
+          checkpoint =>
+            checkpoint.shotId === input.shotId &&
+            ["video_prompt", "video_result"].includes(checkpoint.kind) &&
+            checkpoint.state !== "superseded"
+              ? {
+                  ...checkpoint,
+                  state: "superseded" as const,
+                  rejectionReasonCode: "staged_speaker_binding_updated",
+                }
+              : checkpoint
+        );
+        const tasks = removeStagedTasksInvalidatedByPrompt(
+          record((metadata as any).stagedPipeline),
+          [{ shotId: input.shotId, stage: "video" }]
+        );
         return {
           metadata: {
             ...metadata,
+            stagedPipeline: {
+              ...record((metadata as any).stagedPipeline),
+              tasks,
+              finalAssembly: null,
+            },
             stagedSequentialStoryboard: {
               ...metadata.stagedSequentialStoryboard,
-              shots: metadata.stagedSequentialStoryboard.shots.map(item => item.shotId === input.shotId ? { ...item, speakerVisualBindings: bindings } : item),
+              shots: metadata.stagedSequentialStoryboard.shots.map(item =>
+                item.shotId === input.shotId
+                  ? {
+                      ...item,
+                      revision,
+                      state: "video_prompt_awaiting",
+                      videoPrompt: null,
+                      videoPromptHash: null,
+                      videoArtifactHash: null,
+                      videoArtifactUrl: null,
+                      speakerVisualBindings: bindings,
+                      speakerVisualBindingsImageHash: shot.imageArtifactHash,
+                    }
+                  : item
+              ),
+              reviewCheckpoints: invalidatedCheckpoints,
             },
           },
           planRevision: metadata.planReview.planRevision,
@@ -2872,6 +2943,20 @@ async function generateCompleteStagedShotPrompt(input: {
     (fact): fact is string => typeof fact === "string" && fact.trim().length > 0
   );
   const tenantId = requireStagedTenantId(input.tenantId, input.run.tenantId);
+  const promptGeneration = record(
+    record(input.metadata).stagedPipeline
+  ).promptGeneration;
+  const savedDetection = record(
+    record(promptGeneration)[`person_detection:${input.shotId}`]
+  );
+  const hasCurrentSavedDetection =
+    savedDetection.sourceImageHash === stagedShot.imageArtifactHash &&
+    Array.isArray(savedDetection.detectedPeople);
+  const savedBindings =
+    (stagedShot as any)?.speakerVisualBindingsImageHash ===
+      stagedShot.imageArtifactHash
+      ? (stagedShot as any)?.speakerVisualBindings
+      : undefined;
   if (!tenantId.trim()) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -2888,7 +2973,15 @@ async function generateCompleteStagedShotPrompt(input: {
     promptModel: input.model,
     requestIdempotencyKey: input.requestIdempotencyKey,
     shot: planShot,
-    speakerVisualBindings: (stagedShot as any)?.speakerVisualBindings,
+    speakerVisualBindings: savedBindings,
+    ...(hasCurrentSavedDetection
+      ? {
+          detectedPeople: savedDetection.detectedPeople,
+          detectedPeopleSkillRun: Array.isArray(savedDetection.skillRuns)
+            ? savedDetection.skillRuns[0]
+            : undefined,
+        }
+      : {}),
     cast: plan.cast ?? [],
     productName: plan.product.productName,
     productFacts,
@@ -2897,13 +2990,13 @@ async function generateCompleteStagedShotPrompt(input: {
     onProgress: input.onProgress,
   });
   if (
-    !isCompleteStagedVideoPrompt(
-      generated.prompt,
-      planShot.dialogue,
-      planShot.dialogueTurns,
-      plan.cast,
-      generated.detectedPeople.map(person => person.id)
-    )
+    !isMarketplaceAutoReviewVideoPromptComplete({
+      value: generated.prompt,
+      approvedDialogue: planShot.dialogue,
+      detectedPersonIds: generated.detectedPeople.map(person => person.id),
+      derivedDialogueTurns: planShot.dialogueTurns,
+      cast: plan.cast,
+    })
   ) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -2918,6 +3011,206 @@ async function generateCompleteStagedShotPrompt(input: {
     skillRuns: generated.skillRuns,
     detectedPeople: generated.detectedPeople,
   };
+}
+
+/**
+ * Detect people in the exact approved start frame independently of video
+ * prompt authoring. The result is persisted before the user maps dialogue
+ * speakers, so a later prompt-generation failure cannot discard the review.
+ */
+export async function detectStagedAutoReviewShotPeople(input: {
+  runId: string;
+  shotId: number;
+  expectedImageArtifactHash: string;
+  idempotencyKey: string;
+  auth: StagedCheckpointAuth;
+  runtime?: StagedCheckpointRuntime;
+  workerExecution?: boolean;
+  onProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message: string;
+  }) => Promise<void>;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedMetadataPersisted(run);
+  assertStagedRunMutable(run);
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
+  const metadata = parseStagedMetadata(run);
+  const shot = metadata.stagedSequentialStoryboard.shots.find(
+    item => item.shotId === input.shotId
+  );
+  if (!shot) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_invalid_shot_contract",
+    });
+  }
+  assertStagedVideoPromptImageReady({
+    shotId: input.shotId,
+    shot,
+    checkpoints: metadata.stagedSequentialStoryboard.reviewCheckpoints,
+  });
+  const imageArtifactHash = requireStagedImageArtifactHash(shot);
+  if (imageArtifactHash !== input.expectedImageArtifactHash) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+
+  const resultIdempotencyKey = stagedResultIdempotencyKey(input.idempotencyKey);
+  const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    input.workerExecution ? resultIdempotencyKey : input.idempotencyKey
+  );
+  if (existingJob) {
+    return {
+      runId: run.id,
+      workerJobId: existingJob.id,
+      status: existingJob.status,
+    };
+  }
+
+  if (!input.workerExecution) {
+    const activeDetectionJobs = await db
+      .select({ id: workerJobs.id, status: workerJobs.status, inputJson: workerJobs.inputJson })
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantId),
+          eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+          sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+          sql`${workerJobs.status} in ('pending', 'queued', 'leased', 'claimed', 'preparing', 'running', 'waiting_external', 'retry_scheduled')`
+        )
+      )
+      .orderBy(desc(workerJobs.createdAt))
+      .limit(32);
+    const activeDetectionJob = activeDetectionJobs.find(job => {
+      const jobInput = record(job.inputJson);
+      const operationInput = record(jobInput.operationInput ?? jobInput);
+      return (
+        jobInput.operation === "staged_person_detection" &&
+        Number(operationInput.shotId) === input.shotId
+      );
+    });
+    if (activeDetectionJob) {
+      return {
+        runId: run.id,
+        workerJobId: activeDetectionJob.id,
+        operation: "staged_person_detection",
+        status: activeDetectionJob.status,
+      };
+    }
+    const queued = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: input.auth.userId,
+      runId: run.id,
+      operation: {
+        operation: "staged_person_detection",
+        runId: run.id,
+        shotId: input.shotId,
+        expectedImageArtifactHash: imageArtifactHash,
+        requestIdempotencyKey: input.idempotencyKey,
+      },
+      idempotencyKey: input.idempotencyKey,
+      priority: 35,
+    });
+    return {
+      runId: run.id,
+      workerJobId: queued.jobId,
+      operation: "staged_person_detection",
+      status: "queued" as const,
+    };
+  }
+
+  const approvedImageUrl = safeArtifactUrl(shot.imageArtifactUrl);
+  if (!approvedImageUrl) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_image_artifact_missing",
+    });
+  }
+  const detection = await detectMarketplaceAutoReviewShotPeople({
+    userId: input.auth.userId,
+    tenantId,
+    publicUrl: input.runtime?.publicUrl,
+    runId: run.id,
+    shotId: input.shotId,
+    approvedImageUrl,
+    requestIdempotencyKey: input.idempotencyKey,
+    onProgress: input.onProgress,
+  });
+
+  return mutateOwnedStagedMetadata({
+    runId: run.id,
+    expectedStateDigest: stagedMetadataStateDigest(metadata),
+    idempotencyKey: resultIdempotencyKey,
+    auth: input.auth,
+    queueAdvance: false,
+    allowStateDrift(current) {
+      const currentShot = current.stagedSequentialStoryboard.shots.find(
+        item => item.shotId === input.shotId
+      );
+      return currentShot?.imageArtifactHash === imageArtifactHash;
+    },
+    mutate(current) {
+      const currentShot = current.stagedSequentialStoryboard.shots.find(
+        item => item.shotId === input.shotId
+      );
+      if (
+        !currentShot ||
+        currentShot.imageArtifactHash !== imageArtifactHash ||
+        !current.stagedSequentialStoryboard.reviewCheckpoints.some(
+          checkpoint =>
+            checkpoint.kind === "image_result" &&
+            checkpoint.shotId === input.shotId &&
+            checkpoint.state === "approved" &&
+            checkpoint.contentHash === imageArtifactHash
+        )
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+      }
+      const promptGeneration = {
+        ...record(record((current as any).stagedPipeline).promptGeneration),
+        [`person_detection:${input.shotId}`]: {
+          detectedAt: new Date().toISOString(),
+          sourceImageHash: imageArtifactHash,
+          detectedPeople: detection.detectedPeople,
+          model: detection.model,
+          provider: detection.provider,
+          estimatedCredits: detection.estimatedCredits,
+          skillRuns: [detection.skillRun],
+        },
+      };
+      const nextShot = { ...currentShot } as Record<string, any>;
+      // A new detection can assign different IDs. Invalidate any mapping
+      // against the previous detection before exposing the new choices.
+      delete nextShot.speakerVisualBindings;
+      delete nextShot.speakerVisualBindingsImageHash;
+      return {
+        metadata: {
+          ...current,
+          stagedPipeline: {
+            ...record((current as any).stagedPipeline),
+            promptGeneration,
+          },
+          stagedSequentialStoryboard: {
+            ...current.stagedSequentialStoryboard,
+            shots: current.stagedSequentialStoryboard.shots.map(item =>
+              item.shotId === input.shotId ? (nextShot as typeof item) : item
+            ),
+          },
+        },
+        planRevision: current.planReview.planRevision,
+      };
+    },
+  });
 }
 
 /**
@@ -3208,7 +3501,10 @@ export async function generateStagedAutoReviewShotPrompt(input: {
                 estimatedCredits: generated.estimatedCredits,
                 skillRuns: generated.skillRuns,
                 ...(generated.detectedPeople
-                  ? { detectedPeople: generated.detectedPeople }
+                  ? {
+                      detectedPeople: generated.detectedPeople,
+                      sourceImageHash: currentShot.imageArtifactHash,
+                    }
                   : {}),
               },
             },

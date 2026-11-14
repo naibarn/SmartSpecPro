@@ -22,6 +22,7 @@ import {
 } from "./productReviewSequentialStoryboardSkillRunner";
 import type {
   StagedCastMember,
+  StagedDialogueTurn,
   StagedStoryArcShot,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import type { VerticalDramaDetectedShotPerson } from "@shared/verticalDramaSeries/speakerVisualBinding";
@@ -66,6 +67,10 @@ export type GenerateMarketplaceAutoReviewVideoPromptInput = {
   requestIdempotencyKey: string;
   shot: StagedStoryArcShot;
   speakerVisualBindings?: Record<string, string>;
+  /** Reuse a separately approved-frame-bound detection result when the user
+   *  has reviewed speaker identities before generating the video prompt. */
+  detectedPeople?: VerticalDramaDetectedShotPerson[];
+  detectedPeopleSkillRun?: MarketplaceVideoPromptSkillRun;
   cast: readonly StagedCastMember[];
   productName: string;
   productFacts: string[];
@@ -73,6 +78,91 @@ export type GenerateMarketplaceAutoReviewVideoPromptInput = {
   instruction?: string | null;
   onProgress?: (progress: MarketplaceVideoPromptProgress) => Promise<void>;
 };
+
+export async function detectMarketplaceAutoReviewShotPeople(input: {
+  userId: number;
+  tenantId: string;
+  publicUrl?: string | null;
+  runId: string;
+  shotId: number;
+  approvedImageUrl: string;
+  promptModel?: string | null;
+  requestIdempotencyKey: string;
+  onProgress?: (progress: MarketplaceVideoPromptProgress) => Promise<void>;
+}): Promise<{
+  detectedPeople: VerticalDramaDetectedShotPerson[];
+  model: string;
+  provider: string;
+  estimatedCredits: number;
+  skillRun: MarketplaceVideoPromptSkillRun;
+}> {
+  const approvedFrame = absoluteUrl(input.approvedImageUrl, input.publicUrl);
+  const detectionModel = await resolveDirectVisionModel(
+    MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+    input.promptModel
+  );
+  await assertCreditPreflight({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+  });
+  await input.onProgress?.({
+    progress: 15,
+    stage: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+    message: `กำลังตรวจจับบุคคลจากภาพที่อนุมัติ · Shot ${input.shotId}`,
+  });
+
+  const usage = { current: null as Usage | null };
+  let detection: Awaited<ReturnType<typeof detectVerticalDramaShotPeopleDirect>>;
+  try {
+    detection = await detectVerticalDramaShotPeopleDirect({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      shotNumber: input.shotId,
+      imageUrl: approvedFrame,
+      model: detectionModel.modelId,
+      publicUrl: input.publicUrl,
+      onUsage: collectUsageObserver(usage),
+    });
+  } catch (error) {
+    if (usage.current) {
+      await chargeActualUsage({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        runId: input.runId,
+        shotId: input.shotId,
+        skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+        modelId: detectionModel.modelId,
+        requestIdempotencyKey: input.requestIdempotencyKey,
+        usage: usage.current,
+      });
+    }
+    throw error;
+  }
+  const estimatedCredits = await chargeActualUsage({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    runId: input.runId,
+    shotId: input.shotId,
+    skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+    modelId: detectionModel.modelId,
+    providerName: detection.providerName,
+    requestIdempotencyKey: input.requestIdempotencyKey,
+    usage: usage.current,
+  });
+  return {
+    detectedPeople: detection.people,
+    model: detectionModel.modelId,
+    provider: detection.providerName,
+    estimatedCredits,
+    skillRun: {
+      skill: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+      model: detectionModel.modelId,
+      provider: detection.providerName,
+      estimatedCredits,
+    },
+  };
+}
 
 function clean(value: unknown, max = 1200): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -368,6 +458,37 @@ function positionTargetX(value: string): number | undefined {
   return undefined;
 }
 
+export function isMarketplaceAutoReviewVideoPromptComplete(input: {
+  value: unknown;
+  approvedDialogue: string;
+  detectedPersonIds?: readonly string[];
+  derivedDialogueTurns?: readonly StagedDialogueTurn[];
+  cast?: readonly StagedCastMember[];
+}): boolean {
+  const validator = isCompleteStagedVideoPrompt as unknown as (
+    ...args: unknown[]
+  ) => boolean;
+  const detectedPersonIds = input.detectedPersonIds ?? [];
+  // This working tree may contain the in-flight v2 validator signature while
+  // canonical HEAD still uses the v1 argument order. Keep callsites safe on
+  // both revisions without changing the validator owned by that work.
+  return validator.length >= 5
+    ? validator(
+        input.value,
+        input.approvedDialogue,
+        detectedPersonIds,
+        input.derivedDialogueTurns,
+        input.cast
+      )
+    : validator(
+        input.value,
+        input.approvedDialogue,
+        input.derivedDialogueTurns,
+        input.cast,
+        detectedPersonIds
+      );
+}
+
 function buildAuthoritativeSpeakerSections(input: {
   shotId: number;
   dialogue: Array<{ speaker: string; line: string }>;
@@ -404,33 +525,49 @@ function buildAuthoritativeSpeakerSections(input: {
     const speakerKey = normalizedName(turn.speaker);
     const previous = bySpeaker.get(speakerKey);
     if (previous) return { ...turn, ...previous };
+    const userBoundId = input.speakerVisualBindings?.[turn.speaker];
+    if (input.speakerVisualBindings && !userBoundId) {
+      throw matchError("manual-speaker-binding-missing");
+    }
+    if (userBoundId) {
+      const person = input.detectedPeople.find(candidate => candidate.id === userBoundId);
+      if (!person) throw matchError("manual-detected-person-id");
+      if (usedPersonIds.has(person.id)) {
+        throw matchError("manual-detected-person-already-used");
+      }
+      usedPersonIds.add(person.id);
+      const position = detectedPersonPosition(person);
+      const cue = `${person.id}, ${position}`;
+      bySpeaker.set(speakerKey, { person, cue });
+      return { ...turn, person, cue };
+    }
     const matches = input.frameAnalysisPeople.filter(
       person => normalizedName(person.name) === speakerKey
     );
-    if (!input.speakerVisualBindings && matches.length !== 1) {
+    if (matches.length !== 1) {
       throw matchError("speaker-label");
     }
-    const analysis = matches[0] ?? {
-      name: turn.speaker,
-      position: "",
-      detected_person_id: input.speakerVisualBindings?.[turn.speaker],
-    };
-    const explicitId = (input.speakerVisualBindings?.[turn.speaker] ?? analysis.detected_person_id)?.trim();
+    const analysis = matches[0]!;
+    const explicitId = analysis.detected_person_id?.trim();
     const explicitPerson = explicitId
       ? input.detectedPeople.find(person => person.id === explicitId)
       : undefined;
-    if (explicitId && !explicitPerson) {
-      throw matchError("detected-person-id");
+    if (explicitId && !explicitPerson) throw matchError("detected-person-id");
+    const targetX = positionTargetX(analysis.position);
+    if (
+      explicitPerson &&
+      targetX !== undefined &&
+      Math.abs(
+        explicitPerson.boundingBox.x + explicitPerson.boundingBox.width / 2 - targetX
+      ) >= 0.34
+    ) {
+      throw matchError("detected-person-position-conflict");
     }
-    // Vision models occasionally repeat one detected ID for two speakers.
-    // Keep a valid, unused explicit ID authoritative; when it collides with a
-    // prior speaker, recover only from a clear image-position match below.
     let person =
       explicitPerson && !usedPersonIds.has(explicitPerson.id)
         ? explicitPerson
         : undefined;
     if (!person) {
-      const targetX = positionTargetX(analysis.position);
       if (targetX === undefined) {
         throw matchError("speaker-position");
       }
@@ -715,53 +852,30 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     tenantId: input.tenantId,
     skillSlug: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
   });
-  await input.onProgress?.({
-    progress: 15,
-    stage: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-    message: `กำลังตรวจจับบุคคลจากภาพที่อนุมัติ · ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL} · Shot ${input.shotId}`,
-  });
-
-  const detectionUsage = { current: null as Usage | null };
-  let detection: Awaited<
-    ReturnType<typeof detectVerticalDramaShotPeopleDirect>
-  >;
-  try {
-    detection = await detectVerticalDramaShotPeopleDirect({
+  let detectedPeople = input.detectedPeople;
+  let detectionSkillRun = input.detectedPeopleSkillRun;
+  let detectionCredits = 0;
+  if (!detectedPeople) {
+    await input.onProgress?.({
+      progress: 15,
+      stage: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+      message: `กำลังตรวจจับบุคคลจากภาพที่อนุมัติ · ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL} · Shot ${input.shotId}`,
+    });
+    const detection = await detectMarketplaceAutoReviewShotPeople({
       userId: input.userId,
       tenantId: input.tenantId,
-      shotNumber: input.shotId,
-      imageUrl: approvedFrame,
-      model: detectionModel.modelId,
       publicUrl: input.publicUrl,
-      onUsage: collectUsageObserver(detectionUsage),
+      runId: input.runId,
+      shotId: input.shotId,
+      approvedImageUrl: approvedFrame,
+      promptModel: input.promptModel,
+      requestIdempotencyKey: input.requestIdempotencyKey,
     });
-  } catch (error) {
-    if (detectionUsage.current) {
-      await chargeActualUsage({
-        userId: input.userId,
-        tenantId: input.tenantId,
-        runId: input.runId,
-        shotId: input.shotId,
-        skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-        modelId: detectionModel.modelId,
-        requestIdempotencyKey: input.requestIdempotencyKey,
-        usage: detectionUsage.current,
-      });
-    }
-    throw error;
+    detectedPeople = detection.detectedPeople;
+    detectionSkillRun = detection.skillRun;
+    detectionCredits = detection.estimatedCredits;
   }
-  const detectionCredits = await chargeActualUsage({
-    userId: input.userId,
-    tenantId: input.tenantId,
-    runId: input.runId,
-    shotId: input.shotId,
-    skillSlug: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-    modelId: detectionModel.modelId,
-    providerName: detection.providerName,
-    requestIdempotencyKey: input.requestIdempotencyKey,
-    usage: detectionUsage.current,
-  });
-  if (dialogue.length > 0 && detection.people.length === 0) {
+  if (dialogue.length > 0 && detectedPeople.length === 0) {
     throw new Error(
       `MARKETPLACE_VIDEO_PROMPT_NO_PEOPLE_DETECTED:shot-${input.shotId}`
     );
@@ -770,7 +884,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   await input.onProgress?.({
     progress: 50,
     stage: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
-    message: `ตรวจจับบุคคลแล้ว ${detection.people.length} คน · กำลังสร้าง Prompt วิดีโอ · ${MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL} · Shot ${input.shotId}`,
+    message: `ตรวจจับบุคคลแล้ว ${detectedPeople.length} คน · กำลังสร้าง Prompt วิดีโอ · ${MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL} · Shot ${input.shotId}`,
   });
   const imageInputs: VisionAwareImageInput[] = [
     {
@@ -789,7 +903,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     cast: input.cast,
     productName: input.productName,
     productFacts: input.productFacts,
-    detectedPeople: detection.people,
+    detectedPeople,
     characterPortraits: characterPortraits.map((item, index) => ({
       imageNumber: index + 2,
       characterName: item.entry.characterName!,
@@ -855,7 +969,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     return buildAuthoritativeSpeakerSections({
       shotId: input.shotId,
       dialogue: approvedTurns,
-      detectedPeople: detection.people,
+      detectedPeople,
       frameAnalysisPeople: (data.frame_analysis?.people ??
         []) as MarketplaceSpeakerVisualEntry[],
       speakerVisualBindings: input.speakerVisualBindings,
@@ -888,7 +1002,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       "For every approved dialogue speaker that is visibly matched to a portrait, use the exact approved speaker label as name, the visually verified position, and the exact detected_person_id from the detected-person map.",
       "Do not guess, use cast/order assumptions, rename speakers, or omit a speaker that can be visually matched. If a speaker cannot be confidently identified from the supplied images, omit that person and do not invent a binding.",
       `Approved speaker labels: ${approvedTurns.map(turn => turn.speaker).join(" | ")}`,
-      `Detected people: ${formatDetectedPeople(detection.people)}`,
+      `Detected people: ${formatDetectedPeople(detectedPeople)}`,
     ].join("\n");
     let repaired: Awaited<
       ReturnType<typeof generateVerticalDramaShotVideoPromptDirect>
@@ -938,32 +1052,56 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     approvedTurns
   );
   if (
-    !isCompleteStagedVideoPrompt(
-      prompt,
-      input.shot.dialogue,
-      input.shot.dialogueTurns,
-      input.cast,
-      detection.people.map(person => person.id)
-    )
+    !isMarketplaceAutoReviewVideoPromptComplete({
+      value: prompt,
+      approvedDialogue: input.shot.dialogue,
+      detectedPersonIds: detectedPeople.map(person => person.id),
+      derivedDialogueTurns: input.shot.dialogueTurns,
+      cast: input.cast,
+    })
   ) {
-    const failedCheck = !isCompleteStagedVideoPrompt(prompt, "")
+    const detectedPersonIds = detectedPeople.map(person => person.id);
+    const approvedTurnKeys = new Set(
+      parseDialogue(input.shot.dialogue).map(turn =>
+        `${turn.speaker.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`
+      )
+    );
+    const containsStaleDialogue = (input.shot.dialogueTurns ?? []).some(turn => {
+      const key = `${turn.speakerName.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`;
+      return (
+        !approvedTurnKeys.has(key) &&
+        turn.line.trim().length >= 4 &&
+        prompt.includes(turn.line.trim())
+      );
+    });
+    const failedCheck = !isMarketplaceAutoReviewVideoPromptComplete({
+      value: prompt,
+      approvedDialogue: "",
+    })
       ? "format_or_length"
-      : !isCompleteStagedVideoPrompt(prompt, input.shot.dialogue)
-        ? "dialogue"
-        : !isCompleteStagedVideoPrompt(
-              prompt,
-              input.shot.dialogue,
-              input.shot.dialogueTurns
-            )
-          ? "stale_dialogue"
-          : !isCompleteStagedVideoPrompt(
-                prompt,
-                input.shot.dialogue,
-                input.shot.dialogueTurns,
-                input.cast
-              )
-            ? "speaker_map"
-            : "detected_people";
+      : containsStaleDialogue
+        ? "stale_dialogue"
+        : !isMarketplaceAutoReviewVideoPromptComplete({
+              value: prompt,
+              approvedDialogue: input.shot.dialogue,
+            })
+          ? "dialogue"
+          : !isMarketplaceAutoReviewVideoPromptComplete({
+                value: prompt,
+                approvedDialogue: input.shot.dialogue,
+                detectedPersonIds,
+                derivedDialogueTurns: input.shot.dialogueTurns,
+              })
+            ? "detected_people"
+            : !isMarketplaceAutoReviewVideoPromptComplete({
+                  value: prompt,
+                  approvedDialogue: input.shot.dialogue,
+                  detectedPersonIds,
+                  derivedDialogueTurns: input.shot.dialogueTurns,
+                  cast: input.cast,
+                })
+              ? "speaker_map"
+              : "detected_people";
     console.warn("[MarketplaceVideoPrompt] validation failed", {
       shotId: input.shotId,
       failedCheck,
@@ -976,16 +1114,19 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   }
   return {
     prompt,
-    detectedPeople: detection.people,
+    detectedPeople,
     model: videoPromptModel.modelId,
     provider: generated.providerName,
     estimatedCredits: detectionCredits + promptCredits,
     skillRuns: [
       {
         skill: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
-        model: detectionModel.modelId,
-        provider: detection.providerName,
-        estimatedCredits: detectionCredits,
+        ...(detectionSkillRun ?? {
+          skill: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
+          model: "previously-reviewed-detection",
+          provider: "saved-result",
+          estimatedCredits: 0,
+        }),
       },
       {
         skill: MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,

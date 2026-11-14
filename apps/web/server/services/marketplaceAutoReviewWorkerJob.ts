@@ -85,6 +85,15 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
+        operation: z.literal("staged_person_detection"),
+        runId: runIdSchema,
+        shotId: z.number().int().min(1).max(30),
+        expectedImageArtifactHash: z.string().trim().min(1).max(256),
+        requestIdempotencyKey: operationIdempotencySchema,
+      })
+      .strict(),
+    z
+      .object({
         operation: z.literal("staged_bulk_generation"),
         runId: runIdSchema,
         expectedStateDigest: z.string().trim().min(1).max(256),
@@ -178,10 +187,6 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
     throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_RUN_MISMATCH");
   }
   const idempotencyKey = canonicalIdempotencyKey(input.idempotencyKey);
-  const waitsForShotMedia =
-    operation.operation === "staged_prompt_generation" ||
-    (operation.operation === "staged_bulk_generation" &&
-      operation.targets.some(target => target.promptOnly === true));
   return {
     definition: {
       tenantId: input.tenantId,
@@ -193,12 +198,12 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
       input: operation as unknown as Record<string, unknown>,
       idempotencyKey,
       retryPolicy: {
-        // Prompt repair can be queued while the previous render completes.
-        // Retries are short, bounded metadata checks; no provider work starts
-        // until the shot's media task is settled.
-        maxAttempts: waitsForShotMedia ? 60 : 3,
-        baseDelayMs: waitsForShotMedia ? 10_000 : 5_000,
-        maxDelayMs: waitsForShotMedia ? 60_000 : 5 * 60_000,
+        // Marketplace Auto Review operations may incur provider costs. Every
+        // failure is surfaced against this job; a new attempt requires an
+        // explicit user action with a new idempotency key.
+        maxAttempts: 1,
+        baseDelayMs: 5_000,
+        maxDelayMs: 5 * 60_000,
         jitter: "bounded" as const,
         deadlineMs: 6 * 60 * 60_000,
         allowedErrorClasses: ["retryable", "timeout", "unavailable"],
@@ -379,6 +384,11 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
   tenantId: string;
   userId: number;
   jobId: string;
+  reportProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message?: string;
+  }) => Promise<void>;
 }) {
   const auth = { userId: input.userId, tenantId: input.tenantId };
   switch (input.job.operation) {
@@ -491,6 +501,30 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         idempotencyKey: input.job.requestIdempotencyKey,
         instruction: input.job.instruction,
         model: input.job.model,
+        auth,
+        runtime: { publicUrl: runtime.publicUrl },
+        workerExecution: true,
+        onProgress: input.reportProgress,
+      });
+    }
+    case "staged_person_detection": {
+      const { detectStagedAutoReviewShotPeople } =
+        await import("./marketplaceAutoReviewStagedCheckpointRouterService");
+      const runtimeModule =
+        await import("./marketplaceAutoReviewWorkerRuntime");
+      const runtime =
+        await runtimeModule.createMarketplaceAutoReviewWorkerRuntime({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          runId: input.job.runId,
+          jobId: input.jobId,
+          schedulerSource: "worker_jobs:staged_person_detection",
+        });
+      return detectStagedAutoReviewShotPeople({
+        runId: input.job.runId,
+        shotId: input.job.shotId,
+        expectedImageArtifactHash: input.job.expectedImageArtifactHash,
+        idempotencyKey: input.job.requestIdempotencyKey,
         auth,
         runtime: { publicUrl: runtime.publicUrl },
         workerExecution: true,

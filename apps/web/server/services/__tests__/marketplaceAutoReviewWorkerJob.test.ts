@@ -92,14 +92,41 @@ describe("Marketplace Auto Review worker job admission", () => {
       requestIdempotencyKey: "request-image-prompt-1",
     });
     expect(definition.retryPolicy).toMatchObject({
-      maxAttempts: 60,
-      baseDelayMs: 10_000,
-      maxDelayMs: 60_000,
+      maxAttempts: 1,
+      baseDelayMs: 5_000,
+      maxDelayMs: 5 * 60_000,
     });
     expect(() => validateJobDefinition(definition)).not.toThrow();
   });
 
-  it("gives queued bulk prompt-only repair enough retries to wait for active renders", async () => {
+  it("queues approved-frame person detection as a durable worker job", async () => {
+    await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      runId: "run-person-detection",
+      idempotencyKey: "request-person-detection-1",
+      operation: {
+        operation: "staged_person_detection",
+        runId: "run-person-detection",
+        shotId: 6,
+        expectedImageArtifactHash: "approved-frame-hash",
+        requestIdempotencyKey: "request-person-detection-1",
+      },
+    });
+
+    const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
+    expect(definition.input).toEqual({
+      operation: "staged_person_detection",
+      runId: "run-person-detection",
+      shotId: 6,
+      expectedImageArtifactHash: "approved-frame-hash",
+      requestIdempotencyKey: "request-person-detection-1",
+    });
+    expect(definition.retryPolicy.maxAttempts).toBe(1);
+    expect(() => validateJobDefinition(definition)).not.toThrow();
+  });
+
+  it("runs bulk prompt-only skill work once and surfaces a failure", async () => {
     await enqueueMarketplaceAutoReviewWorkerJob({
       tenantId: "tenant-marketplace",
       userId: 42,
@@ -118,7 +145,7 @@ describe("Marketplace Auto Review worker job admission", () => {
     });
 
     const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
-    expect(definition.retryPolicy.maxAttempts).toBe(60);
+    expect(definition.retryPolicy.maxAttempts).toBe(1);
     expect(() => validateJobDefinition(definition)).not.toThrow();
   });
 

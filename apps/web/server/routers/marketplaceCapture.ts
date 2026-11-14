@@ -88,6 +88,7 @@ import {
   editStagedAutoReviewAudioPlan,
   editStagedAutoReviewFinalAssembly,
   editStagedAutoReviewShot,
+  detectStagedAutoReviewShotPeople,
   generateStagedAutoReviewShotPrompt,
   getStagedAutoReviewCheckpointState,
   startStagedAutoReviewBulkGeneration,
@@ -1877,6 +1878,24 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       editStagedAutoReviewShot({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  detectStagedAutoReviewShotPeople: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(30),
+        expectedImageArtifactHash: z.string().trim().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      detectStagedAutoReviewShotPeople({
+        ...input,
+        auth: authFromCtx(ctx),
+        runtime: { publicUrl: ctx.publicUrl },
+      })
     ),
 
   generateStagedAutoReviewShotPrompt: protectedProcedure

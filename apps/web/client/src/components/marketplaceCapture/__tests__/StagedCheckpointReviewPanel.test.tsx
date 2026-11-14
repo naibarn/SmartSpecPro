@@ -117,6 +117,7 @@ function props() {
     onApprove: vi.fn(),
     onReject: vi.fn(),
     onEdit: vi.fn(),
+    onDetectShotPeople: vi.fn(),
     onGeneratePrompt: vi.fn(),
     onGenerateAndDispatch: vi.fn(),
     onSubmitFinalRender: vi.fn(),
@@ -132,6 +133,105 @@ function clickAndConfirmGeneration(button: HTMLElement) {
 }
 
 describe("StagedCheckpointReviewPanel", () => {
+  it("queues manual person detection for the shot's approved image", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          dialogue: "พิมพ์ชนก: เห็นไหม",
+          imageArtifactUrl: "/media/approved-shot.png",
+          imageArtifactHash: "approved-frame-1",
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getByText(/ผลตรวจจับจะบันทึกแยกจากงานสร้าง Prompt/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจจับคนในภาพด้วย AI" }));
+
+    expect(input.onDetectShotPeople).toHaveBeenCalledWith(1);
+  });
+
+  it("locks speaker choices while a fresh detection is running", () => {
+    const input = props();
+    input.detectingPeopleShotId = 1;
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          dialogue: "พิมพ์ชนก: เห็นไหม",
+          imageArtifactUrl: "/media/approved-shot.png",
+          imageArtifactHash: "approved-frame-1",
+          detectedPeople: [
+            {
+              id: "person-1",
+              appearance: "ผู้หญิงผมยาว",
+              confidence: 0.96,
+              boundingBox: { x: 0.05, y: 0.1, width: 0.4, height: 0.8 },
+            },
+          ],
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(
+      screen.getByText(/กำลังตรวจจับคนจากภาพเริ่มต้นที่อนุมัติ/)
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: "คนในภาพที่ตรงกับ พิมพ์ชนก" })
+    ).toBeDisabled();
+  });
+
+  it("lets the user inspect one approved shot image and save a manual speaker mapping", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          dialogue: "พิมพ์ชนก: เห็นไหม\nธีร์: เห็นแล้ว",
+          imageArtifactUrl: "/media/approved-shot.png",
+          imageArtifactHash: "approved-frame-1",
+          detectedPeople: [
+            {
+              id: "person-1",
+              appearance: "ผู้หญิงผมยาว",
+              confidence: 0.96,
+              boundingBox: { x: 0.05, y: 0.1, width: 0.4, height: 0.8 },
+            },
+            {
+              id: "person-2",
+              appearance: "ผู้ชายใส่สูท",
+              confidence: 0.92,
+              boundingBox: { x: 0.55, y: 0.1, width: 0.4, height: 0.8 },
+            },
+          ],
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจจับคนในภาพอีกครั้ง" }));
+    expect(input.onDetectShotPeople).toHaveBeenCalledWith(1);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "คนในภาพที่ตรงกับ พิมพ์ชนก" }), {
+      target: { value: "person-2" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "คนในภาพที่ตรงกับ ธีร์" }), {
+      target: { value: "person-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "บันทึกการจับคู่" }));
+
+    expect(input.onEdit).toHaveBeenCalledWith({
+      shotId: 1,
+      speakerVisualBindings: { พิมพ์ชนก: "person-2", ธีร์: "person-1" },
+    });
+  });
+
   it("requires confirmation before generation and ignores a duplicate confirm click", () => {
     const input = props();
     render(<StagedCheckpointReviewPanel {...input} />);

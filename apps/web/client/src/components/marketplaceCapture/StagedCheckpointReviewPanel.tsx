@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Grid } from "@astryxdesign/core/Grid";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import { trpc } from "@/lib/trpc";
 import {
   loadStoredAutoStoryboardOverrides,
@@ -390,6 +396,11 @@ function ShotSpeakerBindingPanel(props: {
   people?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>;
   bindings?: Record<string, string>;
   disabled?: boolean;
+  detecting?: boolean;
+  detectionFailed?: boolean;
+  detectionCompleted?: boolean;
+  dialoguePendingSave?: boolean;
+  onDetect?: () => void;
   onSave: (bindings: Record<string, string>) => void;
 }) {
   const speakers = Array.from(
@@ -404,39 +415,109 @@ function ShotSpeakerBindingPanel(props: {
     props.bindings ?? {}
   );
   useEffect(() => setDraft(props.bindings ?? {}), [props.bindings]);
-  if (!speakers.length || !props.people?.length || !props.imageUrl) return null;
+  if (!speakers.length || !props.imageUrl) return null;
+  const people = props.people ?? [];
   const saved = props.bindings ?? {};
   const changed = speakers.some(name => (draft[name] ?? "") !== (saved[name] ?? ""));
+  const hasSavedMapping = speakers.length > 0 && speakers.every(name => Boolean(saved[name]));
   return (
-    <section className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4" aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
-      <div className="mb-3">
-        <h4 className="font-semibold text-slate-900">จับคู่ผู้พูดกับคนในภาพ</h4>
-        <p className="text-xs text-slate-600">กรอบมาจากผลตรวจจับ AI เลือกคนให้ตรงกับผู้พูดแต่ละคน เพื่อให้ Prompt วิดีโอใช้ตัวตนถูกต้อง</p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(10rem,16rem)_1fr]">
-        <div className="relative mx-auto w-full max-w-64 overflow-hidden rounded-lg bg-slate-900">
-          <AuthenticatedMediaImage src={props.imageUrl} alt={`Start frame ช็อตที่ ${props.shotId}`} className="aspect-[9/16] w-full object-contain" />
-          {props.people.map((person, index) => (
-            <div key={person.id} className="pointer-events-none absolute border-2 border-cyan-400" style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}>
-              <span className="absolute -top-5 left-0 rounded bg-cyan-600 px-1.5 text-xs font-bold text-white">{index + 1}</span>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-3">
-          {speakers.map(name => (
-            <label key={name} className="block rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-800">
-              <span>ผู้พูด: {name}</span>
-              <select aria-label={`คนในภาพที่ตรงกับ ${name}`} className="mt-2 w-full rounded-md border border-slate-300 bg-white p-2 font-normal" value={draft[name] ?? ""} disabled={props.disabled} onChange={event => setDraft(current => ({ ...current, [name]: event.target.value }))}>
-                <option value="">ยังไม่เลือก</option>
-                {props.people.map((person, index) => <option key={person.id} value={person.id}>{index + 1}. {person.appearance} ({Math.round(person.confidence * 100)}%)</option>)}
-              </select>
-            </label>
-          ))}
-          <p className="text-xs text-slate-600">คนหนึ่งคนจับคู่ได้กับผู้พูดหนึ่งคนในช็อตนี้</p>
-          <button type="button" disabled={props.disabled || !changed || speakers.some(name => !draft[name]) || new Set(speakers.map(name => draft[name])).size !== speakers.length} onClick={() => props.onSave(Object.fromEntries(speakers.map(name => [name, draft[name]])))} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">บันทึกการจับคู่</button>
-        </div>
-      </div>
-    </section>
+    <Card variant="cyan" padding={4}>
+      <VStack as="section" gap={3} aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
+        <VStack gap={1}>
+          <Heading level={4}>จับคู่ผู้พูดกับคนในภาพ</Heading>
+          <Text type="supporting" color="secondary">
+            ตรวจจับคนจากภาพเริ่มต้นที่อนุมัติ แล้วเลือกให้ตรงกับผู้พูด ระบบจะใช้ผลที่บันทึกไว้สร้าง Prompt วิดีโอ
+          </Text>
+        </VStack>
+        <HStack gap={3} wrap="wrap" vAlign="center">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            isLoading={props.detecting}
+            isDisabled={props.disabled || props.dialoguePendingSave || props.detecting || !props.onDetect}
+            onClick={props.onDetect}
+            label={props.detecting
+              ? "กำลังตรวจจับคนในภาพ"
+              : people.length
+                ? "ตรวจจับคนในภาพอีกครั้ง"
+                : "ตรวจจับคนในภาพด้วย AI"}
+          />
+          {props.dialoguePendingSave ? (
+            <Text type="supporting" color="primary" role="status">
+              บันทึกบทพูดก่อน เพื่อให้รายชื่อผู้พูดที่จับคู่ตรงกับ Prompt ที่จะสร้าง
+            </Text>
+          ) : props.detecting ? (
+            <Text type="supporting" color="primary" role="status">
+              กำลังตรวจจับคนจากภาพเริ่มต้นที่อนุมัติ โปรดรอผลก่อนเลือกคน เพื่อให้หมายเลขตรงกับผลตรวจล่าสุด
+            </Text>
+          ) : props.detectionFailed ? (
+            <Text type="supporting" color="primary" role="status">
+              ตรวจจับไม่สำเร็จ — กดตรวจจับอีกครั้ง แล้วเลือกคนเองได้เมื่อพบกรอบบุคคล
+            </Text>
+          ) : hasSavedMapping ? (
+            <Text type="supporting" color="primary" role="status">
+              บันทึกการจับคู่แล้ว · ระบบจะใช้รายชื่อนี้สร้าง Prompt วิดีโอของช็อตนี้
+            </Text>
+          ) : people.length ? (
+            <Text type="supporting" color="primary" role="status">
+              พบ {people.length} คนจากภาพนี้ · เลือกผู้พูดและกดบันทึกก่อนสร้าง Prompt วิดีโอ
+            </Text>
+          ) : props.detectionCompleted ? (
+            <Text type="supporting" color="primary" role="status">
+              ตรวจภาพแล้วแต่ไม่พบบุคคล — ลองตรวจจับอีกครั้ง หรือตรวจว่าภาพเริ่มต้นมีคนอยู่จริง
+            </Text>
+          ) : (
+            <Text type="supporting" color="secondary">
+              ผลตรวจจับจะบันทึกแยกจากงานสร้าง Prompt เพื่อให้กลับมาเลือกคนได้แม้งาน Prompt ล้ม
+            </Text>
+          )}
+        </HStack>
+        <Grid columns={{ minWidth: 260, max: 2 }} gap={4} align="start">
+          <VStack as="figure" gap={2} className="relative mx-auto w-full max-w-64 overflow-hidden rounded-lg bg-slate-900">
+            <AuthenticatedMediaImage src={props.imageUrl} alt={`Start frame ช็อตที่ ${props.shotId}`} className="aspect-[9/16] w-full object-contain" />
+            {people.map((person, index) => (
+              <aside
+                key={person.id}
+                aria-hidden="true"
+                className="pointer-events-none absolute border-2 border-cyan-400"
+                style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
+              >
+                <strong className="absolute -top-5 left-0 rounded bg-cyan-600 px-1.5 text-xs font-bold text-white">{index + 1}</strong>
+              </aside>
+            ))}
+            <figcaption className="sr-only">กรอบหมายเลขแสดงตำแหน่งบุคคลที่ตรวจพบในภาพ</figcaption>
+          </VStack>
+          <VStack as="section" gap={3}>
+            {people.length ? speakers.map(name => (
+              <label key={name} className="block rounded-lg border border-slate-200 bg-white p-3">
+                <Text as="span" type="label">ผู้พูด: {name}</Text>
+                <select aria-label={`คนในภาพที่ตรงกับ ${name}`} className="mt-2 w-full rounded-md border border-slate-300 bg-white p-2" value={draft[name] ?? ""} disabled={props.disabled || props.dialoguePendingSave || props.detecting} onChange={event => setDraft(current => ({ ...current, [name]: event.target.value }))}>
+                  <option value="">ยังไม่เลือก</option>
+                  {people.map((person, index) => <option key={person.id} value={person.id}>{index + 1}. {person.appearance} ({Math.round(person.confidence * 100)}%)</option>)}
+                </select>
+              </label>
+            )) : (
+              <Text as="p" type="supporting" color="secondary">
+                กดตรวจจับคนในภาพก่อน แล้วจึงเลือกว่าผู้พูดแต่ละคนตรงกับกรอบหมายเลขใด
+              </Text>
+            )}
+            {people.length ? (
+              <VStack gap={2}>
+                <Text type="supporting" color="secondary">คนหนึ่งคนจับคู่ได้กับผู้พูดหนึ่งคนในช็อตนี้</Text>
+                <Button
+                  type="button"
+                  variant="primary"
+                  isDisabled={props.disabled || props.dialoguePendingSave || props.detecting || !changed || speakers.some(name => !draft[name]) || new Set(speakers.map(name => draft[name])).size !== speakers.length}
+                  onClick={() => props.onSave(Object.fromEntries(speakers.map(name => [name, draft[name]])))}
+                  label="บันทึกการจับคู่"
+                />
+              </VStack>
+            ) : null}
+          </VStack>
+        </Grid>
+      </VStack>
+    </Card>
   );
 }
 
@@ -791,6 +872,8 @@ export function StagedCheckpointReviewPanel(props: {
   }) => void;
   onReject: (checkpoint: StagedCheckpoint) => void;
   onEdit: (input: StagedCheckpointEdit) => void;
+  onDetectShotPeople?: (shotId: number) => void;
+  detectingPeopleShotId?: number | null;
   onGeneratePrompt: (input: {
     shotId: number;
     stage: "image" | "video";
@@ -2080,6 +2163,7 @@ export function StagedCheckpointReviewPanel(props: {
     staged_story_redraft: "ร่างแนวเรื่องใหม่",
     plan_redraft: "ร่างแนวเรื่องใหม่",
     staged_prompt_generation: "สร้าง Prompt รายช็อต",
+    staged_person_detection: "ตรวจจับคนในภาพรายช็อต",
     sequential_shot_prompt_generation: "สร้าง Prompt รายช็อต",
     sequential_shot_regeneration: "สร้างภาพรายช็อต",
     sequential_image_edit_reconciliation: "ตรวจผลภาพที่สร้าง",
@@ -3983,6 +4067,16 @@ export function StagedCheckpointReviewPanel(props: {
                       job.targetPromptOnly !== true &&
                       job.targetShotIds?.includes(shot.shotId) === true
                   ) ?? null;
+                const shotPersonDetectionOperations =
+                  props.state?.workerOperations?.filter(
+                    job =>
+                      job.operation === "staged_person_detection" &&
+                      job.shotId === shot.shotId
+                  ) ?? [];
+                const shotPersonDetectionWorkerOperation =
+                  shotPersonDetectionOperations.find(job =>
+                    activeWorkerStatuses.includes(job.status)
+                  ) ?? shotPersonDetectionOperations[0] ?? null;
                 return (
                   <article
                     key={shot.shotId}
@@ -4055,11 +4149,32 @@ export function StagedCheckpointReviewPanel(props: {
                     />
                     <ShotSpeakerBindingPanel
                       shotId={shot.shotId}
-                      dialogue={drafts[dialogueKey] ?? shot.dialogue}
+                      dialogue={shot.dialogue}
                       imageUrl={shot.imageArtifactUrl}
                       people={shot.detectedPeople}
                       bindings={shot.speakerVisualBindings}
                       disabled={props.pending}
+                      dialoguePendingSave={
+                        drafts[dialogueKey] !== undefined &&
+                        drafts[dialogueKey] !== shot.dialogue
+                      }
+                      detecting={
+                        props.detectingPeopleShotId === shot.shotId ||
+                        Boolean(
+                          shotPersonDetectionWorkerOperation &&
+                            activeWorkerStatuses.includes(
+                              shotPersonDetectionWorkerOperation.status
+                            )
+                        )
+                      }
+                      detectionFailed={
+                        shotPersonDetectionWorkerOperation?.status === "failed"
+                      }
+                      detectionCompleted={
+                        shotPersonDetectionWorkerOperation?.status ===
+                        "completed"
+                      }
+                      onDetect={() => props.onDetectShotPeople?.(shot.shotId)}
                       onSave={speakerVisualBindings =>
                         props.onEdit({
                           shotId: shot.shotId,

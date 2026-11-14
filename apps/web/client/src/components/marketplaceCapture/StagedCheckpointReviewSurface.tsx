@@ -73,6 +73,9 @@ export function StagedCheckpointReviewSurface(props: {
     ) {
       return 'ยังไม่มีภาพที่อนุมัติแล้วสำหรับช็อตนี้ — กรุณากดปุ่ม "สร้างภาพ" ของช็อตนี้ให้เสร็จก่อน แล้วค่อยสร้างวิดีโอ';
     }
+    if (message.startsWith("staged_video_prompt_requires_approved_image")) {
+      return "ต้องมีภาพเริ่มต้นที่อนุมัติแล้วก่อนจึงจะตรวจจับคนหรือจับคู่ผู้พูดได้";
+    }
     if (message === "staged_image_prompt_missing") {
       return 'ช็อตนี้ยังไม่มี Prompt ภาพ — กรุณากดปุ่ม "สร้าง Prompt ภาพ" ของช็อตนี้ก่อน แล้วค่อยกดสร้างภาพ';
     }
@@ -192,6 +195,30 @@ export function StagedCheckpointReviewSurface(props: {
     trpc.marketplaceCapture.generateStagedAutoReviewShotPrompt.useMutation(
       mutationOptions
     );
+  const detectPeopleProcedure = (trpc.marketplaceCapture as any)
+    .detectStagedAutoReviewShotPeople;
+  const detectPeopleMutation = detectPeopleProcedure?.useMutation
+    ? detectPeopleProcedure.useMutation({
+        onSuccess: async (_result: unknown, variables: { shotId: number }) => {
+          setActionError(null);
+          setActionNotice(
+            `ส่งงานตรวจจับคนจากภาพที่อนุมัติของช็อตที่ ${variables.shotId} เข้า Worker แล้ว — เลือกผู้พูดได้เมื่อผลตรวจจับเสร็จ`
+          );
+          await stateQuery.refetch();
+        },
+        onError: (error: { message: string }) => {
+          setActionNotice(null);
+          setActionError(friendlyActionError(error.message));
+          if (error.message === "staged_state_drift") {
+            void stateQuery.refetch();
+          }
+        },
+      })
+    : {
+        isPending: false,
+        variables: null,
+        mutate: (_input: unknown) => undefined,
+      };
   const editAudioMutation =
     trpc.marketplaceCapture.editStagedAutoReviewAudioPlan.useMutation(
       mutationOptions
@@ -530,6 +557,21 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.instruction ? { instruction: input.instruction } : {}),
     });
   };
+  const onDetectShotPeople = (shotId: number) => {
+    const shot = state?.shots.find(item => item.shotId === shotId);
+    if (!shot?.imageArtifactHash) {
+      setActionError("ยังไม่มีภาพเริ่มต้นที่อนุมัติแล้วสำหรับช็อตนี้");
+      setActionNotice(null);
+      return;
+    }
+    setActionError(null);
+    detectPeopleMutation.mutate({
+      runId,
+      shotId,
+      expectedImageArtifactHash: shot.imageArtifactHash,
+      idempotencyKey: uiIdempotencyKey("detect-shot-people", String(shotId)),
+    });
+  };
   // The one-shot action uses the same durable worker path as bulk generation.
   const onGenerateAndDispatch = (input: {
     shotId: number;
@@ -667,6 +709,12 @@ export function StagedCheckpointReviewSurface(props: {
         creativeQcRepairError={creativeQcRepairMutation.error?.message ?? null}
         onReject={onReject}
         onEdit={onEdit}
+        onDetectShotPeople={onDetectShotPeople}
+        detectingPeopleShotId={
+          detectPeopleMutation.isPending
+            ? (detectPeopleMutation.variables?.shotId ?? null)
+            : null
+        }
         onGeneratePrompt={onGeneratePrompt}
         onGenerateAndDispatch={onGenerateAndDispatch}
         onRetry={onRetry}

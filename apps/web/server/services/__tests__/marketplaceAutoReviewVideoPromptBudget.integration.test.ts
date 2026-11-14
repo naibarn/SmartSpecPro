@@ -157,6 +157,17 @@ describe("Marketplace video prompt generation with real completeness validation"
     expect(result.prompt.match(/Yes, the coffee is ready\./g)).toHaveLength(1);
   });
 
+  it("uses the saved manual speaker mapping even when it differs from AI matching", async () => {
+    const result = await generateMarketplaceAutoReviewVideoPrompt({
+      ...request,
+      speakerVisualBindings: { Mali: "person-2", Ton: "person-1" },
+    });
+
+    expect(result.prompt).toContain("- Mali: person-2, viewer-right");
+    expect(result.prompt).toContain("- Ton: person-1, viewer-left");
+    expect(dependencies.videoCalls).toBe(1);
+  });
+
   it("identifies each named speaker directly by the detected appearance", async () => {
     const result = await generateMarketplaceAutoReviewVideoPrompt(request);
     expect(result.prompt).toContain("- Mali: person-1, viewer-left — woman in a cream blouse");
