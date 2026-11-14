@@ -9,6 +9,7 @@ import {
   type StagedCheckpointEdit,
   type StagedCheckpointRetry,
   type StagedReviewState,
+  type StagedSpeakerMatchBatchStatus,
 } from "./StagedCheckpointReviewPanel";
 
 function uiIdempotencyKey(prefix: string, value: string) {
@@ -25,6 +26,8 @@ export function StagedCheckpointReviewSurface(props: {
   const enabled = Boolean(runId && props.enabled !== false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [speakerMatchBatchStatus, setSpeakerMatchBatchStatus] =
+    useState<StagedSpeakerMatchBatchStatus | null>(null);
   // Bulk prompt and media generation is tracked by the durable worker job.
   const stateQuery =
     trpc.marketplaceCapture.getStagedAutoReviewCheckpointState.useQuery(
@@ -218,6 +221,7 @@ export function StagedCheckpointReviewSurface(props: {
         isPending: false,
         variables: null,
         mutate: (_input: unknown) => undefined,
+        mutateAsync: async (_input: unknown) => undefined,
       };
   const editAudioMutation =
     trpc.marketplaceCapture.editStagedAutoReviewAudioPlan.useMutation(
@@ -572,6 +576,99 @@ export function StagedCheckpointReviewSurface(props: {
       idempotencyKey: uiIdempotencyKey("detect-shot-people", String(shotId)),
     });
   };
+  const onDetectAllShotPeople = async (shotIds: number[]) => {
+    if (speakerMatchBatchStatus?.phase === "dispatching") return;
+    const targets = Array.from(new Set(shotIds)).sort((a, b) => a - b);
+    if (!targets.length) {
+      setActionError(null);
+      setActionNotice("ไม่มีช็อตที่พร้อมจับคู่ — ต้องมีภาพที่อนุมัติและบทพูดที่ระบุชื่อผู้พูด");
+      return;
+    }
+    if (typeof detectPeopleMutation.mutateAsync !== "function") {
+      setActionError("ระบบจับคู่ผู้พูดยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้าแล้วลองใหม่");
+      setActionNotice(null);
+      return;
+    }
+
+    const skipped = Math.max(0, (state?.shots.length ?? targets.length) - targets.length);
+    const failedShotIds: number[] = [];
+    let submitted = 0;
+    setActionError(null);
+    setActionNotice(null);
+    setSpeakerMatchBatchStatus({
+      phase: "dispatching",
+      currentIndex: 0,
+      total: targets.length,
+      submitted: 0,
+      skipped,
+      failedShotIds: [],
+    });
+
+    for (let index = 0; index < targets.length; index += 1) {
+      const shotId = targets[index];
+      const shot = state?.shots.find(item => item.shotId === shotId);
+      setSpeakerMatchBatchStatus({
+        phase: "dispatching",
+        currentIndex: index + 1,
+        total: targets.length,
+        currentShotId: shotId,
+        submitted,
+        skipped,
+        failedShotIds: [...failedShotIds],
+      });
+      if (!shot?.imageArtifactHash) {
+        failedShotIds.push(shotId);
+      } else {
+        try {
+          await detectPeopleMutation.mutateAsync({
+            runId,
+            shotId,
+            expectedImageArtifactHash: shot.imageArtifactHash,
+            idempotencyKey: uiIdempotencyKey(
+              "detect-shot-people-batch",
+              `${shotId}:${shot.imageArtifactHash}`
+            ),
+          });
+          submitted += 1;
+        } catch {
+          // One shot's failure should not prevent the remaining shots from
+          // entering the durable worker queue.
+          failedShotIds.push(shotId);
+        }
+      }
+      setSpeakerMatchBatchStatus({
+        phase: "dispatching",
+        currentIndex: index + 1,
+        total: targets.length,
+        currentShotId: shotId,
+        submitted,
+        skipped,
+        failedShotIds: [...failedShotIds],
+      });
+    }
+
+    await stateQuery.refetch();
+    const phase =
+      failedShotIds.length === 0
+        ? "submitted"
+        : submitted > 0
+          ? "partial"
+          : "failed";
+    setSpeakerMatchBatchStatus({
+      phase,
+      currentIndex: targets.length,
+      total: targets.length,
+      submitted,
+      skipped,
+      failedShotIds,
+    });
+    setActionError(null);
+    setActionNotice(
+      failedShotIds.length
+        ? `ส่งงานจับคู่เข้า Worker ได้ ${submitted}/${targets.length} ช็อต · ช็อตที่ส่งไม่สำเร็จ: ${failedShotIds.join(", ")} · ระบบยังส่งช็อตอื่นต่อจนครบแล้ว`
+        : `ส่งงานจับคู่เข้า Worker ครบ ${submitted} ช็อตแล้ว · ข้าม ${skipped} ช็อต · รอผลจับคู่แยกรายช็อตอัปเดตอัตโนมัติ`
+    );
+  };
   // The one-shot action uses the same durable worker path as bulk generation.
   const onGenerateAndDispatch = (input: {
     shotId: number;
@@ -710,6 +807,8 @@ export function StagedCheckpointReviewSurface(props: {
         onReject={onReject}
         onEdit={onEdit}
         onDetectShotPeople={onDetectShotPeople}
+        onDetectAllShotPeople={onDetectAllShotPeople}
+        speakerMatchBatchStatus={speakerMatchBatchStatus}
         detectingPeopleShotId={
           detectPeopleMutation.isPending
             ? (detectPeopleMutation.variables?.shotId ?? null)

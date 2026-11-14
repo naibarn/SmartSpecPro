@@ -396,6 +396,27 @@ function checkpointLabel(checkpoint: StagedCheckpoint): string {
   return "การประกอบขั้นสุดท้าย";
 }
 
+function dialogueSpeakerLabels(dialogue: string): string[] {
+  return Array.from(
+    new Set(
+      dialogue
+        .split(/\r?\n/)
+        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+}
+
+export type StagedSpeakerMatchBatchStatus = {
+  phase: "dispatching" | "submitted" | "partial" | "failed";
+  currentIndex: number;
+  total: number;
+  currentShotId?: number;
+  submitted: number;
+  skipped: number;
+  failedShotIds: number[];
+};
+
 function ShotSpeakerBindingPanel(props: {
   shotId: number;
   dialogue: string;
@@ -411,14 +432,7 @@ function ShotSpeakerBindingPanel(props: {
   onDetect?: () => void;
   onSave: (bindings: Record<string, string>) => void;
 }) {
-  const speakers = Array.from(
-    new Set(
-      props.dialogue
-        .split(/\r?\n/)
-        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
-        .filter((value): value is string => Boolean(value))
-    )
-  );
+  const speakers = dialogueSpeakerLabels(props.dialogue);
   const [draft, setDraft] = useState<Record<string, string>>(
     props.bindings ?? {}
   );
@@ -893,6 +907,8 @@ export function StagedCheckpointReviewPanel(props: {
   onReject: (checkpoint: StagedCheckpoint) => void;
   onEdit: (input: StagedCheckpointEdit) => void;
   onDetectShotPeople?: (shotId: number) => void;
+  onDetectAllShotPeople?: (shotIds: number[]) => void;
+  speakerMatchBatchStatus?: StagedSpeakerMatchBatchStatus | null;
   detectingPeopleShotId?: number | null;
   onGeneratePrompt: (input: {
     shotId: number;
@@ -1990,6 +2006,48 @@ export function StagedCheckpointReviewPanel(props: {
         job.targetShotIds?.includes(shotId) === true
       );
     }) ?? false;
+
+  const speakerMatchBatchTargets = (props.state?.shots ?? []).filter(shot => {
+    const speakers = dialogueSpeakerLabels(shot.dialogue);
+    const bindings = shot.speakerVisualBindings ?? {};
+    const hasCompleteBindings =
+      speakers.length > 0 &&
+      speakers.every(speaker => Boolean(bindings[speaker])) &&
+      new Set(speakers.map(speaker => bindings[speaker])).size ===
+        speakers.length;
+    const hasApprovedImage = Boolean(
+      shot.imageArtifactHash &&
+        shot.imageArtifactUrl &&
+        props.state?.checkpoints.some(
+          checkpoint =>
+            checkpoint.shotId === shot.shotId &&
+            checkpoint.kind === "image_result" &&
+            checkpoint.state === "approved" &&
+            checkpoint.contentHash === shot.imageArtifactHash
+        )
+    );
+    const hasActiveDetection = props.state?.workerOperations?.some(
+      job =>
+        job.operation === "staged_person_detection" &&
+        job.shotId === shot.shotId &&
+        activeWorkerStatuses.includes(job.status)
+    );
+    const dialogueDraft = drafts[`story:${shot.shotId}:dialogue`];
+    const hasUnsavedDialogue =
+      dialogueDraft !== undefined && dialogueDraft !== shot.dialogue;
+    return (
+      speakers.length > 0 &&
+      hasApprovedImage &&
+      !hasCompleteBindings &&
+      !hasActiveDetection &&
+      !hasUnsavedDialogue
+    );
+  });
+  const speakerMatchBatchTotal = props.state?.shots.length ?? 0;
+  const speakerMatchBatchSkipped = Math.max(
+    0,
+    speakerMatchBatchTotal - speakerMatchBatchTargets.length
+  );
 
   if (!props.state && !props.loading && !props.error) return null;
 
@@ -4005,6 +4063,56 @@ export function StagedCheckpointReviewPanel(props: {
               </div>
             </section>
 
+            {props.onDetectAllShotPeople ? (
+              <section
+                className="mb-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3"
+                aria-label="จับคู่บทพูดกับคนในภาพทุกช็อต"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-cyan-950">
+                      จับคู่บทพูดกับคนในภาพทุกช็อต
+                    </h3>
+                    <p className="mt-0.5 text-xs text-cyan-900">
+                      ส่งงานตรวจจับและจับคู่ให้ครบทุกช็อตที่มีภาพอนุมัติและบทพูดแล้ว ระบบจะข้ามช็อตที่จับคู่ครบหรือกำลังทำงานอยู่
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-cyan-700 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                      props.pending ||
+                      props.speakerMatchBatchStatus?.phase === "dispatching" ||
+                      speakerMatchBatchTargets.length === 0
+                    }
+                    onClick={() =>
+                      props.onDetectAllShotPeople?.(
+                        speakerMatchBatchTargets.map(shot => shot.shotId)
+                      )
+                    }
+                  >
+                    {props.speakerMatchBatchStatus?.phase === "dispatching"
+                      ? `กำลังส่งงาน ${props.speakerMatchBatchStatus.currentIndex}/${props.speakerMatchBatchStatus.total}`
+                      : `เริ่มจับคู่อัตโนมัติ (${speakerMatchBatchTargets.length}/${speakerMatchBatchTotal} ช็อต)`}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-cyan-900" role="status">
+                  พร้อมส่ง {speakerMatchBatchTargets.length} จาก {speakerMatchBatchTotal} ช็อต · ข้าม {speakerMatchBatchSkipped} ช็อต (จับคู่ครบ, กำลังทำงาน, ยังไม่มีภาพอนุมัติ/ชื่อผู้พูด หรือมีบทพูดที่ยังไม่ได้บันทึก)
+                </p>
+                {props.speakerMatchBatchStatus ? (
+                  <p className="mt-2 rounded-lg border border-cyan-200 bg-white/80 p-2 text-sm text-cyan-950" role="status">
+                    {props.speakerMatchBatchStatus.phase === "dispatching"
+                      ? `กำลังส่งงานจับคู่ ${props.speakerMatchBatchStatus.currentIndex}/${props.speakerMatchBatchStatus.total} ช็อต${props.speakerMatchBatchStatus.currentShotId ? ` · ช็อตที่ ${props.speakerMatchBatchStatus.currentShotId}` : ""} — ไม่ต้องสั่งทีละช็อต`
+                      : props.speakerMatchBatchStatus.phase === "submitted"
+                        ? `ส่งงานเข้า Worker แล้ว ${props.speakerMatchBatchStatus.submitted}/${props.speakerMatchBatchStatus.total} ช็อต · ข้าม ${props.speakerMatchBatchStatus.skipped} ช็อต · รอผลจับคู่ของแต่ละช็อตอัปเดตด้านล่าง`
+                        : props.speakerMatchBatchStatus.phase === "partial"
+                          ? `ส่งงานสำเร็จ ${props.speakerMatchBatchStatus.submitted}/${props.speakerMatchBatchStatus.total} ช็อต · ส่งไม่สำเร็จช็อต ${props.speakerMatchBatchStatus.failedShotIds.join(", ")} · ข้าม ${props.speakerMatchBatchStatus.skipped} ช็อต`
+                          : `ส่งงานไม่สำเร็จทุกช็อต (${props.speakerMatchBatchStatus.failedShotIds.join(", ")}) · ลองกดเริ่มจับคู่อัตโนมัติอีกครั้งได้`}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+
             <div
               id="staged-auto-review-shot-list"
               className="mt-3 space-y-3 scroll-mt-4"
@@ -4174,7 +4282,10 @@ export function StagedCheckpointReviewPanel(props: {
                       people={shot.detectedPeople}
                       bindings={shot.speakerVisualBindings}
                       speakerVisualMatchIssue={shot.speakerVisualMatchIssue}
-                      disabled={props.pending}
+                      disabled={
+                        props.pending ||
+                        props.speakerMatchBatchStatus?.phase === "dispatching"
+                      }
                       dialoguePendingSave={
                         drafts[dialogueKey] !== undefined &&
                         drafts[dialogueKey] !== shot.dialogue
