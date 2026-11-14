@@ -119,7 +119,11 @@ describe("Marketplace Auto Review drama tie-in format", () => {
       systemPrompt: string;
       userMessage: string;
     };
-    expect(call.systemPrompt).toContain("ROMANTIC PRODUCT TIE-IN LOCK");
+    expect(call.systemPrompt).toContain("## Drama Tie-in Format");
+    expect(call.systemPrompt).toContain(
+      'Keep the opening focused on the couple\'s interaction before the story turns'
+    );
+    expect(call.systemPrompt).not.toContain("ROMANTIC PRODUCT TIE-IN LOCK");
     expect(call.systemPrompt).toContain("ผู้พูดต้องตรงกับ castId");
     expect(call.systemPrompt).toContain(
       "ห้ามแต่งคุณสมบัติหรือผลลัพธ์ของสินค้า"

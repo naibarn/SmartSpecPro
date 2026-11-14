@@ -5459,7 +5459,7 @@ const MARKETPLACE_AUTO_REVIEW_FORMAT_DIRECTIVES: Record<
   drama_tie_in: {
     label: "ละคร Tie-in: คู่พระนางจีบ/แซวกัน",
     directive:
-      "Write this as a romantic-comedy two-lead mini drama, not a product review with flirting added. Let the named adult leads build chemistry through natural, sweet flirtation, light teasing, and a relatable situation for the opening 3-4 shots. Keep those opening shots about the two characters and their interaction: do not mention, demonstrate, or show the product; set productInShot=false and do not attach product reference images. Choose 3 or 4 opening shots according to the story's pacing, then introduce the product only when a believable event in the scene naturally motivates it. After that transition, weave verified product facts and hands-on use into the remaining story without turning each beat into a list of product details. The selected review tone controls delivery; this format controls the relationship and story device. Keep dialogue fresh and responsive rather than repeating generic compliments or review questions. Assign every spoken line to the exact cast member; never guess a speaker from appearance. Use romantic flirtation only when both leads are explicitly adults and neither depicts a minor; otherwise keep the relationship platonic and age-appropriate. Never invent product features, performance, or outcomes.",
+      "The user selected drama_tie_in. Follow the loaded story skill's guidance for this format.",
   },
 };
 

@@ -1460,8 +1460,10 @@ describe("marketplace auto review audio/video planning", () => {
     expect(directive).toContain("USER-SELECTED CREATIVE DIRECTION LOCK");
     expect(directive).toContain("ละคร Tie-in: คู่พระนางจีบ/แซวกัน");
     expect(directive).toContain("Review tone: ตลกขำเบา ๆ");
-    expect(directive).toContain("selected review tone controls delivery");
-    expect(directive).toContain("both leads are explicitly adults");
+    expect(directive).toContain(
+      "Follow the loaded story skill's guidance for this format."
+    );
+    expect(directive).not.toContain("both leads are explicitly adults");
     expect(directive).toContain("ตลกขำเบา ๆ");
     expect(directive).toContain("Light comedic review");
     expect(directive).toContain(

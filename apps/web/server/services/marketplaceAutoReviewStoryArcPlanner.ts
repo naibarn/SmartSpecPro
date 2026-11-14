@@ -1143,7 +1143,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎบทสนทนาสองคน (บังคับ): ทุกช็อตต้องเป็นบทสนทนาระหว่างสองคนนี้ตามบทบาท — คนที่มีบทบาท "host" เป็นผู้เปิดประเด็น/ถาม และคนที่มีบทบาท "guest" เป็นผู้ตอบ/รีวิว โดยยังต้องคงโครงสร้างการเล่าเรื่อง "${structureKey}" และโทน "${toneKey}" ของแต่ละช็อตให้ครบทุกประเด็น — งานของคุณคือแบ่งบทพูดของแต่ละ beat เดิมออกเป็นสองคนผลัดกันพูด ไม่ใช่แทนที่หรือละทิ้งโครงสร้าง/โทนที่กำหนดไว้\n\nสำหรับแต่ละช็อต ให้ส่งฟิลด์ "dialogueTurns" เป็น array ของ {castId, line} เรียงตามลำดับการพูดจริง (อย่างน้อย 2 turn ต่อช็อต) และ "castInShot" เป็น castId ของทุกคนที่เห็นในช็อต โดยค่า castId ต้องตรงกับที่กำหนดไว้ข้างต้นเป๊ะ (ฟิลด์ "dialogue" จะสร้างจาก turns เหล่านี้หลังผ่านการตรวจสอบ)`
+          )}\n\nRoster facts: host/guest roles and cast IDs are user-selected. For each shot, provide "dialogueTurns" as an ordered array of {castId, line} entries and "castInShot" with the cast IDs of people visible in that shot. Every castId must match this roster exactly; the server builds "dialogue" from the turns after validation.`
       : activeCast.length === 1
         ? // Gap fix (flexible-shots/creation-casting audit 2026-07-30): a SOLO
           // named cast member (e.g. one Drama Series character picked at
@@ -1182,47 +1182,24 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" ที่มี {castId, action, line?} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง. Output ที่ขาด cast/action หรือมี castId ที่ไม่รู้จักจะถูกปฏิเสธ ไม่แก้หรือตัดข้อมูลให้อัตโนมัติ`
       : "";
 
-  // Additive (feature/marketplace-flexible-shots): the shot-count instruction
-  // is now parametric. Fixed count -> state the exact number as a fact.
-  // "auto" -> the shot count itself is LLM judgment: state the criterion
-  // (per-shot duration) as a fact and let the model decide within 7-30 based
-  // on how much content the product genuinely needs.
+  // Runtime state only. The loaded skill owns pacing and all creative decisions.
   const shotCountInstruction = isAutoShotCount
-    ? `จำนวนช็อต: ไม่กำหนดตายตัว ให้คุณเป็นผู้ตัดสินใจเองว่าเนื้อหาของสินค้านี้ควรใช้ช็อตทั้งหมดกี่ช็อต โดยเลือกจำนวนระหว่าง 7-30 ช็อต และใช้ "ความยาวต่อช็อต" (${shotDurationSeconds} วินาที/ช็อต) เป็นเกณฑ์หลักในการตัดสินใจ — สินค้าที่มีรายละเอียด/ฟังก์ชันเยอะควรใช้จำนวนช็อตมากขึ้นเพื่อเล่าเรื่องได้ครบถ้วน ส่วนสินค้าที่เรียบง่ายใช้จำนวนช็อตน้อยกว่าได้ ให้ส่งช็อตทั้งหมดที่คุณเลือกกลับมาใน shots array (เรียง shotId ต่อเนื่อง 1 ถึงจำนวนช็อตที่เลือก)`
-    : `จำนวนช็อต: วางแผนบทรีวิวทั้งหมด ${fixedShotCount} ช็อต (ช็อตละ ${shotDurationSeconds} วินาที)`;
+    ? `shot_count: auto; allowed range: 7-30; shot duration: ${shotDurationSeconds} seconds`
+    : `shot_count: ${fixedShotCount}; shot duration: ${shotDurationSeconds} seconds`;
 
   const selectedConceptInstruction = input.selectedConcept
     ? `\nแนวคิดที่ผู้ใช้เลือกไว้ (ต้องใช้เป็นแนวทางหลัก): ${JSON.stringify(input.selectedConcept)}`
     : "";
-  const reviewFormatInstruction = isDramaTieIn
-    ? `\n\nROMANTIC PRODUCT TIE-IN LOCK (กฎนี้มีลำดับเหนือคำสั่ง productInShot ทั่วไปในข้อ 3.4): รูปแบบนี้ต้องเป็นละครโรแมนติกคอมเมดี้ของ ${activeCast[0].name} (host) และ ${activeCast[1].name} (guest) ไม่ใช่บทรีวิวสินค้าที่เติมมุกจีบเข้าไป ให้เปิดเรื่องด้วยบทสนทนาที่สร้างเคมีของคู่พระนาง ผ่านเหตุการณ์ชวนยิ้ม มุกแซว และการโต้ตอบที่เป็นธรรมชาติใน 3-4 ช็อตแรก เลือกว่าจะใช้ 3 หรือ 4 ช็อตตามจังหวะเรื่อง ไม่ใช้คำชมสำเร็จรูปหรือคำถามรีวิวซ้ำ ๆ ช่วงเปิดเรื่องนี้ห้ามเอ่ยชื่อสินค้า รายละเอียดสินค้า หรือรีวิวสินค้า ห้ามให้สินค้าแสดงอยู่ในภาพ และต้องกำหนด productInShot=false เพื่อไม่แนบภาพอ้างอิงสินค้า จากนั้นค่อยวกเข้าสินค้าเมื่อมีเหตุการณ์ในเรื่องที่ทำให้การหยิบหรือใช้สินค้านั้นเป็นธรรมชาติ หลังจากแนะนำสินค้าแล้วจึงสอดแทรกการสาธิตและข้อมูล/ประโยชน์ที่ตรวจสอบได้จาก product facts ให้พอดีกับเรื่อง ห้ามทำให้ทุกช็อตกลายเป็นการไล่บอกรายละเอียดสินค้า รูปแบบรีวิวกำหนดความสัมพันธ์และวิธีดำเนินเรื่อง ส่วนโทนที่เลือกกำหนดน้ำเสียงและวิธีพูด ต้องรักษาทั้งสองอย่างร่วมกัน ผู้พูดต้องตรงกับ castId และ castInShot ของคนที่เห็นในภาพ ห้ามสลับบทหรือเดาว่าคนไหนพูด ใช้บทโรแมนติกได้ต่อเมื่อข้อมูลระบุชัดว่าทั้งคู่เป็นผู้ใหญ่และไม่มีใครเป็นผู้เยาว์; หากอายุไม่ชัดหรือมีผู้เยาว์ ให้คงเป็นการหยอกล้อแบบเพื่อนที่เหมาะสมกับวัย ห้ามแต่งคุณสมบัติหรือผลลัพธ์ของสินค้า`
-    : "";
 
-  const conceptsOnlyInstruction = input.conceptsOnly
-    ? "ผู้ใช้ยังไม่ได้เลือกแนวคิด: ส่ง 3 แนวคิดพร้อมบทพูดตัวอย่างที่เป็นธรรมชาติครบทุกแนวคิด แต่ละแนวคิดต้องมี hook ที่เห็นหรือได้ยินแล้วอยากดูต่อ และมีการกระทำ/สถานการณ์จริงที่ทำให้สินค้าเข้าไปอยู่ในเรื่อง บทพูดต้องนำไปใช้รีวิวสินค้าได้จริง ห้ามมี shots หรือสร้าง Storyboard จนกว่าผู้ใช้จะยืนยันแนวคิด"
-    : "ผู้ใช้ยืนยันแนวคิดแล้ว: ใช้แนวคิดและ dialoguePreview ที่แนบมาเป็นต้นฉบับหลัก รักษาน้ำเสียงและบทสนทนาที่เลือกไว้ แล้วจึงจัดเป็น Storyboard ฉบับเต็ม โดยให้บทพูดของทุกช็อตพัฒนาต่อจาก dialoguePreview นั้น";
-  const storySummaryInstruction = input.conceptsOnly
-    ? "โหมดเลือกแนวคิด: อย่าส่ง storySummary ระดับบนสุด; แต่ละ conceptOptions ต้องมี storySummary ของแนวคิดนั้น"
-    : "เรื่องย่อ (storySummary): สรุปเรื่องย่อรวมทุกช็อตที่ระบุประเด็น Hook, Problem, Insight, Proof, CTA อย่างชัดเจน";
   const runtimeInstructions = `
-คุณคือผู้เชี่ยวชาญด้านการวางแผนบท Storyboard และรีวิวสินค้า Marketplace (Marketplace Auto Review Storyboard Specialist)
-
-หน้าที่ของคุณคือวิเคราะห์ข้อมูลสินค้าและ Product brief ที่ได้รับ แล้วสร้างแนวคิดรีวิว 3 แบบที่แตกต่างกัน จากนั้นเลือกแนวคิดที่เหมาะที่สุด 1 แบบและวางแผนบทรีวิวฉบับเต็มตามแนวคิดนั้น:
-0. ${shotCountInstruction}
-1. ส่ง conceptOptions จำนวน 3 แบบพอดี แต่ละแบบมี conceptId, title, angle, storySummary และ dialoguePreview ที่เขียนเป็นบทพูดจริง ไม่ใช่หัวข้อหรือคำอธิบาย
-2. ${conceptsOnlyInstruction}
-3. โครงสร้างการเล่าเรื่อง (Storytelling Structure): วางลำดับช็อตทั้งหมดตามโครงสร้าง "${structureKey}" แต่ละช็อตต้องมี title, storySummary (สรุปหน้าที่ของช็อตในเรื่อง), visualSummary (สิ่งที่เห็นในภาพ), cameraDirection (ระยะ/มุม/การเคลื่อนกล้อง), movementDirection (การกระทำที่เห็นชัดของคนหรือสินค้า) และ dialogue แยกกันให้ชัดเจน; transition ระบุเมื่อมีการเปลี่ยนฉากหรือเชื่อมการกระทำ
-3.1 ทุกช็อตต้องมีภาพที่กำลังเกิดการกระทำ ไม่ใช่แค่ตัวละครยืนหรือนั่งคุย: ให้เริ่มการกระทำที่เห็นได้ทันที เช่น เดินเข้าหาสินค้า หยิบ/เปิด/ทดลอง/เปรียบเทียบ/ส่งต่อสินค้า เคลื่อนที่ไปยังจุดใช้งาน หรือมีปฏิกิริยาจริงจากผลที่สังเกตได้ เลือกเฉพาะการกระทำที่ทำได้จริงและสอดคล้องกับข้อมูลสินค้า
-3.2 วางจังหวะภาพตลอดเรื่องให้ชวนดู: สลับภาพกว้าง/กลาง/ใกล้และมุมกล้องตามเนื้อหา, เปลี่ยนตำแหน่งหรือฉากเมื่อเรื่องพาไป, ให้ตัวละครมี blocking และปฏิสัมพันธ์กับสินค้า; อย่าใช้มุมเดิมและการนั่งสนทนาคู่แบบเดิมซ้ำหลายช็อตติดกัน และอย่าใส่การเคลื่อนกล้องโดยไม่มีเหตุผล
-3.3 แต่ละช็อตต้องเพิ่มข้อมูลหรือเปลี่ยนสถานการณ์จากช็อตก่อนหน้า: เปิดด้วยภาพหรือการกระทำที่หยุดสายตา, พาปัญหาไปสู่การทดลอง/หลักฐาน/ผลลัพธ์ แล้วจบด้วยข้อสรุปหรือ CTA บทพูดต้องเป็นประโยคที่คนพูดกันจริงและสัมพันธ์กับสิ่งที่กำลังทำ ไม่บรรยายชื่อหัวข้อหรือถามตอบแบบแม่แบบ
-3.4 ทุกช็อตต้องส่ง productInShot เป็น boolean: true เมื่อเรื่องเริ่มแนะนำ/สาธิตสินค้าและจัดฉากให้สินค้าจริงมองเห็นในภาพ; false ระหว่างเล่าปัญหาด้วยพร็อพทั่วไปหรือเมื่อเรื่องตั้งใจให้สินค้าอยู่นอกจอ ตัดสินจากบทพูดร่วมกับ visualSummary/movementDirection ของเรื่องนี้ ห้ามกำหนดตามเลขช็อต ภาพอ้างอิงสินค้าจะใช้เฉพาะช็อตที่เป็น true เท่านั้น
-3.5 movementDirection ต้องเป็นการกระทำทางกายภาพที่เห็นได้ชัดและทำตามบทพูด/visualSummary จริง เช่น เมื่อบทพูดบอกว่าหยอดเซรั่ม ให้เห็นมือกำลังหยอดลงบนหนังศีรษะ; เมื่อบอกว่าสระผม ให้เห็นมือกำลังชโลมหรือนวดแชมพูบนเส้นผม ไม่ใช้ภาพคนนั่งคุยหรือวางสินค้าไว้ข้างหน้าแทนการกระทำ ฉากดูแลเส้นผมให้แต่งกายสุภาพมิดชิด ปกปิดไหล่และลำตัว ไม่มีภาพเปลือยหรือท่าทางยั่วยุ
-4. โทนการพูด (Review Tone): บทพูดเสียงพากย์ภาษาไทย (dialogue) ในทุกช็อตต้องสื่อสารด้วยโทน "${toneKey}" อย่างเป็นธรรมชาติ และสอดคล้องกับตัวตนสินค้าจริง
-5. ความจริงใจจากข้อมูลสินค้า: อ้างอิงเฉพาะฟังก์ชัน วัสดุ และจุดเด่นที่มีหลักฐานจากสินค้า ห้ามกล่าวอ้างเกินจริง
-6. ความยาวบทพูด: บทพูดภาษาไทยของแต่ละช็อตควรกระชับ อ่านจบได้ภายใน ${dialogueWindowMinSeconds}-${shotDurationSeconds} วินาที
-7. บทพูดทุกแบบต้องเป็นภาษาพูดธรรมชาติ มีบทสนทนาที่ตอบรับกันตามบริบท ห้ามใช้คำถามเปิดหรือประโยคตอบแบบแม่แบบซ้ำ ห้ามใช้ถ้อยคำกว้าง ๆ เช่น “เล่าให้ฟังหน่อยว่าเรื่อง...” หรือ “เบื่อและหงุดหงิดไหมกับปัญหาเดิมๆ” ให้พูดถึงเหตุการณ์ การใช้งาน หรือรายละเอียดสินค้าที่มีหลักฐานจริงโดยตรง
-8. ห้ามใช้ placeholder เช่น “เผยสินค้า” เป็นเนื้อหาบทพูด แต่ใช้เป็นชื่อช็อตได้
-9. ${storySummaryInstruction}${!input.conceptsOnly ? " ต้องส่งเป็น storySummary ระดับบนสุด โดยสรุปเรื่องย่อรวมทุกช็อต" : ""}${reviewFormatInstruction}${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+Marketplace Auto Review Story Arc skill runtime context:
+- ${shotCountInstruction}
+- call_mode: ${input.conceptsOnly ? "concept_selection" : "confirmed_storyboard"}
+- selected review_format: ${isDramaTieIn ? "drama_tie_in" : "general"}
+- selected storytelling_structure: ${structureKey}
+- selected review_tone: ${toneKey}
+- dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot
+- The loaded skill owns concept selection, story structure, dialogue, visual action, product timing, and other creative decisions. Apply the supplied user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
@@ -1230,7 +1207,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
       productName,
       productDescription: productDescription || undefined,
       productSpecs: input.product.specs,
-      ...(isDramaTieIn ? { reviewFormat: "drama_tie_in" } : {}),
+      reviewFormat: isDramaTieIn ? "drama_tie_in" : "general",
       storytellingStructure: structureKey,
       reviewTone: toneKey,
       revisionNotes: revisionNotes || undefined,
