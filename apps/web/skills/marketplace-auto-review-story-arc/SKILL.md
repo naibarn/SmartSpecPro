@@ -128,6 +128,10 @@ and product-introduction guidance above only when the runtime contract sets
 with the two selected leads, not an ordinary product review with flirtatious
 lines added. Build their chemistry through a relatable situation, playful
 teasing, light flirting, and replies that react to what the other person said.
+Do not force the host to ask a review question and the guest to answer with
+product details in every beat. Either lead may initiate or respond; keep the
+conversation centered on their situation and chemistry until the story
+naturally turns to the product.
 Keep the opening focused on the couple's interaction before the story turns
 toward the product; aim for roughly 3–4 opening shots, but let the actual
 story beat and a believable in-scene reason determine when the product enters.
