@@ -1,26 +1,81 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["story_summary", "shots", "reference_roles", "finish_reason"],
+  "required": ["conceptOptions"],
   "properties": {
-    "story_summary": { "type": "string", "minLength": 1, "maxLength": 500 },
-    "reference_roles": { "type": "array" },
-    "finish_reason": { "type": "string", "enum": ["completed", "bounded_fallback"] },
+    "storySummary": { "type": "string", "maxLength": 500 },
+    "selectedConceptId": { "type": "string" },
+    "conceptOptions": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/conceptOption" }
+    },
     "shots": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 7,
       "maxItems": 30,
-      "items": {
-        "type": "object",
-        "required": ["shot_id", "duration_seconds", "story_summary", "dialogue"],
-        "properties": {
-          "shot_id": { "type": "integer", "minimum": 1, "maximum": 30 },
-          "duration_seconds": { "type": "integer", "minimum": 4, "maximum": 30 },
-          "story_summary": { "type": "string", "maxLength": 600 },
-          "dialogue": { "type": "string", "maxLength": 320 }
+      "items": { "$ref": "#/$defs/shot" }
+    }
+  },
+  "$defs": {
+    "conceptOption": {
+      "type": "object",
+      "required": ["conceptId", "title", "angle", "storySummary", "dialoguePreview"],
+      "properties": {
+        "conceptId": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "angle": { "type": "string", "minLength": 1 },
+        "storySummary": { "type": "string", "minLength": 1 },
+        "dialoguePreview": { "type": "string", "minLength": 40, "maxLength": 6000 }
+      },
+      "additionalProperties": false
+    },
+    "dialogueTurn": {
+      "type": "object",
+      "required": ["castId", "line"],
+      "properties": {
+        "castId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "line": { "type": "string", "minLength": 1, "maxLength": 320 }
+      },
+      "additionalProperties": false
+    },
+    "supportingBeat": {
+      "type": "object",
+      "required": ["castId", "action"],
+      "properties": {
+        "castId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "action": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "line": { "type": "string", "minLength": 1, "maxLength": 160 }
+      },
+      "additionalProperties": false
+    },
+    "shot": {
+      "type": "object",
+      "required": ["title", "visualSummary", "productInShot", "movementDirection"],
+      "anyOf": [
+        { "required": ["dialogue"] },
+        { "required": ["dialogueTurns"] }
+      ],
+      "properties": {
+        "shotId": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "storySummary": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "visualSummary": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "productInShot": { "type": "boolean" },
+        "cameraDirection": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "movementDirection": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "transition": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "dialogue": { "type": "string", "minLength": 1, "maxLength": 320 },
+        "dialogueTurns": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/dialogueTurn" }
         },
-        "additionalProperties": true
-      }
+        "castInShot": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+        "supportingBeats": { "type": "array", "items": { "$ref": "#/$defs/supportingBeat" } }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

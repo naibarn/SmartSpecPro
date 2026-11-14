@@ -33,6 +33,40 @@ and its dialogue preview. Preserve its premise and conversational tone while
 organizing the approved direction into the runtime-supplied shot count. Only
 this second call may return storyboard shots.
 
+## Output Contract
+
+Return one JSON object using the exact field names and value types below. Do
+not rename fields, invent aliases, or change a string into an array. In
+particular, the ideas field is `conceptOptions` (never `concepts`), each idea
+uses `angle` (never `storyAngle`), and `dialoguePreview` is one continuous
+string (not an array of dialogue turns).
+
+Both call modes must return exactly three `conceptOptions`, each with:
+
+- `conceptId`: a unique string;
+- `title`: a short string;
+- `angle`: a string describing the story angle;
+- `storySummary`: a concise string;
+- `dialoguePreview`: one natural dialogue string of at least 40 characters.
+
+In `concept_selection` mode, return `conceptOptions` only. Do not return
+`shots`, `concepts`, or a top-level `storySummary`; the user chooses an idea
+before shots are authored.
+
+In `confirmed_storyboard` mode, also return `selectedConceptId` matching the
+user's selected concept, a top-level `storySummary`, and `shots`. Return the
+runtime-supplied fixed number of shots, or 7–30 when `shot_count` is `auto`.
+Each shot must include `title`, `visualSummary`, boolean `productInShot`, and
+`movementDirection`. Include `dialogueTurns` as an array of at least two
+`{ "castId": string, "line": string }` entries for two-person conversations;
+include `dialogue` as a string for a single presenter. Include `castInShot`
+with the IDs of visible supplied cast members whenever a cast roster exists.
+Optional fields are `shotId`, `storySummary`, `cameraDirection`, `transition`,
+`dialogue`, `dialogueTurns`, `castInShot`, and `supportingBeats`.
+
+Do not wrap the object in another key. Do not return markdown, comments, or
+prose outside the JSON object.
+
 Create one reviewable Thai product-review story arc for the shot count the
 runtime contract supplies. That count is either a **fixed number** (use
 exactly that many shots), or the literal **`shot_count: auto`** — in which
