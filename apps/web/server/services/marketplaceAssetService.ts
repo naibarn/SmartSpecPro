@@ -269,16 +269,34 @@ export async function mirrorMarketplaceImageCandidates(input: {
   const config = getMarketplaceCaptureConfig();
   const mirrored: ImageCandidate[] = [];
   const errors: Array<{ url: string; message: string }> = [];
+  const seenSourceUrls = new Set<string>();
+  const seenImageDigests = new Set<string>();
   const description = String(input.productDescription ?? "").slice(0, 1000);
+
+  const sourceUrlKey = (value: string) => {
+    try {
+      const url = new URL(value);
+      url.hash = "";
+      return url.toString();
+    } catch {
+      return value.trim();
+    }
+  };
 
   for (let index = 0; index < input.candidates.length; index++) {
     const candidate = input.candidates[index];
     if (!candidate?.url) continue;
+    const sourceKey = sourceUrlKey(candidate.url);
+    if (seenSourceUrls.has(sourceKey)) continue;
+    seenSourceUrls.add(sourceKey);
     try {
       const fetched = await fetchRemoteMarketplaceImage({
         url: candidate.url,
         maxBytes: config.maxUploadBytes,
       });
+      const imageDigest = crypto.createHash("sha256").update(fetched.buffer).digest("hex");
+      if (seenImageDigests.has(imageDigest)) continue;
+      seenImageDigests.add(imageDigest);
       const kind = assetKindForImageCandidate(candidate.kind);
       const imageType = productImageTypeForCandidate(candidate.kind);
       const fileBaseName = marketplaceImageCandidateFileBaseName(
@@ -310,6 +328,7 @@ export async function mirrorMarketplaceImageCandidates(input: {
           sourceProductUrl: input.sourceUrl,
           originalImageUrl: candidate.url,
           finalImageUrl: fetched.finalUrl,
+          imageSha256: imageDigest,
           imageKind: candidate.kind,
           imageType,
           sortOrder: candidate.position ?? index,

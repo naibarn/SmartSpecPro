@@ -55,6 +55,25 @@ type MarketplaceProductImageWithAccess = {
   permission?: string | null;
 };
 
+function marketplaceProductImageDedupKey(image: MarketplaceProductImageRow): string {
+  const metadata = image.metadataJson && typeof image.metadataJson === "object"
+    ? image.metadataJson as Record<string, unknown>
+    : {};
+  if (typeof metadata.imageSha256 === "string" && metadata.imageSha256) {
+    return `sha256:${metadata.imageSha256}`;
+  }
+  if (image.originalSourceUrl?.trim()) {
+    try {
+      const source = new URL(image.originalSourceUrl.trim());
+      source.hash = "";
+      return `source:${source.toString()}`;
+    } catch {
+      return `source:${image.originalSourceUrl.trim()}`;
+    }
+  }
+  return image.captureAssetId ? `asset:${image.captureAssetId}` : `url:${image.url}`;
+}
+
 async function resolveMarketplaceProductImageRows<T extends {
   id: string;
   storageKey?: string | null;
@@ -782,14 +801,17 @@ function selectedCaptureAssetIds(product: any): string[] {
 }
 
 function buildProductImageRows(productId: string, product: any, assetById: Map<string, any>) {
+  const seenAssetIds = new Set<string>();
   return [
     ...product.images.main.map((assetId: string, index: number) => ({ assetId, type: "main" as const, sortOrder: index })),
     ...product.images.description.map((assetId: string, index: number) => ({ assetId, type: "description" as const, sortOrder: index })),
     ...product.images.review.map((assetId: string, index: number) => ({ assetId, type: "review" as const, sortOrder: index })),
     ...product.images.relatedExcluded.map((assetId: string, index: number) => ({ assetId, type: "related_excluded" as const, sortOrder: index })),
   ].flatMap((item) => {
+    if (seenAssetIds.has(item.assetId)) return [];
     const asset = assetById.get(item.assetId);
     if (!asset) return [];
+    seenAssetIds.add(item.assetId);
     return {
       id: createMarketplaceId("mpi"),
       productId,
@@ -2019,8 +2041,9 @@ export async function listMarketplaceProductImagesForMediaStudio(
   const images = rows
     .sort((a, b) => orderByVectorRank ? 0 : new Date(b.image.createdAt).getTime() - new Date(a.image.createdAt).getTime())
     .filter((row) => {
-      if (seen.has(row.image.id)) return false;
-      seen.add(row.image.id);
+      const key = `${row.product.id}:${marketplaceProductImageDedupKey(row.image)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     })
     .slice(offset, offset + limit + 1);
@@ -2148,6 +2171,9 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
     const leftIsCover = (heroProductImageId && left.id === heroProductImageId) || (product.coverImageAssetId && left.captureAssetId === product.coverImageAssetId) ? 0 : 1;
     const rightIsCover = (heroProductImageId && right.id === heroProductImageId) || (product.coverImageAssetId && right.captureAssetId === product.coverImageAssetId) ? 0 : 1;
     return leftIsCover - rightIsCover || (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+  }).filter((image, index, all) => {
+    const key = marketplaceProductImageDedupKey(image);
+    return all.findIndex((candidate) => marketplaceProductImageDedupKey(candidate) === key) === index;
   });
   return {
     product: { ...product, affiliateUrl: affiliateLink?.affiliateUrl ?? null, accessType, groupShare },
