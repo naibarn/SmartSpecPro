@@ -2839,9 +2839,9 @@ async function generateCompleteStagedShotPrompt(input: {
     !isCompleteStagedVideoPrompt(
       generated.prompt,
       planShot.dialogue,
-      generated.detectedPeople.map(person => person.id),
       planShot.dialogueTurns,
-      plan.cast
+      plan.cast,
+      generated.detectedPeople.map(person => person.id)
     )
   ) {
     throw new TRPCError({
