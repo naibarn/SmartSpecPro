@@ -3930,7 +3930,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 10,
-      "next_action": "Perform authenticated rendered review of https://aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854, starting with mobile: verify compact toolbar/model selector, one-column prompts, independent conversation scrolling, composer/send access, theme not overlapping, safe-area spacing and no overflow. Then confirm tablet/desktop and finish the previously open Chat, locale/theme/history/credit UAT. Continue upload-contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark gaps.",
+      "next_action": "Hard reload the current https://aimarkethubs.com/chat release, verify all seven theme choices on desktop and compact layouts and confirm resize flipping, then complete authenticated mobile/tablet/desktop Chat visual acceptance. Continue the existing upload, Cloud Execution status, Queue/DO recovery and matched benchmark gaps.",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
@@ -5244,7 +5244,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "priority": "P1",
-      "rationale": "Perform authenticated rendered review of https://aimarkethubs.com/chat on exact release e541abf7fe9010a216b709fa3b0b48dcaec71854, starting with mobile: verify compact toolbar/model selector, one-column prompts, independent conversation scrolling, composer/send access, theme not overlapping, safe-area spacing and no overflow. Then confirm tablet/desktop and finish the previously open Chat, locale/theme/history/credit UAT. Continue upload-contract, Cloud Execution status, Queue/DO recovery and matched Legacy/Core benchmark gaps.",
+      "rationale": "Hard reload the current https://aimarkethubs.com/chat release, verify all seven theme choices on desktop and compact layouts and confirm resize flipping, then complete authenticated mobile/tablet/desktop Chat visual acceptance. Continue the existing upload, Cloud Execution status, Queue/DO recovery and matched benchmark gaps.",
       "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
       "spec_id": "312"
     },
