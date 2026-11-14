@@ -1871,6 +1871,7 @@ export const marketplaceCaptureRouter = router({
         dialogue: z.string().trim().max(320).optional(),
         imagePrompt: z.string().trim().max(4000).optional(),
         videoPrompt: z.string().trim().max(2000).optional(),
+        speakerVisualBindings: z.record(z.string().trim().min(1).max(120), z.string().trim().min(1).max(40)).optional(),
       })
     )
     .output(z.any())

@@ -752,6 +752,9 @@ export async function getStagedAutoReviewCheckpointState(
 
   const stagedShots = metadata.stagedSequentialStoryboard.shots.map(shot => {
     const detail = stagedPipeline?.plan?.shots?.[shot.shotId - 1] ?? {};
+    const generatedDetection = record(
+      record(stagedPipeline?.promptGeneration)[`video:${shot.shotId}`]
+    ).detectedPeople;
     return {
       shotId: shot.shotId,
       revision: shot.revision,
@@ -778,6 +781,28 @@ export async function getStagedAutoReviewCheckpointState(
         (shot as any).castInShot ?? (detail as any).castInShot ?? null,
       castLooks: (shot as any).castLooks ?? null,
       supportingBeats: (detail as any).supportingBeats ?? null,
+      detectedPeople: Array.isArray(generatedDetection)
+        ? generatedDetection
+            .filter((person: any) =>
+              typeof person?.id === "string" &&
+              typeof person?.appearance === "string" &&
+              person.boundingBox &&
+              [person.boundingBox.x, person.boundingBox.y, person.boundingBox.width, person.boundingBox.height].every((value: unknown) => Number.isFinite(Number(value)))
+            )
+            .slice(0, 12)
+            .map((person: any) => ({
+              id: person.id,
+              appearance: String(person.appearance).slice(0, 240),
+              confidence: Math.max(0, Math.min(1, Number(person.confidence) || 0)),
+              boundingBox: {
+                x: Math.max(0, Math.min(1, Number(person.boundingBox.x))),
+                y: Math.max(0, Math.min(1, Number(person.boundingBox.y))),
+                width: Math.max(0, Math.min(1, Number(person.boundingBox.width))),
+                height: Math.max(0, Math.min(1, Number(person.boundingBox.height))),
+              },
+            }))
+        : [],
+      speakerVisualBindings: record((shot as any).speakerVisualBindings),
     };
   });
   const referenceManifest = requireStagedReferenceManifest(base).map(
@@ -1986,6 +2011,7 @@ export async function editStagedAutoReviewShot(input: {
       input.dialogue,
       input.imagePrompt,
       input.videoPrompt,
+      input.speakerVisualBindings,
     ].some(value => value !== undefined)
   ) {
     throw new TRPCError({
@@ -2094,6 +2120,39 @@ export async function editStagedAutoReviewShot(input: {
           code: "BAD_REQUEST",
           message: "staged_invalid_shot_contract",
         });
+      }
+
+      if (input.speakerVisualBindings !== undefined) {
+        if (
+          input.storySummary !== undefined || input.dialogue !== undefined ||
+          input.imagePrompt !== undefined || input.videoPrompt !== undefined
+        ) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "staged_speaker_binding_edit_must_be_isolated" });
+        }
+        const dialogueSpeakers = Array.from(new Set(
+          shot.dialogue.split(/\r?\n/).map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim()).filter(Boolean)
+        ));
+        const bindings = input.speakerVisualBindings;
+        const detected = record(record((metadata as any).stagedPipeline?.promptGeneration)[`video:${input.shotId}`]).detectedPeople;
+        const detectedIds = new Set(Array.isArray(detected) ? detected.map((person: any) => person?.id).filter((id: unknown): id is string => typeof id === "string") : []);
+        const selectedIds = Object.values(bindings);
+        if (
+          Object.keys(bindings).length !== dialogueSpeakers.length ||
+          dialogueSpeakers.some(speaker => typeof bindings[speaker] !== "string" || !detectedIds.has(bindings[speaker])) ||
+          new Set(selectedIds).size !== selectedIds.length
+        ) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_speaker_visual_bindings" });
+        }
+        return {
+          metadata: {
+            ...metadata,
+            stagedSequentialStoryboard: {
+              ...metadata.stagedSequentialStoryboard,
+              shots: metadata.stagedSequentialStoryboard.shots.map(item => item.shotId === input.shotId ? { ...item, speakerVisualBindings: bindings } : item),
+            },
+          },
+          planRevision: metadata.planReview.planRevision,
+        };
       }
 
       if (storyEdit) {
@@ -2829,6 +2888,7 @@ async function generateCompleteStagedShotPrompt(input: {
     promptModel: input.model,
     requestIdempotencyKey: input.requestIdempotencyKey,
     shot: planShot,
+    speakerVisualBindings: (stagedShot as any)?.speakerVisualBindings,
     cast: plan.cast ?? [],
     productName: plan.product.productName,
     productFacts,

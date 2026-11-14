@@ -411,6 +411,9 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.videoPrompt !== undefined
         ? { videoPrompt: input.videoPrompt }
         : {}),
+      ...(input.speakerVisualBindings !== undefined
+        ? { speakerVisualBindings: input.speakerVisualBindings }
+        : {}),
     });
   };
   const onSaveRenderSettings = (settings: {

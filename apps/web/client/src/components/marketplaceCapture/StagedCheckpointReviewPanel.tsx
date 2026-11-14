@@ -260,6 +260,13 @@ export type StagedReviewState = {
       action: string;
       line?: string;
     }> | null;
+    detectedPeople?: Array<{
+      id: string;
+      appearance: string;
+      confidence: number;
+      boundingBox: { x: number; y: number; width: number; height: number };
+    }>;
+    speakerVisualBindings?: Record<string, string>;
   }>;
   checkpoints: StagedCheckpoint[];
   correctionRequired?: {
@@ -327,6 +334,7 @@ export type StagedCheckpointEdit = {
   audioLanguage?: string;
   finalShotOrder?: number[];
   includeAudio?: boolean;
+  speakerVisualBindings?: Record<string, string>;
 };
 
 export type StagedCheckpointRetry = {
@@ -373,6 +381,63 @@ function checkpointLabel(checkpoint: StagedCheckpoint): string {
     return `ผลวิดีโอช็อตที่ ${checkpoint.shotId}`;
   if (checkpoint.kind === "audio_plan") return "เสียง / TTS";
   return "การประกอบขั้นสุดท้าย";
+}
+
+function ShotSpeakerBindingPanel(props: {
+  shotId: number;
+  dialogue: string;
+  imageUrl?: string | null;
+  people?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>;
+  bindings?: Record<string, string>;
+  disabled?: boolean;
+  onSave: (bindings: Record<string, string>) => void;
+}) {
+  const speakers = Array.from(
+    new Set(
+      props.dialogue
+        .split(/\r?\n/)
+        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+  const [draft, setDraft] = useState<Record<string, string>>(
+    props.bindings ?? {}
+  );
+  useEffect(() => setDraft(props.bindings ?? {}), [props.bindings]);
+  if (!speakers.length || !props.people?.length || !props.imageUrl) return null;
+  const saved = props.bindings ?? {};
+  const changed = speakers.some(name => (draft[name] ?? "") !== (saved[name] ?? ""));
+  return (
+    <section className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4" aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
+      <div className="mb-3">
+        <h4 className="font-semibold text-slate-900">จับคู่ผู้พูดกับคนในภาพ</h4>
+        <p className="text-xs text-slate-600">กรอบมาจากผลตรวจจับ AI เลือกคนให้ตรงกับผู้พูดแต่ละคน เพื่อให้ Prompt วิดีโอใช้ตัวตนถูกต้อง</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-[minmax(10rem,16rem)_1fr]">
+        <div className="relative mx-auto w-full max-w-64 overflow-hidden rounded-lg bg-slate-900">
+          <AuthenticatedMediaImage src={props.imageUrl} alt={`Start frame ช็อตที่ ${props.shotId}`} className="aspect-[9/16] w-full object-contain" />
+          {props.people.map((person, index) => (
+            <div key={person.id} className="pointer-events-none absolute border-2 border-cyan-400" style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}>
+              <span className="absolute -top-5 left-0 rounded bg-cyan-600 px-1.5 text-xs font-bold text-white">{index + 1}</span>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {speakers.map(name => (
+            <label key={name} className="block rounded-lg border border-slate-200 bg-white p-3 text-sm font-medium text-slate-800">
+              <span>ผู้พูด: {name}</span>
+              <select aria-label={`คนในภาพที่ตรงกับ ${name}`} className="mt-2 w-full rounded-md border border-slate-300 bg-white p-2 font-normal" value={draft[name] ?? ""} disabled={props.disabled} onChange={event => setDraft(current => ({ ...current, [name]: event.target.value }))}>
+                <option value="">ยังไม่เลือก</option>
+                {props.people.map((person, index) => <option key={person.id} value={person.id}>{index + 1}. {person.appearance} ({Math.round(person.confidence * 100)}%)</option>)}
+              </select>
+            </label>
+          ))}
+          <p className="text-xs text-slate-600">คนหนึ่งคนจับคู่ได้กับผู้พูดหนึ่งคนในช็อตนี้</p>
+          <button type="button" disabled={props.disabled || !changed || speakers.some(name => !draft[name]) || new Set(speakers.map(name => draft[name])).size !== speakers.length} onClick={() => props.onSave(Object.fromEntries(speakers.map(name => [name, draft[name]])))} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">บันทึกการจับคู่</button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function expected(checkpoint: StagedCheckpoint, modelOverride?: string) {
@@ -3987,6 +4052,20 @@ export function StagedCheckpointReviewPanel(props: {
                       saving={savingShotCastForShot === shot.shotId}
                       onChangeCastInShot={handleChangeShotCastInShot}
                       onChangeCastLook={handleChangeShotCastLook}
+                    />
+                    <ShotSpeakerBindingPanel
+                      shotId={shot.shotId}
+                      dialogue={drafts[dialogueKey] ?? shot.dialogue}
+                      imageUrl={shot.imageArtifactUrl}
+                      people={shot.detectedPeople}
+                      bindings={shot.speakerVisualBindings}
+                      disabled={props.pending}
+                      onSave={speakerVisualBindings =>
+                        props.onEdit({
+                          shotId: shot.shotId,
+                          speakerVisualBindings,
+                        })
+                      }
                     />
                     {storyEditable ? (
                       <>

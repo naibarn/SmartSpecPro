@@ -65,6 +65,7 @@ export type GenerateMarketplaceAutoReviewVideoPromptInput = {
   promptModel?: string | null;
   requestIdempotencyKey: string;
   shot: StagedStoryArcShot;
+  speakerVisualBindings?: Record<string, string>;
   cast: readonly StagedCastMember[];
   productName: string;
   productFacts: string[];
@@ -372,11 +373,26 @@ function buildAuthoritativeSpeakerSections(input: {
   dialogue: Array<{ speaker: string; line: string }>;
   detectedPeople: readonly VerticalDramaDetectedShotPerson[];
   frameAnalysisPeople: readonly MarketplaceSpeakerVisualEntry[];
+  speakerVisualBindings?: Record<string, string>;
 }): string {
-  const matchError = (reason: string) =>
-    new Error(
+  const matchError = (reason: string) => {
+    console.warn("[MarketplaceVideoPrompt] speaker matching failed", {
+      shotId: input.shotId,
+      reason,
+      speakerCount: new Set(input.dialogue.map(turn => turn.speaker)).size,
+      detectedPeople: input.detectedPeople.map(person => ({
+        id: person.id,
+        centerX: Math.round((person.boundingBox.x + person.boundingBox.width / 2) * 100) / 100,
+      })),
+      frameAnalysis: input.frameAnalysisPeople.map(person => ({
+        position: person.position,
+        detectedPersonId: person.detected_person_id,
+      })),
+    });
+    return new Error(
       `MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING:shot-${input.shotId}:${reason}`
     );
+  };
   const normalizedName = (value: string) =>
     value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
   const usedPersonIds = new Set<string>();
@@ -391,11 +407,15 @@ function buildAuthoritativeSpeakerSections(input: {
     const matches = input.frameAnalysisPeople.filter(
       person => normalizedName(person.name) === speakerKey
     );
-    if (matches.length !== 1) {
+    if (!input.speakerVisualBindings && matches.length !== 1) {
       throw matchError("speaker-label");
     }
-    const analysis = matches[0];
-    const explicitId = analysis?.detected_person_id?.trim();
+    const analysis = matches[0] ?? {
+      name: turn.speaker,
+      position: "",
+      detected_person_id: input.speakerVisualBindings?.[turn.speaker],
+    };
+    const explicitId = (input.speakerVisualBindings?.[turn.speaker] ?? analysis.detected_person_id)?.trim();
     const explicitPerson = explicitId
       ? input.detectedPeople.find(person => person.id === explicitId)
       : undefined;
@@ -415,7 +435,6 @@ function buildAuthoritativeSpeakerSections(input: {
         throw matchError("speaker-position");
       }
       const positionalCandidates = input.detectedPeople
-        .filter(candidate => !usedPersonIds.has(candidate.id))
         .map(candidate => ({
           person: candidate,
           distance: Math.abs(
@@ -426,10 +445,10 @@ function buildAuthoritativeSpeakerSections(input: {
       const nearestCandidate = positionalCandidates[0];
       const nextCandidate = positionalCandidates[1];
       person =
-        positionalCandidates.length === 1 ||
-        (nearestCandidate &&
-          (!nextCandidate ||
-            nextCandidate.distance - nearestCandidate.distance >= 0.08))
+        nearestCandidate &&
+        !usedPersonIds.has(nearestCandidate.person.id) &&
+        (!nextCandidate ||
+          nextCandidate.distance - nearestCandidate.distance >= 0.08)
           ? nearestCandidate?.person
           : undefined;
     }
@@ -839,6 +858,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       detectedPeople: detection.people,
       frameAnalysisPeople: (data.frame_analysis?.people ??
         []) as MarketplaceSpeakerVisualEntry[],
+      speakerVisualBindings: input.speakerVisualBindings,
     });
   };
   let speakerSections: string;
