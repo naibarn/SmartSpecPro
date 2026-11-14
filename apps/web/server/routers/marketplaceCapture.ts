@@ -15,8 +15,20 @@ import {
   GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
 } from "../../shared/geminiOmni";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
-import { signBearerToken } from "../_core/tokens";
-import { assertR2StorageActive, storagePut } from "../storage";
+import {
+  signBearerToken,
+  verifyBearerToken,
+  verifyBearerTokenIgnoringExpiration,
+} from "../_core/tokens";
+import {
+  assertR2StorageActive,
+  storageDelete,
+  storageHeadFile,
+  storagePresignPut,
+  storagePut,
+  storageResolveUrl,
+  storageStreamFile,
+} from "../storage";
 import { STAGED_OVERLAY_ANCHORS } from "../services/marketplaceAutoReviewStagedRemotionRender";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
 import {
@@ -428,6 +440,144 @@ const HyperframesTemplateOperatorOutputSchema = z
     auditPersistence: HyperframesOperatorAuditPersistenceSchema,
   })
   .strict();
+
+const STAGED_SHOT_MEDIA_ALLOWED_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi",
+]);
+
+type StagedShotMediaUploadClaims = {
+  runId: string;
+  shotId: number;
+  stage: "image" | "video";
+  storageKey: string;
+  fileName: string;
+  fileType: string;
+  fileSizeBytes: number;
+  expectedStateDigest: string;
+  expectedShotRevision: number;
+  expectedPlanRevision: number;
+  idempotencyKey: string;
+};
+
+async function verifyStagedShotMediaUploadToken(
+  token: string,
+  ctx: any,
+  ignoreExpiration = false
+): Promise<StagedShotMediaUploadClaims> {
+  let decoded: Record<string, any>;
+  try {
+    decoded = await (ignoreExpiration
+      ? verifyBearerTokenIgnoringExpiration(token)
+      : verifyBearerToken(token)) as Record<string, any>;
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired shot media upload token" });
+  }
+
+  const auth = authFromCtx(ctx);
+  const claims = decoded as Record<string, any> & StagedShotMediaUploadClaims;
+  if (
+    decoded.type !== "marketplace_shot_media_upload" ||
+    Number(decoded.userId ?? decoded.sub) !== auth.userId ||
+    decoded.tenantId !== auth.tenantId ||
+    typeof claims.runId !== "string" ||
+    !Number.isInteger(claims.shotId) ||
+    !["image", "video"].includes(claims.stage) ||
+    typeof claims.storageKey !== "string" ||
+    !claims.storageKey.startsWith(`marketplace-auto-review/${claims.runId}/manual-uploads/${claims.shotId}-${claims.stage}-`) ||
+    typeof claims.fileName !== "string" ||
+    typeof claims.fileType !== "string" ||
+    !Number.isInteger(claims.fileSizeBytes) ||
+    !Number.isInteger(claims.expectedShotRevision) ||
+    !Number.isInteger(claims.expectedPlanRevision) ||
+    typeof claims.expectedStateDigest !== "string" ||
+    typeof claims.idempotencyKey !== "string"
+  ) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid shot media upload token" });
+  }
+  return claims;
+}
+
+function validateStagedShotMediaUploadMetadata(input: {
+  fileName: string;
+  fileType: string;
+  fileSizeBytes: number;
+  stage: "image" | "video";
+}) {
+  const fileType = input.fileType.trim().toLowerCase().split(";", 1)[0];
+  const maxBytes = input.stage === "video"
+    ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES
+    : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
+  const ext = (input.fileName.split(".").pop() || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+  if (
+    !fileType.startsWith(input.stage === "video" ? "video/" : "image/") ||
+    input.fileSizeBytes < 1 || input.fileSizeBytes > maxBytes ||
+    !STAGED_SHOT_MEDIA_ALLOWED_EXTENSIONS.has(ext)
+  ) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid shot media upload type, extension, or size" });
+  }
+  return { fileType, ext };
+}
+
+async function readStagedShotMediaPrefix(storageKey: string): Promise<Buffer> {
+  const stored = await storageStreamFile(storageKey, "bytes=0-11");
+  if (!stored) return Buffer.alloc(0);
+  const chunks: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of stored.stream as any) {
+    const bytes = Buffer.from(chunk);
+    const remaining = 12 - length;
+    if (remaining <= 0) break;
+    const part = bytes.subarray(0, remaining);
+    chunks.push(part);
+    length += part.length;
+    if (length >= 12) break;
+  }
+  return Buffer.concat(chunks, length);
+}
+
+function hasValidStagedShotMediaMagicBytes(
+  stage: "image" | "video",
+  prefix: Buffer
+) {
+  if (stage === "image") {
+    return (
+      (prefix[0] === 0xff && prefix[1] === 0xd8) ||
+      (prefix[0] === 0x89 && prefix[1] === 0x50) ||
+      (prefix[0] === 0x47 && prefix[1] === 0x49) ||
+      (prefix[0] === 0x52 && prefix[1] === 0x49 && prefix[2] === 0x46 && prefix[3] === 0x46) ||
+      prefix[0] === 0x3c
+    );
+  }
+  return (
+    (prefix[4] === 0x66 && prefix[5] === 0x74 && prefix[6] === 0x79 && prefix[7] === 0x70) ||
+    (prefix[0] === 0x1a && prefix[1] === 0x45 && prefix[2] === 0xdf && prefix[3] === 0xa3) ||
+    (prefix[0] === 0x52 && prefix[1] === 0x49 && prefix[2] === 0x46 && prefix[3] === 0x46)
+  );
+}
+
+async function isStagedShotMediaAttached(
+  claims: StagedShotMediaUploadClaims,
+  ctx: any
+) {
+  try {
+    const state = await getStagedAutoReviewCheckpointState(
+      claims.runId,
+      authFromCtx(ctx)
+    );
+    const shot = state.shots.find(item => item.shotId === claims.shotId);
+    const attachedUrl = claims.stage === "image"
+      ? shot?.imageArtifactUrl
+      : shot?.videoArtifactUrl;
+    return typeof attachedUrl === "string" &&
+      attachedUrl.includes(encodeURI(claims.storageKey));
+  } catch {
+    // If attachment state cannot be read, keep the object. A false negative
+    // here could delete media after the metadata commit succeeded.
+    return true;
+  }
+}
 
 function autoReviewRuntimeFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
@@ -1821,6 +1971,121 @@ export const marketplaceCaptureRouter = router({
         auth: authFromCtx(ctx),
       })
     ),
+
+  initStagedAutoReviewShotMediaUpload: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1).max(64),
+      shotId: z.number().int().min(1).max(9),
+      stage: z.enum(["image", "video"]),
+      fileName: z.string().min(1).max(255),
+      fileType: z.string().min(1).max(100),
+      fileSizeBytes: z.number().int().positive(),
+      expectedStateDigest: z.string().min(1).max(256),
+      idempotencyKey: z.string().min(8).max(200),
+    }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const { fileType, ext } = validateStagedShotMediaUploadMetadata(input);
+      const auth = authFromCtx(ctx);
+      const state = await getStagedAutoReviewCheckpointState(input.runId, auth);
+      if (state.stateDigest !== input.expectedStateDigest) {
+        throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+      }
+      const shot = state.shots.find(item => item.shotId === input.shotId);
+      if (!shot || !Number.isInteger(shot.revision)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_shot_contract" });
+      }
+
+      await assertR2StorageActive();
+      const safeFileName = input.fileName.replace(/[\u0000-\u001f\\/]+/g, "_");
+      const key = `marketplace-auto-review/${input.runId}/manual-uploads/${input.shotId}-${input.stage}-${nanoid(16)}.${ext}`;
+      const presigned = await storagePresignPut(key, fileType, input.fileSizeBytes);
+      if (!presigned) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Direct R2 upload is unavailable for the active storage provider",
+        });
+      }
+      const uploadToken = signBearerToken({
+        sub: String(auth.userId),
+        userId: auth.userId,
+        tenantId: auth.tenantId,
+        type: "marketplace_shot_media_upload",
+        runId: input.runId,
+        shotId: input.shotId,
+        stage: input.stage,
+        storageKey: presigned.key,
+        fileName: safeFileName,
+        fileType,
+        fileSizeBytes: input.fileSizeBytes,
+        expectedStateDigest: input.expectedStateDigest,
+        expectedShotRevision: shot.revision,
+        expectedPlanRevision: state.planRevision,
+        idempotencyKey: input.idempotencyKey,
+      }, "1h");
+      return {
+        uploadUrl: presigned.url,
+        uploadToken,
+        requiredHeaders: { "Content-Type": fileType },
+      };
+    }),
+
+  completeStagedAutoReviewShotMediaUpload: protectedProcedure
+    .input(z.object({ uploadToken: z.string().min(1).max(4096) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const claims = await verifyStagedShotMediaUploadToken(input.uploadToken, ctx);
+      try {
+        const head = await storageHeadFile(claims.storageKey);
+        if (
+          !head ||
+          head.contentLength !== claims.fileSizeBytes ||
+          (head.contentType && head.contentType.toLowerCase().split(";", 1)[0] !== claims.fileType)
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Uploaded shot media is missing or has an invalid type/size",
+          });
+        }
+        const prefix = await readStagedShotMediaPrefix(claims.storageKey);
+        if (!hasValidStagedShotMediaMagicBytes(claims.stage, prefix)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "File content does not match claimed media type" });
+        }
+        const url = await storageResolveUrl(claims.storageKey);
+        if (!url) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Uploaded shot media cannot be resolved from storage" });
+        }
+        return await uploadStagedAutoReviewShotMedia({
+          runId: claims.runId,
+          shotId: claims.shotId,
+          stage: claims.stage,
+          url,
+          expectedStateDigest: claims.expectedStateDigest,
+          expectedShotRevision: claims.expectedShotRevision,
+          expectedPlanRevision: claims.expectedPlanRevision,
+          idempotencyKey: claims.idempotencyKey,
+          auth: authFromCtx(ctx),
+        });
+      } catch (error) {
+        if (!(await isStagedShotMediaAttached(claims, ctx))) {
+          await storageDelete(claims.storageKey).catch(() => false);
+        }
+        throw error;
+      }
+    }),
+
+  abortStagedAutoReviewShotMediaUpload: protectedProcedure
+    .input(z.object({ uploadToken: z.string().min(1).max(4096) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const claims = await verifyStagedShotMediaUploadToken(
+        input.uploadToken,
+        ctx,
+        true
+      );
+      if (await isStagedShotMediaAttached(claims, ctx)) {
+        return { aborted: false, alreadyAttached: true };
+      }
+      await storageDelete(claims.storageKey).catch(() => false);
+      return { aborted: true, alreadyAttached: false };
+    }),
 
   uploadStagedAutoReviewShotMedia: protectedProcedure
     .input(

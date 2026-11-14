@@ -50,21 +50,20 @@ export function validateMarketplaceShotMediaFile(
   return null;
 }
 
-/**
- * Reads a `File` into a base64 data URL — the exact shape
- * `uploadStagedAutoReviewShotMedia`'s `fileBase64` input expects (a data URL
- * is accepted as-is server-side; see its `input.fileBase64.split(",")`
- * handling). Kept self-contained here (rather than importing the equivalent
- * helper already living in `ImageSourcePicker.tsx`) so this small, focused
- * module doesn't pull that file's much larger component tree (trpc, Radix
- * popovers, media-history parsing) into every caller as a side effect.
- */
-export function readShotMediaFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("Failed to read file"));
-    reader.readAsDataURL(file);
+/** Upload the original File bytes directly to its authenticated R2 presigned URL. */
+export async function putMarketplaceShotMediaToR2(
+  file: File,
+  uploadUrl: string,
+  requiredHeaders: Record<string, string>,
+  signal?: AbortSignal
+): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: requiredHeaders,
+    body: file,
+    signal,
   });
+  if (!response.ok) {
+    throw new Error(`R2_MEDIA_UPLOAD_FAILED_${response.status}`);
+  }
 }

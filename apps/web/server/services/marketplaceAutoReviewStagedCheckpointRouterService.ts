@@ -754,6 +754,7 @@ export async function getStagedAutoReviewCheckpointState(
     const detail = stagedPipeline?.plan?.shots?.[shot.shotId - 1] ?? {};
     return {
       shotId: shot.shotId,
+      revision: shot.revision,
       state: shot.state,
       storySummary: shot.storySummary,
       dialogue: shot.dialogue,
@@ -4186,6 +4187,8 @@ export async function uploadStagedAutoReviewShotMedia(input: {
   stage: "image" | "video";
   url: string;
   expectedStateDigest: string;
+  expectedShotRevision?: number;
+  expectedPlanRevision?: number;
   idempotencyKey: string;
   auth: StagedCheckpointAuth;
 }) {
@@ -4203,6 +4206,16 @@ export async function uploadStagedAutoReviewShotMedia(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
+    ...(Number.isInteger(input.expectedShotRevision)
+      ? {
+          allowStateDrift: metadata =>
+            metadata.stagedSequentialStoryboard.planRevision ===
+              input.expectedPlanRevision &&
+            metadata.stagedSequentialStoryboard.shots.find(
+              shot => shot.shotId === input.shotId
+            )?.revision === input.expectedShotRevision,
+        }
+      : {}),
     mutate(metadata, operationId) {
       return applyStagedAutoReviewShotMediaUpload({
         metadata,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { readShotMediaFileAsDataUrl } from "@/lib/marketplaceShotMediaUpload";
+import { putMarketplaceShotMediaToR2 } from "@/lib/marketplaceShotMediaUpload";
 import {
   StagedCheckpointReviewPanel,
   type ReferenceManifestItem,
@@ -251,13 +251,14 @@ export function StagedCheckpointReviewSurface(props: {
   // per-shot, per-stage `uploadingShotMedia` Set (keyed by `${stage}:${shotId}`)
   // so an in-flight upload on one slot never disables every OTHER button in
   // the whole panel the way the shared `pendingAction` gate does for every
-  // other mutation here. It still shares `mutationOptions` for the
-  // onSuccess-refetch / onError-sets-actionError behavior every other
-  // mutation in this file gets.
-  const uploadShotMediaMutation =
-    trpc.marketplaceCapture.uploadStagedAutoReviewShotMedia.useMutation(
-      mutationOptions
-    );
+  // other mutation here. The upload flow owns its refetch and cleanup because
+  // it spans init, an R2 PUT, and completion.
+  const initShotMediaUploadMutation =
+    trpc.marketplaceCapture.initStagedAutoReviewShotMediaUpload.useMutation();
+  const completeShotMediaUploadMutation =
+    trpc.marketplaceCapture.completeStagedAutoReviewShotMediaUpload.useMutation();
+  const abortShotMediaUploadMutation =
+    trpc.marketplaceCapture.abortStagedAutoReviewShotMediaUpload.useMutation();
   const pendingMutation = useMemo(() => {
     if (generatePromptMutation.isPending && generatePromptMutation.variables) {
       const variables = generatePromptMutation.variables;
@@ -555,33 +556,60 @@ export function StagedCheckpointReviewSurface(props: {
   };
   // Manual drag-and-drop / tap-to-browse replacement of a shot's image or
   // video slot with a local file (see the Panel's per-slot drop zones and
-  // "📤 อัปโหลดไฟล์แทน" fallback button). Reads the File into a base64 data
-  // URL client-side, then calls the same uploadStagedAutoReviewShotMedia
-  // mutation whether the slot is currently empty or already holds an
-  // AI-generated result — the backend replaces the artifact either way.
-  // Client-side type/size validation already happened in the Panel before
-  // this is ever called (see validateMarketplaceShotMediaFile), so this
-  // stays a thin FileReader → mutation bridge.
+  // "📤 อัปโหลดไฟล์แทน" fallback button). Request a scoped presigned URL,
+  // PUT the original File bytes directly to R2, then attach the verified
+  // object to the staged shot.
   const onUploadShotMedia = async (input: {
     shotId: number;
     stage: "image" | "video";
     file: File;
   }) => {
     if (!requireStateDigest()) return;
-    const fileBase64 = await readShotMediaFileAsDataUrl(input.file);
-    await uploadShotMediaMutation.mutateAsync({
-      runId,
-      shotId: input.shotId,
-      stage: input.stage,
-      fileName: input.file.name,
-      fileType: input.file.type,
-      fileBase64,
-      expectedStateDigest: stateDigest,
-      idempotencyKey: uiIdempotencyKey(
-        `upload-shot-media-${input.stage}`,
-        String(input.shotId)
-      ),
-    });
+    const idempotencyKey = uiIdempotencyKey(
+      `upload-shot-media-${input.stage}`,
+      String(input.shotId)
+    );
+    let uploadToken: string | null = null;
+    try {
+      const init = await initShotMediaUploadMutation.mutateAsync({
+        runId,
+        shotId: input.shotId,
+        stage: input.stage,
+        fileName: input.file.name,
+        fileType: input.file.type || "application/octet-stream",
+        fileSizeBytes: input.file.size,
+        expectedStateDigest: stateDigest,
+        idempotencyKey,
+      });
+      uploadToken = init.uploadToken;
+      await putMarketplaceShotMediaToR2(
+        input.file,
+        init.uploadUrl,
+        init.requiredHeaders
+      );
+      await completeShotMediaUploadMutation.mutateAsync({ uploadToken });
+      setActionError(null);
+      setActionNotice(`อัปโหลด${input.stage === "video" ? "วิดีโอ" : "ภาพ"}ช็อตที่ ${input.shotId} ไป R2 แล้ว`);
+      await stateQuery.refetch();
+    } catch (error) {
+      if (uploadToken) {
+        await abortShotMediaUploadMutation
+          .mutateAsync({ uploadToken })
+          .catch(() => undefined);
+      }
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("staged_state_drift")) {
+        await stateQuery.refetch();
+        throw new Error("ข้อมูลช็อตเปลี่ยนระหว่างอัปโหลด ระบบรีเฟรชข้อมูลแล้ว กรุณาอัปโหลดอีกครั้ง");
+      }
+      if (message.includes("R2_MEDIA_UPLOAD_FAILED_413")) {
+        throw new Error("R2 ปฏิเสธไฟล์นี้เพราะขนาดเกินขีดจำกัดของ storage");
+      }
+      if (error instanceof TypeError) {
+        throw new Error("เชื่อมต่อ R2 เพื่ออัปโหลดไฟล์ไม่ได้ กรุณาตรวจเครือข่ายแล้วลองอีกครั้ง");
+      }
+      throw error;
+    }
   };
   const onLanguagePlanChange = (plan: {
     summaryLanguage: "th" | "en";
