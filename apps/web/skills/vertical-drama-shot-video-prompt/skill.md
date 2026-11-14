@@ -220,11 +220,13 @@ and approved dialogue with speaker labels, treat those labels as the exact
 character names to use in `frame_analysis.people[].name`. Include one entry
 for each visible dialogue speaker, copy the matching ID exactly into
 `detected_person_id`, and report that same person's observed screen position.
-Match portraits to detected people by visual identity. Never derive an ID from
-cast order, speaker order, or left-to-right order. Do not add honorifics,
-translate, abbreviate, or otherwise rewrite the approved speaker label. If a
-speaker cannot be matched confidently, omit that speaker instead of guessing;
-the caller will request a safe correction before accepting the prompt.
+The explicit detected-person ID is the identity binding; position is a separate
+descriptive observation and must not be used to override that ID. Match
+portraits to detected people by visual identity. Never derive an ID from cast
+order, speaker order, or left-to-right order. Do not add honorifics, translate,
+abbreviate, or otherwise rewrite the approved speaker label. If a speaker
+cannot be matched confidently, omit that speaker instead of guessing; the
+caller will request a safe correction before accepting the prompt.
 
 For DUAL VIEW, every person entry MUST include `view_role`: `start_frame` for
 characters assigned to Image 1 and `barrier_reference` for characters assigned

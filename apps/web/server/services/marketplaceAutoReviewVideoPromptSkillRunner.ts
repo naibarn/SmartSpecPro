@@ -399,40 +399,34 @@ function buildAuthoritativeSpeakerSections(input: {
     const explicitPerson = explicitId
       ? input.detectedPeople.find(person => person.id === explicitId)
       : undefined;
-    const targetX = positionTargetX(analysis.position);
-    if (
-      targetX === undefined ||
-      (explicitPerson &&
-        Math.abs(
-          explicitPerson.boundingBox.x +
-            explicitPerson.boundingBox.width / 2 -
-            targetX
-        ) > 0.4)
-    ) {
-      throw matchError("speaker-position");
+    if (explicitId && !explicitPerson) {
+      throw matchError("detected-person-id");
     }
-    const positionalCandidates =
-      targetX === undefined
-        ? []
-        : input.detectedPeople
-            .map(person => ({
-              person,
-              distance: Math.abs(
-                person.boundingBox.x + person.boundingBox.width / 2 - targetX
-              ),
-            }))
-            .sort((left, right) => left.distance - right.distance);
-    const nearestCandidate = positionalCandidates[0];
-    const nextCandidate = positionalCandidates[1];
-    const positionalPerson =
-      targetX !== undefined && input.detectedPeople.length === 1
-        ? input.detectedPeople[0]
-        : nearestCandidate &&
-            (!nextCandidate ||
-              nextCandidate.distance - nearestCandidate.distance >= 0.08)
-          ? nearestCandidate.person
-          : undefined;
-    const person = explicitId ? explicitPerson : positionalPerson;
+    let person = explicitPerson;
+    if (!person) {
+      const targetX = positionTargetX(analysis.position);
+      if (targetX === undefined) {
+        throw matchError("speaker-position");
+      }
+      const positionalCandidates = input.detectedPeople
+        .map(candidate => ({
+          person: candidate,
+          distance: Math.abs(
+            candidate.boundingBox.x + candidate.boundingBox.width / 2 - targetX
+          ),
+        }))
+        .sort((left, right) => left.distance - right.distance);
+      const nearestCandidate = positionalCandidates[0];
+      const nextCandidate = positionalCandidates[1];
+      person =
+        input.detectedPeople.length === 1
+          ? input.detectedPeople[0]
+          : nearestCandidate &&
+              (!nextCandidate ||
+                nextCandidate.distance - nearestCandidate.distance >= 0.08)
+            ? nearestCandidate.person
+            : undefined;
+    }
     if (!person || usedPersonIds.has(person.id)) {
       throw matchError("detected-person-binding");
     }
