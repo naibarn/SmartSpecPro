@@ -406,6 +406,7 @@ export type StagedStoryConceptOption = {
 
 export type StagedStoryArcPlan = {
   planRevision: number;
+  expectedShotCount?: number | "auto";
   title: string;
   storySummary: string;
   product: StagedStoryArcProduct;
@@ -950,6 +951,9 @@ export function buildStagedCheckpoint(input: {
 export function buildStagedPlanView(plan: StagedStoryArcPlan) {
   return {
     title: plan.title,
+    ...(plan.expectedShotCount !== undefined
+      ? { expectedShotCount: plan.expectedShotCount }
+      : {}),
     storySummary: plan.storySummary,
     source: plan.source,
     ...(plan.conceptOptions ? { conceptOptions: plan.conceptOptions } : {}),
@@ -1243,10 +1247,22 @@ Marketplace Auto Review Story Arc skill runtime context:
     line: z.string().min(1).max(160).optional(),
   });
 
+  // Some providers serialize numeric identifiers as JSON strings. Shot IDs
+  // are redundant (the server assigns them from array order), so normalize
+  // digit-only strings here while still rejecting malformed identifiers.
+  const ZodShotIdSchema = z.union([
+    z.number().int().min(1).max(30),
+    z
+      .string()
+      .regex(/^[1-9]\d*$/)
+      .transform(Number)
+      .pipe(z.number().int().min(1).max(30)),
+  ]);
+
   const shotObjectSchema = z.object({
     // Shot ids are assigned from output order below; do not reject a plan
     // because the model omitted this redundant field.
-    shotId: z.number().int().min(1).max(30).optional(),
+    shotId: ZodShotIdSchema.optional(),
     title: z.string().min(1).max(120),
     storySummary: z.string().min(1).max(600).optional(),
     visualSummary: z.string().min(1).max(400),
@@ -1337,6 +1353,7 @@ Marketplace Auto Review Story Arc skill runtime context:
         .join("\n");
       return {
         planRevision,
+        expectedShotCount: isAutoShotCount ? "auto" : fixedShotCount ?? 9,
         title: `Review concepts (LLM: ${chosenModel})`,
         storySummary,
         conceptOptions,
@@ -1577,6 +1594,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 
         return {
           planRevision,
+          expectedShotCount: enforcedShots.length,
           title: `Staged Story Arc (LLM: ${chosenModel})`,
           storySummary,
           conceptOptions,

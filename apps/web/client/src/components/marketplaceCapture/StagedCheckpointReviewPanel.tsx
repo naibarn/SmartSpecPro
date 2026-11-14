@@ -171,6 +171,7 @@ export type StagedReviewState = {
     source?: "llm_story_arc";
     conceptOptions?: StagedStoryConceptOption[];
     selectedConceptId?: string | null;
+    expectedShotCount?: number | "auto";
     planRevision?: number;
   } | null;
   referenceManifest?: ReferenceManifestItem[];
@@ -1743,6 +1744,30 @@ export function StagedCheckpointReviewPanel(props: {
     "waiting_external",
     "retry_scheduled",
   ];
+  const storyRedraftOperations =
+    props.state?.workerOperations?.filter(
+      job => job.operation === "staged_story_redraft"
+    ) ?? [];
+  const activeStoryRedraft = storyRedraftOperations.find(job =>
+    activeWorkerStatuses.includes(job.status)
+  );
+  const latestStoryRedraft = activeStoryRedraft ?? storyRedraftOperations[0];
+  const expectedStoryShotCount =
+    props.state?.storyPlan?.expectedShotCount ?? 9;
+  const generatedStoryShotCount = props.state?.shots.length ?? 0;
+  const storyShotCountComplete =
+    typeof expectedStoryShotCount === "number"
+      ? generatedStoryShotCount === expectedStoryShotCount
+      : generatedStoryShotCount >= 7 && generatedStoryShotCount <= 30;
+  const storyGenerationStatus =
+    props.pendingAction === "retry-story" || activeStoryRedraft
+      ? "generating"
+      : props.state?.storyPlan?.selectedConceptId && storyShotCountComplete
+        ? "complete"
+        : latestStoryRedraft?.status === "failed" ||
+            (props.state?.storyPlan?.selectedConceptId && !storyShotCountComplete)
+          ? "failed"
+          : "idle";
   const bulkVideoPromptWillSupersedeMedia = bulkVideoPromptTargets.some(
     target => {
       const shot = props.state?.shots.find(
@@ -3366,6 +3391,9 @@ export function StagedCheckpointReviewPanel(props: {
                     props.state.storyPlan.selectedConceptId ?? null
                   }
                   planRevision={props.state.storyPlan.planRevision ?? 0}
+                  expectedShotCount={expectedStoryShotCount}
+                  generatedShotCount={generatedStoryShotCount}
+                  generationStatus={storyGenerationStatus}
                   disabled={!storyEditAvailable || props.pending}
                   onApply={selectedConcept =>
                     props.onRetry({
