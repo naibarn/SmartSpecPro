@@ -2955,6 +2955,13 @@
       "when": 1794484800014,
       "tag": "0435_minimax_h3_image_media_model",
       "breakpoints": true
+    },
+    {
+      "idx": 436,
+      "version": "7",
+      "when": 1794484800015,
+      "tag": "0436_modular_chat_attachment_credit_bounds",
+      "breakpoints": true
     }
   ]
 }

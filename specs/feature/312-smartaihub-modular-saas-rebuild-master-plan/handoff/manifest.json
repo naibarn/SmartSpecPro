@@ -57,8 +57,8 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
-    "expected_spec_digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236"
+    "expected_canonical_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+    "expected_spec_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835"
   },
   "continuation": {
     "next_action": "Hard reload aimarkethubs.com/chat on release 36134d0bd35eaa2997b76c7e301c7855150aa2b2; use the signed-in MFA session to preview, remove, upload, send and reload image history with an enabled vision model at desktop/tablet/mobile. Then design bounded document-byte credit reservation before implementing text/Markdown/CSV/JSON attachments. Keep SPEC-312 acceptance partial.",
@@ -71,14 +71,14 @@
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-multi-attachments-implementation-20261114.md"
     ],
-    "next_action": "On aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2, complete authenticated image preview/removal/upload/queued vision send/restored-history UAT across desktop, tablet and mobile. Then design bounded document-byte credit reservation before implementing text/Markdown/CSV/JSON attachments. Keep SPEC-312 acceptance partial.",
-    "rationale": "Image attachment preview, authenticated private upload, queue-based multimodal delivery, image-capable Auto filtering and history read path are implemented and deployed to the authorized modular-debian-dev target. Exact-SHA package checks/builds and runtime health/asset smoke passed. Authenticated browser/provider UAT remains unobserved, and document attachments remain unimplemented until credit reservation includes bounded document payload cost.",
+    "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments. Verify multi-select/additive batches of 10 mixed image/text files, thumbnails and full-screen Lightbox, send/history/retry, credit reservation/debit, validation boundaries, cross-scope denial, and desktop/tablet/mobile. Keep SPEC-312 acceptance partial until observed.",
+    "rationale": "Section 10 implementation for compact thumbnails, Lightbox, multi-file image/text attachment upload, private authenticated storage/history, queued multimodal delivery, enabled image-model gating and bounded attachment-byte credit reservation is integrated and deployed to the authorized modular-debian-dev target. Exact-SHA typechecks/builds and public runtime/static-asset checks passed. Authenticated browser interaction/provider/credit UAT remains unobserved.",
     "residual_requirements": [
-      "Authenticated image preview/removal/upload/vision response/history/retry and responsive UAT on exact deployed SHA",
-      "Text, Markdown, CSV and JSON attachment flow after safe bounded document-byte credit reserve/settlement design",
-      "Authenticated release acceptance for existing Chat workspace, models, queue response, history and credit behavior",
+      "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
+      "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
+      "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
       "Queue/DO delivery, duplicate, contention and restart proof",
       "Cloud Execution status must be live or presented neutrally",
       "Matched Legacy/Core performance benchmark before making speed claims"
@@ -92,29 +92,12 @@
   },
   "deployment": {
     "artifact_digest": "sha256:a4bc3940f71a82df051be5b9dd2f7f64e5cbf56bead8d623e24d0d323e787a61",
-    "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian systemd with local Workerd; PostgreSQL smartspec)",
+    "environment": "modular-debian-dev / aimarkethubs.com",
     "evidence": [
-      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
-      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
-      "handoff/evidence/modular-chat-cloudflare-queue-deployment-20261111.md",
-      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
-      "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
-      "handoff/evidence/modular-login-final-20261110.png",
-      "handoff/evidence/modular-login-language-selector-right-align-20261110.png",
-      "handoff/evidence/modular-login-language-selector-right-align-deployment-20261110.md",
-      "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-account-access-bridge-fix-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-login-worker-bcrypt-fix-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/theme-menu-viewport-fit-release-20261114.md"
+      "handoff/evidence/chat-multi-attachments-implementation-20261114.md"
     ],
-    "required": false,
-    "source_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+    "required": true,
+    "source_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
     "status": "PASS"
   },
   "disposition": {
@@ -133,13 +116,13 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 81,
+  "generation": 86,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+    "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-14T01:40:55.101457Z",
+      "last_evidence_at": "2026-11-14T03:01:46.999870Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
@@ -210,9 +193,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+    "canonical_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
     "integrated": true,
-    "integrated_at": "2026-11-14T07:27:35+07:00"
+    "integrated_at": "2026-11-14T02:53:06.275356Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -249,14 +232,14 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+        "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-multi-attachments-implementation-20261114.md"
       ],
-      "next_action": "On aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2, complete authenticated image preview/removal/upload/queued vision send/restored-history UAT across desktop, tablet and mobile. Then design bounded document-byte credit reservation before implementing text/Markdown/CSV/JSON attachments. Keep SPEC-312 acceptance partial.",
-      "rationale": "Image attachment preview, authenticated private upload, queue-based multimodal delivery, image-capable Auto filtering and history read path are implemented and deployed to the authorized modular-debian-dev target. Exact-SHA package checks/builds and runtime health/asset smoke passed. Authenticated browser/provider UAT remains unobserved, and document attachments remain unimplemented until credit reservation includes bounded document payload cost.",
+      "next_action": "Complete authenticated browser UAT on aimarkethubs.com release modular-debian-dev-063b50e0482b6833cf47d5225999c98e78b2c239-multi-attachments. Verify multi-select/additive batches of 10 mixed image/text files, thumbnails and full-screen Lightbox, send/history/retry, credit reservation/debit, validation boundaries, cross-scope denial, and desktop/tablet/mobile. Keep SPEC-312 acceptance partial until observed.",
+      "rationale": "Section 10 implementation for compact thumbnails, Lightbox, multi-file image/text attachment upload, private authenticated storage/history, queued multimodal delivery, enabled image-model gating and bounded attachment-byte credit reservation is integrated and deployed to the authorized modular-debian-dev target. Exact-SHA typechecks/builds and public runtime/static-asset checks passed. Authenticated browser interaction/provider/credit UAT remains unobserved.",
       "residual_requirements": [
-        "Authenticated image preview/removal/upload/vision response/history/retry and responsive UAT on exact deployed SHA",
-        "Text, Markdown, CSV and JSON attachment flow after safe bounded document-byte credit reserve/settlement design",
-        "Authenticated release acceptance for existing Chat workspace, models, queue response, history and credit behavior",
+        "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
+        "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
+        "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
         "Queue/DO delivery, duplicate, contention and restart proof",
         "Cloud Execution status must be live or presented neutrally",
         "Matched Legacy/Core performance benchmark before making speed claims"
@@ -291,6 +274,32 @@
       "updated_at": "2026-11-01T07:18:24.333629Z"
     },
     "requirements": {
+      "R1.16": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L13"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L13",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "requirement_digest": "350c0ec01eabbb8e893a001e0ff110f1e74293889c467237c850e46d8d84e61b",
+        "requirement_id": "R1.16",
+        "requirement_text": "> **Current-revision note (R1.16, 2026-11-14):** Earlier R0.x–R1.15 proposal text is retained for provenance. R1.16 adds authenticated, workspace-scoped image/document uploads, compact image thumbnails with full-screen Lightbox viewing, private object storage and queued multimodal delivery; selection supports at least 10 files per turn, and Auto selection must use only models whose live OpenRouter metadata confirms image input. R1.15 requires the Astryx theme menu to keep every option inside the visible viewport, opening above a lower-right desktop control and flipping when available space requires it. R1.14 controls compact, usable mobile Chat layout and prevents toolbar/model/theme controls from displacing or covering the conversation and composer. R1.13 controls complete Thai/English locale propagation across the Chat module and its host shell; R1.12 controls the pinned Chat sidebar account/language footer and real Astryx theme switching; R1.11 controls switchable and collapsible Chat left-panel navigation/history; R1.10 controls the Chat workspace UI and truthful attachment affordances; R1.9 controls enabled paid-model Chat and shared credit settlement; R1.8 controls durable Chat queue behavior; R1.7 controls default personal Chat workspace behavior; R1.6 controls shared database, environment and development-path boundaries. The [current owner-decision register](../../../docs/architecture/R1.5-OWNER-DECISION-PRECEDENCE.md) controls unrelated conflicts.",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
       "R1.7": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -317,6 +326,32 @@
           "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+      },
+      "REQ-0B8B78CD3837": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L300"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L300",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "requirement_digest": "e9178bd49e04dbf230cee6cdbf8da2ec699d884b05f41b9341a30019165759ac",
+        "requirement_id": "REQ-0B8B78CD3837",
+        "requirement_text": "- Chat SHALL show each selected image as a compact thumbnail with filename, size and remove action; selecting or attaching an image SHALL NOT render it at intrinsic/full-screen size. Clicking a thumbnail SHALL open a full-screen Lightbox with gallery navigation. Preview object URLs SHALL be released when an attachment is removed, sent or the composer unmounts.",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
       "REQ-0BF02EAE0CE5": {
         "applicability": "APPLICABLE",
@@ -433,6 +468,58 @@
           "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md"
         ],
         "verification_method": "Focused test selects all seven choices and verifies active Astryx theme and persistence; deployed JS/CSS byte-match the release artifact and expose all seven theme options/scopes. Reload and visual UAT remains open."
+      },
+      "REQ-11B24C33E3EC": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L307"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L307",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "requirement_digest": "db81346b1857e2acd82c21d341e842b463dda2f8d500ffa96c4693da09010306",
+        "requirement_id": "REQ-11B24C33E3EC",
+        "requirement_text": "- Acceptance SHALL cover immediate compact thumbnails, full-screen Lightbox/gallery navigation, removal, individual and multi-select batches of at least 10 files, supported and rejected types, file-size/count boundaries, authenticated upload/history reads, cross-scope denial, successful queued image/document response, replay/redelivery, image-capable Auto filtering, explicit text-only model rejection, attachment-aware credit reservation/settlement and responsive composer behavior. Upload/provider failures SHALL preserve user input; upload acknowledgement alone SHALL NOT be presented as a successful AI response.",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-2140E5BE408F": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L304"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L304",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "requirement_digest": "6e72187fdebebce11ddcd3ac018aa604295f3c593e6572d68733c2f55989b7aa",
+        "requirement_id": "REQ-2140E5BE408F",
+        "requirement_text": "- Chat turns SHALL still enter the canonical `worker_jobs` + outbox + Cloudflare Queue pipeline. The worker SHALL load attachment bytes from private object storage only after a valid job claim and send text/image content to OpenRouter in a provider-compatible format. Before provider execution, credit reservation SHALL include a bounded conservative allowance for all attached bytes; final charges SHALL settle against measured provider usage on the existing worker path.",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
       "REQ-248CA98C0DEA": {
         "applicability": "APPLICABLE",
@@ -1274,28 +1361,20 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
-          "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
-          "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
-          "smartaihub-platform/modules/chat/src/ui/api.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/chatService.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/chatQueueRuntime.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/enabledChatCatalog.ts",
-          "smartaihub-platform/apps/saas-core/wrangler.jsonc",
-          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Complete authenticated image preview/removal/upload/queued vision send/restored history UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Keep text/Markdown/CSV/JSON attachments disabled until bounded document-byte credit reservation and settlement are designed and verified; then complete the R1.16 boundary/replay/responsive acceptance.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
         "requirement_digest": "0aff6e45de86d32df157610456233ef4e95f4bc657a1cfebdab8feabf0e48998",
         "requirement_id": "REQ-A8FF57BBE1D1",
         "requirement_text": "- A turn SHALL reference only attachments successfully uploaded under its caller/workspace. Attachment references SHALL be persisted with the user message/job, retained across Queue retries and replay, and available in history through authenticated reads. Failed upload or enqueue SHALL preserve the draft and selected attachments and SHALL NOT silently drop them.",
-        "source_spec_digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
@@ -1452,6 +1531,32 @@
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
+      "REQ-BDF9B9185DFB": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L301"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L301",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
+        "requirement_digest": "c03dce96ee9a00472a59f0a339656c9e90632d5fc198f1afb649575cc46a3c7b",
+        "requirement_id": "REQ-BDF9B9185DFB",
+        "requirement_text": "- Chat SHALL accept at least 10 image/document attachments per turn, selected individually or together in multi-select batches, within a 10 MiB aggregate limit. Supported image types are JPEG, PNG and WebP (4 MiB each); supported text documents include plain text, Markdown, CSV and JSON (1 MiB each). The server SHALL validate media type, image file signatures, byte limits and normalized filename; unsupported types SHALL be rejected with localized actionable copy.",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
       "REQ-C444B27F6E69": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1548,28 +1653,20 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+        "evidence_sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "smartaihub-platform/modules/chat/src/ui/Composer.tsx",
-          "smartaihub-platform/modules/chat/src/ui/ChatWorkspace.tsx",
-          "smartaihub-platform/modules/chat/src/ui/MessageTimeline.tsx",
-          "smartaihub-platform/modules/chat/src/ui/api.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/chatService.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/chatQueueRuntime.ts",
-          "smartaihub-platform/apps/saas-core/src/chat/enabledChatCatalog.ts",
-          "smartaihub-platform/apps/saas-core/wrangler.jsonc",
-          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+          "smartaihub-platform main 063b50e0482b6833cf47d5225999c98e78b2c239; see handoff/evidence/chat-multi-attachments-implementation-20261114.md"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Complete authenticated image preview/removal/upload/queued vision send/restored history UAT on aimarkethubs.com release 36134d0bd35eaa2997b76c7e301c7855150aa2b2. Keep text/Markdown/CSV/JSON attachments disabled until bounded document-byte credit reservation and settlement are designed and verified; then complete the R1.16 boundary/replay/responsive acceptance.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete authenticated UAT on aimarkethubs.com exact deployment: mixed/additive 10-file selection, thumbnail/Lightbox, upload/send/history/retry, credit reserve/debit, validation and cross-scope denial at desktop/tablet/mobile; do not mark PASS before evidence.",
         "requirement_digest": "313ac3607f7bde459692f29d20fc9d35257378196c6f36b7e141730dfb5abd7c",
         "requirement_id": "REQ-C9F5DE94046C",
         "requirement_text": "- Explicit and Auto model selection SHALL reject or exclude models unless live provider catalog metadata confirms image input for image turns. Text-only turns SHALL retain current model behavior. An unavailable vision model SHALL produce an actionable localized error and preserve the draft/attachments.",
-        "source_spec_digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "source_spec_digest": "1dec55ac1d282d92e0ae5cf1e3b2c22c19d0f61e77859b6bce6785cdd5a950b9",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
+          "Chat/Core TypeScript checks, independent module builds, exact-SHA canonical build and unauthenticated public health/asset delivery checks passed; authenticated browser/provider/credit UAT remains pending (same evidence file)."
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
@@ -1796,10 +1893,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-14T01:40:55.101457Z",
+    "reconciled_at": "2026-11-14T03:01:46.999870Z",
     "sources": [
       {
-        "digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -1819,22 +1916,22 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "16e085f0d88910ee296296f8e388f54020c20843a6f2db29a2940713a8aa5618",
+        "digest": "0a3a878f17c42c7d521f9a68880d149806dcff2354eb6d11a611975eb873398c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
       },
       {
-        "digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
       },
       {
-        "digest": "943c8fae37f20168fe0ac662fbb32550f7532779d838ad095eb4101686583f72",
+        "digest": "f682c39ff38c318bbe9b5eba6789b2cb97798897013b8848102675d2e9a5b08d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "c5c931235aad39fead59ef3f6244dc5e9498097dd0a4c13375a71f7488f36ead",
+        "digest": "2421b744ec2039fb301e1af4a5d5f6a1250d69e78e78d6a2979a332b1a0d4ab0",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -1884,7 +1981,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "f125b85775e3395f481781d16c951be3e0789e1bbc075f31a30d88f1fd530920",
+        "digest": "ccecfbfa923bb53995c6c84d63fa8086d9cb11f2f5e7d2516242b0607f6b04e5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
       },
@@ -1899,7 +1996,7 @@
         "line": null,
         "section": "section-01-environment-database-boundary",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1913,7 +2010,7 @@
         "line": null,
         "section": "section-02-password-mfa-compatibility",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1927,7 +2024,7 @@
         "line": null,
         "section": "section-03-session-membership-routes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1941,7 +2038,7 @@
         "line": null,
         "section": "section-04-worker-proof-and-handoff",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1955,7 +2052,7 @@
         "line": null,
         "section": "section-05-chat-canonical-job-and-queue-admission",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1969,7 +2066,7 @@
         "line": null,
         "section": "section-06-provider-admission-and-queue-consumer",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1983,7 +2080,7 @@
         "line": null,
         "section": "section-07-chat-job-status-ui-and-runtime-proof",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -1997,7 +2094,7 @@
         "line": null,
         "section": "section-08-chat-sidebar-tabs-and-collapse",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2011,7 +2108,7 @@
         "line": null,
         "section": "section-09-sidebar-footer-language-and-astryx-themes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2020,13 +2117,13 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-10-authenticated-chat-attachments: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-10-authenticated-chat-attachments: checkpointed; commit_hash=missing",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": null,
         "section": "section-10-authenticated-chat-attachments",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
-        "value": "in_progress"
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -2036,7 +2133,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "source_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -2070,7 +2167,7 @@
         "line": null,
         "section": "section-01-environment-database-boundary",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2083,7 +2180,7 @@
         "line": null,
         "section": "section-02-password-mfa-compatibility",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2096,7 +2193,7 @@
         "line": null,
         "section": "section-03-session-membership-routes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2109,7 +2206,7 @@
         "line": null,
         "section": "section-04-worker-proof-and-handoff",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2122,7 +2219,7 @@
         "line": null,
         "section": "section-05-chat-canonical-job-and-queue-admission",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2135,7 +2232,7 @@
         "line": null,
         "section": "section-06-provider-admission-and-queue-consumer",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2148,7 +2245,7 @@
         "line": null,
         "section": "section-07-chat-job-status-ui-and-runtime-proof",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2161,7 +2258,7 @@
         "line": null,
         "section": "section-08-chat-sidebar-tabs-and-collapse",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2174,7 +2271,7 @@
         "line": null,
         "section": "section-09-sidebar-footer-language-and-astryx-themes",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "value": "checkpointed"
       },
       {
@@ -2183,12 +2280,12 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.section-10-authenticated-chat-attachments: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.section-10-authenticated-chat-attachments: checkpointed; commit_hash=missing",
         "line": null,
         "section": "section-10-authenticated-chat-attachments",
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json",
-        "source_digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
-        "value": "in_progress"
+        "source_digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -2197,14 +2294,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "source_digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "4a73b8c60ce55f2cfd9626e3ec814b3e5287fecb2d6f2ee853cc28bc041c9236",
+        "digest": "219d8f34bd7772162c1601f9473b35c03b06c050ae28f5fd6a73b03ce7954835",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2224,22 +2321,22 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "16e085f0d88910ee296296f8e388f54020c20843a6f2db29a2940713a8aa5618",
+        "digest": "0a3a878f17c42c7d521f9a68880d149806dcff2354eb6d11a611975eb873398c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/HANDOFF.md"
       },
       {
-        "digest": "30cc92c3c26d3f230d5591711aacc3c76dada9d45cede3ee6cba41bf7635f0f8",
+        "digest": "a1a841e1e7205512c6a10923d4963a161d9529fccbf48cc1026d99b0c7dc0347",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/deep_implement_config.json"
       },
       {
-        "digest": "943c8fae37f20168fe0ac662fbb32550f7532779d838ad095eb4101686583f72",
+        "digest": "f682c39ff38c318bbe9b5eba6789b2cb97798897013b8848102675d2e9a5b08d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/implementation/handoff_history.jsonl"
       },
       {
-        "digest": "c5c931235aad39fead59ef3f6244dc5e9498097dd0a4c13375a71f7488f36ead",
+        "digest": "2421b744ec2039fb301e1af4a5d5f6a1250d69e78e78d6a2979a332b1a0d4ab0",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/index.md"
       },
@@ -2289,7 +2386,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "f125b85775e3395f481781d16c951be3e0789e1bbc075f31a30d88f1fd530920",
+        "digest": "ccecfbfa923bb53995c6c84d63fa8086d9cb11f2f5e7d2516242b0607f6b04e5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
       }
@@ -2300,7 +2397,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 49,
+    "applicable": 45,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
@@ -2309,32 +2406,17 @@
     "unresolved": 80
   },
   "schema_version": 1,
-  "updated_at": "2026-11-14T01:43:27.416139Z",
+  "updated_at": "2026-11-14T03:01:46.999870Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "handoff/evidence/chat-sidebar-footer-language-astryx-themes-release-20261112.md",
-      "handoff/evidence/chat-thai-english-locale-propagation-release-20261113.md",
-      "handoff/evidence/modular-chat-functional-send-rollout-20261111.md",
-      "handoff/evidence/modular-chat-provider-admission-tests-20261111.md",
-      "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md",
-      "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-mobile-responsive-layout-release-20261113.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/current-source-proof-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/final-10-gap-review-passes-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-default-workspace-deployment-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-entry-responsive-deployment-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/modular-chat-membership-state-20261111.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/r1.6-source-and-readonly-schema-audit-20261109.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/remaining-gap-closure-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/section-03-and-04-proof-20261110.md",
-      "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/theme-menu-viewport-fit-release-20261114.md"
+      "TypeScript checks: @smartaihub/chat and @smartaihub/saas-core",
+      "Independent package builds: @smartaihub/chat and @smartaihub/saas-core",
+      "Exact-SHA canonical build and public asset checks recorded in handoff/evidence/chat-multi-attachments-implementation-20261114.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
+    "sha": "063b50e0482b6833cf47d5225999c98e78b2c239",
     "status": "PARTIAL",
     "task_regressions": []
   }
