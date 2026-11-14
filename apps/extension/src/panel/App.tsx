@@ -2518,6 +2518,16 @@ export default function App() {
   function applyProductForReview(nextProduct: ProductCapturePayload) {
     nextProduct = withoutRelatedProductImages(enrichProductWithMatchedCandidate(nextProduct, candidates));
     productSourceRef.current = nextProduct.sourceUrl;
+    // Product briefs and storytelling handoffs contain product-specific copy
+    // and selected image URLs. Never carry them over when reviewing a new
+    // capture; otherwise upload can attach the previous product's insight.
+    setSanitizedAIInput(null);
+    setProductBrief(null);
+    setVideoBrief(null);
+    setStorytellingHandoff(null);
+    setUserInsightDraft(null);
+    setAskResult(null);
+    setLocalAIState("idle");
     setReviewDraftStatus("");
     setProduct(nextProduct);
     setLiveProduct(nextProduct);
@@ -3534,6 +3544,20 @@ export default function App() {
     if (commissionRateInvalid) throw new Error("Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100");
     if (affiliateUrlInvalid) throw new Error("Affiliate link ต้องเป็น URL แบบ http(s)");
     const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
+    const currentSelectedImageUrls = Array.from(new Set(reviewedProduct.imageCandidates
+      .filter((image) => image.selected && image.kind !== "related")
+      .map((image) => image.url)))
+      .sort();
+    const insightSelectedImageUrls = [...(sanitizedAIInput?.product.selectedImageUrls ?? [])].sort();
+    const insightHeroImageUrl = storytellingHandoff?.selectedImages.find((image) => image.role === "hero")?.url;
+    const insightMatchesCurrentProduct = Boolean(
+      sanitizedAIInput && productBrief &&
+      normalizedUrlKey(sanitizedAIInput.sourceUrl) === normalizedUrlKey(reviewedProduct.sourceUrl) &&
+      compactIdentityText(sanitizedAIInput.product.title) === compactIdentityText(reviewedProduct.productName || reviewedProduct.pageTitle) &&
+      insightHeroImageUrl === heroImageUrl &&
+      currentSelectedImageUrls.length === insightSelectedImageUrls.length &&
+      currentSelectedImageUrls.every((url, index) => url === insightSelectedImageUrls[index])
+    );
     const selected = reviewedProduct.imageCandidates.filter((img) => img.selected).map((img, position) => ({ ...img, position, selected: true }));
     const insightPreviewLines = productBrief ? [
       "",
@@ -3599,7 +3623,7 @@ export default function App() {
     if (!draft.ok) throw new Error(await draft.text());
     const draftJson = await draft.json();
     const captureId = typeof draftJson.captureId === "string" ? draftJson.captureId : "";
-    if (captureId && productBrief && sanitizedAIInput) {
+    if (captureId && insightMatchesCurrentProduct && productBrief && sanitizedAIInput) {
       try {
         setStatus("Syncing AI insights to capture");
         const linkedSource = await sanitizeCaptureForLocalAI(reviewedProduct, captureId);
