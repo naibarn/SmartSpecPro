@@ -27,6 +27,7 @@ suite("Modular Chat queue database contract", () => {
       expect(provider).toBeDefined();
       await client.query("BEGIN");
       await client.query(readFileSync(new URL("./0427_modular_chat_queue_sql_fix.sql", import.meta.url), "utf8"));
+      await client.query(readFileSync(new URL("./0437_modular_chat_job_event_replay.sql", import.meta.url), "utf8"));
       await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const input = [user.id, "modular-development", workspace.workspace_id, null, "Diagnostic request", provider.provider_id, "diagnostic/free", randomUUID()];
       const create = "SELECT * FROM public.create_modular_chat_turn_job($1,$2,$3,$4,$5,$6,$7,$8)";
@@ -54,10 +55,25 @@ suite("Modular Chat queue database contract", () => {
       const status = (await client.query("SELECT * FROM public.get_modular_chat_turn_job_status($1,$2,$3,$4)", [user.id, "modular-development", workspace.workspace_id, first.job_id])).rows[0];
       expect(status.job_status).toBe("succeeded");
       expect((await client.query("SELECT * FROM public.list_modular_chat_messages($1,$2,$3,$4)", [user.id, "modular-development", workspace.workspace_id, first.conversation_id])).rowCount).toBe(2);
+      const events = (await client.query(
+        "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,0,100)",
+        [user.id, "modular-development", workspace.workspace_id, first.job_id],
+      )).rows;
+      expect(events.length).toBeGreaterThanOrEqual(5);
+      expect(events.map((event) => event.event_sequence)).toEqual([...events.map((event) => event.event_sequence)].sort((a, b) => a - b));
+      expect(events.at(-1)?.event_type).toBe("SUCCEEDED");
+      expect(JSON.stringify(events)).not.toMatch(/dedupeKey|outboxId|fencingVersion|leaseExpiresAt/i);
+      expect((await client.query(
+        "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,$5,100)",
+        [user.id, "modular-development", workspace.workspace_id, first.job_id, events.at(-1)?.event_sequence],
+      )).rowCount).toBe(0);
       expect((await client.query("SELECT * FROM public.get_modular_chat_provider_config($1,$2,$3,$4,$5)", [user.id, "modular-development", workspace.workspace_id, provider.provider_id, "x".repeat(101)])).rowCount).toBe(0);
       await client.query("SAVEPOINT scope_check");
       try {
         await expect(client.query("SELECT * FROM public.get_modular_chat_provider_config($1,$2,$3,$4,$5)", [2147483647, "modular-development", workspace.workspace_id, provider.provider_id, "diagnostic/free"])).rejects.toMatchObject({ code: "42501" });
+        await client.query("ROLLBACK TO SAVEPOINT scope_check");
+        await client.query("SAVEPOINT event_scope_check");
+        await expect(client.query("SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,0,100)", [2147483647, "modular-development", workspace.workspace_id, first.job_id])).rejects.toMatchObject({ code: "42501" });
       } finally {
         await client.query("ROLLBACK TO SAVEPOINT scope_check");
       }

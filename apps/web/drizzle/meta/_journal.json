@@ -2962,6 +2962,13 @@
       "when": 1794484800015,
       "tag": "0436_modular_chat_attachment_credit_bounds",
       "breakpoints": true
+    },
+    {
+      "idx": 437,
+      "version": "7",
+      "when": 1794484800016,
+      "tag": "0437_modular_chat_job_event_replay",
+      "breakpoints": true
     }
   ]
 }
