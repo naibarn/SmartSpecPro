@@ -28,6 +28,7 @@ suite("Modular Chat queue database contract", () => {
       await client.query("BEGIN");
       await client.query(readFileSync(new URL("./0427_modular_chat_queue_sql_fix.sql", import.meta.url), "utf8"));
       await client.query(readFileSync(new URL("./0437_modular_chat_job_event_replay.sql", import.meta.url), "utf8"));
+      await client.query(readFileSync(new URL("./0438_modular_chat_conversation_execution_projection.sql", import.meta.url), "utf8"));
       await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const input = [user.id, "modular-development", workspace.workspace_id, null, "Diagnostic request", provider.provider_id, "diagnostic/free", randomUUID()];
       const create = "SELECT * FROM public.create_modular_chat_turn_job($1,$2,$3,$4,$5,$6,$7,$8)";
@@ -55,6 +56,13 @@ suite("Modular Chat queue database contract", () => {
       const status = (await client.query("SELECT * FROM public.get_modular_chat_turn_job_status($1,$2,$3,$4)", [user.id, "modular-development", workspace.workspace_id, first.job_id])).rows[0];
       expect(status.job_status).toBe("succeeded");
       expect((await client.query("SELECT * FROM public.list_modular_chat_messages($1,$2,$3,$4)", [user.id, "modular-development", workspace.workspace_id, first.conversation_id])).rowCount).toBe(2);
+      const execution = await client.query(
+        "SELECT * FROM public.list_modular_chat_conversation_execution($1,$2,$3,$4)",
+        [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
+      );
+      expect(execution.rows).toHaveLength(2);
+      expect(execution.rows[0]).toMatchObject({ job_id: first.job_id, job_status: "succeeded", event_cursor: expect.any(Number) });
+      expect(execution.rows[0].attempt_id).toEqual(expect.any(String));
       const events = (await client.query(
         "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,0,100)",
         [user.id, "modular-development", workspace.workspace_id, first.job_id],
@@ -63,6 +71,10 @@ suite("Modular Chat queue database contract", () => {
       expect(events.map((event) => event.event_sequence)).toEqual([...events.map((event) => event.event_sequence)].sort((a, b) => a - b));
       expect(events.at(-1)?.event_type).toBe("SUCCEEDED");
       expect(JSON.stringify(events)).not.toMatch(/dedupeKey|outboxId|fencingVersion|leaseExpiresAt/i);
+      await expect(client.query(
+        "SELECT * FROM public.list_modular_chat_conversation_execution($1,$2,$3,$4)",
+        [2147483647, "modular-development", workspace.workspace_id, first.conversation_id],
+      )).rejects.toMatchObject({ code: "42501" });
       expect((await client.query(
         "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,$5,100)",
         [user.id, "modular-development", workspace.workspace_id, first.job_id, events.at(-1)?.event_sequence],
