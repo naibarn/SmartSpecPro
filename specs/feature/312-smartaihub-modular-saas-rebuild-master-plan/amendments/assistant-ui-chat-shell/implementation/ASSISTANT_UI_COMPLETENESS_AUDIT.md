@@ -4,7 +4,7 @@
 **Scope:** SPEC-312 R1.18 assistant-ui Chat Shell, all eight audit areas.
 **DEV target:** `https://aimarkethubs.com/chat` / `modular-debian-dev`.
 **Platform audited and deployed:** `smartaihub-platform@ad04c244c3996cc81220d7efae0f0c536dd07f4b` (integrated `origin/main` and released to the authorized modular Debian DEV target).
-**SPEC checkout:** SmartSpecPro `07542eeba2ce72f4c76012ad33931e0f9c687606` before this report is integrated.
+**SPEC audit integration:** SmartSpecPro `be9cb547cbe29dbd9760ebaf16d28b9cb63abc70` (audit, traceability, release evidence and handoff first integrated; this revision records the SPEC-side checkpoint).
 **Overall recommendation:** keep R1.18 and parent SPEC-312 open. Basic queued Chat path and presentation foundation exist, but the full eight-area assistant-ui integration is not accepted: authenticated browser UAT is unavailable and multiple target features lack canonical Core contracts.
 
 ## Executive summary
