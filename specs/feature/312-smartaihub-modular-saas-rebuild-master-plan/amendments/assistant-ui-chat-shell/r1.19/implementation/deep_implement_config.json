@@ -1,0 +1,74 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-persisted-events",
+    "section-02-sse-replay-and-job-correlation",
+    "section-03-private-artifacts",
+    "section-04-inspector-task-and-mission-links",
+    "section-05-assistant-ui-responsive-integration",
+    "section-06-spec-dev-release-and-uat-handoff"
+  ],
+  "sections_state": {
+    "section-01-contracts-and-persisted-events": {
+      "status": "checkpointed",
+      "next_action": "Reconcile migration 0437 ledger/receipt using the registered migration authority and review SECURITY DEFINER function owner with a least-privilege migration role; do not rerun DDL because the target function exists.",
+      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+    },
+    "section-02-sse-replay-and-job-correlation": {
+      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "status": "checkpointed",
+      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "next_action": "Run authenticated same-browser refresh/reconnect and no-duplicate-job UAT for deployed SHA e2f78ef6af0162736ff0fb28159f6ff9ef38813c."
+    },
+    "section-03-private-artifacts": {
+      "status": "in_progress",
+      "next_action": "Inspect canonical worker_artifacts schema and storage APIs available in Core, confirm tenant/thread/run/job ownership contracts. Implement only if the authoritative private storage contract exists; otherwise document the exact missing owner/API and keep artifacts disabled."
+    },
+    "section-04-inspector-task-and-mission-links": {
+      "status": "in_progress",
+      "next_action": "Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state."
+    },
+    "section-05-assistant-ui-responsive-integration": {
+      "status": "checkpointed",
+      "next_action": "Run authorized authenticated browser UAT at 1440x900, 820x1180 and 390x844 on aimarkethubs.com; package tests/typecheck/build and deployment smoke are complete.",
+      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+    },
+    "section-06-spec-dev-release-and-uat-handoff": {
+      "status": "checkpointed",
+      "next_action": "Continue independent work: implement private Chat artifact producer/retrieval only on canonical storage/job authority; inspect SPEC-294 Task/Mission APIs for minimal adapters. In parallel, request normal MFA-authenticated browser UAT and use registered migration authority for 0437 ledger/function-owner reconciliation; deployment is already verified for e2f78ef.",
+      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-15T01:14:31.558391+00:00",
+  "generation": 20,
+  "updated_at": "2026-11-15T02:18:29.554351+00:00",
+  "progress": {
+    "active_section": "section-04-inspector-task-and-mission-links",
+    "next_action": "Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state.",
+    "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+    "gaps": [
+      "Authenticated MFA browser UAT is not available; real Chat send/replay and responsive rendered acceptance remains blocked.",
+      "Read-only target catalog confirms the replay SECURITY DEFINER function is owned by superuser; registered migration authority must review least-privilege ownership.",
+      "No complete canonical private Chat artifact producer/retrieval path; capability remains disabled.",
+      "Task Control and Mission Control APIs/adapters are not verified in Modular Core; SPEC-294 remains authoritative.",
+      "Chat entry bundle is 521.70 kB (131.42 kB gzip), above Vite advisory threshold; profile/split before performance claim."
+    ]
+  }
+}

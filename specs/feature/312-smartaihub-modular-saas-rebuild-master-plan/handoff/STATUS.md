@@ -4,13 +4,13 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 82 unresolved of 83
-- Next action: Retry authenticated 2.6 MB PNG upload/send on release 10f83cd1ee5cb8f7305b45bfbc88959614b583ec, then inspect queued reply/history. Keep all remaining image/document, credit, isolation and responsive acceptance open until observed.
-- Manifest generation: 97
+- Requirements: 0 pass / 92 unresolved of 93
+- Next action: Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: advance the independently implementable private artifact contract and inspect SPEC-294 APIs. In parallel, run authenticated UAT with a normal authorized MFA session and reconcile migration 0437 ledger/function ownership through the registered migration authority. Deployment is already complete and verified; do not repeat it without source changes.
+- Manifest generation: 108
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
 - Status claim: `PARTIALLY_IMPLEMENTED` — `specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#7`
-- Deep-implement section claims (10): CHECKPOINTED: 10
+- Deep-implement section claims (22): CHECKPOINTED: 20, IN_PROGRESS: 2

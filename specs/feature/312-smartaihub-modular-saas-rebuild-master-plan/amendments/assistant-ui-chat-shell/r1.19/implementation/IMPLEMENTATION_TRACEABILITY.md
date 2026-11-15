@@ -1,0 +1,32 @@
+# R1.19 Implementation Traceability
+
+**Assessment:** PARTIAL · **Updated:** 2026-11-15 · **Source/deployed SHA:** `smartaihub-platform@e2f78ef6af0162736ff0fb28159f6ff9ef38813c`
+
+| Requirement | Authority | Source/API | Verification | DEV evidence | Status |
+| --- | --- | --- | --- | --- | --- |
+| R1.19-1 Persisted versioned events, correlation, ordering, authorization and retention | SPEC-312 R1.19; `worker_jobs`/outbox + `worker_job_events` | SmartSpecPro migration `apps/web/drizzle/0437_modular_chat_job_event_replay.sql`; Core `chatRepository.ts`; `list_modular_chat_job_events` | Core unit tests 119/119; Chat tests 46/46; Core/Chat typechecks; DEV catalog confirms jobs/events tables and replay function; ACL denies PUBLIC/prod and grants dev auth | Deployed target `smartspec`; direct Drizzle ledger read denied to Core role; SQL integration suite not run | PARTIAL — schema is present and route is deployed; migration ledger/receipt and authenticated event execution need verification; function owner is superuser |
+| R1.19-2 Authenticated replayable SSE and reconnect without redispatch | SPEC-312 R1.19; canonical Chat job status API | Core `GET /v1/core/chat/turns/:jobId/events`; Chat authenticated proxy; `modules/chat/src/ui/api.ts` | Unit tests cover replay sequence, cursor resume, duplicate rejection, polling fallback, one enqueue and refresh restore without redispatch; Core/Chat suites pass | Exact SHA `e2f78ef6af0162736ff0fb28159f6ff9ef38813c` deployed; local/public health and manifests pass | PARTIAL — deployed smoke passes; authenticated real turn/reconnect UAT not observed |
+| R1.19-3 Safe private output artifact registration/retrieval/preview | SPEC-312 R1.19; existing `worker_artifacts` is metadata owned by canonical jobs | No complete Modular Chat output producer or authenticated private retrieval path found; capability stays `false` | Existing tests assert artifacts are disabled; no upload/download/ownership/rendering contract tests for Chat outputs | None | MISSING |
+| R1.19-4 Truthful Inspector with canonical runtime facts and refresh/reconnect restoration | SPEC-312 R1.19; existing Core Chat status/history APIs | Chat Inspector uses actual workspace/thread/model and live event job/attempt/status; same-browser refresh restores a known active job via authorized status + event read; no authoritative Project/Session/Agent/Harness/Run/Executor/artifact read model | Chat workspace/API tests 46/46, including restore/no-redispatch test | Deployed exact SHA; authenticated browser observation remains blocked | PARTIAL |
+| R1.19-5 Task Control / Mission Control navigation and shared execution state | SPEC-294 owns Task Control and Mission Control; SPEC-312 forbids duplicate authority | No verified Modular Core Task/Mission routes in target source; preserve links only where canonical contract exists | No cross-surface integration tests in this implementation | None | BLOCKED — authoritative modular APIs/adapters are a dependency |
+| R1.19-6 Responsive Assistant UI and interactions | SPEC-312 R1.18/R1.19 | `modules/chat/src/ui/ChatWorkspace.tsx`, styles, locale and assistant-ui adapter | Chat tests 46/46; typecheck; build and Wrangler dry-run; rendered browser layout not observed | Exact target deployed and public smoke passes; real authenticated desktop/tablet/mobile UAT blocked | PARTIAL |
+| R1.19-7 Tenant isolation, queue-first dispatch, provider admission and credit integrity | SPEC-312 R1.19 and existing queue/credit contracts | Existing Core authenticated route and canonical `worker_jobs`/outbox/Queue code unchanged by SSE path | Core 119/119; no fresh DB authorization integration or live queue/credit proof | None | PARTIAL |
+| R1.19-8 Requirement-to-test-to-release/UAT evidence | SPEC-312 R1.19 | This traceability, architecture audit, release evidence and deep-implement handoff | Focused package checks pass; release controller proves exact target/SHA and local/public smoke; authenticated browser session unavailable | Receipt: `/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json` | PARTIAL — deployment proved; authenticated UAT remains BLOCKED |
+
+## Executed checks
+
+- `pnpm test:chat` — PASS, 7 files / 46 tests.
+- `pnpm test:core` — PASS, 19 files / 119 tests.
+- `pnpm typecheck:chat` — PASS.
+- `pnpm --filter @smartaihub/saas-core typecheck` — PASS.
+- `pnpm build:chat` — PASS; Vite and Wrangler dry-run bindings target `modular-debian-dev`; emitted bundle warning: main JS chunk is 521.70 kB (131.42 kB gzip), above Vite's 500 kB advisory threshold.
+- `pnpm build:core` — PASS; Wrangler dry-run bindings include the development Queue and private attachment bucket, target `modular-debian-dev`.
+- `pnpm build:shell` — PASS; optimized shell chunks and Wrangler dry-run pass.
+- `python3 apps/web/scripts/modular_debian_dev_release.py --target modular-debian-dev ...` — PASS; local smoke: Core/Chat/Shell 200, unauthenticated Chat session 401, Chat manifest/entry 200; public smoke: root/login/Chat livez/Chat manifest 200 and unauthenticated Chat session 401.
+
+## Runtime limitations
+
+- DEV release exact SHA is `e2f78ef6af0162736ff0fb28159f6ff9ef38813c`, release `modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119`, deployed at `2026-11-15T02:04:03.583183Z`. Rollback references: previous service `smartspec-dev-web.service:3100`, prior tunnel config `/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/rollback/cloudflared.pre-modular.yml`, previous service drop-ins in that release's `rollback/systemd/`.
+- Target DB read-only catalog verification confirmed `smartspec`, dev auth role, replay function and required event/job tables; public execute is denied and dev auth execute granted. Function owner is a superuser. The Core runtime role is intentionally unable to read `drizzle.__drizzle_migrations`; therefore the Drizzle applied row/receipt was not verified and no claim that migration 0437 was newly applied is made. No DDL was run.
+- No approved authenticated browser session was available. Do not infer UAT from package tests, a public health check, or a Wrangler dry-run.
+- Current deployed release and rollback evidence are recorded in the exact receipt above; this does not replace authenticated browser acceptance.

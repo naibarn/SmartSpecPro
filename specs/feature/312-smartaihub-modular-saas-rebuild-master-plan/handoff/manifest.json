@@ -1,9 +1,10 @@
 {
   "acceptance": {
     "evidence": [
-      "handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md"
+      "Exact SHA e2f78ef6af0162736ff0fb28159f6ff9ef38813c deployed and controller public/local smoke passed.",
+      "Real authenticated Chat send/reconnect, attachment and responsive rendered UAT remain BLOCKED because no authorized MFA browser session is available; mocks/builds are not UAT."
     ],
-    "required": false,
+    "required": true,
     "status": "PARTIAL"
   },
   "authority": {
@@ -27,51 +28,78 @@
   "blockers": [
     {
       "class": "HUMAN_UAT_PENDING",
-      "description": "Authenticated rendered Chat acceptance has not been recorded on the current thumbnail-fix release. The compact-size CSS is verified in the deployed asset, but the signed-in browser must confirm thumbnail rendering and full uncropped square, portrait and landscape Lightbox images, plus the remaining attachment flow and responsive behavior.",
+      "description": "Authenticated rendered Chat acceptance has not been recorded. No authorized signed-in MFA browser session is available to this execution context; do not bypass MFA or treat mocks as UAT.",
       "id": "authenticated-chat-uat",
-      "next_action": "Open https://aimarkethubs.com/chat in the normal signed-in MFA session, hard reload release modular-debian-dev-fb3c66dd21938259a145e838f055b4a59b0abae0-small-attachment-preview, verify thumbnails are at most 48×48 CSS pixels and Lightbox displays full 1:1, 9:16 and 16:9 images without crop/stretch. Continue 10-file selection, upload/send/history/retry, credit, validation, scope and desktop/tablet/mobile checks. Record only observed results; do not include credentials.",
+      "next_action": "On the deployed e2f78ef release, sign in normally and verify queue send, SSE progress/reconnect without duplicate dispatch, history/attachments, Inspector state, and 1440x900, 820x1180 and 390x844; append observed evidence only.",
       "requirements": [
-        "REQ-8CA98A2980F0",
-        "REQ-E185061CC305",
-        "REQ-BDF9B9185DFB",
-        "REQ-A8FF57BBE1D1",
-        "REQ-2140E5BE408F",
-        "REQ-C9F5DE94046C",
-        "REQ-BA91299B7E6E",
-        "REQ-10502EC1FA83",
-        "REQ-63FAA80C0131",
-        "REQ-6D79BA4D5C04",
-        "REQ-B87850387915"
+        "REQ-3DBD001CE331",
+        "REQ-CF8D9FDC29C6"
+      ]
+    },
+    {
+      "class": "DEV_SCHEMA_LEDGER_UNVERIFIED",
+      "description": "Read-only catalog confirms worker_jobs, worker_job_events and list_modular_chat_job_events exist on dev DB smartspec with PUBLIC/prod execute denied and dev auth execute granted. Core runtime role cannot read drizzle.__drizzle_migrations; applied-ledger provenance and migration receipt are unverified. The replay SECURITY DEFINER function is superuser-owned. No DDL was run.",
+      "id": "migration-ledger-provenance",
+      "next_action": "Use the registered scoped migration authority to inspect the 0437 receipt and verify/repair function ownership with an appropriately scoped migration role; never rerun DDL merely because ledger access is denied.",
+      "requirements": [
+        "REQ-5938192860D3"
+      ]
+    },
+    {
+      "class": "CHAT_ARTIFACT_PATH_MISSING",
+      "description": "Core Chat artifact capability remains disabled; no canonical Chat output producer/private retrieval path is implemented.",
+      "id": "r119-artifacts-missing",
+      "next_action": "Implement producer-backed artifact registration and authorized private retrieval/preview/download on canonical storage/job contracts with ownership, content-type and expiry tests before enabling capability.",
+      "requirements": [
+        "REQ-8155A6E61FDE"
+      ]
+    },
+    {
+      "class": "SPEC_294_ADAPTERS_UNVERIFIED",
+      "description": "Task Control and Mission Control remain SPEC-294 authorities; no verified Modular Core APIs/adapters exist in this release.",
+      "id": "r119-task-mission-adapters",
+      "next_action": "Inspect SPEC-294 authority and implement only compatible API adapters and bidirectional navigation; no duplicate run/task/mission store or orchestrator.",
+      "requirements": [
+        "REQ-568F9668C877"
+      ]
+    },
+    {
+      "class": "CHAT_BUNDLE_PERFORMANCE_ADVISORY",
+      "description": "Chat production bundle main JS is 521.70 kB (131.42 kB gzip), over Vite default advisory threshold; no runtime performance regression is asserted.",
+      "id": "bundle-size-advisory",
+      "next_action": "Profile deployed module loading and create an accepted lazy-loading split or record evidence-based exemption before making performance claims.",
+      "requirements": [
+        "REQ-CF8D9FDC29C6"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
-    "expected_spec_digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a"
+    "expected_canonical_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+    "expected_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea"
   },
   "continuation": {
-    "next_action": "On the existing signed-in MFA session, hard reload https://aimarkethubs.com/chat after release 10f83cd1ee5cb8f7305b45bfbc88959614b583ec and retry the reported 2.6 MB PNG upload/send. Confirm upload reaches Core, queued assistant reply arrives, and history restores the attachment. If it fails, record the returned safe error code and error class with a narrow Chat/Core journal window. Then continue remaining image/document, credit, scope and responsive acceptance; keep partial until observed.",
-    "next_ready_workunit": "authenticated-2-6mb-image-upload-and-queued-chat-uat",
-    "reactivation_predicate": "Authenticated retry on current deployed 10f83cd1ee5cb8f7305b45bfbc88959614b583ec accepts the 2.6 MB PNG, returns an attachment ID, enqueues a Chat turn, yields a provider response and restores attachment history; then remaining R1.16 acceptance is completed.",
-    "resume_point": "2026-11-14: smartaihub-platform/main@10f83cd1ee5cb8f7305b45bfbc88959614b583ec deployed to aimarkethubs.com (modular-debian-dev). The prior 2.6 MB PNG upload returned Chat proxy HTTP 400 before a Core attachment request was observed. Tenant identity is now injected without cloning the original request body; the body is read once, and safe route/error-class diagnostics are emitted if that read fails. Typecheck, Chat build/Wrangler dry-run, exact-SHA Core/Shell/Chat builds and release-controller local/public smoke passed. Authenticated upload/send/history retry remains pending. Evidence: handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md. Keep smartaihub.app and production smartsihub.com untouched.",
-    "waiting_predicate": "Current exact-SHA release is healthy. Await authenticated browser retry of the reported 2.6 MB PNG upload/send on aimarkethubs.com; builds and health checks alone do not accept attachment behavior."
+    "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c with private artifacts and SPEC-294 API inspection; in parallel use registered migration authority for ledger/function-owner review and perform normal MFA-authenticated DEV UAT. The exact target is already deployed and healthy.",
+    "next_ready_workunit": "r119-private-artifacts-and-spec294-adapter-contracts",
+    "reactivation_predicate": "Resume independent Chat artifact and SPEC-294 adapter work immediately from smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c. Migration review awaits registered scoped authority; authenticated UAT awaits a normal authorized MFA browser session. No redeployment is needed until source changes.",
+    "resume_point": "2026-11-15: smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c is integrated and deployed to modular-debian-dev / aimarkethubs.com. Chat tests 46/46, Core tests 119/119, Chat/Core typecheck/build, shell build, local/public deployment smoke passed. Refresh restores an active job using status + persisted SSE cursor and does not enqueue another request. DEV DB catalog confirms event schema/function and scoped grants; Drizzle ledger is unreadable to runtime role, function is superuser-owned, and no DDL was run. Authenticated UAT remains blocked. Chat artifact producer/retrieval and SPEC-294 Task/Mission adapters remain open. See R1.19 implementation HANDOFF and r1.19-dev-release-20261115.md.",
+    "waiting_predicate": "Authenticated UAT waits only for an authorized MFA browser session; migration ledger/function ownership review waits only for registered migration authority. These blockers do not prevent independent artifact/API contract implementation."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md"
+      "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md",
+      "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md",
+      "/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json"
     ],
-    "next_action": "Retry authenticated 2.6 MB PNG upload/send on release 10f83cd1ee5cb8f7305b45bfbc88959614b583ec, then inspect queued reply/history. Keep all remaining image/document, credit, isolation and responsive acceptance open until observed.",
-    "rationale": "The correlated log showed Chat proxy HTTP 400 with no Core attachment request in the same window. The source fix avoids cloning the streamed request to inject tenant identity and logs only safe route/error-class diagnostics for any later bounded body-read failure. Build and deployment health are proven; authenticated upload/send remains unverified.",
+    "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: advance the independently implementable private artifact contract and inspect SPEC-294 APIs. In parallel, run authenticated UAT with a normal authorized MFA session and reconcile migration 0437 ledger/function ownership through the registered migration authority. Deployment is already complete and verified; do not repeat it without source changes.",
+    "rationale": "Exact source is integrated, focused tests/builds pass, and the release controller verified the target runtime on aimarkethubs.com. Final acceptance remains partial because real authenticated UAT, migration-ledger provenance/function owner review, private artifact flow, and SPEC-294 adapters are still open. Continue useful independent implementation.",
     "residual_requirements": [
-      "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
-      "Verify compact thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox ratios",
-      "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
-      "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
-      "Queue/DO delivery, duplicate, contention and restart proof",
-      "Cloud Execution status must be live or presented neutrally",
-      "Matched Legacy/Core performance benchmark before making speed claims"
+      "Run authenticated Chat send/replay/reconnect, history/attachments and responsive desktop/tablet/mobile UAT on deployed e2f78ef after a normal MFA login.",
+      "Use registered scoped DB migration authority to verify the 0437 applied receipt and review superuser ownership of list_modular_chat_job_events; runtime role ledger access is denied and no DDL was run.",
+      "Implement canonical private Chat output artifact registration/retrieval/rendering and security tests; keep capability disabled until then.",
+      "Inspect SPEC-294-authorized Task Control and Mission Control APIs; implement only thin adapters and cross-navigation when contracts exist.",
+      "Investigate 521.70 kB Chat JS bundle warning before making performance claims."
     ]
   },
   "dependencies": {
@@ -81,13 +109,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:a376ccda223167fae30e49c0c11a19d89bd401cfd7d683f04fa431063bd8e0a5",
-    "environment": "modular-debian-dev / aimarkethubs.com",
+    "artifact_digest": "sha256:3a8d2882a3094f889285edda69eff0db5c493014711ed5163cc3b3b724f9a464",
+    "environment": "modular-debian-dev / aimarkethubs.com; Debian systemd + local Workerd; database smartspec",
     "evidence": [
-      "handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md"
+      "release-manifest.json: /home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json",
+      "handoff/evidence/r1.19-chat-event-replay-source-checkpoint-20261115.md",
+      "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md"
     ],
     "required": true,
-    "source_sha": "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
+    "source_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
     "status": "PASS"
   },
   "disposition": {
@@ -106,18 +136,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 97,
+  "generation": 108,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a",
+    "digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-14T09:57:25.464263Z",
+      "last_evidence_at": "2026-11-15T02:14:23.018465Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.17",
+    "revision": "1.19",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -143,7 +173,11 @@
       "fb3c66dd21938259a145e838f055b4a59b0abae0",
       "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
       "f9efcbb5f8e174cfcc51b6f4f4ed5a906c79b7ec",
-      "10f83cd1ee5cb8f7305b45bfbc88959614b583ec"
+      "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
+      "8817c9d1b020353119ec5fc0e2c53bc5d4098911",
+      "62d3f51da7083d91bc8a1e02fcbeaaa863155407",
+      "09611d9ed04394a6c09ddfee5505d5773ad51f52",
+      "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
     ],
     "mapping": [],
     "source_paths": [
@@ -186,9 +220,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
+    "canonical_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
     "integrated": true,
-    "integrated_at": "2026-11-14T15:02:56+07:00"
+    "integrated_at": "2026-11-15T08:45:00+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -225,18 +259,18 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md"
+        "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md",
+        "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md",
+        "/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json"
       ],
-      "next_action": "Retry authenticated 2.6 MB PNG upload/send on release 10f83cd1ee5cb8f7305b45bfbc88959614b583ec, then inspect queued reply/history. Keep all remaining image/document, credit, isolation and responsive acceptance open until observed.",
-      "rationale": "The correlated log showed Chat proxy HTTP 400 with no Core attachment request in the same window. The source fix avoids cloning the streamed request to inject tenant identity and logs only safe route/error-class diagnostics for any later bounded body-read failure. Build and deployment health are proven; authenticated upload/send remains unverified.",
+      "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: advance the independently implementable private artifact contract and inspect SPEC-294 APIs. In parallel, run authenticated UAT with a normal authorized MFA session and reconcile migration 0437 ledger/function ownership through the registered migration authority. Deployment is already complete and verified; do not repeat it without source changes.",
+      "rationale": "Exact source is integrated, focused tests/builds pass, and the release controller verified the target runtime on aimarkethubs.com. Final acceptance remains partial because real authenticated UAT, migration-ledger provenance/function owner review, private artifact flow, and SPEC-294 adapters are still open. Continue useful independent implementation.",
       "residual_requirements": [
-        "Authenticated browser preview/removal/upload/queued image and text response/history/retry UAT on exact deployed source SHA",
-        "Verify compact thumbnail size and full uncropped 1:1, 9:16 and 16:9 Lightbox ratios",
-        "Validate 10-item mixed/additive selection, MIME/signature/count/size boundaries, cross-workspace denial and credit reserve/debit",
-        "Authenticated release acceptance for workspace, enabled models, queue response, history and credit behavior",
-        "Queue/DO delivery, duplicate, contention and restart proof",
-        "Cloud Execution status must be live or presented neutrally",
-        "Matched Legacy/Core performance benchmark before making speed claims"
+        "Run authenticated Chat send/replay/reconnect, history/attachments and responsive desktop/tablet/mobile UAT on deployed e2f78ef after a normal MFA login.",
+        "Use registered scoped DB migration authority to verify the 0437 applied receipt and review superuser ownership of list_modular_chat_job_events; runtime role ledger access is denied and no DDL was run.",
+        "Implement canonical private Chat output artifact registration/retrieval/rendering and security tests; keep capability disabled until then.",
+        "Inspect SPEC-294-authorized Task Control and Mission Control APIs; implement only thin adapters and cross-navigation when contracts exist.",
+        "Investigate 521.70 kB Chat JS bundle warning before making performance claims."
       ]
     },
     "disposition": {
@@ -321,6 +355,36 @@
           "handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md"
         ],
         "verification_method": "Chat scoped typecheck and build/Wrangler dry-run; exact-SHA Core/Shell/Chat builds; target-gated modular-debian-dev local/public smoke. Authenticated upload/send/history UAT is pending."
+      },
+      "R1.19": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L338"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L338",
+        "blocker": {
+          "class": "R1_19_IMPLEMENTATION_AND_UAT_OPEN",
+          "description": "Artifact, full Inspector restoration, Task/Mission adapters, exact-target release and authenticated rendered UAT remain open."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH_SOURCE_RUNTIME_PENDING",
+        "evidence_sha": "09611d9ed04394a6c09ddfee5505d5773ad51f52",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "R1.19 child spec and six-section deep implementation handoff",
+          "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Continue from the existing r1.19 section handoff; deploy only when the authorized modular-debian-dev host and migration authority are available.",
+        "requirement_digest": "7214df634cf655c59d94e1ca8ea1fea06cfe7d500e5b369fa27f169408b4bb59",
+        "requirement_id": "R1.19",
+        "requirement_text": "- R1.19 source checkpoint is `smartaihub-platform@09611d9ed04394a6c09ddfee5505d5773ad51f52`. Chat tests 45/45, Core tests 119/119, package typechecks and Core/Chat Wrangler dry-run builds pass. These results do not establish migration application, target deployment or authenticated browser UAT. The exact status and required follow-up are recorded in the R1.19 implementation traceability and handoff.",
+        "source_spec_digest": "f7d427d9c26a7acfdd97c3a89d4fd0f0d9cb8411e538f8a2ff5b022111e28573",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "handoff/evidence/r1.19-chat-event-replay-source-checkpoint-20261115.md"
+        ],
+        "verification_method": "Evaluate all eight acceptance areas against focused tests, exact target deployment evidence and authenticated UAT; do not infer completion from build or source integration."
       },
       "R1.7": {
         "applicability": "APPLICABLE",
@@ -778,6 +842,38 @@
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
       },
+      "REQ-3DBD001CE331": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L333"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L333",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "description": "No authorized MFA-authenticated browser session in the execution context.",
+          "next_action": "On deployed e2f78ef, test Chat send, persisted SSE replay after refresh, no duplicate dispatch, mobile/tablet/desktop layouts and attachments; record only observed behavior."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: SSE event replay, reconnect cursor and UI active-turn restore without re-enqueue.",
+          "Deployed exact SHA to modular-debian-dev / aimarkethubs.com; release controller local/public smoke passed."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Run real authenticated UAT on aimarkethubs.com when authorized MFA session is available.",
+        "requirement_digest": "c6cc686b68fc426b28a51b82228d36cb915996fb49756d2d49273b5ab8bdfb5e",
+        "requirement_id": "REQ-3DBD001CE331",
+        "requirement_text": "- The versioned `smartaihub.execution-event.v1` SSE envelope MAY expose only verified identifiers and safe allowlisted progress fields. Cursor replay must be ordered and idempotent; reconnect must not re-enqueue work; client disconnection must not cancel durable work. Polling remains a fallback. This is status/progress delivery, not model-token streaming.",
+        "source_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat 46/46 and Core 119/119; package typechecks/builds pass on e2f78ef6af0162736ff0fb28159f6ff9ef38813c.",
+          "Release receipt proves source-SHA parity and public/local smoke; real authenticated session not observed."
+        ],
+        "verification_method": "Chat tests/typecheck/build, Core tests/typecheck/build, Wrangler dry-run and exact-target release smoke; authorized authenticated browser UAT remains required."
+      },
       "REQ-46847581892C": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -896,6 +992,68 @@
           "handoff/evidence/section-08-chat-sidebar-tabs-and-collapse-20261112.md"
         ],
         "verification_method": "Focused Chat UI tests, typecheck, package build and exact-source development release smoke; authenticated visual UAT remains open."
+      },
+      "REQ-568F9668C877": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L337"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L337",
+        "blocker": {
+          "class": "SPEC_294_ADAPTERS_UNVERIFIED",
+          "description": "No verified Modular Core APIs/read models for Task Control or Mission Control in this release.",
+          "next_action": "Map SPEC-294 canonical endpoints, then add minimal compatible adapters/navigation only after those API contracts are confirmed."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "R1.19 source audit: Task Control and Mission Control routes/adapters not available in modular release; SPEC-294 remains authoritative."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Inspect SPEC-294 APIs and develop authority-compatible adapters without new orchestration.",
+        "requirement_digest": "406f9a0d887d55d80b938b06cc8dfd489df665a6ac5ad51dc8af52f079db161a",
+        "requirement_id": "REQ-568F9668C877",
+        "requirement_text": "- Task Control and Mission Control remain owned by SPEC-294. Chat SHALL consume their canonical relationships and navigation when the Modular Core APIs exist, but SHALL NOT introduce duplicate task/run/mission state or orchestration. Missing modular APIs are reported BLOCKED/PARTIAL.",
+        "source_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Current exact source and deployed Core routes contain no verified Task Control/Mission Control adapter; no integration tests exist."
+        ],
+        "verification_method": "Inspect SPEC-294 API ownership and verify adapters with cross-surface tests; do not duplicate execution stores."
+      },
+      "REQ-5938192860D3": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L332"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L332",
+        "blocker": {
+          "class": "DEV_SCHEMA_LEDGER_UNVERIFIED",
+          "description": "Schema and dev-only grants exist in target, but runtime role cannot read Drizzle ledger; SECURITY DEFINER replay function owner is superuser.",
+          "next_action": "Use registered migration authority to verify 0437 receipt and review function ownership/least privilege; do not rerun DDL."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: worker_job_events persistence, authorized replay API and grants via migration 0437; deployed in modular-debian-dev.",
+          "Read-only target catalog confirms worker_jobs, worker_job_events, replay function and dev-only EXECUTE grant; function owner is superuser; Drizzle migration ledger/receipt unreadable to Core runtime role."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Continue authenticated queue/event integration UAT after migration receipt and function-owner review.",
+        "requirement_digest": "a22eab22abf3081686e25d1433b9f3b1583d75eb489d0d6b887f5e906d817b08",
+        "requirement_id": "REQ-5938192860D3",
+        "requirement_text": "- The Chat progress contract SHALL reuse the canonical `worker_job_events` ledger and canonical `worker_jobs`/outbox/Queue execution. Per-job sequence allocation is serialized with the canonical job row; authenticated replay must validate account, environment tenant, workspace and job ownership before returning events. Do not create a parallel event store or expose outbox/lease/fencing secrets.",
+        "source_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat 46/46; Core 119/119; Chat/Core typechecks/builds pass on e2f78ef6af0162736ff0fb28159f6ff9ef38813c.",
+          "DEV target schema and grants verified read-only; no DDL run and migration ledger provenance remains unverified."
+        ],
+        "verification_method": "Chat/Core focused tests and typechecks; target DB catalog/grant verification; migration receipt reconciliation through registered DB authority remains required."
       },
       "REQ-5BEC18A71622": {
         "applicability": "APPLICABLE",
@@ -1220,6 +1378,36 @@
           "handoff/evidence/modular-chat-workspace-mockup-release-20261112.md"
         ],
         "verification_method": "Evidence is limited to exact-source implementation review, focused package checks and the recorded development release smoke; authenticated browser UAT is not inferred from health checks or static asset fetches."
+      },
+      "REQ-8155A6E61FDE": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L335"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L335",
+        "blocker": {
+          "class": "CANONICAL_CHAT_ARTIFACT_PRODUCER_MISSING",
+          "description": "No producer-backed authorized private output artifact path; capability is correctly disabled.",
+          "next_action": "Add producer registration + private get/preview/download against canonical job/storage and test tenant ownership, MIME handling, expiry before enablement."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "smartaihub-platform@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: artifact capability remains disabled until complete producer/private read path exists."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Implement complete private Chat artifact flow without exposing public URLs.",
+        "requirement_digest": "cd78d79896d7e3e7387cfbc79c17a59c6714a485f8c5c8c2914d6500e42ccbe9",
+        "requirement_id": "REQ-8155A6E61FDE",
+        "requirement_text": "- Artifact UI capability remains disabled until a canonical Chat output producer, authorized registration, private retrieval/download, safe content-type preview and ownership tests are all implemented. Existing `worker_artifacts` metadata alone is not sufficient. Unsupported artifacts must remain visibly unavailable, not return placeholder success.",
+        "source_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat/Core package suites pass; no private Chat artifact producer or retrieval route is present in release."
+        ],
+        "verification_method": "Inspect Core artifact routes/capabilities and ensure disabled-state regressions pass; producer/read ownership tests required before enabling."
       },
       "REQ-8CA98A2980F0": {
         "applicability": "UNASSESSED",
@@ -1718,6 +1906,38 @@
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
       },
+      "REQ-CF8D9FDC29C6": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L326"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L326",
+        "blocker": {
+          "class": "R1_19_ACCEPTANCE_PARTIAL",
+          "description": "Deployment and focused verification passed; authenticated UAT and artifact/Task/Mission gaps remain.",
+          "next_action": "Complete authorized browser UAT and remaining canonical integrations before accepting R1.19."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "R1.19 focused test/build and target deployment evidence: e2f78ef6af0162736ff0fb28159f6ff9ef38813c.",
+          "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep R1.19 and SPEC-312 open; continue the recorded next WorkUnit.",
+        "requirement_digest": "6471a277d8b04894a5f7395aaac910ffac0ae8f9d5affc3d942bfa415a24f8f6",
+        "requirement_id": "REQ-CF8D9FDC29C6",
+        "requirement_text": "- Acceptance SHALL verify exact package pin and React compatibility; adapter mapping and stable IDs; existing text and attachment turn flows, job polling/result/history, model selection and credit metadata; multi-thread switching; refresh/reconnect without duplicate job dispatch; failure/retry draft preservation; desktop/tablet/mobile layout; localization/themes; tenant authorization; Chat-only tests/typecheck/build and Worker dry-run; exact-target development release and authenticated UAT where session authority is available. True token streaming and unsupported Agent/Run/tool/artifact/cancel experiences remain separately open until implemented and proven.",
+        "source_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat 46/46; Core 119/119; Chat/Core typechecks/builds and shell build pass; exact modular-debian-dev smoke passes.",
+          "Authenticated browser UAT not run; artifact and Task/Mission requirements remain open."
+        ],
+        "verification_method": "Focused Chat/Core package checks and exact target deployment; authenticated UAT, artifact and Task/Mission integration acceptance remain open."
+      },
       "REQ-D17E7B43470B": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1967,12 +2187,202 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-14T09:57:25.464263Z",
+    "reconciled_at": "2026-11-15T02:14:23.018465Z",
     "sources": [
       {
-        "digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a",
+        "digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      },
+      {
+        "digest": "fea8b245d9932890e58a2f15fff9da15774f9dd3cfe10aabb961a6a807c90b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/claude-plan.md"
+      },
+      {
+        "digest": "555c6eaf36f8798dd387b03abc28169ae9a3e46ead43dfbd2ad51d579217b231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "f442b134656e326f19a377a27b024c76cb1e2ac027cbd8f4a997a5cfa5a275d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/ARCHITECTURE_AUDIT.md"
+      },
+      {
+        "digest": "91f54534570bf753a0fc40632117467fa7e0675fffae40e0cec03ee8f302f3af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/ASSISTANT_UI_COMPLETENESS_AUDIT.md"
+      },
+      {
+        "digest": "e80b6f3d49a8bca8c5130d174ef8b1b8772768a8a94da4e243fe28a8dea6d90b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "646e71a6253529f65164687dbfe9d9485e5a33a71760493b02223ecbb87c851d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d5675de26fd96c971a1bd6a1711c8eb982073af551cb8620efad09b8ab3258d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/authenticated-uat-20261115.md"
+      },
+      {
+        "digest": "36a91366a00938ae3fffd0f0370e92f5293f9fbfef138fbdd93fff29869e612e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/chat-manifest-authority-checks-20261115.md"
+      },
+      {
+        "digest": "1afe707863318ed67dfb1a7e79f9adf28cc2e313465e357853a951890a339338",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/chat-shell-audit-checks-20261115.md"
+      },
+      {
+        "digest": "19d99cab67c4e55c46dc30b2e86bed4bb85d112bbf97c37c1147be348454052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-48708cc.md"
+      },
+      {
+        "digest": "d15ebb57c18057e7c093c42f83ebd53ef489f1cbc69333386613a6a651ec657c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-ad04c24.md"
+      },
+      {
+        "digest": "a96b7e196a6ab4d7cee178670eeea73382745ccd005978be3f996e7df9dd11dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-e31402e.md"
+      },
+      {
+        "digest": "af0166f4ae3ead707c43eafea75d5cacaf746cff220562d45e03d292c7c21a11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "3befe47ad6b6a6361204a9d2b4ee7291798ed32894dbead3dfa4cc327d9df0b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/claude-plan.md"
+      },
+      {
+        "digest": "e08ab427faf766b03963d2a7c4bf08046cf1701278b3ab0376d9dd4a59cf7358",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "85a27da7ba2ae0b5536df10e3579394bc3cf0351c9c8a308165c3d0f94c409bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/ARCHITECTURE_AUDIT.md"
+      },
+      {
+        "digest": "5f701c37a47cac5fa05fb5bf431f6465f35e641c124f2cfb74f48a146df4c744",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "d3b5e12f3aceeaf8ab7e4324c55bda632cda66bbe2372fda035bc1c6369f57f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "327695a8e93de48c55d6bd79a741e88a03bda157af870c4d5b2c7f363b4c83be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "52fa74257786821157afa89fa3b8674296ef60bf56101ca210de4d9a382043b8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md"
+      },
+      {
+        "digest": "3b0d04991ba5950a96de6994ab955969ab4a45f7366e2e76316cece87e748256",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/index.md"
+      },
+      {
+        "digest": "de982c5ae5e7d424b8f9f31292d0ea1eca3311222922568af45dd7e4428c0816",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-01-contracts-and-persisted-events.md"
+      },
+      {
+        "digest": "f307bdc7a5df7b40caa249745cfb1a6b2939422ac3b807a8d25ebc43dbfa790b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-02-sse-replay-and-job-correlation.md"
+      },
+      {
+        "digest": "78371ed503d12381352fb78ce8b13ed5bc374f8866497a12a8f230c35c6bf7c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-03-private-artifacts.md"
+      },
+      {
+        "digest": "3687c40c28da49904de8080d5f217954c0754fc9bf45c59f6d43e2ca89864a07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-04-inspector-task-and-mission-links.md"
+      },
+      {
+        "digest": "5846584a0b52140cd2030225de0544b2098f284db0ef4f28ee5d482f9ac3e914",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-05-assistant-ui-responsive-integration.md"
+      },
+      {
+        "digest": "32e2a51add2f5fa482748cf2700722afae2eb3d39988110ab8fa866be17069c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-06-spec-dev-release-and-uat-handoff.md"
+      },
+      {
+        "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/index.md"
+      },
+      {
+        "digest": "29fbfcc379f325cfdf171d1f0d58aac82290bd46081a4056b9e15b375581917d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-01-pin-assistant-ui-and-adapter-contract.md"
+      },
+      {
+        "digest": "9ee1716b9ec781e64816b9d8f9fdf22fd6f775085268918cf89dece433516984",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-02-canonical-thread-message-runtime.md"
+      },
+      {
+        "digest": "917deb681913aff5f915994e9ad3e78dfef07be8c5c1a655efe980cf1edb3d85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-03-transcript-composer-and-attachment-rendering.md"
+      },
+      {
+        "digest": "86e3c7e8e305ffe399250aadc34462070ce6e09df22fb742464e41f97807101f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-04-responsive-shell-and-truthful-inspector.md"
+      },
+      {
+        "digest": "deef6721f0f76e9ee0bc0c956271f1547db60841a77e8536c236c01c7c11c105",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-05-integration-tests-and-regression-proof.md"
+      },
+      {
+        "digest": "573afc06a7bd94da33678ba3f8027cbeb0e3af9e94ba2cda4618e055fb6ee767",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-06-development-release-and-spec-handoff.md"
       },
       {
         "digest": "9499259345f439e863e71c91366b2e398e3d74ee3224466d3b03419ffadd4951",
@@ -2055,9 +2465,177 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "1cda46d624a17228b2e79ea8f313a0147ab52f5ee7bc7c399440a83864c2fc40",
+        "digest": "a00a6b99cef6fb2e85ce0f81f5e42dd0323995ff996c1a4949dd600fbe1f5301",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-pin-assistant-ui-and-adapter-contract: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-pin-assistant-ui-and-adapter-contract",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-canonical-thread-message-runtime: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-canonical-thread-message-runtime",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-transcript-composer-and-attachment-rendering: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-transcript-composer-and-attachment-rendering",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-responsive-shell-and-truthful-inspector: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-responsive-shell-and-truthful-inspector",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-integration-tests-and-regression-proof: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-integration-tests-and-regression-proof",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-development-release-and-spec-handoff: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-06-development-release-and-spec-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-contracts-and-persisted-events: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-contracts-and-persisted-events",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-sse-replay-and-job-correlation: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-sse-replay-and-job-correlation",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-private-artifacts: in_progress; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-private-artifacts",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-inspector-task-and-mission-links: in_progress; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-inspector-task-and-mission-links",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-assistant-ui-responsive-integration: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-assistant-ui-responsive-integration",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-spec-dev-release-and-uat-handoff: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-06-spec-dev-release-and-uat-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -2207,7 +2785,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a",
+        "source_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -2237,6 +2815,162 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
+        "excerpt": "sections_state.section-01-pin-assistant-ui-and-adapter-contract: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-pin-assistant-ui-and-adapter-contract",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-canonical-thread-message-runtime: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-canonical-thread-message-runtime",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-transcript-composer-and-attachment-rendering: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-transcript-composer-and-attachment-rendering",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-responsive-shell-and-truthful-inspector: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-04-responsive-shell-and-truthful-inspector",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-integration-tests-and-regression-proof: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-05-integration-tests-and-regression-proof",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-development-release-and-spec-handoff: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-06-development-release-and-spec-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json",
+        "source_digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-contracts-and-persisted-events: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-contracts-and-persisted-events",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-sse-replay-and-job-correlation: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-sse-replay-and-job-correlation",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-private-artifacts: in_progress; commit_hash=missing",
+        "line": null,
+        "section": "section-03-private-artifacts",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-inspector-task-and-mission-links: in_progress; commit_hash=missing",
+        "line": null,
+        "section": "section-04-inspector-task-and-mission-links",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-assistant-ui-responsive-integration: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-05-assistant-ui-responsive-integration",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-06-spec-dev-release-and-uat-handoff: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-06-spec-dev-release-and-uat-handoff",
+        "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json",
+        "source_digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
         "excerpt": "sections_state.section-01-environment-database-boundary: checkpointed; commit_hash=missing",
         "line": null,
         "section": "section-01-environment-database-boundary",
@@ -2368,16 +3102,206 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a",
+        "source_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "97be2b7b7c9c300591fd380024cddfc47dee64e6623b41bb62598386ef10306a",
+        "digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
+      },
+      {
+        "digest": "fea8b245d9932890e58a2f15fff9da15774f9dd3cfe10aabb961a6a807c90b05",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/claude-plan.md"
+      },
+      {
+        "digest": "555c6eaf36f8798dd387b03abc28169ae9a3e46ead43dfbd2ad51d579217b231",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "f442b134656e326f19a377a27b024c76cb1e2ac027cbd8f4a997a5cfa5a275d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/ARCHITECTURE_AUDIT.md"
+      },
+      {
+        "digest": "91f54534570bf753a0fc40632117467fa7e0675fffae40e0cec03ee8f302f3af",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/ASSISTANT_UI_COMPLETENESS_AUDIT.md"
+      },
+      {
+        "digest": "e80b6f3d49a8bca8c5130d174ef8b1b8772768a8a94da4e243fe28a8dea6d90b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "646e71a6253529f65164687dbfe9d9485e5a33a71760493b02223ecbb87c851d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "7d5ebb886734725eb00ef4a2da7e6fc616871a54bb51d67133000cfb9a41d0be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d5675de26fd96c971a1bd6a1711c8eb982073af551cb8620efad09b8ab3258d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/authenticated-uat-20261115.md"
+      },
+      {
+        "digest": "36a91366a00938ae3fffd0f0370e92f5293f9fbfef138fbdd93fff29869e612e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/chat-manifest-authority-checks-20261115.md"
+      },
+      {
+        "digest": "1afe707863318ed67dfb1a7e79f9adf28cc2e313465e357853a951890a339338",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/chat-shell-audit-checks-20261115.md"
+      },
+      {
+        "digest": "19d99cab67c4e55c46dc30b2e86bed4bb85d112bbf97c37c1147be348454052c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-48708cc.md"
+      },
+      {
+        "digest": "d15ebb57c18057e7c093c42f83ebd53ef489f1cbc69333386613a6a651ec657c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-ad04c24.md"
+      },
+      {
+        "digest": "a96b7e196a6ab4d7cee178670eeea73382745ccd005978be3f996e7df9dd11dd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/evidence/modular-debian-dev-release-e31402e.md"
+      },
+      {
+        "digest": "af0166f4ae3ead707c43eafea75d5cacaf746cff220562d45e03d292c7c21a11",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "3befe47ad6b6a6361204a9d2b4ee7291798ed32894dbead3dfa4cc327d9df0b0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/claude-plan.md"
+      },
+      {
+        "digest": "e08ab427faf766b03963d2a7c4bf08046cf1701278b3ab0376d9dd4a59cf7358",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "85a27da7ba2ae0b5536df10e3579394bc3cf0351c9c8a308165c3d0f94c409bb",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/ARCHITECTURE_AUDIT.md"
+      },
+      {
+        "digest": "5f701c37a47cac5fa05fb5bf431f6465f35e641c124f2cfb74f48a146df4c744",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "d3b5e12f3aceeaf8ab7e4324c55bda632cda66bbe2372fda035bc1c6369f57f1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "5789806c23f06c83af9284cbaf7f44a99b0d345dbbdb5a6144d15595a5a69413",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "327695a8e93de48c55d6bd79a741e88a03bda157af870c4d5b2c7f363b4c83be",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "52fa74257786821157afa89fa3b8674296ef60bf56101ca210de4d9a382043b8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md"
+      },
+      {
+        "digest": "3b0d04991ba5950a96de6994ab955969ab4a45f7366e2e76316cece87e748256",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/index.md"
+      },
+      {
+        "digest": "de982c5ae5e7d424b8f9f31292d0ea1eca3311222922568af45dd7e4428c0816",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-01-contracts-and-persisted-events.md"
+      },
+      {
+        "digest": "f307bdc7a5df7b40caa249745cfb1a6b2939422ac3b807a8d25ebc43dbfa790b",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-02-sse-replay-and-job-correlation.md"
+      },
+      {
+        "digest": "78371ed503d12381352fb78ce8b13ed5bc374f8866497a12a8f230c35c6bf7c1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-03-private-artifacts.md"
+      },
+      {
+        "digest": "3687c40c28da49904de8080d5f217954c0754fc9bf45c59f6d43e2ca89864a07",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-04-inspector-task-and-mission-links.md"
+      },
+      {
+        "digest": "5846584a0b52140cd2030225de0544b2098f284db0ef4f28ee5d482f9ac3e914",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-05-assistant-ui-responsive-integration.md"
+      },
+      {
+        "digest": "32e2a51add2f5fa482748cf2700722afae2eb3d39988110ab8fa866be17069c5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-06-spec-dev-release-and-uat-handoff.md"
+      },
+      {
+        "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/index.md"
+      },
+      {
+        "digest": "29fbfcc379f325cfdf171d1f0d58aac82290bd46081a4056b9e15b375581917d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-01-pin-assistant-ui-and-adapter-contract.md"
+      },
+      {
+        "digest": "9ee1716b9ec781e64816b9d8f9fdf22fd6f775085268918cf89dece433516984",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-02-canonical-thread-message-runtime.md"
+      },
+      {
+        "digest": "917deb681913aff5f915994e9ad3e78dfef07be8c5c1a655efe980cf1edb3d85",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-03-transcript-composer-and-attachment-rendering.md"
+      },
+      {
+        "digest": "86e3c7e8e305ffe399250aadc34462070ce6e09df22fb742464e41f97807101f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-04-responsive-shell-and-truthful-inspector.md"
+      },
+      {
+        "digest": "deef6721f0f76e9ee0bc0c956271f1547db60841a77e8536c236c01c7c11c105",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-05-integration-tests-and-regression-proof.md"
+      },
+      {
+        "digest": "573afc06a7bd94da33678ba3f8027cbeb0e3af9e94ba2cda4618e055fb6ee767",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/section-06-development-release-and-spec-handoff.md"
       },
       {
         "digest": "9499259345f439e863e71c91366b2e398e3d74ee3224466d3b03419ffadd4951",
@@ -2460,7 +3384,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-09-sidebar-footer-language-and-astryx-themes.md"
       },
       {
-        "digest": "1cda46d624a17228b2e79ea8f313a0147ab52f5ee7bc7c399440a83864c2fc40",
+        "digest": "a00a6b99cef6fb2e85ce0f81f5e42dd0323995ff996c1a4949dd600fbe1f5301",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/sections/section-10-authenticated-chat-attachments.md"
       }
@@ -2471,26 +3395,28 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 46,
+    "applicable": 45,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
     "pass": 0,
-    "total": 83,
-    "unresolved": 82
+    "total": 93,
+    "unresolved": 92
   },
   "schema_version": 1,
-  "updated_at": "2026-11-14T10:03:31.748127Z",
+  "updated_at": "2026-11-15T02:19:32.676675Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "Chat scoped typecheck and Chat build/Wrangler dry-run passed; exact-SHA Core/Shell/Chat builds passed on 10f83cd1ee5cb8f7305b45bfbc88959614b583ec.",
-      "Aimarkethubs modular-debian-dev release returned DEPLOYED_AND_VERIFIED for local/public health, auth boundary, Chat manifest and entry. Authenticated attachment upload/send/history retry remains pending; see handoff/evidence/chat-attachment-upload-proxy-fix-20261114.md."
+      "smartaihub-platform@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: Chat tests 46/46; Chat typecheck and build pass; Core tests 119/119, typecheck and build pass; shell build pass. Chat/Core Wrangler dry-run bindings target modular-debian-dev. Chat main JS 521.70 kB (131.42 kB gzip), a performance advisory.",
+      "Deployment controller local/public smoke passed for Shell root/login, Chat health/manifest/module entry and unauthenticated Chat session rejection; authenticated browser UAT was not run."
     ],
     "freshness": "FRESH",
-    "required_profiles": [],
-    "sha": "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
-    "status": "PARTIAL",
+    "required_profiles": [
+      "package"
+    ],
+    "sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+    "status": "PASS",
     "task_regressions": []
   }
 }
