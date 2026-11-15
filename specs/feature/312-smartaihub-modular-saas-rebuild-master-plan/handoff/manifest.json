@@ -1,9 +1,10 @@
 {
   "acceptance": {
     "evidence": [
-      "R1.20 canonical conversation-to-job/attempt/event-cursor projection source and Thread Inspector consumption are integrated, package-tested, built and deployed to modular-debian-dev.",
-      "Anonymous Core and Chat proxy projection requests are denied; signed-in data-path, rendered Inspector, Task/Mission integration and inline output artifacts remain unverified or unavailable.",
-      "Authenticated MFA UAT remains pending a normal authorized browser session. Migration 0438 applied; its disposable SQL integration fixture was skipped because dedicated test DB credentials were unavailable."
+      "R1.22 tenant Mission schema/API and Chat integration are implemented and integrated on both canonical mains; focused contract/Core/Chat/owner tests and scoped typechecks pass.",
+      "0441 migration and SQL integration are not applied/run because only a non-_dev DB URL is configured and dedicated disposable SQL settings are absent.",
+      "Task owner source is in the current legacy-debian-dev release SHA; endpoint probes (403 public, 404 localhost) do not prove protected runtime availability or authenticated cross-scope behavior.",
+      "No authorized MFA browser session; hosted Chat/Mission/Task UAT remains pending."
     ],
     "required": true,
     "status": "PARTIAL"
@@ -28,78 +29,70 @@
   },
   "blockers": [
     {
+      "class": "DEV_MIGRATION_CREDENTIAL_MISSING",
+      "description": "Migration 0441 is integrated but not applied. The configured DB URL targets smartspec with a login that is not the scoped _dev role required by the shared-tenant migration runner. No scoped migration credential is present in this session.",
+      "id": "r122-dev-migration-credential",
+      "next_action": "Run migration 0441 through the existing runner after a registered _dev credential for the authorized development database is available. Do not use the current non-_dev .env login.",
+      "requirements": [
+        "REQ-312-R122-02",
+        "REQ-312-R122-03"
+      ]
+    },
+    {
+      "class": "DISPOSABLE_DATABASE_UNAVAILABLE",
+      "description": "MODULAR_CHAT_TEST_DATABASE_URL and MODULAR_CHAT_TEST_EMAIL are unset; local PostgreSQL does not accept the current user credentials. The SQL integration suite is skipped.",
+      "id": "r122-disposable-sql",
+      "next_action": "Use an isolated PostgreSQL fixture with dedicated test credentials, then run the migration-backed integration test.",
+      "requirements": [
+        "REQ-312-R122-06"
+      ]
+    },
+    {
       "class": "HUMAN_UAT_PENDING",
-      "description": "Authenticated rendered Chat acceptance has not been recorded; this execution has no authorized signed-in MFA browser session. Do not bypass MFA or treat mocks as UAT.",
-      "id": "authenticated-chat-uat",
-      "next_action": "On deployed 4ef0c8f, sign in normally and verify Queue send, SSE progress/reconnect without duplicate dispatch, attachment history, Inspector timeline and 1440x900, 820x1180 and 390x844 layouts; append only observed evidence.",
+      "description": "No normal authorized MFA browser session is available in this execution. Mock tests are not hosted UAT.",
+      "id": "r122-authenticated-uat",
+      "next_action": "After migration and deployment, sign in normally and verify Chat, Mission/Task Control, artifacts, reconnect and responsive layouts.",
       "requirements": [
-        "REQ-3DBD001CE331",
-        "REQ-CF8D9FDC29C6"
+        "REQ-312-R122-04",
+        "REQ-312-R122-06"
       ]
     },
     {
-      "class": "DEV_SCHEMA_LEDGER_UNVERIFIED",
-      "description": "Catalog evidence confirms canonical job/event objects and dev-only replay grants; runtime role cannot read drizzle.__drizzle_migrations and the replay SECURITY DEFINER owner is superuser. Applied migration provenance and least-privilege ownership remain unverified. No DDL was run.",
-      "id": "migration-ledger-provenance",
-      "next_action": "Use registered scoped migration authority to inspect migration 0437 receipt and review/repair replay-function ownership with an appropriately scoped migration role; never rerun DDL only because ledger access is denied.",
+      "class": "TASK_OWNER_ENDPOINT_UNVERIFIED",
+      "description": "SmartSpecPro legacy-debian-dev release status shows SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59 on smartaihub.app. Anonymous public tRPC probe returned 403 and localhost probe returned 404; authenticated owner path/scope could not be confirmed.",
+      "id": "r122-task-owner-runtime",
+      "next_action": "Verify workerJobs.observabilityV1 with an authorized owner session or registered service-level route; test cross-scope denial.",
       "requirements": [
-        "REQ-5938192860D3"
-      ]
-    },
-    {
-      "class": "CHAT_ARTIFACT_PATH_MISSING",
-      "description": "Core Chat artifact capability is disabled; no canonical Chat output producer or authorized private output retrieval path exists. Existing user-input attachment R2 storage is a separate contract.",
-      "id": "r119-artifacts-missing",
-      "next_action": "Identify the canonical output producer, its storage binding and job ownership adapter; implement private registration/retrieval and content-type handling only after source contracts are verified. Keep artifacts=false until end-to-end authorization tests pass.",
-      "requirements": [
-        "REQ-8155A6E61FDE"
-      ]
-    },
-    {
-      "class": "SPEC_294_ADAPTERS_UNVERIFIED",
-      "description": "Task Control and Mission Control are owned by SPEC-294; this target has no verified Modular Core adapters for their canonical projections.",
-      "id": "r119-task-mission-adapters",
-      "next_action": "Map SPEC-294 canonical execution identities and authoritative API/DTO ownership; add compatible Hono projection/navigation adapters only after confirming a live modular contract. Do not add duplicate task/run/mission state.",
-      "requirements": [
-        "REQ-568F9668C877"
-      ]
-    },
-    {
-      "class": "CHAT_BUNDLE_PERFORMANCE_ADVISORY",
-      "description": "Chat main JS is 524.88 kB minified / 132.22 kB gzip, above Vite’s 500 kB advisory threshold; no performance regression is asserted.",
-      "id": "bundle-size-advisory",
-      "next_action": "Profile the deployed Chat module and evaluate a lazy-loading split; retain the advisory until measured evidence supports closure.",
-      "requirements": [
-        "REQ-CF8D9FDC29C6"
+        "REQ-312-R122-05"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+    "expected_canonical_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
     "expected_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464"
   },
   "continuation": {
-    "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950. Identify a genuine producer-backed Chat output and authoritative private object resolver; keep artifacts=false until end-to-end owner/content authorization tests pass. Define the SPEC-277 Task Control and SPEC-294 Mission Control tenant-scoped read DTO with its owning implementers before adding Modular adapters. Retain authenticated Inspector UAT, migration 0437 owner review and package-size advisory as open.",
-    "next_ready_workunit": "r120-output-artifacts-and-task-mission-read-contracts",
-    "reactivation_predicate": "Resume from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950, deployed on modular-debian-dev / aimarkethubs.com. Continue independent source work; authenticated UAT and migration review do not gate artifact or DTO investigation.",
-    "resume_point": "2026-11-15: R1.20 platform main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950 is integrated and deployed. Core tests 121/121, contracts 7/7, Chat 49/49; Core/Chat typechecks and package builds pass. Exact-SHA Core/Shell/Chat build and target controller pass local/public smoke and anonymous auth boundaries. Migration 0438 is applied; dedicated SQL fixture was skipped. Output artifacts and Task/Mission adapters remain missing; Agent/Harness/Run/Executor/Machine are explicitly unavailable; authenticated Inspector UAT and migration 0437 owner review remain open. See amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md.",
-    "waiting_predicate": "Authenticated UAT waits only for an authorized normal MFA session; migration 0437 ownership review needs registered migration authority. Artifact producer/storage and SPEC-277/SPEC-294 DTO work can continue independently."
+    "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Tenant Mission source/API/UI and regression checks are integrated. Resolve only the exact migration credential and disposable SQL dependencies, then exact-SHA deploy to modular-debian-dev and perform authorized runtime/UAT checks.",
+    "next_ready_workunit": "R122_DEV_MIGRATION_SQL_AND_RUNTIME_ACCEPTANCE",
+    "reactivation_predicate": "Resume when the registered scoped _dev migration credential and isolated SQL test settings are available; authenticated UAT can proceed after modular-debian-dev migration and exact-SHA deployment.",
+    "resume_point": "R1.22 source is integrated on both canonical mains: SmartSpecPro 7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform ddb5530bb894b609071ff85444b84d562d52c0b9. Contract 9/9, Core 127/127, Chat 56/56 and owner workerJobs 15/15 pass; scoped Core/Chat typechecks and exact package dry-run builds pass. Migration-backed SQL test skipped, 0441 not applied, Modular DEV not redeployed, Task owner endpoint path unverified, and authenticated MFA UAT pending. See R1.22 traceability and release assessment.",
+    "waiting_predicate": "Migration waits for registered _dev DB credentials; disposable SQL waits for isolated test URL/email; hosted UAT waits for normal authorized MFA session. Continue independently as each becomes available."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md",
-      "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
-      "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: source tests, typechecks, exact-SHA build and target-gated dev release"
+      "SPEC-312 R1.22 traceability; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2; smartaihub-platform main@ddb5530bb894b609071ff85444b84d562d52c0b9.",
+      "Contracts 9/9, Core 127/127, Chat 56/56, SmartSpecPro owner 15/15; scoped Core/Chat typechecks and Core/Chat package dry-run builds pass.",
+      "Migration 0441 integrated but not applied; SQL fixture skipped without isolated credentials; Modular R1.22 not deployed; browser MFA UAT pending."
     ],
-    "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: trace an authorized genuine Chat output producer to canonical private storage before implementing artifact registration/retrieval; define tenant-scoped Task Control and Mission Control DTO owners before adapters. Keep authenticated Inspector UAT, migration 0437 ownership review and artifact capability disabled until verified.",
-    "rationale": "R1.20 adds a tested, exact-SHA deployed conversation-to-canonical-Job/Attempt/Event-cursor projection. Parent acceptance remains partial because output artifacts, Task/Mission APIs, authenticated UAT and migration-authority review are incomplete.",
+    "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.",
+    "rationale": "R1.22 tenant Mission source/API/UI is integrated and package-tested. The SPEC remains partial because migration 0441 cannot be applied safely without the registered _dev credential, disposable SQL settings and authenticated MFA UAT are unavailable, and Task owner endpoint runtime authorization is not verified.",
     "residual_requirements": [
-      "Implement producer-backed private output artifacts with canonical ownership, retrieval and negative authorization tests.",
-      "Define and verify SPEC-277 Task Control and SPEC-294 Mission Control read DTOs and authorization before adding Modular adapters/navigation.",
-      "Perform authenticated Inspector/send/replay/responsive UAT using normal MFA sign-in.",
-      "Review migration 0437 receipt and SECURITY DEFINER ownership with registered migration authority; migration 0438 SQL fixture was skipped for lack of dedicated disposable DB credentials."
+      "Apply migration 0441 with the registered scoped development credential and verify postconditions.",
+      "Run Mission SQL integration fixture only on disposable PostgreSQL.",
+      "Verify Task owner observabilityV1 runtime and cross-scope denial using authorized owner context.",
+      "Deploy exact platform SHA to modular-debian-dev after schema migration and run authenticated responsive Chat/Mission UAT."
     ]
   },
   "dependencies": {
@@ -112,13 +105,12 @@
     "artifact_digest": null,
     "environment": "modular-debian-dev / aimarkethubs.com; Debian systemd + local Workerd; database smartspec",
     "evidence": [
-      "/home/dev/modular-development-releases/modular-debian-dev-dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950-r120-built/release-manifest.json",
-      "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
-      "Target-gated controller DEPLOYED_AND_VERIFIED at 2026-11-15T06:50:46.353868Z; see exact local/public smoke and rollback evidence in the release manifest."
+      "R1.21 modular-debian-dev deployment remains the last verified release; R1.22 source SHA ddb5530bb894b609071ff85444b84d562d52c0b9 is integrated but not deployed because migration 0441 is pending.",
+      "Legacy target smartaihub.app release status is exact SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59 on legacy-debian-dev; this is separate from the Modular target."
     ],
     "required": true,
-    "source_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
-    "status": "PASS"
+    "source_sha": "ddb5530bb894b609071ff85444b84d562d52c0b9",
+    "status": "PARTIAL"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -136,7 +128,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 128,
+  "generation": 131,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
@@ -223,8 +215,8 @@
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+    "canonical_ref": "SmartSpecPro/main + smartaihub-platform/main",
+    "canonical_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
     "integrated": true,
     "integrated_at": "2026-11-15T06:40:00Z"
   },
@@ -263,17 +255,17 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md",
-        "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
-        "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: source tests, typechecks, exact-SHA build and target-gated dev release"
+        "SPEC-312 R1.22 traceability; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2; smartaihub-platform main@ddb5530bb894b609071ff85444b84d562d52c0b9.",
+        "Contracts 9/9, Core 127/127, Chat 56/56, SmartSpecPro owner 15/15; scoped Core/Chat typechecks and Core/Chat package dry-run builds pass.",
+        "Migration 0441 integrated but not applied; SQL fixture skipped without isolated credentials; Modular R1.22 not deployed; browser MFA UAT pending."
       ],
-      "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: trace an authorized genuine Chat output producer to canonical private storage before implementing artifact registration/retrieval; define tenant-scoped Task Control and Mission Control DTO owners before adapters. Keep authenticated Inspector UAT, migration 0437 ownership review and artifact capability disabled until verified.",
-      "rationale": "R1.20 adds a tested, exact-SHA deployed conversation-to-canonical-Job/Attempt/Event-cursor projection. Parent acceptance remains partial because output artifacts, Task/Mission APIs, authenticated UAT and migration-authority review are incomplete.",
+      "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.",
+      "rationale": "R1.22 tenant Mission source/API/UI is integrated and package-tested. The SPEC remains partial because migration 0441 cannot be applied safely without the registered _dev credential, disposable SQL settings and authenticated MFA UAT are unavailable, and Task owner endpoint runtime authorization is not verified.",
       "residual_requirements": [
-        "Implement producer-backed private output artifacts with canonical ownership, retrieval and negative authorization tests.",
-        "Define and verify SPEC-277 Task Control and SPEC-294 Mission Control read DTOs and authorization before adding Modular adapters/navigation.",
-        "Perform authenticated Inspector/send/replay/responsive UAT using normal MFA sign-in.",
-        "Review migration 0437 receipt and SECURITY DEFINER ownership with registered migration authority; migration 0438 SQL fixture was skipped for lack of dedicated disposable DB credentials."
+        "Apply migration 0441 with the registered scoped development credential and verify postconditions.",
+        "Run Mission SQL integration fixture only on disposable PostgreSQL.",
+        "Verify Task owner observabilityV1 runtime and cross-scope denial using authorized owner context.",
+        "Deploy exact platform SHA to modular-debian-dev after schema migration and run authenticated responsive Chat/Mission UAT."
       ]
     },
     "disposition": {
@@ -807,6 +799,162 @@
           "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/evidence/chat-image-attachments-release-20261114.md"
         ],
         "verification_method": "Exact-SHA Chat/Core typechecks and independent builds, immutable source build, modular-debian-dev release health/module/served-asset smoke; authenticated upload/send/history and visual UAT has not yet been observed. Document payload credit reservation and full multimodal acceptance remain open."
+      },
+      "REQ-312-R122-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L21"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L21",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "SPEC-294 §65 and SPEC-312 R1.22 define tenant Mission ownership, lifecycle, source separation, retention and the V1 contract."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Retain the tenant/platform Mission ownership boundary in future revisions.",
+        "requirement_digest": "653c19581b2762d6aa4c5ab373760b1190c3ff22d36559b18b74d2bdeafee5f3",
+        "requirement_id": "REQ-312-R122-01",
+        "requirement_text": "- **REQ-312-R122-01:** SPEC-294 defines tenant Mission authority, identity, lifecycle, retention and a versioned DTO distinct from platform-engineering Mission/Run data.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "@smartaihub/saas-contracts test/build PASS, 9/9; Mission identity and malformed DTO rejection covered."
+        ],
+        "verification_method": "Review SPEC-294 §65 / SPEC-312 R1.22 and run contract parser tests."
+      },
+      "REQ-312-R122-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L22"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L22",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Platform main@ddb5530bb894b609071ff85444b84d562d52c0b9 adds scoped Mission persistence/read adapter; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 adds migration 0441."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Apply 0441 with registered scoped dev migration credentials, then run SQL fixture against isolated PostgreSQL.",
+        "requirement_digest": "689744555b3449a6fdcbb7a4f4dcc3e237edf734289d9387c825f685d71d237f",
+        "requirement_id": "REQ-312-R122-02",
+        "requirement_text": "- **REQ-312-R122-02:** Modular Core persists an explicitly created Mission bound to authenticated owner, environment tenant, authorized workspace and canonical Chat conversation; Job/event/artifact relationships derive only from verified records.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Core PASS 127/127; Core typecheck PASS. Migration 0441 integrated; DB application pending because configured DB URL is non-_dev and disposable DB URL is unset."
+        ],
+        "verification_method": "Run Core tests/typecheck; run migration-backed SQL integration only against isolated PostgreSQL."
+      },
+      "REQ-312-R122-03": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L23"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L23",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Authenticated Core Mission GET/POST and Chat Worker tenant-session proxy integrated in platform@ddb5530bb894b609071ff85444b84d562d52c0b9."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "After migration and DEV release, verify protected Mission reads and cross-scope denial at runtime.",
+        "requirement_digest": "fe94adbece95e38bce83674005e847c1be9944713d2c1acd2746becb369bde53",
+        "requirement_id": "REQ-312-R122-03",
+        "requirement_text": "- **REQ-312-R122-03:** Core APIs and Chat proxies enforce authentication, workspace and conversation ownership; cross-scope reads fail closed.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Core auth PASS 28/28 including anonymous 401/out-of-membership 403; Chat PASS 56/56; Core and Chat typechecks PASS."
+        ],
+        "verification_method": "Exercise authenticated/anonymous Core routes, invalid workspace membership, Chat proxy and scoped typechecks."
+      },
+      "REQ-312-R122-04": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L24"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L24",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Chat Shell Mission navigation, explicit create, canonical conversation URL restoration and event-triggered refresh integrated in platform@ddb5530bb894b609071ff85444b84d562d52c0b9."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run authenticated DEV UAT at aimarkethubs.com after schema application and exact-SHA deployment.",
+        "requirement_digest": "488da05df672fd84f55dd37ebc98409202dc3e361aedd29576950e83fceaa484",
+        "requirement_id": "REQ-312-R122-04",
+        "requirement_text": "- **REQ-312-R122-04:** Chat Shell opens Mission Control, restores canonical conversation identity after refresh, renders real Mission/Job/Run/event/artifact facts and never redispatches work.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Chat PASS 56/56; URL retains conversation and Mission view; typecheck PASS. No authorized MFA browser session; hosted UAT pending."
+        ],
+        "verification_method": "Run Chat tests/typecheck; use normal MFA browser UAT for hosted acceptance."
+      },
+      "REQ-312-R122-05": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L25"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L25",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "SPEC-277 workerJobs.observabilityV1 is present in SmartSpecPro main@089ac45526dfb9742b9394513cbe5f9e7d8c3d59; Modular Core keeps its independent canonical Job adapter."
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Use authorized owner session/service route to verify observabilityV1 and cross-scope denial; do not infer from Modular release.",
+        "requirement_digest": "1cd4405af3a82bd6e17839e9df6d0c856ce4d728fb72d63d0378a59adbde88c2",
+        "requirement_id": "REQ-312-R122-05",
+        "requirement_text": "- **REQ-312-R122-05:** SPEC-277 Task owner runtime evidence is checked separately; absent workspace IDs remain null, and legacy session cookies do not cross the Modular Core boundary.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "legacy-debian-dev status reports smartaihub.app SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59. Anonymous probe 403 public / 404 localhost; endpoint runtime scope unconfirmed. Owner tests PASS 15/15. workspaceId stays null if absent."
+        ],
+        "verification_method": "Confirm exact owner DEV release/SHA and probe protected route without credentials; use owner authorization tests."
+      },
+      "REQ-312-R122-06": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L26"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L26",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Regression coverage preserves Chat artifact/SSE; migration 0441 SQL fixture covers Mission idempotency, projection, artifacts and cross-scope assertions."
+        ],
+        "implementation_status": "TESTED",
+        "next_action": "Run SQL fixture on isolated PostgreSQL and authenticated UAT when DB and normal MFA session are available.",
+        "requirement_digest": "0be52146564126b5e928d69f3d98a4c32e15aeb4989170fa2235f81370d683b8",
+        "requirement_id": "REQ-312-R122-06",
+        "requirement_text": "- **REQ-312-R122-06:** Existing Chat/artifact/SSE behavior remains covered by regression checks; isolated SQL tests and authenticated UAT are completed when the disposable database and normal MFA session are available.",
+        "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Owner 15/15; contracts 9/9; Core 127/127; Chat 56/56; scoped typechecks PASS. SQL fixture SKIPPED without isolated DB settings; MFA UAT PENDING."
+        ],
+        "verification_method": "Run owner/contracts/Core/Chat suites, scoped typechecks and disposable SQL fixture."
       },
       "REQ-31B82DBC9983": {
         "applicability": "APPLICABLE",
@@ -3623,16 +3771,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 45,
+    "applicable": 51,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
-    "pass": 0,
+    "pass": 1,
     "total": 104,
-    "unresolved": 103
+    "unresolved": 102
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T09:25:00.440998Z",
+  "updated_at": "2026-11-15T09:33:16.187284Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

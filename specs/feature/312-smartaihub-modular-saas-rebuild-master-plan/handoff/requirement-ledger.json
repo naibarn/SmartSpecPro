@@ -1,5 +1,5 @@
 {
-  "generation": 61,
+  "generation": 62,
   "historical_requirements": [
     {
       "applicability": "UNASSESSED",
@@ -479,136 +479,160 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L21"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L21",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "SPEC-294 §65 and SPEC-312 R1.22 define tenant Mission ownership, lifecycle, source separation, retention and the V1 contract."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Retain the tenant/platform Mission ownership boundary in future revisions.",
       "requirement_digest": "653c19581b2762d6aa4c5ab373760b1190c3ff22d36559b18b74d2bdeafee5f3",
       "requirement_id": "REQ-312-R122-01",
       "requirement_text": "- **REQ-312-R122-01:** SPEC-294 defines tenant Mission authority, identity, lifecycle, retention and a versioned DTO distinct from platform-engineering Mission/Run data.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "@smartaihub/saas-contracts test/build PASS, 9/9; Mission identity and malformed DTO rejection covered."
+      ],
+      "verification_method": "Review SPEC-294 §65 / SPEC-312 R1.22 and run contract parser tests."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L22"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L22",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "Platform main@ddb5530bb894b609071ff85444b84d562d52c0b9 adds scoped Mission persistence/read adapter; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 adds migration 0441."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Apply 0441 with registered scoped dev migration credentials, then run SQL fixture against isolated PostgreSQL.",
       "requirement_digest": "689744555b3449a6fdcbb7a4f4dcc3e237edf734289d9387c825f685d71d237f",
       "requirement_id": "REQ-312-R122-02",
       "requirement_text": "- **REQ-312-R122-02:** Modular Core persists an explicitly created Mission bound to authenticated owner, environment tenant, authorized workspace and canonical Chat conversation; Job/event/artifact relationships derive only from verified records.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Core PASS 127/127; Core typecheck PASS. Migration 0441 integrated; DB application pending because configured DB URL is non-_dev and disposable DB URL is unset."
+      ],
+      "verification_method": "Run Core tests/typecheck; run migration-backed SQL integration only against isolated PostgreSQL."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L23"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L23",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "Authenticated Core Mission GET/POST and Chat Worker tenant-session proxy integrated in platform@ddb5530bb894b609071ff85444b84d562d52c0b9."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "After migration and DEV release, verify protected Mission reads and cross-scope denial at runtime.",
       "requirement_digest": "fe94adbece95e38bce83674005e847c1be9944713d2c1acd2746becb369bde53",
       "requirement_id": "REQ-312-R122-03",
       "requirement_text": "- **REQ-312-R122-03:** Core APIs and Chat proxies enforce authentication, workspace and conversation ownership; cross-scope reads fail closed.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Core auth PASS 28/28 including anonymous 401/out-of-membership 403; Chat PASS 56/56; Core and Chat typechecks PASS."
+      ],
+      "verification_method": "Exercise authenticated/anonymous Core routes, invalid workspace membership, Chat proxy and scoped typechecks."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L24"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L24",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "Chat Shell Mission navigation, explicit create, canonical conversation URL restoration and event-triggered refresh integrated in platform@ddb5530bb894b609071ff85444b84d562d52c0b9."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Run authenticated DEV UAT at aimarkethubs.com after schema application and exact-SHA deployment.",
       "requirement_digest": "488da05df672fd84f55dd37ebc98409202dc3e361aedd29576950e83fceaa484",
       "requirement_id": "REQ-312-R122-04",
       "requirement_text": "- **REQ-312-R122-04:** Chat Shell opens Mission Control, restores canonical conversation identity after refresh, renders real Mission/Job/Run/event/artifact facts and never redispatches work.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Chat PASS 56/56; URL retains conversation and Mission view; typecheck PASS. No authorized MFA browser session; hosted UAT pending."
+      ],
+      "verification_method": "Run Chat tests/typecheck; use normal MFA browser UAT for hosted acceptance."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L25"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L25",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "SPEC-277 workerJobs.observabilityV1 is present in SmartSpecPro main@089ac45526dfb9742b9394513cbe5f9e7d8c3d59; Modular Core keeps its independent canonical Job adapter."
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Use authorized owner session/service route to verify observabilityV1 and cross-scope denial; do not infer from Modular release.",
       "requirement_digest": "1cd4405af3a82bd6e17839e9df6d0c856ce4d728fb72d63d0378a59adbde88c2",
       "requirement_id": "REQ-312-R122-05",
       "requirement_text": "- **REQ-312-R122-05:** SPEC-277 Task owner runtime evidence is checked separately; absent workspace IDs remain null, and legacy session cookies do not cross the Modular Core boundary.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "legacy-debian-dev status reports smartaihub.app SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59. Anonymous probe 403 public / 404 localhost; endpoint runtime scope unconfirmed. Owner tests PASS 15/15. workspaceId stays null if absent."
+      ],
+      "verification_method": "Confirm exact owner DEV release/SHA and probe protected route without credentials; use owner authorization tests."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L26"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L26",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "Regression coverage preserves Chat artifact/SSE; migration 0441 SQL fixture covers Mission idempotency, projection, artifacts and cross-scope assertions."
+      ],
+      "implementation_status": "TESTED",
+      "next_action": "Run SQL fixture on isolated PostgreSQL and authenticated UAT when DB and normal MFA session are available.",
       "requirement_digest": "0be52146564126b5e928d69f3d98a4c32e15aeb4989170fa2235f81370d683b8",
       "requirement_id": "REQ-312-R122-06",
       "requirement_text": "- **REQ-312-R122-06:** Existing Chat/artifact/SSE behavior remains covered by regression checks; isolated SQL tests and authenticated UAT are completed when the disposable database and normal MFA session are available.",
       "source_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Owner 15/15; contracts 9/9; Core 127/127; Chat 56/56; scoped typechecks PASS. SQL fixture SKIPPED without isolated DB settings; MFA UAT PENDING."
+      ],
+      "verification_method": "Run owner/contracts/Core/Chat suites, scoped typechecks and disposable SQL fixture."
     },
     {
       "applicability": "UNASSESSED",

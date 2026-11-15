@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 103 unresolved of 104
-- Next action: Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: trace an authorized genuine Chat output producer to canonical private storage before implementing artifact registration/retrieval; define tenant-scoped Task Control and Mission Control DTO owners before adapters. Keep authenticated Inspector UAT, migration 0437 ownership review and artifact capability disabled until verified.
-- Manifest generation: 128
+- Requirements: 1 pass / 102 unresolved of 104
+- Next action: Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.
+- Manifest generation: 131
 
 ## Source-declared status and relationship claims
 

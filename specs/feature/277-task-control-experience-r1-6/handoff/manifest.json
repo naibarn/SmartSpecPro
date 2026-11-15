@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
-    "expected_spec_digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d"
+    "expected_spec_digest": "2625ef9d6176405a6a4a954e55ac4a5f1830ee715004155d6aea043d11b8f4a9"
   },
   "continuation": {
     "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance. | Debian topology check (2026-10-28): specs/feature/277-task-control-experience-r1-6/handoff/evidence/debian-platform-runner-topology-20261028.md. Local Runner inactive/disabled, no registered readiness proof; Python dev API provenance unknown. Preserve current callback review; next UI source operation depends on trusted SPEC-293 Platform Project/Runner projection and SPEC-224 provider-specific readiness/pinning. Enroll a fresh dev-scoped Linux Runner via the existing owner-authenticated flow; do not restart the expired production-bound enrollment. | Linux Runner release attempt at integrated SHA 0707f1eb709490edcf27c70031e9eabd29c095f1: GitHub run 40627538831 failed twice at the required Moli namespace test (219/220); local Debian exact test passed. No artifact installed. Public aimarkethubs.com /runners/connect returned 404 while local route returned 200. Exact owner operations and evidence: specs/feature/277-task-control-experience-r1-6/handoff/evidence/debian-platform-runner-topology-20261028.md.",
@@ -186,13 +186,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 84,
+  "generation": 85,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-    "digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d",
+    "digest": "2625ef9d6176405a6a4a954e55ac4a5f1830ee715004155d6aea043d11b8f4a9",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-29T09:41:47.777449Z",
+      "last_evidence_at": "2026-11-15T09:33:16.462595Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -1446,10 +1446,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-29T09:41:47.777449Z",
+    "reconciled_at": "2026-11-15T09:33:16.462595Z",
     "sources": [
       {
-        "digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d",
+        "digest": "2625ef9d6176405a6a4a954e55ac4a5f1830ee715004155d6aea043d11b8f4a9",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -1477,7 +1477,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d",
+        "digest": "2625ef9d6176405a6a4a954e55ac4a5f1830ee715004155d6aea043d11b8f4a9",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -1493,11 +1493,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 448,
-    "unresolved": 448
+    "total": 450,
+    "unresolved": 450
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T09:41:47.777449Z",
+  "updated_at": "2026-11-15T09:33:16.462595Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
