@@ -930,6 +930,61 @@ describe("executeJsonPlanningCallWithRetry", () => {
 });
 
 describe("executeVisionAwareJsonCallWithRetry broker recovery", () => {
+  it("recovers a single-attempt vision call when the provider cannot fetch a managed image", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "image/png" }),
+      arrayBuffer: async () => Uint8Array.from([137, 80, 78, 71]).buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    mockExecute.mockReset();
+    mockExecute
+      .mockResolvedValueOnce({
+        type: "error",
+        error:
+          "LLM request failed: HTTP 400 from provider: Timed out while downloading image from the provided URL",
+        statusCode: 400,
+      } as any)
+      .mockResolvedValueOnce(successWith(VALID_JSON));
+
+    try {
+      const result = await executeVisionAwareJsonCallWithRetry({
+        model: "gpt-5.6-luna",
+        systemPrompt: "system",
+        userPromptText: "Inspect the attached frame",
+        hasVision: true,
+        images: [
+          {
+            url: "https://smartaihub.app/api/mcp/downloads/signed-token/frame.png",
+            label: "start frame",
+          },
+        ],
+        userId: 1,
+        tenantId: "tenant-1",
+        publicUrl: "https://smartaihub.app",
+        schema,
+        firstAttemptMaxTokens: 100,
+        retryMaxTokens: 100,
+        singleAttempt: true,
+      });
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      const retryContent = mockExecute.mock.calls[1][0].messages[1].content;
+      expect(retryContent).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw==", detail: "high" },
+          }),
+        ]),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("retries a timed-out provider image download with an inline broker image", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

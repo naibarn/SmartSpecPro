@@ -2682,7 +2682,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   disableModelFallback?: boolean;
   /** Restrict the recovery model to the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
-  /** Bound one optional planning call and stop after its first failed attempt. */
+  /** Bound planning retries; managed vision-image download recovery remains allowed. */
   singleAttempt?: boolean;
   timeoutMs?: number;
   disableProviderFallbacks?: boolean;
@@ -2737,10 +2737,6 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       `[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`,
       firstError instanceof Error ? firstError.message : firstError
     );
-    if (args.singleAttempt) throw firstError;
-    if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy)
-      throw firstError;
-
     // Some provider adapters cannot fetch the valid signed broker URL even
     // though the application can. Retry the same model once with the owned
     // brokered images inlined; this preserves vision grounding without asking
@@ -2775,6 +2771,10 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
         }
       }
     }
+
+    if (args.singleAttempt) throw firstError;
+    if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy)
+      throw firstError;
 
     // A provider that returned HTTP 200 with no assistant text, or could not
     // download one of the attached references, did not produce a schema
