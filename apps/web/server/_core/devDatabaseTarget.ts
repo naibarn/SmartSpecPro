@@ -38,7 +38,21 @@ export function resolveApplicationDatabaseUrl(env: NodeJS.ProcessEnv = process.e
     let appUrl: URL;
     try { url = new URL(raw); } catch { throw new Error("SHARED_DEVELOPMENT_DATABASE_URL_REQUIRED"); }
     try { appUrl = new URL(env.APP_URL ?? ""); } catch { throw new Error("SHARED_DEVELOPMENT_APP_URL_REQUIRED"); }
-    if (!/^(postgres|postgresql):$/.test(url.protocol) || url.pathname !== "/smartspec" || !url.username.endsWith("_dev")) {
+    if (!/^(postgres|postgresql):$/.test(url.protocol) || url.pathname !== "/smartspec") {
+      throw new Error("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+    }
+    const singleOwnerAdminMigration = env.SMARTSPEC_DEV_MIGRATION_PROFILE === "single-owner-dev-admin" &&
+      env.SMARTSPEC_DEV_MIGRATION_EXECUTION === "verified";
+    if (singleOwnerAdminMigration) {
+      if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(url.hostname) ||
+          env.DATABASE_TARGET_ID !== "modular-debian-dev" ||
+          env.SMARTSPEC_DEV_TENANT_DOMAIN !== "aimarkethubs.com" || appUrl.hostname !== "aimarkethubs.com" ||
+          url.searchParams.get("application_name") !== "spec312-r124-single-owner-dev-admin") {
+        throw new Error("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+      }
+      return raw;
+    }
+    if (!url.username.endsWith("_dev")) {
       throw new Error("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
     }
     if (!env.SMARTSPEC_DEV_TENANT_DOMAIN || appUrl.hostname !== env.SMARTSPEC_DEV_TENANT_DOMAIN) {

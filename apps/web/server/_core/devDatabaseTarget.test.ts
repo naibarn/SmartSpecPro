@@ -74,6 +74,24 @@ describe("development database selection", () => {
       .toThrow("TENANT_DOMAIN_MISMATCH");
   });
 
+  it("accepts superuser credentials only inside an explicitly verified DEV migration process", () => {
+    const env = { ...base,
+      SMARTSPEC_DEV_DATABASE_MODE: "shared-tenant",
+      SMARTSPEC_DEV_MIGRATION_PROFILE: "single-owner-dev-admin",
+      SMARTSPEC_DEV_MIGRATION_EXECUTION: "verified",
+      DATABASE_TARGET_ID: "modular-debian-dev",
+      DATABASE_URL: "postgresql://smartspec@localhost/smartspec?application_name=spec312-r124-single-owner-dev-admin",
+      APP_URL: "https://aimarkethubs.com", SMARTSPEC_DEV_TENANT_DOMAIN: "aimarkethubs.com" };
+    expect(resolveApplicationDatabaseUrl(env)).toBe(env.DATABASE_URL);
+    expect(() => resolveApplicationDatabaseUrl({ ...env, SMARTSPEC_DEV_MIGRATION_EXECUTION: undefined }))
+      .toThrow("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+    expect(() => resolveApplicationDatabaseUrl({ ...env, DATABASE_TARGET_ID: "modular-cloudflare-prod" }))
+      .toThrow("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+    expect(() => resolveApplicationDatabaseUrl({ ...env,
+      APP_URL: "https://smartsihub.com", SMARTSPEC_DEV_TENANT_DOMAIN: "smartsihub.com" }))
+      .toThrow("SHARED_DEVELOPMENT_REQUIRES_CANONICAL_DATABASE_AND_SEPARATE_LOGIN");
+  });
+
   it("does not permit production app instances to change targets through the dev selector", () => {
     expect(resolveApplicationDatabaseUrl({ NODE_ENV: "production", SMARTSPEC_ENVIRONMENT: "production",
       SMARTSPEC_DEV_DATABASE_MODE: "production-readonly", DATABASE_URL: "postgresql://runtime@db/app",

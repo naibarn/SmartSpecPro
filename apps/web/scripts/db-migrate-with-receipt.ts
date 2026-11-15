@@ -316,6 +316,9 @@ async function mainWithMigrationLock() {
         )).rows
       : [];
     if (sharedTenantDevMigration) assertMissionMigrationLedger(canonicalMigrations, existingLedger);
+    if (sharedTenantProfile === "single-owner-dev-admin") {
+      process.env.SMARTSPEC_DEV_MIGRATION_EXECUTION = "verified";
+    }
     const migrationCount = existingLedger.length;
     const baselineApplied = existingLedger.some(row => row.hash === devBaselineMigrations[0]?.hash);
     let profile: "canonical" | "dev-active-baseline" = "canonical";
