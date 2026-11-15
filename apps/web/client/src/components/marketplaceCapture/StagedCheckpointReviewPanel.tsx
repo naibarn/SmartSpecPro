@@ -6,6 +6,10 @@ import { Card } from "@astryxdesign/core/Card";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { trpc } from "@/lib/trpc";
@@ -683,7 +687,6 @@ const SUBTITLE_PRESET_OPTIONS: Array<{ id: string; label: string }> = [
   { id: "cinematic_wide", label: "ภาพยนตร์ จอกว้าง" },
   { id: "neon_glow", label: "นีออนเรืองแสง" },
   { id: "review_bubble", label: "บับเบิลรีวิว" },
-  { id: "no_subtitle_style", label: "ไม่ใส่ซับไตเติล" },
 ];
 
 function isTaskInFlight(status: string | null | undefined) {
@@ -1009,6 +1012,9 @@ export function StagedCheckpointReviewPanel(props: {
   const [subtitlePresetDraft, setSubtitlePresetDraft] = useState<string | null>(
     null
   );
+  const [subtitlesEnabledDraft, setSubtitlesEnabledDraft] = useState<
+    boolean | null
+  >(null);
   const [overlayTextDraft, setOverlayTextDraft] = useState<string | null>(null);
   const [overlayTextPositionDraft, setOverlayTextPositionDraft] =
     useState<OverlayAnchor | null>(null);
@@ -1713,19 +1719,27 @@ export function StagedCheckpointReviewPanel(props: {
       );
     })
     .map(shot => shot.shotId);
-  // Settings are frozen while a render job is referenced: the worker already
-  // holds a frozen copy of the template. A completed result can be rendered
-  // again with the same settings; an active job is reused to prevent duplicate
-  // submissions.
-  const renderSettingsLocked = Boolean(renderJobId);
+  const finalVideoUrl = props.state?.finalRender?.outputUrl ?? null;
+  // A job id remains in run metadata after completion. Lock settings only
+  // while that job has not produced a playable artifact; once it has, users
+  // can configure settings for the next render.
+  const renderSettingsLocked = Boolean(renderJobId && !finalVideoUrl);
   const effectiveAiDisclosure =
     aiDisclosureDraft ?? finalRenderSettings?.aiDisclosureEnabled ?? false;
-  const finalVideoUrl = props.state?.finalRender?.outputUrl ?? null;
   const finalVideoProbe = props.state?.finalRender?.probe ?? null;
-  const effectiveSubtitlePreset =
+  const storedSubtitlePreset =
+    finalRenderSettings?.subtitlePresetId ?? "classic_box";
+  const effectiveSubtitleEnabled =
+    subtitlesEnabledDraft ?? storedSubtitlePreset !== "no_subtitle_style";
+  const effectiveSubtitleStyle =
     subtitlePresetDraft ??
-    finalRenderSettings?.subtitlePresetId ??
-    "classic_box";
+    (storedSubtitlePreset === "no_subtitle_style"
+      ? "classic_box"
+      : storedSubtitlePreset);
+  const effectiveSubtitlePreset =
+    effectiveSubtitleEnabled ? effectiveSubtitleStyle : "no_subtitle_style";
+  const subtitleSettingsDirty =
+    effectiveSubtitlePreset !== storedSubtitlePreset;
   const effectiveOverlayText =
     overlayTextDraft ?? finalRenderSettings?.overlayText?.content ?? "";
   const effectiveOverlayTextPosition =
@@ -2357,7 +2371,7 @@ export function StagedCheckpointReviewPanel(props: {
                       variant="primary"
                       size="lg"
                       isLoading={isThisActionRunning("submit-final-render")}
-                      isDisabled={!canSubmitFinalRender}
+                      isDisabled={!canSubmitFinalRender || subtitleSettingsDirty}
                       onClick={() => props.onSubmitFinalRender?.()}
                     />
                   ) : (
@@ -2372,12 +2386,62 @@ export function StagedCheckpointReviewPanel(props: {
                       variant="primary"
                       size="lg"
                       isLoading={isThisActionRunning("submit-final-render")}
-                      isDisabled={!renderJobId && !canSubmitFinalRender}
+                      isDisabled={
+                        !renderJobId &&
+                        (!canSubmitFinalRender || subtitleSettingsDirty)
+                      }
                       onClick={() => props.onSubmitFinalRender?.()}
                     />
                   )
                 }
               >
+                <VStack as="section" gap={2} padding={3}>
+                  <Text type="label" as="p" color="primary">
+                    คำบรรยายในวิดีโอรวม
+                  </Text>
+                  <SegmentedControl
+                    label="คำบรรยายในวิดีโอรวม"
+                    value={effectiveSubtitleEnabled ? "show" : "hide"}
+                    onChange={value =>
+                      setSubtitlesEnabledDraft(value === "show")
+                    }
+                    layout="fill"
+                    isDisabled={renderSettingsLocked}
+                  >
+                    <SegmentedControlItem
+                      value="show"
+                      label="แสดงคำบรรยาย"
+                    />
+                    <SegmentedControlItem
+                      value="hide"
+                      label="ไม่แสดงคำบรรยาย"
+                    />
+                  </SegmentedControl>
+                  <HStack gap={3} wrap="wrap" align="center">
+                    <Text type="supporting" as="p" role="status">
+                      {effectiveSubtitleEnabled
+                        ? "วิดีโอรวมจะแสดงคำบรรยายตามบทพูด"
+                        : "วิดีโอรวมจะไม่มีคำบรรยาย"}{" "}
+                      {subtitleSettingsDirty
+                        ? "ยังไม่ได้บันทึก ต้องบันทึกก่อนสั่งรวมใหม่"
+                        : "ตัวเลือกนี้บันทึกแล้ว"}
+                    </Text>
+                    <Button
+                      label="บันทึกตัวเลือกคำบรรยาย"
+                      variant="secondary"
+                      size="sm"
+                      isLoading={isThisActionRunning("save-render-settings")}
+                      isDisabled={
+                        renderSettingsLocked || !subtitleSettingsDirty
+                      }
+                      onClick={() =>
+                        props.onSaveRenderSettings?.({
+                          subtitlePresetId: effectiveSubtitlePreset,
+                        })
+                      }
+                    />
+                  </HStack>
+                </VStack>
                 {finalVideoUrl ? (
                   <figure className="m-0 space-y-2 p-4" aria-label="วิดีโอรวม">
                     {props.state?.finalRender?.awaitingFinalization ? (
@@ -2568,14 +2632,17 @@ export function StagedCheckpointReviewPanel(props: {
                 </p>
 
                 <label className="mt-3 block text-xs font-medium text-slate-700">
-                  สไตล์ซับไตเติล
+                  สไตล์ Subtitle
                   <select
                     className="mt-1 w-full rounded border p-2 text-sm"
-                    value={effectiveSubtitlePreset}
+                    value={effectiveSubtitleStyle}
                     onChange={event =>
-                      setSubtitlePresetDraft(event.target.value)
+                      {
+                        setSubtitlePresetDraft(event.target.value);
+                        setSubtitlesEnabledDraft(true);
+                      }
                     }
-                    disabled={renderSettingsLocked}
+                    disabled={renderSettingsLocked || !effectiveSubtitleEnabled}
                   >
                     {SUBTITLE_PRESET_OPTIONS.map(option => (
                       <option key={option.id} value={option.id}>
