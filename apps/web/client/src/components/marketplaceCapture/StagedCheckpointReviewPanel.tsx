@@ -2332,181 +2332,6 @@ export function StagedCheckpointReviewPanel(props: {
           ) : null}
           {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
         </div>
-            {props.state?.outputMode === "full_video" ? (
-              <Banner
-                className="mb-4"
-                data-testid="staged-final-render-action"
-                aria-label="รวมทุกช็อตเป็นวิดีโอเดียว"
-            status={
-              finalVideoUrl
-                ? "success"
-                : canSubmitFinalRender
-                  ? "info"
-                  : "warning"
-                }
-                elevation="low"
-                collapsible={false}
-                title={
-                  finalVideoUrl
-                    ? "วิดีโอรวมเสร็จแล้ว"
-                    : `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
-                }
-                description={
-                  <>
-                    ต่อคลิปตามลำดับช็อต แล้วส่งให้ Worker App ตัดต่อด้วย Remotion
-                    <br />
-                    วิดีโอที่ตรวจรับแล้ว {renderReadyShotCount}/{renderShotCount} ช็อต
-                    {missingRenderShotIds.length > 0
-                      ? ` · ยังไม่มีช็อต ${missingRenderShotIds.join(", ")}`
-                      : ""}
-                    {unapprovedRenderShotIds.length > 0
-                      ? ` · ยังตรวจรับช็อต ${unapprovedRenderShotIds.join(", ")}`
-                      : ""}
-                  </>
-                }
-                endContent={
-                  finalVideoUrl ? (
-                    <Button
-                      label="สั่งรวมวิดีโอใหม่"
-                      variant="primary"
-                      size="lg"
-                      isLoading={isThisActionRunning("submit-final-render")}
-                      isDisabled={!canSubmitFinalRender || subtitleSettingsDirty}
-                      onClick={() => props.onSubmitFinalRender?.()}
-                    />
-                  ) : (
-                    <Button
-                      label={
-                        renderJobId
-                          ? "ตรวจสอบงานรวมวิดีโอ"
-                          : canSubmitFinalRender
-                            ? `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
-                            : `รอวิดีโอครบ ${renderShotCount} ช็อต`
-                      }
-                      variant="primary"
-                      size="lg"
-                      isLoading={isThisActionRunning("submit-final-render")}
-                      isDisabled={
-                        !renderJobId &&
-                        (!canSubmitFinalRender || subtitleSettingsDirty)
-                      }
-                      onClick={() => props.onSubmitFinalRender?.()}
-                    />
-                  )
-                }
-              >
-                <VStack as="section" gap={2} padding={3}>
-                  <Text type="label" as="p" color="primary">
-                    คำบรรยายในวิดีโอรวม
-                  </Text>
-                  <SegmentedControl
-                    label="คำบรรยายในวิดีโอรวม"
-                    value={effectiveSubtitleEnabled ? "show" : "hide"}
-                    onChange={value =>
-                      setSubtitlesEnabledDraft(value === "show")
-                    }
-                    layout="fill"
-                    isDisabled={renderSettingsLocked}
-                  >
-                    <SegmentedControlItem
-                      value="show"
-                      label="แสดงคำบรรยาย"
-                    />
-                    <SegmentedControlItem
-                      value="hide"
-                      label="ไม่แสดงคำบรรยาย"
-                    />
-                  </SegmentedControl>
-                  <HStack gap={3} wrap="wrap" align="center">
-                    <Text type="supporting" as="p" role="status">
-                      {effectiveSubtitleEnabled
-                        ? "วิดีโอรวมจะแสดงคำบรรยายตามบทพูด"
-                        : "วิดีโอรวมจะไม่มีคำบรรยาย"}{" "}
-                      {subtitleSettingsDirty
-                        ? "ยังไม่ได้บันทึก ต้องบันทึกก่อนสั่งรวมใหม่"
-                        : "ตัวเลือกนี้บันทึกแล้ว"}
-                    </Text>
-                    <Button
-                      label="บันทึกตัวเลือกคำบรรยาย"
-                      variant="secondary"
-                      size="sm"
-                      isLoading={isThisActionRunning("save-render-settings")}
-                      isDisabled={
-                        renderSettingsLocked || !subtitleSettingsDirty
-                      }
-                      onClick={() =>
-                        props.onSaveRenderSettings?.({
-                          subtitlePresetId: effectiveSubtitlePreset,
-                        })
-                      }
-                    />
-                  </HStack>
-                </VStack>
-                {finalVideoUrl ? (
-                  <figure className="m-0 space-y-2 p-4" aria-label="วิดีโอรวม">
-                    {props.state?.finalRender?.awaitingFinalization ? (
-                      <figcaption className="text-xs text-amber-800">
-                        ไฟล์เล่นและดาวน์โหลดได้แล้ว ระบบกำลังตรวจขั้นตอนบันทึกเข้า Library
-                      </figcaption>
-                    ) : null}
-                    {failedMediaUrls[finalVideoUrl] ? (
-                      <p
-                        className="flex min-h-32 w-full max-w-xs items-center justify-center rounded border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800"
-                        role="alert"
-                      >
-                        ไฟล์วิดีโอผลลัพธ์หมดอายุหรือเปิดไม่ได้แล้ว
-                      </p>
-                    ) : (
-                      <video
-                        id={`staged-final-video-${props.runId}`}
-                        data-testid="staged-final-render-video"
-                        key={finalVideoUrl}
-                        className="block aspect-[9/16] max-h-[70vh] w-full max-w-xs rounded border border-emerald-200 bg-black object-contain"
-                        src={finalVideoUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        onError={() =>
-                          setFailedMediaUrls(current => ({
-                            ...current,
-                            [finalVideoUrl]: true,
-                          }))
-                        }
-                      />
-                    )}
-                    <figcaption className="flex flex-wrap items-center gap-3 text-xs text-emerald-950">
-                      <a
-                        className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
-                        href={finalVideoUrl}
-                        download={`marketplace-review-${props.runId}.mp4`}
-                      >
-                        ดาวน์โหลดวิดีโอรวม
-                      </a>
-                      <span>
-                        {[
-                          finalVideoProbe?.width && finalVideoProbe?.height
-                            ? `${finalVideoProbe.width}×${finalVideoProbe.height}`
-                            : null,
-                          finalVideoProbe?.durationSeconds
-                            ? `${Math.round(finalVideoProbe.durationSeconds)} วินาที`
-                            : null,
-                          finalVideoProbe?.sizeBytes
-                            ? `${(finalVideoProbe.sizeBytes / 1024 / 1024).toFixed(1)} MB`
-                            : null,
-                          renderJobId ? `job ${renderJobId}` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </figcaption>
-                  </figure>
-                ) : renderJobId ? (
-                  <p className="px-4 pb-3 text-sm text-slate-700" role="status">
-                    ส่งงานแล้ว · job {renderJobId} กำลังรอหรือกำลัง render ใน Worker App
-                  </p>
-                ) : null}
-              </Banner>
-            ) : null}
         {props.loading ? (
           <p className="mt-3 text-sm text-slate-600" role="status">
             กำลังโหลด checkpoint…
@@ -2630,6 +2455,54 @@ export function StagedCheckpointReviewPanel(props: {
                   ระบบจะต่อวิดีโอตามลำดับช็อต แล้วส่งงานให้ Worker App
                   รวมเป็นไฟล์เดียวด้วย Remotion วิดีโอจะปรากฏที่หน้านี้เมื่อทำเสร็จ
                 </p>
+
+                <VStack as="section" gap={2} padding={3}>
+                  <Text type="label" as="p" color="primary">
+                    คำบรรยายในวิดีโอรวม
+                  </Text>
+                  <SegmentedControl
+                    label="คำบรรยายในวิดีโอรวม"
+                    value={effectiveSubtitleEnabled ? "show" : "hide"}
+                    onChange={value =>
+                      setSubtitlesEnabledDraft(value === "show")
+                    }
+                    layout="fill"
+                    isDisabled={renderSettingsLocked}
+                  >
+                    <SegmentedControlItem
+                      value="show"
+                      label="แสดงคำบรรยาย"
+                    />
+                    <SegmentedControlItem
+                      value="hide"
+                      label="ไม่แสดงคำบรรยาย"
+                    />
+                  </SegmentedControl>
+                  <HStack gap={3} wrap="wrap" align="center">
+                    <Text type="supporting" as="p" role="status">
+                      {effectiveSubtitleEnabled
+                        ? "วิดีโอรวมจะแสดงคำบรรยายตามบทพูด"
+                        : "วิดีโอรวมจะไม่มีคำบรรยาย"}{" "}
+                      {subtitleSettingsDirty
+                        ? "ยังไม่ได้บันทึก ต้องบันทึกก่อนสั่งรวมใหม่"
+                        : "ตัวเลือกนี้บันทึกแล้ว"}
+                    </Text>
+                    <Button
+                      label="บันทึกตัวเลือกคำบรรยาย"
+                      variant="secondary"
+                      size="sm"
+                      isLoading={isThisActionRunning("save-render-settings")}
+                      isDisabled={
+                        renderSettingsLocked || !subtitleSettingsDirty
+                      }
+                      onClick={() =>
+                        props.onSaveRenderSettings?.({
+                          subtitlePresetId: effectiveSubtitlePreset,
+                        })
+                      }
+                    />
+                  </HStack>
+                </VStack>
 
                 <label className="mt-3 block text-xs font-medium text-slate-700">
                   สไตล์ Subtitle
@@ -2993,7 +2866,7 @@ export function StagedCheckpointReviewPanel(props: {
                     { disabled: renderSettingsLocked }
                   )}
                   <span className="text-xs text-slate-600">
-                    สั่งรวมวิดีโอได้จากปุ่มด้านบน
+                    สั่งรวมวิดีโอได้จากปุ่มด้านล่างหลังบันทึกการตั้งค่า
                   </span>
                 </div>
                 {missingRenderShotIds.length > 0 ? (
@@ -3007,6 +2880,136 @@ export function StagedCheckpointReviewPanel(props: {
                 ) : null}
 
               </div>
+            ) : null}
+            {props.state?.outputMode === "full_video" ? (
+              <Banner
+                className="mt-3 mb-4"
+                data-testid="staged-final-render-action"
+                aria-label="รวมทุกช็อตเป็นวิดีโอเดียว"
+                status={
+                  finalVideoUrl
+                    ? "success"
+                    : canSubmitFinalRender
+                      ? "info"
+                      : "warning"
+                }
+                elevation="low"
+                collapsible={false}
+                title={
+                  finalVideoUrl
+                    ? "วิดีโอรวมเสร็จแล้ว"
+                    : `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
+                }
+                description={
+                  <>
+                    ต่อคลิปตามลำดับช็อต แล้วส่งให้ Worker App ตัดต่อด้วย Remotion
+                    <br />
+                    วิดีโอที่ตรวจรับแล้ว {renderReadyShotCount}/{renderShotCount} ช็อต
+                    {missingRenderShotIds.length > 0
+                      ? ` · ยังไม่มีช็อต ${missingRenderShotIds.join(", ")}`
+                      : ""}
+                    {unapprovedRenderShotIds.length > 0
+                      ? ` · ยังตรวจรับช็อต ${unapprovedRenderShotIds.join(", ")}`
+                      : ""}
+                  </>
+                }
+                endContent={
+                  finalVideoUrl ? (
+                    <Button
+                      label="สั่งรวมวิดีโอใหม่"
+                      variant="primary"
+                      size="lg"
+                      isLoading={isThisActionRunning("submit-final-render")}
+                      isDisabled={
+                        !canSubmitFinalRender || subtitleSettingsDirty
+                      }
+                      onClick={() => props.onSubmitFinalRender?.()}
+                    />
+                  ) : (
+                    <Button
+                      label={
+                        renderJobId
+                          ? "ตรวจสอบงานรวมวิดีโอ"
+                          : canSubmitFinalRender
+                            ? `รวม ${renderShotCount} ช็อตเป็นวิดีโอเดียว`
+                            : `รอวิดีโอครบ ${renderShotCount} ช็อต`
+                      }
+                      variant="primary"
+                      size="lg"
+                      isLoading={isThisActionRunning("submit-final-render")}
+                      isDisabled={
+                        !renderJobId &&
+                        (!canSubmitFinalRender || subtitleSettingsDirty)
+                      }
+                      onClick={() => props.onSubmitFinalRender?.()}
+                    />
+                  )
+                }
+              >
+                {finalVideoUrl ? (
+                  <figure className="m-0 space-y-2 p-4" aria-label="วิดีโอรวม">
+                    {props.state?.finalRender?.awaitingFinalization ? (
+                      <figcaption className="text-xs text-amber-800">
+                        ไฟล์เล่นและดาวน์โหลดได้แล้ว ระบบกำลังตรวจขั้นตอนบันทึกเข้า Library
+                      </figcaption>
+                    ) : null}
+                    {failedMediaUrls[finalVideoUrl] ? (
+                      <p
+                        className="flex min-h-32 w-full max-w-xs items-center justify-center rounded border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800"
+                        role="alert"
+                      >
+                        ไฟล์วิดีโอผลลัพธ์หมดอายุหรือเปิดไม่ได้แล้ว
+                      </p>
+                    ) : (
+                      <video
+                        id={`staged-final-video-${props.runId}`}
+                        data-testid="staged-final-render-video"
+                        key={finalVideoUrl}
+                        className="block aspect-[9/16] max-h-[70vh] w-full max-w-xs rounded border border-emerald-200 bg-black object-contain"
+                        src={finalVideoUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        onError={() =>
+                          setFailedMediaUrls(current => ({
+                            ...current,
+                            [finalVideoUrl]: true,
+                          }))
+                        }
+                      />
+                    )}
+                    <figcaption className="flex flex-wrap items-center gap-3 text-xs text-emerald-950">
+                      <a
+                        className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
+                        href={finalVideoUrl}
+                        download={`marketplace-review-${props.runId}.mp4`}
+                      >
+                        ดาวน์โหลดวิดีโอรวม
+                      </a>
+                      <span>
+                        {[
+                          finalVideoProbe?.width && finalVideoProbe?.height
+                            ? `${finalVideoProbe.width}×${finalVideoProbe.height}`
+                            : null,
+                          finalVideoProbe?.durationSeconds
+                            ? `${Math.round(finalVideoProbe.durationSeconds)} วินาที`
+                            : null,
+                          finalVideoProbe?.sizeBytes
+                            ? `${(finalVideoProbe.sizeBytes / 1024 / 1024).toFixed(1)} MB`
+                            : null,
+                          renderJobId ? `job ${renderJobId}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </figcaption>
+                  </figure>
+                ) : renderJobId ? (
+                  <p className="px-4 pb-3 text-sm text-slate-700" role="status">
+                    ส่งงานแล้ว · job {renderJobId} กำลังรอหรือกำลัง render ใน Worker App
+                  </p>
+                ) : null}
+              </Banner>
             ) : null}
             {props.state.correctionRequired ? (
               <div
