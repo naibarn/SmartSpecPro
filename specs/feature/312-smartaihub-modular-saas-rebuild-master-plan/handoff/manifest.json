@@ -129,7 +129,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 135,
+  "generation": 136,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
@@ -3896,7 +3896,7 @@
     "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T10:29:36.667504Z",
+  "updated_at": "2026-11-15T10:30:54.358231Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3911,7 +3911,7 @@
     "required_profiles": [
       "package"
     ],
-    "sha": "1856a2d1d089da88737e024e96651c94c42d165e",
+    "sha": "155bcde8ad7057760265009e5e3385b14826d4da",
     "status": "PASS",
     "task_regressions": []
   }
