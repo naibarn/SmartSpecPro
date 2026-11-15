@@ -76,7 +76,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
-    "expected_spec_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3"
+    "expected_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464"
   },
   "continuation": {
     "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950. Identify a genuine producer-backed Chat output and authoritative private object resolver; keep artifacts=false until end-to-end owner/content authorization tests pass. Define the SPEC-277 Task Control and SPEC-294 Mission Control tenant-scoped read DTO with its owning implementers before adding Modular adapters. Retain authenticated Inspector UAT, migration 0437 owner review and package-size advisory as open.",
@@ -136,18 +136,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 127,
+  "generation": 128,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+    "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-15T06:58:29.679618Z",
+      "last_evidence_at": "2026-11-15T09:25:00.440998Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.20",
+    "revision": "1.22",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -2295,10 +2295,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-15T06:58:29.679618Z",
+    "reconciled_at": "2026-11-15T09:25:00.440998Z",
     "sources": [
       {
-        "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2491,6 +2491,31 @@
         "digest": "80e15d74f41d3ce012c03c05faee4cec638bdbb9ae7adb98ddc595733492827a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md"
+      },
+      {
+        "digest": "a74582da019571393c99766026c67220637da3c909077593a3b92329e35c6861",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "50bfb1cdbda18f76c2caad4e1e7eb51910fc545f680c5a0abbdee23274ac09e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "1570f52cb8658cf40c43e1003d4facd5b94a2b4155babb4b201c504316b74ae2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/r1.21-dev-release.md"
+      },
+      {
+        "digest": "ab599a616a2860a8a8e6310216f0c9dc8386854ca2fd08539efae42d7ed1a97f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "138b0677c8df2c89220d3be69a3897f95e99dc8eac98d126747cfa83f7beabef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/IMPLEMENTATION_TRACEABILITY.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -2928,7 +2953,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "source_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -3245,14 +3270,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "source_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -3447,6 +3472,31 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md"
       },
       {
+        "digest": "a74582da019571393c99766026c67220637da3c909077593a3b92329e35c6861",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "50bfb1cdbda18f76c2caad4e1e7eb51910fc545f680c5a0abbdee23274ac09e2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "1570f52cb8658cf40c43e1003d4facd5b94a2b4155babb4b201c504316b74ae2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/r1.21-dev-release.md"
+      },
+      {
+        "digest": "ab599a616a2860a8a8e6310216f0c9dc8386854ca2fd08539efae42d7ed1a97f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "138b0677c8df2c89220d3be69a3897f95e99dc8eac98d126747cfa83f7beabef",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/index.md"
@@ -3577,12 +3627,12 @@
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
-    "pass": 1,
-    "total": 98,
-    "unresolved": 96
+    "pass": 0,
+    "total": 104,
+    "unresolved": 103
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T06:58:55.140890Z",
+  "updated_at": "2026-11-15T09:25:00.440998Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
