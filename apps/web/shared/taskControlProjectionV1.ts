@@ -1,6 +1,6 @@
 export type TaskControlProjectionV1 = {
   readonly schemaVersion: "smartaihub.task-control-projection.v1";
-  readonly workspaceId: string;
+  readonly workspaceId: string | null;
   readonly items: readonly {
     readonly taskId: string;
     readonly jobId: string;
@@ -21,7 +21,7 @@ export type TaskControlProjectionV1 = {
 };
 
 export function projectTaskControlV1(input: {
-  readonly workspaceId: string;
+  readonly workspaceId: string | null;
   readonly page: {
     readonly items: readonly {
       readonly id?: unknown;

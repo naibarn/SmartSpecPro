@@ -122,7 +122,7 @@ describe("workerJobsRouter task observability scope", () => {
     });
     const fn = workerJobsRouter.observabilityV1 as unknown as Function;
     await expect(fn({ ctx: CTX, input: { conversationId: 42 } })).resolves.toEqual({
-      schemaVersion: "smartaihub.task-control-projection.v1", workspaceId: "tenant-1",
+      schemaVersion: "smartaihub.task-control-projection.v1", workspaceId: null,
       items: [{ taskId: "job-1", jobId: "job-1", threadId: null, conversationId: 42, runId: "run-canonical-1",
         attemptId: null, status: "succeeded", agentId: null, harnessId: null, executorId: null, machineId: null,
         eventCursor: null, artifactIds: [], updatedAt: "2026-11-15T00:00:00.000Z" }],

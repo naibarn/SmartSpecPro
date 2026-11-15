@@ -155,7 +155,7 @@ export const workerJobsRouter = router({
           threadId: input?.threadId,
           jobId: input?.jobId,
         });
-        return projectTaskControlV1({ workspaceId: scope.tenantId, page });
+        return projectTaskControlV1({ workspaceId: null, page });
       } catch (error) { return mapObservabilityError(error); }
     }),
 
