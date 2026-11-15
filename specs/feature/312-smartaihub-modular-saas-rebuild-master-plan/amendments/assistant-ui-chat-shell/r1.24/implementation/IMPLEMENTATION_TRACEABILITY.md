@@ -1,0 +1,33 @@
+# SPEC-312 R1.24 Implementation Traceability
+
+**Disposition:** `PARTIAL / CONTINUATION_REQUIRED` · **Actual DEV migration:** `BLOCKED` · **Release:** `PENDING` · **Task base:** SmartSpecPro `49ef6b47161889b7f686d231e98a2ef53c732bda` (`main == origin/main` at start) · **Platform base:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`
+
+| Requirement | Implementation / evidence | Result | Remaining action |
+| --- | --- | --- | --- |
+| R1.24-01 credential exposure | Prior disclosure principal is `smartspec_dev`; local env/backup bindings identified by secret metadata only. Active systemd unit metadata points at separate `smartspec` credentials. No approved rotation/secrets authority was found for the remote Debian DB; no credential was reused, printed, rotated or revoked. | `CREDENTIAL_ROTATED: PENDING` | Authorized DBA maps/audits consumers, rotates/revokes through approved authority, updates only mapped bindings and verifies reconnection. |
+| R1.24-02 least-privilege migration identity | 0441 preflights exact login `smartspec_migrator_dev`, non-superuser/no role-admin/no DB-create/no replication/no bypass-RLS/no-inherit flags, prepared NOLOGIN owner role, required short-lived database/schema/ledger/FK grants, owner reads, and existing Task Control ownership. No role DDL or self-membership grant remains. | `IMPLEMENTED` | Provision/login binding exists only in the documented DBA runbook; not present in actual DEV yet. |
+| R1.24-03 PostgreSQL 15 privilege semantics | Exact PG15.17 disposable cluster proved that `NOINHERIT` membership does not permit replacing a function owned by another role. DBA must transfer Task Control to migration login before runner invocation; 0441 transfers it back to the function owner. | `TESTED_PG15` | Confirm the same owner and ACL state in actual DEV immediately before migration. |
+| R1.24-04 migration sequencing and runner | On synthetic PG15.17, executed actual 0439 then 0440 sources, recorded their computed source hashes/timestamps, then used registered `pnpm --dir apps/web db:migrate` as non-superuser `smartspec_migrator_dev` to apply actual 0441. Successful runner receipt at `2026-11-15T14:33:58Z`; 0441 ledger hash `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa`, timestamp `1794770000002`. | `TESTED_PG15` on disposable fixture only | Revalidate live 0439/0440 hashes and 0441 absence; run registered runner against authorized DEV secret. |
+| R1.24-05 table/functions/ACLs | Synthetic PG15 postcondition queries: seven validated table constraints (PK, unique, FKs and checks); owner role on all Mission/Task functions; `SECURITY DEFINER`; fixed `pg_catalog, public`; PUBLIC EXECUTE false; DEV runtime EXECUTE true; runtime direct `worker_jobs` SELECT false; owner broad table SELECT false and needed column SELECT true. | `TESTED_PG15` | Repeat exact readback against actual DEV after migration. |
+| R1.24-06 customer/Job correlation and Task repair | Auth-role runtime fixture verified idempotent Mission creation, independent `active` Mission lifecycle beside a `succeeded` canonical Job, Job/Run/Attempt/Event/Artifact linkage, empty unavailable Agent IDs, cross-workspace and cross-environment denial, and Task `updated_at` computed from finished/heartbeat/started/created. Test-only wrapper compared returned Task timestamp to that canonical expression. One Job remained; one Mission persisted. | `TESTED_PG15` on synthetic fixture | Exercise with actual authorized Modular DEV identity after release. |
+| R1.24-07 bootstrap and transaction rollback | Removing owner-role membership made the exact 0441 preflight fail with `MIGRATION_BOOTSTRAP_REQUIRED`. A test-only Drizzle migration intentionally failed after `CREATE TABLE`; PostgreSQL rolled back the table and ledger remained at three applied rows. | `TESTED_PG15` | None for fixture. Preserve normal live recovery/rollback controls. |
+| R1.24-08 live migration and release | R1.23's last live observation showed PG15.17, 0439/0440 applied and 0441 absent. No new live DB read/mutation was attempted with the compromised application credential. No release controller was run. | `MIGRATED_DEV: BLOCKED`; `DEPLOYED_DEV: PENDING` | Complete DBA/secret steps, actual DB migration and readback, then exact-SHA `modular-debian-dev` release and runtime health. |
+| R1.24-09 authenticated user acceptance | No normal authenticated MFA browser session or new deployed runtime exists. SPEC-277 owner API was not checked by Modular fixture evidence. | `RUNTIME_VERIFIED: PENDING`; `UAT_VERIFIED: PENDING` | Verify normal MFA Mission flow after release; test owner API separately on its actual deployment. |
+
+## Scoped verification record
+
+- **Profile:** `integration` (isolated database + registered migration runner + runtime SQL fixture).
+- **Source:** task base `49ef6b47161889b7f686d231e98a2ef53c732bda` plus the R1.24 working-tree migration; source SHA-256 is recorded in the handoff/final report after integration.
+- **Target:** disposable local PostgreSQL `15.17 (Debian 15.17-1.pgdg13+1)` on loopback port `55439`; no application data copied. Fixture contained only synthetic schema/rows and the three executed migration ledger records.
+- **Command/scope:** `pnpm --dir apps/web db:migrate` with development-only localhost fixture metadata; actual registered wrapper and Drizzle Kit runner applied only pending 0441. Runtime SQL executed as `modular_core_auth_dev`; catalog/ACL checks executed by the disposable-cluster admin.
+- **Time/outcome:** `2026-11-15T14:33:58Z`, pass. Focused role, ACL, constraints, runtime isolation/correlation and rollback assertions passed. No local repository-wide typecheck was run.
+- **Resource evidence:** host memory admission was not captured for this scoped run; the test completed normally without OOM, SIGKILL or exit 137.
+- **Credential scanning:** prior incident investigation outputs were redacted. Do not interpret the earlier timed-out repository-wide scan as a clean pass; the task-scoped source/evidence review found no credential values.
+
+## Applied migration hashes in disposable evidence
+
+| Tag | SHA-256 | Journal timestamp |
+| --- | --- | ---: |
+| `0439_modular_chat_output_artifacts` | `d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8` | `1794770000000` |
+| `0440_seedream_5_5_unified_model` | `141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784` | `1794770000001` |
+| `0441_modular_chat_missions` | `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa` | `1794770000002` |

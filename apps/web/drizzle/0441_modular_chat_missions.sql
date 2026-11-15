@@ -1,11 +1,72 @@
 -- Explicit tenant Chat Missions bind a user-owned conversation to its existing
 -- canonical Chat Jobs. They never enqueue work or mint execution identities.
-CREATE ROLE modular_chat_mission_owner
-  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
---> statement-breakpoint
-COMMENT ON ROLE modular_chat_mission_owner IS 'smartaihub:modular-chat-mission-owner:v1';
---> statement-breakpoint
-GRANT USAGE ON SCHEMA public TO modular_chat_mission_owner;
+-- Role creation, limited source-table reads, existing function ownership and
+-- temporary migration membership are DBA bootstrap operations. Routine DDL
+-- must not create/administer roles or grant itself SECURITY DEFINER authority.
+DO $preflight$
+DECLARE v_owner oid; v_migrator pg_catalog.pg_roles%ROWTYPE; v_existing_owner name;
+BEGIN
+  SELECT * INTO v_migrator FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  SELECT oid INTO v_owner FROM pg_catalog.pg_roles WHERE rolname = 'modular_chat_mission_owner';
+  IF current_database() <> 'smartspec' OR current_user <> 'smartspec_migrator_dev'
+    OR v_migrator.rolcanlogin IS NOT TRUE OR v_migrator.rolsuper OR v_migrator.rolcreatedb
+    OR v_migrator.rolcreaterole OR v_migrator.rolbypassrls OR v_migrator.rolreplication OR v_migrator.rolinherit
+    OR v_owner IS NULL
+    OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles owner_role WHERE owner_role.oid = v_owner
+      AND NOT owner_role.rolcanlogin AND NOT owner_role.rolsuper AND NOT owner_role.rolcreatedb
+      AND NOT owner_role.rolcreaterole AND NOT owner_role.rolbypassrls
+      AND NOT owner_role.rolreplication AND NOT owner_role.rolinherit)
+    OR NOT pg_catalog.pg_has_role(current_user, v_owner, 'MEMBER')
+    OR NOT pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE')
+    OR NOT pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE')
+    OR NOT pg_catalog.has_schema_privilege(v_owner, 'public', 'CREATE')
+    OR NOT pg_catalog.has_column_privilege(current_user, 'public.users', 'id', 'REFERENCES')
+    OR NOT pg_catalog.has_column_privilege(current_user, 'public.conversations', 'id', 'REFERENCES')
+    OR NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'environment_tenant_id', 'REFERENCES')
+    OR NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'id', 'REFERENCES')
+    OR NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'USAGE')
+    OR NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'CREATE')
+    OR NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'SELECT')
+    OR NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'INSERT')
+    OR NOT pg_catalog.has_sequence_privilege(current_user, 'drizzle.__drizzle_migrations_id_seq', 'USAGE')
+    OR NOT pg_catalog.has_function_privilege(v_owner,
+      'public.assert_modular_chat_workspace_access(integer,character varying,character varying)', 'EXECUTE')
+  THEN
+    RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: authorized non-superuser _dev migrator and prepared modular_chat_mission_owner role are required';
+  END IF;
+
+  SELECT pg_catalog.pg_get_userbyid(proowner) INTO v_existing_owner
+  FROM pg_catalog.pg_proc
+  WHERE oid = pg_catalog.to_regprocedure(
+    'public.list_modular_chat_task_control_projection(integer,character varying,character varying,integer)');
+  IF v_existing_owner IS DISTINCT FROM current_user THEN
+    RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: transfer the existing Task Control function to the migration login before 0441';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('public.users', 'id'),
+      ('public.conversations', 'id'), ('public.conversations', 'userId'),
+      ('public.conversations', 'isArchived'), ('public.conversations', 'trashedAt'), ('public.conversations', 'tenantId'),
+      ('public.modular_workspaces', 'environment_tenant_id'), ('public.modular_workspaces', 'id'),
+      ('public.modular_workspaces', 'owner_user_id'), ('public.modular_workspaces', 'is_default'), ('public.modular_workspaces', 'workspace_type'),
+      ('public.modular_chat_conversation_scopes', 'conversation_id'), ('public.modular_chat_conversation_scopes', 'environment_tenant_id'),
+      ('public.modular_chat_conversation_scopes', 'workspace_id'), ('public.modular_chat_conversation_scopes', 'owner_user_id'),
+      ('public.worker_jobs', 'id'), ('public.worker_jobs', 'jobType'), ('public.worker_jobs', 'requestedByUserId'),
+      ('public.worker_jobs', 'environment_tenant_id'), ('public.worker_jobs', 'chat_workspace_id'), ('public.worker_jobs', 'thread_id'),
+      ('public.worker_jobs', 'inputJson'), ('public.worker_jobs', 'createdAt'), ('public.worker_jobs', 'startedAt'),
+      ('public.worker_jobs', 'heartbeatAt'), ('public.worker_jobs', 'finishedAt'), ('public.worker_jobs', 'progressJson'), ('public.worker_jobs', 'status'),
+      ('public.worker_job_attempts', 'id'), ('public.worker_job_attempts', 'workerJobId'), ('public.worker_job_attempts', 'attempt'),
+      ('public.worker_job_events', 'workerJobId'), ('public.worker_job_events', 'eventSequence'),
+      ('public.worker_artifacts', 'id'), ('public.worker_artifacts', 'workerJobId'),
+      ('public.worker_artifacts', 'artifactType'), ('public.worker_artifacts', 'metadataJson')
+    ) AS required(relation_name, column_name)
+    WHERE NOT pg_catalog.has_column_privilege(v_owner, required.relation_name, required.column_name, 'SELECT')
+  ) THEN
+    RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: grant modular_chat_mission_owner the documented narrow projection reads';
+  END IF;
+END $preflight$;
 --> statement-breakpoint
 
 CREATE TABLE public.modular_chat_missions (
@@ -29,21 +90,9 @@ CREATE INDEX modular_chat_missions_owner_idx
   ON public.modular_chat_missions(environment_tenant_id, workspace_id, owner_user_id, updated_at DESC);
 --> statement-breakpoint
 
-GRANT SELECT (id) ON public.users TO modular_chat_mission_owner;
-GRANT SELECT (id, "userId", "isArchived", "trashedAt", "tenantId") ON public.conversations TO modular_chat_mission_owner;
-GRANT SELECT (environment_tenant_id, id, owner_user_id, is_default, workspace_type) ON public.modular_workspaces TO modular_chat_mission_owner;
-GRANT SELECT (conversation_id, environment_tenant_id, workspace_id, owner_user_id) ON public.modular_chat_conversation_scopes TO modular_chat_mission_owner;
-GRANT SELECT (id, "jobType", "requestedByUserId", environment_tenant_id, chat_workspace_id, thread_id,
-  "inputJson", "createdAt", "startedAt", "heartbeatAt", "finishedAt", "progressJson", status)
-  ON public.worker_jobs TO modular_chat_mission_owner;
-GRANT SELECT (id, "workerJobId", attempt) ON public.worker_job_attempts TO modular_chat_mission_owner;
-GRANT SELECT ("workerJobId", "eventSequence") ON public.worker_job_events TO modular_chat_mission_owner;
-GRANT SELECT (id, "workerJobId", "artifactType", "metadataJson") ON public.worker_artifacts TO modular_chat_mission_owner;
 GRANT SELECT (id, environment_tenant_id, workspace_id, owner_user_id, conversation_id, lifecycle_status, created_at, updated_at),
   INSERT (environment_tenant_id, workspace_id, owner_user_id, conversation_id),
   UPDATE (updated_at) ON public.modular_chat_missions TO modular_chat_mission_owner;
-GRANT EXECUTE ON FUNCTION public.assert_modular_chat_workspace_access(integer, varchar, varchar)
-  TO modular_chat_mission_owner;
 --> statement-breakpoint
 
 CREATE FUNCTION public.create_modular_chat_mission(
@@ -193,11 +242,9 @@ DO $grants$ BEGIN
 END $grants$;
 --> statement-breakpoint
 
-GRANT modular_chat_mission_owner TO CURRENT_USER;
 ALTER FUNCTION public.create_modular_chat_mission(integer, varchar, varchar, integer)
   OWNER TO modular_chat_mission_owner;
 ALTER FUNCTION public.list_modular_chat_missions(integer, varchar, varchar, integer)
   OWNER TO modular_chat_mission_owner;
 ALTER FUNCTION public.list_modular_chat_task_control_projection(integer, varchar, varchar, integer)
   OWNER TO modular_chat_mission_owner;
-REVOKE modular_chat_mission_owner FROM CURRENT_USER;
