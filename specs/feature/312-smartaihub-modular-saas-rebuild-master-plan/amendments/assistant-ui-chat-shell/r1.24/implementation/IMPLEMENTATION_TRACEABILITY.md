@@ -40,3 +40,22 @@
 - Authority search found no registered DBA or secret-management interface for this remote Debian PostgreSQL cluster. Local `migration-v1.json` reports `migratedHomeCount: 0` and is not credential authority. No compromised credential was accessed. `psql` availability alone is not DBA authority.
 - `CREDENTIAL_ROTATED: BLOCKED`; `DBA_BOOTSTRAPPED: BLOCKED`; `MIGRATED_DEV: BLOCKED`; `DEPLOYED_DEV: PENDING` (preserved release `ca4f5a58`); `RUNTIME_VERIFIED: PARTIAL` (public shell/chat/core health only); `UAT_VERIFIED: UAT_PENDING`; `SPEC_ACCEPTANCE: PENDING`.
 - **Resume condition:** the authorized PostgreSQL DBA and secret-binding owner must rotate/revoke `smartspec_dev`, provision and bind `smartspec_migrator_dev`, and perform live preflight. Then follow [DBA_MIGRATION_BOOTSTRAP.md](../DBA_MIGRATION_BOOTSTRAP.md) without changing migration 0441; apply/revoke the documented scoped privileges, verify ledger/schema/ACL, and only then release and run authenticated UAT.
+
+## 2026-11-15 single-owner policy and live-target evidence
+
+The owner has authorized normal DEV database administration and deployment by Codex. This supersedes the earlier organizational-DBA/secret-manager blocker; it grants no production authority. The authoritative policy is `SINGLE_OWNER_DEV_ADMIN_MODE` in `../spec.md`, and the operator procedure is `../DBA_MIGRATION_BOOTSTRAP.md`.
+
+- **Source/target:** SmartSpecPro `97fe0b329e985987d8fbca97b0d4da66b93a4746 == origin/main`; Platform `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5 == origin/main`; registered target `modular-debian-dev`, `aimarkethubs.com`, DB `smartspec`, Debian/local Workerd. Unrelated dirty work was preserved.
+- **Read-only live verification:** protected local checkpoint binding mode 0600; actual database `smartspec`; PostgreSQL `15.17`; connected role `smartspec`, `rolsuper=true`; live ledger 0439 hash `d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8` at `1794770000000`, 0440 hash `141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784` at `1794770000001`; 0441 absent; Mission table and restricted owner role absent. The exposed `smartspec_dev` principal is still a superuser, has active local consumers, and currently owns the Task Control projection; no exposed value was read or reused.
+- **New source preflight:** exact target ID/domain/database/environment, explicit admin profile marker, actual login/superuser status and PG15 are required. Exact 0439/0440 hashes/timestamps, 0441 absence, and latest-head position are verified before invoking Drizzle. Focused Vitest `scripts/__tests__/sharedTenantDevMigrationTarget.test.ts`: 17 passed. Migration 0441 hash after the admin-profile change: `feaea1d8c41d61b53bc2f9cbaaa630dc9583cbc9454267c2e98fc0ffcb80db0b`.
+- **Remaining:** credential rotation and mapped-consumer reconnection; schema backup; restricted owner-role bootstrap; registered live migration and exact postconditions; immutable source build and registered modular DEV release; Core/Chat/Shell plus Mission/Task/artifact runtime checks; authenticated MFA UAT when a normal browser session is available. No schema mutation, live migration, release, or UAT is claimed by this evidence.
+
+| Status | Current result |
+| --- | --- |
+| `CREDENTIAL_ROTATED` | `PENDING` |
+| `DBA_BOOTSTRAPPED` | `PENDING` |
+| `MIGRATED_DEV` | `PENDING` |
+| `DEPLOYED_DEV` | `PENDING` — current preserved source remains `ca4f5a58` |
+| `RUNTIME_VERIFIED` | `PARTIAL` — public basic health only |
+| `UAT_VERIFIED` | `UAT_PENDING` |
+| `SPEC_ACCEPTANCE` | `PENDING` |

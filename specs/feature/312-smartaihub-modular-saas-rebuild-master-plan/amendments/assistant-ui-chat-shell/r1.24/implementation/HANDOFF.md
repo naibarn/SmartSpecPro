@@ -63,3 +63,24 @@
 | `RUNTIME_VERIFIED` | `PARTIAL` — public Core, Chat, and Shell health routes return 200; Mission Control post-migration endpoints not verified |
 | `UAT_VERIFIED` | `UAT_PENDING` — no authenticated MFA browser session available |
 | `SPEC_ACCEPTANCE` | `PENDING` — blocked by live migration, new release, and authenticated UAT |
+
+## 2026-11-15 single-owner DEV authority resolution
+
+The owner explicitly authorized autonomous DEV administration and deployment; no external DBA chain or enterprise secret manager is required. The previously recorded “authority unavailable” entries above are historical and are superseded by this evidence and policy.
+
+- SmartSpecPro baseline is `97fe0b329e985987d8fbca97b0d4da66b93a4746` and equals `origin/main`; Platform baseline remains `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`. Unrelated dirty worktree changes remain preserved.
+- The owner-only local checkpoint binding is protected (`/home/dev/.config/smartspec-dev/python.env`, mode 0600, current owner). A read-only live query confirmed `smartspec`, PostgreSQL 15.17, authenticated role `smartspec` with actual `rolsuper=true`. Live rows 418/419 exactly match 0439/0440 hashes and timestamps; 0441 is absent; the Mission table and owner role do not exist. The exposed `smartspec_dev` role itself is still a superuser and currently owns the 0439 Task Control function.
+- `0441_modular_chat_missions.sql` now supports the explicitly marked actual-superuser DEV profile while preserving the restricted NOLOGIN owner, SECURITY DEFINER, fixed search path, tenant authorization, PUBLIC EXECUTE denial, and runtime isolation. Source hash is now `feaea1d8c41d61b53bc2f9cbaaa630dc9583cbc9454267c2e98fc0ffcb80db0b`; do not use the earlier fixture hash for this amended source. Runner guards enforce the exact `modular-debian-dev` / `aimarkethubs.com` target, actual PG15 superuser identity, exact 0439/0440 ledger hashes and timestamps, and 0441 absence. The new focused guard suite passes 17/17.
+- Known `smartspec_dev` local bindings are `python.env` and `web.env`; a local dev web process reads `web.env`, while the active Python service reads `python.env`. These bindings and active consumers are being rotated/restarted through the verified admin path. No credential values are recorded here.
+- No live schema mutation, migration, or release has happened yet. The next authorized step is a private schema/ledger backup, secure credential rotation and consumer reconnection, then restricted owner-role bootstrap and the registered `pnpm --dir apps/web db:migrate` command. Re-read the live ledger/hash and target immediately before migration.
+- Deployment remains only `modular-debian-dev` (`https://aimarkethubs.com/chat`) through its registered controller after migration. No production or legacy target is authorized. Authenticated MFA UAT remains pending until a normal browser session is available.
+
+| Status | Current result |
+| --- | --- |
+| `CREDENTIAL_ROTATED` | `PENDING` — secure rotation and consumer reconnection not yet performed |
+| `DBA_BOOTSTRAPPED` | `PENDING` — verified owner path exists; restricted function-owner role not yet prepared |
+| `MIGRATED_DEV` | `PENDING` — live 0441 remains unapplied |
+| `DEPLOYED_DEV` | `PENDING` — preserved release remains `ca4f5a58`; no new release |
+| `RUNTIME_VERIFIED` | `PARTIAL` — public Core/Chat/Shell health only; Mission/Task/artifact checks pending |
+| `UAT_VERIFIED` | `UAT_PENDING` — authenticated MFA browser session not available |
+| `SPEC_ACCEPTANCE` | `PENDING` — migration, deployment, runtime verification, and UAT remain |

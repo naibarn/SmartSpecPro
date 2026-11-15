@@ -13,6 +13,12 @@ import { closeDb, getDb } from "../server/db";
 import { hasDatabaseErrorCode } from "./migrationReceiptHelpers";
 import { selectDevMigrationProfile, validateDevActiveSchemaTarget } from "./devActiveSchemaBaseline";
 import {
+  assertMissionMigrationLedger,
+  assertSharedTenantDevMigrationIdentity,
+  SINGLE_OWNER_DEV_ADMIN_APPLICATION_NAME,
+  validateSharedTenantDevMigrationTarget,
+} from "./sharedTenantDevMigrationTarget";
+import {
   evaluateScopedPendingMigrations,
   fingerprintMigrationDatabase,
   parseExpectedPendingTags,
@@ -20,27 +26,6 @@ import {
 } from "./scopedMigrationPreflight";
 
 const { Client } = pg;
-
-function validateSharedTenantDevMigrationTarget(environment: NodeJS.ProcessEnv) {
-  try {
-    const databaseUrl = new URL(environment.DATABASE_URL ?? "");
-    const appUrl = new URL(environment.APP_URL ?? "");
-    if (
-      environment.NODE_ENV !== "development" ||
-      environment.SMARTSPEC_ENVIRONMENT !== "development" ||
-      environment.SMARTSPEC_DEV_DATABASE_MODE !== "shared-tenant" ||
-      !/^(postgres|postgresql):$/.test(databaseUrl.protocol) ||
-      !["localhost", "127.0.0.1", "[::1]"].includes(databaseUrl.hostname) ||
-      databaseUrl.pathname !== "/smartspec" ||
-      !decodeURIComponent(databaseUrl.username).endsWith("_dev") ||
-      !environment.SMARTSPEC_DEV_TENANT_DOMAIN ||
-      appUrl.hostname !== environment.SMARTSPEC_DEV_TENANT_DOMAIN
-    ) throw new Error("SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED");
-  } catch (error) {
-    if (error instanceof Error && error.message === "SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED") throw error;
-    throw new Error("SHARED_DEVELOPMENT_MIGRATION_TARGET_REQUIRED");
-  }
-}
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const phaseKey = process.env.MIGRATION_IDEMPOTENCY_KEY?.trim() || randomUUID();
@@ -274,10 +259,34 @@ async function readDbReceipts(db: ReturnType<typeof getDb>, key: string): Promis
 async function mainWithMigrationLock() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("Database not configured. Set DATABASE_URL before calling db:migrate.");
-  const lockClient = new Client({ connectionString: databaseUrl, application_name: "smartaihub-db-migrate" });
+  const sharedTenantDevMigration = process.env.SMARTSPEC_DEV_DATABASE_MODE === "shared-tenant";
+  const sharedTenantProfile = sharedTenantDevMigration
+    ? validateSharedTenantDevMigrationTarget(process.env)
+    : null;
+  const lockClient = new Client({
+    connectionString: databaseUrl,
+    application_name: sharedTenantProfile === "single-owner-dev-admin"
+      ? SINGLE_OWNER_DEV_ADMIN_APPLICATION_NAME
+      : "smartaihub-db-migrate",
+  });
   let lockAcquired = false;
   try {
     await lockClient.connect();
+    if (sharedTenantDevMigration) {
+      const identity = await lockClient.query<{
+        database_name: string; server_version_num: number; role_can_login: boolean; role_is_superuser: boolean;
+        role_can_create_role: boolean; role_can_create_database: boolean; role_can_replicate: boolean;
+        role_can_bypass_rls: boolean; role_inherit: boolean; application_name: string | null;
+      }>(`SELECT current_database() AS database_name, current_setting('server_version_num')::integer AS server_version_num,
+        role.rolcanlogin AS role_can_login, role.rolsuper AS role_is_superuser,
+        role.rolcreaterole AS role_can_create_role, role.rolcreatedb AS role_can_create_database,
+        role.rolreplication AS role_can_replicate, role.rolbypassrls AS role_can_bypass_rls,
+        role.rolinherit AS role_inherit, current_setting('application_name', true) AS application_name
+        FROM pg_catalog.pg_roles role WHERE role.rolname = current_user`);
+      const actualIdentity = identity.rows[0];
+      if (!actualIdentity) throw new Error("SHARED_DEVELOPMENT_DATABASE_IDENTITY_UNAVAILABLE");
+      assertSharedTenantDevMigrationIdentity(process.env, actualIdentity);
+    }
     const lock = await lockClient.query<{ acquired: boolean }>(
       `SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired`,
       [DRIZZLE_MIGRATION_ADVISORY_LOCK],
@@ -306,14 +315,13 @@ async function mainWithMigrationLock() {
           "SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC",
         )).rows
       : [];
+    if (sharedTenantDevMigration) assertMissionMigrationLedger(canonicalMigrations, existingLedger);
     const migrationCount = existingLedger.length;
     const baselineApplied = existingLedger.some(row => row.hash === devBaselineMigrations[0]?.hash);
     let profile: "canonical" | "dev-active-baseline" = "canonical";
     const devBaselineWasRequested = process.env.SMARTSPEC_DEV_DATABASE_MODE === "development" ||
       process.env.SMARTSPEC_ENVIRONMENT === "development";
-    const sharedTenantDevMigration = process.env.SMARTSPEC_DEV_DATABASE_MODE === "shared-tenant";
-    if (sharedTenantDevMigration) validateSharedTenantDevMigrationTarget(process.env);
-    else if (devBaselineWasRequested) validateDevActiveSchemaTarget(process.env);
+    if (devBaselineWasRequested && !sharedTenantDevMigration) validateDevActiveSchemaTarget(process.env);
     if (devBaselineWasRequested && !sharedTenantDevMigration) {
       profile = selectDevMigrationProfile({
         nodeEnv: process.env.NODE_ENV ?? "",

@@ -1,45 +1,54 @@
 -- Explicit tenant Chat Missions bind a user-owned conversation to its existing
 -- canonical Chat Jobs. They never enqueue work or mint execution identities.
--- Role creation, limited source-table reads, existing function ownership and
--- temporary migration membership are DBA bootstrap operations. Routine DDL
--- must not create/administer roles or grant itself SECURITY DEFINER authority.
+-- Owner-role creation and limited source-table reads are prepared by the
+-- single DEV owner. Migration execution must use an explicit admin profile or
+-- the documented least-privilege migration login; it never creates roles or
+-- grants itself SECURITY DEFINER authority.
 DO $preflight$
-DECLARE v_owner oid; v_migrator pg_catalog.pg_roles%ROWTYPE; v_existing_owner name;
+DECLARE
+  v_owner oid;
+  v_executor pg_catalog.pg_roles%ROWTYPE;
+  v_existing_owner name;
+  v_single_owner_admin boolean;
 BEGIN
-  SELECT * INTO v_migrator FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  SELECT * INTO v_executor FROM pg_catalog.pg_roles WHERE rolname = current_user;
+  v_single_owner_admin := current_setting('application_name', true) = 'spec312-r124-single-owner-dev-admin';
   SELECT oid INTO v_owner FROM pg_catalog.pg_roles WHERE rolname = 'modular_chat_mission_owner';
-  IF current_database() <> 'smartspec' OR current_user <> 'smartspec_migrator_dev'
-    OR v_migrator.rolcanlogin IS NOT TRUE OR v_migrator.rolsuper OR v_migrator.rolcreatedb
-    OR v_migrator.rolcreaterole OR v_migrator.rolbypassrls OR v_migrator.rolreplication OR v_migrator.rolinherit
+  IF current_database() <> 'smartspec' OR v_executor.rolcanlogin IS NOT TRUE
+    OR (v_single_owner_admin AND v_executor.rolsuper IS NOT TRUE)
+    OR (NOT v_single_owner_admin AND (
+      current_user <> 'smartspec_migrator_dev' OR v_executor.rolsuper OR v_executor.rolcreatedb
+      OR v_executor.rolcreaterole OR v_executor.rolbypassrls OR v_executor.rolreplication OR v_executor.rolinherit
+    ))
     OR v_owner IS NULL
     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles owner_role WHERE owner_role.oid = v_owner
       AND NOT owner_role.rolcanlogin AND NOT owner_role.rolsuper AND NOT owner_role.rolcreatedb
       AND NOT owner_role.rolcreaterole AND NOT owner_role.rolbypassrls
       AND NOT owner_role.rolreplication AND NOT owner_role.rolinherit)
-    OR NOT pg_catalog.pg_has_role(current_user, v_owner, 'MEMBER')
-    OR NOT pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE')
-    OR NOT pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE')
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.pg_has_role(current_user, v_owner, 'MEMBER'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_database_privilege(current_user, current_database(), 'CREATE'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE'))
     OR NOT pg_catalog.has_schema_privilege(v_owner, 'public', 'CREATE')
-    OR NOT pg_catalog.has_column_privilege(current_user, 'public.users', 'id', 'REFERENCES')
-    OR NOT pg_catalog.has_column_privilege(current_user, 'public.conversations', 'id', 'REFERENCES')
-    OR NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'environment_tenant_id', 'REFERENCES')
-    OR NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'id', 'REFERENCES')
-    OR NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'USAGE')
-    OR NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'CREATE')
-    OR NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'SELECT')
-    OR NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'INSERT')
-    OR NOT pg_catalog.has_sequence_privilege(current_user, 'drizzle.__drizzle_migrations_id_seq', 'USAGE')
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_column_privilege(current_user, 'public.users', 'id', 'REFERENCES'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_column_privilege(current_user, 'public.conversations', 'id', 'REFERENCES'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'environment_tenant_id', 'REFERENCES'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_column_privilege(current_user, 'public.modular_workspaces', 'id', 'REFERENCES'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'USAGE'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_schema_privilege(current_user, 'drizzle', 'CREATE'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'SELECT'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_table_privilege(current_user, 'drizzle.__drizzle_migrations', 'INSERT'))
+    OR (NOT v_single_owner_admin AND NOT pg_catalog.has_sequence_privilege(current_user, 'drizzle.__drizzle_migrations_id_seq', 'USAGE'))
     OR NOT pg_catalog.has_function_privilege(v_owner,
       'public.assert_modular_chat_workspace_access(integer,character varying,character varying)', 'EXECUTE')
   THEN
-    RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: authorized non-superuser _dev migrator and prepared modular_chat_mission_owner role are required';
+    RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: explicit DEV admin profile or prepared least-privilege migrator and restricted modular_chat_mission_owner role are required';
   END IF;
 
   SELECT pg_catalog.pg_get_userbyid(proowner) INTO v_existing_owner
   FROM pg_catalog.pg_proc
   WHERE oid = pg_catalog.to_regprocedure(
     'public.list_modular_chat_task_control_projection(integer,character varying,character varying,integer)');
-  IF v_existing_owner IS DISTINCT FROM current_user THEN
+  IF NOT v_single_owner_admin AND v_existing_owner IS DISTINCT FROM current_user THEN
     RAISE EXCEPTION 'MIGRATION_BOOTSTRAP_REQUIRED: transfer the existing Task Control function to the migration login before 0441';
   END IF;
 
