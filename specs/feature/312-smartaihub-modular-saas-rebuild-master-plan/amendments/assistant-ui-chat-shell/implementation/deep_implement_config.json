@@ -17,39 +17,39 @@
   "sections_state": {
     "section-01-pin-assistant-ui-and-adapter-contract": {
       "status": "checkpointed",
-      "next_action": "Build the ExternalStoreRuntime hook around canonical Chat messages and conversation selection, delegating sends to the existing worker-job path.",
+      "next_action": "Assistant UI 0.15.36 External Store adapter is integrated; tests and runtime mapping are tracked in IMPLEMENTATION_TRACEABILITY.md. No replay needed.",
       "checkpoint_sha": "28c2438364747a3d68025a940338e6c93b759a49",
       "merged_main_sha": "28c2438364747a3d68025a940338e6c93b759a49"
     },
     "section-02-canonical-thread-message-runtime": {
       "status": "checkpointed",
-      "next_action": "Replace the transcript/composer presentation with assistant-ui primitives while retaining Astryx styling, message metadata, compact previews, attachments, and canonical sendChatTurn behavior.",
+      "next_action": "Canonical conversation/message IDs, queue send, status polling, history hydration and attachments are integrated; authenticated reconnect/ownership UAT remains open.",
       "checkpoint_sha": "ba12de364fa65cf2dbc058348ef19313624ba100",
       "merged_main_sha": "ba12de364fa65cf2dbc058348ef19313624ba100"
     },
     "section-03-transcript-composer-and-attachment-rendering": {
       "status": "checkpointed",
-      "next_action": "Audit the three-panel shell across desktop, tablet and mobile, correct any overflow/occlusion, and replace unsupported inspector claims with API-backed details before documenting section 04 proof.",
-      "checkpoint_sha": "ed2f12139baab301747842f97f0cfc3f490c8f08",
-      "merged_main_sha": "ed2f12139baab301747842f97f0cfc3f490c8f08"
+      "next_action": "Safe allowlisted Markdown subset is integrated at 48708cc and deployed within the exact ad04c24 artifact; manifest authority metadata regression is included in Chat 43/43. Authenticated rendering/send/attachment UAT remains open.",
+      "checkpoint_sha": "48708cc241ae85e57774fa60d15b88c57c65ce6a",
+      "merged_main_sha": "48708cc241ae85e57774fa60d15b88c57c65ce6a"
     },
     "section-04-responsive-shell-and-truthful-inspector": {
       "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
       "status": "checkpointed",
       "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
-      "next_action": "Complete section 05 regression proof, rerun package checks against this integrated SHA, then prepare the authorized modular-debian-dev release with exact target verification."
+      "next_action": "Responsive shell and truthful available-data inspector are implemented and present in deployed ad04c24; unit/build checks pass. Finish authenticated viewport/thread-switch UAT when a supported browser session is available."
     },
     "section-05-integration-tests-and-regression-proof": {
       "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
       "status": "checkpointed",
       "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
-      "next_action": "Verify the modular-debian-dev target and controller, release exact integrated SHA e31402ecbbd12fe0c3bc23ae00dac89286c52a43 to aimarkethubs.com, then record service health and authenticated UAT status."
+      "next_action": "Chat 43/43, Core auth/queue 39/39 (Core unchanged since 48708cc), Chat package typecheck, and Core/Shell/Chat builds with Wrangler dry-runs are recorded; no authenticated user-flow UAT has run."
     },
     "section-06-development-release-and-spec-handoff": {
       "status": "checkpointed",
-      "next_action": "Resume authenticated UAT in a supported browser-control environment: sign in interactively without sharing credentials, then verify real send/response, PNG + text attachments, persistence/reconnect, security ownership and the three viewport screenshots; resolve streaming only against a versioned persisted Core event contract.",
-      "checkpoint_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
-      "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43"
+      "next_action": "Exact source ad04c244c3996cc81220d7efae0f0c536dd07f4b is deployed to modular-debian-dev with health, auth-boundary, artifact-digest, public asset-parity and rollback evidence. Owner opens aimarkethubs.com/chat in a supported browser and signs in interactively with existing account/MFA to verify real send/response, attachments, persisted history/reconnect, ownership, Inspector and 1440x900/820x1180/390x844 screenshots; fix reproducible defects and keep R1.18 NOT_ACCEPTED until authenticated UAT and missing persisted events/artifact/Agent/Run/Task/Mission contracts are evidenced.",
+      "checkpoint_sha": "ad04c244c3996cc81220d7efae0f0c536dd07f4b",
+      "merged_main_sha": "ad04c244c3996cc81220d7efae0f0c536dd07f4b"
     }
   },
   "pre_commit": {
@@ -61,15 +61,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-14T16:58:03.541870+00:00",
-  "generation": 13,
-  "updated_at": "2026-11-14T18:02:25.765171+00:00",
+  "generation": 17,
+  "updated_at": "2026-11-15T00:15:47.784750+00:00",
   "progress": {
     "active_section": "section-06-development-release-and-spec-handoff",
-    "next_action": "Resume authenticated UAT in a supported browser-control environment: sign in interactively without sharing credentials, then verify real send/response, PNG + text attachments, persistence/reconnect, security ownership and the three viewport screenshots; resolve streaming only against a versioned persisted Core event contract.",
-    "merged_main_sha": "e31402ecbbd12fe0c3bc23ae00dac89286c52a43",
+    "next_action": "Exact source ad04c244c3996cc81220d7efae0f0c536dd07f4b is deployed to modular-debian-dev with health, auth-boundary, artifact-digest, public asset-parity and rollback evidence. Owner opens aimarkethubs.com/chat in a supported browser and signs in interactively with existing account/MFA to verify real send/response, attachments, persisted history/reconnect, ownership, Inspector and 1440x900/820x1180/390x844 screenshots; fix reproducible defects and keep R1.18 NOT_ACCEPTED until authenticated UAT and missing persisted events/artifact/Agent/Run/Task/Mission contracts are evidenced.",
+    "merged_main_sha": "ad04c244c3996cc81220d7efae0f0c536dd07f4b",
     "gaps": [
-      "Authenticated UAT is blocked in this runtime: Orca computer capabilities returned accessibility_error, and accessibility/screenshots permissions are unsupported; no authenticated browser request was made.",
-      "Current Core/Chat has no persisted event-stream contract; streaming output acceptance remains unimplemented and must not be claimed."
+      "Authenticated UAT is blocked: orca-ide computer list-apps and capabilities both returned accessibility_error (sidecar exit code 1); no authenticated request was made. Requires an interactive supported browser session with existing account/MFA.",
+      "Core has no persisted event-stream contract; queue status polling is not token streaming or reconnect by event cursor.",
+      "Chat/Core lack canonical Agent/Run/Attempt/Executor, artifact, Task Control and Mission Control integration contracts.",
+      "The manifest authority metadata correction is deployed, but it is not evidence that the stale metadata caused or fixed the earlier authenticated send failure."
     ]
   }
 }

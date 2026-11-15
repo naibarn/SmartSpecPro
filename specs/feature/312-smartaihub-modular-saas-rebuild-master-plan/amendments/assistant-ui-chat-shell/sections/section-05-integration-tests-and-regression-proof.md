@@ -31,3 +31,10 @@ Browser authentication/MFA may not be available to this process; browser UAT mus
 - Public versioned Chat JavaScript and CSS assets both returned `200`; detailed deployment receipt and exact-source artifact digests are recorded in [release evidence](implementation/evidence/modular-debian-dev-release-e31402e.md).
 - Authenticated browser attempt and per-scenario PASS/BLOCKED/NOT TESTED matrix: [UAT report](implementation/evidence/authenticated-uat-20261115.md). Orca reported accessibility/screenshots unsupported; no authenticated request was made.
 - Test/build source: `e31402ecbbd12fe0c3bc23ae00dac89286c52a43`.
+
+## Follow-up evidence — exact source `ad04c244c3996cc81220d7efae0f0c536dd07f4b`
+
+- Chat suite is now **43/43** across 7 files; the added regression verifies that the published Chat module manifest describes the existing Core-authenticated workspace-scoped write, attachment and queued-turn authority accurately. It does not prove an authenticated live send succeeds.
+- Chat package typecheck passed. Core, Shell and Chat builds plus Wrangler dry-runs passed from the exact canonical source; the existing 516.91 kB minified Chat main-chunk warning remains.
+- Core auth/queue tests remain 39/39 on the unchanged Core code from source `48708cc`; the exact results are preserved in `implementation/evidence/chat-shell-audit-checks-20261115.md`.
+- The exact-source runtime evidence is [the `ad04c24` DEV receipt](implementation/evidence/modular-debian-dev-release-ad04c24.md). Public health/assets and unauthenticated denial pass; authenticated send, attachment round-trip and responsive screenshot UAT remain blocked. See [current UAT status](implementation/evidence/authenticated-uat-20261115.md).

@@ -64,3 +64,16 @@ The current module uses custom React state/Astryx rendering; Core-backed convers
 ## Authenticated UAT status — 2026-11-15
 
 The deployed source and public module assets were verified, and unauthenticated protected API requests returned `401`. Authenticated browser UAT is blocked because the computer-control runtime reports accessibility and screenshot capabilities as unsupported; no real user request was submitted. See `implementation/evidence/authenticated-uat-20261115.md` for the per-scenario matrix. Core currently exposes queued worker-job polling but no persisted event-stream contract, so streaming acceptance remains unverified and must not be represented as working.
+
+## Eight-area completeness audit — 2026-11-15
+
+The requested complete implementation audit is recorded in `implementation/ASSISTANT_UI_COMPLETENESS_AUDIT.md`, with requirement-level evidence in `implementation/IMPLEMENTATION_TRACEABILITY.md` and As-Is/To-Be, API ownership, dependency, decision and rollback analysis in `implementation/ARCHITECTURE_AUDIT.md`. The overall amendment remains **NOT ACCEPTED**.
+
+At the initial audit checkpoint, Chat/Core source was integrated at `smartaihub-platform@48708cc241ae85e57774fa60d15b88c57c65ce6a`; its 42 Chat tests, 39 related Core auth/queue tests, package typecheck and build evidence remain historical in `implementation/evidence/chat-shell-audit-checks-20261115.md`. The later exact-source release and follow-up checks are authoritative for the current DEV state and are recorded below. Authenticated browser UAT remains blocked, so R1.18 is still NOT ACCEPTED.
+
+Audit status by area: Architecture PARTIAL; SPEC PARTIAL; Chat UI PARTIAL; Runtime Adapter PARTIAL; Thread Inspector PARTIAL; Inline Artifacts MISSING; Task Control Integration MISSING; Mission Control Integration MISSING. The main backend blockers are a persisted/versioned streaming event contract, canonical Agent/Harness/Run/Attempt/Executor read models, an authorized artifact API/viewer contract, and shared Task/Mission navigation contracts. These are not implemented by UI placeholders and must remain open. Authenticated live browser UAT and desktop/tablet/mobile screenshots remain BLOCKED by unavailable browser-control capability. No parent SPEC closure or production release is implied.
+
+
+## Latest DEV release correction — 2026-11-15
+
+The exact source `smartaihub-platform@ad04c244c3996cc81220d7efae0f0c536dd07f4b` supersedes the earlier `48708cc` release at `aimarkethubs.com`. The change corrects stale Chat module metadata that claimed writes were disabled, and adds a regression test; it does not establish that this metadata caused the earlier send error. Chat tests (43/43), package typecheck, Core/Shell/Chat builds and Wrangler dry-runs passed. The `modular-debian-dev` controller verified service health, auth boundaries, release digests and rollback; public JS/CSS bytes match the exact release artifact. See `implementation/evidence/modular-debian-dev-release-ad04c24.md` and `implementation/evidence/chat-manifest-authority-checks-20261115.md`. Authenticated user flow UAT remains blocked, so no claim is made that real send/response now works.
