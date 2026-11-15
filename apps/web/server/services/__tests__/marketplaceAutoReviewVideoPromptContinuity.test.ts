@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMarketplaceVerticalDramaVideoPromptInput,
   composeMarketplaceAutoReviewVideoPrompt,
+  renderMarketplaceVideoSpeakerSections,
 } from "../marketplaceAutoReviewVideoPromptSkillRunner";
 import type { StagedStoryArcShot } from "../marketplaceAutoReviewStoryArcPlanner";
 
@@ -82,5 +83,60 @@ describe("Marketplace Auto Review video prompt object continuity", () => {
     expect(prompt.indexOf("OBJECT AND PRODUCT CONTINUITY LOCK")).toBeGreaterThan(
       prompt.indexOf("APPROVED SHOT ACTION (authoritative)")
     );
+  });
+
+  it("rejects model-authored overlapping speech and serializes approved dialogue turns", () => {
+    const prompt = composeMarketplaceAutoReviewVideoPrompt({
+      generatedPrompt: [
+        "Both characters speak simultaneously and repeat the same line.",
+        "They recite their lines together.",
+        "Nicha says 'My hair is frizzy.' as Krit repeats it.",
+        "Camera slowly pushes toward the mirror.",
+        "Nicha smooths her hair and turns toward Krit.",
+      ].join(" "),
+      speakerSections: [
+        "SPEAKER VISUAL MAP FOR THIS SHOT:",
+        "Nicha: person-1, viewer-left",
+        "Krit: person-2, viewer-right",
+        "Approved dialogue:",
+        "Nicha: My hair is frizzy.",
+        "Krit: I can help.",
+      ].join("\n"),
+      approvedDialogue: [
+        { line: "My hair is frizzy." },
+        { line: "I can help." },
+      ],
+      approvedShotAction: "Nicha smooths her hair and turns toward Krit.",
+    });
+
+    expect(prompt).not.toMatch(/speak simultaneously|repeat the same line|recite their lines/i);
+    expect(prompt).toContain("Camera slowly pushes toward the mirror.");
+    expect(prompt).toContain("SPEAKER TURN-TAKING LOCK");
+    expect(prompt).toContain("one person at a time");
+    expect(prompt).toContain("No overlapping turns");
+    expect(prompt.match(/My hair is frizzy\./g)).toHaveLength(1);
+  });
+
+  it("tells each non-speaking character to keep their mouth closed during every line", () => {
+    const sections = renderMarketplaceVideoSpeakerSections([
+      {
+        speaker: "Nicha",
+        line: "My hair is frizzy.",
+        cue: "person-1, viewer-left",
+        person: { id: "person-1", appearance: "woman with long dark hair" },
+      },
+      {
+        speaker: "Krit",
+        line: "I can help.",
+        cue: "person-2, viewer-right",
+        person: { id: "person-2", appearance: "man in navy pajamas" },
+      },
+    ]);
+
+    expect(sections).toContain("TURN 1 — Nicha (person-1) speaks once");
+    expect(sections).toContain("While Nicha speaks, Krit (person-2) keep mouths fully closed");
+    expect(sections).toContain("TURN 2 — Krit (person-2) speaks once");
+    expect(sections).toContain("While Krit speaks, Nicha (person-1) keep mouths fully closed");
+    expect(sections.indexOf("TURN 1 —")).toBeLessThan(sections.indexOf("TURN 2 —"));
   });
 });

@@ -676,14 +676,19 @@ const MARKETPLACE_VIDEO_PROMPT_PREFIX =
 const MARKETPLACE_OBJECT_CONTINUITY_LOCK =
   "OBJECT AND PRODUCT CONTINUITY LOCK (MANDATORY): Image 1 is the exact start frame and the source of truth for the scene's complete visible object inventory. Preserve the objects already visible there. Do not add, spawn, reveal, duplicate, or replace any product, prop, tool, package, furniture, decor, person, label, or text absent from Image 1 unless the approved shot action explicitly requires that exact object. global product metadata is not permission to add it; dialogue alone does not authorize a visual insertion. Keep every other absent item off-screen. No invented product placement or cutaway.";
 
-type SpeakerBinding = {
+const MARKETPLACE_SPEAKER_TURN_TAKING_LOCK =
+  "SPEAKER TURN-TAKING LOCK (MANDATORY): Speak each approved line once, in order, one person at a time. Only that speaker moves their mouth; everyone else stays silent with mouths closed. No overlapping turns, synchronized lips, echoes, chorus, shared or repeated lines, paraphrase, or ad-libs.";
+
+export type MarketplaceVideoSpeakerBinding = {
   speaker: string;
   line: string;
   person: Pick<VerticalDramaDetectedShotPerson, "id" | "appearance">;
   cue: string;
 };
 
-function renderSpeakerSections(bindings: readonly SpeakerBinding[]): string {
+export function renderMarketplaceVideoSpeakerSections(
+  bindings: readonly MarketplaceVideoSpeakerBinding[]
+): string {
   const normalizedName = (value: string) =>
     value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
   const uniqueBindings = bindings.filter(
@@ -697,12 +702,16 @@ function renderSpeakerSections(bindings: readonly SpeakerBinding[]): string {
     ...uniqueBindings.map(
       binding => `- ${binding.speaker}: ${binding.cue} — ${binding.person.appearance}`
     ),
-    "SPEAKER-TO-FACE LOCK: Match each spoken line only to the detected person named for that line. All other visible people keep their mouths closed.",
     "Approved dialogue:",
-    ...bindings.map(
-      binding =>
-        `${binding.speaker}: ${binding.cue} says verbatim: "${binding.line}"`
-    ),
+    ...bindings.map((binding, index) => {
+      const otherSpeakers = uniqueBindings
+        .filter(item => normalizedName(item.speaker) !== normalizedName(binding.speaker))
+        .map(item => `${item.speaker} (${item.person.id})`);
+      const closedMouthInstruction = otherSpeakers.length
+        ? `While ${binding.speaker} speaks, ${otherSpeakers.join(" and ")} keep mouths fully closed; no lip movement or speech.`
+        : "All other visible people keep mouths fully closed and stay silent.";
+      return `TURN ${index + 1} — ${binding.speaker} (${binding.person.id}) speaks once: "${binding.line}". ${closedMouthInstruction}`;
+    }),
   ].join("\n");
 }
 
@@ -735,7 +744,7 @@ function motionPromptBudget(
     people[0]?.appearance ?? ""
   );
   const cue = `${id}, viewer-center`;
-  const sections = renderSpeakerSections(
+  const sections = renderMarketplaceVideoSpeakerSections(
     dialogue.map(turn => ({
       ...turn,
       person: { id, appearance },
@@ -768,6 +777,7 @@ function renderMarketplaceVideoPromptAuthoritativeSections(
 ): string {
   return [
     speakerSections.trim(),
+    speakerSections.trim() ? MARKETPLACE_SPEAKER_TURN_TAKING_LOCK : null,
     approvedShotAction
       ? `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`
       : null,
@@ -940,7 +950,7 @@ function buildAuthoritativeSpeakerSections(input: {
     bySpeaker.set(speakerKey, { person, cue });
     return { ...turn, person, cue };
   });
-  return renderSpeakerSections(bindings);
+  return renderMarketplaceVideoSpeakerSections(bindings);
 }
 
 function replaceGeneratedSpeakerSections(
@@ -977,6 +987,16 @@ function replaceGeneratedSpeakerSections(
       motion = motion.split(line.line).join("the approved line");
     }
   }
+  motion = motion
+    .split(/(?<=[.!?])\s+|\n+/u)
+    .filter(
+      sentence =>
+        !/\b(?:speak(?:s|ing)?|talk(?:s|ing)?|say|says|saying|speech|spoken|dialogue|recit(?:e|es|ed|ing)|voice|voices|utter(?:s|ed|ing)?|sing(?:s|ing)?|lip[\s-]?sync(?:s|ed|ing)?|mouth(?:s|ing)?)\b/i.test(
+          sentence
+        )
+    )
+    .join(" ")
+    .trim();
   if (
     motion.length < 40 ||
     /^(?:i\s+)?(?:cannot|can't|am unable|am sorry|apolog)/i.test(motion)
@@ -1191,6 +1211,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
     speakerMatchingInstruction,
     "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
+    MARKETPLACE_SPEAKER_TURN_TAKING_LOCK,
     MARKETPLACE_OBJECT_CONTINUITY_LOCK,
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
