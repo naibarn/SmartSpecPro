@@ -71,6 +71,16 @@
       "requirements": [
         "REQ-CF8D9FDC29C6"
       ]
+    },
+    {
+      "class": "MODULAR_RELEASE_BUILDER_MISSING",
+      "description": "R1.19 was deployed successfully through an immutable manually assembled artifact and the target-gated modular controller; no one-command builder assembles/pins all Core/Shell/Chat artifacts in smartaihub-platform. The legacy SmartSpecPro release:dev:web alias remains a fail-closed stub.",
+      "id": "modular-release-builder",
+      "next_action": "Implement a deterministic builder in smartaihub-platform that fetches/builds one integrated SHA, packages independently built Core/Chat/Shell, emits artifact digests and candidate tunnel config, and invokes only modular_debian_dev_release.py for modular-debian-dev; never route through the legacy release alias.",
+      "requirements": [
+        "REQ-3DBD001CE331",
+        "REQ-CF8D9FDC29C6"
+      ]
     }
   ],
   "concurrency": {
@@ -78,8 +88,8 @@
     "expected_spec_digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea"
   },
   "continuation": {
-    "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c with private artifacts and SPEC-294 API inspection; in parallel use registered migration authority for ledger/function-owner review and perform normal MFA-authenticated DEV UAT. The exact target is already deployed and healthy.",
-    "next_ready_workunit": "r119-private-artifacts-and-spec294-adapter-contracts",
+    "next_action": "Continue R1.19 from smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c. Independently implement canonical artifact/API slices and one-command modular release artifact assembly. In parallel, perform normal MFA-authenticated UAT and registered-authority migration receipt/function-owner reconciliation. Current aimarkethubs.com deployment is already healthy; legacy release:dev:web is not a Modular Core deployment path.",
+    "next_ready_workunit": "r119-private-artifacts-spec294-adapters-and-release-builder",
     "reactivation_predicate": "Resume independent Chat artifact and SPEC-294 adapter work immediately from smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c. Migration review awaits registered scoped authority; authenticated UAT awaits a normal authorized MFA browser session. No redeployment is needed until source changes.",
     "resume_point": "2026-11-15: smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c is integrated and deployed to modular-debian-dev / aimarkethubs.com. The parent SPEC 312 handoff, release-target state and R1.19 traceability were integrated in SmartSpecPro/main@991bd2597fcc511564e316defaba9a3c27ebce9a (origin/main matched). Chat tests 46/46, Core tests 119/119, Chat/Core typecheck/build, Shell build and public/local deployment smoke passed. Browser refresh restores known active-job status/events without enqueuing again. DB catalog confirms event schema/function and dev-only grants; migration receipt remains unverified with runtime role, function owner is superuser, and no DDL was run. Authenticated UAT remains blocked; artifact producer/retrieval and SPEC-294 adapters remain open. See R1.19 implementation HANDOFF and r1.19-dev-release-20261115.md.",
     "waiting_predicate": "Authenticated UAT waits only for an authorized MFA browser session; migration ledger/function ownership review waits only for registered migration authority. These blockers do not prevent independent artifact/API contract implementation."
@@ -92,14 +102,15 @@
       "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md",
       "/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json"
     ],
-    "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: advance the independently implementable private artifact contract and inspect SPEC-294 APIs. In parallel, run authenticated UAT with a normal authorized MFA session and reconcile migration 0437 ledger/function ownership through the registered migration authority. Deployment is already complete and verified; do not repeat it without source changes.",
+    "next_action": "Continue independent R1.19 work on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: implement canonical artifact and SPEC-294 adapters where contracts permit, and a deterministic modular artifact builder for future releases. In parallel, run authenticated UAT with a normal authorized MFA session and use registered migration authority for ledger/function-owner review. Current deployment is already verified.",
     "rationale": "Exact source is integrated, focused tests/builds pass, and the release controller verified the target runtime on aimarkethubs.com. Final acceptance remains partial because real authenticated UAT, migration-ledger provenance/function owner review, private artifact flow, and SPEC-294 adapters are still open. Continue useful independent implementation.",
     "residual_requirements": [
       "Run authenticated Chat send/replay/reconnect, history/attachments and responsive desktop/tablet/mobile UAT on deployed e2f78ef after a normal MFA login.",
       "Use registered scoped DB migration authority to verify the 0437 applied receipt and review superuser ownership of list_modular_chat_job_events; runtime role ledger access is denied and no DDL was run.",
       "Implement canonical private Chat output artifact registration/retrieval/rendering and security tests; keep capability disabled until then.",
       "Inspect SPEC-294-authorized Task Control and Mission Control APIs; implement only thin adapters and cross-navigation when contracts exist.",
-      "Investigate 521.70 kB Chat JS bundle warning before making performance claims."
+      "Investigate 521.70 kB Chat JS bundle warning before making performance claims.",
+      "Add a deterministic one-command modular release artifact assembler in smartaihub-platform; current deployment used a manually assembled immutable artifact and the target-gated controller, while legacy release:dev:web remains fail-closed."
     ]
   },
   "dependencies": {
@@ -137,7 +148,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 109,
+  "generation": 110,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
@@ -264,14 +275,15 @@
         "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md",
         "/home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json"
       ],
-      "next_action": "Continue on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: advance the independently implementable private artifact contract and inspect SPEC-294 APIs. In parallel, run authenticated UAT with a normal authorized MFA session and reconcile migration 0437 ledger/function ownership through the registered migration authority. Deployment is already complete and verified; do not repeat it without source changes.",
+      "next_action": "Continue independent R1.19 work on smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c: implement canonical artifact and SPEC-294 adapters where contracts permit, and a deterministic modular artifact builder for future releases. In parallel, run authenticated UAT with a normal authorized MFA session and use registered migration authority for ledger/function-owner review. Current deployment is already verified.",
       "rationale": "Exact source is integrated, focused tests/builds pass, and the release controller verified the target runtime on aimarkethubs.com. Final acceptance remains partial because real authenticated UAT, migration-ledger provenance/function owner review, private artifact flow, and SPEC-294 adapters are still open. Continue useful independent implementation.",
       "residual_requirements": [
         "Run authenticated Chat send/replay/reconnect, history/attachments and responsive desktop/tablet/mobile UAT on deployed e2f78ef after a normal MFA login.",
         "Use registered scoped DB migration authority to verify the 0437 applied receipt and review superuser ownership of list_modular_chat_job_events; runtime role ledger access is denied and no DDL was run.",
         "Implement canonical private Chat output artifact registration/retrieval/rendering and security tests; keep capability disabled until then.",
         "Inspect SPEC-294-authorized Task Control and Mission Control APIs; implement only thin adapters and cross-navigation when contracts exist.",
-        "Investigate 521.70 kB Chat JS bundle warning before making performance claims."
+        "Investigate 521.70 kB Chat JS bundle warning before making performance claims.",
+        "Add a deterministic one-command modular release artifact assembler in smartaihub-platform; current deployment used a manually assembled immutable artifact and the target-gated controller, while legacy release:dev:web remains fail-closed."
       ]
     },
     "disposition": {
@@ -3405,7 +3417,7 @@
     "unresolved": 92
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T02:21:22.734182Z",
+  "updated_at": "2026-11-15T02:24:57.848868Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

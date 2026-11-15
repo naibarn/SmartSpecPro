@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `20`
-- Updated (UTC): `2026-11-15T02:18:29.554351+00:00`
+- State generation: `21`
+- Updated (UTC): `2026-11-15T02:24:39.641334+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Worktree: `/mnt/SmartSpecDev/projects/smartaihub-platform`
 - Latest recorded merged Main SHA: `e2f78ef6af0162736ff0fb28159f6ff9ef38813c`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-04-inspector-task-and-mission-links`
-- Next action: Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state.
+- Active section: `section-06-spec-dev-release-and-uat-handoff`
+- Next action: Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web.
 
 ## Sections
 
@@ -22,7 +22,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-private-artifacts | in_progress | — | — | — | — | Inspect canonical worker_artifacts schema and storage APIs available in Core, confirm tenant/thread/run/job ownership contracts. Implement only if the authoritative private storage contract exists; otherwise document the exact missing owner/API and keep artifacts disabled. |
 | section-04-inspector-task-and-mission-links | in_progress | — | — | — | — | Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state. |
 | section-05-assistant-ui-responsive-integration | checkpointed | — | — | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | Run authorized authenticated browser UAT at 1440x900, 820x1180 and 390x844 on aimarkethubs.com; package tests/typecheck/build and deployment smoke are complete. |
-| section-06-spec-dev-release-and-uat-handoff | checkpointed | — | — | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | Continue independent work: implement private Chat artifact producer/retrieval only on canonical storage/job authority; inspect SPEC-294 Task/Mission APIs for minimal adapters. In parallel, request normal MFA-authenticated browser UAT and use registered migration authority for 0437 ledger/function-owner reconciliation; deployment is already verified for e2f78ef. |
+| section-06-spec-dev-release-and-uat-handoff | checkpointed | — | — | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | e2f78ef6af0162736ff0fb28159f6ff9ef38813c | Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -31,6 +31,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No complete canonical private Chat artifact producer/retrieval path; capability remains disabled.
 - Task Control and Mission Control APIs/adapters are not verified in Modular Core; SPEC-294 remains authoritative.
 - Chat entry bundle is 521.70 kB (131.42 kB gzip), above Vite advisory threshold; profile/split before performance claim.
+- A deterministic one-command modular release artifact builder is not yet available; current deployment used an immutable manually assembled artifact and target-gated controller.
 
 ## Resume
 

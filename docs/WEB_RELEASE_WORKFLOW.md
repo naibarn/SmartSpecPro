@@ -9,13 +9,14 @@ The canonical map is [`apps/web/scripts/deployment-targets.json`](../apps/web/sc
 | Target ID | Domain | Logical environment | Runtime and status |
 |---|---|---|---|
 | `legacy-debian-dev` | `smartaihub.app` | Development | Existing Debian `smartspec-web.service`, port 3000; active |
-| `modular-debian-dev` | `aimarkethubs.com` | Development | Reserved Core service `smartsihub-core-dev.service`, port 3200; prepared, no Core source/runtime yet |
+| `modular-debian-dev` | `aimarkethubs.com` | Development | SmartSIHub Modular Core on Debian with local Workerd; serving through Core/Chat/Shell services on ports 3200/3201/3202 |
 | `modular-cloudflare-prod` | `smartsihub.com` | Production | Cloudflare Workers/Hono; registered only, inactive |
 
-The existing aimarket tunnel and service at port 3100 remain available as a
-handover hold until Modular Core is healthy. Do not claim they are serving the
-new Core. `smartsihub.com` is not registered in the currently connected
-Cloudflare account; this workflow does not create its zone, DNS or Worker.
+The aimarket tunnel now routes to the healthy Modular Core Shell on port 3202;
+the previous `smartspec-dev-web.service` on port 3100 is preserved for rollback.
+The current release and rollback receipt are recorded in the target registry.
+`smartsihub.com` is not registered in the currently connected Cloudflare
+account; this workflow does not create its zone, DNS or Worker.
 
 Logical environment, runtime build mode, deployment authority, database
 authority and traffic impact are separate target fields. `NODE_ENV=production`
@@ -201,24 +202,39 @@ artifact or missing heartbeat fails verification.
 
 ## Development and browser testing
 
-The current `aimarkethubs.com` handover hold uses its named Cloudflare Tunnel
-and user-level `smartspec-dev-web.service` on `127.0.0.1:3100`. This is not the
-new Modular Core target. The legacy `smartaihub.app` service and tunnel remain
-independently managed.
+`aimarkethubs.com` is the live Modular Core development/UAT target. The modular
+source of truth is the separate `smartaihub-platform` repository; the legacy
+`smartaihub.app` service and release path remain independently managed.
 
 ```bash
-pnpm run release:dev:web -- --target modular-debian-dev
 pnpm run dev:web                         # foreground, current checkout
 pnpm run dev:web:restart                 # managed background service
 pnpm run dev:web:status
 ```
 
-`release:dev:web` currently exits with `MODULAR_APPLICATION_NOT_AVAILABLE`
-before building or touching systemd because the new Core source/runtime is not
-available. It must not activate the existing legacy hold on port 3100. Prepare
-and validate the independent Core service configuration when that source is
-introduced; keep the current site and tunnel until a healthy handover is
-intentional.
+The `release:dev:web` alias in this legacy repository is a fail-closed stub and
+currently exits with `MODULAR_APPLICATION_NOT_AVAILABLE`. Do not use it for
+Modular Core releases: its remaining legacy deployment code targets a different
+application. A modular release must build all three independently versioned
+modules from an exact integrated `smartaihub-platform` SHA, prepare a candidate
+tunnel config, then invoke the target-gated controller:
+
+```bash
+python3 apps/web/scripts/modular_debian_dev_release.py \
+  --target modular-debian-dev \
+  --artifact-root <verified-modular-release-artifact> \
+  --candidate-config <candidate-cloudflared-config> \
+  --active-config "$HOME/.config/smartspec-dev/cloudflared.yml" \
+  --targets apps/web/scripts/deployment-targets.json
+```
+
+The controller validates the registered target and artifact, checks each local
+module health route and public smoke route, switches only the aimarket tunnel,
+and records a rollback receipt. The exact R1.19 release artifact, source SHA,
+receipt and rollback locations are recorded in the SPEC-312 R1.19 release
+evidence. Artifact construction is currently a separate `smartaihub-platform`
+build step; a supported one-command modular release builder remains a tooling
+gap. Do not use the legacy port-3100 launcher to publish Modular Core.
 
 The development launcher separately verifies `SMARTSPEC_ENVIRONMENT`, the
 `aimarkethubs.com` application and tenant domain, port 3100, and a dev-scoped

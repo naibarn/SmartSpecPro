@@ -108,3 +108,4 @@
 {"changes_by_requirement": {"REQ-CF8D9FDC29C6": {"final_state": "PARTIAL"}}, "event_type": "CURRENT_TRANSITION", "ledger_generation": 52, "manifest_generation": 107, "observed_at": "2026-11-15T02:18:16.394813Z", "provenance": "OBSERVED", "requirement_ids": ["REQ-CF8D9FDC29C6"]}
 {"changes": ["implementation.checkpoint_shas"], "event_type": "CURRENT_TRANSITION", "generation": 108, "observed_at": "2026-11-15T02:19:32.676675Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point", "deployment.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 109, "observed_at": "2026-11-15T02:21:22.734182Z", "provenance": "OBSERVED"}
+{"changes": ["blockers", "continuation.next_action", "continuation.next_ready_workunit", "continuation_assessment.next_action", "continuation_assessment.residual_requirements"], "event_type": "CURRENT_TRANSITION", "generation": 110, "observed_at": "2026-11-15T02:24:57.848868Z", "provenance": "OBSERVED"}

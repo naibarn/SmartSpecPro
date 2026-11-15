@@ -43,7 +43,7 @@
     },
     "section-06-spec-dev-release-and-uat-handoff": {
       "status": "checkpointed",
-      "next_action": "Continue independent work: implement private Chat artifact producer/retrieval only on canonical storage/job authority; inspect SPEC-294 Task/Mission APIs for minimal adapters. In parallel, request normal MFA-authenticated browser UAT and use registered migration authority for 0437 ledger/function-owner reconciliation; deployment is already verified for e2f78ef.",
+      "next_action": "Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web.",
       "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
       "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
     }
@@ -57,18 +57,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-15T01:14:31.558391+00:00",
-  "generation": 20,
-  "updated_at": "2026-11-15T02:18:29.554351+00:00",
+  "generation": 21,
+  "updated_at": "2026-11-15T02:24:39.641334+00:00",
   "progress": {
-    "active_section": "section-04-inspector-task-and-mission-links",
-    "next_action": "Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state.",
+    "active_section": "section-06-spec-dev-release-and-uat-handoff",
+    "next_action": "Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web.",
     "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
     "gaps": [
       "Authenticated MFA browser UAT is not available; real Chat send/replay and responsive rendered acceptance remains blocked.",
       "Read-only target catalog confirms the replay SECURITY DEFINER function is owned by superuser; registered migration authority must review least-privilege ownership.",
       "No complete canonical private Chat artifact producer/retrieval path; capability remains disabled.",
       "Task Control and Mission Control APIs/adapters are not verified in Modular Core; SPEC-294 remains authoritative.",
-      "Chat entry bundle is 521.70 kB (131.42 kB gzip), above Vite advisory threshold; profile/split before performance claim."
+      "Chat entry bundle is 521.70 kB (131.42 kB gzip), above Vite advisory threshold; profile/split before performance claim.",
+      "A deterministic one-command modular release artifact builder is not yet available; current deployment used an immutable manually assembled artifact and target-gated controller."
     ]
   }
 }
