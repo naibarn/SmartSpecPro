@@ -31,3 +31,12 @@
 | `0439_modular_chat_output_artifacts` | `d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8` | `1794770000000` |
 | `0440_seedream_5_5_unified_model` | `141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784` | `1794770000001` |
 | `0441_modular_chat_missions` | `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa` | `1794770000002` |
+
+## 2026-11-15 authority and DEV recheck
+
+- **SmartSpecPro:** `f137f228048e17de7ace02528ffe4a0e26d1b3ab` (`main == origin/main`). **Platform:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5` (`main == origin/main`). Unrelated dirty worktree changes were preserved.
+- Registered target and release receipt still identify `modular-debian-dev`, `aimarkethubs.com`, `smartspec`, and source release `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2`. Public `/livez`, `/api/chat/livez`, and `/login` each returned HTTP 200. No new deployment occurred; public health does not establish migrated Mission Control readiness.
+- Recomputed source SHA-256: 0439 `d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8`; 0440 `141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784`; 0441 `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa`. The first two values are source hashes matching the earlier fixture evidence, not freshly queried live ledger hashes. Live 0441 absence is unverified.
+- Authority search found no registered DBA or secret-management interface for this remote Debian PostgreSQL cluster. Local `migration-v1.json` reports `migratedHomeCount: 0` and is not credential authority. No compromised credential was accessed. `psql` availability alone is not DBA authority.
+- `CREDENTIAL_ROTATED: BLOCKED`; `DBA_BOOTSTRAPPED: BLOCKED`; `MIGRATED_DEV: BLOCKED`; `DEPLOYED_DEV: PENDING` (preserved release `ca4f5a58`); `RUNTIME_VERIFIED: PARTIAL` (public shell/chat/core health only); `UAT_VERIFIED: UAT_PENDING`; `SPEC_ACCEPTANCE: PENDING`.
+- **Resume condition:** the authorized PostgreSQL DBA and secret-binding owner must rotate/revoke `smartspec_dev`, provision and bind `smartspec_migrator_dev`, and perform live preflight. Then follow [DBA_MIGRATION_BOOTSTRAP.md](../DBA_MIGRATION_BOOTSTRAP.md) without changing migration 0441; apply/revoke the documented scoped privileges, verify ledger/schema/ACL, and only then release and run authenticated UAT.

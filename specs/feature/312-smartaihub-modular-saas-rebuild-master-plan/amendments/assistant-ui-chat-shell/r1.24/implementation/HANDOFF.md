@@ -43,3 +43,23 @@
 | `UAT_VERIFIED` | `PENDING` — authenticated MFA browser session unavailable |
 
 **Disposition:** `PARTIAL / CONTINUATION_REQUIRED`. Do not ask test users to exercise Mission Control until the actual DEV table is migrated and the authorized release is healthy.
+
+## 2026-11-15 authority and DEV recheck
+
+- SmartSpecPro is still `f137f228048e17de7ace02528ffe4a0e26d1b3ab` and equals `origin/main`; Platform is still `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5` and equals `origin/main`. Existing unrelated dirty worktree changes were preserved.
+- The registered `modular-debian-dev` target and its release receipt identify source `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2`, target `modular-debian-dev`, domain `aimarkethubs.com`, PostgreSQL database `smartspec`, and Debian/Workerd runtime. Public `GET /livez`, `/api/chat/livez`, and `/login` each returned HTTP 200. This confirms current public health and configured release evidence; it does not prove a database migration or Mission Control readiness.
+- Current source SHA-256 values are 0439 `d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8`, 0440 `141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784`, and 0441 `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa`. These hashes match the existing fixture evidence. Live DEV ledger hashes and 0441 absence were not independently confirmed because no approved live DB read credential was available.
+- No database/secret-management tool or registered DBA authority for the remote Debian PostgreSQL target was discoverable. The local Orca `migration-v1.json` is only a migration-home record (`migratedHomeCount: 0`), not a DB credential authority. `psql` being installed does not establish DBA access. `gcloud`, `vault`, and `cf` are unavailable. The exposed `smartspec_dev` credential was not read, reused, or modified.
+- **Operator handoff:** the authorized owner of the actual PostgreSQL DEV cluster and its secret authority must (1) verify `modular-debian-dev` / `aimarkethubs.com` / PostgreSQL 15.17 / `smartspec`; (2) inspect/audit consumers, rotate and revoke compromised `smartspec_dev` through its registered authority; (3) provision `smartspec_migrator_dev` with the required least-privilege flags and securely bind its secret only to the registered migration runner; (4) verify live 0439/0440 hashes and 0441 absence; (5) execute the one-time bootstrap SQL below, run `pnpm --dir apps/web db:migrate`, verify the exact 0441 hash plus schema/owner/ACL/runtime authorization postconditions, then apply the documented temporary privilege cleanup. If a partial migration or hash mismatch is found, stop and follow the recovery instructions in the same runbook; do not edit migration 0441 or bypass preflight.
+- **Missing authority:** the approved DBA identity/control plane for the remote PostgreSQL DEV cluster and the approved secret manager/binding authority could not be identified from connected tools or registered local configuration. The operator must supply/use that registered authority; OS sudo and local `psql` availability are not substitutes.
+- **Ready to resume:** once that DBA/secret binding is provisioned, resume at the live target/ledger/hash preflight in [DBA_MIGRATION_BOOTSTRAP.md](../DBA_MIGRATION_BOOTSTRAP.md), then proceed through its bootstrap, migration, verification, and cleanup steps. Do not rerun the completed PG15 fixture absent a material source/privilege/environment change.
+
+| Status | Recheck result |
+| --- | --- |
+| `CREDENTIAL_ROTATED` | `BLOCKED` — authorized secret/DBA authority unavailable |
+| `DBA_BOOTSTRAPPED` | `BLOCKED` — no authorized live DBA execution |
+| `MIGRATED_DEV` | `BLOCKED` — live ledger not accessed and migration not run |
+| `DEPLOYED_DEV` | `PENDING` — existing configured release remains `ca4f5a58`; no new release |
+| `RUNTIME_VERIFIED` | `PARTIAL` — public Core, Chat, and Shell health routes return 200; Mission Control post-migration endpoints not verified |
+| `UAT_VERIFIED` | `UAT_PENDING` — no authenticated MFA browser session available |
+| `SPEC_ACCEPTANCE` | `PENDING` — blocked by live migration, new release, and authenticated UAT |
