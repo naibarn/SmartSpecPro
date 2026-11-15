@@ -95,6 +95,7 @@ export function inferMediaModelHintFromText(mediaType: MediaType, text?: string 
     if (/\bomni\b/i.test(normalized)) return "gemini-omni-flash-1-1";
   }
   if (mediaType === "image") {
+    if (/seedream\s*5[.-]?5|seedream\/5-5/i.test(normalized)) return "seedream/5-5-text-to-image";
     if (/gpt\s*image\s*2\.6(?!.*(flare|sunburst|economy))|gpt-image-2-6(?!.*(flare|sunburst|economy))/i.test(normalized)) {
       return "gpt-image-2-6-flare-text-to-image";
     }

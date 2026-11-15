@@ -1316,6 +1316,58 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     priority: 6,
   },
   {
+    id: "seedream/5-5-text-to-image",
+    type: "image",
+    name: "Seedream 5.5",
+    provider: "kie.ai",
+    description: "Seedream 5.5 image generation and reference editing.",
+    aliases: ["seedream-5.5", "seedream 5.5", "seedream55", "seedream/5-5-image-to-image", "seedream-5.5-edit"],
+    creditCost: 32,
+    aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16", "2:3", "3:2", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "seedream/5-5-text-to-image",
+      documentationUrl: "https://docs.kie.ai/market/seedream/5-5-text-to-image",
+      generateType: "text-to-image",
+      supportsReferenceImages: true,
+      maxPromptLength: 5_000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
+      maxReferenceImages: 10,
+      apiConfig: {
+        kie_model_id_with_references: "seedream/5-5-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 10 },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" },
+          { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "2:3", label: "2:3" },
+          { value: "3:2", label: "3:2" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1", syncWith: "aspect_ratio" },
+        { key: "size", label: "Image Size", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "1.5K", label: "1.5K" }, { value: "2K", label: "2K" },
+        ], default: "2K", affectsPricing: true },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "background", label: "Background", type: "select", options: [
+          { value: "auto", label: "Auto" }, { value: "transparent", label: "Transparent" }, { value: "opaque", label: "Opaque" },
+        ], default: "auto" },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { "1K": 18, "1.5K": 18, "2K": 32 },
+      pricingFormula: "flat",
+      pricingAdditionalReferenceCosts: { image_urls: 8 },
+    },
+    isEnabled: true,
+    priority: 5,
+  },
+  {
     id: "google-banana-2",
     type: "image",
     name: "Google Banana 2",
