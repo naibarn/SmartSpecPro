@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job.",
-      "checkpoint_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
-      "merged_main_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+      "next_action": "The object continuity lock and shot-scoped product metadata are integrated and deployed as legacy-debian-dev release generation 571; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified.",
+      "checkpoint_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
+      "merged_main_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-marketplace-auto-review-object-continuity"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 81,
-  "updated_at": "2026-11-15T14:14:53.365431+00:00",
+  "generation": 82,
+  "updated_at": "2026-11-15T14:22:37.094195+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job.",
-    "merged_main_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+    "next_action": "The object continuity lock and shot-scoped product metadata are integrated and deployed as legacy-debian-dev release generation 571; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified.",
+    "merged_main_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
@@ -59,36 +59,36 @@
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
       "profile": "quick",
-      "revision": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
-      "verified_at_utc": "2026-11-15T14:15:17Z",
+      "revision": "c26e80b2423ab83497e1b7435c029a940428966d",
+      "verified_at_utc": "2026-11-15T14:22:05Z",
       "scope": [
-        "pnpm exec vitest run --reporter=dot server/services/__tests__/marketplaceAutoReviewVideoPromptContinuity.test.ts server/services/__tests__/marketplaceAutoReviewVideoPromptSkillRunner.test.ts (3 passed)",
+        "pnpm exec vitest run --reporter=dot server/services/__tests__/marketplaceAutoReviewVideoPromptContinuity.test.ts server/services/__tests__/marketplaceAutoReviewVideoPromptSkillRunner.test.ts (4 passed)",
         "git diff --check for task-owned patch",
         "pnpm run release:web:linux -- --target legacy-debian-dev",
         "pnpm run release:status --target legacy-debian-dev",
         "public https://smartaihub.app/healthz and / HTTP checks"
       ],
-      "outcome": "PASS; release generation 570 is DEPLOYED_VERIFIED and public health is HTTP 200; authenticated UI UAT and provider-backed prompt generation remain unverified; no full typecheck run",
+      "outcome": "PASS; release generation 571 is DEPLOYED_VERIFIED and public health is HTTP 200; authenticated UI UAT and provider-backed prompt generation remain unverified; no full typecheck run",
       "release": {
         "target": "legacy-debian-dev",
         "domain": "https://smartaihub.app",
-        "release_id": "smartspec-web-17de1f8ff7e6b0b08988c00fd55c4761b6a065cc-d0cb2e43b6a2",
-        "generation": 570,
-        "runtime_revision": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+        "release_id": "smartspec-web-c26e80b2423ab83497e1b7435c029a940428966d-d5dd83be52ca",
+        "generation": 571,
+        "runtime_revision": "c26e80b2423ab83497e1b7435c029a940428966d",
         "service_health": "HEALTHY",
         "public_health": "HTTP 200",
         "public_root": "HTTP 200"
       },
       "resource_evidence": {
         "build_profile": "canonical development release build preflight",
-        "host_available_kb": 25087056,
-        "memory_psi_some_avg10": 0.24,
-        "user_slice_memory_current": 18625249280,
-        "reclaimable": 11894713216,
-        "effective": 6730536064,
+        "host_available_kb": 23838780,
+        "memory_psi_some_avg10": 0.16,
+        "user_slice_memory_current": 17862053888,
+        "reclaimable": 8912677712,
+        "effective": 8949376176,
         "high": 19327352832,
         "max": 21474836480,
-        "swap_current": 4036136960,
+        "swap_current": 4776861696,
         "swap_max": 6442450944
       }
     },
