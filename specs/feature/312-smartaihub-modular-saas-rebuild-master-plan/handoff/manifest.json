@@ -1,10 +1,9 @@
 {
   "acceptance": {
     "evidence": [
-      "Exact source SHA 921553af6dc8b72e6730f3ab5e0a1fba56eb444b was deployed to modular-debian-dev / aimarkethubs.com and exact-target local/public smoke passed.",
-      "Core tests 120/120, typecheck and Wrangler dry-run passed; enabled model credential verification runs concurrently after enabled mapping and live quote filtering.",
-      "Authenticated Chat send/replay/attachment and desktop/tablet/mobile rendered UAT remain pending normal authorized MFA sign-in; no UAT is inferred from mocks or health checks.",
-      "Private Chat output artifacts, canonical Task Control/Mission Control adapters and migration-authority review remain incomplete."
+      "R1.20 canonical conversation-to-job/attempt/event-cursor projection source and Thread Inspector consumption are integrated, package-tested, built and deployed to modular-debian-dev.",
+      "Anonymous Core and Chat proxy projection requests are denied; signed-in data-path, rendered Inspector, Task/Mission integration and inline output artifacts remain unverified or unavailable.",
+      "Authenticated MFA UAT remains pending a normal authorized browser session. Migration 0438 applied; its disposable SQL integration fixture was skipped because dedicated test DB credentials were unavailable."
     ],
     "required": true,
     "status": "PARTIAL"
@@ -76,33 +75,31 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
-    "expected_spec_digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab"
+    "expected_canonical_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+    "expected_spec_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3"
   },
   "continuation": {
-    "next_action": "Continue from smartaihub-platform/main@921553af6dc8b72e6730f3ab5e0a1fba56eb444b. Identify producer-backed private Chat artifact storage and verified SPEC-294 read adapters before implementing; keep artifacts=false, avoid duplicate orchestration, and retain MFA UAT and migration review as open.",
-    "next_ready_workunit": "r119-private-artifacts-and-spec294-contract-adapters",
-    "reactivation_predicate": "Resume from smartaihub-platform/main@921553af6dc8b72e6730f3ab5e0a1fba56eb444b, deployed on modular-debian-dev / aimarkethubs.com. Continue source work independently of authenticated MFA UAT and migration-authority review.",
-    "resume_point": "2026-11-15: smartaihub-platform/main@921553af6dc8b72e6730f3ab5e0a1fba56eb444b is integrated and deployed to modular-debian-dev / aimarkethubs.com. Core tests 120/120, Core typecheck/build and immutable Core/Shell/Chat builds pass; target-gated local/public smoke pass. Enabled model credential verification is concurrent after enabled mapping and live quote checks. Queue label/UI evidence remains from 4ef0c8f. Private output artifacts, full canonical Run/Agent/Executor facts, SPEC-294 adapters, authenticated MFA UAT, migration ledger/function owner review, and the 524.88 kB Chat main bundle advisory remain open. See r1.19-dev-release-20261115-921553a.md.",
-    "waiting_predicate": "Authenticated UAT waits only for an authorized MFA browser session; migration ledger/function ownership review waits for registered migration authority. Artifact and SPEC-294 contract source investigation can continue independently."
+    "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950. Identify a genuine producer-backed Chat output and authoritative private object resolver; keep artifacts=false until end-to-end owner/content authorization tests pass. Define the SPEC-277 Task Control and SPEC-294 Mission Control tenant-scoped read DTO with its owning implementers before adding Modular adapters. Retain authenticated Inspector UAT, migration 0437 owner review and package-size advisory as open.",
+    "next_ready_workunit": "r120-output-artifacts-and-task-mission-read-contracts",
+    "reactivation_predicate": "Resume from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950, deployed on modular-debian-dev / aimarkethubs.com. Continue independent source work; authenticated UAT and migration review do not gate artifact or DTO investigation.",
+    "resume_point": "2026-11-15: R1.20 platform main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950 is integrated and deployed. Core tests 121/121, contracts 7/7, Chat 49/49; Core/Chat typechecks and package builds pass. Exact-SHA Core/Shell/Chat build and target controller pass local/public smoke and anonymous auth boundaries. Migration 0438 is applied; dedicated SQL fixture was skipped. Output artifacts and Task/Mission adapters remain missing; Agent/Harness/Run/Executor/Machine are explicitly unavailable; authenticated Inspector UAT and migration 0437 owner review remain open. See amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md.",
+    "waiting_predicate": "Authenticated UAT waits only for an authorized normal MFA session; migration 0437 ownership review needs registered migration authority. Artifact producer/storage and SPEC-277/SPEC-294 DTO work can continue independently."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md",
-      "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-921553a.md",
-      "/home/dev/modular-development-releases/modular-debian-dev-921553af6dc8b72e6730f3ab5e0a1fba56eb444b-enabled-model-parallel/release-manifest.json",
-      "smartaihub-platform@921553af6dc8b72e6730f3ab5e0a1fba56eb444b: concurrent enabled-model credential verification and verified DEV release"
+      "amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md",
+      "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
+      "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: source tests, typechecks, exact-SHA build and target-gated dev release"
     ],
-    "next_action": "Continue implementation from smartaihub-platform/main@921553af6dc8b72e6730f3ab5e0a1fba56eb444b: identify authoritative private output artifact storage and verified SPEC-294 API contracts before adding source adapters; retain MFA UAT and migration review as open. No full acceptance claim.",
-    "rationale": "A tested enabled-model catalog concurrency fix is integrated, immutably built, deployed to the authorized DEV target and verified by target-gated local/public smoke. R1.19 remains open because producer-backed private artifacts, Task/Mission adapters, authenticated UAT and migration provenance are incomplete.",
+    "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: trace an authorized genuine Chat output producer to canonical private storage before implementing artifact registration/retrieval; define tenant-scoped Task Control and Mission Control DTO owners before adapters. Keep authenticated Inspector UAT, migration 0437 ownership review and artifact capability disabled until verified.",
+    "rationale": "R1.20 adds a tested, exact-SHA deployed conversation-to-canonical-Job/Attempt/Event-cursor projection. Parent acceptance remains partial because output artifacts, Task/Mission APIs, authenticated UAT and migration-authority review are incomplete.",
     "residual_requirements": [
-      "Run authenticated Chat send/replay/attachment and responsive desktop/tablet/mobile UAT on deployed SHA 921553af6dc8b72e6730f3ab5e0a1fba56eb444b after normal MFA sign-in.",
-      "Use registered scoped migration authority to verify the 0437 applied receipt and review SECURITY DEFINER replay-function ownership; runtime role ledger access is denied and no DDL was run.",
-      "Implement producer-backed private Chat output artifact registration/retrieval/preview with ownership and content handling tests; keep artifacts=false until end-to-end proof.",
-      "Inspect SPEC-294-authoritative APIs and add thin Hono adapters/navigation only after verified modular contracts exist; do not duplicate orchestration.",
-      "The concurrency change only removes serial model-credential verification wait; collect authenticated latency evidence before claiming an end-to-end speedup."
+      "Implement producer-backed private output artifacts with canonical ownership, retrieval and negative authorization tests.",
+      "Define and verify SPEC-277 Task Control and SPEC-294 Mission Control read DTOs and authorization before adding Modular adapters/navigation.",
+      "Perform authenticated Inspector/send/replay/responsive UAT using normal MFA sign-in.",
+      "Review migration 0437 receipt and SECURITY DEFINER ownership with registered migration authority; migration 0438 SQL fixture was skipped for lack of dedicated disposable DB credentials."
     ]
   },
   "dependencies": {
@@ -112,15 +109,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:1f3b785acd48edffc4efd1db27de848e6c1f773d10e4f86c3d8f40b8a9408a81",
+    "artifact_digest": null,
     "environment": "modular-debian-dev / aimarkethubs.com; Debian systemd + local Workerd; database smartspec",
     "evidence": [
-      "release-manifest.json: /home/dev/modular-development-releases/modular-debian-dev-921553af6dc8b72e6730f3ab5e0a1fba56eb444b-enabled-model-parallel/release-manifest.json",
-      "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-921553a.md",
-      "smartaihub-platform@921553af6dc8b72e6730f3ab5e0a1fba56eb444b: Core eligible model credential verification now runs concurrently; target-gated deployment verified"
+      "/home/dev/modular-development-releases/modular-debian-dev-dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950-r120-built/release-manifest.json",
+      "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
+      "Target-gated controller DEPLOYED_AND_VERIFIED at 2026-11-15T06:50:46.353868Z; see exact local/public smoke and rollback evidence in the release manifest."
     ],
     "required": true,
-    "source_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
+    "source_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
     "status": "PASS"
   },
   "disposition": {
@@ -139,18 +136,18 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 120,
+  "generation": 127,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab",
+    "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-15T03:31:29.554105Z",
+      "last_evidence_at": "2026-11-15T06:58:29.679618Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.19",
+    "revision": "1.20",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
@@ -227,9 +224,9 @@
   },
   "integration": {
     "canonical_ref": "smartaihub-platform/main",
-    "canonical_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
+    "canonical_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
     "integrated": true,
-    "integrated_at": "2026-11-15T03:11:00Z"
+    "integrated_at": "2026-11-15T06:40:00Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -266,19 +263,17 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "amendments/assistant-ui-chat-shell/r1.19/implementation/IMPLEMENTATION_TRACEABILITY.md",
-        "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-921553a.md",
-        "/home/dev/modular-development-releases/modular-debian-dev-921553af6dc8b72e6730f3ab5e0a1fba56eb444b-enabled-model-parallel/release-manifest.json",
-        "smartaihub-platform@921553af6dc8b72e6730f3ab5e0a1fba56eb444b: concurrent enabled-model credential verification and verified DEV release"
+        "amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md",
+        "amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md",
+        "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: source tests, typechecks, exact-SHA build and target-gated dev release"
       ],
-      "next_action": "Continue implementation from smartaihub-platform/main@921553af6dc8b72e6730f3ab5e0a1fba56eb444b: identify authoritative private output artifact storage and verified SPEC-294 API contracts before adding source adapters; retain MFA UAT and migration review as open. No full acceptance claim.",
-      "rationale": "A tested enabled-model catalog concurrency fix is integrated, immutably built, deployed to the authorized DEV target and verified by target-gated local/public smoke. R1.19 remains open because producer-backed private artifacts, Task/Mission adapters, authenticated UAT and migration provenance are incomplete.",
+      "next_action": "Continue from smartaihub-platform/main@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: trace an authorized genuine Chat output producer to canonical private storage before implementing artifact registration/retrieval; define tenant-scoped Task Control and Mission Control DTO owners before adapters. Keep authenticated Inspector UAT, migration 0437 ownership review and artifact capability disabled until verified.",
+      "rationale": "R1.20 adds a tested, exact-SHA deployed conversation-to-canonical-Job/Attempt/Event-cursor projection. Parent acceptance remains partial because output artifacts, Task/Mission APIs, authenticated UAT and migration-authority review are incomplete.",
       "residual_requirements": [
-        "Run authenticated Chat send/replay/attachment and responsive desktop/tablet/mobile UAT on deployed SHA 921553af6dc8b72e6730f3ab5e0a1fba56eb444b after normal MFA sign-in.",
-        "Use registered scoped migration authority to verify the 0437 applied receipt and review SECURITY DEFINER replay-function ownership; runtime role ledger access is denied and no DDL was run.",
-        "Implement producer-backed private Chat output artifact registration/retrieval/preview with ownership and content handling tests; keep artifacts=false until end-to-end proof.",
-        "Inspect SPEC-294-authoritative APIs and add thin Hono adapters/navigation only after verified modular contracts exist; do not duplicate orchestration.",
-        "The concurrency change only removes serial model-credential verification wait; collect authenticated latency evidence before claiming an end-to-end speedup."
+        "Implement producer-backed private output artifacts with canonical ownership, retrieval and negative authorization tests.",
+        "Define and verify SPEC-277 Task Control and SPEC-294 Mission Control read DTOs and authorization before adding Modular adapters/navigation.",
+        "Perform authenticated Inspector/send/replay/responsive UAT using normal MFA sign-in.",
+        "Review migration 0437 receipt and SECURITY DEFINER ownership with registered migration authority; migration 0438 SQL fixture was skipped for lack of dedicated disposable DB credentials."
       ]
     },
     "disposition": {
@@ -393,6 +388,28 @@
           "handoff/evidence/r1.19-chat-event-replay-source-checkpoint-20261115.md"
         ],
         "verification_method": "Evaluate all eight acceptance areas against focused tests, exact target deployment evidence and authenticated UAT; do not infer completion from build or source integration."
+      },
+      "R1.20": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L349"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L349",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+        "final_state": "PASS",
+        "implementation_evidence": "R1.20 release used only modular-debian-dev / aimarkethubs.com through the target-gated controller; smartaihub.app and modular-cloudflare-prod were not targeted.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Continue future work on modular-debian-dev only unless separately authorized for another target.",
+        "requirement_digest": "c810251e5add42852bb8c29561fbc41fbc4c7387af1874af096072137b5a5b32",
+        "requirement_id": "R1.20",
+        "requirement_text": "- R1.20 must not activate `modular-cloudflare-prod`, change `smartaihub.app`, or claim production readiness. Development deployment remains scoped to `modular-debian-dev` (`aimarkethubs.com`) through its canonical controller.",
+        "source_spec_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "successor_mapping": [],
+        "verification_evidence": "Controller reports DEPLOYED_AND_VERIFIED for modular-debian-dev at aimarkethubs.com and exact SHA dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950. No Cloudflare Worker or production target was deployed.",
+        "verification_method": "Review canonical deployment-targets.json and exact release-manifest target/domain/runtime/sourceRevision; controller local/public smoke and rollback receipt."
       },
       "R1.7": {
         "applicability": "APPLICABLE",
@@ -820,6 +837,28 @@
         ],
         "verification_method": "Run focused Chat typecheck/build and exact-SHA release smoke/served asset parity; then authenticated rendered review on mobile, tablet and desktop."
       },
+      "REQ-367821788F60": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L345"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L345",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+        "final_state": "PARTIAL",
+        "implementation_evidence": "Chat Worker proxies the authorized projection and Inspector reads it on selection/refresh without enqueueing work. Implemented in smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950 and deployed to modular-debian-dev.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Perform authenticated Inspector UAT for conversation selection, refresh/restoration, job status/attempt, event replay and no duplicate dispatch.",
+        "requirement_digest": "2524db230852a43beed59eb9437254e3dbd5b72252846e5885686892b8fd52e0",
+        "requirement_id": "REQ-367821788F60",
+        "requirement_text": "- The Chat Worker SHALL proxy the authorized projection and the Thread Inspector SHALL load it on conversation selection and refresh. Existing SSE replay and polling behavior remain the event delivery mechanisms; loading an Inspector projection SHALL NOT enqueue or redispatch a Job.",
+        "source_spec_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "successor_mapping": [],
+        "verification_evidence": "Chat 49/49; typecheck/build and exact-SHA deployment passed. Served entry asset hash matches artifact; anonymous endpoint returns 401. Signed-in Inspector UAT remains pending.",
+        "verification_method": "Chat 49/49 including proxy, API and Inspector tests; Chat typecheck/build; exact deployed Chat entry asset SHA-256 matches immutable artifact; anonymous Chat projection request returns 401."
+      },
       "REQ-384BD5AE0734": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -1092,6 +1131,28 @@
           "handoff/evidence/modular-chat-enabled-paid-credit-release-20261112.md"
         ],
         "verification_method": "Verify live provider selection, 429 cooldown, account-level Durable Object contention, Queue redelivery and restart persistence; current focused tests/build/release checks do not prove these live runtime cases."
+      },
+      "REQ-5D0EE9A980C9": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L343"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L343",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+        "final_state": "PARTIAL",
+        "implementation_evidence": "Core ChatExecutionProjectionV1 resolves authorized conversations to canonical worker_jobs, latest persisted worker_job_events attemptId, and eventSequence cursor. Migration 0438 implements scoped ownership checks. Source is integrated at dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950 and deployed on modular-debian-dev; migration applied to dev smartspec.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Verify the deployed projection using a normal authorized MFA session and a real owned conversation; keep missing Agent/Harness/Run/Executor/Machine IDs null until authoritative sources exist.",
+        "requirement_digest": "19511059b02e2f0047cab48499404ce0d2432206ba379abe65c4fb6c322c8ef2",
+        "requirement_id": "REQ-5D0EE9A980C9",
+        "requirement_text": "- Core SHALL expose a versioned `smartaihub.chat-execution-projection.v1` for an authenticated conversation in its verified workspace. It SHALL resolve the existing conversation identity to canonical `worker_jobs`, the latest persisted attempt ID when present, and the durable event cursor from `worker_job_events`, using existing identifiers and authorization boundaries.",
+        "source_spec_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
+        "successor_mapping": [],
+        "verification_evidence": "Contracts 7/7; Core 121/121; typecheck/build and exact-SHA deployment passed. Anonymous endpoint returns 401. SQL integration fixture skipped for missing dedicated disposable DB credentials; authenticated real-conversation path remains pending.",
+        "verification_method": "Contracts 7/7; Core 121/121 including auth-route test; Core typecheck/build; migration hash/timestamp audit and SECURITY DEFINER catalog check; exact-SHA target-gated deployment; deployed anonymous Core and Chat routes return 401."
       },
       "REQ-5DCD6E80443A": {
         "applicability": "APPLICABLE",
@@ -2234,10 +2295,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-15T03:31:29.554105Z",
+    "reconciled_at": "2026-11-15T06:58:29.679618Z",
     "sources": [
       {
-        "digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab",
+        "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2372,7 +2433,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-691c9cd.md"
       },
       {
-        "digest": "a28fd56ac42935ed2fcc338097b604803d6b27e2158520d075d4f085b2b84303",
+        "digest": "674b7105ca947392b139fb6324f6608d72ebaf036d67649aed335e6d9b7150c5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-921553a.md"
       },
@@ -2415,6 +2476,21 @@
         "digest": "32e2a51add2f5fa482748cf2700722afae2eb3d39988110ab8fa866be17069c5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-06-spec-dev-release-and-uat-handoff.md"
+      },
+      {
+        "digest": "8411ec2a9e76cef398002d40662da12618cb96fffa4d4df277a8b307d39645b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "383a85ba8a00b8f6351603ee53869dd6e141e5a43dd93859ad348dbc089d916c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "80e15d74f41d3ce012c03c05faee4cec638bdbb9ae7adb98ddc595733492827a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -2852,7 +2928,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab",
+        "source_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -3169,14 +3245,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab",
+        "source_digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "38ab0ce37b382621027f9f53772b04e2c46f91c4406db37d99d0830b81f098ab",
+        "digest": "171a34842c560b7fbaec9438482eda525df626ed4c54761414882ce77fda1cd3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -3311,7 +3387,7 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-691c9cd.md"
       },
       {
-        "digest": "a28fd56ac42935ed2fcc338097b604803d6b27e2158520d075d4f085b2b84303",
+        "digest": "674b7105ca947392b139fb6324f6608d72ebaf036d67649aed335e6d9b7150c5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115-921553a.md"
       },
@@ -3354,6 +3430,21 @@
         "digest": "32e2a51add2f5fa482748cf2700722afae2eb3d39988110ab8fa866be17069c5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.19/sections/section-06-spec-dev-release-and-uat-handoff.md"
+      },
+      {
+        "digest": "8411ec2a9e76cef398002d40662da12618cb96fffa4d4df277a8b307d39645b5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "383a85ba8a00b8f6351603ee53869dd6e141e5a43dd93859ad348dbc089d916c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "80e15d74f41d3ce012c03c05faee4cec638bdbb9ae7adb98ddc595733492827a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.20/implementation/r1.20-dev-release-20261115-dfa5eaf.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -3486,25 +3577,29 @@
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 1,
-    "pass": 0,
-    "total": 93,
-    "unresolved": 92
+    "pass": 1,
+    "total": 98,
+    "unresolved": 96
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T03:33:12.578848Z",
+  "updated_at": "2026-11-15T06:58:55.140890Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "Core package tests 19 files / 120 tests; Core typecheck and Wrangler dry-run passed on 921553af6dc8b72e6730f3ab5e0a1fba56eb444b.",
       "Immutable exact-SHA Core/Shell/Chat release builds and Wrangler dry-runs pass; target-gated controller reports DEPLOYED_AND_VERIFIED with local/public smoke and anonymous authorization boundary on aimarkethubs.com.",
       "R1.19 UI checkpoint 4ef0c8fa746d7490bcacdebbcc753180830e1062 previously verified served Chat JS SHA-256 a0ec0f66b981aa77570d215815d95ca51bd4fb8e52dddfa5d1ee17ca8d73adeb; contains Cloud Queue and no Cloud Execution · Always On claim. Chat static bundle is unchanged in 921553a.",
-      "Authenticated MFA UAT, migration-ledger/function-owner review, private output artifacts and SPEC-294 adapters remain open."
+      "Authenticated MFA UAT, migration-ledger/function-owner review, private output artifacts and SPEC-294 adapters remain open.",
+      "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: contracts 7/7, Core 121/121, Chat 49/49; Core and Chat typecheck/build passed; exact-SHA immutable Core/Shell/Chat build passed.",
+      "Target-gated controller reports DEPLOYED_AND_VERIFIED on modular-debian-dev / aimarkethubs.com; local Core/Chat/Shell and manifest/entry checks passed, public shell/chat smoke passed, anonymous Chat session returned 401.",
+      "Deployed Core and Chat execution projection endpoints reject anonymous requests with 401; served Chat entry asset SHA-256 matches immutable artifact. Authenticated data-path and browser UAT remain pending.",
+      "SmartSpecPro migration 0438 applied to dev smartspec and audit matched hash/timestamp; dedicated disposable SQL integration fixture was skipped due missing dedicated test DB credentials."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "package"
     ],
-    "sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
+    "sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
     "status": "PASS",
     "task_regressions": []
   }
