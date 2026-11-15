@@ -525,7 +525,7 @@ const AUTO_REVIEW_FORMATS: Array<
   AutoReviewCharacterChoice & { id: AutoReviewFormat }
 > = [
   { id: "", label: "รีวิวทั่วไป" },
-  { id: "drama_tie_in", label: "ละคร Tie-in: คู่พระนางจีบ/แซวกัน" },
+  { id: "drama_tie_in", label: "ละคร Tie-in: เล่าเรื่องก่อนเชื่อมสินค้า" },
 ];
 const AUTO_REVIEW_STORYTELLING_STRUCTURES: Array<
   AutoReviewCharacterChoice & { id: AutoReviewStorytellingStructure }
@@ -6754,14 +6754,20 @@ export default function MarketplaceCaptureProductDetail() {
             }
           }
         )}
-        {autoReviewFormat === "drama_tie_in" ? (
-          <p className="-mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs leading-5 text-violet-900">
-            เปิดเรื่องด้วยบทสนทนาจีบหรือแซวกันระหว่างนักแสดงหลัก 2 คนประมาณ
-            3-4 ช็อต แล้วค่อยเชื่อมเข้าสินค้าตามเหตุการณ์ในเรื่อง
-            จากนั้นจึงสาธิตและพูดถึงข้อมูลสินค้าจริง กรุณาเลือก Cast ให้ครบ 2 คน;
-            หากอายุไม่ชัดหรือเป็นผู้เยาว์ บทสนทนาจะเป็นมิตรและไม่โรแมนติก
-          </p>
-        ) : null}
+        <p className="-mt-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs leading-5 text-violet-900">
+          <strong>รีวิวทั่วไป:</strong> เริ่มพูดถึงหรือสาธิตสินค้าและข้อมูลจริงโดยตรงตั้งแต่ต้น
+          <br />
+          <strong>ละคร Tie-in:</strong> เริ่มจากเหตุการณ์หรือบทสนทนาของตัวละคร
+          โดยทั่วไปให้เรื่องนำก่อนราว 3–4 ช็อต แล้วเชื่อมสินค้าเมื่อมีเหตุผลตามเนื้อเรื่อง
+          ก่อนสาธิตและพูดข้อมูลสินค้าจริง
+          <br />
+          จังหวะเข้าเรื่องสินค้าให้ขึ้นกับเนื้อหา ไม่ล็อกช็อตตายตัว;
+          ไม่บังคับให้เป็นคู่รักหรือใช้มุกจีบ/แซว
+          ให้บทพูดและการกระทำยึด Story skill และเนื้อเรื่องที่เลือกเป็นหลัก
+          {autoReviewFormat === "drama_tie_in"
+            ? " กรุณาเลือก Cast ให้ครบ 2 คน"
+            : ""}
+        </p>
         {renderCharacterChoiceGroup(
           "อารมณ์ / โทนการพูด",
           AUTO_REVIEW_REVIEW_TONES,

@@ -5457,9 +5457,9 @@ const MARKETPLACE_AUTO_REVIEW_FORMAT_DIRECTIVES: Record<
   { label: string; directive: string }
 > = {
   drama_tie_in: {
-    label: "ละคร Tie-in: คู่พระนางจีบ/แซวกัน",
+    label: "ละคร Tie-in: เล่าเรื่องก่อนเชื่อมสินค้า",
     directive:
-      "The user selected drama_tie_in. Follow the loaded story skill's guidance for this format.",
+      "Use the loaded story skill first. For drama_tie_in, establish the scene through the characters' situation or dialogue for roughly 3-4 opening shots, but choose the exact product-entry timing based on narrative relevance rather than a fixed shot number. Then introduce and demonstrate the product when it naturally fits, using verified product facts. Do not require romance, flirting, or teasing; make dialogue and actions fit the selected skill and this story.",
   },
 };
 
