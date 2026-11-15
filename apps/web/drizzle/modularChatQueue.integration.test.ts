@@ -25,13 +25,49 @@ suite("Modular Chat queue database contract", () => {
       const provider = (await client.query("SELECT provider_id FROM public.modular_chat_llm_model_catalog WHERE provider_name = 'openrouter' LIMIT 1")).rows[0];
       expect(workspace).toBeDefined();
       expect(provider).toBeDefined();
+      const migrationHash = (tag: string) => createHash("sha256")
+        .update(readFileSync(new URL(`./${tag}.sql`, import.meta.url))).digest("hex");
+      const missionMigrationHash = migrationHash("0441_modular_chat_missions");
+      const baselineHashes = [migrationHash("0439_modular_chat_output_artifacts"), migrationHash("0440_seedream_5_5_unified_model")];
+      const appliedHashes = (await client.query("SELECT hash FROM drizzle.__drizzle_migrations")).rows.map((row) => row.hash);
+      expect(appliedHashes).toEqual(expect.arrayContaining(baselineHashes));
+      const missionMigrationApplied = appliedHashes.includes(missionMigrationHash);
+      const missionTableExists = (await client.query("SELECT to_regclass('public.modular_chat_missions') AS table_name")).rows[0].table_name !== null;
+      expect(missionTableExists).toBe(missionMigrationApplied);
       await client.query("BEGIN");
-      await client.query(readFileSync(new URL("./0427_modular_chat_queue_sql_fix.sql", import.meta.url), "utf8"));
       const replayFunction = await client.query("SELECT to_regprocedure('public.list_modular_chat_job_events(integer,character varying,character varying,character varying,integer,integer)') AS procedure");
       expect(replayFunction.rows[0]?.procedure).not.toBeNull();
-      await client.query(readFileSync(new URL("./0438_modular_chat_conversation_execution_projection.sql", import.meta.url), "utf8"));
-      await client.query(readFileSync(new URL("./0439_modular_chat_output_artifacts.sql", import.meta.url), "utf8"));
-      await client.query(readFileSync(new URL("./0441_modular_chat_missions.sql", import.meta.url), "utf8"));
+      expect((await client.query("SELECT to_regprocedure('public.list_modular_chat_conversation_execution(integer,character varying,character varying,integer)') AS procedure")).rows[0]?.procedure).not.toBeNull();
+      expect((await client.query("SELECT to_regclass('public.worker_artifacts') AS table_name")).rows[0].table_name).not.toBeNull();
+      if (!missionMigrationApplied) {
+        await client.query(readFileSync(new URL("./0441_modular_chat_missions.sql", import.meta.url), "utf8"));
+      }
+      const missionFunctions = (await client.query(`SELECT p.oid::regprocedure::text AS function_name,
+          pg_get_userbyid(p.proowner) AS owner, p.proconfig,
+          owner_role.rolcanlogin, owner_role.rolsuper, owner_role.rolcreatedb, owner_role.rolcreaterole,
+          owner_role.rolbypassrls,
+          has_schema_privilege(owner_role.oid, 'public', 'CREATE') AS owner_can_create_public,
+          EXISTS (SELECT 1 FROM pg_auth_members membership WHERE membership.roleid = owner_role.oid) AS owner_has_members,
+          EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+            WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') AS public_execute,
+          has_function_privilege('modular_core_auth_dev', p.oid, 'EXECUTE') AS dev_execute
+        FROM pg_proc p JOIN pg_roles owner_role ON owner_role.rolname = pg_get_userbyid(p.proowner)
+        WHERE p.oid IN (
+          to_regprocedure('public.create_modular_chat_mission(integer,character varying,character varying,integer)'),
+          to_regprocedure('public.list_modular_chat_missions(integer,character varying,character varying,integer)'),
+          to_regprocedure('public.list_modular_chat_task_control_projection(integer,character varying,character varying,integer)')
+        ) ORDER BY p.proname`)).rows;
+      expect(missionFunctions).toHaveLength(3);
+      for (const fn of missionFunctions) {
+        expect(fn).toMatchObject({ owner: "modular_chat_mission_owner", rolcanlogin: false, rolsuper: false,
+          rolcreatedb: false, rolcreaterole: false, rolbypassrls: false, owner_can_create_public: false,
+          owner_has_members: false, public_execute: false, dev_execute: true,
+          proconfig: ["search_path=pg_catalog, public"] });
+      }
+      expect((await client.query(`SELECT has_table_privilege('modular_core_auth_dev','public.modular_chat_missions','SELECT') AS can_select,
+        has_table_privilege('modular_core_auth_dev','public.modular_chat_missions','INSERT') AS can_insert,
+        has_table_privilege('modular_core_auth_dev','public.modular_chat_missions','UPDATE') AS can_update`)).rows[0])
+        .toEqual({ can_select: false, can_insert: false, can_update: false });
       await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const input = [user.id, "modular-development", workspace.workspace_id, null, "Diagnostic request", provider.provider_id, "diagnostic/free", randomUUID()];
       const create = "SELECT * FROM public.create_modular_chat_turn_job($1,$2,$3,$4,$5,$6,$7,$8)";
@@ -53,7 +89,9 @@ suite("Modular Chat queue database contract", () => {
       const leaseHash = createHash("sha256").update(lease).digest("hex");
       const claim = (await client.query("SELECT * FROM public.claim_modular_chat_turn_job($1,$2,$3)", [first.job_id, lease, leaseHash])).rows[0];
       expect(claim.claim_status).toBe("claimed");
-      expect((await client.query("SELECT * FROM public.begin_modular_chat_turn_job($1,$2,$3,$4)", [first.job_id, lease, leaseHash, claim.fencing_version])).rowCount).toBe(1);
+      const began = await client.query("SELECT * FROM public.begin_modular_chat_turn_job($1,$2,$3,$4)", [first.job_id, lease, leaseHash, claim.fencing_version]);
+      expect(began.rowCount).toBe(1);
+      expect(began.rows[0]?.attempt_id).toEqual(expect.any(String));
       const complete = (await client.query("SELECT * FROM public.complete_modular_chat_turn_job($1,$2,$3,$4,$5,$6)", [first.job_id, lease, claim.fencing_version, "Diagnostic response", 1, 1])).rows[0];
       expect(complete.completed).toBe(true);
       const status = (await client.query("SELECT * FROM public.get_modular_chat_turn_job_status($1,$2,$3,$4)", [user.id, "modular-development", workspace.workspace_id, first.job_id])).rows[0];
@@ -64,15 +102,16 @@ suite("Modular Chat queue database contract", () => {
         [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
       );
       expect(execution.rows).toHaveLength(2);
-      expect(execution.rows[0]).toMatchObject({ job_id: first.job_id, job_status: "succeeded", event_cursor: expect.any(Number) });
-      expect(execution.rows[0].attempt_id).toEqual(expect.any(String));
+      const firstExecution = execution.rows.find((row) => row.job_id === first.job_id);
+      expect(firstExecution).toMatchObject({ job_id: first.job_id, job_status: "succeeded", event_cursor: expect.any(Number) });
       const taskControl = await client.query(
         "SELECT * FROM public.list_modular_chat_task_control_projection($1,$2,$3,$4)",
         [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
       );
-      expect(taskControl.rows.find((row) => row.job_id === first.job_id)).toMatchObject({
+      const firstTask = taskControl.rows.find((row) => row.job_id === first.job_id);
+      expect(firstTask).toMatchObject({
         task_id: first.job_id, workspace_id: workspace.workspace_id, conversation_id: first.conversation_id,
-        execution_status: "succeeded", event_cursor: expect.any(Number),
+        execution_status: "succeeded", attempt_id: expect.any(String), event_cursor: expect.any(Number),
       });
       const missionId = (await client.query(
         "SELECT public.create_modular_chat_mission($1,$2,$3,$4) AS mission_id",
@@ -89,17 +128,20 @@ suite("Modular Chat queue database contract", () => {
       )).rows[0];
       expect(mission).toMatchObject({ mission_id: missionId, tenant_id: "modular-development",
         workspace_id: workspace.workspace_id, conversation_id: first.conversation_id,
-        job_ids: expect.arrayContaining([first.job_id]), event_cursor: expect.any(Number), agent_ids: [] });
+        status: "active", job_ids: expect.arrayContaining([first.job_id]), event_cursor: expect.any(Number), agent_ids: [] });
       const artifactId = randomUUID();
       const artifactMetadata = {
         schemaVersion: "smartaihub.chat-output-artifact.v1", contentType: "text/markdown; charset=utf-8",
         sizeBytes: 19, sha256: "a".repeat(64), expiresAt: new Date(Date.now() + 86400000).toISOString(),
         conversationId: first.conversation_id, workspaceId: workspace.workspace_id, userId: user.id,
-        jobId: first.job_id, attemptId: execution.rows[0].attempt_id, attemptNumber: 1,
+        jobId: first.job_id, attemptId: firstTask?.attempt_id, attemptNumber: 1,
       };
       const storageRef = `chat-outputs/v1/modular-development/${workspace.workspace_id}/${first.job_id}/attempt-1.md`;
+      // Artifact persistence is an internal worker write, not a direct app-role capability.
+      await client.query("RESET SESSION AUTHORIZATION");
       await client.query(`INSERT INTO public.worker_artifacts (id, "workerJobId", "artifactType", "storageRef", "metadataJson")
         VALUES ($1, $2, 'chat_output_markdown', $3, $4::jsonb)`, [artifactId, first.job_id, storageRef, JSON.stringify(artifactMetadata)]);
+      await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const artifacts = await client.query(
         "SELECT * FROM public.list_modular_chat_conversation_artifacts($1,$2,$3,$4)",
         [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
@@ -123,10 +165,12 @@ suite("Modular Chat queue database contract", () => {
       expect(events.map((event) => event.event_sequence)).toEqual([...events.map((event) => event.event_sequence)].sort((a, b) => a - b));
       expect(events.at(-1)?.event_type).toBe("SUCCEEDED");
       expect(JSON.stringify(events)).not.toMatch(/dedupeKey|outboxId|fencingVersion|leaseExpiresAt/i);
+      await client.query("SAVEPOINT execution_scope_check");
       await expect(client.query(
         "SELECT * FROM public.list_modular_chat_conversation_execution($1,$2,$3,$4)",
         [2147483647, "modular-development", workspace.workspace_id, first.conversation_id],
       )).rejects.toMatchObject({ code: "42501" });
+      await client.query("ROLLBACK TO SAVEPOINT execution_scope_check");
       expect((await client.query(
         "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,$5,100)",
         [user.id, "modular-development", workspace.workspace_id, first.job_id, events.at(-1)?.event_sequence],
