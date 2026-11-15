@@ -1,5 +1,5 @@
 {
-  "generation": 65,
+  "generation": 66,
   "historical_requirements": [
     {
       "applicability": "UNASSESSED",
@@ -674,24 +674,24 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+      "evidence_sha": "847ed7baca5baf1c16817d65575fe0dea71f94dd",
       "final_state": "PASS",
       "implementation_evidence": [
-        "0441 defines explicit lifecycle status and limited NOLOGIN/NOSUPERUSER SECURITY DEFINER ownership with fixed search_path, no public CREATE, and narrow column/table grants.",
-        "0441 additively repairs the existing Task Control projection invalid updatedAt reference without editing applied 0439."
+        "R1.24 replaces self-administered role creation/membership with exact migrator and owner-role preflight plus the DBA-only bootstrap/cleanup runbook.",
+        "R1.24 preserves explicit Mission lifecycle and additively repairs Task Control freshness without editing already-applied 0439."
       ],
       "implementation_status": "TESTED",
-      "next_action": "Repeat catalog verification against DEV after authorized migration application.",
+      "next_action": "Repeat catalog/ACL verification on actual DEV after authorized migration.",
       "requirement_digest": "11be7b29acb70bc2d02ed10017c71cd90aac23bca7c624611bc9b2f865666dc6",
       "requirement_id": "REQ-312-R123-02",
       "requirement_text": "- **REQ-312-R123-02:** Review 0441 tenant/workspace/conversation checks, Mission lifecycle, canonical Job/Attempt/Event/Artifact projections, idempotency, SECURITY DEFINER owner/search path/ACL and cross-tenant denial. Repair only through an unapplied additive migration.",
       "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "Three relevant functions owned by modular_chat_mission_owner; PUBLIC EXECUTE false; modular_core_auth_dev EXECUTE true; role cannot login, is not superuser, and lacks schema CREATE.",
-        "Mission lifecycle/idempotency, Job/Attempt/Event/Artifact projection, and cross-scope denial SQL fixture passed 1/1 on isolated PG17.11."
+        "PG15.17: all three SECURITY DEFINER functions owned by NOLOGIN modular_chat_mission_owner, fixed pg_catalog/public search_path, PUBLIC EXECUTE denied, DEV runtime EXECUTE granted. Runtime direct worker_jobs SELECT denied; owner has narrow column reads, not broad table SELECT.",
+        "Mission lifecycle/idempotency, Job/Run/Attempt/Event/Artifact correlation, Task timestamp, and cross-tenant/workspace denial fixtures passed."
       ],
-      "verification_method": "Review migration SQL and query disposable catalog for owner, search_path, ACL, runtime grant, and Task/Attempt projection; run tenant-scope SQL fixture."
+      "verification_method": "Run registered migration on exact-version isolated PG15 with non-superuser role; inspect owner/search_path/ACLs and exercise tenant/runtime projection fixtures."
     },
     {
       "applicability": "APPLICABLE",
@@ -699,30 +699,27 @@
         "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L34"
       ],
       "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L34",
-      "blocker": {
-        "class": "TEST_ENVIRONMENT_VERSION_MISMATCH",
-        "next_action": "Repeat on disposable PostgreSQL 15 when available."
-      },
+      "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
-      "final_state": "PARTIAL",
+      "evidence_sha": "847ed7baca5baf1c16817d65575fe0dea71f94dd",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "Actual DEV schema-only dump and migration ledger were restored to a local disposable PG17.11 cluster; no application data copied.",
-        "Registered pnpm db:migrate applied only migration 0441; rollback SQL integration passed 1/1 and did not modify fixture baseline data."
+        "On isolated PostgreSQL 15.17 synthetic schema, actual 0439 and 0440 sources executed in order; registered pnpm --dir apps/web db:migrate applied actual 0441 as non-superuser smartspec_migrator_dev.",
+        "The registered runner receipt and ledger show actual computed 0439/0440/0441 source hashes and journal timestamps; fixture contains no copied application data."
       ],
       "implementation_status": "TESTED",
-      "next_action": "Repeat runner and fixture on isolated PG15; do not claim exact-version parity until then.",
+      "next_action": "Revalidate live DEV hashes and execute the registered migration after approved DBA provisioning.",
       "requirement_digest": "33914d0481315f878720267ddf81b7f13ab51f7109238c168d360871e40e1605",
       "requirement_id": "REQ-312-R123-03",
       "requirement_text": "- **REQ-312-R123-03:** Run 0441 through the registered runner and exercise Mission and Chat SQL integration only on an isolated database with synthetic data; record PostgreSQL version and prove that the fixture does not alter existing data.",
       "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "Ledger contains matching 0439, 0440 and 0441 hashes/timestamps in order; 0440 remains a single row.",
-        "PostgreSQL disposable 17.11; actual DEV 15.17."
+        "Ledger: 0439 d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8 at 1794770000000; 0440 141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784 at 1794770000001; 0441 c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa at 1794770000002.",
+        "Missing-bootstrap preflight rejected before DDL; deliberate Drizzle DDL failure rolled back the table and ledger remained unchanged."
       ],
-      "verification_method": "Run the registered migration runner and rollback integration against an isolated database; compare migration order/hash and state server version."
+      "verification_method": "Registered migration runner and runtime/rollback fixtures on disposable PG15.17; compare source hashes and ledger order."
     },
     {
       "applicability": "APPLICABLE",

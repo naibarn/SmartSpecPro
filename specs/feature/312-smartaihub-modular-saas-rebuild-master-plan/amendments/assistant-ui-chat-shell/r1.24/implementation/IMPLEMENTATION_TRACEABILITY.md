@@ -1,6 +1,6 @@
 # SPEC-312 R1.24 Implementation Traceability
 
-**Disposition:** `PARTIAL / CONTINUATION_REQUIRED` · **Actual DEV migration:** `BLOCKED` · **Release:** `PENDING` · **Task base:** SmartSpecPro `49ef6b47161889b7f686d231e98a2ef53c732bda` (`main == origin/main` at start) · **Platform base:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`
+**Disposition:** `PARTIAL / CONTINUATION_REQUIRED` · **Actual DEV migration:** `BLOCKED` · **Release:** `PENDING` · **Task base:** SmartSpecPro `49ef6b47161889b7f686d231e98a2ef53c732bda` (`main == origin/main` at start) · **Integrated R1.24 implementation:** `847ed7baca5baf1c16817d65575fe0dea71f94dd` (`main == origin/main`) · **Platform base:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`
 
 | Requirement | Implementation / evidence | Result | Remaining action |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@
 ## Scoped verification record
 
 - **Profile:** `integration` (isolated database + registered migration runner + runtime SQL fixture).
-- **Source:** task base `49ef6b47161889b7f686d231e98a2ef53c732bda` plus the R1.24 working-tree migration; source SHA-256 is recorded in the handoff/final report after integration.
+- **Source:** integrated SmartSpecPro implementation SHA `847ed7baca5baf1c16817d65575fe0dea71f94dd`; migration SHA-256 `c242049230d02d298398acb3d206d4d6aea3f386e4135a098a9b6cf67d37a0aa`.
 - **Target:** disposable local PostgreSQL `15.17 (Debian 15.17-1.pgdg13+1)` on loopback port `55439`; no application data copied. Fixture contained only synthetic schema/rows and the three executed migration ledger records.
 - **Command/scope:** `pnpm --dir apps/web db:migrate` with development-only localhost fixture metadata; actual registered wrapper and Drizzle Kit runner applied only pending 0441. Runtime SQL executed as `modular_core_auth_dev`; catalog/ACL checks executed by the disposable-cluster admin.
 - **Time/outcome:** `2026-11-15T14:33:58Z`, pass. Focused role, ACL, constraints, runtime isolation/correlation and rollback assertions passed. No local repository-wide typecheck was run.

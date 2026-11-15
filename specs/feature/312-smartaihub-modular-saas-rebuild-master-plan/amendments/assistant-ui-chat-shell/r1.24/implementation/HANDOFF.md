@@ -1,7 +1,7 @@
 # SPEC-312 R1.24 HandOff
 
 - **Status:** implementation complete for the safe source/fixture work; actual DEV migration and release remain `BLOCKED` by missing DBA credential/bootstrap authority.
-- **Baseline:** SmartSpecPro `main` was `49ef6b47161889b7f686d231e98a2ef53c732bda` and equal to `origin/main` at task start. Platform baseline remains `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`. The R1.24 integrated source SHA is reported by the final Git reconciliation.
+- **Baseline:** SmartSpecPro `main` was `49ef6b47161889b7f686d231e98a2ef53c732bda` and equal to `origin/main` at task start. R1.24 implementation commit `847ed7baca5baf1c16817d65575fe0dea71f94dd` is fetched and verified as `main == origin/main`. Platform baseline remains `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`.
 - **Target:** `modular-debian-dev`, `https://aimarkethubs.com/chat`, database `smartspec`, PostgreSQL 15.17. No Cloudflare, production or legacy deployment was touched.
 
 ## Credential incident
