@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `80`
-- Updated (UTC): `2026-11-15T10:17:50.721592+00:00`
+- State generation: `81`
+- Updated (UTC): `2026-11-15T14:14:53.365431+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `cd536fdbe7f18efca9aeb12e438cae524613c6a4`
+- Latest recorded merged Main SHA: `17de1f8ff7e6b0b08988c00fd55c4761b6a065cc`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.
+- Next action: The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | cd536fdbe7f18efca9aeb12e438cae524613c6a4 | cd536fdbe7f18efca9aeb12e438cae524613c6a4 | The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits. |
+| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-review-object-continuity | /mnt/SmartSpecDev/projects/SmartSpecPro | 17de1f8ff7e6b0b08988c00fd55c4761b6a065cc | 17de1f8ff7e6b0b08988c00fd55c4761b6a065cc | The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -28,6 +28,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.
 - Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.
 - Authenticated browser UAT และ live provider video-prompt generation ยังไม่ผ่านการยืนยัน
+- Live provider-backed video prompt generation after the object continuity lock remains unverified; deploy health and focused tests do not prove model output behavior.
 
 ## Resume
 

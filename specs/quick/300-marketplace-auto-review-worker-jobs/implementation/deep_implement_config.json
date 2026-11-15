@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.",
-      "checkpoint_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
-      "merged_main_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
+      "next_action": "The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job.",
+      "checkpoint_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+      "merged_main_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-marketplace-auto-speaker-attribution"
+      "session_id": "codex-marketplace-auto-review-object-continuity"
     }
   },
   "pre_commit": {
@@ -42,21 +42,57 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 80,
-  "updated_at": "2026-11-15T10:17:50.721592+00:00",
+  "generation": 81,
+  "updated_at": "2026-11-15T14:14:53.365431+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.",
-    "merged_main_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
+    "next_action": "The video prompt continuity lock is integrated and deployed as legacy-debian-dev release generation 570; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified and should be run only when validating the prompt on an existing or fresh review job.",
+    "merged_main_sha": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
       "The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
-      "Authenticated browser UAT และ live provider video-prompt generation ยังไม่ผ่านการยืนยัน"
+      "Authenticated browser UAT และ live provider video-prompt generation ยังไม่ผ่านการยืนยัน",
+      "Live provider-backed video prompt generation after the object continuity lock remains unverified; deploy health and focused tests do not prove model output behavior."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
+      "profile": "quick",
+      "revision": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+      "verified_at_utc": "2026-11-15T14:15:17Z",
+      "scope": [
+        "pnpm exec vitest run --reporter=dot server/services/__tests__/marketplaceAutoReviewVideoPromptContinuity.test.ts server/services/__tests__/marketplaceAutoReviewVideoPromptSkillRunner.test.ts (3 passed)",
+        "git diff --check for task-owned patch",
+        "pnpm run release:web:linux -- --target legacy-debian-dev",
+        "pnpm run release:status --target legacy-debian-dev",
+        "public https://smartaihub.app/healthz and / HTTP checks"
+      ],
+      "outcome": "PASS; release generation 570 is DEPLOYED_VERIFIED and public health is HTTP 200; authenticated UI UAT and provider-backed prompt generation remain unverified; no full typecheck run",
+      "release": {
+        "target": "legacy-debian-dev",
+        "domain": "https://smartaihub.app",
+        "release_id": "smartspec-web-17de1f8ff7e6b0b08988c00fd55c4761b6a065cc-d0cb2e43b6a2",
+        "generation": 570,
+        "runtime_revision": "17de1f8ff7e6b0b08988c00fd55c4761b6a065cc",
+        "service_health": "HEALTHY",
+        "public_health": "HTTP 200",
+        "public_root": "HTTP 200"
+      },
+      "resource_evidence": {
+        "build_profile": "canonical development release build preflight",
+        "host_available_kb": 25087056,
+        "memory_psi_some_avg10": 0.24,
+        "user_slice_memory_current": 18625249280,
+        "reclaimable": 11894713216,
+        "effective": 6730536064,
+        "high": 19327352832,
+        "max": 21474836480,
+        "swap_current": 4036136960,
+        "swap_max": 6442450944
+      }
+    },
+    "previous_verification_evidence": {
       "profile": "quick",
       "revision": "759f6514d44196ae288672c63e8debed6e5b2e50",
       "verified_at_utc": "2026-11-14T17:01:37Z",
