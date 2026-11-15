@@ -121,6 +121,111 @@ export function selectStagedSupportingCast(
   return (cast ?? []).filter(member => !isMarketplaceCastLeadRole(member.role));
 }
 
+type StagedSupportingBeatInput = StagedSupportingBeat | string;
+
+/**
+ * Providers occasionally flatten a supporting beat object to a plain action
+ * string even though the skill contract asks for `{ castId, action }`. Recover
+ * that shorthand only when its owner is unambiguous from the shot's cast list
+ * (or there is exactly one supporting member in the whole roster). If it is
+ * ambiguous, omit the unsupported extras instead of assigning an action to the
+ * wrong person or failing the entire story plan.
+ */
+function normalizeStagedSupportingBeatInputs(params: {
+  beats: StagedSupportingBeatInput[];
+  castInShot?: string[];
+  cast: StagedCastMember[];
+}): {
+  beats: StagedSupportingBeat[];
+  castInShot?: string[];
+  droppedAmbiguousBeatCount: number;
+} {
+  const supportIds = new Set(
+    selectStagedSupportingCast(params.cast).map(member => member.castId)
+  );
+  const explicitBeats = params.beats.filter(
+    (beat): beat is StagedSupportingBeat => typeof beat !== "string"
+  );
+  const shorthandActions = params.beats
+    .filter((beat): beat is string => typeof beat === "string")
+    .map(clean)
+    .filter(Boolean);
+  const explicitSupportIds = new Set(
+    explicitBeats
+      .filter(beat => supportIds.has(beat.castId))
+      .map(beat => beat.castId)
+  );
+  let normalizedCastInShot = params.castInShot
+    ? [...params.castInShot]
+    : undefined;
+  if (!normalizedCastInShot && explicitSupportIds.size > 0) {
+    normalizedCastInShot = [];
+  }
+  if (normalizedCastInShot) {
+    for (const castId of explicitSupportIds) {
+      if (!normalizedCastInShot.includes(castId)) {
+        normalizedCastInShot.push(castId);
+      }
+    }
+  }
+  const visibleSupportIds = (normalizedCastInShot ?? []).filter(
+    (castId, index, values) =>
+      supportIds.has(castId) && values.indexOf(castId) === index
+  );
+  let unassignedVisibleSupportIds = visibleSupportIds.filter(
+    castId => !explicitSupportIds.has(castId)
+  );
+
+  // A single supporting actor plus one shorthand beat is a safe recovery even
+  // when the model forgot to repeat that actor in castInShot.
+  if (
+    unassignedVisibleSupportIds.length === 0 &&
+    shorthandActions.length === 1 &&
+    supportIds.size === 1
+  ) {
+    const onlySupportId = params.cast.find(member =>
+      supportIds.has(member.castId)
+    )?.castId;
+    if (onlySupportId && !explicitSupportIds.has(onlySupportId)) {
+      unassignedVisibleSupportIds = [onlySupportId];
+      if (!normalizedCastInShot) normalizedCastInShot = [];
+      if (!normalizedCastInShot.includes(onlySupportId)) {
+        normalizedCastInShot.push(onlySupportId);
+      }
+    }
+  }
+
+  const canMapByShotOrder =
+    shorthandActions.length > 0 &&
+    shorthandActions.length === unassignedVisibleSupportIds.length;
+  const beats = [...explicitBeats];
+  if (canMapByShotOrder) {
+    shorthandActions.forEach((action, index) => {
+      const castId = unassignedVisibleSupportIds[index];
+      if (castId) beats.push({ castId, action });
+    });
+  }
+
+  let droppedAmbiguousBeatCount = 0;
+  if (shorthandActions.length > 0 && !canMapByShotOrder) {
+    droppedAmbiguousBeatCount = shorthandActions.length;
+    if (normalizedCastInShot) {
+      const supportedIdsWithActions = new Set([...explicitSupportIds]);
+      for (const castId of [...normalizedCastInShot]) {
+        if (supportIds.has(castId) && !supportedIdsWithActions.has(castId)) {
+          normalizedCastInShot.splice(normalizedCastInShot.indexOf(castId), 1);
+        }
+      }
+    }
+  }
+
+  return {
+    beats,
+    ...(normalizedCastInShot ? { castInShot: normalizedCastInShot } : {}),
+    droppedAmbiguousBeatCount,
+  };
+}
+
 /**
  * Guarantee that no supporting character is rendered into a shot without a
  * reason to be there (`planning/marketplace-four-character-cast/plan.md` §3).
@@ -1193,7 +1298,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" ที่มี {castId, action, line?} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง. Output ที่ขาด cast/action หรือมี castId ที่ไม่รู้จักจะถูกปฏิเสธ ไม่แก้หรือตัดข้อมูลให้อัตโนมัติ`
+          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" เป็น object รูปแบบ {\"castId\":\"cast-3\",\"action\":\"ยื่นสินค้าให้ผู้ดำเนินรายการ\"} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง รูปแบบ object เป็นรูปแบบหลัก; ระบบรองรับ action แบบ string ได้เฉพาะเมื่อระบุเจ้าของจาก castInShot ได้แน่ชัด และจะละตัวประกอบที่จับคู่ไม่ได้เพื่อไม่ให้บทบาทผิดคน`
       : "";
 
   // Runtime state only. The loaded skill owns pacing and all creative decisions.
@@ -1251,11 +1356,18 @@ Marketplace Auto Review Story Arc skill runtime context:
 
   // Supporting tier (`planning/marketplace-four-character-cast/plan.md` §3).
   // `action` required, `line` optional — the inverse of a dialogue turn.
-  const ZodSupportingBeatSchema = z.object({
+  const ZodSupportingBeatObjectSchema = z.object({
     castId: z.string().min(1).max(80),
     action: z.string().min(1).max(240),
     line: z.string().min(1).max(160).optional(),
   });
+  // Keep objects as the canonical skill format, while accepting providers
+  // that flatten an item to an action string. The planner maps that shorthand
+  // only when cast membership in the shot makes the owner deterministic.
+  const ZodSupportingBeatSchema = z.union([
+    ZodSupportingBeatObjectSchema,
+    z.string().trim().min(1).max(240),
+  ]);
 
   // Some providers serialize numeric identifiers as JSON strings. Shot IDs
   // are redundant (the server assigns them from array order), so normalize
@@ -1437,7 +1549,7 @@ Marketplace Auto Review Story Arc skill runtime context:
           )
         : generatedConceptOptions;
       const castById = new Map(
-        activeCast.map(member => [member.castId, member])
+        (input.cast ?? []).map(member => [member.castId, member])
       );
       const shots = generatedShots.map((shot: z.infer<typeof shotObjectSchema>, idx: number) => {
         const shotId = idx + 1;
@@ -1488,7 +1600,7 @@ Marketplace Auto Review Story Arc skill runtime context:
             );
         }
 
-        const declaredCastInShot = shot.castInShot;
+        let declaredCastInShot = shot.castInShot;
         if (activeCast.length > 0 && !declaredCastInShot) {
           throw new Error(
             `STAGED_STORY_PLAN_CAST_IN_SHOT_REQUIRED:shot-${shotId}`
@@ -1512,7 +1624,23 @@ Marketplace Auto Review Story Arc skill runtime context:
             );
           }
         }
-        const supportingBeats = (shot.supportingBeats ?? []).map(beat => {
+        const normalizedSupporting = normalizeStagedSupportingBeatInputs({
+          beats: shot.supportingBeats ?? [],
+          castInShot: declaredCastInShot,
+          cast: input.cast ?? [],
+        });
+        declaredCastInShot = normalizedSupporting.castInShot;
+        if (normalizedSupporting.droppedAmbiguousBeatCount > 0) {
+          console.warn(
+            "[generateStagedStoryArcPlanWithLLM] omitted ambiguous supporting beat shorthand",
+            {
+              runId: input.runId,
+              shotId,
+              droppedBeatCount: normalizedSupporting.droppedAmbiguousBeatCount,
+            }
+          );
+        }
+        const supportingBeats = normalizedSupporting.beats.map(beat => {
           if (!castById.has(beat.castId)) {
             throw new Error(
               `STAGED_STORY_PLAN_SUPPORTING_CAST_NOT_IN_ROSTER:shot-${shotId}:${beat.castId}`

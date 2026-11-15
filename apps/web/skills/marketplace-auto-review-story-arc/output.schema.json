@@ -41,14 +41,20 @@
       "additionalProperties": false
     },
     "supportingBeat": {
-      "type": "object",
-      "required": ["castId", "action"],
-      "properties": {
-        "castId": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "action": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "line": { "type": "string", "minLength": 1, "maxLength": 160 }
-      },
-      "additionalProperties": false
+      "description": "Canonical form is the object. A legacy provider may return the action as a string; the runtime accepts it only when the shot cast makes its owner unambiguous.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["castId", "action"],
+          "properties": {
+            "castId": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "action": { "type": "string", "minLength": 1, "maxLength": 240 },
+            "line": { "type": "string", "minLength": 1, "maxLength": 160 }
+          },
+          "additionalProperties": false
+        },
+        { "type": "string", "minLength": 1, "maxLength": 240 }
+      ]
     },
     "shot": {
       "type": "object",

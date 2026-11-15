@@ -73,6 +73,12 @@ with the IDs of visible supplied cast members whenever a cast roster exists.
 Optional fields are `shotId`, `storySummary`, `cameraDirection`, `transition`,
 `dialogue`, `dialogueTurns`, `castInShot`, and `supportingBeats`.
 
+When `castInShot` includes supporting characters, include one `supportingBeats`
+object for each supporting character in that shot. Use the exact shape
+`{"castId":"cast-3","action":"hands the product to the presenter"}`;
+`line` is optional. Keep the action tied to the named cast member. Do not emit
+supporting beats as plain strings.
+
 Do not wrap the object in another key. Do not return markdown, comments, or
 prose outside the JSON object.
 
