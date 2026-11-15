@@ -42,6 +42,13 @@
         "scope": "Readable Goal fallback, shared SmartAIHub semantic colors, visible Simple/Developer behavior in Task Control and Mission Control. Focused workspace tests 7/7 and production-mode build passed. Dev runtime restarted at integrated revision; public routes and transformed workspace modules returned HTTP 200. Owner visual UAT and SPEC-224 live execution remain pending.",
         "source_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "MISSION_CONTROL_INTERACTIVE_UX_PROTOTYPE_DEV_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/mission-control-ux-prototype-20261116.md",
+        "scope": "Authenticated DEV-only synthetic Mission Control concept; platform source, local desktop/tablet/mobile browser interactions and no-overflow screenshots verified; registered modular-debian-dev deployment and public route/lazy assets verified. Owner authenticated UX acceptance and live canonical Mission integration remain pending.",
+        "source_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -64,14 +71,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
+    "expected_canonical_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
     "expected_spec_digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271"
   },
   "continuation": {
-    "next_action": "OWNER_UAT_PENDING: review Chat, Project/Goal Task Control, Mission Control, and the restored Browser control on https://aimarkethubs.com/chat. Verify saved Session/Thread navigation, Project assignment and lifecycle mapping, Harness/Agent/Runner filters, and contextual run evidence using authorized records. Keep SPEC-224 live Harness acceptance separate.",
-    "next_ready_workunit": "WORKSPACE_2_OWNER_VISUAL_UAT_AND_REMAINING_ACCEPTANCE",
+    "next_action": "Owner: sign in normally at https://aimarkethubs.com/dev/mission-control-prototype and review the synthetic Mission Control concept at desktop, tablet, and mobile sizes. Record UX acceptance or requested changes. Keep canonical live Mission/Job integration, authenticated operational UAT, SPEC-224 acceptance, and SPEC-312 closure as separate pending work.",
+    "next_ready_workunit": "MISSION_CONTROL_OWNER_UX_REVIEW",
     "reactivation_predicate": null,
-    "resume_point": "Final development UI revision dd411780ea4b378e69ce314af267145e93ad99fb is integrated and served by smartspec-dev-web.service for aimarkethubs.com. Full-page Chat includes its existing Browser control; Project/Goal Task Control and multi-Harness Mission Control are available. Focused test 6/6 and production-mode main+widget build passed; routes and transformed source modules returned HTTP 200. Authenticated owner visual/functional UAT and SPEC-224 live Harness acceptance remain pending. See handoff/evidence/owner-visual-review-20261030.md.",
+    "resume_point": "DEV-only interactive synthetic Mission Control prototype is integrated and deployed from Platform main 5c504e6ec55b1bab4a2549a098655132f7880864 at https://aimarkethubs.com/dev/mission-control-prototype. Route/assets and registered modular-debian-dev health checks passed; focused UI tests 11/11 and Vite/Wrangler dry-run build passed. Desktop 1440x900, tablet 820x1180, and mobile 390x844 browser interactions were exercised with no horizontal overflow. Owner authenticated UX acceptance and canonical live Mission/Job integration remain pending; SPEC-294 and SPEC-312 stay open. See handoff/evidence/mission-control-ux-prototype-20261116.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -189,7 +196,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 151,
+  "generation": 154,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
@@ -337,9 +344,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
+    "canonical_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
     "integrated": true,
-    "integrated_at": "2026-10-30T13:39:30+07:00"
+    "integrated_at": "2026-11-16T01:04:19+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1876,7 +1883,7 @@
     "unresolved": 551
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T09:33:16.768795Z",
+  "updated_at": "2026-11-15T18:09:05.098972Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

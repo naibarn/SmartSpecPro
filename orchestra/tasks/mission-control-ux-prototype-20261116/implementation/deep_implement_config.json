@@ -5,7 +5,7 @@
   "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/mission-control-ux-prototype-20261116/implementation",
   "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
   "commit_style": "conventional",
-  "test_command": "uv run pytest",
+  "test_command": "pnpm --filter @smartaihub/saas-shell exec vitest run src/pages/MissionControlPrototypePage.test.tsx src/App.test.tsx --reporter=dot",
   "sections": [
     "section-01-isolated-route-and-fleet-shell",
     "section-02-inspector-and-interaction-proof",
@@ -13,8 +13,25 @@
   ],
   "sections_state": {
     "section-01-isolated-route-and-fleet-shell": {
-      "status": "in_progress",
-      "next_action": "Implement authenticated dev-host guarded route and fixture-backed responsive mission control shell in /mnt/SmartSpecDev/projects/smartaihub-platform; then focused tests."
+      "status": "checkpointed",
+      "next_action": "Prototype shell is deployed from SmartSpecHub Platform main; await owner UX review before replacing any live Mission Control UI.",
+      "checkpoint_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
+      "merged_main_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform"
+    },
+    "section-02-inspector-and-interaction-proof": {
+      "checkpoint_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
+      "status": "checkpointed",
+      "merged_main_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+      "next_action": "Desktop, tablet and mobile prototype interactions are verified locally; owner authenticated UX review is pending."
+    },
+    "section-03-spec-evidence-and-dev-preview": {
+      "checkpoint_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
+      "status": "checkpointed",
+      "merged_main_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
+      "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+      "next_action": "Owner: review the deployed concept at https://aimarkethubs.com/dev/mission-control-prototype with the normal authenticated DEV session and record UX acceptance or requested revisions. Keep live canonical integration and SPEC acceptance separate."
     }
   },
   "pre_commit": {
@@ -26,10 +43,27 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-15T17:36:46.240234+00:00",
-  "generation": 2,
-  "updated_at": "2026-11-15T17:36:51.632608+00:00",
+  "generation": 6,
+  "updated_at": "2026-11-15T18:08:01.745993+00:00",
   "progress": {
-    "active_section": "section-01-isolated-route-and-fleet-shell",
-    "next_action": "Implement authenticated dev-host guarded route and fixture-backed responsive mission control shell in /mnt/SmartSpecDev/projects/smartaihub-platform; then focused tests."
+    "active_section": "section-03-spec-evidence-and-dev-preview",
+    "next_action": "Owner: review the deployed concept at https://aimarkethubs.com/dev/mission-control-prototype with the normal authenticated DEV session and record UX acceptance or requested revisions. Keep live canonical integration and SPEC acceptance separate.",
+    "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+    "merged_main_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
+    "gaps": [
+      "Owner authenticated UX review and acceptance pending; canonical live Mission/Job integration is outside this mockup and remains separate."
+    ]
+  },
+  "repositories": {
+    "platform_source": {
+      "path": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+      "ref": "refs/heads/main",
+      "sha": "5c504e6ec55b1bab4a2549a098655132f7880864"
+    },
+    "spec_and_handoff": {
+      "path": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+      "ref": "refs/heads/main",
+      "sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f"
+    }
   }
 }
