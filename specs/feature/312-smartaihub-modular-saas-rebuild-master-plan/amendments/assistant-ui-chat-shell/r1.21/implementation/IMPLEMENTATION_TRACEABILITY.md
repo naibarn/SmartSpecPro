@@ -1,6 +1,6 @@
 # SPEC-312 R1.21 Implementation Traceability
 
-**Assessment:** PARTIAL · **Platform source:** `9008529c2b81c75e3c83884b8616922de7ae025e` · **SmartSpecPro source:** `0b70d26d7b1feb954d9629355264a926e5039a9a`.
+**Assessment:** PARTIAL · **Platform source:** `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` · **SmartSpecPro source:** `9857f1b04f8a2aa8db4374be5b3485e5c520ea9c`.
 
 | Requirement | Source/API | Verification | Runtime evidence | Status |
 | --- | --- | --- | --- | --- |
@@ -23,7 +23,7 @@
 - `drizzle/modularChatQueue.integration.test.ts`: skipped (dedicated disposable DB credentials absent); do not count as passed.
 - `pnpm --filter @smartaihub/saas-core typecheck` and `pnpm --filter @smartaihub/chat typecheck` — PASS.
 - `pnpm --filter @smartaihub/saas-core build` and `pnpm --filter @smartaihub/chat build` — PASS (Wrangler dry-run). Vite reports the Chat entry bundle at 532.54 kB minified; build succeeds.
-- Exact-SHA DEV release: `DEPLOYED_AND_VERIFIED` on `modular-debian-dev` for platform SHA `9008529c2b81c75e3c83884b8616922de7ae025e`; see [release receipt](r1.21-dev-release.md). Local Core/Chat/Shell health 200, public Shell/Chat health 200, anonymous session/artifact/Task paths 401, and served Chat entry asset hash parity pass.
+- Exact-SHA DEV release: `DEPLOYED_AND_VERIFIED` on `modular-debian-dev` for final platform SHA `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2`; see [release receipt](r1.21-dev-release.md). Local Core/Chat/Shell health 200, public Shell/Chat health 200, anonymous session/artifact/Task paths 401, and served Chat entry asset hash parity pass.
 
 ## Owner and contract boundaries
 
