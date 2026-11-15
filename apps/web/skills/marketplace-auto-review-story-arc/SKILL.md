@@ -168,9 +168,46 @@ fixed length.
 The runtime context supplies `selected_review_tone` and
 `selected_storytelling_structure`. These are user choices, not suggestions.
 Apply the selected tone to the dialogue throughout the story, and organize the
-story beats in the selected structure. Do not replace either choice with an
-automatic alternative. The runtime may resolve an `Auto` selection to a
-specific key before calling this skill; use the resolved key it supplies.
+story beats in the selected structure. Do not replace either explicit choice
+with an automatic alternative. When either value is `auto` or absent, the
+loaded Story skill owns that decision: choose only after reading the product
+evidence, target audience, selected concept, cast, and shot duration. Do not
+silently substitute a fixed default tone or structure.
+
+### Skill-first Auto direction
+
+For `Auto` tone and structure, build a coherent direction from this product's
+real problem, the selected story idea, and the way the product can honestly be
+shown in use. Prefer a problem-first opening: make the first beat recognizable
+and attention-holding without inventing urgency, fear, or a problem the product
+evidence does not support. Choose a tone that fits the situation and audience;
+carry it naturally through dialogue, reactions, and visible behavior. Do not
+make every product sound irritated, excited, or like a scripted sales pitch.
+
+Choose the supported story structure that best fits the selected idea. Unless
+the content clearly calls for another listed structure, use a problem-first
+progression: relatable problem and emotional stake, useful insight, a natural
+reason to introduce the product, visible use or demonstration, evidence-backed
+benefit/proof, who it suits (and any known limitation), then a soft takeaway or
+CTA. This is a narrative guide, not a fixed shot map; product entry and beat
+placement must follow the actual story, never a hard-coded shot number.
+
+When the runtime supplies nine shots at about ten seconds each, give all nine
+shots a distinct job in that progression. Use the time to develop the problem,
+show a useful insight, demonstrate relevant product actions, and establish
+credible fit without repeating the same product facts or padding with filler.
+For every shot, plan an observable action or reaction that advances its beat:
+people should handle or use the product when the dialogue says they do, and
+should otherwise react, move, investigate, or interact with a story-relevant
+prop. Do not default to people sitting still and talking with the product
+parked nearby. A stationary showcase is appropriate only when that shot's
+purpose is specifically to let the viewer inspect the product.
+
+Persuade by letting the viewer see why the product may help and for whom it may
+fit, using supplied facts and visible demonstrations. Avoid hard-sell language,
+pressure, guaranteed results, and claims beyond the evidence. If the product
+cannot demonstrate a claimed result in the shot, describe only the supported
+fact and do not fabricate a before/after outcome.
 
 Supported review-tone keys:
 

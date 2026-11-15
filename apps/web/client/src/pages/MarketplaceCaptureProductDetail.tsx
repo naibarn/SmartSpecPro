@@ -6783,6 +6783,12 @@ export default function MarketplaceCaptureProductDetail() {
               value as AutoReviewStorytellingStructure
             )
         )}
+        <p className="-mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-900">
+          <strong>สำหรับช่องที่เลือก Auto:</strong> Story skill จะเลือกโทนและโครงเรื่องจากข้อมูลสินค้า
+          กับไอเดียที่ยืนยัน โดยเริ่มจากปัญหาที่มีหลักฐานและเหมาะกับเรื่อง
+          แล้วพาไปสู่แอ็กชันหรือการสาธิตที่เห็นภาพชัด โน้มน้าวด้วยข้อเท็จจริงและความเหมาะสม
+          ไม่พูดขายแข็ง ๆ; หากเลือกโทนหรือโครงเรื่องเอง ระบบจะยึดค่าที่เลือก
+        </p>
         {AUTO_REVIEW_CREATIVE_PRESET_GROUPS.map(group => {
           const selected =
             autoReviewCreativePresets.find(

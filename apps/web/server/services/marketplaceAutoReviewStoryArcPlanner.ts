@@ -1085,9 +1085,19 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   if (productDescription.length > STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_MAX_CHARS) {
     throw new Error("STAGED_STORY_PLAN_PRODUCT_DESCRIPTION_TOO_LONG");
   }
-  const structureKey =
-    clean(input.storytellingStructure) || "hook_problem_insight_proof_cta";
-  const toneKey = clean(input.reviewTone) || "irritated_problem";
+  // Keep Auto as an explicit skill-owned decision. Resolving it here to a
+  // fixed tone/structure prevents the story skill from adapting to the
+  // selected product and concept.
+  const structureKey = clean(input.storytellingStructure) || "auto";
+  const toneKey = clean(input.reviewTone) || "auto";
+  const structureDirection =
+    structureKey === "auto"
+      ? "ให้ Story skill เลือกโครงเรื่องจากข้อเท็จจริงของสินค้าและแนวคิดที่เลือก โดยให้เปิดด้วยปัญหาจริงที่ผู้ชมเข้าใจได้เมื่อเหมาะกับเนื้อหา"
+      : `คงโครงเรื่องที่ผู้ใช้เลือก "${structureKey}"`;
+  const toneDirection =
+    toneKey === "auto"
+      ? "ให้ Story skill เลือกโทนที่เข้ากับสินค้า ผู้ชม และแนวคิด โดยเปิดเรื่องให้ชวนติดตาม สื่ออารมณ์อย่างเป็นธรรมชาติ และโน้มน้าวด้วยการสาธิต/หลักฐานโดยไม่ขายตรงเกินไป"
+      : `คงโทนที่ผู้ใช้เลือก "${toneKey}"`;
   const revisionNotes = clean(input.previousStorySummary);
 
   const userId = input.userId!;
@@ -1161,7 +1171,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
             activeCast[0].descriptor
               ? ` — ${clean(activeCast[0].descriptor)}`
               : ""
-          }\nบทพูดทุกช็อตเป็นบทพูดเดี่ยวของ "${activeCast[0].name}" ในมุมมองบุคคลที่หนึ่ง สอดคล้องกับตัวตนของผู้ดำเนินรายการคนนี้ โดยคงโครงสร้าง "${structureKey}" และโทน "${toneKey}" ครบทุกประเด็น ให้ส่ง castInShot ที่ระบุ castId ของผู้ดำเนินรายการในทุกช็อต (ไม่ต้องส่ง dialogueTurns)`
+          }\nบทพูดทุกช็อตเป็นบทพูดเดี่ยวของ "${activeCast[0].name}" ในมุมมองบุคคลที่หนึ่ง สอดคล้องกับตัวตนของผู้ดำเนินรายการคนนี้ โดย ${structureDirection} และ ${toneDirection} ให้ครบทุกช็อต ให้ส่ง castInShot ที่ระบุ castId ของผู้ดำเนินรายการในทุกช็อต (ไม่ต้องส่ง dialogueTurns)`
         : "";
 
   /* Supporting tier (`planning/marketplace-four-character-cast/plan.md` §3).
@@ -1203,7 +1213,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 - selected storytelling_structure: ${structureKey}
 - selected review_tone: ${toneKey}
 - dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot
-- The loaded skill owns concept selection, story structure, dialogue, visual action, product timing, and other creative decisions. Apply the supplied user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+- The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
