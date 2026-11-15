@@ -1437,15 +1437,13 @@ async function loadEnhancedShotContext(input: {
     );
   const requiresSpeakerVisualBindings =
     input.operation === "generate" &&
-    !frame?.barrierMultiView &&
-    (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
     enhancedDialogueSpeakerAliases.length > 0 &&
     !dialogueSpeakersHaveDetectedBindings;
   if (requiresSpeakerVisualBindings) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message:
-        "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนที่ตรวจพบในภาพปัจจุบันก่อน",
+        "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนในภาพปัจจุบันก่อน",
     });
   }
 
@@ -30290,15 +30288,13 @@ export const verticalDramaEpisodesRouter = router({
           activeVideoAnchorAssetId
         );
       const requiresSpeakerVisualBindings =
-        !barrierMultiView &&
-        (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
         dialogueLines.length > 0 &&
         !dialogueSpeakersHaveDetectedBindings;
       if (requiresSpeakerVisualBindings) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "ยังสร้าง video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนที่ตรวจพบในภาพปัจจุบันก่อน",
+            "ยังสร้าง video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนในภาพปัจจุบันก่อน",
         });
       }
       const withSpeakerNames = <T extends { characterKey?: string }>(

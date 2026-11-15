@@ -2294,7 +2294,7 @@ For each episode (stage order is canonical per §11.1):
 6. Render/import start frames.
 7. Approve or repair frames.
 8. Generate dialogue/audio/subtitle plan.
-9. Generate video motion prompt pack. When `verticalDramaSeriesSubShots` is on, this step also plans sub-shots per main shot (§7.4): a sub-shot editor lets the user set the target count (auto 2-3, raise up to 4-5), and view/edit each sub-shot's camera setup, motion prompt, duration, and transition, with a preview of the cut sequence. Sub-shot prompts/timings are visible and editable before paid generation and repairable per sub-shot.
+9. Generate video motion prompt pack. When `verticalDramaSeriesSubShots` is on, this step also plans sub-shots per main shot (§7.4): a sub-shot editor lets the user set the target count (auto 2-3, raise up to 4-5), and view/edit each sub-shot's camera setup, motion prompt, duration, and transition, with a preview of the cut sequence. Sub-shot prompts/timings are visible and editable before paid generation and repairable per sub-shot. A shot with dialogue cannot generate its video prompt until every dialogue speaker has a confirmed, current-frame mapping to a person in that shot's image. The per-shot action is disabled while that shot has an unresolved speaker; bulk prompt generation is disabled while any dialogue-bearing shot remains unresolved. The server revalidates this precondition before prompt generation. Shots with no dialogue do not require speaker mappings.
 10. Create Storyboard Review project.
 11. Open Storyboard Review.
 12. After completion, write episode summary back into series memory.

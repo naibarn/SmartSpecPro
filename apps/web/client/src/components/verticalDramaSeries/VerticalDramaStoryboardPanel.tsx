@@ -3612,6 +3612,16 @@ export function VerticalDramaStoryboardPanel({
     (total, candidate) => total + candidate.speakers.length,
     0
   );
+  const speakerMappingIncompleteShotNumbers = speakerMappingCandidates
+    .filter(candidate => candidate.speakers.length > 0)
+    .map(candidate => candidate.shotNumber);
+  const speakerMappingBlocksBulkVideoPrompts =
+    speakerMappingIncompleteShotNumbers.length > 0;
+  const speakerMappingVideoPromptBlockMessage = t(
+    locale,
+    `ยังสร้าง Video Prompt ไม่ได้: จับคู่ผู้พูดกับคนในภาพให้ครบก่อน (${speakerMappingIncompleteShotNumbers.map(n => `ช็อต ${n}`).join(", ")})`,
+    `Video prompts are blocked until every dialogue speaker is matched to a person in the image (${speakerMappingIncompleteShotNumbers.map(n => `shot ${n}`).join(", ")}).`
+  );
 
   async function runUnmatchedSpeakerMappingBatch() {
     if (
@@ -4993,7 +5003,10 @@ export function VerticalDramaStoryboardPanel({
                   size="sm"
                   variant="outline"
                   onClick={() => setConfirmingBulkVideoPromptMode(null)}
-                  disabled={generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts}
+                  disabled={
+                    generatingAllShotVideoPrompts ||
+                    generatingAllEnhancedShotVideoPrompts
+                  }
                 >
                   {t(locale, "ยกเลิก", "Cancel")}
                 </Button>
@@ -5001,6 +5014,10 @@ export function VerticalDramaStoryboardPanel({
                   type="button"
                   size="sm"
                   onClick={() => {
+                    if (speakerMappingBlocksBulkVideoPrompts) {
+                      toast.error(speakerMappingVideoPromptBlockMessage);
+                      return;
+                    }
                     const mode = confirmingBulkVideoPromptMode;
                     setConfirmingBulkVideoPromptMode(null);
                     if (mode === "enhanced") {
@@ -5066,8 +5083,10 @@ export function VerticalDramaStoryboardPanel({
                   disabled={
                     generatingAllShotVideoPrompts ||
                     generatingAllEnhancedShotVideoPrompts ||
-                    shotsMissingVideoPromptNumbers.length === 0
+                    shotsMissingVideoPromptNumbers.length === 0 ||
+                    speakerMappingBlocksBulkVideoPrompts
                   }
+                  title={speakerMappingBlocksBulkVideoPrompts ? speakerMappingVideoPromptBlockMessage : undefined}
                   data-testid="vd-generate-missing-video-prompts"
                 >
                   {generatingAllShotVideoPrompts ? (
@@ -5105,7 +5124,17 @@ export function VerticalDramaStoryboardPanel({
                     }
                     setConfirmingBulkVideoPromptMode("standard");
                   }}
-                  disabled={generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts || availableVideoPromptShotNumbers.length === 0}
+                  disabled={
+                    generatingAllShotVideoPrompts ||
+                    generatingAllEnhancedShotVideoPrompts ||
+                    availableVideoPromptShotNumbers.length === 0 ||
+                    speakerMappingBlocksBulkVideoPrompts
+                  }
+                  title={
+                    speakerMappingBlocksBulkVideoPrompts
+                      ? speakerMappingVideoPromptBlockMessage
+                      : undefined
+                  }
                   data-testid="vd-generate-all-standard-video-prompts"
                 >
                   {generatingAllShotVideoPrompts ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />}
@@ -5128,7 +5157,17 @@ export function VerticalDramaStoryboardPanel({
                     }
                     setConfirmingBulkVideoPromptMode("enhanced");
                   }}
-                  disabled={generatingAllEnhancedShotVideoPrompts || generatingAllShotVideoPrompts || availableVideoPromptShotNumbers.length === 0}
+                  disabled={
+                    generatingAllEnhancedShotVideoPrompts ||
+                    generatingAllShotVideoPrompts ||
+                    availableVideoPromptShotNumbers.length === 0 ||
+                    speakerMappingBlocksBulkVideoPrompts
+                  }
+                  title={
+                    speakerMappingBlocksBulkVideoPrompts
+                      ? speakerMappingVideoPromptBlockMessage
+                      : undefined
+                  }
                   data-testid="vd-generate-all-enhanced-video-prompts"
                 >
                   {generatingAllEnhancedShotVideoPrompts ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />}
@@ -5140,6 +5179,14 @@ export function VerticalDramaStoryboardPanel({
             </>
           )}
         </div>
+      ) : null}
+      {speakerMappingBlocksBulkVideoPrompts &&
+      (onGenerateMissingShotVideoPrompts ||
+        onGenerateAllShotVideoPrompts ||
+        onGenerateAllEnhancedShotVideoPrompts) ? (
+        <Text as="p" type="supporting" role="status" className="text-amber-700">
+          {speakerMappingVideoPromptBlockMessage}
+        </Text>
       ) : null}
 
       {onRepairMissingShotCharacters && startFramePlan?.frames?.length ? (
@@ -5480,8 +5527,6 @@ export function VerticalDramaStoryboardPanel({
               selectedVideoAnchorAssetId
             );
           const speakerVisualBindingsNeedReview =
-            !barrierMultiView &&
-            (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
             speakerOptionsForShot.length > 0 &&
             !detectedSpeakerBindingsAreComplete;
           const enhancedReadiness = enhancedReadinessByShot[shotNumber];
@@ -9778,11 +9823,18 @@ export function VerticalDramaStoryboardPanel({
                               }}
                               disabled={
                                 !asset?.url ||
+                                speakerVisualBindingsNeedReview ||
                                 generatingShotVideoPromptForShot.has(shotNumber)
                               }
                               title={
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
+                                  : speakerVisualBindingsNeedReview
+                                    ? t(
+                                        locale,
+                                        "ต้องจับคู่ผู้พูดกับคนในภาพนี้ให้ครบก่อนสร้าง Video Prompt",
+                                        "Match every dialogue speaker to a person in this image before generating the video prompt."
+                                      )
                                   : !selectedVideoModelId
                                       ? t2.selectVideoModelFirst
                                       : undefined
@@ -9822,6 +9874,19 @@ export function VerticalDramaStoryboardPanel({
                                     ? t2.generatingShotVideoPrompt
                                     : t2.generateShotVideoPrompt}
                             </Button>
+                            {speakerVisualBindingsNeedReview ? (
+                              <span
+                                className="text-[10px] text-amber-700"
+                                role="status"
+                                data-testid={`vd-storyboard-speaker-mapping-required-${shotNumber}`}
+                              >
+                                {t(
+                                  locale,
+                                  "จับคู่ผู้พูดกับคนในภาพนี้ให้ครบก่อนสร้าง Video Prompt",
+                                  "Match every dialogue speaker to a person in this image before generating the video prompt."
+                                )}
+                              </span>
+                            ) : null}
                             {onGenerateEnhancedShotVideoPrompt ? (
                               <Button
                                 type="button"
@@ -9842,6 +9907,7 @@ export function VerticalDramaStoryboardPanel({
                                 }}
                                 disabled={
                                   !asset?.url ||
+                                  speakerVisualBindingsNeedReview ||
                                   enhancedGeneratingForShot.has(shotNumber) ||
                                   enhancedReadinessByShot[shotNumber]?.ready !==
                                     true
@@ -9891,6 +9957,13 @@ export function VerticalDramaStoryboardPanel({
                                 (() => {
                                   if (!asset?.url) {
                                     return enhancedButtonTitle;
+                                  }
+                                  if (speakerVisualBindingsNeedReview) {
+                                    return t(
+                                      locale,
+                                      "ต้องจับคู่ผู้พูดกับคนในภาพนี้ให้ครบก่อนสร้าง Video Prompt",
+                                      "Match every dialogue speaker to a person in this image before generating the video prompt."
+                                    );
                                   }
                                   const readiness =
                                     enhancedReadinessByShot[shotNumber];
