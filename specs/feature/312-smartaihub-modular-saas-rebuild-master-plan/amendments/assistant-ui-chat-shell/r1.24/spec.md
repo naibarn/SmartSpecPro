@@ -27,3 +27,8 @@ Move the tested 0441 Mission Control schema into DEV using the single owner/oper
 ## Scope boundaries
 
 No SmartSpecPro owner API contract changed, so SPEC-277 and SPEC-294 need no source amendment. No Cloudflare, production database, production release, retired system, authentication bypass, or unrelated service credential changes are authorized by this amendment.
+
+
+## Current execution status — 2026-11-15
+
+The single-owner DEV path is now exercised on the registered target. The exposed prior `smartspec_dev` password was rotated without disclosure; target preflight confirmed PostgreSQL 15.17, `smartspec`, and the exact live 0439/0440 ledger before the registered migration runner applied 0441. Restricted function ownership and runtime isolation were verified from PostgreSQL catalogs. The immutable Platform source `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5` is deployed to `modular-debian-dev` through the registered controller with rollback retained. Runtime health and anonymous authorization boundaries passed. Authenticated Mission creation, Task projection, and private artifact retrieval remain **UAT_PENDING** until exercised with the user's normal MFA browser session; SPEC-312 remains open. See the latest implementation handoff and traceability evidence.

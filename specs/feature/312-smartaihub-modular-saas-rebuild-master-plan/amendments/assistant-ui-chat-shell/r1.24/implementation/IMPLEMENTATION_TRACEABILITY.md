@@ -1,6 +1,6 @@
 # SPEC-312 R1.24 Implementation Traceability
 
-**Disposition:** `PARTIAL / CONTINUATION_REQUIRED` · **Actual DEV migration:** `BLOCKED` · **Release:** `PENDING` · **Task base:** SmartSpecPro `49ef6b47161889b7f686d231e98a2ef53c732bda` (`main == origin/main` at start) · **Integrated R1.24 implementation:** `847ed7baca5baf1c16817d65575fe0dea71f94dd` (`main == origin/main`) · **Platform base:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`
+**Current disposition:** `PARTIAL / UAT_PENDING` · **Actual DEV migration:** `COMPLETE` · **Release:** `DEPLOYED_AND_VERIFIED` · **Task base:** SmartSpecPro `49ef6b47161889b7f686d231e98a2ef53c732bda` (`main == origin/main` at start) · **Integrated R1.24 implementation:** `847ed7baca5baf1c16817d65575fe0dea71f94dd` (`main == origin/main`) · **Platform base:** `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`
 
 | Requirement | Implementation / evidence | Result | Remaining action |
 | --- | --- | --- | --- |
@@ -59,3 +59,27 @@ The owner has authorized normal DEV database administration and deployment by Co
 | `RUNTIME_VERIFIED` | `PARTIAL` — public basic health only |
 | `UAT_VERIFIED` | `UAT_PENDING` |
 | `SPEC_ACCEPTANCE` | `PENDING` |
+
+
+## 2026-11-15 single-owner DEV execution evidence
+
+This is the latest authoritative execution status. Prior blocked reports remain as historical snapshots and are superseded by the evidence below.
+
+- **Credential:** rotated `smartspec_dev` using the verified DEV administrator path; old secret invalidated, mapped mode-0600 local bindings refreshed, and consumers reconnected. Secret values were not emitted.
+- **Database preflight:** exact target `modular-debian-dev`, domain `aimarkethubs.com`, database `smartspec`, PostgreSQL 15.17, authenticated superuser identity. Ledger 0439=`d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8` / `1794770000000`; 0440=`141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784` / `1794770000001`; 0441 absent at preflight.
+- **Backup:** `/home/dev/.config/smartspec-dev/backups/spec312-r124-pre-0441-20261115T160007Z.dump`, mode 0600, verified listing, SHA-256 `d6a66e4dfa58ff44df12985ebda203895179be72548a95af3b6d388a511f2bcb`.
+- **Migration:** registered `pnpm --dir apps/web db:migrate` succeeded using profile `single-owner-dev-admin` and the dedicated marker. Live 0441 hash `feaea1d8c41d61b53bc2f9cbaaa630dc9583cbc9454267c2e98fc0ffcb80db0b` at `1794770000002`; receipt `/home/dev/.config/smartspec-dev/backups/spec312-r124-0441-migration-receipt.jsonl`. Mission table exists with seven constraints. All three functions have restricted owner `modular_chat_mission_owner`, `SECURITY DEFINER`, `pg_catalog, public` search path, PUBLIC EXECUTE false and DEV runtime EXECUTE true. Runtime direct SELECT on `worker_jobs` is false; broad owner SELECT false; required narrow source reads true; temporary owner schema CREATE false.
+- **Deployment:** immutable Platform source SHA `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`; canonical source lease build and artifact at `/home/dev/modular-development-releases/modular-debian-dev-9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5-r124-mission-control`; target-gated controller result `DEPLOYED_AND_VERIFIED` at `2026-11-15T16:19:58Z`. Core/Chat/Shell and module manifest/entry local smoke passed; public shell root/login/chat health/manifest passed; anonymous session returned 401. Rollback config and service drop-in backups are retained under the artifact.
+- **Endpoint boundary checks:** local GET of `/v1/core/chat/conversations/1/missions`, `/v1/core/chat/conversations/1/task-control`, and `/v1/core/chat/conversations/1/artifacts` returned 401 without a session, confirming authentication boundaries only. They do not establish authenticated response correctness. The extra urllib public probes returned edge 403, but registered controller public smoke and local curl checks passed.
+- **Build:** Core, Shell, Chat builds and Wrangler dry-runs passed; Chat main JS chunk warning at 537.66 kB minified (non-blocking). No repository-wide typecheck was run.
+- **UAT:** no normal signed-in MFA browser context was available. Mission creation/stable ID refresh, signed-in Task/Artifact reads, cross-workspace denial, no duplicate dispatch, and responsive authenticated UI remain `UAT_PENDING`. No production or legacy target was used.
+
+| Status | Current result |
+| --- | --- |
+| `CREDENTIAL_ROTATED` | `COMPLETE` |
+| `DBA_BOOTSTRAPPED` | `COMPLETE` |
+| `MIGRATED_DEV` | `COMPLETE` |
+| `DEPLOYED_DEV` | `DEPLOYED_AND_VERIFIED` |
+| `RUNTIME_VERIFIED` | `PARTIAL` — health, asset delivery, and anonymous-denial boundary proven; signed-in behavior pending |
+| `UAT_VERIFIED` | `UAT_PENDING` |
+| `SPEC_ACCEPTANCE` | `PENDING` — remain open pending normal MFA UAT |
