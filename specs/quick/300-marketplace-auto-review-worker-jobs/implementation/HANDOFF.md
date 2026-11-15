@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `79`
-- Updated (UTC): `2026-11-14T17:02:46.982079+00:00`
+- State generation: `80`
+- Updated (UTC): `2026-11-15T10:17:50.721592+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `759f6514d44196ae288672c63e8debed6e5b2e50`
+- Latest recorded merged Main SHA: `cd536fdbe7f18efca9aeb12e438cae524613c6a4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Run authenticated UI UAT on the deployed Marketplace Auto Review page: confirm saved auto/manual speaker-to-person bindings are reused when creating a video prompt and no matching job is enqueued again. Runtime release generation 564, public health, and deployed revision 759f6514 are verified; provider-backed video prompt behavior remains to be exercised.
+- Next action: The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | 759f6514d44196ae288672c63e8debed6e5b2e50 | 759f6514d44196ae288672c63e8debed6e5b2e50 | Run authenticated UI UAT on the deployed Marketplace Auto Review page: confirm saved auto/manual speaker-to-person bindings are reused when creating a video prompt and no matching job is enqueued again. Runtime release generation 564, public health, and deployed revision 759f6514 are verified; provider-backed video prompt behavior remains to be exercised. |
+| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-speaker-attribution | /mnt/SmartSpecDev/projects/SmartSpecPro | cd536fdbe7f18efca9aeb12e438cae524613c6a4 | cd536fdbe7f18efca9aeb12e438cae524613c6a4 | The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

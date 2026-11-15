@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Run authenticated UI UAT on the deployed Marketplace Auto Review page: confirm saved auto/manual speaker-to-person bindings are reused when creating a video prompt and no matching job is enqueued again. Runtime release generation 564, public health, and deployed revision 759f6514 are verified; provider-backed video prompt behavior remains to be exercised.",
-      "checkpoint_sha": "759f6514d44196ae288672c63e8debed6e5b2e50",
-      "merged_main_sha": "759f6514d44196ae288672c63e8debed6e5b2e50",
+      "next_action": "The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.",
+      "checkpoint_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
+      "merged_main_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-marketplace-auto-speaker-attribution"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 79,
-  "updated_at": "2026-11-14T17:02:46.982079+00:00",
+  "generation": 80,
+  "updated_at": "2026-11-15T10:17:50.721592+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Run authenticated UI UAT on the deployed Marketplace Auto Review page: confirm saved auto/manual speaker-to-person bindings are reused when creating a video prompt and no matching job is enqueued again. Runtime release generation 564, public health, and deployed revision 759f6514 are verified; provider-backed video prompt behavior remains to be exercised.",
-    "merged_main_sha": "759f6514d44196ae288672c63e8debed6e5b2e50",
+    "next_action": "The vision-image timeout recovery fix is integrated and deployed as release generation 569 with public health HTTP 200. Continue the existing authenticated UI UAT for saved speaker bindings and no duplicate job enqueue; if validating provider recovery live, start a fresh user-confirmed run because it may incur credits.",
+    "merged_main_sha": "cd536fdbe7f18efca9aeb12e438cae524613c6a4",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
