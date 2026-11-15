@@ -86,6 +86,24 @@ The owner explicitly authorized autonomous DEV administration and deployment; no
 | `SPEC_ACCEPTANCE` | `PENDING` — migration, deployment, runtime verification, and UAT remain |
 
 
+## 2026-11-16 Task Control and Mission Control UI entry
+
+The modular DEV Chat sidebar now opens both interactive workbench previews. This addendum updates UI availability only; it does not change the database, live Mission/Task runtime, credit behavior, or the pending authenticated UAT status above.
+
+- Integrated Platform source is `c58886fb7d8f0275dd14e8415331b6118cf97e6c` (`main == origin/main`). The immutable Core/Shell/Chat build and registered `modular-debian-dev` deployment completed successfully.
+- The controller returned `DEPLOYED_AND_VERIFIED` for `https://aimarkethubs.com`; public routes `/chat?view=missions` and `/chat?view=tasks` both returned HTTP 200. The Chat sidebar entries route to those views on the DEV host. The prototype provides a Task Control execution workbench, Mission Control fleet view, area switching, and Back to Chat.
+- All displayed execution values remain synthetic fixtures. This preview does not prove live Task or Mission integration and does not perform backend mutations.
+- Exact build, route, health, target and remaining UAT evidence: [Task Control and Mission Control UI entry release](../../../../handoff/evidence/task-mission-control-ui-entry-release-20261116.md).
+
+| UI entry status | Result |
+| --- | --- |
+| `DEV_UI_DEPLOYED` | `COMPLETE` — exact Platform SHA deployed through the registered target controller |
+| `PUBLIC_ROUTE_CHECK` | `COMPLETE` — Task and Mission query routes return HTTP 200 |
+| `AUTHENTICATED_BROWSER_UAT` | `UAT_PENDING` — normal signed-in click-through and responsive review remain outstanding |
+| `LIVE_TASK_MISSION_INTEGRATION` | `PENDING` — synthetic UX preview is not live backend integration |
+
+**Resume:** sign in normally at `https://aimarkethubs.com/login`, then select **Task Control** or **Mission Control** from Chat's left Menu tab. Direct DEV preview routes are `/chat?view=tasks` and `/chat?view=missions`.
+
 ## 2026-11-15 execution closeout — DEV migrated and deployed
 
 The owner authorized autonomous development-only database administration and release. This section is the current status and supersedes earlier blocked/pending snapshots above; those snapshots remain as historical evidence. Production and `smartaihub.app` were not changed.
