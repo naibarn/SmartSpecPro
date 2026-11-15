@@ -90,6 +90,8 @@ The owner explicitly authorized autonomous DEV administration and deployment; no
 
 The owner authorized autonomous development-only database administration and release. This section is the current status and supersedes earlier blocked/pending snapshots above; those snapshots remain as historical evidence. Production and `smartaihub.app` were not changed.
 
+- **Integrated source identities:** SmartSpecPro current handoff revision `94cd3347cfd2059d1ba35351d5d557cda8353626` (`main == origin/main`); migration/admin-profile implementation source `40fa00bf8a6218502ec3762b0463ba3860e8df00`; Platform deployed source `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5`.
+
 ### Credential and database
 
 - Rotated the previously exposed `smartspec_dev` password through the verified superuser connection. The old password is invalid; the replacement was kept in owner-only mode-0600 `python.env` and `web.env`, and mapped consumers were restarted/reconnected. No credential value or connection string was emitted.

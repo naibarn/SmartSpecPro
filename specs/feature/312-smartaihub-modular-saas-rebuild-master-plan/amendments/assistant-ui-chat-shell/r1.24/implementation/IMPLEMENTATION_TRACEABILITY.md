@@ -65,6 +65,8 @@ The owner has authorized normal DEV database administration and deployment by Co
 
 This is the latest authoritative execution status. Prior blocked reports remain as historical snapshots and are superseded by the evidence below.
 
+- **Integrated revisions:** SmartSpecPro current `94cd3347cfd2059d1ba35351d5d557cda8353626` (`main == origin/main`); migration/admin-profile implementation `40fa00bf8a6218502ec3762b0463ba3860e8df00`; Platform deployed `9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5` (`main == origin/main`).
+
 - **Credential:** rotated `smartspec_dev` using the verified DEV administrator path; old secret invalidated, mapped mode-0600 local bindings refreshed, and consumers reconnected. Secret values were not emitted.
 - **Database preflight:** exact target `modular-debian-dev`, domain `aimarkethubs.com`, database `smartspec`, PostgreSQL 15.17, authenticated superuser identity. Ledger 0439=`d03fcb18c80b2d035cf7a8bac5d696fe5164c0ad6b4aaa0e81e520e58315e4a8` / `1794770000000`; 0440=`141f197c9c5c0f9b584691ad6e5001ecd194105aa0479a6fdc7b33b4e389c784` / `1794770000001`; 0441 absent at preflight.
 - **Backup:** `/home/dev/.config/smartspec-dev/backups/spec312-r124-pre-0441-20261115T160007Z.dump`, mode 0600, verified listing, SHA-256 `d6a66e4dfa58ff44df12985ebda203895179be72548a95af3b6d388a511f2bcb`.
