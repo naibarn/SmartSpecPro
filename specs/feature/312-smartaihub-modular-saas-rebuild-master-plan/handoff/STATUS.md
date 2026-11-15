@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 1 pass / 102 unresolved of 104
-- Next action: Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.
-- Manifest generation: 131
+- Requirements: 1 pass / 105 unresolved of 109
+- Next action: Provision/bind the approved least-privilege DEV migration identity and rotate the surfaced credential, then apply 0441 through the registered runner and complete the target-gated DEV release and authenticated runtime/UAT checks.
+- Manifest generation: 135
 
 ## Source-declared status and relationship claims
 

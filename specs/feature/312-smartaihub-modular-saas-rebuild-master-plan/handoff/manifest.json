@@ -1,10 +1,9 @@
 {
   "acceptance": {
     "evidence": [
-      "R1.22 tenant Mission schema/API and Chat integration are implemented and integrated on both canonical mains; focused contract/Core/Chat/owner tests and scoped typechecks pass.",
-      "0441 migration and SQL integration are not applied/run because only a non-_dev DB URL is configured and dedicated disposable SQL settings are absent.",
-      "Task owner source is in the current legacy-debian-dev release SHA; endpoint probes (403 public, 404 localhost) do not prove protected runtime availability or authenticated cross-scope behavior.",
-      "No authorized MFA browser session; hosted Chat/Mission/Task UAT remains pending."
+      "R1.23 source security review and disposable PostgreSQL test are complete; registered migration runner applied 0441 only to the isolated clone.",
+      "DEV migration and release are blocked: available smartspec_dev is an application superuser and forbidden for DDL; no approved least-privilege migration identity or provisioning procedure was found.",
+      "Task owner runtime remains separate and unverified; no authenticated MFA browser session was available. SPEC-312 remains PARTIAL / CONTINUATION_REQUIRED."
     ],
     "required": true,
     "status": "PARTIAL"
@@ -30,69 +29,71 @@
   "blockers": [
     {
       "class": "DEV_MIGRATION_CREDENTIAL_MISSING",
-      "description": "Migration 0441 is integrated but not applied. The configured DB URL targets smartspec with a login that is not the scoped _dev role required by the shared-tenant migration runner. No scoped migration credential is present in this session.",
-      "id": "r122-dev-migration-credential",
-      "next_action": "Run migration 0441 through the existing runner after a registered _dev credential for the authorized development database is available. Do not use the current non-_dev .env login.",
+      "description": "No authorized least-privilege DEV migration identity or approved provisioning/secret-binding procedure is available. The configured smartspec_dev login is an application runtime superuser and must not be used for DDL. A credential surfaced once during broad local search and requires rotation through an approved procedure; it is not reused.",
+      "id": "r123-dev-migration-authority",
+      "next_action": "Provision/bind a dedicated least-privilege _dev migration identity and rotate the surfaced credential through the registered secret procedure; then revalidate DEV target metadata.",
       "requirements": [
-        "REQ-312-R122-02",
-        "REQ-312-R122-03"
+        "REQ-312-R123-01",
+        "REQ-312-R123-04"
       ]
     },
     {
-      "class": "DISPOSABLE_DATABASE_UNAVAILABLE",
-      "description": "MODULAR_CHAT_TEST_DATABASE_URL and MODULAR_CHAT_TEST_EMAIL are unset; local PostgreSQL does not accept the current user credentials. The SQL integration suite is skipped.",
-      "id": "r122-disposable-sql",
-      "next_action": "Use an isolated PostgreSQL fixture with dedicated test credentials, then run the migration-backed integration test.",
+      "class": "TEST_ENVIRONMENT_VERSION_MISMATCH",
+      "description": "SQL integration and migration runner passed on isolated PostgreSQL 17.11, while actual DEV is PostgreSQL 15.17. No PG15 disposable environment was available.",
+      "id": "r123-disposable-postgres-version-gap",
+      "next_action": "Repeat the registered migration runner and SQL fixture on an isolated PostgreSQL 15 environment when provisioned.",
       "requirements": [
-        "REQ-312-R122-06"
+        "REQ-312-R123-03"
       ]
     },
     {
       "class": "HUMAN_UAT_PENDING",
-      "description": "No normal authorized MFA browser session is available in this execution. Mock tests are not hosted UAT.",
-      "id": "r122-authenticated-uat",
-      "next_action": "After migration and deployment, sign in normally and verify Chat, Mission/Task Control, artifacts, reconnect and responsive layouts.",
+      "description": "No authorized authenticated MFA browser session was available; mock/anonymous probes do not establish user-facing runtime behavior.",
+      "id": "r123-authenticated-uat",
+      "next_action": "After authorized DEV migration and release, execute the R1.23 UAT checklist with normal MFA sign-in.",
       "requirements": [
+        "REQ-312-R123-05",
         "REQ-312-R122-04",
         "REQ-312-R122-06"
       ]
     },
     {
       "class": "TASK_OWNER_ENDPOINT_UNVERIFIED",
-      "description": "SmartSpecPro legacy-debian-dev release status shows SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59 on smartaihub.app. Anonymous public tRPC probe returned 403 and localhost probe returned 404; authenticated owner path/scope could not be confirmed.",
+      "description": "SPEC-277 Task owner API belongs to the actual SmartSpecPro deployment; no authenticated owner session/runtime verification was available in this continuation.",
       "id": "r122-task-owner-runtime",
-      "next_action": "Verify workerJobs.observabilityV1 with an authorized owner session or registered service-level route; test cross-scope denial.",
+      "next_action": "Verify workerJobs.observabilityV1 and cross-scope denial on its actual deployment after obtaining authorized owner context.",
       "requirements": [
+        "REQ-312-R123-05",
         "REQ-312-R122-05"
       ]
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
-    "expected_spec_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464"
+    "expected_canonical_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+    "expected_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0"
   },
   "continuation": {
-    "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Tenant Mission source/API/UI and regression checks are integrated. Resolve only the exact migration credential and disposable SQL dependencies, then exact-SHA deploy to modular-debian-dev and perform authorized runtime/UAT checks.",
-    "next_ready_workunit": "R122_DEV_MIGRATION_SQL_AND_RUNTIME_ACCEPTANCE",
-    "reactivation_predicate": "Resume when the registered scoped _dev migration credential and isolated SQL test settings are available; authenticated UAT can proceed after modular-debian-dev migration and exact-SHA deployment.",
-    "resume_point": "R1.22 source is integrated on both canonical mains: SmartSpecPro 7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform ddb5530bb894b609071ff85444b84d562d52c0b9. Contract 9/9, Core 127/127, Chat 56/56 and owner workerJobs 15/15 pass; scoped Core/Chat typechecks and exact package dry-run builds pass. Migration-backed SQL test skipped, 0441 not applied, Modular DEV not redeployed, Task owner endpoint path unverified, and authenticated MFA UAT pending. See R1.22 traceability and release assessment.",
-    "waiting_predicate": "Migration waits for registered _dev DB credentials; disposable SQL waits for isolated test URL/email; hosted UAT waits for normal authorized MFA session. Continue independently as each becomes available."
+    "next_action": "Provision/bind the approved least-privilege _dev migration identity and rotate the surfaced credential through the registered secret procedure. Revalidate the DEV database target, run the registered runner for 0441 only after confirming the 0439/0440 ledger head, then release the exact platform SHA with the explicit modular-debian-dev controller and verify runtime/UAT.",
+    "next_ready_workunit": "R123_DEV_MIGRATION_AUTHORITY_AND_RUNTIME_ACCEPTANCE",
+    "reactivation_predicate": "Resume the DEV migration and release path after the approved migration identity is provisioned and the surfaced credential is rotated; resume hosted UAT when a normal authorized MFA browser session is available.",
+    "resume_point": "SmartSpecPro main@155bcde8ad7057760265009e5e3385b14826d4da integrates code at 1856a2d1d089da88737e024e96651c94c42d165e; smartaihub-platform main@9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5. Disposable 0441 migration runner and SQL fixture pass on PG17.11; DEV 0439/0440 are applied and 0441 is pending. No DEV DDL/deploy or authenticated UAT occurred.",
+    "waiting_predicate": "DEV migration waits only for approved least-privilege credential provisioning and rotation; exact PG15 SQL replay waits for a disposable PG15 environment; authenticated UAT waits for a normal MFA session. Continue independent source work while these paths are pending."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "SPEC-312 R1.22 traceability; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2; smartaihub-platform main@ddb5530bb894b609071ff85444b84d562d52c0b9.",
-      "Contracts 9/9, Core 127/127, Chat 56/56, SmartSpecPro owner 15/15; scoped Core/Chat typechecks and Core/Chat package dry-run builds pass.",
-      "Migration 0441 integrated but not applied; SQL fixture skipped without isolated credentials; Modular R1.22 not deployed; browser MFA UAT pending."
+      "SmartSpecPro main@155bcde8ad7057760265009e5e3385b14826d4da; platform main@9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5.",
+      "Disposable PG17.11 migration runner applied only 0441 after 0439/0440; SQL integration 1/1 passed with rollback.",
+      "DEV PostgreSQL 15.17 remains unchanged; no R1.23 build/deployment."
     ],
-    "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.",
-    "rationale": "R1.22 tenant Mission source/API/UI is integrated and package-tested. The SPEC remains partial because migration 0441 cannot be applied safely without the registered _dev credential, disposable SQL settings and authenticated MFA UAT are unavailable, and Task owner endpoint runtime authorization is not verified.",
+    "next_action": "Provision/bind the approved least-privilege DEV migration identity and rotate the surfaced credential, then apply 0441 through the registered runner and complete the target-gated DEV release and authenticated runtime/UAT checks.",
+    "rationale": "R1.23 source security and disposable SQL/migration verification are complete. DEV migration/release remain blocked by missing approved migration authority; PG15-specific SQL replay, actual Task owner runtime and authenticated MFA UAT remain pending.",
     "residual_requirements": [
-      "Apply migration 0441 with the registered scoped development credential and verify postconditions.",
-      "Run Mission SQL integration fixture only on disposable PostgreSQL.",
-      "Verify Task owner observabilityV1 runtime and cross-scope denial using authorized owner context.",
-      "Deploy exact platform SHA to modular-debian-dev after schema migration and run authenticated responsive Chat/Mission UAT."
+      "Provision/rotate authorized least-privilege DEV migration credentials and apply 0441 with postcondition checks.",
+      "Repeat SQL integration on PG15 disposable environment.",
+      "Deploy through modular-debian-dev target controller after migration.",
+      "Verify authenticated Mission/Chat, Task owner scope, and responsive UAT."
     ]
   },
   "dependencies": {
@@ -105,11 +106,11 @@
     "artifact_digest": null,
     "environment": "modular-debian-dev / aimarkethubs.com; Debian systemd + local Workerd; database smartspec",
     "evidence": [
-      "R1.21 modular-debian-dev deployment remains the last verified release; R1.22 source SHA ddb5530bb894b609071ff85444b84d562d52c0b9 is integrated but not deployed because migration 0441 is pending.",
-      "Legacy target smartaihub.app release status is exact SHA 089ac45526dfb9742b9394513cbe5f9e7d8c3d59 on legacy-debian-dev; this is separate from the Modular target."
+      "No R1.23 Modular DEV candidate or release was built or deployed. The current Modular DEV runtime remains on prior R1.21 SHA ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2.",
+      "R1.23 release is gated on an approved least-privilege DEV migration identity and DEV application of 0441 through the registered runner. Production was not targeted."
     ],
     "required": true,
-    "source_sha": "ddb5530bb894b609071ff85444b84d562d52c0b9",
+    "source_sha": null,
     "status": "PARTIAL"
   },
   "disposition": {
@@ -128,95 +129,41 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 131,
+  "generation": 135,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+    "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-15T09:25:00.440998Z",
+      "last_evidence_at": "2026-11-15T10:26:22.294336Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
     },
-    "revision": "1.22",
+    "revision": "1.23",
     "slug": "312-smartaihub-modular-saas-rebuild-master-plan",
     "spec_id": "312",
     "title": "SmartAIHub Modular SaaS Rebuild Master Program & Full-System Inventory"
   },
   "implementation": {
     "checkpoint_shas": [
-      "0ed4c2e01ef4ced6ae8651858fec1516fe35ecdd",
-      "36134d0bd35eaa2997b76c7e301c7855150aa2b2",
-      "48fe843dcdea7db69f0d3f13cdf7ed89261d1e7e",
-      "5aa98dab9ff2bfac22006b3a1ef89ed08f46c739",
-      "61f548101d9ca538d485c3712ee481897b0703e9",
-      "651e7f6ec7f8f85a77c84eff81de02acc0f95f4f",
-      "7456bbe549050473543acbec2b9094d95e5a2e95",
-      "754166301ebb4f6d63f776bebcfe16d23a7b4e9e",
-      "78018b7a50c05234071e31f6b1361a70440915a3",
-      "7931d5295ce22134e0c1e0ed60d5b6adb2a9c037",
-      "824c2a3b1c247b675353c783e8979ede9aaaa488",
-      "ba37ee16658a36ecb907580e3fb582c10072c9e5",
-      "bff6a383de7694ea0675779a69a871368f56b484",
-      "e2e6d6bfedebfc2dc37cf98281e302b39c1820c4",
-      "f271a2b669de97b1ae85788f3233902b47db018b",
-      "f31c0667d985873c2202f619e19a978bf45c0728",
-      "fb3c66dd21938259a145e838f055b4a59b0abae0",
-      "fc97012613dcf65a7ece07c75df9d8aea2f852d5",
-      "f9efcbb5f8e174cfcc51b6f4f4ed5a906c79b7ec",
-      "10f83cd1ee5cb8f7305b45bfbc88959614b583ec",
-      "8817c9d1b020353119ec5fc0e2c53bc5d4098911",
-      "62d3f51da7083d91bc8a1e02fcbeaaa863155407",
-      "09611d9ed04394a6c09ddfee5505d5773ad51f52",
-      "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
-      "3c518deb551e4c4186e885ce1a97ef3571a833d3",
-      "691c9cd05a70e9ccb7b7394f962e3d609a5c4076",
-      "4ef0c8fa746d7490bcacdebbcc753180830e1062",
-      "921553af6dc8b72e6730f3ab5e0a1fba56eb444b"
+      "1856a2d1d089da88737e024e96651c94c42d165e",
+      "9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5",
+      "155bcde8ad7057760265009e5e3385b14826d4da"
     ],
     "mapping": [],
     "source_paths": [
-      "apps/saas-core/package.json",
-      "apps/saas-core/src/chat/chatQueueRuntime.ts",
-      "apps/saas-core/src/chat/chatService.ts",
-      "apps/saas-core/src/chat/enabledChatCatalog.ts",
-      "apps/saas-core/src/chat/providerControlDO.test.ts",
-      "apps/saas-core/src/chat/providerControlDO.ts",
-      "apps/saas-core/src/config/**",
-      "apps/saas-core/src/config/environment.ts",
-      "apps/saas-core/src/db/**",
-      "apps/saas-core/src/identity/**",
-      "apps/saas-core/src/identity/authRoutes.ts",
-      "apps/saas-core/src/index.test.ts",
-      "apps/saas-core/src/index.ts",
-      "apps/saas-core/src/security/**",
-      "apps/saas-core/src/worker.ts",
-      "apps/saas-core/wrangler.jsonc",
-      "apps/saas-shell/src/modules/chatModuleLoader.ts",
-      "apps/saas-shell/src/pages/ChatPage.tsx",
-      "modules/chat/package.json",
-      "modules/chat/src/astryx-themes.ts",
-      "modules/chat/src/ui/ChatWorkspace.tsx",
-      "modules/chat/src/ui/Composer.tsx",
-      "modules/chat/src/ui/MessageTimeline.tsx",
-      "modules/chat/src/ui/api.ts",
-      "modules/chat/src/ui/main.test.tsx",
-      "modules/chat/src/ui/main.tsx",
-      "modules/chat/src/ui/styles.css",
-      "modules/chat/src/ui/types.ts",
-      "modules/chat/src/ui/workspace.test.tsx",
-      "modules/chat/vite.config.ts",
-      "package.json",
-      "packages/saas-contracts/src/index.ts",
-      "pnpm-lock.yaml"
+      "apps/web/drizzle/0441_modular_chat_missions.sql",
+      "apps/web/drizzle/modularChatQueue.integration.test.ts",
+      "smartaihub-platform/packages/saas-contracts/src/index.ts",
+      "smartaihub-platform/packages/saas-contracts/tests/taskMissionProjection.test.mjs"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": "SmartSpecPro/main + smartaihub-platform/main",
-    "canonical_sha": "7bd7de8507c39e16efab91987af7574a0bd5f3a2",
+    "canonical_ref": "SmartSpecPro/main; platform source: smartaihub-platform/main",
+    "canonical_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
     "integrated": true,
     "integrated_at": "2026-11-15T06:40:00Z"
   },
@@ -255,17 +202,17 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "SPEC-312 R1.22 traceability; SmartSpecPro main@7bd7de8507c39e16efab91987af7574a0bd5f3a2; smartaihub-platform main@ddb5530bb894b609071ff85444b84d562d52c0b9.",
-        "Contracts 9/9, Core 127/127, Chat 56/56, SmartSpecPro owner 15/15; scoped Core/Chat typechecks and Core/Chat package dry-run builds pass.",
-        "Migration 0441 integrated but not applied; SQL fixture skipped without isolated credentials; Modular R1.22 not deployed; browser MFA UAT pending."
+        "SmartSpecPro main@155bcde8ad7057760265009e5e3385b14826d4da; platform main@9755c2ea9c1c0bf8155d795ae5bbe288ab4672b5.",
+        "Disposable PG17.11 migration runner applied only 0441 after 0439/0440; SQL integration 1/1 passed with rollback.",
+        "DEV PostgreSQL 15.17 remains unchanged; no R1.23 build/deployment."
       ],
-      "next_action": "Continue from SmartSpecPro/main@7bd7de8507c39e16efab91987af7574a0bd5f3a2 and smartaihub-platform/main@ddb5530bb894b609071ff85444b84d562d52c0b9. Resolve the registered scoped migration credential and isolated SQL test environment, then deploy the exact Modular SHA and perform runtime/UAT acceptance.",
-      "rationale": "R1.22 tenant Mission source/API/UI is integrated and package-tested. The SPEC remains partial because migration 0441 cannot be applied safely without the registered _dev credential, disposable SQL settings and authenticated MFA UAT are unavailable, and Task owner endpoint runtime authorization is not verified.",
+      "next_action": "Provision/bind the approved least-privilege DEV migration identity and rotate the surfaced credential, then apply 0441 through the registered runner and complete the target-gated DEV release and authenticated runtime/UAT checks.",
+      "rationale": "R1.23 source security and disposable SQL/migration verification are complete. DEV migration/release remain blocked by missing approved migration authority; PG15-specific SQL replay, actual Task owner runtime and authenticated MFA UAT remain pending.",
       "residual_requirements": [
-        "Apply migration 0441 with the registered scoped development credential and verify postconditions.",
-        "Run Mission SQL integration fixture only on disposable PostgreSQL.",
-        "Verify Task owner observabilityV1 runtime and cross-scope denial using authorized owner context.",
-        "Deploy exact platform SHA to modular-debian-dev after schema migration and run authenticated responsive Chat/Mission UAT."
+        "Provision/rotate authorized least-privilege DEV migration credentials and apply 0441 with postcondition checks.",
+        "Repeat SQL integration on PG15 disposable environment.",
+        "Deploy through modular-debian-dev target controller after migration.",
+        "Verify authenticated Mission/Chat, Task owner scope, and responsive UAT."
       ]
     },
     "disposition": {
@@ -955,6 +902,155 @@
           "Owner 15/15; contracts 9/9; Core 127/127; Chat 56/56; scoped typechecks PASS. SQL fixture SKIPPED without isolated DB settings; MFA UAT PENDING."
         ],
         "verification_method": "Run owner/contracts/Core/Chat suites, scoped typechecks and disposable SQL fixture."
+      },
+      "REQ-312-R123-01": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L32"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L32",
+        "blocker": {
+          "class": "DEV_MIGRATION_CREDENTIAL_MISSING",
+          "next_action": "Provision/bind a least-privilege _dev migration identity and rotate the surfaced credential using the approved secret procedure."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+        "final_state": "BLOCKED_TRUE_EXTERNAL",
+        "implementation_evidence": [
+          "DEV target confirmed as local PostgreSQL 15.17 / database smartspec; 0439 and 0440 applied and 0441 next. Registered runner requirements and variable names recorded in R1.23 traceability.",
+          "Available smartspec_dev is an application superuser; modular_core_auth_dev lacks migration authority. No approved least-privilege migration identity/provisioning procedure found."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "After approved identity provisioning and credential rotation, recheck the target and continue through the registered runner.",
+        "requirement_digest": "4717855cd88f57e6fadc8bdabeed95b4c1b8e6f93b1f692b06004226ad227972",
+        "requirement_id": "REQ-312-R123-01",
+        "requirement_text": "- **REQ-312-R123-01:** Verify the registered DEV migration identity, required environment bindings, actual database target and exact applied 0439/0440/0441 ordering. Never use an application runtime role for DDL or bypass the registered migration runner.",
+        "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "DEV 0439/0440 source hashes match applied ledger; 0441 absent.",
+          "Migration authority check confirms the existing app runtime identities are not eligible for DDL under project policy."
+        ],
+        "verification_method": "Read-only DEV ledger/catalog inspection and review of registered migration runner and environment binding names."
+      },
+      "REQ-312-R123-02": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L33"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L33",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "0441 defines explicit lifecycle status and limited NOLOGIN/NOSUPERUSER SECURITY DEFINER ownership with fixed search_path, no public CREATE, and narrow column/table grants.",
+          "0441 additively repairs the existing Task Control projection invalid updatedAt reference without editing applied 0439."
+        ],
+        "implementation_status": "TESTED",
+        "next_action": "Repeat catalog verification against DEV after authorized migration application.",
+        "requirement_digest": "11be7b29acb70bc2d02ed10017c71cd90aac23bca7c624611bc9b2f865666dc6",
+        "requirement_id": "REQ-312-R123-02",
+        "requirement_text": "- **REQ-312-R123-02:** Review 0441 tenant/workspace/conversation checks, Mission lifecycle, canonical Job/Attempt/Event/Artifact projections, idempotency, SECURITY DEFINER owner/search path/ACL and cross-tenant denial. Repair only through an unapplied additive migration.",
+        "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Three relevant functions owned by modular_chat_mission_owner; PUBLIC EXECUTE false; modular_core_auth_dev EXECUTE true; role cannot login, is not superuser, and lacks schema CREATE.",
+          "Mission lifecycle/idempotency, Job/Attempt/Event/Artifact projection, and cross-scope denial SQL fixture passed 1/1 on isolated PG17.11."
+        ],
+        "verification_method": "Review migration SQL and query disposable catalog for owner, search_path, ACL, runtime grant, and Task/Attempt projection; run tenant-scope SQL fixture."
+      },
+      "REQ-312-R123-03": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L34"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L34",
+        "blocker": {
+          "class": "TEST_ENVIRONMENT_VERSION_MISMATCH",
+          "next_action": "Repeat on disposable PostgreSQL 15 when available."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Actual DEV schema-only dump and migration ledger were restored to a local disposable PG17.11 cluster; no application data copied.",
+          "Registered pnpm db:migrate applied only migration 0441; rollback SQL integration passed 1/1 and did not modify fixture baseline data."
+        ],
+        "implementation_status": "TESTED",
+        "next_action": "Repeat runner and fixture on isolated PG15; do not claim exact-version parity until then.",
+        "requirement_digest": "33914d0481315f878720267ddf81b7f13ab51f7109238c168d360871e40e1605",
+        "requirement_id": "REQ-312-R123-03",
+        "requirement_text": "- **REQ-312-R123-03:** Run 0441 through the registered runner and exercise Mission and Chat SQL integration only on an isolated database with synthetic data; record PostgreSQL version and prove that the fixture does not alter existing data.",
+        "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Ledger contains matching 0439, 0440 and 0441 hashes/timestamps in order; 0440 remains a single row.",
+          "PostgreSQL disposable 17.11; actual DEV 15.17."
+        ],
+        "verification_method": "Run the registered migration runner and rollback integration against an isolated database; compare migration order/hash and state server version."
+      },
+      "REQ-312-R123-04": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L35"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L35",
+        "blocker": {
+          "class": "DEV_MIGRATION_CREDENTIAL_MISSING",
+          "next_action": "Provision approved least-privilege migration identity, apply 0441 through the runner, then deploy via modular-debian-dev controller."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+        "final_state": "BLOCKED_TRUE_EXTERNAL",
+        "implementation_evidence": [
+          "DEV remains unchanged; no R1.23 database mutation, artifact build, release candidate, deployment, or traffic change was performed."
+        ],
+        "implementation_status": "BLOCKED",
+        "next_action": "Wait for the authorized DEV migration identity, then migrate and exact-SHA deploy only through modular_debian_dev_release.py.",
+        "requirement_digest": "036ae1716538b8f14add7e51500e9f44f7c4b9c60a75a7944bf657b76426beba",
+        "requirement_id": "REQ-312-R123-04",
+        "requirement_text": "- **REQ-312-R123-04:** Apply DEV migrations and release the verified source only after migration authority and sequence are established, using the registered Modular DEV target controller; verify ledger/schema, receipt, service health, authenticated routes, assets and rollback readiness.",
+        "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "No DEV migration/deployment claim; latest Modular runtime remains prior R1.21 release SHA ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2."
+        ],
+        "verification_method": "After migration authority, run the exact target controller and verify release receipt, module health, protected routes, asset digest, and rollback readiness."
+      },
+      "REQ-312-R123-05": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L36"
+        ],
+        "authority_source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md#L36",
+        "blocker": {
+          "class": "HUMAN_UAT_PENDING",
+          "next_action": "Perform the checklist after authorized DEV release with normal MFA sign-in."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "155bcde8ad7057760265009e5e3385b14826d4da",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "Reproducible authenticated UAT checklist and expected sequence recorded in the R1.23 handoff.",
+          "SPEC-277 owner endpoint remains explicitly separated from the Modular Core release."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "After migration/release, perform authenticated Mission/Chat UAT and separately verify the SPEC-277 owner endpoint on its actual deployment.",
+        "requirement_digest": "d410ee99caa6744fe17b124d8ac799d50a6b918e6661134917bd90ee5cc10dd2",
+        "requirement_id": "REQ-312-R123-05",
+        "requirement_text": "- **REQ-312-R123-05:** Verify Mission/Chat and SPEC-277 owner behavior on their actual deployments. Authenticated behavior requires normal authorized MFA access; otherwise provide a reproducible UAT checklist and keep runtime/UAT acceptance pending.",
+        "source_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "No authenticated session or R1.23 DEV runtime was available; no runtime/UAT success is claimed."
+        ],
+        "verification_method": "Use a normal MFA browser session after authorized migration/release; verify Mission creation, persistence, ownership, canonical relationships, no duplicate dispatch, unauthorized denial, responsive UI, and Task owner behavior at its actual deployment."
       },
       "REQ-31B82DBC9983": {
         "applicability": "APPLICABLE",
@@ -2443,10 +2539,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-15T09:25:00.440998Z",
+    "reconciled_at": "2026-11-15T10:26:22.294336Z",
     "sources": [
       {
-        "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2656,14 +2752,24 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/r1.21-dev-release.md"
       },
       {
-        "digest": "ab599a616a2860a8a8e6310216f0c9dc8386854ca2fd08539efae42d7ed1a97f",
+        "digest": "905be874159ea4962a7b05f34d2384f8b89ecf86157f588c2db3f4639ae4c3d4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/HANDOFF.md"
       },
       {
-        "digest": "138b0677c8df2c89220d3be69a3897f95e99dc8eac98d126747cfa83f7beabef",
+        "digest": "552ab15eb84c7449fce7feb4e3384c5a62abcf6734be8b1acc69e4419cebbfbc",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "d48d593bd1efab191d082194bfe931819ad4fa8fafbcfa379a949b69fb7f42f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "bc58ced535d7a48b19e8bfdca0fff9027332c52ab1504e1c4ab2492a579740e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/IMPLEMENTATION_TRACEABILITY.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -3101,7 +3207,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "source_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -3418,14 +3524,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "source_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "a6e5b66b9ba1ee695bf5dbb1e608e43a6b328be626f6ede0ec407350f7b45464",
+        "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -3635,14 +3741,24 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.21/implementation/r1.21-dev-release.md"
       },
       {
-        "digest": "ab599a616a2860a8a8e6310216f0c9dc8386854ca2fd08539efae42d7ed1a97f",
+        "digest": "905be874159ea4962a7b05f34d2384f8b89ecf86157f588c2db3f4639ae4c3d4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/HANDOFF.md"
       },
       {
-        "digest": "138b0677c8df2c89220d3be69a3897f95e99dc8eac98d126747cfa83f7beabef",
+        "digest": "552ab15eb84c7449fce7feb4e3384c5a62abcf6734be8b1acc69e4419cebbfbc",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.22/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "d48d593bd1efab191d082194bfe931819ad4fa8fafbcfa379a949b69fb7f42f3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "bc58ced535d7a48b19e8bfdca0fff9027332c52ab1504e1c4ab2492a579740e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/IMPLEMENTATION_TRACEABILITY.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -3771,33 +3887,31 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 51,
-    "blocked_true_external": 0,
+    "applicable": 56,
+    "blocked_true_external": 2,
     "fail": 0,
     "not_applicable": 1,
     "pass": 1,
-    "total": 104,
-    "unresolved": 102
+    "total": 109,
+    "unresolved": 105
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T09:33:16.187284Z",
+  "updated_at": "2026-11-15T10:29:36.667504Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "Core package tests 19 files / 120 tests; Core typecheck and Wrangler dry-run passed on 921553af6dc8b72e6730f3ab5e0a1fba56eb444b.",
-      "Immutable exact-SHA Core/Shell/Chat release builds and Wrangler dry-runs pass; target-gated controller reports DEPLOYED_AND_VERIFIED with local/public smoke and anonymous authorization boundary on aimarkethubs.com.",
-      "R1.19 UI checkpoint 4ef0c8fa746d7490bcacdebbcc753180830e1062 previously verified served Chat JS SHA-256 a0ec0f66b981aa77570d215815d95ca51bd4fb8e52dddfa5d1ee17ca8d73adeb; contains Cloud Queue and no Cloud Execution · Always On claim. Chat static bundle is unchanged in 921553a.",
-      "Authenticated MFA UAT, migration-ledger/function-owner review, private output artifacts and SPEC-294 adapters remain open.",
-      "smartaihub-platform@dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950: contracts 7/7, Core 121/121, Chat 49/49; Core and Chat typecheck/build passed; exact-SHA immutable Core/Shell/Chat build passed.",
-      "Target-gated controller reports DEPLOYED_AND_VERIFIED on modular-debian-dev / aimarkethubs.com; local Core/Chat/Shell and manifest/entry checks passed, public shell/chat smoke passed, anonymous Chat session returned 401.",
-      "Deployed Core and Chat execution projection endpoints reject anonymous requests with 401; served Chat entry asset SHA-256 matches immutable artifact. Authenticated data-path and browser UAT remain pending.",
-      "SmartSpecPro migration 0438 applied to dev smartspec and audit matched hash/timestamp; dedicated disposable SQL integration fixture was skipped due missing dedicated test DB credentials."
+      "R1.23 SmartSpecPro SQL rollback integration: 1/1 passed on isolated PostgreSQL 17.11; no app rows copied; transaction rolled back.",
+      "Registered pnpm db:migrate runner on disposable schema/actual-ledger clone applied only 0441 after 0439 and 0440; ledger hash 32d1a2df20b84401ce20ed68e6a5feddf17c94f1a285e91d6fae06377408f857, created_at 1794770000002.",
+      "Post-application disposable catalog: Mission and Task Control SECURITY DEFINER functions owned by NOLOGIN/NOSUPERUSER modular_chat_mission_owner; safe search_path; PUBLIC EXECUTE false; modular_core_auth_dev EXECUTE true; owner has no public schema CREATE.",
+      "Platform @smartaihub/saas-contracts build and tests passed 9/9; Mission lifecycle parser rejects succeeded as a Mission status.",
+      "DEV PostgreSQL is 15.17; disposable PostgreSQL was 17.11. No exact-version disposable PG15 verification is claimed.",
+      "No DEV migration, candidate build, release, runtime verification, owner endpoint verification or authenticated MFA UAT was performed."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "package"
     ],
-    "sha": "dfa5eaf9a1fcfe6796d1fa8ac54c90341afed950",
+    "sha": "1856a2d1d089da88737e024e96651c94c42d165e",
     "status": "PASS",
     "task_regressions": []
   }
