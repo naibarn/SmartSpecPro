@@ -91,7 +91,7 @@
     "next_action": "Continue R1.19 from smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c. Independently implement canonical artifact/API slices and one-command modular release artifact assembly. In parallel, perform normal MFA-authenticated UAT and registered-authority migration receipt/function-owner reconciliation. Current aimarkethubs.com deployment is already healthy; legacy release:dev:web is not a Modular Core deployment path.",
     "next_ready_workunit": "r119-private-artifacts-spec294-adapters-and-release-builder",
     "reactivation_predicate": "Resume independent Chat artifact and SPEC-294 adapter work immediately from smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c. Migration review awaits registered scoped authority; authenticated UAT awaits a normal authorized MFA browser session. No redeployment is needed until source changes.",
-    "resume_point": "2026-11-15: smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c is integrated and deployed to modular-debian-dev / aimarkethubs.com. The parent SPEC 312 handoff, release-target state and R1.19 traceability were integrated in SmartSpecPro/main@991bd2597fcc511564e316defaba9a3c27ebce9a (origin/main matched). Chat tests 46/46, Core tests 119/119, Chat/Core typecheck/build, Shell build and public/local deployment smoke passed. Browser refresh restores known active-job status/events without enqueuing again. DB catalog confirms event schema/function and dev-only grants; migration receipt remains unverified with runtime role, function owner is superuser, and no DDL was run. Authenticated UAT remains blocked; artifact producer/retrieval and SPEC-294 adapters remain open. See R1.19 implementation HANDOFF and r1.19-dev-release-20261115.md.",
+    "resume_point": "2026-11-15: smartaihub-platform/main@e2f78ef6af0162736ff0fb28159f6ff9ef38813c is integrated and deployed to modular-debian-dev / aimarkethubs.com. SPEC-312/R1.19 handoff and modular release runbook are integrated in SmartSpecPro/main@8af8e96374f5d857395843c6f17757c90e98b8f2 (origin/main matched). Chat 46/46, Core 119/119, Chat/Core typechecks/builds, Shell build and exact-target public/local smoke passed. Refresh restores a known active job status/events without re-enqueue. DB catalog confirms event schema/function and dev-only grants; migration receipt is unverified with runtime role, function owner is superuser, and no DDL was run. Authenticated UAT, private output artifact path, Task/Mission adapters, and a one-command modular release builder remain open. See R1.19 implementation HANDOFF and r1.19-dev-release-20261115.md.",
     "waiting_predicate": "Authenticated UAT waits only for an authorized MFA browser session; migration ledger/function ownership review waits only for registered migration authority. These blockers do not prevent independent artifact/API contract implementation."
   },
   "continuation_assessment": {
@@ -126,7 +126,7 @@
       "release-manifest.json: /home/dev/modular-development-releases/modular-debian-dev-e2f78ef6af0162736ff0fb28159f6ff9ef38813c-chat-r119/release-manifest.json",
       "handoff/evidence/r1.19-chat-event-replay-source-checkpoint-20261115.md",
       "amendments/assistant-ui-chat-shell/r1.19/implementation/r1.19-dev-release-20261115.md",
-      "SmartSpecPro/main@991bd2597fcc511564e316defaba9a3c27ebce9a: canonical SPEC and handoff synchronization checkpoint."
+      "SmartSpecPro/main@991bd2597fcc511564e316defaba9a3c27ebce9a: initial canonical SPEC/handoff synchronization; runbook/release-builder gap follow-up integrated at SmartSpecPro/main@8af8e96374f5d857395843c6f17757c90e98b8f2."
     ],
     "required": true,
     "source_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
@@ -148,7 +148,7 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 110,
+  "generation": 111,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
     "digest": "d03f5e82ae1fd6d9f0fadeaa450a57cce41909dd78d8ed392eada5a2880dcaea",
@@ -3417,7 +3417,7 @@
     "unresolved": 92
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T02:24:57.848868Z",
+  "updated_at": "2026-11-15T02:26:07.599817Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
