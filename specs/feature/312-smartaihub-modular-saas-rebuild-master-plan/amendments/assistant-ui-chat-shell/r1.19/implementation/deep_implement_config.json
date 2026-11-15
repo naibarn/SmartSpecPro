@@ -17,35 +17,37 @@
   "sections_state": {
     "section-01-contracts-and-persisted-events": {
       "status": "checkpointed",
-      "next_action": "Reconcile migration 0437 ledger/receipt using the registered migration authority and review SECURITY DEFINER function owner with a least-privilege migration role; do not rerun DDL because the target function exists.",
-      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
-      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+      "next_action": "Continue canonical migration-ledger provenance and least-privilege SECURITY DEFINER review with registered migration authority; do not rerun DDL.",
+      "checkpoint_sha": "3c518deb551e4c4186e885ce1a97ef3571a833d3",
+      "merged_main_sha": "3c518deb551e4c4186e885ce1a97ef3571a833d3"
     },
     "section-02-sse-replay-and-job-correlation": {
-      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+      "checkpoint_sha": "691c9cd05a70e9ccb7b7394f962e3d609a5c4076",
       "status": "checkpointed",
-      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
-      "next_action": "Run authenticated same-browser refresh/reconnect and no-duplicate-job UAT for deployed SHA e2f78ef6af0162736ff0fb28159f6ff9ef38813c."
+      "merged_main_sha": "691c9cd05a70e9ccb7b7394f962e3d609a5c4076",
+      "next_action": "Perform authenticated refresh/reconnect UAT and verify the server event ledger restores Inspector history without duplicate dispatch."
     },
     "section-03-private-artifacts": {
       "status": "in_progress",
-      "next_action": "Inspect canonical worker_artifacts schema and storage APIs available in Core, confirm tenant/thread/run/job ownership contracts. Implement only if the authoritative private storage contract exists; otherwise document the exact missing owner/API and keep artifacts disabled."
+      "next_action": "The existing Core CHAT_ATTACHMENTS bucket handles authenticated user inputs; the canonical worker_artifacts table has job-owned storageRef metadata but Modular Core has no verified producer or storageRef-to-private-object resolver. Implement only after an authoritative output storage/ownership adapter is identified; keep artifacts=false until end-to-end tests pass."
     },
     "section-04-inspector-task-and-mission-links": {
-      "status": "in_progress",
-      "next_action": "Inspect SPEC-294 Task Control/Mission Control authoritative routes and Modular Core availability. Add only thin adapters for verified APIs; retain truthful unavailable Inspector fields and no duplicate run/job/mission state."
+      "status": "checkpointed",
+      "next_action": "Add only verified canonical Agent/Run/Executor relationships when source contracts exist; inspect SPEC-294 APIs before any Task/Mission adapter.",
+      "checkpoint_sha": "4ef0c8fa746d7490bcacdebbcc753180830e1062",
+      "merged_main_sha": "4ef0c8fa746d7490bcacdebbcc753180830e1062"
     },
     "section-05-assistant-ui-responsive-integration": {
       "status": "checkpointed",
-      "next_action": "Run authorized authenticated browser UAT at 1440x900, 820x1180 and 390x844 on aimarkethubs.com; package tests/typecheck/build and deployment smoke are complete.",
-      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
-      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+      "next_action": "Perform authenticated rendered UAT at 1440x900, 820x1180 and 390x844; verify queue label, send/replay, themes, attachment previews and no overlap.",
+      "checkpoint_sha": "4ef0c8fa746d7490bcacdebbcc753180830e1062",
+      "merged_main_sha": "4ef0c8fa746d7490bcacdebbcc753180830e1062"
     },
     "section-06-spec-dev-release-and-uat-handoff": {
       "status": "checkpointed",
-      "next_action": "Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web.",
-      "checkpoint_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
-      "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c"
+      "next_action": "Continue implementation only where an authoritative output artifact/storage contract or verified SPEC-294 adapter API exists; retain MFA UAT and migration-authority review as open, and do not infer provider latency from catalog concurrency.",
+      "checkpoint_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
+      "merged_main_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b"
     }
   },
   "pre_commit": {
@@ -57,19 +59,24 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-15T01:14:31.558391+00:00",
-  "generation": 21,
-  "updated_at": "2026-11-15T02:24:39.641334+00:00",
+  "generation": 38,
+  "updated_at": "2026-11-15T03:31:29.286255+00:00",
   "progress": {
     "active_section": "section-06-spec-dev-release-and-uat-handoff",
-    "next_action": "Continue artifact and SPEC-294 implementation; obtain authorized MFA UAT and migration-authority reconciliation. Before future releases, build a deterministic one-command modular artifact assembler in smartaihub-platform that pins source SHA and calls only modular_debian_dev_release.py; do not use legacy release:dev:web.",
-    "merged_main_sha": "e2f78ef6af0162736ff0fb28159f6ff9ef38813c",
+    "next_action": "Continue implementation only where an authoritative output artifact/storage contract or verified SPEC-294 adapter API exists; retain MFA UAT and migration-authority review as open, and do not infer provider latency from catalog concurrency.",
+    "merged_main_sha": "921553af6dc8b72e6730f3ab5e0a1fba56eb444b",
     "gaps": [
       "Authenticated MFA browser UAT is not available; real Chat send/replay and responsive rendered acceptance remains blocked.",
       "Read-only target catalog confirms the replay SECURITY DEFINER function is owned by superuser; registered migration authority must review least-privilege ownership.",
       "No complete canonical private Chat artifact producer/retrieval path; capability remains disabled.",
       "Task Control and Mission Control APIs/adapters are not verified in Modular Core; SPEC-294 remains authoritative.",
-      "Chat entry bundle is 521.70 kB (131.42 kB gzip), above Vite advisory threshold; profile/split before performance claim.",
-      "A deterministic one-command modular release artifact builder is not yet available; current deployment used an immutable manually assembled artifact and target-gated controller."
+      "Agent/Run/Executor/Machine and Task/Mission relationships are not provided by the verified modular Chat source; do not fabricate identifiers or add duplicate orchestration.",
+      "Artifact producer/storage contract, SPEC-294 adapter API, authenticated MFA UAT and migration provenance review remain open.",
+      "Current Chat main JS bundle is 524.88 kB minified / 132.22 kB gzip; performance remains an advisory pending profiling.",
+      "No authenticated MFA UAT; send/replay/credit ledger and responsive browser acceptance remain unverified.",
+      "Chat output artifacts have no verified producer/private storage resolver; capability remains false.",
+      "SPEC-294 Task Control and Mission Control APIs/adapters are not verified in Modular Core.",
+      "No authenticated latency benchmark; concurrent credential checks only remove serial verification wait."
     ]
   }
 }
