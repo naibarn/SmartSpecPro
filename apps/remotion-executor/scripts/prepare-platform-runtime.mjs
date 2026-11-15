@@ -160,7 +160,7 @@ await fs.writeFile(path.join(runtimeRoot, "manifest.json"), `${JSON.stringify({
   runtimePlatform: runtimeId.includes("windows") ? "windows-x64" : `macos-${target.architecture}`,
   architecture: target.architecture,
   allowed: true,
-  remotionPlatformContractVersion: "2026-08-04.2",
+  remotionPlatformContractVersion: "2026-11-15.1",
   nodePath: target.nodePath,
   browserPath: target.browserPath,
   ffmpegPath: target.ffmpegPath,

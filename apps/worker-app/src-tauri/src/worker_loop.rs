@@ -92,6 +92,8 @@ use crate::worker_executor::{
     EDITOR_VIDEO_RENDER_JOB_TYPE, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
     REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY,
+    REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION,
     UNIFIED_AUDIO_ALIGN_JOB_TYPE, UNIFIED_AUDIO_CAPABILITY, UNIFIED_AUDIO_TRAINING_JOB_TYPE,
     UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE, UNIFIED_AUDIO_TTS_JOB_TYPE,
     VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY, VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE,
@@ -561,7 +563,10 @@ pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
             .details_json
             .get("remotionPlatformContractVersion")
             .and_then(Value::as_str)
-            == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+            .is_some_and(|version| {
+                version == REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION
+                    || version == REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION
+            })
         {
             return true;
         }
@@ -572,8 +577,31 @@ pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
             .is_some_and(|contracts| {
                 contracts.iter().any(|contract| {
                     contract.as_str() == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+                        || contract.as_str()
+                            == Some(REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION)
                 })
             })
+    })
+}
+
+pub fn remotion_render_video_silence_trim_ready(doctor: &DoctorSummary) -> bool {
+    doctor.checks.iter().any(|check| {
+        (check.id == "runtime_manifest" || check.id == "managed_wsl_runtime")
+            && (check
+                .details_json
+                .get("remotionPlatformContractVersion")
+                .and_then(Value::as_str)
+                == Some(REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION)
+                || check
+                    .details_json
+                    .get("contracts")
+                    .and_then(Value::as_array)
+                    .is_some_and(|contracts| {
+                        contracts.iter().any(|contract| {
+                            contract.as_str()
+                                == Some(REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION)
+                        })
+                    }))
     })
 }
 
@@ -1592,6 +1620,9 @@ async fn worker_loop_tick(
                     can_claim_speaker_aware,
                     can_claim_editor_media,
                 );
+                if can_claim_render && remotion_render_video_silence_trim_ready(&doctor) {
+                    hints.push(REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY.to_string());
+                }
                 if can_claim_content_protection {
                     hints.push(CONTENT_PROTECTION_CAPABILITY.to_string());
                     hints.push(CONTENT_PROTECTION_JOB_TYPE.to_string());

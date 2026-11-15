@@ -42,11 +42,10 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
-  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
   REMOTION_RENDER_VIDEO_MAX_ATTEMPTS,
   REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS,
   REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS,
-  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  remotionRenderVideoClaimCapabilityForContract,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES,
   VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
@@ -585,14 +584,12 @@ export function workerJobMatchesSelection(
       typeof job.inputJson.platformContractVersion === "string"
         ? job.inputJson.platformContractVersion
         : "";
-    if (
-      payloadContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION
-    ) {
+    const payloadClaimCapability =
+      remotionRenderVideoClaimCapabilityForContract(payloadContractVersion);
+    if (!payloadClaimCapability || (requiredClaimCapability && requiredClaimCapability !== payloadClaimCapability)) {
       return false;
     }
-    return capabilityHints.includes(
-      requiredClaimCapability || REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY
-    );
+    return capabilityHints.includes(payloadClaimCapability);
   }
 
   if (requiredClaimCapability) {
@@ -2769,7 +2766,9 @@ export async function queueRemotionRenderVideoJob(
       resourceProfile: "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies,
-        requiredClaimCapability: REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+        requiredClaimCapability: remotionRenderVideoClaimCapabilityForContract(
+          input.platformContractVersion
+        ),
         preferredWorkerId,
         executionTarget: requestedTarget,
         executionTargetResolution: targetResolution,

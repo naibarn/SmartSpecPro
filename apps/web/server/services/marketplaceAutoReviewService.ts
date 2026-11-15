@@ -36915,6 +36915,7 @@ export async function submitStagedAutoReviewFinalRender(input: {
       includeAudio: renderManifest.includeAudio,
       audioUrl: renderManifest.audioUrl,
       subtitlePresetId: settings.subtitlePresetId,
+      silenceTrimEnabled: settings.silenceTrimEnabled,
       overlayText: settings.overlayText,
       overlayImage: settings.overlayImage,
       aiDisclosureText: burnDisclosure ? disclosureText : null,

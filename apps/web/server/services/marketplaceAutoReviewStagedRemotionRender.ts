@@ -42,6 +42,7 @@ import {
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import {
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
   type RemotionRenderVideoWorkerInput,
 } from "../../shared/workerRuntime";
@@ -302,6 +303,8 @@ export function normalizeStagedOverlayAnchor(
 
 export interface StagedFinalRenderSettings {
   subtitlePresetId: string;
+  /** Remove sustained silent intervals from synchronized audio and video. */
+  silenceTrimEnabled: boolean;
   /**
    * Burn the "this was made with AI" disclosure into the video.
    *
@@ -335,6 +338,7 @@ export interface StagedFinalRenderSettings {
 
 export const STAGED_FINAL_RENDER_SETTINGS_DEFAULTS: StagedFinalRenderSettings = {
   subtitlePresetId: "classic_box",
+  silenceTrimEnabled: false,
   aiDisclosureEnabled: false,
   overlayText: null,
   overlayImage: null,
@@ -363,6 +367,7 @@ export function readStagedFinalRenderSettings(
       typeof stored.subtitlePresetId === "string" && stored.subtitlePresetId
         ? stored.subtitlePresetId
         : STAGED_FINAL_RENDER_SETTINGS_DEFAULTS.subtitlePresetId,
+    silenceTrimEnabled: stored.silenceTrimEnabled === true,
     aiDisclosureEnabled: stored.aiDisclosureEnabled === true,
     overlayText:
       stored.overlayText && typeof stored.overlayText.content === "string"
@@ -823,6 +828,7 @@ export interface SubmitStagedRemotionFinalRenderInput {
   includeAudio: boolean;
   audioUrl?: string | null;
   subtitlePresetId?: StagedSubtitlePresetId | string | null;
+  silenceTrimEnabled?: boolean;
   /** User-configured burn-in overlays (see `buildStagedRemotionTemplate`). */
   overlayText?: StagedRemotionOverlayTextInput | null;
   overlayImage?: StagedRemotionOverlayImageInput | null;
@@ -1028,7 +1034,9 @@ export async function submitStagedRemotionFinalRender(
   const workerInput: RemotionRenderVideoWorkerInput = {
     kind: "remotion_render_video",
     schemaVersion: 1,
-    platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    platformContractVersion: input.silenceTrimEnabled
+      ? REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION
+      : REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
     rendererPolicyVersion: REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
     videoProjectId,
     projectRevision: Math.max(1, input.planRevision),
@@ -1045,7 +1053,20 @@ export async function submitStagedRemotionFinalRender(
     remotionTemplate: template,
     compositionId: "GenericTemplate",
     assetManifest: { sources: assetManifestSources },
-    postPasses: captionsEnabled ? ["loudnorm", "ass_burn"] : ["loudnorm"],
+    postPasses: [
+      "loudnorm",
+      ...(captionsEnabled ? (["ass_burn"] as const) : []),
+      ...(input.silenceTrimEnabled ? (["silence_trim"] as const) : []),
+    ],
+    ...(input.silenceTrimEnabled
+      ? {
+          silenceTrimOptions: {
+            thresholdDb: -42,
+            minimumSilenceSeconds: 0.8,
+            keepPaddingSeconds: 0.15,
+          },
+        }
+      : {}),
     segmentPlan: null,
     remotionTemplateHash,
     durationInFrames,

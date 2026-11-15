@@ -25,6 +25,7 @@
  * part of the `remotion_render_video` contract).
  */
 import { join } from "node:path";
+import { buildSilenceDetectPassArgs } from "./silenceTrim";
 
 /** Exact loudnorm filter string reused from `apps/web`'s
  *  `remotionPostPassArgs.ts`/`verticalDramaFinalRenderGraph.ts`'s private
@@ -121,7 +122,7 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
 }
 
 export interface PostPassStep {
-  code: "loudnorm" | "ass_burn" | "segment_concat";
+  code: "loudnorm" | "ass_burn" | "segment_concat" | "silence_trim";
   argv: string[];
   outputPath: string;
 }
@@ -138,8 +139,13 @@ export interface PlanPostPassesPaths {
 }
 
 export interface PlanPostPassesPayload {
-  postPasses: readonly ("loudnorm" | "ass_burn" | "segment_concat")[];
+  postPasses: readonly ("loudnorm" | "ass_burn" | "segment_concat" | "silence_trim")[];
   segmentPlan?: unknown;
+  silenceTrimOptions?: {
+    thresholdDb: number;
+    minimumSilenceSeconds: number;
+    keepPaddingSeconds: number;
+  };
 }
 
 /**
@@ -173,6 +179,24 @@ export function planPostPasses(
       steps.push({
         code,
         argv: buildAssBurnPassArgs(currentInputPath, paths.assFilePath, outputPath),
+        outputPath,
+      });
+      currentInputPath = outputPath;
+      return;
+    }
+
+    if (code === "silence_trim") {
+      if (!payload.silenceTrimOptions) {
+        throw new Error(
+          'planPostPasses: postPasses includes "silence_trim" but silenceTrimOptions was not provided',
+        );
+      }
+      steps.push({
+        code,
+        // Detect on the untouched render. loudnorm can raise the noise floor;
+        // detection should use the original audio while the later trim still
+        // cuts the fully processed video/audio so captions remain synchronized.
+        argv: buildSilenceDetectPassArgs(paths.renderedMp4Path, payload.silenceTrimOptions),
         outputPath,
       });
       currentInputPath = outputPath;

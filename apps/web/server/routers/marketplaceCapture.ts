@@ -2388,6 +2388,7 @@ export const marketplaceCaptureRouter = router({
           subtitlePresetId:
             HyperframesFinalCompositeSubtitlePresetSchema.optional(),
           aiDisclosureEnabled: z.boolean().optional(),
+          silenceTrimEnabled: z.boolean().optional(),
           overlayText: z
             .object({
               content: z.string().max(2000),

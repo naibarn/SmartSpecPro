@@ -4307,6 +4307,7 @@ export async function updateStagedAutoReviewFinalRenderSettings(input: {
   settings: {
     subtitlePresetId?: string;
     aiDisclosureEnabled?: boolean;
+    silenceTrimEnabled?: boolean;
     overlayText?: StagedFinalRenderSettings["overlayText"];
     overlayImage?: StagedFinalRenderSettings["overlayImage"];
   };
@@ -4328,6 +4329,10 @@ export async function updateStagedAutoReviewFinalRenderSettings(input: {
           input.settings.aiDisclosureEnabled === undefined
             ? current.aiDisclosureEnabled
             : input.settings.aiDisclosureEnabled,
+        silenceTrimEnabled:
+          input.settings.silenceTrimEnabled === undefined
+            ? current.silenceTrimEnabled
+            : input.settings.silenceTrimEnabled,
         // An explicitly-sent overlay with empty content/url means "turn it
         // off" — that is the only way the UI can clear one.
         overlayText:

@@ -203,6 +203,7 @@ export type StagedReviewState = {
     settings: {
       subtitlePresetId: string;
       aiDisclosureEnabled?: boolean;
+      silenceTrimEnabled?: boolean;
       overlayText: {
         content: string;
         position: OverlayAnchor;
@@ -960,6 +961,7 @@ export function StagedCheckpointReviewPanel(props: {
   onSaveRenderSettings?: (settings: {
     subtitlePresetId?: string;
     aiDisclosureEnabled?: boolean;
+    silenceTrimEnabled?: boolean;
     overlayText?: NonNullable<
       NonNullable<StagedReviewState["finalRender"]>["settings"]
     >["overlayText"];
@@ -1044,6 +1046,7 @@ export function StagedCheckpointReviewPanel(props: {
   const [aiDisclosureDraft, setAiDisclosureDraft] = useState<boolean | null>(
     null
   );
+  const [silenceTrimDraft, setSilenceTrimDraft] = useState<boolean | null>(null);
   const [overlayUploadBusy, setOverlayUploadBusy] = useState(false);
   const [overlayUploadError, setOverlayUploadError] = useState<string | null>(
     null
@@ -1188,6 +1191,7 @@ export function StagedCheckpointReviewPanel(props: {
     if (!props.state) return;
     if (seededRunIdRef.current === props.runId) return;
     seededRunIdRef.current = props.runId;
+    setSilenceTrimDraft(null);
     setManifestOverride(
       Array.isArray(props.state.referenceManifest)
         ? props.state.referenceManifest
@@ -1740,6 +1744,13 @@ export function StagedCheckpointReviewPanel(props: {
     effectiveSubtitleEnabled ? effectiveSubtitleStyle : "no_subtitle_style";
   const subtitleSettingsDirty =
     effectiveSubtitlePreset !== storedSubtitlePreset;
+  const effectiveSilenceTrimEnabled =
+    silenceTrimDraft ?? finalRenderSettings?.silenceTrimEnabled ?? false;
+  const silenceTrimSettingsDirty =
+    effectiveSilenceTrimEnabled !==
+    (finalRenderSettings?.silenceTrimEnabled ?? false);
+  const finalRenderSettingsDirty =
+    subtitleSettingsDirty || silenceTrimSettingsDirty;
   const effectiveOverlayText =
     overlayTextDraft ?? finalRenderSettings?.overlayText?.content ?? "";
   const effectiveOverlayTextPosition =
@@ -2504,6 +2515,57 @@ export function StagedCheckpointReviewPanel(props: {
                   </HStack>
                 </VStack>
 
+                <VStack as="section" gap={2} padding={3}>
+                  <Text type="label" as="p" color="primary">
+                    ตรวจจับและตัดช่วงเสียงเงียบ
+                  </Text>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={effectiveSilenceTrimEnabled}
+                      onChange={event =>
+                        setSilenceTrimDraft(event.target.checked)
+                      }
+                      disabled={renderSettingsLocked}
+                    />
+                    <span>
+                      <span className="font-medium text-slate-900">
+                        ตัดช่วงที่ไม่มีเสียงออกจากวิดีโอรวม
+                      </span>
+                      <span className="mt-1 block text-[11px] text-slate-600">
+                        ตรวจจับเสียงต่ำกว่า -42 dB ต่อเนื่องอย่างน้อย 0.8 วินาที
+                        แล้วตัดภาพและเสียงพร้อมกัน พร้อมเว้นช่วงเสียงรอบรอยต่อไว้เล็กน้อย
+                        เพื่อให้ภาพ บทพูด และคำบรรยายยังตรงกัน
+                      </span>
+                    </span>
+                  </label>
+                  <HStack gap={3} wrap="wrap" align="center">
+                    <Text type="supporting" as="p" role="status">
+                      {effectiveSilenceTrimEnabled
+                        ? "เปิดใช้การตัดช่วงเงียบในวิดีโอรวม"
+                        : "วิดีโอรวมจะคงช่วงเสียงเงียบไว้"}{" "}
+                      {silenceTrimSettingsDirty
+                        ? "ยังไม่ได้บันทึก ต้องบันทึกก่อนสั่งรวมใหม่"
+                        : "ตัวเลือกนี้บันทึกแล้ว"}
+                    </Text>
+                    <Button
+                      label="บันทึกตัวเลือกตัดเสียงเงียบ"
+                      variant="secondary"
+                      size="sm"
+                      isLoading={isThisActionRunning("save-render-settings")}
+                      isDisabled={
+                        renderSettingsLocked || !silenceTrimSettingsDirty
+                      }
+                      onClick={() =>
+                        props.onSaveRenderSettings?.({
+                          silenceTrimEnabled: effectiveSilenceTrimEnabled,
+                        })
+                      }
+                    />
+                  </HStack>
+                </VStack>
+
                 <label className="mt-3 block text-xs font-medium text-slate-700">
                   สไตล์ Subtitle
                   <select
@@ -2839,6 +2901,7 @@ export function StagedCheckpointReviewPanel(props: {
                       props.onSaveRenderSettings?.({
                         subtitlePresetId: effectiveSubtitlePreset,
                         aiDisclosureEnabled: effectiveAiDisclosure,
+                        silenceTrimEnabled: effectiveSilenceTrimEnabled,
                         overlayText: effectiveOverlayText.trim()
                           ? {
                               content: effectiveOverlayText.trim(),
@@ -2921,7 +2984,7 @@ export function StagedCheckpointReviewPanel(props: {
                       size="lg"
                       isLoading={isThisActionRunning("submit-final-render")}
                       isDisabled={
-                        !canSubmitFinalRender || subtitleSettingsDirty
+                        !canSubmitFinalRender || finalRenderSettingsDirty
                       }
                       onClick={() => props.onSubmitFinalRender?.()}
                     />
@@ -2939,7 +3002,7 @@ export function StagedCheckpointReviewPanel(props: {
                       isLoading={isThisActionRunning("submit-final-render")}
                       isDisabled={
                         !renderJobId &&
-                        (!canSubmitFinalRender || subtitleSettingsDirty)
+                        (!canSubmitFinalRender || finalRenderSettingsDirty)
                       }
                       onClick={() => props.onSubmitFinalRender?.()}
                     />

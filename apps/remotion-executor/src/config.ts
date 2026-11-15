@@ -36,7 +36,11 @@ export function sidecarPath(): string {
 }
 
 export const RUNTIME_VERSION = "remotion-executor-0.1.0";
-export const REMOTION_RENDER_CONTRACT_VERSION = "2026-08-04.2";
+/** Jobs without optional silence trimming keep the installed base contract. */
+export const REMOTION_RENDER_BASE_CONTRACT_VERSION = "2026-08-04.2";
+export const REMOTION_RENDER_BASE_CLAIM_CAPABILITY =
+  `remotion-render-contract-${REMOTION_RENDER_BASE_CONTRACT_VERSION}`;
+export const REMOTION_RENDER_CONTRACT_VERSION = "2026-11-15.1";
 export const REMOTION_RENDER_CLAIM_CAPABILITY = `remotion-render-contract-${REMOTION_RENDER_CONTRACT_VERSION}`;
 export const REMOTION_CAPABILITY_FAMILIES = [
   "remotion-render",

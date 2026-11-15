@@ -109,7 +109,16 @@ export const REMOTION_RENDER_VIDEO_QUEUED_TTL_MS = 60 * 60 * 1000;
 // `renderVideoJob.ts` against `REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION`).
 // Payloads that omit the new fields entirely (every pre-143 caller) are
 // unaffected — the fields are optional, not required.
+// Keep the existing contract as the default so currently installed workers
+// continue to claim ordinary renders. The silence-trim feature has its own
+// opt-in contract and claim capability; only workers with the updated
+// runtime may receive those jobs.
 export const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-08-04.2";
+export const REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION = "2026-11-15.1";
+export const REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS = [
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION,
+] as const;
 export const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
 /**
  * Admission token for the Worker App claim path. This is deliberately tied to
@@ -118,6 +127,20 @@ export const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
  */
 export const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY =
   `remotion-render-contract-${REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION}`;
+export const REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY =
+  `remotion-render-contract-${REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION}`;
+
+export function remotionRenderVideoClaimCapabilityForContract(
+  contractVersion: string,
+): string | null {
+  if (contractVersion === REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION) {
+    return REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY;
+  }
+  if (contractVersion === REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION) {
+    return REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY;
+  }
+  return null;
+}
 
 /**
  * Feature 145 — neutral registration contract for the standalone executor.
@@ -183,7 +206,7 @@ export const remotionExecutorRuntimeMetadataSchema = z.object({
   runtimePlatform: z.enum(REMOTION_EXECUTOR_SUPPORTED_RUNTIME_PLATFORMS),
   architecture: z.enum(REMOTION_EXECUTOR_SUPPORTED_ARCHITECTURES),
   installationMode: z.enum(REMOTION_EXECUTOR_INSTALLATION_MODES),
-  platformContractVersion: z.literal(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION),
+  platformContractVersion: z.enum(REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS),
   rendererPolicyVersion: z.literal(REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION),
   maxConcurrency: z.number().int().min(1).max(REMOTION_EXECUTOR_MAX_CONCURRENCY),
   manifestChecksum: z.string().regex(/^[a-f0-9]{64}$/i).nullable().default(null),
@@ -215,7 +238,10 @@ export const remotionExecutorRuntimeMetadataSchema = z.object({
 
 export const remotionExecutorCapabilityProfileSchema = z.object({
   capabilityFamilies: z.array(z.enum(REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)).min(REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES.length).max(8),
-  claimCapability: z.literal(REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY),
+  claimCapability: z.enum([
+    REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+    REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY,
+  ]),
   containers: z.array(z.literal("mp4")).length(1),
   codecs: z.array(z.literal("h264")).length(1),
   maxWidth: z.number().int().positive().max(16_384),
@@ -409,7 +435,7 @@ export const remotionRenderVideoWorkerInputSchema = z
   .object({
     kind: z.literal("remotion_render_video").default("remotion_render_video"),
     schemaVersion: z.literal(1).default(1),
-    platformContractVersion: z.string().trim().min(1).max(120),
+    platformContractVersion: z.enum(REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS),
     rendererPolicyVersion: z.string().trim().min(1).max(120),
     videoProjectId: z.string().trim().min(1).max(160),
     projectRevision: z.number().int().min(1),
@@ -427,8 +453,16 @@ export const remotionRenderVideoWorkerInputSchema = z
     compositionId: z.literal("GenericTemplate"),
     assetManifest: remotionRenderVideoAssetManifestSchema,
     postPasses: z
-      .array(z.enum(["loudnorm", "ass_burn", "segment_concat"]))
+      .array(z.enum(["loudnorm", "ass_burn", "segment_concat", "silence_trim"]))
       .default([]),
+    silenceTrimOptions: z
+      .object({
+        thresholdDb: z.number().min(-60).max(-20),
+        minimumSilenceSeconds: z.number().min(0.3).max(5),
+        keepPaddingSeconds: z.number().min(0).max(1),
+      })
+      .strict()
+      .optional(),
     segmentPlan: remotionRenderVideoSegmentPlanSchema.nullable().default(null),
     // Stable hash of `remotionTemplate` — dedupe + tamper check.
     remotionTemplateHash: workerStableHashSchema,
@@ -465,7 +499,34 @@ export const remotionRenderVideoWorkerInputSchema = z
     // `renderVideoJob.ts`).
     captionPresetId: remotionRenderVideoCaptionPresetIdSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((payload, ctx) => {
+    const silenceTrimEnabled = payload.postPasses.includes("silence_trim");
+    if (silenceTrimEnabled && !payload.silenceTrimOptions) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["silenceTrimOptions"],
+        message: "silenceTrimOptions is required when postPasses includes silence_trim",
+      });
+    }
+    if (!payload.postPasses.includes("silence_trim") && payload.silenceTrimOptions) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["silenceTrimOptions"],
+        message: "silenceTrimOptions requires silence_trim in postPasses",
+      });
+    }
+    if (
+      silenceTrimEnabled !==
+      (payload.platformContractVersion === REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["platformContractVersion"],
+        message: "Only the silence-trim contract may include silence_trim, and it must include silence_trim",
+      });
+    }
+  });
 
 export type RemotionRenderVideoWorkerInput = z.infer<
   typeof remotionRenderVideoWorkerInputSchema

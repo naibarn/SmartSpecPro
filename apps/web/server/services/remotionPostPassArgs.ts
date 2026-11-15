@@ -91,7 +91,7 @@ export function buildAssBurnSubtitleFileContent(
 }
 
 export interface PostPassStep {
-  code: "loudnorm" | "ass_burn" | "segment_concat";
+  code: "loudnorm" | "ass_burn" | "segment_concat" | "silence_trim";
   argv: string[];
   /** Absolute path this step's argv writes its output to. */
   outputPath: string;
@@ -158,6 +158,34 @@ export function planPostPasses(
       steps.push({
         code,
         argv: buildAssBurnPassArgs(currentInputPath, paths.assFilePath, outputPath),
+        outputPath,
+      });
+      currentInputPath = outputPath;
+      return;
+    }
+
+    if (code === "silence_trim") {
+      const options = payload.silenceTrimOptions;
+      if (!options) {
+        throw new Error(
+          'planPostPasses: postPasses includes "silence_trim" but silenceTrimOptions was not provided',
+        );
+      }
+      steps.push({
+        code,
+        argv: [
+          "-hide_banner",
+          "-nostats",
+          "-i",
+          // Detect on the original audio so loudnorm does not raise its noise floor.
+          paths.renderedMp4Path,
+          "-vn",
+          "-af",
+          `silencedetect=noise=${options.thresholdDb}dB:d=${options.minimumSilenceSeconds}`,
+          "-f",
+          "null",
+          "-",
+        ],
         outputPath,
       });
       currentInputPath = outputPath;

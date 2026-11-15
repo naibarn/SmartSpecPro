@@ -53,7 +53,7 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
-  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  remotionRenderVideoClaimCapabilityForContract,
   REMOTION_RENDER_VIDEO_FAILURE_CODES,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
@@ -1020,8 +1020,6 @@ export async function finalizeInlineRenderProtection(jobId: string): Promise<voi
  * claim capability,
  * regardless of what `capabilityHints` contains overall.
  */
-const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY = REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY;
-
 /**
  * Feature 135 section-05 — same defense-in-depth precedent as the remotion
  * constant above, applied to every `hermes_media_*` / `hermes_connection_*`
@@ -2757,11 +2755,22 @@ export async function claimWorkerJob(
       // unrelated ones) — an availability bug, not a security bypass (the
       // primary anti-mis-claim property this check enforces is unaffected:
       // the disqualified job is still never claimed by this worker).
-      if (
-        candidate.jobType === "remotion_render_video"
-        && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
-      ) {
-        continue;
+      if (candidate.jobType === "remotion_render_video") {
+        const candidatePayload = isPlainObject(candidate.inputJson)
+          ? candidate.inputJson
+          : {};
+        const requiredRemotionCapability =
+          typeof candidatePayload.platformContractVersion === "string"
+            ? remotionRenderVideoClaimCapabilityForContract(
+                candidatePayload.platformContractVersion
+              )
+            : null;
+        if (
+          !requiredRemotionCapability ||
+          !input.payload.capabilityHints.includes(requiredRemotionCapability)
+        ) {
+          continue;
+        }
       }
 
       // Feature 135 section-05 — same `continue`-not-`throw` discipline as the

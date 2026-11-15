@@ -70,7 +70,10 @@ use crate::worker_control_plane::{
     WorkerLoopConnection,
 };
 #[cfg(target_os = "windows")]
-use crate::worker_executor::REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
+use crate::worker_executor::{
+    REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION,
+};
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
 use base64::Engine;
 
@@ -6087,7 +6090,8 @@ exit $missing"#
                 .unwrap_or_default()
                 .to_string();
             let remotion_contract_ready = remotion_contract
-                == REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
+                == REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION
+                || remotion_contract == REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION;
             let transcription_ready = stdout
                 .lines()
                 .find_map(|line| line.strip_prefix("runtime_transcription_status="))
@@ -10218,7 +10222,7 @@ mod tests {
     fn managed_wsl_runtime_version_parser_reads_the_actual_manifest_marker() {
         assert_eq!(
             parse_managed_wsl_runtime_version(
-                "runtime_manifest_version=2026.08.04.5\nruntime_manifest_remotion_contract=2026-08-04.2"
+                "runtime_manifest_version=2026.08.04.5\nruntime_manifest_remotion_contract=2026-11-15.1"
             ),
             Some("2026.08.04.5".into())
         );

@@ -20,6 +20,7 @@
 import { createHash } from "node:crypto";
 import {
   closeSync,
+  copyFileSync,
   createReadStream,
   existsSync,
   mkdtempSync,
@@ -35,6 +36,7 @@ import { join } from "node:path";
 import {
   REMOTION_RENDER_VIDEO_FAILURE_CODES,
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
   type RemotionRenderVideoFailureCode,
@@ -50,7 +52,16 @@ import {
   type PlanPostPassesPaths,
   type PostPassStep,
 } from "./postPassArgs";
-import { defaultFfmpegRunner, probeDurationSeconds, type FfmpegRunner } from "./ffmpegUtil";
+import {
+  defaultFfmpegRunner,
+  probeDurationSeconds,
+  probeHasAudioStream,
+  type FfmpegRunner,
+} from "./ffmpegUtil";
+import {
+  buildSynchronizedSilenceTrimArgs,
+  getSilenceTrimKeepRanges,
+} from "./silenceTrim";
 
 /**
  * Equal to `Root.tsx`'s `GENERIC_TEMPLATE_COMPOSITION_ID` (also re-declared,
@@ -378,13 +389,14 @@ export async function runRemotionRenderVideoJob(
   );
   try {
     await emit("resolve_inputs");
-    if (
-      payload.platformContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION ||
-      payload.rendererPolicyVersion !== REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION
-    ) {
+    const silenceTrimPass = payload.postPasses.includes("silence_trim");
+    const contractMatchesPasses = silenceTrimPass
+      ? payload.platformContractVersion === REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION
+      : payload.platformContractVersion === REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
+    if (!contractMatchesPasses || payload.rendererPolicyVersion !== REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION) {
       throw new RemotionRenderVideoJobError(
         "contract_version_unsupported",
-        `Unsupported platformContractVersion/rendererPolicyVersion: ${payload.platformContractVersion}/${payload.rendererPolicyVersion} (expected ${REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION}/${REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION})`,
+        `Unsupported platformContractVersion/rendererPolicyVersion: ${payload.platformContractVersion}/${payload.rendererPolicyVersion}`,
       );
     }
     if (payload.compositionId !== GENERIC_TEMPLATE_COMPOSITION_ID) {
@@ -506,6 +518,64 @@ export async function runRemotionRenderVideoJob(
           height: payload.renderProfile.height,
         });
         for (const step of steps) {
+          if (step.code === "silence_trim") {
+            const silenceOptions = payload.silenceTrimOptions;
+            if (!silenceOptions) {
+              throw new Error(
+                'postPasses includes "silence_trim" but silenceTrimOptions was not provided',
+              );
+            }
+            // eslint-disable-next-line no-await-in-loop
+            const hasAudio = await probeHasAudioStream(finalOutputPath);
+            if (hasAudio === undefined) {
+              throw new Error("ffprobe could not inspect the final render audio stream");
+            }
+            if (!hasAudio) {
+              copyFileSync(finalOutputPath, step.outputPath);
+              finalOutputPath = step.outputPath;
+              continue;
+            }
+
+            // eslint-disable-next-line no-await-in-loop
+            const detection = await ffmpeg(step.argv);
+            if (detection.code !== 0) {
+              throw new Error(
+                `ffmpeg silence detection exited with code ${detection.code}: ${detection.stderr.slice(-2_000)}`,
+              );
+            }
+            // eslint-disable-next-line no-await-in-loop
+            const durationSec = await probeDurationSeconds(finalOutputPath);
+            if (!durationSec) {
+              throw new Error("ffprobe could not read the final render duration for silence trimming");
+            }
+            const keepRanges = getSilenceTrimKeepRanges(
+              detection.stderr,
+              durationSec,
+              silenceOptions,
+            );
+            if (!keepRanges) {
+              copyFileSync(finalOutputPath, step.outputPath);
+              finalOutputPath = step.outputPath;
+              continue;
+            }
+
+            // eslint-disable-next-line no-await-in-loop
+            const trimResult = await ffmpeg(
+              buildSynchronizedSilenceTrimArgs(
+                finalOutputPath,
+                step.outputPath,
+                keepRanges,
+              ),
+            );
+            if (trimResult.code !== 0) {
+              throw new Error(
+                `ffmpeg synchronized silence trim exited with code ${trimResult.code}: ${trimResult.stderr.slice(-2_000)}`,
+              );
+            }
+            finalOutputPath = step.outputPath;
+            continue;
+          }
+
           // eslint-disable-next-line no-await-in-loop
           const runResult = await ffmpeg(step.argv);
           if (runResult.code !== 0) {

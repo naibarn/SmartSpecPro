@@ -6,7 +6,7 @@ import {
   type WorkerRuntimeId,
   type WorkerRuntimeValidationCheck,
 } from "../../shared/workerRuntimeReleases";
-import { REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION } from "../../shared/workerRuntime";
+import { REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS } from "../../shared/workerRuntime";
 
 const deniedSidecarHashes = new Set([
   "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
@@ -30,8 +30,9 @@ export function isRemotionRuntimeReadyManifest(
     manifest &&
       stringField(manifest.remotionSidecarScriptPath) ===
         "remotion-sidecar/render.mjs" &&
-      stringField(manifest.remotionPlatformContractVersion) ===
-        REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION &&
+      REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS.includes(
+        stringField(manifest.remotionPlatformContractVersion) as (typeof REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS)[number]
+      ) &&
       stringField(manifest.remotionRenderPackageVersion),
   );
 }

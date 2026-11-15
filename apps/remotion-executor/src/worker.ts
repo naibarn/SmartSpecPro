@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { credentials } from "./agent.js";
-import { normalizedArchitecture, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_CLAIM_CAPABILITY, REMOTION_RENDER_CONTRACT_VERSION, runtimePackId, sidecarPath, VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE, workspaceRoot } from "./config.js";
+import { normalizedArchitecture, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_BASE_CLAIM_CAPABILITY, REMOTION_RENDER_CLAIM_CAPABILITY, REMOTION_RENDER_CONTRACT_VERSION, runtimePackId, sidecarPath, VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE, workspaceRoot } from "./config.js";
 import { uploadArtifact, workerRequest } from "./controlPlane.js";
 import { ensureRuntimePack } from "./runtimeProvisioner.js";
 import { discoverHermesInstallations } from "./hermesInstallDiscovery.js";
@@ -100,7 +100,7 @@ export async function runWorker(): Promise<void> {
   await heartbeat();
   for (;;) {
     auth = await credentials();
-    const claimed = await workerRequest<{ job?: Job; queueDepth?: number }>(`/api/workers/${auth.workerId}/jobs/claim`, auth.accessToken, { maxJobs: 1, capabilityHints: [...REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_CLAIM_CAPABILITY] }, auth.device);
+    const claimed = await workerRequest<{ job?: Job; queueDepth?: number }>(`/api/workers/${auth.workerId}/jobs/claim`, auth.accessToken, { maxJobs: 1, capabilityHints: [...REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_BASE_CLAIM_CAPABILITY, REMOTION_RENDER_CLAIM_CAPABILITY] }, auth.device);
     if (!claimed.job) { await new Promise((resolve) => setTimeout(resolve, 3_000)); await heartbeat(); continue; }
     const job = claimed.job;
     try {

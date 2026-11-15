@@ -89,3 +89,32 @@ export async function probeDurationSeconds(
     });
   });
 }
+
+/** Probe whether the media file has at least one audio stream. */
+export async function probeHasAudioStream(
+  filePath: string,
+): Promise<boolean | undefined> {
+  return new Promise(resolvePromise => {
+    const child = spawn(
+      resolveFfBinary("ffprobe"),
+      [
+        "-v",
+        "error",
+        "-select_streams",
+        "a:0",
+        "-show_entries",
+        "stream=index",
+        "-of",
+        "csv=p=0",
+        filePath,
+      ],
+      { stdio: ["ignore", "pipe", "ignore"] },
+    );
+    let out = "";
+    child.stdout?.on("data", chunk => (out += chunk.toString()));
+    child.on("error", () => resolvePromise(undefined));
+    child.on("close", code => {
+      resolvePromise(code === 0 ? out.trim().length > 0 : undefined);
+    });
+  });
+}

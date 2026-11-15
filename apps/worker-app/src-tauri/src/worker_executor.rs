@@ -87,6 +87,9 @@ pub const REMOTION_RENDER_VIDEO_JOB_TYPE: &str = "remotion_render_video";
 /// plane can stop an older Worker App before it consumes the job.
 pub const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION: &str = "2026-08-04.2";
 pub const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY: &str = "remotion-render-contract-2026-08-04.2";
+pub const REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION: &str = "2026-11-15.1";
+pub const REMOTION_RENDER_VIDEO_SILENCE_TRIM_CLAIM_CAPABILITY: &str =
+    "remotion-render-contract-2026-11-15.1";
 
 /// Frozen 1:1 with `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` in
 /// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — the server's

@@ -450,6 +450,7 @@ export function StagedCheckpointReviewSurface(props: {
   const onSaveRenderSettings = (settings: {
     subtitlePresetId?: string;
     aiDisclosureEnabled?: boolean;
+    silenceTrimEnabled?: boolean;
     overlayText?: NonNullable<StagedReviewState["finalRender"]>["settings"]["overlayText"];
     overlayImage?: NonNullable<StagedReviewState["finalRender"]>["settings"]["overlayImage"];
   }) => {
