@@ -2976,6 +2976,13 @@
       "when": 1794484800017,
       "tag": "0438_modular_chat_conversation_execution_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 439,
+      "version": "7",
+      "when": 1794770000000,
+      "tag": "0439_modular_chat_output_artifacts",
+      "breakpoints": true
     }
   ]
 }

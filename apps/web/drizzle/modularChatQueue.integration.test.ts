@@ -29,6 +29,7 @@ suite("Modular Chat queue database contract", () => {
       await client.query(readFileSync(new URL("./0427_modular_chat_queue_sql_fix.sql", import.meta.url), "utf8"));
       await client.query(readFileSync(new URL("./0437_modular_chat_job_event_replay.sql", import.meta.url), "utf8"));
       await client.query(readFileSync(new URL("./0438_modular_chat_conversation_execution_projection.sql", import.meta.url), "utf8"));
+      await client.query(readFileSync(new URL("./0439_modular_chat_output_artifacts.sql", import.meta.url), "utf8"));
       await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const input = [user.id, "modular-development", workspace.workspace_id, null, "Diagnostic request", provider.provider_id, "diagnostic/free", randomUUID()];
       const create = "SELECT * FROM public.create_modular_chat_turn_job($1,$2,$3,$4,$5,$6,$7,$8)";
@@ -63,6 +64,34 @@ suite("Modular Chat queue database contract", () => {
       expect(execution.rows).toHaveLength(2);
       expect(execution.rows[0]).toMatchObject({ job_id: first.job_id, job_status: "succeeded", event_cursor: expect.any(Number) });
       expect(execution.rows[0].attempt_id).toEqual(expect.any(String));
+      const taskControl = await client.query(
+        "SELECT * FROM public.list_modular_chat_task_control_projection($1,$2,$3,$4)",
+        [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
+      );
+      expect(taskControl.rows.find((row) => row.job_id === first.job_id)).toMatchObject({
+        task_id: first.job_id, workspace_id: workspace.workspace_id, conversation_id: first.conversation_id,
+        execution_status: "succeeded", event_cursor: expect.any(Number),
+      });
+      const artifactId = randomUUID();
+      const artifactMetadata = {
+        schemaVersion: "smartaihub.chat-output-artifact.v1", contentType: "text/markdown; charset=utf-8",
+        sizeBytes: 19, sha256: "a".repeat(64), expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        conversationId: first.conversation_id, workspaceId: workspace.workspace_id, userId: user.id,
+        jobId: first.job_id, attemptId: execution.rows[0].attempt_id, attemptNumber: 1,
+      };
+      const storageRef = `chat-outputs/v1/modular-development/${workspace.workspace_id}/${first.job_id}/attempt-1.md`;
+      await client.query(`INSERT INTO public.worker_artifacts (id, "workerJobId", "artifactType", "storageRef", "metadataJson")
+        VALUES ($1, $2, 'chat_output_markdown', $3, $4::jsonb)`, [artifactId, first.job_id, storageRef, JSON.stringify(artifactMetadata)]);
+      const artifacts = await client.query(
+        "SELECT * FROM public.list_modular_chat_conversation_artifacts($1,$2,$3,$4)",
+        [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
+      );
+      expect(artifacts.rows).toHaveLength(1);
+      expect(artifacts.rows[0]).toMatchObject({ artifact_id: artifactId, artifact_type: "chat_output_markdown", metadata_json: artifactMetadata });
+      expect((await client.query(
+        "SELECT * FROM public.get_modular_chat_output_artifact($1,$2,$3,$4)",
+        [user.id, "modular-development", workspace.workspace_id, artifactId],
+      )).rows[0]).toMatchObject({ storage_ref: storageRef, metadata_json: artifactMetadata });
       const events = (await client.query(
         "SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,0,100)",
         [user.id, "modular-development", workspace.workspace_id, first.job_id],
@@ -86,6 +115,12 @@ suite("Modular Chat queue database contract", () => {
         await client.query("ROLLBACK TO SAVEPOINT scope_check");
         await client.query("SAVEPOINT event_scope_check");
         await expect(client.query("SELECT * FROM public.list_modular_chat_job_events($1,$2,$3,$4,0,100)", [2147483647, "modular-development", workspace.workspace_id, first.job_id])).rejects.toMatchObject({ code: "42501" });
+        await client.query("ROLLBACK TO SAVEPOINT event_scope_check");
+        await client.query("SAVEPOINT artifact_scope_check");
+        await expect(client.query("SELECT * FROM public.get_modular_chat_output_artifact($1,$2,$3,$4)", [2147483647, "modular-development", workspace.workspace_id, artifactId])).rejects.toMatchObject({ code: "42501" });
+        await client.query("ROLLBACK TO SAVEPOINT artifact_scope_check");
+        await client.query("SAVEPOINT task_scope_check");
+        await expect(client.query("SELECT * FROM public.list_modular_chat_task_control_projection($1,$2,$3,$4)", [2147483647, "modular-development", workspace.workspace_id, first.conversation_id])).rejects.toMatchObject({ code: "42501" });
       } finally {
         await client.query("ROLLBACK TO SAVEPOINT scope_check");
       }

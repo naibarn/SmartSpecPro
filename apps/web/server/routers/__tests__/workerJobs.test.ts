@@ -113,6 +113,26 @@ describe("workerJobsRouter.list — jobType absent (backward compatible)", () =>
 });
 
 describe("workerJobsRouter task observability scope", () => {
+  it("publishes the versioned owner-scoped Task Control projection with canonical Job identity", async () => {
+    mockListTaskObservability.mockResolvedValueOnce({
+      items: [{ id: "job-1", status: "succeeded", threadId: null, conversationId: 42,
+        createdAt: "2026-11-15T00:00:00.000Z", heartbeatAt: null,
+        executionIdentity: { runId: "run-canonical-1", agent: "display label", harness: "provider", model: null, reasoningEffort: null } }],
+      nextCursor: "signed-next-cursor",
+    });
+    const fn = workerJobsRouter.observabilityV1 as unknown as Function;
+    await expect(fn({ ctx: CTX, input: { conversationId: 42 } })).resolves.toEqual({
+      schemaVersion: "smartaihub.task-control-projection.v1", workspaceId: "tenant-1",
+      items: [{ taskId: "job-1", jobId: "job-1", threadId: null, conversationId: 42, runId: "run-canonical-1",
+        attemptId: null, status: "succeeded", agentId: null, harnessId: null, executorId: null, machineId: null,
+        eventCursor: null, artifactIds: [], updatedAt: "2026-11-15T00:00:00.000Z" }],
+      nextCursor: "signed-next-cursor",
+    });
+    expect(mockListTaskObservability).toHaveBeenCalledWith(expect.objectContaining({
+      scope: { tenantId: "tenant-1", userId: 9, isAdmin: false }, conversationId: 42,
+    }));
+  });
+
   it("keeps a standard authenticated principal owner-scoped", async () => {
     mockListTaskObservability.mockResolvedValueOnce({ items: [], nextCursor: null });
     const fn = workerJobsRouter.observability as unknown as Function;

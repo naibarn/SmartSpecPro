@@ -19,6 +19,7 @@ import {
 } from "../services/jobControlPlaneMonitor";
 import { getSafeTaskControlSessionProjection } from "../services/runnerExecutionSessionService";
 import { aggregateTaskObservability, getTaskHarnessOutputEvents, getTaskObservabilityDetail, listTaskObservability, TaskObservabilityError } from "../services/taskObservabilityReadModel";
+import { projectTaskControlV1 } from "../../shared/taskControlProjectionV1";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
@@ -132,6 +133,29 @@ export const workerJobsRouter = router({
     .query(async ({ ctx, input }) => {
       try {
         return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, ...(input?.projectionToken ? { projectionToken: input.projectionToken } : {}), projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId, threadId: input?.threadId, jobId: input?.jobId });
+      } catch (error) { return mapObservabilityError(error); }
+    }),
+
+  observabilityV1: protectedProcedure
+    .input(z.object({
+      cursor: z.string().max(1024).nullable().optional(),
+      projectionToken: z.string().max(1024).optional(),
+      conversationId: z.number().int().positive().optional(),
+      threadId: z.string().uuid().nullable().optional(),
+      jobId: z.string().trim().min(1).max(36).optional(),
+    }).strict().optional())
+    .query(async ({ ctx, input }) => {
+      try {
+        const scope = requireTaskObservabilityScope(ctx);
+        const page = await listTaskObservability({
+          scope,
+          cursor: input?.cursor,
+          ...(input?.projectionToken ? { projectionToken: input.projectionToken } : {}),
+          conversationId: input?.conversationId,
+          threadId: input?.threadId,
+          jobId: input?.jobId,
+        });
+        return projectTaskControlV1({ workspaceId: scope.tenantId, page });
       } catch (error) { return mapObservabilityError(error); }
     }),
 
