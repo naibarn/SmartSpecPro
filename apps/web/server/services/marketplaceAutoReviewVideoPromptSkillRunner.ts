@@ -1048,6 +1048,27 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_PRODUCT_NAME_REQUIRED");
   }
   const dialogue = parseDialogue(input.shot.dialogue);
+  const productName = clean(input.productName, 200);
+  const approvedVisualAction = [
+    clean(input.shot.visualSummary, 900),
+    clean(input.shot.movementDirection, 900),
+  ].join(" ");
+  const approvedProductFacts = input.productFacts
+    .map(fact => clean(fact, 240))
+    .filter(Boolean);
+  const approvedProductContext = approvedVisualAction
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .includes(productName.normalize("NFKC").toLocaleLowerCase())
+    ? [
+        `Product: ${productName}`,
+        approvedProductFacts.length
+          ? `Verified product facts:\n${approvedProductFacts.map(fact => `- ${fact}`).join("\n")}`
+          : null,
+      ]
+        .filter((section): section is string => Boolean(section))
+        .join("\n")
+    : null;
   const approvedShotAction = marketplaceApprovedShotAction(input.shot);
   const maximumMotionBudget = motionPromptBudget(
     dialogue,
@@ -1152,6 +1173,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Format: vertical 9:16, ${input.shot.durationSeconds} seconds.`,
     `Limit the generated motion prompt field to ${motionBudget} characters; the application reserves the remaining space for the exact speaker map and dialogue.`,
     "Begin the video prompt with: Use the approved image (Image 1) as the exact start frame and visual source of truth.",
+    approvedProductContext,
     `Shot title: ${clean(input.shot.title, 200)}`,
     `Approved story beat: ${clean(input.shot.storySummary, 900)}`,
     `Approved visual direction: ${clean(input.shot.visualSummary, 900)}`,

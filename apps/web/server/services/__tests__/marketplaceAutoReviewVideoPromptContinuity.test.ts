@@ -38,6 +38,29 @@ describe("Marketplace Auto Review video prompt object continuity", () => {
     expect(prompt).toContain("global product metadata is not permission to add it");
   });
 
+  it("passes product details only when the approved visual action names that product", () => {
+    const prompt = buildMarketplaceVerticalDramaVideoPromptInput({
+      shotId: 3,
+      shot: {
+        shotId: 3,
+        title: "Introduce the hair mask",
+        storySummary: "He shows her the product.",
+        visualSummary: "Krit places the Cella Protein Hair Mask on the vanity.",
+        movementDirection: "He turns the Cella Protein Hair Mask label toward Nicha.",
+        dialogue: "",
+        durationSeconds: 8,
+      } as StagedStoryArcShot,
+      cast: [],
+      productName: "Cella Protein Hair Mask",
+      productFacts: ["500 ml bottle"],
+      detectedPeople: [],
+      characterPortraits: [],
+    });
+
+    expect(prompt).toContain("Product: Cella Protein Hair Mask");
+    expect(prompt).toContain("500 ml bottle");
+  });
+
   it("removes a model-added product placement and appends approved shot action plus a continuity lock", () => {
     const prompt = composeMarketplaceAutoReviewVideoPrompt({
       generatedPrompt: [
