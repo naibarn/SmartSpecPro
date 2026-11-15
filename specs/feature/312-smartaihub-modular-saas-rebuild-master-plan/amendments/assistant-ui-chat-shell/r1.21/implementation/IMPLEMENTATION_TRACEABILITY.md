@@ -16,13 +16,19 @@
 
 ## Check record
 
-- Core focused Vitest: 4 files, 47 tests passed.
-- Chat focused Vitest: 3 files, 47 tests passed.
-- `@smartaihub/saas-contracts` test: 9 passed.
-- SmartSpecPro `workerJobs.test.ts`: 15 passed.
-- `drizzle/modularChatQueue.integration.test.ts`: skipped (dedicated disposable DB credentials absent); do not count as passed.
-- `pnpm --filter @smartaihub/saas-core typecheck` and `pnpm --filter @smartaihub/chat typecheck` — PASS.
-- `pnpm --filter @smartaihub/saas-core build` and `pnpm --filter @smartaihub/chat build` — PASS (Wrangler dry-run). Vite reports the Chat entry bundle at 532.54 kB minified; build succeeds.
+- **Verification profile:** `package` for scoped tests, typechecks and package builds. These checks used the integrated implementation revisions shown below; no OOM, SIGKILL, exit 137 or other resource-block outcome was observed. Immutable source admission before final DEV build reported 1,568,262,701,056 bytes and 115,317,345 free inodes on `/mnt/SmartSpecDev`.
+
+| Revision | Command/scope | Time (Asia/Bangkok) | Resource evidence | Outcome |
+| --- | --- | --- | --- | --- |
+| Platform `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` | Core artifact/queue/service/auth route Vitest, 4 files | 2026-11-15 15:05 | Normal exit; no OOM/SIGKILL/137 | PASS, 47/47 |
+| Platform `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` | Chat worker/API/UI Vitest, 3 files | 2026-11-15 15:05 | Normal exit; no OOM/SIGKILL/137 | PASS, 47/47 |
+| Platform `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` | `@smartaihub/saas-contracts` test/build | 2026-11-15 15:05 | Normal exit; no OOM/SIGKILL/137 | PASS, 9/9 |
+| SmartSpecPro `9857f1b04f8a2aa8db4374be5b3485e5c520ea9c` | `pnpm --dir apps/web exec vitest run server/routers/__tests__/workerJobs.test.ts` | 2026-11-15 15:05 | Normal exit; no OOM/SIGKILL/137 | PASS, 15/15 |
+| SmartSpecPro `9857f1b04f8a2aa8db4374be5b3485e5c520ea9c` | `pnpm --dir apps/web exec vitest run drizzle/modularChatQueue.integration.test.ts` | 2026-11-15 15:05 | No dedicated disposable DB credentials configured | SKIPPED; not counted as pass |
+| Platform `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` | Core and Chat scoped typechecks | 2026-11-15 15:01 batch | Normal exit; no OOM/SIGKILL/137 | PASS |
+| Platform `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2` | Exact-SHA Core/Shell/Chat release build and Wrangler dry-runs | 2026-11-15 15:02–15:03 | Source admission free space recorded above; normal exit | PASS |
+
+- Chat entry bundle is 532.52 kB minified; Vite emitted a size warning, but the build passed.
 - Exact-SHA DEV release: `DEPLOYED_AND_VERIFIED` on `modular-debian-dev` for final platform SHA `ca4f5a58dd7f7cc29db97bea0aebf0dd95362eb2`; see [release receipt](r1.21-dev-release.md). Local Core/Chat/Shell health 200, public Shell/Chat health 200, anonymous session/artifact/Task paths 401, and served Chat entry asset hash parity pass.
 
 ## Owner and contract boundaries
