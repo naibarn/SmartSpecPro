@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "The object continuity lock and shot-scoped product metadata are integrated and deployed as legacy-debian-dev release generation 571; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified.",
-      "checkpoint_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
-      "merged_main_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
+      "next_action": "The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified.",
+      "checkpoint_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
+      "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-marketplace-auto-review-object-continuity"
+      "session_id": "codex-marketplace-auto-review-turn-taking"
     }
   },
   "pre_commit": {
@@ -42,53 +42,57 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 82,
-  "updated_at": "2026-11-15T14:22:37.094195+00:00",
+  "generation": 83,
+  "updated_at": "2026-11-15T16:26:47.573381+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "The object continuity lock and shot-scoped product metadata are integrated and deployed as legacy-debian-dev release generation 571; runtime revision and public health are verified. Continue authenticated UI UAT. Live provider-backed generation remains unverified.",
-    "merged_main_sha": "c26e80b2423ab83497e1b7435c029a940428966d",
+    "next_action": "The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified.",
+    "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",
       "The previous video-prompt job expired after waiting on the same shot render until its 10-minute deadline. A fresh user-confirmed request is needed after release g469; it was not replayed automatically because it may incur credits.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
       "Authenticated browser UAT และ live provider video-prompt generation ยังไม่ผ่านการยืนยัน",
-      "Live provider-backed video prompt generation after the object continuity lock remains unverified; deploy health and focused tests do not prove model output behavior."
+      "Live provider-backed video prompt generation after the object continuity lock remains unverified; deploy health and focused tests do not prove model output behavior.",
+      "Live provider-backed video output for the shot 2 dialogue turn lock remains unverified; focused prompt tests and deploy health do not prove generated lip movement."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
       "profile": "quick",
-      "revision": "c26e80b2423ab83497e1b7435c029a940428966d",
-      "verified_at_utc": "2026-11-15T14:22:05Z",
+      "revision": "b1da8ad2e23340391319022f9f91125841c7e3c4",
+      "verified_at_utc": "2026-11-15T16:26:18Z",
       "scope": [
-        "pnpm exec vitest run --reporter=dot server/services/__tests__/marketplaceAutoReviewVideoPromptContinuity.test.ts server/services/__tests__/marketplaceAutoReviewVideoPromptSkillRunner.test.ts (4 passed)",
+        "pnpm exec vitest run --reporter=dot server/services/__tests__/marketplaceAutoReviewVideoPromptContinuity.test.ts server/services/__tests__/marketplaceAutoReviewVideoPromptSkillRunner.test.ts (6 passed)",
         "git diff --check for task-owned patch",
         "pnpm run release:web:linux -- --target legacy-debian-dev",
         "pnpm run release:status --target legacy-debian-dev",
-        "public https://smartaihub.app/healthz and / HTTP checks"
+        "public https://smartaihub.app/healthz and / HTTP checks",
+        "reviewed changes after deployed revision: Modular deployment target metadata and SPEC-312 docs only; legacy target mapping unchanged"
       ],
-      "outcome": "PASS; release generation 571 is DEPLOYED_VERIFIED and public health is HTTP 200; authenticated UI UAT and provider-backed prompt generation remain unverified; no full typecheck run",
+      "outcome": "PASS; release generation 572 is DEPLOYED_VERIFIED and public health is HTTP 200; authenticated UI UAT and provider-backed prompt generation remain unverified; canonical main later advanced to 9b0ebec4 with no app-code changes in that delta; no full typecheck run",
       "release": {
         "target": "legacy-debian-dev",
         "domain": "https://smartaihub.app",
-        "release_id": "smartspec-web-c26e80b2423ab83497e1b7435c029a940428966d-d5dd83be52ca",
-        "generation": 571,
-        "runtime_revision": "c26e80b2423ab83497e1b7435c029a940428966d",
+        "release_id": "smartspec-web-b1da8ad2e23340391319022f9f91125841c7e3c4-3d8d4d7788a3",
+        "generation": 572,
+        "runtime_revision": "b1da8ad2e23340391319022f9f91125841c7e3c4",
         "service_health": "HEALTHY",
         "public_health": "HTTP 200",
-        "public_root": "HTTP 200"
+        "public_root": "HTTP 200",
+        "canonical_revision_after_release": "9b0ebec4ffd55075f216831c2b3c3b54404bb56c",
+        "target_matches_release": true
       },
       "resource_evidence": {
         "build_profile": "canonical development release build preflight",
-        "host_available_kb": 23838780,
-        "memory_psi_some_avg10": 0.16,
-        "user_slice_memory_current": 17862053888,
-        "reclaimable": 8912677712,
-        "effective": 8949376176,
+        "host_available_kb": 23915116,
+        "memory_psi_some_avg10": 0.24,
+        "user_slice_memory_current": 18623315968,
+        "reclaimable": 10614585248,
+        "effective": 8008730720,
         "high": 19327352832,
         "max": 21474836480,
-        "swap_current": 4776861696,
+        "swap_current": 2546368512,
         "swap_max": 6442450944
       }
     },
