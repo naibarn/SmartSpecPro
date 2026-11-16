@@ -676,6 +676,9 @@ const MARKETPLACE_VIDEO_PROMPT_PREFIX =
 const MARKETPLACE_OBJECT_CONTINUITY_LOCK =
   "OBJECT AND PRODUCT CONTINUITY LOCK (MANDATORY): Image 1 is the exact start frame and the source of truth for the scene's complete visible object inventory. Preserve the objects already visible there. Do not add, spawn, reveal, duplicate, or replace any product, prop, tool, package, furniture, decor, person, label, or text absent from Image 1 unless the approved shot action explicitly requires that exact object. global product metadata is not permission to add it; dialogue alone does not authorize a visual insertion. Keep every other absent item off-screen. No invented product placement or cutaway.";
 
+const MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK =
+  "NO-ADDED-TEXT LOCK (MANDATORY): Do not create, add, overlay, animate, or display any new text anywhere in the video. No subtitles, captions, transcribed dialogue, speech bubbles, title cards, labels, callouts, text-bearing graphics, logos, watermarks, or decorative/random glyphs. Spoken dialogue is audio only. Preserve authentic text already physically printed on the approved product/reference frame unchanged; do not invent, rewrite, or alter it.";
+
 const MARKETPLACE_SPEAKER_TURN_TAKING_LOCK =
   "SPEAKER TURN-TAKING LOCK (MANDATORY): Speak each approved line once, in order, one person at a time. Only that speaker moves their mouth; everyone else stays silent with mouths closed. No overlapping turns, synchronized lips, echoes, chorus, shared or repeated lines, paraphrase, or ad-libs.";
 
@@ -782,6 +785,7 @@ function renderMarketplaceVideoPromptAuthoritativeSections(
       ? `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`
       : null,
     MARKETPLACE_OBJECT_CONTINUITY_LOCK,
+    MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
   ]
     .filter((section): section is string => Boolean(section))
     .join("\n\n");
@@ -1210,12 +1214,13 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
     speakerMatchingInstruction,
-    "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Include one clear, physically plausible action and camera movement. Do not add on-screen text, subtitles, captions, logos, watermarks, or unsupported product claims.",
+    "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Include one clear, physically plausible action and camera movement. Do not add unsupported product claims.",
     MARKETPLACE_SPEAKER_TURN_TAKING_LOCK,
     MARKETPLACE_OBJECT_CONTINUITY_LOCK,
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
       : null,
+    MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
     "Return exactly the JSON object required by this skill. The prompt field must contain the complete video prompt. Do not return commentary.",
   ]
     .filter((line): line is string => Boolean(line))
