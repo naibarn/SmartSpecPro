@@ -8,7 +8,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.7/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `f80685a01703009abd9bbad5cc333f845c4d49cd` (Platform `main` == `origin/main`)
+- Latest recorded merged Main SHA: `7321ce9f82ad40f8d33ed9eea80c9967eee1e841` (SmartSpecPro `main` == `origin/main`)
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-enrollment-and-proof`
 - Next action: Implement durable DEV pairing approval, Runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority.
@@ -35,6 +35,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Fresh `smartaihub-runner verify codex`: auth ready, version/task probe passed, evidence `runner-task-probe:sha256:7192a5620e8ac9d832f35a17e6bdf763956b910e0b861e404bd1f4dece59c2e6`.
 - Device proof RSA-SHA256 implementation focused test: 4/4 passed.
 - Integrated proof implementation commit `f80685a01703009abd9bbad5cc333f845c4d49cd`; it is not yet wired into Hono request handlers and has not been deployed.
+- Spec/handoff checkpoint commit `7321ce9f82ad40f8d33ed9eea80c9967eee1e841`; SmartSpecPro `main` and `origin/main` are reconciled. Platform `main` and `origin/main` are reconciled at `f80685a01703009abd9bbad5cc333f845c4d49cd`.
 - Existing modular Core systemd unit active; running release source remains `92f309e1043c47a5710528aca118c9d557520f39`.
 - Public `https://aimarkethubs.com/livez` returns the SmartSIHub shell HTML, so it is not evidence of Core protocol health.
 
