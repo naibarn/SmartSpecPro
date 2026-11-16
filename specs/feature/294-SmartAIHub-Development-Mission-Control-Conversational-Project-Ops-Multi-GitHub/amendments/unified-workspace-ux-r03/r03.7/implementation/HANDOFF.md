@@ -64,9 +64,15 @@ on resume, reconcile recorded SHA values with Git/PR state.
   `MISSION_JOB_ASSOCIATED`, `TASK_CONTROL_DEEP_LINK_VERIFIED` and `OWNER_UAT`
   remain pending or not tested as indicated by the open gaps above.
 - The computer-use sidecar was unavailable; no authenticated owner MFA browser
-  session was available for enrollment or UAT. An isolated Runner connect
-  attempt was stopped before approval/enrollment, and no Modular credentials
-  were stored. The installed Runner and Codex binaries were not modified.
+  session was available for enrollment or UAT. Runner does not support the
+  probed `--help` option; two discovery invocations therefore started `connect`
+  against its pre-existing default `smartaihub.app` endpoint. Both processes
+  were stopped without owner approval, enrollment completion, token receipt or
+  credential storage. They may have left short-lived pending Legacy pairing
+  requests until their normal expiry. No Legacy service/configuration or
+  installed Runner/Codex binaries were changed. A separate isolated Modular
+  connect attempt was also stopped before enrollment; no Modular credentials
+  were stored. Do not retry pairing through the default Runner configuration.
 
 Next implementation must bind Modular WSS command/receipt transport to the
 existing canonical `worker_jobs` outbox and Job Control Plane, retaining lease
