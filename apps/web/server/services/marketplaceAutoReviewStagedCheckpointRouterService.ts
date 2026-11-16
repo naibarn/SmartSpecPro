@@ -27,8 +27,10 @@ import {
   buildStagedCheckpoint,
   buildStagedPlanView,
   generateStagedStoryArcPlanWithLLM,
+  isStagedCastMemberMinor,
   isStagedProductVisibleInShot,
   parseStagedDialogueTurns,
+  removeStagedMinorDialogueLines,
   type StagedStoryArcPlan,
   type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
@@ -2146,8 +2148,12 @@ export async function editStagedAutoReviewShot(input: {
         ) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "staged_speaker_binding_edit_must_be_isolated" });
         }
+        const safeDialogue = removeStagedMinorDialogueLines(
+          shot.dialogue,
+          plan.cast
+        );
         const dialogueSpeakers = Array.from(new Set(
-          shot.dialogue.split(/\r?\n/).map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim()).filter(Boolean)
+          safeDialogue.split(/\r?\n/).map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim()).filter(Boolean)
         ));
         const bindings = input.speakerVisualBindings;
         const promptGeneration = record((metadata as any).stagedPipeline?.promptGeneration);
@@ -2172,7 +2178,7 @@ export async function editStagedAutoReviewShot(input: {
         const revision = shot.revision + 1;
         const bindingsSourceHash = buildStagedSpeakerBindingsSourceHash({
           imageArtifactHash: shot.imageArtifactHash,
-          dialogue: shot.dialogue,
+          dialogue: safeDialogue,
         });
         const invalidatedCheckpoints = metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
           checkpoint =>
@@ -2226,11 +2232,15 @@ export async function editStagedAutoReviewShot(input: {
 
       if (storyEdit) {
         const revision = metadata.planReview.planRevision + 1;
+        const safeDialogue = removeStagedMinorDialogueLines(
+          input.dialogue ?? shot.dialogue,
+          plan.cast
+        );
         const nextShot = {
           ...shot,
           revision,
           storySummary: input.storySummary ?? shot.storySummary,
-          dialogue: input.dialogue ?? shot.dialogue,
+          dialogue: safeDialogue,
           state: "story_awaiting",
           imagePrompt: null,
           imagePromptHash: null,
@@ -2498,7 +2508,10 @@ function buildStagedShotSpeakerReferences(input: {
     const normalizeName = (value: string) =>
       value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
     return (input.plan.cast ?? []).flatMap(member => {
-      if (!selection.castInShot.includes(member.castId)) return [];
+      if (
+        isStagedCastMemberMinor(member) ||
+        !selection.castInShot.includes(member.castId)
+      ) return [];
       const matchingItems = selectedCharacters.filter(item => {
         const name =
           typeof item.characterName === "string" && item.characterName.trim()
@@ -2623,7 +2636,11 @@ function readCurrentStagedSpeakerVisualBindings(input: {
     return undefined;
   }
   const bindings = record(shot.speakerVisualBindings) as Record<string, string>;
-  const speakers = stagedDialogueSpeakerLabels(String(shot.dialogue ?? ""));
+  const safeDialogue = removeStagedMinorDialogueLines(
+    String(shot.dialogue ?? ""),
+    input.plan.cast
+  );
+  const speakers = stagedDialogueSpeakerLabels(safeDialogue);
   if (
     Object.keys(bindings).length !== speakers.length ||
     speakers.some(speaker => typeof bindings[speaker] !== "string") ||
@@ -2641,7 +2658,7 @@ function readCurrentStagedSpeakerVisualBindings(input: {
     : undefined;
   const expectedHash = buildStagedSpeakerBindingsSourceHash({
     imageArtifactHash: shot.imageArtifactHash,
-    dialogue: String(shot.dialogue ?? ""),
+    dialogue: safeDialogue,
     speakerReferences: references,
   });
   const savedHash =
@@ -3163,9 +3180,17 @@ async function generateCompleteStagedShotPrompt(input: {
   if (
     !isMarketplaceAutoReviewVideoPromptComplete({
       value: generated.prompt,
-      approvedDialogue: planShot.dialogue,
+      approvedDialogue: removeStagedMinorDialogueLines(
+        planShot.dialogue,
+        plan.cast
+      ),
       detectedPersonIds: generated.detectedPeople.map(person => person.id),
-      derivedDialogueTurns: planShot.dialogueTurns,
+      derivedDialogueTurns: planShot.dialogueTurns?.filter(turn => {
+        const member = plan.cast?.find(
+          candidate => candidate.castId === turn.castId
+        );
+        return !member || !isStagedCastMemberMinor(member);
+      }),
       cast: plan.cast,
     })
   ) {
@@ -3309,6 +3334,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
   }
   const stagedPipeline = record((metadata as any).stagedPipeline);
   const plan = record(stagedPipeline.plan) as unknown as StagedStoryArcPlan;
+  const safeDialogue = removeStagedMinorDialogueLines(shot.dialogue, plan.cast);
   const speakerReferences = buildStagedShotSpeakerReferences({
     metadata: metadata as unknown as Record<string, any>,
     plan,
@@ -3322,13 +3348,13 @@ export async function detectStagedAutoReviewShotPeople(input: {
     shotId: input.shotId,
     approvedImageUrl,
     requestIdempotencyKey: input.idempotencyKey,
-    dialogue: shot.dialogue,
+    dialogue: safeDialogue,
     speakerReferences,
     onProgress: input.onProgress,
   });
 
   const dialogueSpeakers = Array.from(new Set(
-    shot.dialogue
+    safeDialogue
       .split(/\r?\n/)
       .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
       .filter((speaker): speaker is string => Boolean(speaker))
@@ -3345,7 +3371,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
   const autoBindingsSourceHash = completeAutoBindings
     ? buildStagedSpeakerBindingsSourceHash({
         imageArtifactHash,
-        dialogue: shot.dialogue,
+        dialogue: safeDialogue,
         speakerReferences,
       })
     : null;

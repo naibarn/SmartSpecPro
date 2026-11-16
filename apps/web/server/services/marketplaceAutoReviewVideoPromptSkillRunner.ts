@@ -33,10 +33,12 @@ import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
   type SequentialReferenceManifestEntry,
 } from "./productReviewSequentialStoryboardSkillRunner";
-import type {
-  StagedCastMember,
-  StagedDialogueTurn,
-  StagedStoryArcShot,
+import {
+  isStagedCastMemberMinor,
+  removeStagedMinorDialogueLines,
+  type StagedCastMember,
+  type StagedDialogueTurn,
+  type StagedStoryArcShot,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 
 export const MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL =
@@ -501,6 +503,28 @@ function parseDialogue(
     throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_DIALOGUE_INVALID");
   }
   return lines as Array<{ speaker: string; line: string }>;
+}
+
+function minorSpeechSafetyLock(cast: readonly StagedCastMember[]): string | null {
+  const minors = cast.filter(isStagedCastMemberMinor);
+  if (minors.length === 0) return null;
+  const names = minors.map(member => `${member.name} (${member.castId})`).join(", ");
+  return `MINOR SPEECH SAFETY LOCK (mandatory): ${names} are under 18. They must never speak, narrate, sing, ad-lib, or lip-sync. Keep their mouths closed and keep them silent throughout the clip. Remove any dialogue assigned to them. If adult dialogue remains, only its named adult speaker may move their mouth; otherwise use no speech and keep only ambient sound. กฎบังคับ: ตัวละครที่ระบุอายุต่ำกว่า 18 ปี ห้ามพูด บรรยาย ร้องเพลง หรือขยับปากตามเสียง ให้เงียบและปิดปากตลอดคลิป หากไม่มีบทผู้ใหญ่ที่อนุมัติ ให้ใช้เสียงบรรยากาศโดยไม่มีบทพูด`;
+}
+
+function filterMinorDialogueTurns<T extends { speaker: string }>(
+  turns: T[],
+  cast: readonly StagedCastMember[]
+): T[] {
+  const membersByName = new Map(
+    cast.map(member => [member.name.normalize("NFKC").trim().toLowerCase(), member])
+  );
+  return turns.filter(turn => {
+    const member = membersByName.get(
+      turn.speaker.normalize("NFKC").trim().toLowerCase()
+    );
+    return !member || !isStagedCastMemberMinor(member);
+  });
 }
 
 function modelMatches(left: string, right: string): boolean {
@@ -1071,7 +1095,14 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
   if (!clean(input.productName, 200)) {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_PRODUCT_NAME_REQUIRED");
   }
-  const dialogue = parseDialogue(input.shot.dialogue);
+  const safeDialogueText = removeStagedMinorDialogueLines(
+    input.shot.dialogue,
+    input.cast
+  );
+  const dialogue = filterMinorDialogueTurns(
+    parseDialogue(safeDialogueText),
+    input.cast
+  );
   const productName = clean(input.productName, 200);
   const approvedVisualAction = [
     clean(input.shot.visualSummary, 900),
@@ -1220,6 +1251,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     clean(input.instruction, 1200)
       ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
       : null,
+    minorSpeechSafetyLock(input.cast),
     MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
     "Return exactly the JSON object required by this skill. The prompt field must contain the complete video prompt. Do not return commentary.",
   ]
@@ -1247,7 +1279,46 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   if (!approvedFrame) {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_URL_INVALID");
   }
-  const dialogue = parseDialogue(input.shot.dialogue);
+  const safeShotDialogue = removeStagedMinorDialogueLines(
+    input.shot.dialogue,
+    input.cast
+  );
+  const dialogue = filterMinorDialogueTurns(
+    parseDialogue(safeShotDialogue),
+    input.cast
+  );
+  const safeSpeakerNames = new Set(
+    dialogue.map(turn => turn.speaker.normalize("NFKC").trim().toLowerCase())
+  );
+  const safeBindingEntries = Object.entries(input.speakerVisualBindings ?? {}).filter(
+    ([speaker]) =>
+      safeSpeakerNames.has(speaker.normalize("NFKC").trim().toLowerCase())
+  );
+  const safeSpeakerVisualBindings = safeBindingEntries.length
+    ? Object.fromEntries(safeBindingEntries)
+    : undefined;
+  const safeShot: StagedStoryArcShot = {
+    ...input.shot,
+    dialogue: safeShotDialogue,
+    ...(input.shot.dialogueTurns
+      ? {
+          dialogueTurns: input.shot.dialogueTurns.filter(turn => {
+            const member = input.cast.find(
+              candidate => candidate.castId === turn.castId
+            );
+            return !member || !isStagedCastMemberMinor(member);
+          }),
+        }
+      : {}),
+  };
+  if (safeShotDialogue !== input.shot.dialogue) {
+    console.warn("[MarketplaceVideoPrompt] removed dialogue assigned to minor", {
+      shotId: input.shotId,
+      removedLines:
+        input.shot.dialogue.split(/\r?\n/).filter(line => line.trim()).length -
+        dialogue.length,
+    });
+  }
   const castNames = new Set(
     input.cast.map(member => member.name.normalize("NFKC").trim().toLowerCase())
   );
@@ -1347,12 +1418,12 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   ];
   const promptInput = buildMarketplaceVerticalDramaVideoPromptInput({
     shotId: input.shotId,
-    shot: input.shot,
+    shot: safeShot,
     cast: input.cast,
     productName: input.productName,
     productFacts: input.productFacts,
     detectedPeople,
-    speakerVisualBindings: input.speakerVisualBindings,
+    speakerVisualBindings: safeSpeakerVisualBindings,
     characterPortraits: characterPortraits.map((item, index) => ({
       imageNumber: index + 2,
       characterName: item.entry.characterName!,
@@ -1405,7 +1476,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     usage: promptUsage.current,
   });
 
-  const approvedTurns = parseDialogue(input.shot.dialogue);
+  const approvedTurns = dialogue;
   const buildSpeakerSections = (data: typeof generated.data) => {
     const positionSource = data.frame_analysis?.position_source
       ?.trim()
@@ -1420,14 +1491,16 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
         `MARKETPLACE_VIDEO_PROMPT_FRAME_ANALYSIS_REQUIRED:shot-${input.shotId}`
       );
     }
-    return buildAuthoritativeSpeakerSections({
+    const sections = buildAuthoritativeSpeakerSections({
       shotId: input.shotId,
       dialogue: approvedTurns,
       detectedPeople,
       frameAnalysisPeople: (data.frame_analysis?.people ??
         []) as MarketplaceSpeakerVisualEntry[],
-      speakerVisualBindings: input.speakerVisualBindings,
+      speakerVisualBindings: safeSpeakerVisualBindings,
     });
+    const minorLock = minorSpeechSafetyLock(input.cast);
+    return [sections, minorLock].filter(Boolean).join("\n\n");
   };
   let speakerSections: string;
   try {
@@ -1504,24 +1577,24 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     generatedPrompt: generated.data.prompt.trim(),
     speakerSections,
     approvedDialogue: approvedTurns,
-    approvedShotAction: marketplaceApprovedShotAction(input.shot),
+    approvedShotAction: marketplaceApprovedShotAction(safeShot),
   });
   if (
     !isMarketplaceAutoReviewVideoPromptComplete({
       value: prompt,
-      approvedDialogue: input.shot.dialogue,
+      approvedDialogue: safeShot.dialogue,
       detectedPersonIds: detectedPeople.map(person => person.id),
-      derivedDialogueTurns: input.shot.dialogueTurns,
+      derivedDialogueTurns: safeShot.dialogueTurns,
       cast: input.cast,
     })
   ) {
     const detectedPersonIds = detectedPeople.map(person => person.id);
     const approvedTurnKeys = new Set(
-      parseDialogue(input.shot.dialogue).map(turn =>
+      parseDialogue(safeShot.dialogue).map(turn =>
         `${turn.speaker.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`
       )
     );
-    const containsStaleDialogue = (input.shot.dialogueTurns ?? []).some(turn => {
+    const containsStaleDialogue = (safeShot.dialogueTurns ?? []).some(turn => {
       const key = `${turn.speakerName.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`;
       return (
         !approvedTurnKeys.has(key) &&
@@ -1538,21 +1611,21 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
         ? "stale_dialogue"
         : !isMarketplaceAutoReviewVideoPromptComplete({
               value: prompt,
-              approvedDialogue: input.shot.dialogue,
+              approvedDialogue: safeShot.dialogue,
             })
           ? "dialogue"
           : !isMarketplaceAutoReviewVideoPromptComplete({
                 value: prompt,
-                approvedDialogue: input.shot.dialogue,
+                approvedDialogue: safeShot.dialogue,
                 detectedPersonIds,
-                derivedDialogueTurns: input.shot.dialogueTurns,
+                derivedDialogueTurns: safeShot.dialogueTurns,
               })
             ? "detected_people"
             : !isMarketplaceAutoReviewVideoPromptComplete({
                   value: prompt,
-                  approvedDialogue: input.shot.dialogue,
+                  approvedDialogue: safeShot.dialogue,
                   detectedPersonIds,
-                  derivedDialogueTurns: input.shot.dialogueTurns,
+                  derivedDialogueTurns: safeShot.dialogueTurns,
                   cast: input.cast,
                 })
               ? "speaker_map"

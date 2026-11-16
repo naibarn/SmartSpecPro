@@ -97,6 +97,56 @@ export type StagedCastMember = {
   imageIndex: number; // position in referenceImageUrls -> @Image{imageIndex}
 };
 
+/** A stated under-18 age or explicit minor flag always removes dialogue rights. */
+export function isStagedCastMemberMinor(
+  member: Pick<StagedCastMember, "ageRange" | "depictsMinor">
+): boolean {
+  if (member.depictsMinor === true) return true;
+  const age = clean(member.ageRange)
+    .slice(0, 80)
+    .normalize("NFKC")
+    .toLocaleLowerCase();
+  if (!age) return false;
+  if (
+    /\b(?:minor|child|children|kid|teen|teenager|underage|under\s*18|below\s*18|younger\s+than\s+18)\b|<\s*18|เด็ก|เยาวชน|วัยรุ่น|ผู้เยาว์|ต่ำกว่า\s*18/.test(
+      age
+    )
+  ) {
+    return true;
+  }
+  if (/\b(?:late|mid|early)\s+teens\b/.test(age)) return true;
+  const statedAges = Array.from(age.matchAll(/\d+(?:\.\d+)?/g), match =>
+    Number(match[0])
+  ).filter(Number.isFinite);
+  return statedAges.some(value => value < 18);
+}
+
+function normalizeStagedCastName(value: string): string {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+/** Remove named minor dialogue lines before any video or voiceover dispatch. */
+export function removeStagedMinorDialogueLines(
+  dialogue: string,
+  cast: readonly StagedCastMember[] | null | undefined
+): string {
+  const minorNames = new Set(
+    (cast ?? [])
+      .filter(isStagedCastMemberMinor)
+      .map(member => normalizeStagedCastName(member.name))
+  );
+  if (minorNames.size === 0) return dialogue;
+  return dialogue
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => {
+      const match = line.match(/^([^:\n]{1,100}):\s*.+$/);
+      return !match || !minorNames.has(normalizeStagedCastName(match[1]!));
+    })
+    .join("\n");
+}
+
 export type StagedConversationMode = "solo" | "two_person_conversation";
 
 /**
@@ -108,7 +158,7 @@ export type StagedConversationMode = "solo" | "two_person_conversation";
 export function selectStagedLeadCast(
   cast: StagedCastMember[] | null | undefined
 ): StagedCastMember[] {
-  const members = cast ?? [];
+  const members = (cast ?? []).filter(member => !isStagedCastMemberMinor(member));
   const host = members.find(member => member.role === "host");
   const guest = members.find(member => member.role === "guest");
   return [host, guest].filter((member): member is StagedCastMember => !!member);
@@ -118,7 +168,10 @@ export function selectStagedLeadCast(
 export function selectStagedSupportingCast(
   cast: StagedCastMember[] | null | undefined
 ): StagedCastMember[] {
-  return (cast ?? []).filter(member => !isMarketplaceCastLeadRole(member.role));
+  return (cast ?? []).filter(
+    member =>
+      isStagedCastMemberMinor(member) || !isMarketplaceCastLeadRole(member.role)
+  );
 }
 
 type StagedSupportingBeatInput = StagedSupportingBeat | string;
@@ -815,8 +868,10 @@ export function buildStagedVideoPrompt(input: {
   // to a prompt. Vertical Drama uses the same pattern: resolve each spoken
   // name against labeled character portraits, then bind it to the matching
   // face in the accepted start frame.
-  const namedDialogue = parseSpeakerNamedDialogue(input.shot.dialogue);
   const cast = input.plan.cast ?? [];
+  const safeDialogue = removeStagedMinorDialogueLines(input.shot.dialogue, cast);
+  const namedDialogue = parseSpeakerNamedDialogue(safeDialogue);
+  const minorCast = cast.filter(isStagedCastMemberMinor);
   const usesSpeakerBinding =
     isConversation || (namedDialogue !== undefined && cast.length > 0);
   const normalizeName = (value: string) =>
@@ -880,11 +935,11 @@ export function buildStagedVideoPrompt(input: {
     } else {
       conversationLinesTH.push(
         "บทพูดที่อนุมัติแล้ว (พูดข้อความนี้ครั้งเดียวตรงตามต้นฉบับ ห้ามเพิ่มหรือเขียนใหม่):",
-        input.shot.dialogue
+        safeDialogue
       );
       conversationLinesEng.push(
         "Approved dialogue (speak this exact text once; do not add or rewrite speech):",
-        input.shot.dialogue
+        safeDialogue
       );
     }
     conversationLinesTH.push(
@@ -899,9 +954,14 @@ export function buildStagedVideoPrompt(input: {
   // (`planning/marketplace-four-character-cast/plan.md` §3). Kept in its own
   // block, AFTER the lead turns, so a supporting line can never be mistaken
   // for one of the two main voices or reorder the conversation.
-  const supportingBeats = (input.shot.supportingBeats ?? []).filter(beat =>
-    clean(beat.action)
-  );
+  const supportingBeats = (input.shot.supportingBeats ?? [])
+    .filter(beat => clean(beat.action))
+    .map(beat => {
+      const member = cast.find(candidate => candidate.castId === beat.castId);
+      return member && isStagedCastMemberMinor(member)
+        ? { ...beat, line: undefined }
+        : beat;
+    });
   if (supportingBeats.length > 0) {
     const castNameById = new Map(
       (input.plan.cast ?? []).map(member => [member.castId, member.name])
@@ -935,9 +995,14 @@ export function buildStagedVideoPrompt(input: {
     return [
       `สร้างวีดีโอรีวิวสินค้าแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีสำหรับช็อตที่ ${input.shot.shotId} เท่านั้น`,
       `ใช้ภาพที่ยอมรับแล้วของช็อตที่ ${input.shot.shotId} เป็นแหล่งภาพต้นฉบับที่ต้องคงเอกลักษณ์ไว้`,
-      ...(usesSpeakerBinding ? [] : [`บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${input.shot.dialogue}`]),
+      ...(usesSpeakerBinding
+        ? []
+        : [safeDialogue ? `บทพูดที่ยืนยันแล้ว (ห้ามเขียนใหม่): ${safeDialogue}` : "ช็อตนี้ไม่มีบทพูด ให้ทุกคนเงียบและปิดปากตามธรรมชาติ"]),
       `บริบทเรื่องที่ยืนยันแล้ว: ${input.shot.storySummary}`,
       ...conversationLinesTH,
+      ...(minorCast.length
+        ? [`ข้อกำหนดความปลอดภัย: ${minorCast.map(member => member.name).join(", ")} อายุต่ำกว่า 18 ปี ห้ามพูด ร้องเพลง พากย์ หรือขยับปากให้ตรงเสียงโดยเด็ดขาด ให้ปิดปากและเงียบตลอดช็อต อนุญาตเฉพาะเสียงผู้ใหญ่ที่อยู่นอกจอ`]
+        : []),
       ...(input.shot.cameraDirection ? [`มุมกล้องที่วางแผนไว้: ${input.shot.cameraDirection}`] : []),
       ...(input.shot.movementDirection ? [`การกระทำของช็อต: ${input.shot.movementDirection}`] : []),
       ...(input.shot.transition ? [`การเชื่อมจาก/ไปฉาก: ${input.shot.transition}`] : []),
@@ -955,9 +1020,14 @@ export function buildStagedVideoPrompt(input: {
   return [
     `Create a ${durationSeconds}-second vertical 9:16 product-review video for shot ${input.shot.shotId}.`,
     `Use the accepted image artifact for shot ${input.shot.shotId} as the exact visual source.`,
-    ...(usesSpeakerBinding ? [] : [`Approved dialogue (must not be rewritten): ${input.shot.dialogue}`]),
+    ...(usesSpeakerBinding
+      ? []
+      : [safeDialogue ? `Approved dialogue (must not be rewritten): ${safeDialogue}` : "This shot has no dialogue; everyone stays silent with mouths naturally closed."]),
     `Approved story context: ${input.shot.storySummary}`,
     ...conversationLinesEng,
+    ...(minorCast.length
+      ? [`MINOR SPEECH SAFETY LOCK: ${minorCast.map(member => member.name).join(", ")} is under 18 and must never speak, sing, narrate, ad-lib, or lip-sync. Keep their mouth closed and keep them silent throughout this shot. Only an adult off-screen narrator may speak.`]
+      : []),
     ...(input.shot.cameraDirection ? [`Planned camera: ${input.shot.cameraDirection}`] : []),
     ...(input.shot.movementDirection ? [`Shot action: ${input.shot.movementDirection}`] : []),
     ...(input.shot.transition ? [`Scene transition: ${input.shot.transition}`] : []),
@@ -1297,8 +1367,12 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบจะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" เป็น object รูปแบบ {\"castId\":\"cast-3\",\"action\":\"ยื่นสินค้าให้ผู้ดำเนินรายการ\"} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง รูปแบบ object เป็นรูปแบบหลัก; ระบบรองรับ action แบบ string ได้เฉพาะเมื่อระบุเจ้าของจาก castInShot ได้แน่ชัด และจะละตัวประกอบที่จับคู่ไม่ได้เพื่อไม่ให้บทบาทผิดคน`
+          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบที่เป็นผู้ใหญ่จะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" เป็น object รูปแบบ {\"castId\":\"cast-3\",\"action\":\"ยื่นสินค้าให้ผู้ดำเนินรายการ\"} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง รูปแบบ object เป็นรูปแบบหลัก; ระบบรองรับ action แบบ string ได้เฉพาะเมื่อระบุเจ้าของจาก castInShot ได้แน่ชัด และจะละตัวประกอบที่จับคู่ไม่ได้เพื่อไม่ให้บทบาทผิดคน`
       : "";
+  const minorCast = (input.cast ?? []).filter(isStagedCastMemberMinor);
+  const minorSilenceLock = minorCast.length
+    ? `\n\nMINOR SPEECH SAFETY LOCK (highest priority): The following cast members are under 18 and must never speak, narrate, sing, ad-lib, or lip-sync: ${minorCast.map(member => `${member.name} [${member.castId}]`).join(", ")}. Do not assign them dialogueTurns or supportingBeats.line. They may only perform silent physical actions; keep their mouths closed. Dialogue may belong only to adult cast members or an off-screen adult narrator. This rule overrides the selected concept and every creative instruction. กฎสูงสุด: ตัวละครที่ระบุข้างต้นอายุต่ำกว่า 18 ปี ห้ามมีบทพูด เสียงบรรยาย ร้องเพลง หรือขยับปากตามเสียงโดยเด็ดขาด ห้ามใส่ใน dialogueTurns หรือ supportingBeats.line ให้ทำได้เฉพาะการกระทำทางกายแบบเงียบและปิดปากไว้`
+    : "";
 
   // Runtime state only. The loaded skill owns pacing and all creative decisions.
   const shotCountInstruction = isAutoShotCount
@@ -1317,7 +1391,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 - selected storytelling_structure: ${structureKey}
 - selected review_tone: ${toneKey}
 - dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot. Write only dialogue that can be spoken naturally within this window; shorten the line while preserving its key story beat instead of rushing or padding it.
-- The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
+- The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}${minorSilenceLock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
@@ -1330,11 +1404,11 @@ Marketplace Auto Review Story Arc skill runtime context:
       reviewTone: toneKey,
       revisionNotes: revisionNotes || undefined,
       selectedConcept: input.selectedConcept,
-      // Include the roster for ANY named cast (solo presenter included) —
-      // see castRosterBlock's solo branch above.
-      ...(activeCast.length > 0
+      // Include the full roster so supporting characters keep their identity
+      // and age/minor grounding through image and video prompt generation.
+      ...(input.cast && input.cast.length > 0
         ? {
-            cast: activeCast.map(member => ({
+            cast: input.cast.map(member => ({
               castId: member.castId,
               name: member.name,
               role: member.role,
@@ -1428,7 +1502,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       zodSchema: ZodLLMPlanSchema,
       userId,
       tenantId,
-      maxRetries: 0,
+      maxRetries: 1,
       disableProviderFallbacks: true,
       billingDescription: `Staged Story Arc Plan generation (${chosenModel})`,
     });
@@ -1500,8 +1574,8 @@ Marketplace Auto Review Story Arc skill runtime context:
           creditsUsed: llmRes.creditsUsed,
         },
         languagePlan: input.languagePlan,
-        ...(activeCast.length > 0
-          ? { cast: activeCast, conversationMode }
+        ...(input.cast && input.cast.length > 0
+          ? { cast: input.cast, conversationMode }
           : {}),
       };
     }
@@ -1565,23 +1639,30 @@ Marketplace Auto Review Story Arc skill runtime context:
               `STAGED_STORY_PLAN_DIALOGUE_TURNS_REQUIRED:shot-${shotId}`
             );
           }
-          const resolvedTurns = shot.dialogueTurns.map(turn => {
+          const resolvedTurns = shot.dialogueTurns.flatMap(turn => {
             const member = castById.get(turn.castId);
             if (!member) {
               throw new Error(
                 `STAGED_STORY_PLAN_DIALOGUE_SPEAKER_NOT_IN_CAST:shot-${shotId}:${turn.castId}`
               );
             }
+            if (isStagedCastMemberMinor(member)) {
+              console.warn(
+                "[generateStagedStoryArcPlanWithLLM] removed minor dialogue turn",
+                { runId: input.runId, shotId, castId: member.castId }
+              );
+              return [];
+            }
             if (!activeCast.some(lead => lead.castId === turn.castId)) {
               throw new Error(
                 `STAGED_STORY_PLAN_DIALOGUE_SPEAKER_NOT_LEAD:shot-${shotId}:${turn.castId}`
               );
             }
-            return {
+            return [{
               castId: member.castId,
               speakerName: member.name,
               line: clean(turn.line),
-            } satisfies StagedDialogueTurn;
+            } satisfies StagedDialogueTurn];
           });
           if (resolvedTurns.some(turn => !turn.line)) {
             throw new Error(
@@ -1592,11 +1673,10 @@ Marketplace Auto Review Story Arc skill runtime context:
           dialogue = renderStagedDialogueFromTurns(resolvedTurns);
           castInShot = activeCast.map(member => member.castId);
         } else {
-          dialogue = clean(shot.dialogue);
-          if (!dialogue)
-            throw new Error(
-              `STAGED_STORY_PLAN_DIALOGUE_REQUIRED:shot-${shotId}`
-            );
+          dialogue = removeStagedMinorDialogueLines(
+            clean(shot.dialogue),
+            input.cast
+          );
         }
 
         let declaredCastInShot = shot.castInShot;
@@ -1653,7 +1733,10 @@ Marketplace Auto Review Story Arc skill runtime context:
           return {
             castId: beat.castId,
             action: clean(beat.action),
-            ...(clean(beat.line) ? { line: clean(beat.line) } : {}),
+            ...(!isStagedCastMemberMinor(castById.get(beat.castId)!) &&
+            clean(beat.line)
+              ? { line: clean(beat.line) }
+              : {}),
           };
         });
 
@@ -1684,12 +1767,12 @@ Marketplace Auto Review Story Arc skill runtime context:
         cast: input.cast,
       });
 
-      const normalizedDialogue = enforcedShots.map(shot =>
-        clean(shot.dialogue)
+      const normalizedDialogue = enforcedShots
+        .map(shot => clean(shot.dialogue)
           .replace(/^[^:：]{1,40}[:：]\s*/gm, "")
           .replace(/[\s\p{P}\p{S}]/gu, "")
-          .toLocaleLowerCase()
-      );
+          .toLocaleLowerCase())
+        .filter(Boolean);
       if (new Set(normalizedDialogue).size !== normalizedDialogue.length) {
         throw new Error("STAGED_STORY_PLAN_REPEATED_DIALOGUE");
       }
@@ -1756,8 +1839,8 @@ Marketplace Auto Review Story Arc skill runtime context:
             creditsUsed: llmRes.creditsUsed,
           },
           languagePlan: input.languagePlan,
-          ...(activeCast.length > 0
-            ? { cast: activeCast, conversationMode }
+          ...(input.cast && input.cast.length > 0
+            ? { cast: input.cast, conversationMode }
             : {}),
         };
       }

@@ -20,7 +20,9 @@ import {
   buildStagedCheckpoint,
   buildStagedPlanView,
   generateStagedStoryArcPlanWithLLM,
+  isStagedCastMemberMinor,
   isStagedProductVisibleInShot,
+  removeStagedMinorDialogueLines,
   type StagedCastMember,
   type StagedStoryArcLanguagePlan,
   type StagedStoryArcPlan,
@@ -279,6 +281,8 @@ export function deriveStagedCastFromManifest(
         vdCharacterId?: unknown;
         vdSeriesId?: unknown;
         ageRange?: unknown;
+        depictsMinor?: unknown;
+        descriptor?: unknown;
       }>
     | undefined
 ): StagedCastMember[] {
@@ -309,14 +313,30 @@ export function deriveStagedCastFromManifest(
       `STAGED_CAST_LIMIT_EXCEEDED:${characterItems.length}:${MARKETPLACE_CHARACTER_CAST_MAX}`
     );
   }
-  // Roles come from the shared assigner, not from index position — with a
-  // 4-person roster the old `i === 0 ? host : guest` produced three guests
-  // (`planning/marketplace-four-character-cast/plan.md` P1).
-  const rolled = assignMarketplaceCastRoles(
-    characterItems.map(item => ({
+  // Assign speaking roles among adults only. Under-18 characters always stay
+  // in the silent supporting tier even when the selected manifest says host
+  // or guest; this also ensures two adult speakers remain available in a
+  // three-character cast.
+  const adultEntries = characterItems
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) =>
+      !isStagedCastMemberMinor({
+        ageRange: typeof item.ageRange === "string" ? item.ageRange : null,
+        depictsMinor:
+          typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
+      })
+    );
+  const adultRoles = assignMarketplaceCastRoles(
+    adultEntries.map(({ item }) => ({
       characterRole:
         typeof item.characterRole === "string" ? item.characterRole : undefined,
     }))
+  );
+  const roleByIndex = new Map(
+    adultEntries.map(({ index }, roleIndex) => [
+      index,
+      adultRoles[roleIndex]?.characterRole,
+    ])
   );
   return characterItems.map((item, i) => {
     const name = text(item.characterName) || text(item.label);
@@ -332,7 +352,13 @@ export function deriveStagedCastFromManifest(
       vdCharacterId: text(item.vdCharacterId) || undefined,
       vdSeriesId: text(item.vdSeriesId) || undefined,
       role: (() => {
-        const role = rolled[i]?.characterRole;
+        const isMinor = isStagedCastMemberMinor({
+          ageRange: typeof item.ageRange === "string" ? item.ageRange : null,
+          depictsMinor:
+            typeof item.depictsMinor === "boolean" ? item.depictsMinor : undefined,
+        });
+        if (isMinor) return "support" as const;
+        const role = roleByIndex.get(i);
         if (role !== "host" && role !== "guest" && role !== "support") {
           throw new Error(`STAGED_CAST_ROLE_REQUIRED:${i + 1}`);
         }
@@ -488,7 +514,10 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
     title: plan.title,
     productTruth: truth,
     storyboardGuide: plan.storySummary,
-    voiceoverScript: plan.shots.map(shot => shot.dialogue).join("\n"),
+    voiceoverScript: plan.shots
+      .map(shot => removeStagedMinorDialogueLines(shot.dialogue, plan.cast))
+      .filter(Boolean)
+      .join("\n"),
     productDetail: plan.product.description,
     shots: plan.shots.map(shot => ({
       id: `shot-${shot.shotId}`,
@@ -498,7 +527,7 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
       endSeconds: shot.shotId * 10,
       durationSeconds: 10,
       storyboardGuide: shot.storySummary,
-      voiceover: shot.dialogue,
+      voiceover: removeStagedMinorDialogueLines(shot.dialogue, plan.cast),
       camera:
         shot.cameraDirection ||
         `Use a shot-specific framing and angle that makes this action clear: ${shot.visualSummary}`,
@@ -2369,7 +2398,7 @@ async function createFinalAssemblyCheckpoint(params: {
           })
         : null,
     },
-    includeAudio: true,
+    includeAudio: text(record(params.metadata).resolvedAudioStrategy) !== "silent",
   };
   const hash = buildStagedFinalAssemblyHash(assembly);
   let next = {
@@ -2907,7 +2936,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     !allShotCheckpointsHave(metadata, "video_result", "approved")
   )
     return { run: params.run, finalAssemblyApproved: false };
-  const resolvedAudioStrategy = text(record(metadata).resolvedAudioStrategy);
+  let resolvedAudioStrategy = text(record(metadata).resolvedAudioStrategy);
   if (
     resolvedAudioStrategy !== "silent" &&
     resolvedAudioStrategy !== "native_video_audio" &&
@@ -2915,15 +2944,24 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   ) {
     throw new Error("STAGED_RESOLVED_AUDIO_STRATEGY_REQUIRED");
   }
+  const safeVoiceoverText = plan.shots
+    .map(shot => removeStagedMinorDialogueLines(shot.dialogue, plan.cast))
+    .filter(Boolean)
+    .join(" ");
+  if (resolvedAudioStrategy === "separate_tts_voiceover" && !safeVoiceoverText) {
+    // There is no adult dialogue left to synthesize. Keep the clip silent
+    // instead of sending an under-18 line to TTS or failing on empty text.
+    resolvedAudioStrategy = "silent";
+    metadata = { ...metadata, resolvedAudioStrategy } as typeof metadata;
+  }
   if (resolvedAudioStrategy === "separate_tts_voiceover") {
     const audioCheckpoint = checkpointFor(metadata, "audio_plan");
     if (!audioCheckpoint) {
-      const textContent = plan.shots.map(shot => shot.dialogue).join(" ");
       const audioLanguage = requireStagedLanguagePlanFromMetadata(
         metadata as Record<string, any>
       ).dialogueLanguage;
       const audioPlan = buildStagedAudioPlan({
-        text: textContent,
+        text: safeVoiceoverText,
         language: audioLanguage,
         model: STAGED_AUDIO_MODEL,
         provider: modelProvider(STAGED_AUDIO_MODEL),
