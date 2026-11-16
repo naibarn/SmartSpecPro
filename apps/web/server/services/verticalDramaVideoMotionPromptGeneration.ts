@@ -1620,6 +1620,15 @@ async function resolveShotVideoPromptModel(
   return { model: fallbackModel, hasVision: false };
 }
 
+// Some vision providers serialize JSON booleans as strings. Normalize only
+// unambiguous literals; Boolean("false") would incorrectly mark a safe face
+// as overlapped, and unknown values must never become safety evidence.
+const shotVideoBooleanSchema = z.preprocess(value => {
+  if (typeof value !== "string") return value;
+  const literal = value.trim().toLowerCase();
+  return literal === "true" ? true : literal === "false" ? false : value;
+}, z.boolean());
+
 export const shotVideoPromptOutputSchema = z
   .object({
     prompt: z.string().min(1),
@@ -1693,13 +1702,13 @@ export const shotVideoPromptOutputSchema = z
                 eyes_visible: z.string().optional(),
                 occlusion: z.string().optional(),
                 face_size: z.string().optional(),
-                overlapped_by_other_face: z.boolean().optional(),
+                overlapped_by_other_face: shotVideoBooleanSchema.optional(),
               })
               .passthrough(),
           )
           .optional(),
         position_source: z.string().optional(),
-        faces_separated: z.boolean().optional(),
+        faces_separated: shotVideoBooleanSchema.optional(),
       })
       .passthrough()
       .optional(),
@@ -1716,7 +1725,7 @@ export const shotVideoPromptOutputSchema = z
           .array(z.object({ name: z.string() }).passthrough())
           .optional(),
         camera_motion: z.string().optional(),
-        new_character_enters: z.boolean().optional(),
+        new_character_enters: shotVideoBooleanSchema.optional(),
         identity_risk: z.string().optional(),
         risk_reasons: z.array(z.string()).optional(),
       })

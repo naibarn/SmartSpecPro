@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `85`
-- Updated (UTC): `2026-11-16T00:13:56.937131+00:00`
+- State generation: `86`
+- Updated (UTC): `2026-11-16T00:21:13.106141+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `a929ebc4898acfbec5ed3ea21a9d5707f00141b7`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: 4096-character shared authoring/edit/review contract integrated at a929ebc489; local main equals origin/main. 118 focused full-file tests and 10 selected boundary tests pass. Immutable legacy-debian-dev release is running; verify canonical tests and live queued prompt generation for shot 6 after runtime activation.
+- Next action: Release a929ebc489 generation573 is healthy at legacy-debian-dev. Actual shot6 preflight passes with 2143 motion chars, but queued job 9ab80b6a failed because model emitted string booleans for faces_separated and overlapped_by_other_face. Fix skill JSON examples (they currently show quoted type placeholders) and safely normalize only true/false string literals; test, integrate and redeploy before retrying the same prompt-only worker operation.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | a929ebc4898acfbec5ed3ea21a9d5707f00141b7 | a929ebc4898acfbec5ed3ea21a9d5707f00141b7 | 4096-character shared authoring/edit/review contract integrated at a929ebc489; local main equals origin/main. 118 focused full-file tests and 10 selected boundary tests pass. Immutable legacy-debian-dev release is running; verify canonical tests and live queued prompt generation for shot 6 after runtime activation. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | a929ebc4898acfbec5ed3ea21a9d5707f00141b7 | a929ebc4898acfbec5ed3ea21a9d5707f00141b7 | Release a929ebc489 generation573 is healthy at legacy-debian-dev. Actual shot6 preflight passes with 2143 motion chars, but queued job 9ab80b6a failed because model emitted string booleans for faces_separated and overlapped_by_other_face. Fix skill JSON examples (they currently show quoted type placeholders) and safely normalize only true/false string literals; test, integrate and redeploy before retrying the same prompt-only worker operation. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

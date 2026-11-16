@@ -11,7 +11,13 @@ vi.mock("../skillFiles", () => ({
   resolveSkillDirCandidates: vi.fn(), resolveSkillManifestPath: vi.fn(),
 }));
 vi.mock("@smartspec/skills", () => ({ parseSkillFile: vi.fn() }));
-vi.mock("fs", () => ({ default: { existsSync: vi.fn(), readFileSync: vi.fn() } }));
+vi.mock("fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("fs")>();
+  return {
+    ...actual,
+    default: { ...actual, existsSync: vi.fn(), readFileSync: vi.fn() },
+  };
+});
 vi.mock("../enabledLlmModels", () => ({ loadEnabledLlmModelRows: vi.fn() }));
 vi.mock("../intelligentModelSelector", () => ({ selectBestLlmModel: vi.fn() }));
 vi.mock("../modelRegistry", () => ({ resolveVerticalDramaCapabilities: vi.fn() }));
@@ -52,6 +58,41 @@ describe("frame observability fact gate", () => {
 });
 
 describe("frame observability parsing", () => {
+  it.each([
+    [true, true],
+    [false, false],
+    ["true", true],
+    ["false", false],
+    [" TRUE ", true],
+    [" False ", false],
+  ])("normalizes the vision boolean %j without changing its meaning", (value, expected) => {
+    const parsed = shotVideoPromptOutputSchema.parse({
+      prompt: "Camera follows the approved action.",
+      frame_analysis: {
+        people: [{ name: "Mali", position: "left", overlapped_by_other_face: value }],
+        faces_separated: value,
+      },
+      motion_profile: { new_character_enters: value },
+    });
+    expect(parsed.frame_analysis?.people?.[0].overlapped_by_other_face).toBe(expected);
+    expect(parsed.frame_analysis?.faces_separated).toBe(expected);
+    expect(parsed.motion_profile?.new_character_enters).toBe(expected);
+    expect(normalizeFrameAnalysis(parsed.frame_analysis)?.facesSeparated).toBe(expected);
+  });
+
+  it.each(["unknown", "boolean", "yes", "0", "", null, 0, 1])(
+    "rejects ambiguous vision safety evidence %j",
+    value => {
+      for (const fields of [
+        { frame_analysis: { faces_separated: value } },
+        { frame_analysis: { people: [{ name: "Mali", position: "left", overlapped_by_other_face: value }] } },
+        { motion_profile: { new_character_enters: value } },
+      ]) {
+        expect(shotVideoPromptOutputSchema.safeParse({ prompt: "Camera moves.", ...fields }).success).toBe(false);
+      }
+    }
+  );
+
   it("accepts lenient observability strings and preserves extra keys", () => {
     const parsed = shotVideoPromptOutputSchema.parse({
       prompt: "motion",

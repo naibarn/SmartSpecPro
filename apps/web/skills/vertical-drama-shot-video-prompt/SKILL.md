@@ -78,11 +78,11 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
         "eyes_visible": "both | one | none (optional — ONLY when frame_observability: REQUIRED)",
         "occlusion": "none | partial | heavy (optional — ONLY when frame_observability: REQUIRED)",
         "face_size": "large | medium | small | tiny (optional — ONLY when frame_observability: REQUIRED)",
-        "overlapped_by_other_face": "boolean (optional — ONLY when frame_observability: REQUIRED)"
+        "overlapped_by_other_face": false
       }
     ],
     "position_source": "image | image_prompt_text",
-    "faces_separated": "boolean (optional — ONLY when frame_observability: REQUIRED)"
+    "faces_separated": true
   },
   "motion_profile": {
     "characters": [
@@ -91,16 +91,22 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
         "start_facing": "frontal | three_quarter | profile | back_of_head | not_visible",
         "end_facing": "frontal | three_quarter | profile | back_of_head | not_visible",
         "turn_magnitude": "none | subtle | moderate | large",
-        "reveals_hidden_side": "boolean — true when the end pose exposes facial regions the start frame never showed"
+        "reveals_hidden_side": false
       }
     ],
     "camera_motion": "locked | push_in | pull_back | small_pan_tilt | small_lateral | orbit | large_reframe",
-    "new_character_enters": "boolean",
+    "new_character_enters": false,
     "identity_risk": "low | medium | high",
     "risk_reasons": ["string (short, factual)"]
   }
 }
 ```
+
+Boolean fields MUST contain JSON `true` or `false` without quotes, never a type
+placeholder such as `"boolean"` or a quoted `"true"`/`"false"`. The boolean
+values above illustrate JSON types; determine their actual values from the
+attached frame and approved action. Omit observability-only fields unless
+`frame_observability: REQUIRED`.
 
 `dialogue` MUST be an empty array `[]` when the shot has no spoken line. If the
 caller supplies no source dialogue line but the shot description clearly

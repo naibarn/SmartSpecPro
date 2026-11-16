@@ -11,7 +11,13 @@ vi.mock("../skillFiles", () => ({
   resolveSkillDirCandidates: vi.fn(), resolveSkillManifestPath: vi.fn(),
 }));
 vi.mock("@smartspec/skills", () => ({ parseSkillFile: vi.fn() }));
-vi.mock("fs", () => ({ default: { existsSync: vi.fn(), readFileSync: vi.fn() } }));
+vi.mock("fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("fs")>();
+  return {
+    ...actual,
+    default: { ...actual, existsSync: vi.fn(), readFileSync: vi.fn() },
+  };
+});
 vi.mock("../enabledLlmModels", () => ({ loadEnabledLlmModelRows: vi.fn() }));
 vi.mock("../intelligentModelSelector", () => ({ selectBestLlmModel: vi.fn() }));
 vi.mock("../modelRegistry", () => ({ resolveVerticalDramaCapabilities: vi.fn() }));
