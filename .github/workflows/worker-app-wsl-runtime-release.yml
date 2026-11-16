@@ -64,7 +64,8 @@ jobs:
           export RUNTIME_BUILD_ROOT="$RUNNER_TEMP/worker-wsl-runtime"
           echo "RUNTIME_BUILD_ROOT=$RUNTIME_BUILD_ROOT" >> "$GITHUB_ENV"
           mkdir -p "$RUNTIME_BUILD_ROOT/base"
-          curl --fail --location --retry 3 --output "$RUNTIME_BUILD_ROOT/base.zip" \
+          curl --fail --location --retry 3 --user-agent "SmartAIHub-WorkerApp-Release/1.0" \
+            --header "accept: application/zip" --output "$RUNTIME_BUILD_ROOT/base.zip" \
             'https://smartaihub.app/api/workers/runtime-pack/download/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.08.2.zip'
           python3 - <<'PY'
           import hashlib, json, os, pathlib, zipfile
