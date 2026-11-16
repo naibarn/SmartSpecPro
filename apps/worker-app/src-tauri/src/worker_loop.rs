@@ -3039,6 +3039,12 @@ fn build_heartbeat_runtime_metadata(
     });
     let mut runtime_metadata = json!({
         "doctorStatus": doctor_status,
+        "doctorSummary": doctor,
+        "hyperframes": {
+            "capability": HYPERFRAMES_JOB_TYPE,
+            "advertised": render_runtime_ready(doctor),
+            "reason": if render_runtime_ready(doctor) { "doctor_passed" } else { "doctor_not_ready" },
+        },
         "acceptJobs": settings.accept_jobs,
         "claimEnabled": accepts_jobs,
         "sharingMode": settings.sharing_mode,
@@ -10279,6 +10285,9 @@ mod tests {
             None,
         );
         assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
+        assert_eq!(ready_metadata["doctorSummary"]["status"], "ready");
+        // An overall ready summary is insufficient without the render checks.
+        assert_eq!(ready_metadata["hyperframes"]["advertised"], false);
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
         assert_eq!(
             ready_metadata["hermesMedia"]["capability"],

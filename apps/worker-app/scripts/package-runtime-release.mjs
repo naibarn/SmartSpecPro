@@ -16,7 +16,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { selectRemotionRuntimeContract } from "./runtime-remotion-contract.mjs";
 
 const appRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const repoRoot = resolve(appRoot, "../..");
@@ -170,7 +171,7 @@ function requirePackageVersion(packageJsonPath, expectedName) {
   return packageJson.version;
 }
 
-function assertRemotionSidecarContract(remotionSidecarDir) {
+async function assertRemotionSidecarContract(remotionSidecarDir) {
   const sourcePackagePath = resolve(repoRoot, "packages/remotion-render/package.json");
   const sourceSchemaPath = resolve(
     repoRoot,
@@ -210,10 +211,18 @@ function assertRemotionSidecarContract(remotionSidecarDir) {
   console.log(
     `[worker-app] Remotion sidecar contract verified: @smartspec/remotion-render@${installedPackage.version} / ${installedContractVersion}`,
   );
-  return {
-    packageVersion: installedPackage.version,
-    platformContractVersion: installedContractVersion,
-  };
+  const sourceText = readFileSync(sourceSchemaPath, "utf8");
+  const silenceTrimContract = sourceText.match(
+    /REMOTION_RENDER_VIDEO_SILENCE_TRIM_CONTRACT_VERSION\s*=\s*["']([^"']+)["']/,
+  )?.[1];
+  if (!silenceTrimContract) throw new Error("Source silence-trim render contract is missing");
+  const installedSchema = await import(pathToFileURL(installedSchemaPath).href);
+  return selectRemotionRuntimeContract({
+    sourcePackageVersion: sourcePackage.version,
+    installedPackageVersion: installedPackage.version,
+    requiredContracts: [sourceContractVersion, silenceTrimContract],
+    installedContracts: installedSchema.REMOTION_RENDER_VIDEO_SUPPORTED_CONTRACT_VERSIONS,
+  });
 }
 
 function findFile(root, predicate) {
@@ -600,7 +609,7 @@ if (remotionSidecarScript && !remotionSidecarDir) {
   );
 }
 const remotionSidecarContract = remotionSidecarDir
-  ? assertRemotionSidecarContract(remotionSidecarDir)
+  ? await assertRemotionSidecarContract(remotionSidecarDir)
   : null;
 const browserDir = requiredPath("--browser-dir");
 const browserExe = findFile(browserDir, (name) => {

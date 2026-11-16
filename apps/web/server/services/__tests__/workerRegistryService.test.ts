@@ -835,6 +835,34 @@ describe("workerRegistryService", () => {
     expect(repo.renewActiveJobLeasesForWorker).not.toHaveBeenCalled();
   });
 
+  it.each(["ready", "degraded", "blocked"])("replaces stale registration diagnostics with the current %s render doctor", async status => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-render-1", tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed", status: "online",
+      capabilitiesJson: { hyperframes: { advertised: false } },
+      healthSummaryJson: { status: "degraded", checks: [{ id: "installer_set", status: "warn" }] },
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_id, values) => ({ ...worker, ...values })),
+      insertHeartbeat: vi.fn(),
+    };
+    const doctor = { status, checks: [{ id: "managed_wsl_runtime", status: status === "ready" ? "ok" : "error" }], recommendedActions: [] };
+    const result = await recordWorkerHeartbeat({
+      auth: { tenantId: "tenant-1", workerId: worker.id, runtimeType: worker.runtimeType } as any,
+      workerId: worker.id,
+      payload: {
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "0.1.437" },
+        runtimeType: "desktop_zeroclaw_managed", status: "online",
+        currentJobCount: 0, queueDepth: 0, freeDiskBytes: 1024, metricsJson: {}, warningsJson: [],
+        runtimeMetadataJson: { doctorSummary: doctor, hyperframes: { advertised: status === "ready" } },
+      },
+    }, { repo } as any);
+    expect(result.healthSummaryJson).toMatchObject(doctor);
+    expect(result.capabilitiesJson.hyperframes.advertised).toBe(status === "ready");
+  });
+
   it("promotes live ComfyUI readiness from heartbeat metadata", async () => {
     const { recordWorkerHeartbeat } = await import("../workerRegistryService");
     const worker = {

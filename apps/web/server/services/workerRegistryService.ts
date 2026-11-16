@@ -1630,8 +1630,15 @@ function buildWorkerHealthSummary(
   const existingHealthSummary = sanitizeWorkerPayload(
     isPlainObject(existingHealthSummaryJson) ? existingHealthSummaryJson : {},
   ) as Record<string, unknown>;
+  const liveDoctor = isPlainObject(runtimeMetadataJson.doctorSummary)
+    ? sanitizeWorkerPayload(runtimeMetadataJson.doctorSummary) as Record<string, unknown>
+    : null;
+  const hasLiveDoctor = liveDoctor &&
+    ["ready", "degraded", "blocked"].includes(String(liveDoctor.status)) &&
+    Array.isArray(liveDoctor.checks);
   return {
     ...existingHealthSummary,
+    ...(hasLiveDoctor ? liveDoctor : {}),
     ...(capacity ? {
       currentJobCount: capacity.currentJobCount,
       queueDepth: capacity.queueDepth,
@@ -2572,6 +2579,9 @@ export async function recordWorkerHeartbeat(
     : null;
   if (freshHermesMedia) {
     mergedHeartbeatCapabilitiesJson.hermesMedia = freshHermesMedia;
+  }
+  if (isPlainObject(incomingHeartbeatRuntimeMetadata.hyperframes)) {
+    mergedHeartbeatCapabilitiesJson.hyperframes = incomingHeartbeatRuntimeMetadata.hyperframes;
   }
   // ComfyUI readiness is also emitted by the desktop Worker App on the
   // regular heartbeat. Promote the sanitized live value to a stable

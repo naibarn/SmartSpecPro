@@ -26,7 +26,7 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Video-prompt stability repair is verified on legacy-debian-dev generation574: 4096-char budget across authoring/API/UI/skill contracts, quoted boolean normalization and corrected JSON examples. Real shot6 prompt generation succeeded 3/3 rounds (3529,3351,3897 chars), dialogue and speaker/object locks preserved, repeated request reused its successful job, no video media task submitted. Source050d0eb36 is integrated; remaining SPEC300 browser/QC/media UAT is separate and unverified.",
+      "next_action": "Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability.",
       "checkpoint_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
       "merged_main_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 88,
-  "updated_at": "2026-11-16T00:31:01.654896+00:00",
+  "generation": 89,
+  "updated_at": "2026-11-16T01:25:35.454957+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Video-prompt stability repair is verified on legacy-debian-dev generation574: 4096-char budget across authoring/API/UI/skill contracts, quoted boolean normalization and corrected JSON examples. Real shot6 prompt generation succeeded 3/3 rounds (3529,3351,3897 chars), dialogue and speaker/object locks preserved, repeated request reused its successful job, no video media task submitted. Source050d0eb36 is integrated; remaining SPEC300 browser/QC/media UAT is separate and unverified.",
+    "next_action": "Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability.",
     "merged_main_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
