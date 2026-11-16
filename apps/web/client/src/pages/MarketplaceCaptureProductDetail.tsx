@@ -6969,6 +6969,10 @@ export default function MarketplaceCaptureProductDetail() {
                 />
               }
               qualityModeRepairRounds={autoStoryboardQualityModeRounds}
+              stagedShotCount={autoReviewStagedShotCount}
+              onStagedShotCountChange={setAutoReviewStagedShotCount}
+              shotDurationSeconds={autoReviewShotDurationSeconds}
+              onShotDurationSecondsChange={setAutoReviewShotDurationSeconds}
             />
             {conceptSelectionRunId ? (
               <StagedCheckpointReviewSurface
