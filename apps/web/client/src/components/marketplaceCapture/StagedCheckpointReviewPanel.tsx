@@ -2275,6 +2275,105 @@ export function StagedCheckpointReviewPanel(props: {
 
   return (
     <>
+      {storyCheckpoint?.state === "awaiting" &&
+      props.state?.storyPlan?.conceptOptions?.length ? (
+        <section
+          className="mt-4 rounded-xl border border-sky-300 bg-sky-50/70 p-4 shadow-sm"
+          aria-label="Review concepts"
+        >
+          <header>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+              Review concepts
+            </p>
+            <h3 className="mt-1 text-base font-semibold text-slate-950">
+              {props.state?.storyPlan?.title || "เลือกแนวคิดรีวิว"}
+            </h3>
+            {props.state?.reviewTone || props.state?.storytellingStructure ? (
+              <p className="mt-2 text-xs text-slate-700">
+                {[
+                  props.state?.storytellingStructure
+                    ? "โครงสร้าง: " +
+                      (STRUCTURE_LABELS[props.state.storytellingStructure] ??
+                        props.state.storytellingStructure)
+                    : null,
+                  props.state?.reviewTone
+                    ? "อารมณ์/โทน: " +
+                      (TONE_LABELS[props.state.reviewTone] ??
+                        props.state.reviewTone)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
+          </header>
+          <StagedStoryConceptPicker
+            options={props.state?.storyPlan?.conceptOptions ?? []}
+            selectedConceptId={
+              props.state?.storyPlan?.selectedConceptId ?? null
+            }
+            planRevision={props.state?.storyPlan?.planRevision ?? 0}
+            expectedShotCount={expectedStoryShotCount}
+            generatedShotCount={generatedStoryShotCount}
+            generationStatus={storyGenerationStatus}
+            disabled={!storyEditAvailable || props.pending}
+            onApply={selectedConcept =>
+              props.onRetry({
+                stage: "story",
+                selectedConcept,
+                model: selectedModel,
+              })
+            }
+          />
+          {!props.state?.storyPlan?.selectedConceptId ? (
+            <p className="mt-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+              เลือกแนวคิดด้านบนก่อน ระบบจึงจะร่างช็อตและบทพูดให้ตรวจ
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+      {props.loading ? (
+        <p
+          className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+          role="status"
+        >
+          กำลังโหลดสถานะและผล Review concepts…
+        </p>
+      ) : null}
+      {props.error ? (
+        <p className="mt-3 text-sm text-red-700" role="alert">
+          {props.error}
+        </p>
+      ) : null}
+      {props.notice ? (
+        <p className="mt-3 text-sm text-sky-800" role="status">
+          {props.notice}
+        </p>
+      ) : null}
+      {activeWorkerOperation ? (
+        <p
+          className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+          role="status"
+        >
+          {workerOperationLabels[activeWorkerOperation.operation] ??
+            "งาน Auto Review"}{" "}
+          กำลังทำงานเบื้องหลัง
+          {activeWorkerOperation.status === "queued" ||
+          activeWorkerOperation.status === "pending"
+            ? " (รอคิว Worker)"
+            : ""}
+          {activeWorkerOperation.progress !== null &&
+          activeWorkerOperation.progress !== undefined
+            ? " · " + Math.round(activeWorkerOperation.progress) + "%"
+            : ""}
+        </p>
+      ) : failedWorkerOperation ? (
+        <p className="mt-3 text-sm text-amber-800" role="status">
+          {workerOperationLabels[failedWorkerOperation.operation] ??
+            "งาน Auto Review"}{" "}
+          ทำงานไม่สำเร็จใน Worker — กดสั่งรายการเดิมอีกครั้งเพื่อ retry
+        </p>
+      ) : null}
       <section
         className="mt-4 rounded-lg border border-violet-200 bg-violet-50/60 p-4"
         aria-labelledby={`staged-checkpoint-title-${props.runId}`}
@@ -2343,42 +2442,6 @@ export function StagedCheckpointReviewPanel(props: {
           ) : null}
           {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
         </div>
-        {props.loading ? (
-          <p className="mt-3 text-sm text-slate-600" role="status">
-            กำลังโหลด checkpoint…
-          </p>
-        ) : null}
-        {props.error ? (
-          <p className="mt-3 text-sm text-red-700" role="alert">
-            {props.error}
-          </p>
-        ) : null}
-        {props.notice ? (
-          <p className="mt-3 text-sm text-sky-800" role="status">
-            {props.notice}
-          </p>
-        ) : null}
-        {activeWorkerOperation ? (
-          <p className="mt-3 text-sm text-sky-800" role="status">
-            {workerOperationLabels[activeWorkerOperation.operation] ??
-              "งาน Auto Review"}{" "}
-            กำลังทำงานเบื้องหลัง
-            {activeWorkerOperation.status === "queued" ||
-            activeWorkerOperation.status === "pending"
-              ? " (รอคิว Worker)"
-              : ""}
-            {activeWorkerOperation.progress !== null &&
-            activeWorkerOperation.progress !== undefined
-              ? ` · ${Math.round(activeWorkerOperation.progress)}%`
-              : ""}
-          </p>
-        ) : failedWorkerOperation ? (
-          <p className="mt-3 text-sm text-amber-800" role="status">
-            {workerOperationLabels[failedWorkerOperation.operation] ??
-              "งาน Auto Review"}{" "}
-            ทำงานไม่สำเร็จใน Worker — กดสั่งรายการเดิมอีกครั้งเพื่อ retry
-          </p>
-        ) : null}
         {props.state?.creativeQc && props.onStartCreativeQc ? (
           <MarketplaceDraftQualityQcPanel
             state={props.state.creativeQc as any}
@@ -3695,34 +3758,6 @@ export function StagedCheckpointReviewPanel(props: {
             ) : null}
 
             <div className="mt-3 rounded-md border border-violet-100 bg-white p-3">
-              <p className="font-medium text-slate-900">
-                {props.state.storyPlan?.title || "Story Arc"}
-              </p>
-              {props.state.reviewTone || props.state.storytellingStructure ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-950">
-                  <span className="font-semibold text-sky-800">
-                    การตั้งค่าเรื่องที่เลือกไว้:
-                  </span>
-                  {props.state.storytellingStructure ? (
-                    <span className="inline-flex items-center rounded-md bg-white px-2.5 py-1 text-slate-800 border border-sky-300 shadow-2xs">
-                      📐 โครงสร้าง:{" "}
-                      <strong className="ml-1 text-sky-900">
-                        {STRUCTURE_LABELS[props.state.storytellingStructure] ??
-                          props.state.storytellingStructure}
-                      </strong>
-                    </span>
-                  ) : null}
-                  {props.state.reviewTone ? (
-                    <span className="inline-flex items-center rounded-md bg-white px-2.5 py-1 text-slate-800 border border-sky-300 shadow-2xs">
-                      🎭 อารมณ์/โทน:{" "}
-                      <strong className="ml-1 text-sky-900">
-                        {TONE_LABELS[props.state.reviewTone] ??
-                          props.state.reviewTone}
-                      </strong>
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
               {storyCheckpoint?.adherenceWarnings &&
               storyCheckpoint.adherenceWarnings.length > 0 ? (
                 <div
@@ -3742,33 +3777,6 @@ export function StagedCheckpointReviewPanel(props: {
                     ))}
                   </ul>
                 </div>
-              ) : null}
-              {storyCheckpoint?.state === "awaiting" &&
-              props.state.storyPlan?.conceptOptions?.length ? (
-                <StagedStoryConceptPicker
-                  options={props.state.storyPlan.conceptOptions}
-                  selectedConceptId={
-                    props.state.storyPlan.selectedConceptId ?? null
-                  }
-                  planRevision={props.state.storyPlan.planRevision ?? 0}
-                  expectedShotCount={expectedStoryShotCount}
-                  generatedShotCount={generatedStoryShotCount}
-                  generationStatus={storyGenerationStatus}
-                  disabled={!storyEditAvailable || props.pending}
-                  onApply={selectedConcept =>
-                    props.onRetry({
-                      stage: "story",
-                      selectedConcept,
-                      model: selectedModel,
-                    })
-                  }
-                />
-              ) : null}
-              {props.state.storyPlan?.conceptOptions?.length &&
-              !props.state.storyPlan.selectedConceptId ? (
-                <p className="mt-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
-                  เลือกแนวคิดด้านบนก่อน ระบบจึงจะร่างช็อตและบทพูดให้ตรวจ
-                </p>
               ) : null}
               <div hidden={conceptSelectionPending}>
                 <label className="mt-2 block text-sm font-medium text-slate-800">
