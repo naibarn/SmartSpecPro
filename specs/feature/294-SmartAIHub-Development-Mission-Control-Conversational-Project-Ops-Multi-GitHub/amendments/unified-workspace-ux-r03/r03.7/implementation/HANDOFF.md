@@ -39,6 +39,23 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Existing modular Core systemd unit active; running release source remains `92f309e1043c47a5710528aca118c9d557520f39`.
 - Public `https://aimarkethubs.com/livez` returns the SmartSIHub shell HTML, so it is not evidence of Core protocol health.
 
+## Acceptance matrix
+
+| Acceptance | Status | Evidence |
+| --- | --- | --- |
+| `EXISTING_CODEX_VERIFIED` | PASS | Fresh installed Runner Codex task probe passed; evidence ref recorded above. |
+| `EXISTING_RUNNER_REUSED` | PASS | Existing binary/service inspected and left active; no replacement or retarget. |
+| `MODULAR_PROTOCOL_COMPATIBLE` | PARTIAL | Rust contracts mapped and RSA proof verifier tested; Hono routes and durable replay checks are absent. |
+| `MODULAR_RUNNER_ENROLLED` | BLOCKED | Active Core returns 404 for `/api/runners/connect/start`; no MFA approval flow/API pairing producer. |
+| `HARNESS_INSTANCE_REGISTERED` | BLOCKED | No real Modular enrollment/capability registration occurred. |
+| `HEARTBEAT_VERIFIED` | BLOCKED | Runner control protocol is not implemented in Hono. |
+| `REAL_CODEX_JOB_EXECUTED` | BLOCKED | No canonical Runner job claim/delivery path exists in active Core. |
+| `MISSION_JOB_BOUND` | BLOCKED | No real Job was admitted/executed through the Runner for this acceptance. |
+| `TASK_CONTROL_LINK_VERIFIED` | BLOCKED | No real Runner Job/Attempt identity to deep-link. |
+| `EXECUTION_EVIDENCE_CAPTURED` | PARTIAL | Isolated Codex probe evidence exists; no Job transcript/events/artifacts were produced. |
+| `DEV_DEPLOYED` | PARTIAL | Existing DEV remains healthy at source `92f309e…`; R03.7 proof code is integrated at Platform `f80685a…` but not built/deployed. |
+| `OWNER_UAT` | PENDING | No authenticated owner MFA browser approval/UAT was performed. |
+
 ## Resume
 
 1. Read this file and `deep_implement_config.json`.
