@@ -14,18 +14,24 @@
   ],
   "sections_state": {
     "section-01-contract-and-installation": {
-      "status": "completed",
-      "next_action": ""
+      "status": "checkpointed",
+      "next_action": "Runner 0.2.44-dev.1 and Codex 0.165.0 are present; preserve the isolated Modular DEV identity and finish canonical Job delivery in Section 03.",
+      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+      "merged_main_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform"
     },
     "section-02-enrollment-and-proof": {
-      "status": "completed",
-      "next_action": "Enrollment routes and the signed HTTPS control endpoint are deployed; perform real owner MFA approval after Section 03 supports the complete execution protocol.",
-      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5"
+      "status": "checkpointed",
+      "next_action": "Pairing, signed device proof, refresh, and HTTPS capability/reconcile routes are deployed; real owner MFA enrollment remains pending after Section 03 is ready.",
+      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+      "merged_main_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform"
     },
     "section-03-canonical-runner-control": {
       "status": "in_progress",
-      "next_action": "Implement the Modular WSS command/ack/receipt adapter using the existing worker_jobs outbox and Job Control Plane, including lease/fence, idempotency and reconnect recovery; do not create a scheduler or event store.",
-      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5"
+      "next_action": "Implement and test Modular Runner WSS command/ack/receipt integration through the canonical worker_jobs outbox and Job Control Plane; include lease/fencing, session binding, idempotency and reconnect recovery without a second scheduler/event store.",
+      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform"
     },
     "section-04-live-ux-deploy-and-uat": {
       "status": "pending",
@@ -41,10 +47,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T09:58:36.450629+00:00",
-  "generation": 7,
-  "updated_at": "2026-11-16T18:15:58+07:00",
+  "generation": 10,
+  "updated_at": "2026-11-16T14:51:53.509580+00:00",
   "progress": {
     "active_section": "section-03-canonical-runner-control",
-    "next_action": "Implement and deploy the Section 03 canonical Runner command/receipt adapter; then complete isolated Runner enrollment and one real Codex Job acceptance."
+    "next_action": "Implement and test Modular Runner WSS command/ack/receipt integration through the canonical worker_jobs outbox and Job Control Plane; include lease/fencing, session binding, idempotency and reconnect recovery without a second scheduler/event store.",
+    "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+    "merged_main_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+    "gaps": [
+      "Modular Hono has no WSS runner.job.command/receipt adapter connected to canonical worker_jobs Job Control Plane.",
+      "Real owner MFA browser session is unavailable for pairing and authenticated UAT."
+    ]
   }
 }
