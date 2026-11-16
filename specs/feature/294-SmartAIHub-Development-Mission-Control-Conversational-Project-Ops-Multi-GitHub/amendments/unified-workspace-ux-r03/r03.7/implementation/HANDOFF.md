@@ -100,3 +100,84 @@ separate from shared DEV migration, deployment, enrollment and live execution.
 5. Implement Slice C by extending the existing canonical Job Control Plane
    contract—not adding scheduler/event storage—then dispatch one harmless DEV
    Codex Job and verify exact Mission/Task identity and captured evidence.
+
+## Continuation record — 2026-11-16
+
+This record supersedes the migration/deployment and acceptance statuses above
+where they conflict with the newer evidence below. Earlier fixture and source
+history is retained as historical evidence.
+
+### Verified DEV state
+
+- Platform `main` and `origin/main` are both
+  `3492db3de82d4c46df6a6144279f852837ee84c5`.
+- The immutable `modular-debian-dev` release built from that source was
+  deployed through the registered controller. The controller reported
+  `DEPLOYED_AND_VERIFIED`; release receipt time was
+  `2026-11-16T14:32:43.309222+00:00`. The previous release remains available
+  for rollback.
+- Public `https://aimarkethubs.com/livez` and
+  `https://aimarkethubs.com/api/chat/livez` both return HTTP 200.
+- The deployed Runner pairing endpoint is routed: an empty
+  `POST /api/runners/connect/start` returns the expected validation response
+  (HTTP 400), rather than the previous 405 route-missing response. This does
+  not prove a pairing was completed.
+- DEV database `smartspec` contains the exact 0444 and 0445 ledger hashes
+  listed above. `smartspec_migrator_dev`, `modular_core_auth_dev` and
+  `modular_chat_mission_owner` exist with the intended non-superuser runtime
+  attributes. No migration was replayed in this continuation.
+- Focused Platform Runner/device-proof tests passed 10/10 and the Wrangler
+  dry-run build passed for the deployed source. These prove the deployed
+  pairing and signed HTTPS control slice only.
+
+### Current acceptance status
+
+| Acceptance | Status | Current evidence / gap |
+| --- | --- | --- |
+| `DEV_MIGRATIONS` | PASS | 0444/0445 ledger hashes match their source; roles and attributes verified. |
+| `PAIRING_ROUTES_DEPLOYED` | PASS | Platform release `3492db3…`; public validation reaches the route. |
+| `DEV_DEPLOYED` | PASS | Registered controller receipt and public Core/Chat health are verified. |
+| `SIGNED_CONTROL_ROUTE` | SOURCE/TEST PASS | HTTPS capability/reconcile controls are covered by the focused route tests; no enrolled live Runner yet. |
+| `OWNER_APPROVAL_FLOW_WORKING` | NOT TESTED | No authenticated owner MFA browser session was available to perform the real approval. |
+| `MODULAR_RUNNER_ENROLLED` | NOT TESTED | No approval or Modular credentials were completed/stored. An isolated connect attempt was stopped before enrollment. |
+| `CANONICAL_JOB_ASSIGNED` | NOT IMPLEMENTED | Modular Hono has no canonical Job claim/delivery integration. |
+| `RUNNER_ACK_VERIFIED` | NOT IMPLEMENTED | No command was dispatched to an authenticated Runner channel. |
+| `CODEX_EXECUTED` | NOT TESTED | Installed Codex CLI probe is not a canonical Job execution. |
+| `MISSION_JOB_ASSOCIATED` | NOT TESTED | No genuine Runner Job exists to bind to a Mission. |
+| `TASK_CONTROL_DEEP_LINK_VERIFIED` | NOT TESTED | No live Job/Attempt identity is available. |
+| `OWNER_UAT` | PENDING | Requires an authenticated MFA browser session after the execution path is implemented. |
+
+### Confirmed implementation gap and next action
+
+The deployed Hono Runner implementation supports pairing, device proof, token
+refresh and signed HTTPS capability/reconcile controls. It does not implement
+the Runner's WSS `runner.job.command` channel, command acknowledgements, or
+`runner.job.receipt` ingestion. The installed Runner speaks that WSS protocol;
+the Legacy Node implementation has related logic, but its in-memory channel and
+legacy runtime are not a Modular Hono integration and must not be treated as
+one. Canonical receipt persistence currently lives in the existing
+`worker_jobs` Job Control Plane. Do not add a second scheduler/event store or
+claim completion from enrollment/control heartbeats.
+
+Next implementation slice: define and test the Modular transport adapter that
+uses the existing canonical Job/outbox/Attempt/receipt contracts, with lease
+and fencing checks, session binding, ordered idempotent receipts and reconnect
+recovery. First document the existing contract's callable boundary and least
+privilege requirements; then implement an additive adapter without changing
+already-applied 0444/0445. Once this slice is deployed, use the isolated Runner
+data root and complete the one-time owner MFA pairing, then run and verify one
+harmless canonical Codex Job through Mission Control and Task Control.
+
+### Scope and recovery note
+
+- No production target, production database, Legacy service configuration, or
+  installed Runner/Codex binary was changed by the verified deployment.
+- During CLI discovery, the Runner's unsupported `--help` option invoked
+  `connect`; the started processes were stopped without approving enrollment or
+  storing credentials. The Modular isolated attempt also stopped before
+  enrollment. No active Runner process was left running by these attempts.
+- The computer-use sidecar was unavailable in this session, and there was no
+  authenticated MFA browser session to complete owner pairing or visual UAT.
+- Latest ready-to-resume step: implement Section 03's canonical command and
+  receipt adapter against the existing Job Control Plane, then continue with
+  the isolated Runner enrollment and live acceptance above.

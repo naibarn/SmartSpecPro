@@ -18,18 +18,18 @@
       "next_action": ""
     },
     "section-02-enrollment-and-proof": {
-      "status": "in_progress",
-      "next_action": "Apply integrated migrations 0444 and 0445 to the verified modular-debian-dev database after the authorized smartspec_migrator_dev DATABASE_URL binding is supplied; then deploy Platform ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c.",
-      "checkpoint_sha": "fc064e4642ccca92b1f7514d155223ceab67dab8"
+      "status": "completed",
+      "next_action": "Enrollment routes and the signed HTTPS control endpoint are deployed; perform real owner MFA approval after Section 03 supports the complete execution protocol.",
+      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5"
     },
     "section-03-canonical-runner-control": {
       "status": "in_progress",
-      "next_action": "Finish shared DEV migration/deployment, verify live heartbeat/capability publication, then implement canonical Job delivery and receipts without adding a scheduler or event store.",
-      "checkpoint_sha": "fc064e4642ccca92b1f7514d155223ceab67dab8"
+      "next_action": "Implement the Modular WSS command/ack/receipt adapter using the existing worker_jobs outbox and Job Control Plane, including lease/fence, idempotency and reconnect recovery; do not create a scheduler or event store.",
+      "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5"
     },
     "section-04-live-ux-deploy-and-uat": {
       "status": "pending",
-      "next_action": "After Section 03, enroll the existing Runner in a separate Modular DEV data root, run one harmless canonical Codex Job, and verify Mission/Task continuity in the actual DEV UI."
+      "next_action": "After Section 03, use the isolated Modular DEV Runner data root and authenticated owner MFA flow, run one harmless canonical Codex Job, and verify Mission/Task continuity in the actual DEV UI."
     }
   },
   "pre_commit": {
@@ -45,6 +45,6 @@
   "updated_at": "2026-11-16T18:15:58+07:00",
   "progress": {
     "active_section": "section-03-canonical-runner-control",
-    "next_action": "Apply integrated migrations 0444 and 0445 after the authorized Modular DEV DATABASE_URL binding is present; deploy the integrated Platform source; then finish live control and canonical Job delivery."
+    "next_action": "Implement and deploy the Section 03 canonical Runner command/receipt adapter; then complete isolated Runner enrollment and one real Codex Job acceptance."
   }
 }
