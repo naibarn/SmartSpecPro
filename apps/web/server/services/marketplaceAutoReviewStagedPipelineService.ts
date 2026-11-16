@@ -1942,7 +1942,7 @@ async function reconcileImageProvider(params: {
     throw new Error(`staged_image_artifact_missing:shot:${params.shotId}`);
   const artifactHash = buildProductionStableHash({ taskId: task.id, url });
   let next = updateShot(params.metadata, params.shotId, {
-    state: "image_result_awaiting",
+    state: "image_result_approved",
     imageArtifactHash: artifactHash,
     imageArtifactUrl: url,
   });
@@ -1980,17 +1980,14 @@ async function reconcileImageProvider(params: {
     db: params.db,
     runId: params.run.id,
     stageKey: "storyboard_review",
-    status: "blocked_needs_user",
+    status: "running",
     output: {
       shotId: params.shotId,
       statusDetail: {
-        state: "awaiting_image_result_review",
+        state: "image_result_auto_approved",
         severity: "info",
-        reasonCodes: ["image_result_approval_required"],
-        safeMessage: `ตรวจผลภาพช็อตที่ ${params.shotId} ก่อนเริ่มงานวิดีโอ ระบบยังไม่ใช้เครดิตวิดีโอ`,
-        nextAction: `ตรวจผลภาพช็อตที่ ${params.shotId} แล้วกดยอมรับหรือปฏิเสธ`,
-        userActionRequired: true,
-        retryable: true,
+        safeMessage: `ภาพช็อตที่ ${params.shotId} สร้างเสร็จและอนุมัติอัตโนมัติแล้ว`,
+        userActionRequired: false,
       },
     },
   });
@@ -2283,6 +2280,73 @@ function allShotCheckpointsHave(
   );
 }
 
+function allShotsHaveImageArtifacts(
+  metadata: StagedSequentialStoryboardMetadataV1
+) {
+  return metadata.stagedSequentialStoryboard.shots.every(
+    shot =>
+      Boolean(shot.imageArtifactHash?.trim() && shot.imageArtifactUrl?.trim())
+  );
+}
+
+function autoApproveAvailableImageResults(
+  metadata: StagedSequentialStoryboardMetadataV1,
+  userId: number
+) {
+  const imageHashes = new Map(
+    metadata.stagedSequentialStoryboard.shots
+      .filter(
+        shot => shot.imageArtifactHash?.trim() && shot.imageArtifactUrl?.trim()
+      )
+      .map(shot => [shot.shotId, shot.imageArtifactHash])
+  );
+  const approvedAt = new Date().toISOString();
+  let changed = false;
+  const shots = metadata.stagedSequentialStoryboard.shots.map(shot => {
+    if (
+      !imageHashes.has(shot.shotId) ||
+      shot.state !== "image_result_awaiting"
+    ) {
+      return shot;
+    }
+    changed = true;
+    return { ...shot, state: "image_result_approved" };
+  });
+  const reviewCheckpoints =
+    metadata.stagedSequentialStoryboard.reviewCheckpoints.map(checkpoint => {
+      const imageHash = imageHashes.get(checkpoint.shotId ?? -1);
+      if (
+        checkpoint.kind !== "image_result" ||
+        checkpoint.state === "approved" ||
+        checkpoint.state === "consumed" ||
+        checkpoint.state === "superseded" ||
+        !imageHash ||
+        checkpoint.contentHash !== imageHash
+      ) {
+        return checkpoint;
+      }
+      changed = true;
+      return {
+        ...checkpoint,
+        state: "approved" as const,
+        approvedHash: checkpoint.contentHash,
+        approvedByUserId: userId,
+        approvedAt,
+        rejectionReasonCode: null,
+      };
+    });
+  return changed
+    ? {
+        ...metadata,
+        stagedSequentialStoryboard: {
+          ...metadata.stagedSequentialStoryboard,
+          shots,
+          reviewCheckpoints,
+        },
+      }
+    : null;
+}
+
 async function createFinalAssemblyCheckpoint(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -2341,27 +2405,33 @@ async function createFinalAssemblyCheckpoint(params: {
     currentStage: "render",
     stageIndex: 10,
   });
+  const isStoryboardImages = params.run.outputMode === "storyboard_images";
   await upsertStage({
     db: params.db,
     runId: params.run.id,
     stageKey: "render",
-    status: "blocked_needs_user",
+    status: isStoryboardImages ? "running" : "blocked_needs_user",
     output: {
       finalAssembly: record(next).stagedPipeline.finalAssembly,
       statusDetail: {
-        state: "awaiting_final_assembly_review",
+        state: isStoryboardImages
+          ? "image_assembly_auto_approved"
+          : "awaiting_final_assembly_review",
         severity: "info",
-        reasonCodes: ["final_assembly_approval_required"],
-        safeMessage:
-          params.run.outputMode === "storyboard_images"
-            ? "ตรวจและยืนยันลำดับภาพก่อนปิดงานภาพสตอรีบอร์ด"
-            : "ตรวจและยืนยันการประกอบก่อนใช้เครดิตเรนเดอร์และบันทึก Library",
-        nextAction:
-          params.run.outputMode === "storyboard_images"
-            ? "ตรวจลำดับภาพและคำเตือน แล้วกดยืนยันการประกอบ"
-            : "ตรวจลำดับภาพ วิดีโอ เสียง และคำเตือน แล้วกดยืนยันการประกอบ",
-        userActionRequired: true,
-        retryable: true,
+        ...(isStoryboardImages
+          ? {
+              safeMessage: "ภาพสตอรีบอร์ดผ่านการอนุมัติและประกอบอัตโนมัติแล้ว",
+              userActionRequired: false,
+            }
+          : {
+              reasonCodes: ["final_assembly_approval_required"],
+              safeMessage:
+                "ตรวจและยืนยันการประกอบก่อนใช้เครดิตเรนเดอร์และบันทึก Library",
+              nextAction:
+                "ตรวจลำดับภาพ วิดีโอ เสียง และคำเตือน แล้วกดยืนยันการประกอบ",
+              userActionRequired: true,
+              retryable: true,
+            }),
       },
     },
   });
@@ -2388,6 +2458,34 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   let metadata = initialMetadata;
   if (!StagedSequentialStoryboardMetadataV1Schema.safeParse(metadata).success) {
     throw new Error("staged_state_drift");
+  }
+  const autoApprovedImages = autoApproveAvailableImageResults(
+    metadata,
+    params.run.userId
+  );
+  if (autoApprovedImages) {
+    metadata = autoApprovedImages as typeof metadata;
+    await persistRun({
+      db: params.db,
+      run: params.run,
+      metadata: metadata as any,
+      status: "running",
+      currentStage: params.run.currentStage ?? "storyboard_review",
+      stageIndex: params.run.stageIndex ?? 6,
+    });
+    await upsertStage({
+      db: params.db,
+      runId: params.run.id,
+      stageKey: "storyboard_review",
+      status: "running",
+      output: {
+        statusDetail: {
+          state: "image_results_auto_approved",
+          safeMessage: "ภาพที่สร้างเสร็จแล้วได้รับการอนุมัติอัตโนมัติ",
+          userActionRequired: false,
+        },
+      },
+    });
   }
   const advanceShots = selectMarketplaceAutoReviewTargetShots(
     plan.shots,
@@ -2622,13 +2720,13 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
           db: params.db,
           runId: params.run.id,
           stageKey: "video_generation",
-          status: "blocked_needs_user",
+          status: "running",
           output: {
             shotId: shot.shotId,
             statusDetail: {
-              state: "waiting_for_approved_image",
-              safeMessage: `สร้างและยืนยันภาพของช็อตที่ ${shot.shotId} ก่อน จึงจะเริ่มสร้างวิดีโอได้`,
-              userActionRequired: true,
+              state: "waiting_for_image_artifact",
+              safeMessage: `รอภาพช็อตที่ ${shot.shotId} สร้างเสร็จก่อนเริ่มสร้างวิดีโอ`,
+              userActionRequired: false,
               retryable: true,
             },
           },
@@ -2720,7 +2818,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   }
 
   if (params.run.outputMode === "storyboard_images") {
-    if (!allShotCheckpointsHave(metadata, "image_result", "approved")) {
+    if (!allShotsHaveImageArtifacts(metadata)) {
       return { run: params.run, finalAssemblyApproved: false };
     }
     if (!checkpointFor(metadata, "final_assembly")) {
@@ -2730,14 +2828,37 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         metadata,
         plan,
       });
-      return { run: params.run, finalAssemblyApproved: false };
     }
-    const finalImageAssemblyCheckpoint = checkpointFor(
+    let finalImageAssemblyCheckpoint = checkpointFor(
       metadata,
       "final_assembly"
     );
-    if (finalImageAssemblyCheckpoint?.state === "awaiting")
-      return { run: params.run, finalAssemblyApproved: false };
+    if (
+      finalImageAssemblyCheckpoint &&
+      finalImageAssemblyCheckpoint.state !== "approved" &&
+      finalImageAssemblyCheckpoint.state !== "consumed"
+    ) {
+      finalImageAssemblyCheckpoint = {
+        ...finalImageAssemblyCheckpoint,
+        state: "approved",
+        approvedHash: finalImageAssemblyCheckpoint.contentHash,
+        approvedByUserId: params.run.userId,
+        approvedAt: new Date().toISOString(),
+        rejectionReasonCode: null,
+      };
+      metadata = replaceCheckpoint(
+        metadata,
+        finalImageAssemblyCheckpoint
+      ) as typeof metadata;
+      await persistRun({
+        db: params.db,
+        run: params.run,
+        metadata: metadata as any,
+        status: "running",
+        currentStage: "storyboard_review",
+        stageIndex: 6,
+      });
+    }
     if (finalImageAssemblyCheckpoint?.state === "approved") {
       const imageAssembly = finalAssemblyFor(metadata, plan);
       if (

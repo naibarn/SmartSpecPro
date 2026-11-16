@@ -58,7 +58,7 @@ export function StagedCheckpointReviewSurface(props: {
       message.startsWith("staged_video_prompt_requires_approved_image") ||
       message.startsWith("MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_REQUIRED")
     ) {
-      return 'ต้องสร้างภาพของช็อตนี้และรอให้ระบบอนุมัติก่อน จึงจะสร้าง Prompt วิดีโอและจับคู่ผู้พูดกับคนในภาพได้';
+      return 'ต้องสร้างภาพของช็อตนี้ให้เสร็จก่อน จึงจะสร้าง Prompt วิดีโอและจับคู่ผู้พูดกับคนในภาพได้';
     }
     if (message === "staged_metadata_initializing") {
       return "กำลังเตรียมแผนเนื้อเรื่องใน Worker — หน้านี้จะตรวจสถานะให้อัตโนมัติ";
@@ -74,10 +74,10 @@ export function StagedCheckpointReviewSurface(props: {
       message === "staged_image_result_not_approved" ||
       message === "staged_image_artifact_missing"
     ) {
-      return 'ยังไม่มีภาพที่อนุมัติแล้วสำหรับช็อตนี้ — กรุณากดปุ่ม "สร้างภาพ" ของช็อตนี้ให้เสร็จก่อน แล้วค่อยสร้างวิดีโอ';
+      return 'ยังไม่มีภาพสำหรับช็อตนี้ — กรุณารอให้ระบบสร้างภาพเสร็จ แล้วค่อยสร้างวิดีโอ';
     }
     if (message.startsWith("staged_video_prompt_requires_approved_image")) {
-      return "ต้องมีภาพเริ่มต้นที่อนุมัติแล้วก่อนจึงจะตรวจจับคนหรือจับคู่ผู้พูดได้";
+      return "ต้องมีภาพเริ่มต้นที่สร้างเสร็จก่อนจึงจะตรวจจับคนหรือจับคู่ผู้พูดได้";
     }
     if (message === "staged_image_prompt_missing") {
       return 'ช็อตนี้ยังไม่มี Prompt ภาพ — กรุณากดปุ่ม "สร้าง Prompt ภาพ" ของช็อตนี้ก่อน แล้วค่อยกดสร้างภาพ';
@@ -205,7 +205,7 @@ export function StagedCheckpointReviewSurface(props: {
         onSuccess: async (_result: unknown, variables: { shotId: number }) => {
           setActionError(null);
           setActionNotice(
-            `ส่งงานตรวจจับคนจากภาพที่อนุมัติของช็อตที่ ${variables.shotId} เข้า Worker แล้ว — เลือกผู้พูดได้เมื่อผลตรวจจับเสร็จ`
+            `ส่งงานตรวจจับคนจากภาพของช็อตที่ ${variables.shotId} เข้า Worker แล้ว — เลือกผู้พูดได้เมื่อผลตรวจจับเสร็จ`
           );
           await stateQuery.refetch();
         },
@@ -582,7 +582,7 @@ export function StagedCheckpointReviewSurface(props: {
     const targets = Array.from(new Set(shotIds)).sort((a, b) => a - b);
     if (!targets.length) {
       setActionError(null);
-      setActionNotice("ไม่มีช็อตที่พร้อมจับคู่ — ต้องมีภาพที่อนุมัติและบทพูดที่ระบุชื่อผู้พูด");
+      setActionNotice("ไม่มีช็อตที่พร้อมจับคู่ — ต้องมีภาพที่สร้างแล้วหรือกำลังสร้าง และบทพูดที่ระบุชื่อผู้พูด");
       return;
     }
     if (typeof detectPeopleMutation.mutateAsync !== "function") {
@@ -594,6 +594,7 @@ export function StagedCheckpointReviewSurface(props: {
     const skipped = Math.max(0, (state?.shots.length ?? targets.length) - targets.length);
     const failedShotIds: number[] = [];
     let submitted = 0;
+    let currentState = state;
     setActionError(null);
     setActionNotice(null);
     setSpeakerMatchBatchStatus({
@@ -607,7 +608,42 @@ export function StagedCheckpointReviewSurface(props: {
 
     for (let index = 0; index < targets.length; index += 1) {
       const shotId = targets[index];
-      const shot = state?.shots.find(item => item.shotId === shotId);
+      let shot = currentState?.shots.find(item => item.shotId === shotId);
+      const imageTaskInFlight = () => {
+        return (
+          shot?.state === "image_generating" ||
+          [
+            "pending",
+            "queued",
+            "processing",
+            "submitted",
+            "retry_scheduled",
+          ].includes(shot?.imageTaskStatus ?? "")
+        );
+      };
+      if (
+        (!shot?.imageArtifactHash || !shot.imageArtifactUrl) &&
+        imageTaskInFlight()
+      ) {
+        setSpeakerMatchBatchStatus({
+          phase: "dispatching",
+          currentIndex: index + 1,
+          total: targets.length,
+          currentShotId: shotId,
+          waitingForImage: true,
+          submitted,
+          skipped,
+          failedShotIds: [...failedShotIds],
+        });
+        for (let attempt = 0; attempt < 45; attempt += 1) {
+          await new Promise(resolve => window.setTimeout(resolve, 4000));
+          const refreshed = await stateQuery.refetch();
+          currentState = refreshed.data as StagedReviewState | null | undefined;
+          shot = currentState?.shots.find(item => item.shotId === shotId);
+          if (shot?.imageArtifactHash && shot.imageArtifactUrl) break;
+          if (!imageTaskInFlight()) break;
+        }
+      }
       setSpeakerMatchBatchStatus({
         phase: "dispatching",
         currentIndex: index + 1,
@@ -617,7 +653,7 @@ export function StagedCheckpointReviewSurface(props: {
         skipped,
         failedShotIds: [...failedShotIds],
       });
-      if (!shot?.imageArtifactHash) {
+      if (!shot?.imageArtifactHash || !shot.imageArtifactUrl) {
         failedShotIds.push(shotId);
       } else {
         try {

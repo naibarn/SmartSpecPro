@@ -553,8 +553,7 @@ function assertStagedVideoPromptImageReady(input: {
   if (
     !imageHash ||
     !safeArtifactUrl(input.shot.imageArtifactUrl) ||
-    currentImageResult?.state !== "approved" ||
-    currentImageResult?.contentHash !== imageHash
+    (currentImageResult && currentImageResult.contentHash !== imageHash)
   ) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -1649,22 +1648,6 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
       throw new TRPCError({
         code: "CONFLICT",
         message: `staged_video_already_exists:shot-${target.shotId}`,
-      });
-    }
-    if (
-      target.stage === "video" &&
-      (!shot.imageArtifactHash ||
-        !safeArtifactUrl(shot.imageArtifactUrl) ||
-        metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-          checkpoint =>
-            checkpoint.shotId === target.shotId &&
-            checkpoint.kind === "image_result" &&
-            checkpoint.state !== "superseded"
-        )?.state !== "approved")
-    ) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: `staged_video_prompt_requires_approved_image:shot-${target.shotId}`,
       });
     }
     const currentPrompt =
@@ -3403,14 +3386,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
       if (
         !currentShot ||
         currentShot.imageArtifactHash !== imageArtifactHash ||
-        currentShot.dialogue !== shot.dialogue ||
-        !current.stagedSequentialStoryboard.reviewCheckpoints.some(
-          checkpoint =>
-            checkpoint.kind === "image_result" &&
-            checkpoint.shotId === input.shotId &&
-            checkpoint.state === "approved" &&
-            checkpoint.contentHash === imageArtifactHash
-        )
+        currentShot.dialogue !== shot.dialogue
       ) {
         throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
       }
@@ -4490,20 +4466,10 @@ export async function retryStagedAutoReviewShot(input: {
       const kind = input.stage === "image" ? "image_prompt" : "video_prompt";
       const source = promptForStage.trim();
       if (input.stage === "video") {
-        const approvedImage =
-          metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
-            checkpoint =>
-              checkpoint.shotId === input.shotId &&
-              checkpoint.kind === "image_result" &&
-              checkpoint.state !== "superseded"
-          );
-        if (
-          approvedImage?.state !== "approved" ||
-          !safeArtifactUrl(shot.imageArtifactUrl)
-        ) {
+        if (!safeArtifactUrl(shot.imageArtifactUrl)) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "staged_video_generation_requires_approved_image",
+            message: "staged_image_artifact_missing",
           });
         }
         requireStagedImageArtifactHash(shot);
@@ -4780,7 +4746,7 @@ export function applyStagedAutoReviewShotMediaUpload(input: {
                       // image-retry cascade (imageArtifactHash/Url are
                       // deliberately NOT in this null list — they're set to
                       // the new upload below instead).
-                      state: "image_result_awaiting",
+                      state: "image_result_approved",
                       imageArtifactHash: contentHash,
                       imageArtifactUrl: url,
                       videoPrompt: null,

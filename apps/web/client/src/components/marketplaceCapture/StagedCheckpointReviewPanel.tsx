@@ -417,6 +417,7 @@ export type StagedSpeakerMatchBatchStatus = {
   currentIndex: number;
   total: number;
   currentShotId?: number;
+  waitingForImage?: boolean;
   submitted: number;
   skipped: number;
   failedShotIds: number[];
@@ -742,7 +743,9 @@ function shotStateLabel(state: string | null | undefined) {
     case "image_generating":
       return "กำลังสร้างภาพ";
     case "image_result_awaiting":
-      return "รอตรวจภาพ";
+      return "ภาพสร้างเสร็จแล้ว · อนุมัติอัตโนมัติ";
+    case "image_result_approved":
+      return "ภาพสร้างเสร็จแล้ว · อนุมัติอัตโนมัติ";
     case "video_prompt_awaiting":
       return "รอตรวจ Prompt วิดีโอ";
     case "video_generating":
@@ -814,6 +817,18 @@ function buildWorkflowSteps(state: StagedReviewState): WorkflowStep[] {
       return { ...input, status: "skipped", completed: 0, total: 0 };
     }
     const total = input.total ?? 1;
+    if (input.kind === "image_result") {
+      const completed = state.shots.filter(
+        shot => shot.imageArtifactHash && shot.imageArtifactUrl
+      ).length;
+      return {
+        ...input,
+        status:
+          completed >= total ? "done" : completed > 0 ? "current" : "locked",
+        completed: Math.min(completed, total),
+        total,
+      };
+    }
     const relevant = checkpoints.filter(
       checkpoint => checkpoint.kind === input.kind
     );
@@ -852,8 +867,8 @@ function buildWorkflowSteps(state: StagedReviewState): WorkflowStep[] {
     }),
     makeStep({
       id: "image-result",
-      label: "Storyboard Review / ผลภาพ",
-      description: "ตรวจและรับรองภาพแต่ละช็อตก่อนสร้างวิดีโอ",
+      label: "ผลภาพ (อนุมัติอัตโนมัติ)",
+      description: "ระบบอนุมัติภาพแต่ละช็อตให้อัตโนมัติเมื่อสร้างเสร็จ",
       kind: "image_result",
       total: shotsTotal,
     }),
@@ -1930,18 +1945,9 @@ export function StagedCheckpointReviewPanel(props: {
         isTaskInFlight(shot.imageTaskStatus) ||
         isTaskInFlight(shot.videoTaskStatus)
     ) ?? false;
-  const videoPromptShotsWithoutApprovedImage =
+  const videoPromptShotsWithoutImageArtifact =
     props.state?.shots.filter(
-      shot =>
-        !shot.imageArtifactHash ||
-        !shot.imageArtifactUrl ||
-        !props.state?.checkpoints.some(
-          checkpoint =>
-            checkpoint.shotId === shot.shotId &&
-            checkpoint.kind === "image_result" &&
-            checkpoint.state === "approved" &&
-            checkpoint.contentHash === shot.imageArtifactHash
-        )
+      shot => !shot.imageArtifactHash || !shot.imageArtifactUrl
     ).length ?? 0;
   const activeWorkerStatuses = [
     "pending",
@@ -2002,13 +2008,6 @@ export function StagedCheckpointReviewPanel(props: {
       shot =>
         !shot.imageArtifactHash ||
         !shot.imageArtifactUrl ||
-        !props.state?.checkpoints.some(
-          checkpoint =>
-            checkpoint.shotId === shot.shotId &&
-            checkpoint.kind === "image_result" &&
-            checkpoint.state === "approved" &&
-            checkpoint.contentHash === shot.imageArtifactHash
-        ) ||
         !shot.videoPrompt?.trim() ||
         !props.state?.checkpoints.some(
           checkpoint =>
@@ -2040,17 +2039,14 @@ export function StagedCheckpointReviewPanel(props: {
       speakers.every(speaker => Boolean(bindings[speaker])) &&
       new Set(speakers.map(speaker => bindings[speaker])).size ===
         speakers.length;
-    const hasApprovedImage = Boolean(
-      shot.imageArtifactHash &&
-        shot.imageArtifactUrl &&
-        props.state?.checkpoints.some(
-          checkpoint =>
-            checkpoint.shotId === shot.shotId &&
-            checkpoint.kind === "image_result" &&
-            checkpoint.state === "approved" &&
-            checkpoint.contentHash === shot.imageArtifactHash
-        )
+    const hasImageArtifact = Boolean(
+      shot.imageArtifactHash && shot.imageArtifactUrl
     );
+    const imageGenerationInFlight =
+      shot.state === "image_generating" ||
+      ["pending", "processing", "submitted"].includes(
+        shot.imageTaskStatus ?? ""
+      );
     const hasActiveDetection = props.state?.workerOperations?.some(
       job =>
         job.operation === "staged_person_detection" &&
@@ -2062,7 +2058,7 @@ export function StagedCheckpointReviewPanel(props: {
       dialogueDraft !== undefined && dialogueDraft !== shot.dialogue;
     return (
       speakers.length > 0 &&
-      hasApprovedImage &&
+      (hasImageArtifact || imageGenerationInFlight) &&
       !hasCompleteBindings &&
       !hasActiveDetection &&
       !hasUnsavedDialogue
@@ -4166,15 +4162,15 @@ export function StagedCheckpointReviewPanel(props: {
                           disabled:
                             activeBulkGeneration ||
                             Boolean(activeImagePromptWorkerOperation) ||
-                            videoPromptShotsWithoutApprovedImage > 0,
+                            videoPromptShotsWithoutImageArtifact > 0,
                           confirmation: {
                             title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
                             description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก${bulkVideoPromptWillSupersedeMedia ? " มีบางช็อตกำลังเรนเดอร์อยู่ ผล render เดิมอาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่" : ""}`,
                           },
                           title: activeBulkGeneration
                             ? "กำลังเตรียมงานชุดนี้ใน Worker"
-                            : videoPromptShotsWithoutApprovedImage > 0
-                              ? `ต้องสร้างและอนุมัติภาพก่อน (${videoPromptShotsWithoutApprovedImage} ช็อต)`
+                            : videoPromptShotsWithoutImageArtifact > 0
+                              ? `ต้องสร้างภาพให้เสร็จก่อน (${videoPromptShotsWithoutImageArtifact} ช็อต)`
                               : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
                         }
                       )
@@ -4196,7 +4192,7 @@ export function StagedCheckpointReviewPanel(props: {
                           title: activeBulkGeneration
                             ? "กำลังทำงานชุดนี้ใน Worker"
                             : videoGenerationShotsNotReady > 0
-                              ? `ต้องมีภาพที่อนุมัติและ Prompt วิดีโอครบก่อน (${videoGenerationShotsNotReady} ช็อต)`
+                              ? `ต้องมีภาพและ Prompt วิดีโอครบก่อน (${videoGenerationShotsNotReady} ช็อต)`
                               : "สร้างวิดีโอจาก Prompt ที่บันทึกไว้ครบทุกช็อต",
                         }
                       )
@@ -4215,7 +4211,7 @@ export function StagedCheckpointReviewPanel(props: {
                       จับคู่บทพูดกับคนในภาพทุกช็อต
                     </h3>
                     <p className="mt-0.5 text-xs text-cyan-900">
-                      ส่งงานตรวจจับและจับคู่ให้ครบทุกช็อตที่มีภาพอนุมัติและบทพูดแล้ว ระบบจะข้ามช็อตที่จับคู่ครบหรือกำลังทำงานอยู่
+                      ส่งงานจับคู่ทุกช็อตที่มีบทพูด ภาพที่กำลังสร้างจะรอจนเสร็จแล้วส่งให้ตรวจจับอัตโนมัติ ระบบจะข้ามเฉพาะช็อตที่จับคู่ครบหรือกำลังทำงานอยู่
                     </p>
                   </div>
                   <button
@@ -4238,12 +4234,14 @@ export function StagedCheckpointReviewPanel(props: {
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-cyan-900" role="status">
-                  พร้อมส่ง {speakerMatchBatchTargets.length} จาก {speakerMatchBatchTotal} ช็อต · ข้าม {speakerMatchBatchSkipped} ช็อต (จับคู่ครบ, กำลังทำงาน, ยังไม่มีภาพอนุมัติ/ชื่อผู้พูด หรือมีบทพูดที่ยังไม่ได้บันทึก)
+                  พร้อมจับคู่ {speakerMatchBatchTargets.length} จาก {speakerMatchBatchTotal} ช็อต · ข้าม {speakerMatchBatchSkipped} ช็อต (จับคู่ครบ, กำลังทำงาน, ยังไม่มีภาพที่สร้างหรือกำลังสร้าง, ไม่มีชื่อผู้พูด หรือมีบทพูดที่ยังไม่ได้บันทึก)
                 </p>
                 {props.speakerMatchBatchStatus ? (
                   <p className="mt-2 rounded-lg border border-cyan-200 bg-white/80 p-2 text-sm text-cyan-950" role="status">
                     {props.speakerMatchBatchStatus.phase === "dispatching"
-                      ? `กำลังส่งงานจับคู่ ${props.speakerMatchBatchStatus.currentIndex}/${props.speakerMatchBatchStatus.total} ช็อต${props.speakerMatchBatchStatus.currentShotId ? ` · ช็อตที่ ${props.speakerMatchBatchStatus.currentShotId}` : ""} — ไม่ต้องสั่งทีละช็อต`
+                      ? props.speakerMatchBatchStatus.waitingForImage
+                        ? `รอภาพช็อตที่ ${props.speakerMatchBatchStatus.currentShotId} สร้างเสร็จ แล้วระบบจะส่งจับคู่อัตโนมัติ`
+                        : `กำลังส่งงานจับคู่ ${props.speakerMatchBatchStatus.currentIndex}/${props.speakerMatchBatchStatus.total} ช็อต${props.speakerMatchBatchStatus.currentShotId ? ` · ช็อตที่ ${props.speakerMatchBatchStatus.currentShotId}` : ""} — ไม่ต้องสั่งทีละช็อต`
                       : props.speakerMatchBatchStatus.phase === "submitted"
                         ? `ส่งงานเข้า Worker แล้ว ${props.speakerMatchBatchStatus.submitted}/${props.speakerMatchBatchStatus.total} ช็อต · ข้าม ${props.speakerMatchBatchStatus.skipped} ช็อต · รอผลจับคู่ของแต่ละช็อตอัปเดตด้านล่าง`
                         : props.speakerMatchBatchStatus.phase === "partial"
@@ -5200,15 +5198,6 @@ export function StagedCheckpointReviewPanel(props: {
                                 "rounded border border-slate-700 px-3 py-2 text-sm"
                               )
                             : null}
-                          {/* image_result now auto-approves at construction —
-                            no approve click left to trigger; reject stays. */}
-                          {imageResultCheckpoint?.state === "awaiting"
-                            ? action(
-                                `reject-image-result-${shot.shotId}`,
-                                `ปฏิเสธผลภาพช็อตที่ ${shot.shotId}`,
-                                () => props.onReject(imageResultCheckpoint)
-                              )
-                            : null}
                         </div>
                       </section>
                       <section
@@ -5219,18 +5208,16 @@ export function StagedCheckpointReviewPanel(props: {
                           2 · Prompt วิดีโอ → วิดีโอรายช็อต
                         </p>
                         <p className="mt-1 text-xs leading-5 text-slate-600">
-                          สร้าง Prompt โดยตรวจจับคนจากภาพที่อนุมัติแล้ว →
+                          สร้าง Prompt โดยตรวจจับคนจากภาพที่สร้างเสร็จและอนุมัติ
+                          อัตโนมัติแล้ว →
                           ปรับปรุงตามต้องการ →
                           กดสร้างวิดีโอแยกต่างหากเพื่อใช้เครดิต
                         </p>
                         {!shot.imageArtifactHash ||
-                        !shot.imageArtifactUrl ||
-                        imageResultCheckpoint?.state !== "approved" ||
-                        imageResultCheckpoint?.contentHash !==
-                          shot.imageArtifactHash ? (
+                        !shot.imageArtifactUrl ? (
                           <p className="mt-2 text-xs font-medium text-amber-800" role="status">
-                            ขั้นตอนถัดไป: สร้างภาพช็อตนี้และรอให้ระบบอนุมัติ
-                            เพื่อให้ AI ตรวจตำแหน่งคนและจับคู่กับบทพูดได้
+                            ขั้นตอนถัดไป: สร้างภาพช็อตนี้ให้เสร็จ ระบบจะอนุมัติ
+                            อัตโนมัติเพื่อให้ AI ตรวจตำแหน่งคนและจับคู่กับบทพูดได้
                           </p>
                         ) : null}
                         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -5250,10 +5237,7 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isShotPromptPipelineBusy(shot.shotId) ||
                               !shot.imageArtifactHash ||
-                              !shot.imageArtifactUrl ||
-                              imageResultCheckpoint?.state !== "approved" ||
-                              imageResultCheckpoint?.contentHash !==
-                                shot.imageArtifactHash,
+                              !shot.imageArtifactUrl,
                               confirmation: {
                                 title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
                                 description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}${promptReplacementWarning}`,
@@ -5261,11 +5245,8 @@ export function StagedCheckpointReviewPanel(props: {
                               title: isShotPromptPipelineBusy(shot.shotId)
                                 ? "Prompt ของช็อตนี้กำลังรอหรือทำงานใน Worker"
                                 : !shot.imageArtifactHash ||
-                                    !shot.imageArtifactUrl ||
-                                    imageResultCheckpoint?.state !== "approved" ||
-                                    imageResultCheckpoint?.contentHash !==
-                                      shot.imageArtifactHash
-                                  ? "ต้องสร้างและอนุมัติภาพช็อตนี้ก่อน เพื่อให้ระบบตรวจจับคนและจับคู่ผู้พูด"
+                                    !shot.imageArtifactUrl
+                                  ? "ต้องสร้างภาพช็อตนี้ให้เสร็จก่อน เพื่อให้ระบบตรวจจับคนและจับคู่ผู้พูด"
                                   : shotHasInFlightMedia
                                     ? "สร้าง Prompt แยกได้ทันที; ผล render เดิมจะไม่ผูกกับ Prompt ใหม่"
                                     : undefined,
@@ -5306,7 +5287,7 @@ export function StagedCheckpointReviewPanel(props: {
                                 !selectedVideoModelAvailable ||
                                 !shot.videoPrompt?.trim() ||
                                 !shot.imageArtifactHash ||
-                                imageResultCheckpoint?.state !== "approved" ||
+                                !shot.imageArtifactUrl ||
                                 isTaskInFlight(shot.imageTaskStatus) ||
                                 isTaskInFlight(shot.videoTaskStatus) ||
                                 isShotPromptPipelineBusy(shot.shotId),
@@ -5318,10 +5299,8 @@ export function StagedCheckpointReviewPanel(props: {
                                 ? "สร้าง Prompt วิดีโอก่อน"
                                 : !selectedVideoModelAvailable
                                   ? "เลือกโมเดลวิดีโอที่มีอยู่ก่อนส่งงาน"
-                                  : !shot.imageArtifactHash ||
-                                        imageResultCheckpoint?.state !==
-                                          "approved"
-                                      ? "ต้องสร้างและอนุมัติภาพของช็อตนี้ก่อน"
+                                  : !shot.imageArtifactHash || !shot.imageArtifactUrl
+                                      ? "ต้องสร้างภาพของช็อตนี้ให้เสร็จก่อน"
                                       : isTaskInFlight(shot.imageTaskStatus) ||
                                           isTaskInFlight(shot.videoTaskStatus)
                                         ? "รอให้งานวิดีโอของช็อตนี้เสร็จก่อน"
