@@ -87,7 +87,7 @@ jobs:
             });
             if (!response.ok) throw new Error(`Approved runtime download failed: HTTP ${response.status}; edge challenge=${response.headers.get('cf-mitigated') ?? 'none'}`);
             await pipeline(Readable.fromWeb(response.body), createWriteStream(`${process.env.RUNTIME_BUILD_ROOT}/base.zip`));
-            JS
+          JS
           fi
           python3 - <<'PY'
           import hashlib, json, os, pathlib, zipfile
