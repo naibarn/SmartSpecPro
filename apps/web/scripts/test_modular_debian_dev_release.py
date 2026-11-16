@@ -42,6 +42,7 @@ def target_map():
 def ingress():
     return [
         {"hostname": "aimarkethubs.com", "path": "^/v1/core(/.*)?$", "service": "https://127.0.0.1:3200", "originRequest": {"httpHostHeader": "aimarkethubs.com", "noTLSVerify": True}},
+        {"hostname": "aimarkethubs.com", "path": "^/(api/runners|runner/approve)(/.*)?$", "service": "https://127.0.0.1:3200", "originRequest": {"httpHostHeader": "aimarkethubs.com", "noTLSVerify": True}},
         {"hostname": "aimarkethubs.com", "path": "^/(api/chat|modules/chat)(/.*)?$", "service": "https://127.0.0.1:3201", "originRequest": {"httpHostHeader": "aimarkethubs.com", "noTLSVerify": True}},
         {"hostname": "aimarkethubs.com", "service": "https://127.0.0.1:3202", "originRequest": {"httpHostHeader": "aimarkethubs.com", "noTLSVerify": True}},
         {"service": "http_status:404"},

@@ -19,7 +19,8 @@
     },
     "section-02-enrollment-and-proof": {
       "status": "in_progress",
-      "next_action": "Implement durable DEV pairing approval, runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority."
+      "next_action": "Commit the fixture-verified 0444 and release-routing changes, then apply with the registered DEV migration runner and deploy Platform SHA ab6f77e28ce7f575689f8bd19cfd27045c94ffb9 to modular-debian-dev.",
+      "checkpoint_sha": "ab6f77e28ce7f575689f8bd19cfd27045c94ffb9"
     }
   },
   "pre_commit": {
@@ -31,10 +32,10 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T09:58:36.450629+00:00",
-  "generation": 2,
-  "updated_at": "2026-11-16T09:58:47.713017+00:00",
+  "generation": 4,
+  "updated_at": "2026-11-16T10:51:24+00:00",
   "progress": {
     "active_section": "section-02-enrollment-and-proof",
-    "next_action": "Implement durable DEV pairing approval, runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority."
+    "next_action": "Commit the fixture-verified 0444 and release-routing changes, then apply with the registered DEV migration runner and deploy Platform SHA ab6f77e28ce7f575689f8bd19cfd27045c94ffb9 to modular-debian-dev."
   }
 }

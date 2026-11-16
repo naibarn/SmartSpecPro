@@ -80,6 +80,11 @@ def validate_tunnel_configuration(candidate: dict[str, Any], active: dict[str, A
 
     probes = {
         "/v1/core/auth/login": "https://127.0.0.1:3200",
+        "/api/runners/connect/start": "https://127.0.0.1:3200",
+        "/api/runners/connect/token": "https://127.0.0.1:3200",
+        "/api/runners/runner-1/access/refresh": "https://127.0.0.1:3200",
+        "/api/runners/approve": "https://127.0.0.1:3200",
+        "/runner/approve": "https://127.0.0.1:3200",
         "/api/chat/livez": "https://127.0.0.1:3201",
         "/modules/chat/current/module.manifest.json": "https://127.0.0.1:3201",
         "/login": "https://127.0.0.1:3202",
@@ -449,7 +454,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     previous_service_directories = capture_service_directories()
     local_smoke = verify_local_components()
     run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "validate"])
-    for route in ("/v1/core/auth/login", "/api/chat/livez", "/modules/chat/current/module.manifest.json", "/login", "/"):
+    for route in ("/v1/core/auth/login", "/api/runners/connect/start", "/api/runners/connect/token", "/runner/approve", "/api/chat/livez", "/modules/chat/current/module.manifest.json", "/login", "/"):
         run(["cloudflared", "tunnel", "--config", str(args.candidate_config), "ingress", "rule", f"https://{DOMAIN}{route}"])
 
     backup = artifact_root / "rollback" / "cloudflared.pre-modular.yml"

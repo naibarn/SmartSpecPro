@@ -3011,6 +3011,13 @@
       "when": 1794770000004,
       "tag": "0443_modular_chat_explicit_mission_job_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 444,
+      "version": "7",
+      "when": 1794825346265,
+      "tag": "0444_modular_runner_enrollment",
+      "breakpoints": true
     }
   ]
 }

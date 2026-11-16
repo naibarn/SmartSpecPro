@@ -1,64 +1,91 @@
-# Deep Implement — Live HandOff
+# R03.7 Implementation HandOff
 
-Generated from `deep_implement_config.json`. Read this at any time;
-on resume, reconcile recorded SHA values with Git/PR state.
+Updated: 2026-11-16 (Asia/Bangkok). This handoff records verified source and
+fixture evidence; it does not imply a DEV migration, deployment, or live Runner
+execution.
 
-- State generation: `2`
-- Updated (UTC): `2026-11-16T10:11:11+00:00`
-- Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.7/sections`
-- Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `7321ce9f82ad40f8d33ed9eea80c9967eee1e841` (SmartSpecPro `main` == `origin/main`)
-- Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-enrollment-and-proof`
-- Next action: Implement durable DEV pairing approval, Runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority.
+## Scope and immutable boundaries
 
-## Sections
+- Target: `modular-debian-dev` / `https://aimarkethubs.com` only.
+- Preserve `smartaihub.app` legacy and `smartsihub.com` production.
+- Reuse the installed Rust Runner and Codex CLI. Do not retarget the existing
+  Runner service or copy its credentials.
+- Keep worker_jobs, Job/Attempt, Mission binding and event ledger canonical.
+- Never edit or replay migration 0443.
 
-| Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
-| --- | --- | --- | --- | --- | --- | --- |
-| section-01-contract-and-installation | completed | root | primary checkouts | uncommitted | — | Installation and isolated Codex task probe passed; Rust wire contracts mapped. |
-| section-02-enrollment-and-proof | in_progress | root | primary checkouts | Platform `f80685a` | Platform `f80685a` | Add durable pairing approval/token lifecycle and replay-safe proof persistence. |
-| section-03-canonical-runner-control | pending | — | — | — | — | — |
-| section-04-live-ux-deploy-and-uat | pending | — | — | — | — | — |
+## Current source checkpoints
 
-## Open gaps / blockers (not automatic merge blockers)
-
-- Pairing/enrollment, durable proof replay protection, canonical Runner registration and job transport are absent from the active Hono release.
-- No authenticated owner MFA browser approval has been performed. Owner UAT remains pending.
-- DEV currently serves source `92f309e1043c47a5710528aca118c9d557520f39`; no R03.7 deployment has occurred.
+- SmartSpecPro main/origin baseline: `9c677968b3744be71e5d5166a1bb23637ab989e6`.
+- Platform main/origin: `ab6f77e28ce7f575689f8bd19cfd27045c94ffb9`.
+- Platform `ab6f77e` adds authenticated Hono pairing approval, one-time
+  enrollment/token completion, refresh rotation, revocation, device-key proof
+  verification and bounded request bodies. The focused route/proof tests,
+  saas-core typecheck and build passed before this checkpoint.
+- SmartSpecPro task-owned migration 0444 and target-routing/release checks are
+  currently uncommitted. They have not been applied or deployed.
+- The active Modular DEV release is still
+  `92f309e1043c47a5710528aca118c9d557520f39`; preserve it as rollback source.
+- Migration 0443 source SHA-256 remains
+  `83cf992a0eef0793597ca855f6e45c789e75cfca509bc74ce91bf34cf2f6d6f3`.
 
 ## Verified evidence
 
-- Codex CLI `/usr/local/bin/codex`, `codex-cli 0.165.0`.
-- Runner `/home/dev/.local/bin/smartaihub-runner`, `0.2.44-dev.1`, `sah-runner-v1`, `sah-runner-connect-v2`; user service active, user `dev`, `ExecStart` is installed binary `run`.
-- Fresh `smartaihub-runner verify codex`: auth ready, version/task probe passed, evidence `runner-task-probe:sha256:7192a5620e8ac9d832f35a17e6bdf763956b910e0b861e404bd1f4dece59c2e6`.
-- Device proof RSA-SHA256 implementation focused test: 4/4 passed.
-- Integrated proof implementation commit `f80685a01703009abd9bbad5cc333f845c4d49cd`; it is not yet wired into Hono request handlers and has not been deployed.
-- Spec/handoff checkpoint commit `7321ce9f82ad40f8d33ed9eea80c9967eee1e841`; SmartSpecPro `main` and `origin/main` are reconciled. Platform `main` and `origin/main` are reconciled at `f80685a01703009abd9bbad5cc333f845c4d49cd`.
-- Existing modular Core systemd unit active; running release source remains `92f309e1043c47a5710528aca118c9d557520f39`.
-- Public `https://aimarkethubs.com/livez` returns the SmartSIHub shell HTML, so it is not evidence of Core protocol health.
+- Existing Codex CLI: `/usr/local/bin/codex`, version `0.165.0`.
+- Existing Runner: `/home/dev/.local/bin/smartaihub-runner`, version
+  `0.2.44-dev.1`, contracts `sah-runner-v1` and `sah-runner-connect-v2`;
+  existing user service remains active and untouched.
+- Existing Codex probe passed with evidence reference
+  `runner-task-probe:sha256:7192a5620e8ac9d832f35a17e6bdf763956b910e0b861e404bd1f4dece59c2e6`.
+- Disposable PostgreSQL 15.17 integration fixture passed for migration 0444,
+  pairing start/approval, one-time completion, pinned-device lookup, nonce
+  duplicate rejection, refresh rotation/replay rejection, revocation, and
+  function ACL assertions (no PUBLIC EXECUTE; Modular auth role can execute).
+- Fixture command:
+  `python3 scripts/spec224_certification/run_disposable_postgres.py -- bash apps/web/scripts/test-modular-runner-enrollment-postgres.sh`.
+- The fixture exposed insufficient `runner_nodes` DML/SELECT and function ACL
+  behavior. Migration 0444 was corrected to require explicit grant authority,
+  grant only necessary columns, revoke PUBLIC before transferring ownership,
+  and grant runtime execution under the restricted function owner.
+- Migration 0443 was not changed. No shared DEV database was used by the
+  destructive integration fixture.
+- No authenticated owner MFA approval, live enrollment, heartbeat, capability
+  publication, canonical Job dispatch, or end-to-end Codex execution has been
+  performed.
 
-## Acceptance matrix
+## Acceptance status
 
-| Acceptance | Status | Evidence |
+| Acceptance | Status | Evidence / gap |
 | --- | --- | --- |
-| `EXISTING_CODEX_VERIFIED` | PASS | Fresh installed Runner Codex task probe passed; evidence ref recorded above. |
-| `EXISTING_RUNNER_REUSED` | PASS | Existing binary/service inspected and left active; no replacement or retarget. |
-| `MODULAR_PROTOCOL_COMPATIBLE` | PARTIAL | Rust contracts mapped and RSA proof verifier tested; Hono routes and durable replay checks are absent. |
-| `MODULAR_RUNNER_ENROLLED` | BLOCKED | Active Core returns 404 for `/api/runners/connect/start`; no MFA approval flow/API pairing producer. |
-| `HARNESS_INSTANCE_REGISTERED` | BLOCKED | No real Modular enrollment/capability registration occurred. |
-| `HEARTBEAT_VERIFIED` | BLOCKED | Runner control protocol is not implemented in Hono. |
-| `REAL_CODEX_JOB_EXECUTED` | BLOCKED | No canonical Runner job claim/delivery path exists in active Core. |
-| `MISSION_JOB_BOUND` | BLOCKED | No real Job was admitted/executed through the Runner for this acceptance. |
-| `TASK_CONTROL_LINK_VERIFIED` | BLOCKED | No real Runner Job/Attempt identity to deep-link. |
-| `EXECUTION_EVIDENCE_CAPTURED` | PARTIAL | Isolated Codex probe evidence exists; no Job transcript/events/artifacts were produced. |
-| `DEV_DEPLOYED` | PARTIAL | Existing DEV remains healthy at source `92f309e…`; R03.7 proof code is integrated at Platform `f80685a…` but not built/deployed. |
-| `OWNER_UAT` | PENDING | No authenticated owner MFA browser approval/UAT was performed. |
+| `PAIRING_ROUTES_DEPLOYED` | BLOCKED | Source merged in Platform; 0444 not yet applied and Modular DEV not redeployed. |
+| `OWNER_APPROVAL_FLOW_WORKING` | PARTIAL | Hono MFA/session-bound route and fixture DB approval work; real owner browser approval pending. |
+| `DEVICE_PROOF_PINNED` | PARTIAL | RSA proof verifier + pairing persistence implemented; live device enrollment pending. |
+| `DURABLE_NONCE_REPLAY_REJECTED` | PARTIAL | PG15 fixture proved first-use accept and duplicate denial; DEV pending. |
+| `TOKEN_REFRESH_VERIFIED` | PARTIAL | PG15 fixture proved rotation and old-token replay denial; DEV pending. |
+| `HEARTBEAT_ACCEPTED` | NOT_TESTED | Slice B not implemented. |
+| `CAPABILITY_PUBLISHED` | NOT_TESTED | Slice B not implemented. |
+| `MODULAR_RUNNER_ENROLLED` | BLOCKED | Requires migration/deploy and owner MFA approval. |
+| `HARNESS_INSTANCE_REGISTERED` | NOT_TESTED | Slice B not implemented. |
+| `CANONICAL_JOB_ASSIGNED` | NOT_TESTED | Slice C not implemented. |
+| `RUNNER_ACK_VERIFIED` | NOT_TESTED | Slice C not implemented. |
+| `CODEX_EXECUTED` | PARTIAL | Isolated installed-client probe passed; no canonical Job dispatched. |
+| `MISSION_JOB_ASSOCIATED` | NOT_TESTED | No real Job execution. |
+| `TASK_CONTROL_DEEP_LINK_VERIFIED` | NOT_TESTED | No real Job/Attempt identity. |
+| `EVIDENCE_CAPTURED` | PARTIAL | Codex binary probe exists; runtime Job evidence unavailable. |
+| `DEV_DEPLOYED` | BLOCKED | Active release remains `92f309e…`; current source not deployed. |
+| `OWNER_UAT` | PENDING | Must use a real authenticated MFA browser session; do not simulate. |
 
-## Resume
+## Immediate resume order
 
-1. Read this file and `deep_implement_config.json`.
-2. Check current Git HEAD, actual commits, worktree ownership and PR merge status.
-3. Recover any committed-but-unrecorded or merged-but-unrecorded work before replaying.
-4. Continue the next incomplete step; do not reset dirty files or re-open merged PRs.
+1. Commit and push only the R03.7-owned SmartSpecPro files; preserve every
+   unrelated dirty path.
+2. Apply 0444 via `pnpm --dir apps/web db:migrate`; verify target, ledger hash,
+   function owner/ACL, and runner-node column grants.
+3. Build Platform `ab6f77e…` and deploy only with the registered
+   `modular-debian-dev` controller; verify public tunnel routes reach Core.
+4. Complete the legitimate owner approval in browser when available; report
+   the exact pairing URL and manual step if MFA UAT is unavailable.
+5. Implement and verify Slice B against the installed Rust HTTPS/WSS protocol
+   before attempting Slice C canonical Job execution.
+
+Do not claim enrollment, a live Harness, Job dispatch, Mission continuity,
+Task Control navigation, or completion until each is observed in the target.
