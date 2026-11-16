@@ -641,6 +641,40 @@ export interface SweepOrphanedLaneARenderJobsDependencies {
 }
 
 /**
+ * A same-job runtime recovery preserves `createdAt` for audit history. The
+ * Lane-A orphan sweep must use the recovery authorization time as the new
+ * execution baseline, or an old queued row can be failed immediately after
+ * it is recovered. Only the narrowly stamped desktop Remotion recovery
+ * record is eligible; ordinary and legacy rows keep their original baseline.
+ */
+function getLaneARenderOrphanBaselineMs(row: WorkerJob): number {
+  const recoveryValue = row.retryPolicyJson?.remotionRuntimeRecovery;
+  if (recoveryValue && typeof recoveryValue === "object" && !Array.isArray(recoveryValue)) {
+    const recovery = recoveryValue as Record<string, unknown>;
+    const authorizedAt = Date.parse(String(recovery.authorizedAt ?? ""));
+    const expiresAt = Date.parse(String(recovery.expiresAt ?? ""));
+    if (
+      row.jobType === "remotion_render_video" &&
+      row.runtimeType === "desktop_zeroclaw_managed" &&
+      row.executionClass === "short" &&
+      row.statusReason === "operator_review_recovery" &&
+      row.attempt === 2 &&
+      recovery.attempt === 2 &&
+      recovery.retrySource === "unassigned_runtime_contract" &&
+      Number.isFinite(authorizedAt) &&
+      Number.isFinite(expiresAt) &&
+      authorizedAt >= row.createdAt.getTime() &&
+      expiresAt > authorizedAt &&
+      expiresAt - authorizedAt <= 60 * 60_000
+    ) {
+      return authorizedAt;
+    }
+  }
+
+  return (row.startedAt ?? row.createdAt).getTime();
+}
+
+/**
  * Heals `remotion_render_video` `worker_jobs` rows stranded by a web-process
  * restart mid-render (`dispatchLaneARemotionRenderJob` runs the render
  * in-process, fire-and-forget — if the process dies between the
@@ -702,8 +736,7 @@ export async function sweepOrphanedLaneARenderJobs(
 
   for (const row of rows) {
     try {
-      const baseline = row.startedAt ?? row.createdAt;
-      const baselineMs = baseline instanceof Date ? baseline.getTime() : Date.parse(String(baseline));
+      const baselineMs = getLaneARenderOrphanBaselineMs(row);
       if (!Number.isFinite(baselineMs)) continue;
 
       const timeoutSeconds = typeof row.timeoutSeconds === "number" ? row.timeoutSeconds : 0;

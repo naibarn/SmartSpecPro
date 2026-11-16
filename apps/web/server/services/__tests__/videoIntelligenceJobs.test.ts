@@ -649,6 +649,35 @@ describe("sweepOrphanedLaneARenderJobs", () => {
     expect(updateProjectFields).not.toHaveBeenCalled();
   });
 
+  it("uses the authorized runtime-recovery timestamp instead of the historical createdAt", async () => {
+    const authorizedAt = new Date(NOW - 1000);
+    const recoveredRow = row({
+      id: "job-recovered-runtime-1",
+      status: "queued",
+      statusReason: "operator_review_recovery",
+      runtimeType: "desktop_zeroclaw_managed",
+      executionClass: "short",
+      attempt: 2,
+      maxAttempts: 2,
+      startedAt: null,
+      createdAt: new Date(NOW - 3 * 60 * 60 * 1000),
+      retryPolicyJson: {
+        remotionRuntimeRecovery: {
+          attempt: 2,
+          retrySource: "unassigned_runtime_contract",
+          authorizedAt: authorizedAt.toISOString(),
+          expiresAt: new Date(NOW + 59 * 60 * 1000).toISOString(),
+        },
+      },
+    });
+    mockDb.select.mockReturnValueOnce({ from: () => ({ where: () => Promise.resolve([recoveredRow]) }) });
+
+    const result = await sweepOrphanedLaneARenderJobs({ now, updateProjectFields: vi.fn() });
+
+    expect(result.failed).toEqual([]);
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
   it("never touches a preview-profile row's project status, even when stranded", async () => {
     const { remotionRenderVideoWorkerInputSchema } = await import("../../../shared/workerRuntime");
     const previewPayload = remotionRenderVideoWorkerInputSchema.parse({
