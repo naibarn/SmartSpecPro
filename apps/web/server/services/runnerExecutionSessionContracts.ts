@@ -43,6 +43,7 @@ export interface ExecutionSessionProjectionInput {
   workerJobAttempt: number;
   leaseFencingVersion: number;
   runnerId?: string | null;
+  harnessInstanceId?: string | null;
   generation: number;
   authorityEpoch?: number;
   placementEpoch?: number;
@@ -63,6 +64,7 @@ export type RunnerExecutionSessionBinding = Pick<
   | "workerJobAttempt"
   | "leaseFencingVersion"
   | "runnerId"
+  | "harnessInstanceId"
   | "generation"
   | "authorityEpoch"
   | "placementEpoch"
@@ -93,7 +95,7 @@ export function validateRunnerExecutionSessionBinding(
   const binding = value as Record<string, unknown>;
   const allowedKeys = new Set([
     "sessionId", "tenantId", "workerJobId", "workerJobAttempt",
-    "leaseFencingVersion", "runnerId", "generation", "authorityEpoch",
+    "leaseFencingVersion", "runnerId", "harnessInstanceId", "generation", "authorityEpoch",
     "placementEpoch", "jobControlRevision", "state", "continuityClass",
     "enforcementLevel", "driverId", "driverVersion",
   ]);
@@ -362,6 +364,7 @@ export function validateExecutionSessionProjection(
     input.tenantId.length > 36 ||
     input.workerJobId.length > 36 ||
     (input.runnerId?.length ?? 0) > 160 ||
+    (input.harnessInstanceId?.length ?? 0) > 36 ||
     input.driverId.length > 128 ||
     (input.driverVersion?.length ?? 0) > 64 ||
     !executionSessionStates.includes(input.desiredState)

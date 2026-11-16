@@ -1,9 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { getDb } from "../db";
 import {
   runnerExecutionSessionEvents,
   runnerExecutionSessions,
+  runnerHarnessInstances,
+  runnerNodes,
   workerJobs,
 } from "../../drizzle/schema";
 import {
@@ -153,6 +155,7 @@ export async function createExecutionSessionProjection(
         status: workerJobs.status,
         attempt: workerJobs.attempt,
         fencingVersion: workerJobs.fencingVersion,
+        workspaceId: workerJobs.chatWorkspaceId,
       })
       .from(workerJobs)
       .where(
@@ -174,6 +177,36 @@ export async function createExecutionSessionProjection(
     ) {
       throw new Error("RUNNER_SESSION_CANONICAL_JOB_FENCE_MISMATCH");
     }
+    if (input.harnessInstanceId) {
+      if (!input.runnerId || !job.workspaceId) throw new Error("RUNNER_SESSION_HARNESS_SCOPE_MISSING");
+      const [harness] = await tx.select({
+        id: runnerHarnessInstances.id,
+        toolId: runnerHarnessInstances.toolId,
+        provenanceJson: runnerHarnessInstances.provenanceJson,
+      }).from(runnerHarnessInstances).innerJoin(runnerNodes, and(
+        eq(runnerNodes.runnerId, runnerHarnessInstances.runnerId),
+        eq(runnerNodes.tenantId, runnerHarnessInstances.tenantId),
+      )).where(and(
+        eq(runnerHarnessInstances.id, input.harnessInstanceId),
+        eq(runnerHarnessInstances.tenantId, input.tenantId),
+        eq(runnerHarnessInstances.runnerId, input.runnerId),
+        eq(runnerHarnessInstances.adapterId, input.driverId),
+        eq(runnerHarnessInstances.trustState, "trusted"),
+        eq(runnerNodes.trustState, "trusted"),
+        eq(runnerNodes.status, "online"),
+        sql`${runnerHarnessInstances.revokedAt} IS NULL`,
+        sql`${runnerNodes.revokedAt} IS NULL`,
+        sql`${runnerHarnessInstances.expiresAt} > now()`,
+        sql`${runnerNodes.lastSeenAt} >= now() - interval '5 minutes'`,
+        sql`${runnerHarnessInstances.workspaceIds} @> ${JSON.stringify([job.workspaceId])}::jsonb`,
+      )).limit(1).for("share");
+      const provenance = harness?.provenanceJson;
+      if (!harness || provenance?.authState !== "authenticated" || provenance.healthState !== "healthy" ||
+        provenance.inventoryTrustState !== "ready" || !Array.isArray(provenance.capabilities) ||
+        !provenance.capabilities.includes(`tool.execute.${harness.toolId}`)) {
+        throw new Error("RUNNER_SESSION_HARNESS_BINDING_STALE");
+      }
+    }
 
     const [existing] = await tx
       .select()
@@ -185,7 +218,8 @@ export async function createExecutionSessionProjection(
       const sameIdentity =
         existing.tenantId === input.tenantId &&
         existing.workerJobId === input.workerJobId &&
-        existing.generation === input.generation;
+        existing.generation === input.generation &&
+        (existing.harnessInstanceId ?? null) === (input.harnessInstanceId ?? null);
       if (!sameIdentity) throw new Error("RUNNER_SESSION_ID_CONFLICT");
       const [priorEvent] = await tx
         .select()
@@ -219,6 +253,7 @@ export async function createExecutionSessionProjection(
         workerJobAttempt: input.workerJobAttempt,
         leaseFencingVersion: input.leaseFencingVersion,
         runnerId: input.runnerId ?? null,
+        harnessInstanceId: input.harnessInstanceId ?? null,
         generation: input.generation,
         authorityEpoch: input.authorityEpoch ?? 0,
         placementEpoch: input.placementEpoch ?? 0,

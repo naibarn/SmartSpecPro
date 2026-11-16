@@ -49,7 +49,7 @@ import {
   verifyRunnerControlToken,
 } from "../runnerAuthService";
 import { verifyBearerToken } from "../../_core/tokens";
-import { InMemoryRunnerRepository, RunnerGateway, runnerReadinessForDisplay } from "../runnerGateway";
+import { InMemoryRunnerRepository, RunnerGateway, projectRunnerHarnessRegistrations, runnerReadinessForDisplay } from "../runnerGateway";
 
 const now = new Date("2026-09-18T00:00:00.000Z");
 const validTestPublicKey = crypto.generateKeyPairSync("rsa", {
@@ -84,6 +84,39 @@ describe("RunnerGateway", () => {
     claimedKeys.clear();
     enqueueWorkspaceAuthorityAuditEvent.mockClear();
     __clearRunnerRefreshGraceForTests();
+  });
+
+  it("projects only authenticated, supported Harness inventory with source scope and freshness", () => {
+    const node = {
+      runnerId: "runner-1", tenantId: "tenant-1", ownerUserId: 7,
+      nodeKind: "local_device" as const, profile: "local_device" as const,
+      deviceId: "device-1", displayName: "Dev Runner", trustState: "trusted" as const,
+      status: "online" as const, currentSnapshotRevision: "8", currentSnapshot: null,
+      lastSeenAt: now.toISOString(), revokedAt: null, activeSessionId: "session-1",
+    };
+    const inventory = (adapterId: string, toolId: string) => ({
+      toolId, kind: "agent_harness" as const, displayName: toolId, version: "1",
+      adapterId, adapterVersion: "1", discoverySource: "runner", installState: "installed" as const,
+      configurationState: "configured" as const, authState: "authenticated" as const,
+      healthState: "healthy" as const, availabilityState: "available" as const,
+      trustState: "ready" as const, fingerprint: `fingerprint-${toolId}`,
+      versionProbeState: "passed" as const, taskProbeState: "passed" as const,
+      observedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 60_000).toISOString(), reasonCodes: [],
+    });
+    const projected = projectRunnerHarnessRegistrations(node, {
+      ...snapshot("8"), toolInventory: [
+        inventory("codex.v1", "codex-main"),
+        inventory("unregistered.adapter", "unknown"),
+      ],
+    });
+    expect(projected).toHaveLength(1);
+    expect(projected[0]).toMatchObject({
+      tenantId: "tenant-1", runnerId: "runner-1", adapterId: "codex.v1",
+      toolId: "codex-main", trustState: "trusted", availabilityState: "available",
+      workspaceIds: ["workspace-1"], capabilitySnapshotRevision: "8",
+      provenanceJson: { source: "authenticated_runner_capability_snapshot", inventoryTrustState: "ready" },
+    });
+    expect(projected[0]?.expiresAt).toBeInstanceOf(Date);
   });
 
   it("isolates token revocation state and still rejects a revoked token", async () => {
@@ -565,7 +598,9 @@ describe("RunnerGateway", () => {
   });
 
   it("revokes an owned Runner and rejects another owner", async () => {
-    const gateway = new RunnerGateway(new InMemoryRunnerRepository());
+    const repository = new InMemoryRunnerRepository();
+    const revokeHarnesses = vi.spyOn(repository, "revokeHarnesses");
+    const gateway = new RunnerGateway(repository);
     const auth = await verifyRunnerControlToken(
       createRunnerControlToken({
         runnerId: "runner-revoke",
@@ -601,6 +636,7 @@ describe("RunnerGateway", () => {
         ownerUserId: 7,
       })
     ).resolves.toMatchObject({ status: "revoked", trustState: "revoked" });
+    expect(revokeHarnesses).toHaveBeenCalledWith("runner-revoke", "tenant-a", expect.any(Date));
     expect(enqueueWorkspaceAuthorityAuditEvent).toHaveBeenCalledExactlyOnceWith({
       tenantId: "tenant-a",
       eventType: "SESSION_FINISH",

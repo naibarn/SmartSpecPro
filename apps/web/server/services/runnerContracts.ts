@@ -210,6 +210,13 @@ export type RunnerToolInventoryEntry = {
   reasonCodes: string[];
 };
 
+/** Native Harness adapters implemented by the authenticated Runner protocol. */
+export const NATIVE_HARNESS_ADAPTER_IDS = [
+  "codex.v1",
+  "claude.v1",
+  "microsoft-copilot.v1",
+] as const;
+
 export type RunnerModelCatalog = {
   state: "discovered" | "error" | "not_ready";
   adapterId: string;
@@ -1286,7 +1293,7 @@ export function validateRunnerCapabilitySnapshot(
   // high-level external-task capability as availability only when the
   // authenticated Codex adapter is actually ready. This does not approve a
   // policy decision, tenant-owner authorization, or a Recovery Grant.
-  const externalAgentReady = toolInventory.some(tool => ["codex.v1", "claude.v1", "microsoft-copilot.v1"].includes(tool.adapterId ?? "") &&
+  const externalAgentReady = toolInventory.some(tool => NATIVE_HARNESS_ADAPTER_IDS.includes(tool.adapterId as typeof NATIVE_HARNESS_ADAPTER_IDS[number]) &&
     capabilities.includes(`tool.execute.${tool.toolId}`) &&
     tool.installState === "installed" && tool.configurationState === "configured" &&
     tool.authState === "authenticated" && tool.healthState === "healthy" &&

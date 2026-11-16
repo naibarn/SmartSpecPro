@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { runnerCapabilitySnapshots, runnerNodes } from "../../drizzle/schema";
+import { runnerCapabilitySnapshots, runnerHarnessInstances, runnerNodes } from "../../drizzle/schema";
 import {
   RUNNER_CONTRACT_VERSION,
+  NATIVE_HARNESS_ADAPTER_IDS,
   type RunnerCapabilitySnapshot,
   type RunnerIdentity,
   type RunnerNodeKind,
@@ -24,6 +25,64 @@ type RunnerGatewayAuth = Pick<
   | "ownerUserId"
   | "runnerSessionId"
 >;
+
+export type RunnerHarnessRegistrationProjection = {
+  tenantId: string;
+  runnerId: string;
+  adapterId: string;
+  toolId: string;
+  displayName: string;
+  adapterVersion: string | null;
+  trustState: RunnerGatewayNode["trustState"];
+  availabilityState: "available" | "busy" | "stale" | "disabled" | "unavailable";
+  workspaceIds: string[];
+  capabilitySnapshotRevision: string;
+  provenanceJson: Record<string, unknown>;
+  lastHeartbeatAt: Date | null;
+  expiresAt: Date;
+  revokedAt: Date | null;
+};
+
+/** Project only adapter identities emitted by the authenticated Runner inventory. */
+export function projectRunnerHarnessRegistrations(
+  node: RunnerGatewayNode,
+  snapshot: RunnerCapabilitySnapshot,
+): RunnerHarnessRegistrationProjection[] {
+  const supportedAdapters = new Set<string>(NATIVE_HARNESS_ADAPTER_IDS);
+  return (snapshot.toolInventory ?? []).flatMap(tool => {
+    if (!tool.adapterId || !supportedAdapters.has(tool.adapterId)) return [];
+    const availabilityState = ["available", "busy", "stale", "disabled"].includes(tool.availabilityState)
+      ? tool.availabilityState as RunnerHarnessRegistrationProjection["availabilityState"]
+      : "unavailable";
+    return [{
+      tenantId: node.tenantId,
+      runnerId: node.runnerId,
+      adapterId: tool.adapterId,
+      toolId: tool.toolId,
+      displayName: tool.displayName,
+      adapterVersion: tool.adapterVersion,
+      trustState: node.trustState,
+      availabilityState,
+      workspaceIds: [...snapshot.workspaceIds],
+      capabilitySnapshotRevision: snapshot.revision,
+      provenanceJson: {
+        source: "authenticated_runner_capability_snapshot",
+        snapshotRevision: snapshot.revision,
+        snapshotObservedAt: snapshot.observedAt,
+        toolFingerprint: tool.fingerprint,
+        installState: tool.installState,
+        configurationState: tool.configurationState,
+        authState: tool.authState,
+        healthState: tool.healthState,
+        inventoryTrustState: tool.trustState,
+        capabilities: snapshot.capabilities.filter(capability => capability === `tool.execute.${tool.toolId}`),
+      },
+      lastHeartbeatAt: node.lastSeenAt ? new Date(node.lastSeenAt) : null,
+      expiresAt: new Date(tool.expiresAt),
+      revokedAt: node.revokedAt ? new Date(node.revokedAt) : null,
+    }];
+  });
+}
 
 export type RunnerGatewayNode = {
   runnerId: string;
@@ -100,6 +159,8 @@ export interface RunnerRepository {
     snapshot: RunnerCapabilitySnapshot,
     idempotencyKey: string
   ): Promise<void>;
+  recordHarnessHeartbeat?(runnerId: string, tenantId: string, at: Date): Promise<void>;
+  revokeHarnesses?(runnerId: string, tenantId: string, at: Date): Promise<void>;
 }
 
 export class RunnerGatewayError extends Error {
@@ -153,6 +214,7 @@ export class InMemoryRunnerRepository implements RunnerRepository {
     string,
     { snapshot: RunnerCapabilitySnapshot; idempotencyKey: string }
   >();
+  readonly revokeHarnesses = async (_runnerId: string, _tenantId: string, _at: Date): Promise<void> => undefined;
 
   async getNode(
     runnerId: string,
@@ -396,8 +458,97 @@ export class DrizzleRunnerRepository implements RunnerRepository {
             eq(runnerNodes.tenantId, node.tenantId)
           )
         );
+      await tx.update(runnerHarnessInstances).set({
+        availabilityState: "stale",
+        expiresAt: new Date(),
+        updatedAt: new Date(),
+      }).where(and(
+        eq(runnerHarnessInstances.runnerId, node.runnerId),
+        eq(runnerHarnessInstances.tenantId, node.tenantId),
+      ));
+      for (const registration of projectRunnerHarnessRegistrations(node, snapshot)) {
+        await tx.insert(runnerHarnessInstances).values({ ...registration, updatedAt: new Date() }).onConflictDoUpdate({
+          target: [runnerHarnessInstances.tenantId, runnerHarnessInstances.runnerId, runnerHarnessInstances.adapterId, runnerHarnessInstances.toolId],
+          set: {
+            displayName: registration.displayName,
+            adapterVersion: registration.adapterVersion,
+            trustState: registration.trustState,
+            availabilityState: registration.availabilityState,
+            workspaceIds: registration.workspaceIds,
+            capabilitySnapshotRevision: registration.capabilitySnapshotRevision,
+            provenanceJson: registration.provenanceJson,
+            lastHeartbeatAt: registration.lastHeartbeatAt,
+            expiresAt: registration.expiresAt,
+            revokedAt: registration.revokedAt,
+            updatedAt: new Date(),
+          },
+        });
+      }
     });
   }
+
+  async recordHarnessHeartbeat(runnerId: string, tenantId: string, at: Date): Promise<void> {
+    const db = getDb();
+    await db.update(runnerHarnessInstances)
+      .set({ lastHeartbeatAt: at, updatedAt: at })
+      .where(and(
+        eq(runnerHarnessInstances.runnerId, runnerId),
+        eq(runnerHarnessInstances.tenantId, tenantId),
+        sql`${runnerHarnessInstances.revokedAt} IS NULL`,
+      ));
+  }
+
+  async revokeHarnesses(runnerId: string, tenantId: string, at: Date): Promise<void> {
+    const db = getDb();
+    await db.update(runnerHarnessInstances)
+      .set({ trustState: "revoked", availabilityState: "disabled", revokedAt: at, updatedAt: at })
+      .where(and(
+        eq(runnerHarnessInstances.runnerId, runnerId),
+        eq(runnerHarnessInstances.tenantId, tenantId),
+        sql`${runnerHarnessInstances.revokedAt} IS NULL`,
+      ));
+  }
+}
+
+/** Resolve the exact registered Harness at trusted dispatch; ambiguous or stale
+ * adapter inventory remains explicitly unbound instead of being guessed. */
+export async function resolveHarnessInstanceForDispatch(input: {
+  tenantId: string;
+  runnerId: string;
+  adapterId: string;
+  workspaceRef: string | null | undefined;
+}): Promise<string | null> {
+  if (!input.workspaceRef || !NATIVE_HARNESS_ADAPTER_IDS.includes(input.adapterId as typeof NATIVE_HARNESS_ADAPTER_IDS[number])) return null;
+  const db = getDb();
+  const candidates = await db.select({
+    id: runnerHarnessInstances.id,
+    toolId: runnerHarnessInstances.toolId,
+    provenanceJson: runnerHarnessInstances.provenanceJson,
+  }).from(runnerHarnessInstances).innerJoin(runnerNodes, and(
+    eq(runnerNodes.runnerId, runnerHarnessInstances.runnerId),
+    eq(runnerNodes.tenantId, runnerHarnessInstances.tenantId),
+  )).where(and(
+    eq(runnerHarnessInstances.tenantId, input.tenantId),
+    eq(runnerHarnessInstances.runnerId, input.runnerId),
+    eq(runnerHarnessInstances.adapterId, input.adapterId),
+    eq(runnerHarnessInstances.trustState, "trusted"),
+    eq(runnerHarnessInstances.availabilityState, "available"),
+    eq(runnerNodes.trustState, "trusted"),
+    eq(runnerNodes.status, "online"),
+    sql`${runnerNodes.revokedAt} IS NULL`,
+    sql`${runnerNodes.lastSeenAt} >= now() - interval '5 minutes'`,
+    sql`${runnerHarnessInstances.revokedAt} IS NULL`,
+    sql`${runnerHarnessInstances.expiresAt} > now()`,
+    sql`${runnerHarnessInstances.workspaceIds} @> ${JSON.stringify([input.workspaceRef])}::jsonb`,
+  )).limit(2);
+  const ready = candidates.filter(candidate =>
+    candidate.provenanceJson.authState === "authenticated" &&
+    candidate.provenanceJson.healthState === "healthy" &&
+    candidate.provenanceJson.inventoryTrustState === "ready" &&
+    Array.isArray(candidate.provenanceJson.capabilities) &&
+    candidate.provenanceJson.capabilities.includes(`tool.execute.${candidate.toolId}`)
+  );
+  return ready.length === 1 ? ready[0]!.id : null;
 }
 
 function compareRevisions(left: string, right: string): number {
@@ -603,6 +754,11 @@ export class RunnerGateway {
         : "degraded";
     node.lastSeenAt = new Date().toISOString();
     await this.repository.saveNode(node);
+    await this.repository.recordHarnessHeartbeat?.(
+      node.runnerId,
+      node.tenantId,
+      new Date(node.lastSeenAt)
+    );
     return node;
   }
 
@@ -680,6 +836,7 @@ export class RunnerGateway {
     node.trustState = "revoked";
     node.status = "revoked";
     await this.repository.saveNode(node);
+    await this.repository.revokeHarnesses?.(node.runnerId, node.tenantId, new Date(revoked));
     if (endedSessionId) {
       const { enqueueWorkspaceAuthorityAuditEvent } = await import("../jobs/workspaceAuthorityAuditJob");
       await enqueueWorkspaceAuthorityAuditEvent({ tenantId: input.tenantId, eventType: "SESSION_FINISH", eventId: `${input.runnerId}:${endedSessionId}` })

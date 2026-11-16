@@ -13,6 +13,7 @@ import type { ExecutionSessionProjectionInput } from "./runnerExecutionSessionCo
 import { issueRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
 import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
+import { resolveHarnessInstanceForDispatch } from "./runnerGateway";
 import type { RunnerJobCommand } from "./runnerContracts";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
 import { renewSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
@@ -207,6 +208,25 @@ export function createExternalAgentTaskDispatcher(
       )
       .digest("hex")
       .slice(0, 40)}`;
+    let harnessInstanceId: string | null = null;
+    try {
+      harnessInstanceId = await resolveHarnessInstanceForDispatch({
+        tenantId: command.tenantId,
+        runnerId: command.runnerId,
+        adapterId: command.adapterId,
+        workspaceRef: command.workspaceRef,
+      });
+    } catch (error) {
+      // The existing canonical dispatch remains available if this additive
+      // identity projection is unavailable; the execution remains unbound.
+      console.warn("[RunnerHarness] dispatch binding unavailable", {
+        jobId: command.jobId,
+        runnerId: command.runnerId,
+        reason: error instanceof Error && /^[A-Z0-9_]{1,100}$/.test(error.message)
+          ? error.message
+          : "HARNESS_BINDING_LOOKUP_FAILED",
+      });
+    }
     const sessionProjectionInput: ExecutionSessionProjectionInput = {
       sessionId,
       tenantId: command.tenantId,
@@ -214,6 +234,7 @@ export function createExternalAgentTaskDispatcher(
       workerJobAttempt: command.attempt,
       leaseFencingVersion: command.fencingToken,
       runnerId: command.runnerId,
+      harnessInstanceId,
       generation: command.attempt,
       authorityEpoch: 1,
       placementEpoch: 1,
@@ -265,6 +286,7 @@ export function createExternalAgentTaskDispatcher(
           workerJobAttempt: sessionProjectionInput.workerJobAttempt,
           leaseFencingVersion: sessionProjectionInput.leaseFencingVersion,
           runnerId: sessionProjectionInput.runnerId,
+          harnessInstanceId: sessionProjectionInput.harnessInstanceId,
           generation: sessionProjectionInput.generation,
           authorityEpoch: sessionProjectionInput.authorityEpoch,
           placementEpoch: sessionProjectionInput.placementEpoch,

@@ -16295,6 +16295,37 @@ export const runnerNodes = pgTable(
 export type RunnerNode = typeof runnerNodes.$inferSelect;
 export type InsertRunnerNode = typeof runnerNodes.$inferInsert;
 
+/** Authenticated projection of native Harness adapters reported by a Runner snapshot. */
+export const runnerHarnessInstances = pgTable(
+  "runner_harness_instances",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    runnerId: varchar("runnerId", { length: 160 }).notNull().references(() => runnerNodes.runnerId, { onDelete: "cascade" }),
+    adapterId: varchar("adapterId", { length: 128 }).notNull(),
+    toolId: varchar("toolId", { length: 160 }).notNull(),
+    displayName: varchar("displayName", { length: 255 }).notNull(),
+    adapterVersion: varchar("adapterVersion", { length: 64 }),
+    trustState: varchar("trustState", { length: 32 }).notNull(),
+    availabilityState: varchar("availabilityState", { length: 32 }).notNull(),
+    workspaceIds: jsonb("workspaceIds").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    capabilitySnapshotRevision: varchar("capabilitySnapshotRevision", { length: 128 }).notNull(),
+    provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull(),
+    registeredAt: timestamp("registeredAt", { withTimezone: true }).notNull().defaultNow(),
+    lastHeartbeatAt: timestamp("lastHeartbeatAt", { withTimezone: true }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("runner_harness_instances_source_unique").on(t.tenantId, t.runnerId, t.adapterId, t.toolId),
+    index("runner_harness_instances_workspace_idx").using("gin", t.workspaceIds),
+    index("runner_harness_instances_freshness_idx").on(t.tenantId, t.expiresAt, t.revokedAt),
+  ]
+);
+
+export type RunnerHarnessInstance = typeof runnerHarnessInstances.$inferSelect;
+
 export const runnerCapabilitySnapshots = pgTable(
   "runner_capability_snapshots",
   {
@@ -17364,6 +17395,10 @@ export const runnerExecutionSessions = pgTable(
       .notNull(),
     runnerId: varchar("runnerId", { length: 160 }).references(
       () => runnerNodes.runnerId,
+      { onDelete: "set null" }
+    ),
+    harnessInstanceId: uuid("harnessInstanceId").references(
+      () => runnerHarnessInstances.id,
       { onDelete: "set null" }
     ),
     generation: bigint("generation", { mode: "number" }).notNull(),
