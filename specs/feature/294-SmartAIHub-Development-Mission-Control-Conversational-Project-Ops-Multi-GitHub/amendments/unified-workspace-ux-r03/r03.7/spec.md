@@ -2,7 +2,7 @@
 
 **Status:** In progress
 **Target:** `modular-debian-dev` (`https://aimarkethubs.com`)
-**Source baseline:** Platform `f80685a01703009abd9bbad5cc333f845c4d49cd`; SmartSpecPro current canonical at R03.7 start. **Latest integrated source:** Platform `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`; SmartSpecPro `39f5b2309b1f3327cdc8e089bf1a699c92e180b7` before the current 0445 checkpoint.
+**Source baseline:** Platform `f80685a01703009abd9bbad5cc333f845c4d49cd`; SmartSpecPro current canonical at R03.7 start. **Latest integrated source:** Platform `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`; SmartSpecPro `fc064e4642ccca92b1f7514d155223ceab67dab8` (0445 source checkpoint).
 **Parent:** R03.6, which established explicit Mission → Job binding but left Modular Runner registration and execution unresolved.
 
 ## Objective

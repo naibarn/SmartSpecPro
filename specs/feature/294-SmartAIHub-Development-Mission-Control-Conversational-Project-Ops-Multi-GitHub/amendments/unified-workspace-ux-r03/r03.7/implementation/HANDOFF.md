@@ -15,7 +15,7 @@ separate from shared DEV migration, deployment, enrollment and live execution.
 
 ## Integrated source
 
-- SmartSpecPro `main` and `origin/main`: `39f5b2309b1f3327cdc8e089bf1a699c92e180b7`.
+- SmartSpecPro `main` and `origin/main`: `fc064e4642ccca92b1f7514d155223ceab67dab8`.
 - Platform `main` and `origin/main`: `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`.
 - Platform `ab6f77e` implements Hono pairing/approval/token lifecycle and
   RSA-SHA256 device proof; `ff9d08c` adds the authenticated signed control
