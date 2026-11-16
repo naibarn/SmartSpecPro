@@ -92,14 +92,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+    "expected_canonical_sha": "fa13dad21fd46cd1ca4dae258b96394475ae09f7",
     "expected_spec_digest": "de0579784d813f5b24a73be97d97256c9700f6fd2c8eef16baece8fdaab5985e"
   },
   "continuation": {
     "next_action": "Provide a distinct authorized Modular DEV Runner for aimarkethubs.com; verify Harness registration, heartbeat and one canonical Job/Attempt binding, then inspect the exact Task Control execution and restore Mission tabs after refresh. Complete authenticated owner UAT and tenant-denial/no-dispatch checks. Do not retarget the legacy smartaihub.app Runner.",
     "next_ready_workunit": "R03_5_REAL_MODULAR_RUNNER_AND_AUTHENTICATED_UAT",
     "reactivation_predicate": null,
-    "resume_point": "R03.5 source is integrated at SmartSpecPro ee1e4fbfdd28c1b3cf363c09fce46772f4857312 and Platform 0d2356dafa4e61b8f15777b0dc9758cc86d5fc78; migration 0442 and modular-debian-dev release are verified. DEV Harness registry currently has zero instances. Resume with a separately authorized Modular Runner; owner browser UAT remains pending.",
+    "resume_point": "R03.5 producer and migration implementation is integrated at SmartSpecPro fa13dad21fd46cd1ca4dae258b96394475ae09f7 and Platform 0d2356dafa4e61b8f15777b0dc9758cc86d5fc78; migration 0442 and modular-debian-dev release are verified. DEV Harness registry currently has zero instances. Resume with a separately authorized Modular Runner; owner browser UAT remains pending.",
     "waiting_predicate": "Reactivate when a distinct Runner credential scoped to modular-debian-dev is available and that Runner is enrolled against aimarkethubs.com; then perform authenticated Harness registration and vertical-slice UAT."
   },
   "continuation_assessment": {
@@ -219,7 +219,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 174,
+  "generation": 175,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "de0579784d813f5b24a73be97d97256c9700f6fd2c8eef16baece8fdaab5985e",
@@ -367,7 +367,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+    "canonical_sha": "fa13dad21fd46cd1ca4dae258b96394475ae09f7",
     "integrated": true,
     "integrated_at": "2026-11-16T03:30:00Z"
   },
@@ -2977,7 +2977,7 @@
     "unresolved": 571
   },
   "schema_version": 1,
-  "updated_at": "2026-11-16T06:55:19.179775Z",
+  "updated_at": "2026-11-16T06:56:57.613883Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -2995,7 +2995,7 @@
     "required_profiles": [
       "package"
     ],
-    "sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+    "sha": "fa13dad21fd46cd1ca4dae258b96394475ae09f7",
     "status": "PARTIAL",
     "task_regressions": []
   }
