@@ -14,8 +14,10 @@
   ],
   "sections_state": {
     "section-01-db-correlation-read-model": {
-      "status": "in_progress",
-      "next_action": "Wait for the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md; then implement and verify the bounded read path without inferring identity."
+      "status": "checkpointed",
+      "next_action": "Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity.",
+      "checkpoint_sha": "3900173b659dd549951cf506e747a2e706c3b2ef",
+      "merged_main_sha": "3900173b659dd549951cf506e747a2e706c3b2ef"
     }
   },
   "pre_commit": {
@@ -27,15 +29,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T04:06:53.407458+00:00",
-  "generation": 3,
-  "updated_at": "2026-11-16T04:17:51.807006+00:00",
+  "generation": 4,
+  "updated_at": "2026-11-16T04:20:37.096729+00:00",
   "progress": {
     "active_section": "section-01-db-correlation-read-model",
-    "next_action": "Wait for the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md; then implement and verify the bounded read path without inferring identity.",
+    "next_action": "Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity.",
     "gaps": [
       "No validated Harness registration source exposes harnessType/harnessInstanceId or a fresh authorized instance.",
       "No producer-owned exact external Job/Run/Attempt/Session-to-Mission binding exists; current Runner conversation binding is insufficient.",
       "No R03.4 runtime source change is ready for modular-debian-dev deployment; genuine owner UAT remains pending."
-    ]
+    ],
+    "merged_main_sha": "3900173b659dd549951cf506e747a2e706c3b2ef"
   }
 }
