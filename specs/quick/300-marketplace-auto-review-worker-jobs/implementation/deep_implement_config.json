@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission.",
-      "checkpoint_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
-      "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
+      "next_action": "4096-character shared authoring/edit/review contract integrated at a929ebc489; local main equals origin/main. 118 focused full-file tests and 10 selected boundary tests pass. Immutable legacy-debian-dev release is running; verify canonical tests and live queued prompt generation for shot 6 after runtime activation.",
+      "checkpoint_sha": "a929ebc4898acfbec5ed3ea21a9d5707f00141b7",
+      "merged_main_sha": "a929ebc4898acfbec5ed3ea21a9d5707f00141b7",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-video-budget-4096"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 84,
-  "updated_at": "2026-11-16T00:12:54.849635+00:00",
+  "generation": 85,
+  "updated_at": "2026-11-16T00:13:56.937131+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission.",
-    "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
+    "next_action": "4096-character shared authoring/edit/review contract integrated at a929ebc489; local main equals origin/main. 118 focused full-file tests and 10 selected boundary tests pass. Immutable legacy-debian-dev release is running; verify canonical tests and live queued prompt generation for shot 6 after runtime activation.",
+    "merged_main_sha": "a929ebc4898acfbec5ed3ea21a9d5707f00141b7",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Live provider-backed video-prompt generation on the existing Marketplace Auto Review run remains outstanding; deployment and public route health are verified.",

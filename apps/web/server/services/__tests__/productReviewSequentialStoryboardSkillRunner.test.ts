@@ -855,7 +855,7 @@ describe("T9 — over-budget prompts route through the optimizer skill", () => {
   });
 
   it("invokes the optimizer with prompt_kind sequential_video for an over-budget video prompt", async () => {
-    const overBudgetVideo = `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER} ${"x".repeat(2500)}`;
+    const overBudgetVideo = `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER} ${"x".repeat(PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS + 1)}`;
     const pack = makeCleanPack();
     pack.shots[0] = { ...pack.shots[0], video_prompt: overBudgetVideo };
 
