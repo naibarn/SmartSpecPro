@@ -1,0 +1,163 @@
+name: Worker App WSL Runtime Release
+run-name: Worker WSL runtime ${{ inputs.runtime_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_version:
+        description: "New runtime version, YYYY.MM.DD.N"
+        required: true
+        type: string
+      source_sha:
+        description: "Exact integrated main revision"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-app-wsl-runtime-release
+  cancel-in-progress: false
+
+jobs:
+  build-signed-wsl-runtime:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      RUNTIME_VERSION: ${{ inputs.runtime_version }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Admit exact source and disk capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          [[ "$RUNTIME_VERSION" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$ ]]
+          available=$(df --output=avail -B1 "$RUNNER_TEMP" | tail -1)
+          test "$available" -ge 22000000000
+          df -h "$RUNNER_TEMP"
+          free -m
+
+      - run: pnpm install --frozen-lockfile
+      - run: node --test apps/worker-app/scripts/runtime-remotion-contract.test.mjs
+      - run: npm --workspace packages/remotion-render run build
+
+      # Reuse the previously approved native binaries/model. Pin and verify
+      # the complete base archive before extraction; rebuild the Remotion
+      # dependency tree and sidecar from the selected canonical source.
+      - name: Download and verify approved base assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          export RUNTIME_BUILD_ROOT="$RUNNER_TEMP/worker-wsl-runtime"
+          echo "RUNTIME_BUILD_ROOT=$RUNTIME_BUILD_ROOT" >> "$GITHUB_ENV"
+          mkdir -p "$RUNTIME_BUILD_ROOT/base"
+          curl --fail --location --retry 3 --output "$RUNTIME_BUILD_ROOT/base.zip" \
+            'https://smartaihub.app/api/workers/runtime-pack/download/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.08.2.zip'
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          root = pathlib.Path(os.environ['RUNTIME_BUILD_ROOT'])
+          approved = json.loads(pathlib.Path('apps/web/client/public/releases/runtime/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.08.2.zip.manifest.json').read_text())
+          archive = root / 'base.zip'
+          with archive.open('rb') as handle:
+              digest = hashlib.sha256()
+              for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b''):
+                  digest.update(chunk)
+              assert digest.hexdigest() == approved['archiveSha256'], 'base archive checksum mismatch'
+          assert archive.stat().st_size == approved['archiveSizeBytes']
+          with zipfile.ZipFile(archive) as source:
+              entries = source.infolist()
+              assert len(entries) <= 150000
+              assert sum(entry.file_size for entry in entries) <= 12000000000
+              target = (root / 'base').resolve()
+              for entry in entries:
+                  assert (target / entry.filename).resolve().is_relative_to(target)
+              source.extractall(target)
+              for entry in entries:
+                  if not entry.is_dir():
+                      mode = (entry.external_attr >> 16) & 0o777
+                      if mode:
+                          (target / entry.filename).chmod(mode)
+          archive.unlink()
+          PY
+
+      - name: Install current Remotion sidecar dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNTIME_BUILD_ROOT/remotion-sidecar"
+          npm pack ./packages/remotion-render --pack-destination "$RUNTIME_BUILD_ROOT/remotion-sidecar"
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const pkg = JSON.parse(fs.readFileSync('packages/remotion-render/package.json', 'utf8'));
+          fs.writeFileSync(`${process.env.RUNTIME_BUILD_ROOT}/remotion-sidecar/package.json`, JSON.stringify({
+            name: 'smart-ai-hub-remotion-sidecar-runtime', private: true, type: 'module',
+            dependencies: {
+              '@remotion/bundler': pkg.dependencies['@remotion/bundler'],
+              '@remotion/renderer': pkg.dependencies['@remotion/renderer'],
+              '@smartspec/remotion-render': `file:smartspec-remotion-render-${pkg.version}.tgz`,
+            },
+          }));
+          JS
+          npm install --prefix "$RUNTIME_BUILD_ROOT/remotion-sidecar" --omit=dev
+
+      - name: Package and sign the complete runtime
+        shell: bash
+        env:
+          SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          base="$RUNTIME_BUILD_ROOT/base/runtime-pack"
+          export LD_LIBRARY_PATH="$base/browser-libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          node apps/worker-app/scripts/package-runtime-release.mjs \
+            --runtime-version "$RUNTIME_VERSION" --target-runtime hyperframes-wsl2 \
+            --hyperframes-sidecar "$RUNTIME_BUILD_ROOT/base/sidecars/hyperframes-render.exe" \
+            --node-dir "$base/node" --hyperframes-dir "$base/hyperframes" \
+            --hyperframes-sidecar-script apps/worker-app/runtime-sidecar/render.mjs \
+            --remotion-sidecar-script apps/worker-app/runtime-sidecar-remotion/render.mjs \
+            --remotion-sidecar-dir "$RUNTIME_BUILD_ROOT/remotion-sidecar" \
+            --browser-dir "$base/browser" --ffmpeg "$base/bin/ffmpeg" --ffprobe "$base/bin/ffprobe" \
+            --whisper-cli "$base/whisper/whisper-cli" \
+            --whisper-model "$base/whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin" \
+            --thai-fonts-dir "$base/fonts" --notices "$base/THIRD_PARTY_NOTICES.txt" \
+            --speaker-aware-runner "$base/speaker-aware/speaker-aware-runner.exe" \
+            --comfy-mcp-manifest apps/worker-app/src-tauri/resources/comfy-mcp/manifest.json \
+            --staging-dir "$RUNTIME_BUILD_ROOT/stage" --output-dir "$RUNTIME_BUILD_ROOT/release"
+
+      - name: Verify signed archive before retaining the candidate
+        shell: bash
+        env:
+          SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY }}
+        run: |
+          cd apps/web
+          node --import tsx --input-type=module - <<'JS'
+          import { validateRuntimePackArchive } from './server/services/workerRuntimePackValidation.ts';
+          const fileName = `smart-ai-hub-worker-runtime-hyperframes-wsl2-${process.env.RUNTIME_VERSION}.zip`;
+          const result = await validateRuntimePackArchive({
+            filePath: `${process.env.RUNTIME_BUILD_ROOT}/release/${fileName}`, fileName,
+            version: process.env.RUNTIME_VERSION, runtimeId: 'hyperframes-wsl2',
+            publicKey: process.env.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY,
+          });
+          console.log(JSON.stringify({ valid: result.valid, checks: result.checks }));
+          if (!result.valid || result.manifest?.remotionPlatformContractVersion !== '2026-11-15.1') process.exit(1);
+          JS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartaihub-worker-wsl-runtime
+          path: ${{ runner.temp }}/worker-wsl-runtime/release/*
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
