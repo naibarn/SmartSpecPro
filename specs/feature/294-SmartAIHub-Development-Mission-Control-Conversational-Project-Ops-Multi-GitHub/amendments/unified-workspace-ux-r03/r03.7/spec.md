@@ -2,7 +2,7 @@
 
 **Status:** In progress
 **Target:** `modular-debian-dev` (`https://aimarkethubs.com`)
-**Baseline:** Platform `92f309e1043c47a5710528aca118c9d557520f39`; SmartSpecPro current canonical `871142f0d5a9f737ec80aae71ccdda8495301fd0`
+**Source baseline:** Platform `f80685a01703009abd9bbad5cc333f845c4d49cd`; SmartSpecPro current canonical at R03.7 start. **Latest integrated source:** Platform `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`; SmartSpecPro `39f5b2309b1f3327cdc8e089bf1a699c92e180b7` before the current 0445 checkpoint.
 **Parent:** R03.6, which established explicit Mission → Job binding but left Modular Runner registration and execution unresolved.
 
 ## Objective
@@ -42,3 +42,21 @@ Reuse the installed Debian `smartaihub-runner` and Codex CLI to execute one real
 ## Safety and rollout
 
 Keep synthetic prototype routes separate from LIVE records. Pairing/device enrollment is DEV-only and bound to `modular-development`. Register only current, authenticated, healthy Codex capability evidence. The Linux Runner service for `smartaihub.app` must remain active and byte-for-byte/configuration unchanged. Roll back only the Modular DEV release; preserve canonical jobs and evidence already written.
+
+## Continuation evidence — 2026-11-16
+
+- Platform `ab6f77e` and `ff9d08c` are integrated in `main`/`origin/main`.
+  The latter implements the signed HTTPS control envelope for the installed
+  Runner's `runner.capabilities.update` and `runner.reconcile` messages, using
+  the existing `runner_nodes`, `runner_capability_snapshots`, and
+  `runner_harness_instances` authorities. It does not implement Job dispatch.
+- SmartSpecPro 0444 is integrated. Additive migration 0445 adds durable control
+  receipt/idempotency and capability/heartbeat projection. Disposable PG 15.17
+  run `5d8f6bd1` passed; hashes, API test evidence and current blockers are in
+  `implementation/HANDOFF.md`.
+- Shared DEV migration did not run: registered `db:migrate` exited before
+  connecting because `DATABASE_URL` is not bound. Do not use the legacy
+  `smartspec_dev` credential. The public route probe currently returns 405,
+  confirming the new pairing route is not in the served release. Slice C,
+  real enrollment, deploy, live Mission/Task verification, and owner UAT remain
+  incomplete; this amendment is not accepted.

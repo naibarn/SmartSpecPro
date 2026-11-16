@@ -1,91 +1,100 @@
 # R03.7 Implementation HandOff
 
-Updated: 2026-11-16 (Asia/Bangkok). This handoff records verified source and
-fixture evidence; it does not imply a DEV migration, deployment, or live Runner
-execution.
+Updated: 2026-11-16 (Asia/Bangkok). Source and disposable-fixture evidence is
+separate from shared DEV migration, deployment, enrollment and live execution.
 
-## Scope and immutable boundaries
+## Target and boundaries
 
-- Target: `modular-debian-dev` / `https://aimarkethubs.com` only.
-- Preserve `smartaihub.app` legacy and `smartsihub.com` production.
-- Reuse the installed Rust Runner and Codex CLI. Do not retarget the existing
-  Runner service or copy its credentials.
-- Keep worker_jobs, Job/Attempt, Mission binding and event ledger canonical.
-- Never edit or replay migration 0443.
+- Target is `modular-debian-dev` / `https://aimarkethubs.com` only.
+- Preserve Legacy `smartaihub.app` and Production `smartsihub.com`.
+- Reuse the installed Rust Runner and Codex CLI. The Legacy Runner service,
+  credentials and data root were not changed or copied.
+- `worker_jobs`, its outbox, Job/Attempt, Mission binding and events remain the
+  canonical execution authority. No second scheduler or event ledger was added.
+- Migration 0443 was not modified or replayed.
 
-## Current source checkpoints
+## Integrated source
 
-- SmartSpecPro main/origin baseline: `9c677968b3744be71e5d5166a1bb23637ab989e6`.
-- Platform main/origin: `ab6f77e28ce7f575689f8bd19cfd27045c94ffb9`.
-- Platform `ab6f77e` adds authenticated Hono pairing approval, one-time
-  enrollment/token completion, refresh rotation, revocation, device-key proof
-  verification and bounded request bodies. The focused route/proof tests,
-  saas-core typecheck and build passed before this checkpoint.
-- SmartSpecPro task-owned migration 0444 and target-routing/release checks are
-  currently uncommitted. They have not been applied or deployed.
-- The active Modular DEV release is still
-  `92f309e1043c47a5710528aca118c9d557520f39`; preserve it as rollback source.
-- Migration 0443 source SHA-256 remains
-  `83cf992a0eef0793597ca855f6e45c789e75cfca509bc74ce91bf34cf2f6d6f3`.
+- SmartSpecPro `main` and `origin/main`: `39f5b2309b1f3327cdc8e089bf1a699c92e180b7`.
+- Platform `main` and `origin/main`: `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`.
+- Platform `ab6f77e` implements Hono pairing/approval/token lifecycle and
+  RSA-SHA256 device proof; `ff9d08c` adds the authenticated signed control
+  envelope for the installed Runner's heartbeat/reconcile and capability
+  publication messages. The control route accepts only the installed protocol
+  and the registered `modular-development` identity.
+- SmartSpecPro migration 0444 is integrated. SHA-256:
+  `aa83e28e486a2efb45c64fefbfb7bd5e92dbb95089f911db2a1c00b47380bd6d`.
+- Additive migration 0445 and its PG fixture are prepared in this checkpoint.
+  SHA-256: `3865e2079e4af9017dea71381e0ed027850da4fc09878d9713bf0e9e096ebef7`.
+  It writes capability/heartbeat projections into existing Runner registries
+  and adds only a bounded control receipt/idempotency table; it does not create
+  a Job queue or a second event store.
+- Disposable PostgreSQL 15.17 fixture passed for 0444+0445, pairing lifecycle,
+  nonce/token replay, capability snapshot projection, heartbeat, receipt
+  idempotency/order, revoke and ACLs. Run `5d8f6bd1`.
+- Platform focused tests passed: `runnerRoutes.test.ts` and
+  `deviceProof.test.ts` (10/10); `@smartaihub/saas-core` typecheck passed; the
+  Wrangler build dry-run passed (593.83 KiB / gzip 134.28 KiB) and resolved the
+  logical target as `modular-debian-dev`. These checks do not prove deployment.
 
-## Verified evidence
+## DEV migration/deployment state
 
-- Existing Codex CLI: `/usr/local/bin/codex`, version `0.165.0`.
-- Existing Runner: `/home/dev/.local/bin/smartaihub-runner`, version
-  `0.2.44-dev.1`, contracts `sah-runner-v1` and `sah-runner-connect-v2`;
-  existing user service remains active and untouched.
-- Existing Codex probe passed with evidence reference
-  `runner-task-probe:sha256:7192a5620e8ac9d832f35a17e6bdf763956b910e0b861e404bd1f4dece59c2e6`.
-- Disposable PostgreSQL 15.17 integration fixture passed for migration 0444,
-  pairing start/approval, one-time completion, pinned-device lookup, nonce
-  duplicate rejection, refresh rotation/replay rejection, revocation, and
-  function ACL assertions (no PUBLIC EXECUTE; Modular auth role can execute).
-- Fixture command:
-  `python3 scripts/spec224_certification/run_disposable_postgres.py -- bash apps/web/scripts/test-modular-runner-enrollment-postgres.sh`.
-- The fixture exposed insufficient `runner_nodes` DML/SELECT and function ACL
-  behavior. Migration 0444 was corrected to require explicit grant authority,
-  grant only necessary columns, revoke PUBLIC before transferring ownership,
-  and grant runtime execution under the restricted function owner.
-- Migration 0443 was not changed. No shared DEV database was used by the
-  destructive integration fixture.
-- No authenticated owner MFA approval, live enrollment, heartbeat, capability
-  publication, canonical Job dispatch, or end-to-end Codex execution has been
-  performed.
+- Registered migration command `pnpm --dir apps/web db:migrate` was attempted;
+  it stopped before connecting with `Database not configured. Set DATABASE_URL`.
+- No `DATABASE_URL` or Modular DB secret binding is present in the current
+  process environment. PostgreSQL at `127.0.0.1:5432` accepts connections, but
+  a read-only identity probe as `smartspec_migrator_dev` failed with
+  `fe_sendauth: no password supplied`; no schema was mutated. Do not use the
+  legacy `smartspec_dev` credential.
+- The missing dependency is the authorized credential/binding for the existing
+  `smartspec` DEV database, exposed to the registered migration runner as
+  `DATABASE_URL` for `smartspec_migrator_dev`. The current tools do not expose a
+  usable secret-manager binding. Do not retrieve the secret by dumping a
+  service environment or fall back to the legacy credential.
+- Public health checks return 200 at `/livez`, `/api/chat/livez`, and `/login`.
+  `POST https://aimarkethubs.com/api/runners/connect/start` with an empty JSON
+  object returns 405, so the new route is not present in the served release.
+- Registered target metadata still identifies the preserved active Modular
+  release as `92f309e1043c47a5710528aca118c9d557520f39`. Do not claim a new DEV
+  deploy or handover. Local `smartsihub-core-dev.service` and
+  `smartsihub-shell-dev.service` report inactive in this execution environment;
+  that local status is not evidence about the public origin.
 
-## Acceptance status
+## Slice status
 
-| Acceptance | Status | Evidence / gap |
+| Acceptance | Status | Evidence / remaining work |
 | --- | --- | --- |
-| `PAIRING_ROUTES_DEPLOYED` | BLOCKED | Source merged in Platform; 0444 not yet applied and Modular DEV not redeployed. |
-| `OWNER_APPROVAL_FLOW_WORKING` | PARTIAL | Hono MFA/session-bound route and fixture DB approval work; real owner browser approval pending. |
-| `DEVICE_PROOF_PINNED` | PARTIAL | RSA proof verifier + pairing persistence implemented; live device enrollment pending. |
-| `DURABLE_NONCE_REPLAY_REJECTED` | PARTIAL | PG15 fixture proved first-use accept and duplicate denial; DEV pending. |
-| `TOKEN_REFRESH_VERIFIED` | PARTIAL | PG15 fixture proved rotation and old-token replay denial; DEV pending. |
-| `HEARTBEAT_ACCEPTED` | NOT_TESTED | Slice B not implemented. |
-| `CAPABILITY_PUBLISHED` | NOT_TESTED | Slice B not implemented. |
-| `MODULAR_RUNNER_ENROLLED` | BLOCKED | Requires migration/deploy and owner MFA approval. |
-| `HARNESS_INSTANCE_REGISTERED` | NOT_TESTED | Slice B not implemented. |
-| `CANONICAL_JOB_ASSIGNED` | NOT_TESTED | Slice C not implemented. |
-| `RUNNER_ACK_VERIFIED` | NOT_TESTED | Slice C not implemented. |
-| `CODEX_EXECUTED` | PARTIAL | Isolated installed-client probe passed; no canonical Job dispatched. |
-| `MISSION_JOB_ASSOCIATED` | NOT_TESTED | No real Job execution. |
-| `TASK_CONTROL_DEEP_LINK_VERIFIED` | NOT_TESTED | No real Job/Attempt identity. |
-| `EVIDENCE_CAPTURED` | PARTIAL | Codex binary probe exists; runtime Job evidence unavailable. |
-| `DEV_DEPLOYED` | BLOCKED | Active release remains `92f309e…`; current source not deployed. |
-| `OWNER_UAT` | PENDING | Must use a real authenticated MFA browser session; do not simulate. |
+| `PAIRING_ROUTES_DEPLOYED` | BLOCKED | Source integrated; 0444/0445 not on shared DEV and public route returns 405. |
+| `OWNER_APPROVAL_FLOW_WORKING` | PARTIAL | Route requires authenticated owner session/MFA path; no real owner browser approval. |
+| `DEVICE_PROOF_PINNED` | PARTIAL | Route verifies against enrolled key in source/fixture; no live enrollment. |
+| `DURABLE_NONCE_REPLAY_REJECTED` | PARTIAL | PG15 fixture passes; shared DEV behavior not verified. |
+| `TOKEN_REFRESH_VERIFIED` | PARTIAL | PG15 fixture passes rotation/replay; shared DEV behavior not verified. |
+| `HEARTBEAT_ACCEPTED` | PARTIAL | Installed `runner.reconcile` accepted in source/fixture; not live. |
+| `CAPABILITY_PUBLISHED` | PARTIAL | Capability snapshot accepted and existing registry projected in source/fixture; not live. |
+| `MODULAR_RUNNER_ENROLLED` | BLOCKED | Requires DEV migration/deploy and real MFA owner approval. |
+| `HARNESS_INSTANCE_REGISTERED` | PARTIAL | Fixture projects a synthetic Codex row; no real DEV Runner evidence. |
+| `CANONICAL_JOB_ASSIGNED` | NOT_TESTED | Slice C producer/claim/ack/receipt integration is not implemented. |
+| `RUNNER_ACK_VERIFIED` | NOT_TESTED | No canonical command was dispatched. |
+| `CODEX_EXECUTED` | PARTIAL | Installed CLI probe passed; no execution from a canonical `worker_jobs` Job. |
+| `MISSION_JOB_ASSOCIATED` | NOT_TESTED | No live Job/Attempt was executed. |
+| `TASK_CONTROL_DEEP_LINK_VERIFIED` | NOT_TESTED | No live Job/Attempt identity to navigate to. |
+| `EVIDENCE_CAPTURED` | PARTIAL | Installed CLI probe and fixture evidence exist; no canonical execution evidence. |
+| `DEV_DEPLOYED` | BLOCKED | Migration binding is missing; served release remains `92f309e…`. |
+| `OWNER_UAT` | NOT_TESTED | No authenticated owner MFA browser flow was performed. |
 
-## Immediate resume order
+## Resume steps
 
-1. Commit and push only the R03.7-owned SmartSpecPro files; preserve every
-   unrelated dirty path.
-2. Apply 0444 via `pnpm --dir apps/web db:migrate`; verify target, ledger hash,
-   function owner/ACL, and runner-node column grants.
-3. Build Platform `ab6f77e…` and deploy only with the registered
-   `modular-debian-dev` controller; verify public tunnel routes reach Core.
-4. Complete the legitimate owner approval in browser when available; report
-   the exact pairing URL and manual step if MFA UAT is unavailable.
-5. Implement and verify Slice B against the installed Rust HTTPS/WSS protocol
-   before attempting Slice C canonical Job execution.
-
-Do not claim enrollment, a live Harness, Job dispatch, Mission continuity,
-Task Control navigation, or completion until each is observed in the target.
+1. Bind the authorized Modular DEV `DATABASE_URL` for role
+   `smartspec_migrator_dev` to the registered migration command; confirm the
+   target is database `smartspec` and environment `modular-debian-dev` without
+   printing the secret.
+2. Run `pnpm --dir apps/web db:migrate`; verify 0444/0445 ledger hashes, schema,
+   function ownership/ACL, runner registry projection grants and cleanup.
+3. Build and deploy Platform `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c` only
+   through the registered `modular-debian-dev` controller; verify source SHA,
+   release receipt, health, and public `/api/runners/connect/start` routing.
+4. Perform real owner MFA approval and enroll the installed Runner using its
+   separate Modular DEV data root. Verify fresh heartbeat/capability evidence.
+5. Implement Slice C by extending the existing canonical Job Control Plane
+   contract—not adding scheduler/event storage—then dispatch one harmless DEV
+   Codex Job and verify exact Mission/Task identity and captured evidence.
