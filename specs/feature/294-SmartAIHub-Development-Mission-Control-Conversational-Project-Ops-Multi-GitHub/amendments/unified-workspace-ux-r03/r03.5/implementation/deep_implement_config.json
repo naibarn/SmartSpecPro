@@ -1,0 +1,59 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.5/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.5/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-runner-harness-contract",
+    "section-02-canonical-binding-and-read-model",
+    "section-03-core-api-and-live-integration",
+    "section-04-proof-dev-deploy-and-handoff"
+  ],
+  "sections_state": {
+    "section-01-runner-harness-contract": {
+      "status": "checkpointed",
+      "next_action": "Contract and authenticated Runner projection are integrated. Genuine Modular Harness instance registration remains pending; proceed only when a distinct authorized Modular Runner is available.",
+      "checkpoint_sha": "fcfd5a0010ac85e4d23d755e39edf7f6083085f2",
+      "merged_main_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312"
+    },
+    "section-02-canonical-binding-and-read-model": {
+      "checkpoint_sha": "fcfd5a0010ac85e4d23d755e39edf7f6083085f2",
+      "status": "checkpointed",
+      "merged_main_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+      "next_action": "Exact Runner/Job/Attempt/Harness binding and tenant-scoped DB read projection are integrated. Verify genuine binding with a Modular Runner when one is enrolled."
+    },
+    "section-03-core-api-and-live-integration": {
+      "checkpoint_sha": "fcfd5a0010ac85e4d23d755e39edf7f6083085f2",
+      "status": "checkpointed",
+      "merged_main_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+      "next_action": "Versioned authenticated Hono catalog endpoint and LIVE Mission Control integration are deployed. Current real catalog is empty; do not fall back to fixtures."
+    },
+    "section-04-proof-dev-deploy-and-handoff": {
+      "status": "in_progress",
+      "next_action": "Record verified 0442 migration, Platform source/build correction and modular-debian-dev release in traceability; update canonical Spec handoff, commit/push evidence, then close section with exact SHA. Real Runner and authenticated UAT remain pending."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-16T05:49:14.913187+00:00",
+  "generation": 7,
+  "updated_at": "2026-11-16T06:52:20.946380+00:00",
+  "progress": {
+    "active_section": "section-04-proof-dev-deploy-and-handoff",
+    "next_action": "Record verified 0442 migration, Platform source/build correction and modular-debian-dev release in traceability; update canonical Spec handoff, commit/push evidence, then close section with exact SHA. Real Runner and authenticated UAT remain pending.",
+    "merged_main_sha": "ee1e4fbfdd28c1b3cf363c09fce46772f4857312",
+    "gaps": [
+      "No distinct owner-authorized Modular DEV Runner is enrolled; real Harness/Job/Mission/Task vertical-slice UAT remains pending.",
+      "Authenticated owner browser UAT not performed."
+    ]
+  }
+}
