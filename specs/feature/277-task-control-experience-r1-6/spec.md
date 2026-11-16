@@ -3638,4 +3638,7 @@ SPEC-294 R03 provides an isolated DEV-only Task Control concept with project-fir
 
 ## 2026-11-16 — SPEC-294 R03.2 fixture deep-link boundary
 
-The R03.2 Mission Control prototype opens its selected synthetic execution in the isolated Task Control prototype while preserving the fixture execution and Attempt selection. Its `execution` and `attempt` URL search parameters are demo-only navigation values, not an API/router contract. A live integration MUST resolve canonical Job/Run/Attempt identities under current server-side tenant, workspace, project and user authorization; it MUST reject mismatched identities, load evidence through the authorized Task Control read model, and return to the prior Mission selection without creating or dispatching a Job. The prototype acceptance and implementation gaps are recorded in SPEC-294 R03.2 deliverables; no live Task Control acceptance is implied.
+
+## 2026-11-16 — SPEC-294 R03.4 Runner/Harness identity boundary
+
+SPEC-294 R03.4 source inspection distinguishes `runner_nodes` (Runner), `runner_execution_sessions` (Runner/Job/session), `worker_jobs` (Job), `worker_job_attempts` (Attempt), and `modular_chat_missions` (Chat Mission). Current authenticated Runner capability snapshots do not define a Harness type or Harness instance ID; the current Mission projection does not bind arbitrary Runner Jobs to a Mission. Task Control consumers MUST preserve those identities as separate and keep Harness/Agent/Run/Executor/Machine unavailable unless an authorized canonical source supplies them. A registered or installed Runner alone MUST NOT be presented as a connected Harness. See SPEC-294 R03.4 `source-to-canonical-identity-map.md`. This note is a source-backed integration boundary, not runtime acceptance.
