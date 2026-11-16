@@ -15,7 +15,9 @@ separate from shared DEV migration, deployment, enrollment and live execution.
 
 ## Integrated source
 
-- SmartSpecPro `main` and `origin/main`: `fc064e4642ccca92b1f7514d155223ceab67dab8`.
+- SmartSpecPro functional checkpoint for migration 0445 and its fixture:
+  `fc064e4642ccca92b1f7514d155223ceab67dab8`; later commits in this amendment
+  reconcile only the SPEC/handoff metadata.
 - Platform `main` and `origin/main`: `ff9d08ca8d038d7973c9dcf138d7a0abe8d5745c`.
 - Platform `ab6f77e` implements Hono pairing/approval/token lifecycle and
   RSA-SHA256 device proof; `ff9d08c` adds the authenticated signed control
