@@ -1143,7 +1143,7 @@ describe("workerRuntime routes", () => {
     expect(res.body.error.message).toContain("Official HyperFrames runtime pack has not been published yet");
   });
 
-  it("does not serve diagnostic smoke runtime packs as render-ready", async () => {
+  it.each(["/api/workers/runtime-pack/download", "/releases/runtime"])("does not serve diagnostic smoke runtime packs through %s", async downloadPrefix => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-smoke-"));
     const fileName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.3.zip";
     const filePath = path.join(tempDir, fileName);
@@ -1172,11 +1172,11 @@ describe("workerRuntime routes", () => {
     expect(manifestRes.status).toBe(404);
     expect(manifestRes.body.error.message).toContain("Mock, fallback, diagnostic smoke");
 
-    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    const downloadRes = await request(app).get(`${downloadPrefix}/${fileName}`);
     expect(downloadRes.status).toBe(404);
   });
 
-  it("serves allowed runtime pack manifest with archive hash and download url", async () => {
+  it.each(["/api/workers/runtime-pack/download", "/releases/runtime"])("serves the verified runtime archive through %s", async downloadPrefix => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-ready-"));
     const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.1.zip";
     const filePath = path.join(tempDir, fileName);
@@ -1197,7 +1197,7 @@ describe("workerRuntime routes", () => {
     });
     expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
 
-    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    const downloadRes = await request(app).get(`${downloadPrefix}/${fileName}`);
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);

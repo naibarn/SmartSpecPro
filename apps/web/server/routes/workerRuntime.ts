@@ -1605,7 +1605,9 @@ export function registerWorkerRuntimeRoutes(
   );
 
   app.get(
-    "/api/workers/runtime-pack/download/:fileName",
+    // Public installer assets also have a release URL for native/build
+    // clients. Both paths share publication, signature, pause and rate gates.
+    ["/api/workers/runtime-pack/download/:fileName", "/releases/runtime/:fileName"],
     runtimePackLimiter,
     async (req, res) => {
       try {

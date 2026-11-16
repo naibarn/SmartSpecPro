@@ -68,7 +68,7 @@ jobs:
           import { createWriteStream } from 'node:fs';
           import { Readable } from 'node:stream';
           import { pipeline } from 'node:stream/promises';
-          const response = await fetch('https://smartaihub.app/api/workers/runtime-pack/download/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.08.2.zip', {
+          const response = await fetch('https://smartaihub.app/releases/runtime/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.08.2.zip', {
             headers: { accept: 'application/zip', 'user-agent': 'SmartAIHub-WorkerApp-Release/1.0' },
           });
           if (!response.ok) throw new Error(`Approved runtime download failed: HTTP ${response.status}; edge challenge=${response.headers.get('cf-mitigated') ?? 'none'}`);
