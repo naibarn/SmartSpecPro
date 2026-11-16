@@ -9,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Selector } from "@astryxdesign/core/Selector";
 import { VStack } from "@astryxdesign/core/VStack";
+import { Selector } from "@astryxdesign/core/Selector";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { HyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
 import {
   getMarketplaceHyperframesUiCopy,
@@ -53,6 +55,11 @@ interface AutoStoryboardReviewPlanSummaryProps {
   onStagedShotCountChange?: (value: "auto" | number | undefined) => void;
   shotDurationSeconds?: number;
   onShotDurationSecondsChange?: (value: number | undefined) => void;
+  /** Always-visible controls for the selected sequential storyboard strategy. */
+  stagedShotCount?: "auto" | number;
+  onStagedShotCountChange?: (value: "auto" | number | undefined) => void;
+  shotDurationSeconds?: number;
+  onShotDurationSecondsChange?: (value: number | undefined) => void;
 }
 
 export function AutoStoryboardReviewPlanSummary({
@@ -69,6 +76,10 @@ export function AutoStoryboardReviewPlanSummary({
   locale,
   qualityModeControl,
   qualityModeRepairRounds,
+  stagedShotCount,
+  onStagedShotCountChange,
+  shotDurationSeconds,
+  onShotDurationSecondsChange,
   stagedShotCount,
   onStagedShotCountChange,
   shotDurationSeconds,
@@ -114,10 +125,52 @@ export function AutoStoryboardReviewPlanSummary({
   // `frameStrategy` can be `"auto"` before the backend resolves a concrete
   // strategy; `frameStrategyLabels` only covers the three concrete values.
   const frameStrategy = plan?.defaults.frameStrategy;
+  const thai = copy.locale === "th";
+  const selectedShotCountLabel =
+    stagedShotCount === "auto"
+      ? thai
+        ? "AI เลือก 2–18"
+        : "AI-selected 2–18"
+      : String(stagedShotCount ?? 9);
   const frameStrategyLabel =
-    frameStrategy && frameStrategy !== "auto"
-      ? copy.frameStrategyLabels[frameStrategy]
-      : copy.autoSelected;
+    frameStrategy === "sequential_shot_storyboard" &&
+    onStagedShotCountChange
+      ? thai
+        ? `${selectedShotCountLabel} ภาพต่อเนื่อง (Sequential)`
+        : `Sequential ${selectedShotCountLabel} images`
+      : frameStrategy && frameStrategy !== "auto"
+        ? copy.frameStrategyLabels[frameStrategy]
+        : copy.autoSelected;
+  const shotCountOptions = [
+    {
+      value: "auto",
+      label: thai
+        ? "อัตโนมัติ (AI เลือก 2–18 ช็อตตามเนื้อหา)"
+        : "Automatic (AI chooses 2–18 shots based on content)",
+    },
+    ...Array.from({ length: 17 }, (_, index) => index + 2).map(count => ({
+      value: String(count),
+      label:
+        count === 9
+          ? thai
+            ? "9 ช็อต (ค่าเริ่มต้น)"
+            : "9 shots (default)"
+          : thai
+            ? `${count} ช็อต`
+            : `${count} shots`,
+    })),
+  ];
+  const shotDurationOptions = [6, 8, 10, 15, 20, 30].map(seconds => ({
+    value: String(seconds),
+    label:
+      seconds === 10
+        ? thai
+          ? "10 วินาที (ค่าเริ่มต้น)"
+          : "10 seconds (default)"
+        : thai
+          ? `${seconds} วินาที`
+          : `${seconds} seconds`,
+  }));
   const thai = copy.locale === "th";
   const shotCountOptions = [
     {
@@ -259,6 +312,50 @@ export function AutoStoryboardReviewPlanSummary({
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
             {frameStrategyLabel}
           </p>
+          {frameStrategy === "sequential_shot_storyboard" &&
+          onStagedShotCountChange &&
+          onShotDurationSecondsChange ? (
+            <VStack gap={2} style={{ marginTop: "var(--spacing-3)" }}>
+              <Selector
+                label={thai ? "จำนวนช็อต" : "Shot count"}
+                description={
+                  thai
+                    ? "เลือกระหว่าง 2–18 ช็อต หรือให้ AI เลือกตามเนื้อหา"
+                    : "Choose 2–18 shots, or let AI decide from the story."
+                }
+                options={shotCountOptions}
+                value={String(stagedShotCount ?? 9)}
+                onChange={value =>
+                  onStagedShotCountChange(
+                    value === "auto"
+                      ? "auto"
+                      : value === "9"
+                        ? undefined
+                        : Number(value)
+                  )
+                }
+                presentation="adaptive"
+                width="100%"
+              />
+              <Selector
+                label={thai ? "ความยาวต่อช็อต" : "Per-shot duration"}
+                description={
+                  thai
+                    ? "ระบบจะปรับจังหวะเรื่องและความยาวบทพูดตามเวลานี้"
+                    : "Story pacing and dialogue length follow this duration."
+                }
+                options={shotDurationOptions}
+                value={String(shotDurationSeconds ?? 10)}
+                onChange={value =>
+                  onShotDurationSecondsChange(
+                    value === "10" ? undefined : Number(value)
+                  )
+                }
+                presentation="adaptive"
+                width="100%"
+              />
+            </VStack>
+          ) : null}
           {frameStrategy === "sequential_shot_storyboard" &&
           onStagedShotCountChange &&
           onShotDurationSecondsChange ? (

@@ -6973,6 +6973,10 @@ export default function MarketplaceCaptureProductDetail() {
               onStagedShotCountChange={setAutoReviewStagedShotCount}
               shotDurationSeconds={autoReviewShotDurationSeconds}
               onShotDurationSecondsChange={setAutoReviewShotDurationSeconds}
+              stagedShotCount={autoReviewStagedShotCount}
+              onStagedShotCountChange={setAutoReviewStagedShotCount}
+              shotDurationSeconds={autoReviewShotDurationSeconds}
+              onShotDurationSecondsChange={setAutoReviewShotDurationSeconds}
             />
             {conceptSelectionRunId ? (
               <StagedCheckpointReviewSurface
