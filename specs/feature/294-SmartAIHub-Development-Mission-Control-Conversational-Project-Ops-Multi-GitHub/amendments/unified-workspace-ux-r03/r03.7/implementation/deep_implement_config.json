@@ -29,9 +29,11 @@
     },
     "section-03-canonical-runner-control": {
       "status": "in_progress",
-      "next_action": "Implement and test Modular Runner WSS command/ack/receipt integration through the canonical worker_jobs outbox and Job Control Plane; include lease/fencing, session binding, idempotency and reconnect recovery without a second scheduler/event store.",
+      "next_action": "Implement a scoped admin-only Chat action plus Runner-side pairing relay/mailbox that creates a one-time aimarkethubs.com approval URL without exporting private keys or spawning shell commands from Hono; then approve and verify the isolated Debian Runner, revoke its old Legacy registration, and continue canonical Job dispatch.",
       "checkpoint_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
-      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform"
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+      "merged_main_sha": "d223283c619c9f9ab9ba3ab8d5cf2c4eb4cdabff",
+      "session_id": "codex-20261117-runner-pairing"
     },
     "section-04-live-ux-deploy-and-uat": {
       "status": "pending",
@@ -47,16 +49,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T09:58:36.450629+00:00",
-  "generation": 10,
-  "updated_at": "2026-11-16T14:51:53.509580+00:00",
+  "generation": 11,
+  "updated_at": "2026-11-16T17:41:34.061887+00:00",
   "progress": {
     "active_section": "section-03-canonical-runner-control",
-    "next_action": "Implement and test Modular Runner WSS command/ack/receipt integration through the canonical worker_jobs outbox and Job Control Plane; include lease/fencing, session binding, idempotency and reconnect recovery without a second scheduler/event store.",
+    "next_action": "Implement a scoped admin-only Chat action plus Runner-side pairing relay/mailbox that creates a one-time aimarkethubs.com approval URL without exporting private keys or spawning shell commands from Hono; then approve and verify the isolated Debian Runner, revoke its old Legacy registration, and continue canonical Job dispatch.",
     "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-    "merged_main_sha": "3492db3de82d4c46df6a6144279f852837ee84c5",
+    "merged_main_sha": "d223283c619c9f9ab9ba3ab8d5cf2c4eb4cdabff",
     "gaps": [
       "Modular Hono has no WSS runner.job.command/receipt adapter connected to canonical worker_jobs Job Control Plane.",
-      "Real owner MFA browser session is unavailable for pairing and authenticated UAT."
+      "Real owner MFA browser session is unavailable for pairing and authenticated UAT.",
+      "Admin-triggered pairing-link relay/mailbox and admin-only Chat action are not implemented; frontend-only link generation cannot enroll the Debian Runner.",
+      "Modular Runner approval attempt is not confirmed; Debian service is stopped, service config targets aimarkethubs.com, and remote Legacy registration revocation is unverified."
     ]
   }
 }

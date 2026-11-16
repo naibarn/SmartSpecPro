@@ -60,3 +60,49 @@ Keep synthetic prototype routes separate from LIVE records. Pairing/device enrol
   confirming the new pairing route is not in the served release. Slice C,
   real enrollment, deploy, live Mission/Task verification, and owner UAT remain
   incomplete; this amendment is not accepted.
+
+## Owner continuation — Modular Runner migration and admin pairing UX — 2026-11-17
+
+The owner's explicit 2026-11-17 instruction supersedes requirement 1 above for
+the Debian Runner instance being migrated in this continuation: unpair that
+instance from `smartaihub.app` and enroll it only with `aimarkethubs.com`.
+Do not reuse the old host-bound credential or claim the Legacy registration was
+revoked until the remote revoke is verified. Keep the Modular identity and
+connection store isolated; retain the local workspace data only where the
+Runner's host-scoped storage contract permits it.
+
+The owner also requests an admin-only Chat action to create a fresh approval
+link for reconnect/re-enrollment. A browser-only implementation is explicitly
+insufficient: the enrolled Runner's private key must remain on Debian, and the
+existing pairing API creates a challenge only after the Runner initiates
+`/api/runners/connect/start`. The required implementation is a narrowly scoped
+Runner-side pairing relay/mailbox plus an authenticated admin action that
+returns the one-time approval URL only after the host Runner has created the
+challenge. Do not make the Worker spawn a shell command, expose a private key,
+or fabricate a link. Ordinary transient disconnects must continue to recover
+through the existing reconnect/refresh flow; the approval link is for explicit
+re-enrollment only. If host credentials are absent or invalid, surface that
+state and require the documented one-time host bootstrap path.
+
+New acceptance evidence on 2026-11-17:
+
+- Platform `d223283c619c9f9ab9ba3ab8d5cf2c4eb4cdabff` is integrated and
+  deployed through the registered `modular-debian-dev` controller. The
+  Runner-approval page now shows safe, actionable API failure reasons instead
+  of collapsing all failures into “Check your sign-in”; focused Runner route
+  tests passed 7/7 and the release controller reported
+  `DEPLOYED_AND_VERIFIED` with Core/Chat/Shell local and public smoke checks.
+- A headless Debian Runner pairing attempt targeted
+  `https://aimarkethubs.com/api/runners/runner-modular-dev-debian-20261117/control`
+  with a separate Modular runner/device identity and printed an approval URL.
+  The owner browser displayed an approval failure before this diagnostic UI
+  deployment. Enrollment has not been confirmed; do not report the new Runner
+  connected.
+- The Debian `smartaihub-runner.service` is stopped pending successful Modular
+  enrollment. Its service drop-in points at the Modular control URL and
+  identity; the previously stored Legacy credential is not copied into the
+  Modular connection store. Remote Legacy revocation remains unverified.
+- Admin-triggered approval-link creation in Chat is a new implementation gap:
+  no admin UI action, relay/mailbox contract, or recovery behavior exists yet.
+  Continue R03.7 with this narrowly scoped feature before resuming canonical
+  Job dispatch, then complete actual enrollment and authenticated owner UAT.
