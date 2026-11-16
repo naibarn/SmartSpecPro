@@ -14,14 +14,15 @@
   "sections_state": {
     "section-01-core-mission-read-api": {
       "status": "checkpointed",
-      "next_action": "Build authenticated live mission and task workbench in a distinct DEV route; keep demo routes untouched.",
-      "checkpoint_sha": "ed0144fa0e3a0cf4b715e7a0d8fac548efbcb832"
+      "next_action": "Core Mission, Task Control, and exact Mission/Job/Attempt read projections are integrated in Platform SHA 25c362422641ba8213a9753ca3547f979f2f7c9d; no Harness identity is implied when source fields are null.",
+      "checkpoint_sha": "25c362422641ba8213a9753ca3547f979f2f7c9d",
+      "merged_main_sha": "25c362422641ba8213a9753ca3547f979f2f7c9d"
     },
     "section-02-live-mission-control-route": {
       "checkpoint_sha": "25c362422641ba8213a9753ca3547f979f2f7c9d",
       "status": "checkpointed",
       "merged_main_sha": "25c362422641ba8213a9753ca3547f979f2f7c9d",
-      "next_action": "Build immutable modular-debian-dev artifact from integrated source SHA, deploy through registered controller, then verify public runtime."
+      "next_action": "The explicit LIVE route is deployed and verified on modular-debian-dev from Platform SHA 25c362422641ba8213a9753ca3547f979f2f7c9d; continue only when canonical Harness catalog and execution identity sources are available."
     },
     "section-03-validation-deploy-traceability": {
       "status": "in_progress",
@@ -37,18 +38,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T02:54:32.098756+00:00",
-  "generation": 9,
-  "updated_at": "2026-11-16T03:30:16.009300+00:00",
+  "generation": 12,
+  "updated_at": "2026-11-16T03:32:27.504131+00:00",
   "progress": {
-    "active_section": "section-03-validation-deploy-traceability",
-    "next_action": "Continue when Modular Core exposes an authenticated Harness registry and canonical Mission-to-Harness Job/Run/Attempt read model; bind real multi-Harness tabs and evidence, then perform authenticated owner UAT.",
+    "active_section": "section-02-live-mission-control-route",
+    "next_action": "The explicit LIVE route is deployed and verified on modular-debian-dev from Platform SHA 25c362422641ba8213a9753ca3547f979f2f7c9d; continue only when canonical Harness catalog and execution identity sources are available.",
     "merged_main_sha": "25c362422641ba8213a9753ca3547f979f2f7c9d",
     "gaps": [
-      "Live Core has no Harness catalog/registry endpoint; task projection currently carries null Harness/Agent/Run/Runner identities, so genuine Harness execution acceptance cannot be demonstrated.",
-      "Authenticated owner browser UAT is pending because the local computer sidecar could not start; genuine Harness acceptance also requires canonical Harness catalog and Job identity data absent from Core.",
-      "Core has no canonical Harness catalog or Mission-to-Harness Job identity; final genuine execution acceptance cannot be proven.",
-      "Authenticated owner browser UAT remains pending because the computer sidecar failed to start.",
-      "No canonical Core Harness catalog or Mission-to-Harness Job/Run/Attempt relationship is available; cannot satisfy genuine-runtime acceptance.",
+      "Core has no canonical Harness catalog or Mission-to-Harness Job/Run/Attempt identity relationship; genuine-runtime acceptance cannot be demonstrated.",
       "Authenticated owner browser UAT remains pending because the local computer sidecar exited with code 1."
     ]
   }
