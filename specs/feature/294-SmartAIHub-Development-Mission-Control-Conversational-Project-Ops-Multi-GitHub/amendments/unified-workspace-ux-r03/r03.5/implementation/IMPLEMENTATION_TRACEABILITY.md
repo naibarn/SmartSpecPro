@@ -22,3 +22,4 @@ Evidence in this document distinguishes source/test evidence from a real authent
 - Platform Core focused tests: 49/49 passed; Core typecheck passed.
 - Platform Shell focused tests: 5/5 passed; Shell typecheck passed.
 - PostgreSQL migration validation used a disposable PostgreSQL 15.17 fixture, not the configured DEV database.
+- The shared-tenant migration preflight previously allowed 0441 only while pending, so it blocked every authorized successor migration after 0441 had been applied. The preflight now validates the exact 0441 hash and a contiguous, hash-matching canonical suffix; focused migration-target tests cover both the one-time 0441 path and later successors.

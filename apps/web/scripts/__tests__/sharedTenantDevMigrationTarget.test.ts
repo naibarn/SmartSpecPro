@@ -94,6 +94,7 @@ describe("shared-tenant Mission migration ledger preflight", () => {
     { tag: "0439_modular_chat_output_artifacts", when: 439, hash: "hash-439" },
     { tag: "0440_seedream_5_5_unified_model", when: 440, hash: "hash-440" },
     { tag: "0441_modular_chat_missions", when: 441, hash: "hash-441" },
+    { tag: "0442_runner_harness_instances", when: 442, hash: "hash-442" },
   ];
   const applied = [
     { created_at: 439, hash: "hash-439" },
@@ -104,11 +105,27 @@ describe("shared-tenant Mission migration ledger preflight", () => {
     expect(() => assertMissionMigrationLedger(migrations, applied)).not.toThrow();
   });
 
+  it("accepts the exact applied 0441 prerequisite and a pending canonical successor", () => {
+    expect(() => assertMissionMigrationLedger(migrations, [
+      ...applied,
+      { created_at: 441, hash: "hash-441" },
+    ])).not.toThrow();
+  });
+
+  it("accepts a contiguous hash-matching canonical suffix after 0441", () => {
+    expect(() => assertMissionMigrationLedger(migrations, [
+      ...applied,
+      { created_at: 441, hash: "hash-441" },
+      { created_at: 442, hash: "hash-442" },
+    ])).not.toThrow();
+  });
+
   it.each([
     [[{ created_at: 439, hash: "wrong" }, applied[1]], "SHARED_DEVELOPMENT_MIGRATION_0439_MISMATCH"],
     [[applied[0], { created_at: 440, hash: "wrong" }], "SHARED_DEVELOPMENT_MIGRATION_0440_MISMATCH"],
-    [[...applied, { created_at: 441, hash: "hash-441" }], "SHARED_DEVELOPMENT_MIGRATION_0441_ALREADY_APPLIED"],
+    [[...applied, { created_at: 441, hash: "wrong" }], "SHARED_DEVELOPMENT_MIGRATION_0441_MISMATCH"],
     [[...applied, { created_at: 442, hash: "future" }], "SHARED_DEVELOPMENT_MIGRATION_HEAD_MISMATCH"],
+    [[...applied, { created_at: 441, hash: "hash-441" }, { created_at: 443, hash: "future" }], "SHARED_DEVELOPMENT_MIGRATION_HEAD_MISMATCH"],
   ])("rejects an inconsistent migration ledger", (rows, error) => {
     expect(() => assertMissionMigrationLedger(migrations, rows)).toThrow(error);
   });

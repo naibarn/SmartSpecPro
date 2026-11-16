@@ -43,15 +43,34 @@ export function assertMissionMigrationLedger(
   }
   const missionMigration = sourceByTag.get("0441_modular_chat_missions");
   if (!missionMigration) throw new Error("SHARED_DEVELOPMENT_MIGRATION_0441_SOURCE_MISSING");
-  if (rows.some(row => row.hash === missionMigration.hash || Number(row.created_at) === missionMigration.when)) {
-    throw new Error("SHARED_DEVELOPMENT_MIGRATION_0441_ALREADY_APPLIED");
-  }
-  const latestTimestamp = rows.reduce((latest, row) => {
-    const timestamp = Number(row.created_at);
-    return Number.isSafeInteger(timestamp) ? Math.max(latest, timestamp) : latest;
-  }, Number.MIN_SAFE_INTEGER);
   const migration0440 = sourceByTag.get("0440_seedream_5_5_unified_model");
-  if (!migration0440 || latestTimestamp !== migration0440.when) {
+  if (!migration0440) {
+    throw new Error("SHARED_DEVELOPMENT_MIGRATION_HEAD_MISMATCH");
+  }
+
+  // 0441 bootstrap used this gate before that migration existed in the target.
+  // Later shared-tenant DEV migrations must accept the exact applied 0441 and
+  // only a contiguous, hash-matching suffix from the canonical journal.
+  const missionEvidence = rows.filter(row => row.hash === missionMigration.hash || Number(row.created_at) === missionMigration.when);
+  if (missionEvidence.length === 0) {
+    const latestTimestamp = rows.reduce((latest, row) => {
+      const timestamp = Number(row.created_at);
+      return Number.isSafeInteger(timestamp) ? Math.max(latest, timestamp) : latest;
+    }, Number.MIN_SAFE_INTEGER);
+    if (latestTimestamp !== migration0440.when) throw new Error("SHARED_DEVELOPMENT_MIGRATION_HEAD_MISMATCH");
+    return;
+  }
+  if (missionEvidence.length !== 1 || missionEvidence[0]?.hash !== missionMigration.hash ||
+    Number(missionEvidence[0]?.created_at) !== missionMigration.when) {
+    throw new Error("SHARED_DEVELOPMENT_MIGRATION_0441_MISMATCH");
+  }
+
+  const orderedSuffix = migrations.filter(migration => migration.when > migration0440.when)
+    .sort((left, right) => left.when - right.when);
+  const appliedSuffix = rows.filter(row => Number(row.created_at) > migration0440.when)
+    .sort((left, right) => Number(left.created_at) - Number(right.created_at));
+  if (appliedSuffix.length > orderedSuffix.length || appliedSuffix.some((row, index) =>
+    Number(row.created_at) !== orderedSuffix[index]?.when || row.hash !== orderedSuffix[index]?.hash)) {
     throw new Error("SHARED_DEVELOPMENT_MIGRATION_HEAD_MISMATCH");
   }
 }

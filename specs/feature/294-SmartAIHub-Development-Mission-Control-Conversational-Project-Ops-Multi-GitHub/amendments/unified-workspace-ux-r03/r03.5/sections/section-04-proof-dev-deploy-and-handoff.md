@@ -15,6 +15,6 @@ Focused test/build evidence, authorized migration and modular DEV deployment if 
 
 ## Evidence / remaining gaps
 
-- Focused contract/API/UI checks pass except for the separately documented baseline Runner refresh-token assertion. Migration source was validated only in disposable PostgreSQL.
+- Focused contract/API/UI checks pass except for the separately documented baseline Runner refresh-token assertion. Migration source was validated in disposable PostgreSQL, and the shared-tenant preflight now accepts 0441 as an exact applied prerequisite for 0442.
 - DEV migration and deployment must be recorded separately after using their registered controllers and verifying exact target/release SHA.
 - Real Harness registration, Job binding, Mission/Task navigation and owner UAT remain pending until observed. Preserve current DEV release and rollback source if deployment is unavailable or unhealthy.
