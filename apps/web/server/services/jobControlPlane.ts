@@ -5196,7 +5196,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding" | "cloudflare_http_image_prebuild_rate_limit" | "cloudflare_native_runtime_prewrite";
+        knownRuntime?: "remotion_revision_id" | "remotion_worker_runtime_repaired" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding" | "cloudflare_http_image_prebuild_rate_limit" | "cloudflare_native_runtime_prewrite";
         replacementGrantRef?: string;
         replacementGrantExpiresAt?: string;
       },
@@ -5218,6 +5218,7 @@ export function createJobControlPlane(
             evidence.operationKey.length > 200)) ||
         (evidence.knownRuntime !== undefined &&
           evidence.knownRuntime !== "remotion_revision_id" &&
+          evidence.knownRuntime !== "remotion_worker_runtime_repaired" &&
           evidence.knownRuntime !== "content_protection_provider" &&
           evidence.knownRuntime !== "cloudflare_staging_compile" &&
           evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt" &&
@@ -5278,6 +5279,28 @@ export function createJobControlPlane(
           scope?.authorizationScope === "worker_jobs.user_retry" &&
           job?.jobType === "remotion_render_video" &&
           failureText.includes("revisionId is not defined");
+        // The render never reached a worker: the deployed runtime did not
+        // advertise its requested post-pass contract. Allow one same-job
+        // recovery after the owner installs the repaired runtime, while
+        // rejecting any job that had a worker, lease, heartbeat, or execution.
+        const knownRemotionWorkerRuntimeRecovery =
+          evidence.knownRuntime === "remotion_worker_runtime_repaired" &&
+          evidence.disposition === "pre_submission_failure" &&
+          scope?.authorizationScope === "worker_jobs.user_retry" &&
+          actorId === job?.requestedByUserId &&
+          scope.requestedByUserId === job?.requestedByUserId &&
+          job?.jobType === "remotion_render_video" &&
+          job.status === "expired" &&
+          job.statusReason === "job_deadline" &&
+          job.errorCode === "JOB_DEADLINE_EXPIRED" &&
+          job.workerId == null &&
+          job.startedAt == null &&
+          job.heartbeatAt == null &&
+          job.fencingVersion === 0 &&
+          job.leaseOwnerToken == null &&
+          job.leaseExpiresAt == null &&
+          job.attempt === 1 &&
+          job.maxAttempts === 1;
         const knownCloudflareCompileRejection =
           evidence.knownRuntime === "cloudflare_staging_compile" &&
           evidence.disposition === "pre_submission_failure" &&
@@ -5446,13 +5469,14 @@ export function createJobControlPlane(
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
             !knownRemotionRevisionFailure &&
+            !knownRemotionWorkerRuntimeRecovery &&
             !knownProtectionProviderFailure &&
             !knownCloudflareCompileRejection &&
             !knownCloudflareBootstrapReceipt &&
             !knownNativeReadbackFailure &&
             !knownPrivateDatabaseRejection &&
             !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding && !knownNativeRuntimePrewrite) ||
-          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding && !knownNativeRuntimePrewrite)
+          (job.attempt >= job.maxAttempts && !knownRemotionWorkerRuntimeRecovery && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding && !knownNativeRuntimePrewrite)
         )
           return false;
 
@@ -5494,7 +5518,7 @@ export function createJobControlPlane(
                     expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 12 * 60_000)).toISOString(),
                   } } }
               : {}),
-            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding || knownNativeRuntimePrewrite) ? { maxAttempts: nextAttempt } : {}),
+            ...((knownRemotionWorkerRuntimeRecovery || knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding || knownNativeRuntimePrewrite) ? { maxAttempts: nextAttempt } : {}),
             ...(knownNativeRuntimePrewrite ? { retryPolicyJson: { ...job.retryPolicyJson, httpRuntimePrewriteRecovery: {
               attempt: nextAttempt, intentId: job.id, planDigest: job.inputJson.planDigest,
               authorizedAt: now.toISOString(), expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 20 * 60_000)).toISOString(),

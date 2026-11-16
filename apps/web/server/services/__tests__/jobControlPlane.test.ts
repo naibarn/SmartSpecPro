@@ -2597,6 +2597,92 @@ describe("job control plane", () => {
     expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
   });
 
+  it("allows exactly one same-job recovery when a Remotion runtime mismatch expired before worker assignment", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "remotion_render_video",
+      idempotencyKey: undefined,
+      retryPolicy: { ...definition.retryPolicy, maxAttempts: 1, deadlineMs: 10 },
+    });
+    const job = state.jobs.get(created.jobId);
+    job.createdAt = new Date(Date.now() - 1000);
+    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("expired");
+
+    const recovery = {
+      disposition: "pre_submission_failure" as const,
+      knownRuntime: "remotion_worker_runtime_repaired" as const,
+    };
+    const scope = {
+      tenantId: definition.tenantId,
+      requestedByUserId: definition.requestedByUserId,
+      authorizationScope: "worker_jobs.user_retry",
+    };
+    await expect(controlPlane.recoverReviewGatedJob(
+      created.jobId,
+      "00000000-0000-4000-8000-000000000310",
+      "user_requested_retry",
+      recovery,
+      definition.requestedByUserId,
+      scope,
+    )).resolves.toBe(true);
+    expect(job).toMatchObject({ status: "queued", attempt: 2, maxAttempts: 2, startedAt: null, workerId: null });
+    expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
+
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "recovered-render", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: "render_failed", message: "second attempt failed", class: "permanent" });
+    await expect(controlPlane.recoverReviewGatedJob(
+      created.jobId,
+      "00000000-0000-4000-8000-000000000311",
+      "user_requested_retry",
+      recovery,
+      definition.requestedByUserId,
+      scope,
+    )).resolves.toBe(false);
+    expect(job).toMatchObject({ status: "failed", attempt: 2, maxAttempts: 2 });
+  });
+
+  it("rejects the Remotion runtime recovery if the expired job had started on a worker", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "remotion_render_video",
+      idempotencyKey: undefined,
+      retryPolicy: { ...definition.retryPolicy, maxAttempts: 1 },
+    });
+    const job = state.jobs.get(created.jobId);
+    Object.assign(job, {
+      status: "expired",
+      statusReason: "job_deadline",
+      errorCode: "JOB_DEADLINE_EXPIRED",
+      errorMessage: "Job deadline has elapsed",
+      workerId: "worker-already-started",
+      startedAt: new Date(),
+      heartbeatAt: new Date(),
+      finishedAt: new Date(),
+    });
+
+    await expect(controlPlane.recoverReviewGatedJob(
+      created.jobId,
+      "00000000-0000-4000-8000-000000000312",
+      "user_requested_retry",
+      {
+        disposition: "pre_submission_failure",
+        knownRuntime: "remotion_worker_runtime_repaired",
+      },
+      definition.requestedByUserId,
+      {
+        tenantId: definition.tenantId,
+        requestedByUserId: definition.requestedByUserId,
+        authorizationScope: "worker_jobs.user_retry",
+      },
+    )).resolves.toBe(false);
+    expect(job).toMatchObject({ status: "expired", workerId: "worker-already-started" });
+  });
+
   it("runs the existing settlement hook after a deadline expiration", async () => {
     resetJobSettlementHooksForTests();
     const hook = vi.fn(async () => undefined);

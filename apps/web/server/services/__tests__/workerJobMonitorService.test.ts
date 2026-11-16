@@ -617,6 +617,81 @@ describe("workerJobMonitorService", () => {
     });
   });
 
+  it("offers a bounded retry for an expired Remotion job that never reached a worker", () => {
+    const row = {
+      status: "expired" as const,
+      jobType: "remotion_render_video",
+      statusReason: "job_deadline",
+      errorCode: "JOB_DEADLINE_EXPIRED",
+      errorMessage: "Job deadline has elapsed",
+      failureReason: null,
+      operatorReviewRequired: false,
+      operatorReviewReason: null,
+    };
+    const evidence = { workerId: null, startedAt: null, hasVerifiedOutput: false };
+    expect(getUserWorkerJobRetryPolicy(row, evidence)).toEqual({
+      mode: "review_recovery",
+      reason: "remotion_runtime_repaired",
+    });
+    expect(getUserWorkerJobRetryPolicy(row, { ...evidence, workerId: "worker-1" })).toBeNull();
+    expect(getUserWorkerJobRetryPolicy(row, { ...evidence, startedAt: createdAt })).toBeNull();
+    expect(getUserWorkerJobRetryPolicy(row, { ...evidence, hasVerifiedOutput: true })).toBeNull();
+  });
+
+  it("routes the no-worker Remotion retry through audited same-job recovery", async () => {
+    const repo = createRepo({
+      listArtifacts: vi.fn().mockResolvedValue([]),
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-remotion-runtime-expired",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "expired",
+        statusReason: "job_deadline",
+        resourceProfile: "cpu_heavy",
+        outputJson: {},
+        instructionsJson: {},
+        failureReason: "Job deadline has elapsed",
+        errorCode: "JOB_DEADLINE_EXPIRED",
+        errorMessage: "Job deadline has elapsed",
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        inputJson: {},
+        progressJson: {},
+        createdAt,
+        startedAt: null,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+    });
+    const recoverReviewGatedJob = vi.fn().mockResolvedValue(true);
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-remotion-runtime-expired",
+        actionId: "retry-action-runtime-repaired",
+      },
+      { repo, controlPlane: { makeRetryDue: vi.fn(), recoverReviewGatedJob } },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "job-remotion-runtime-expired",
+      mode: "review_recovery",
+    });
+
+    expect(recoverReviewGatedJob).toHaveBeenCalledWith(
+      "job-remotion-runtime-expired",
+      "retry-action-runtime-repaired",
+      "user_requested_retry",
+      { disposition: "pre_submission_failure", knownRuntime: "remotion_worker_runtime_repaired" },
+      7,
+      { tenantId: "tenant-1", requestedByUserId: 7, authorizationScope: "worker_jobs.user_retry" },
+    );
+  });
+
   it("rejects an ambiguous provider failure instead of blindly retrying it", async () => {
     const repo = createRepo({
       getUserJob: vi.fn().mockResolvedValue({

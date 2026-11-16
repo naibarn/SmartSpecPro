@@ -79,6 +79,7 @@ export type UserWorkerJobRetryReason =
   | "automatic_retry"
   | "adapter_contract_unsupported"
   | "known_runtime_failure"
+  | "remotion_runtime_repaired"
   | "cloudflare_compile_rejected"
   | "cloudflare_bootstrap_receipt"
   | "artifact_qc_failure"
@@ -137,7 +138,12 @@ export function getUserWorkerJobRetryPolicy(
     | "operatorReviewRequired"
     | "operatorReviewReason"
   >,
-  evidence: { hasVerifiedOutput?: boolean; hasUnpublishedRemotionArtifact?: boolean } = {},
+  evidence: {
+    hasVerifiedOutput?: boolean;
+    hasUnpublishedRemotionArtifact?: boolean;
+    workerId?: string | null;
+    startedAt?: Date | null;
+  } = {},
 ): UserWorkerJobRetryPolicy | null {
   if (row.statusReason?.startsWith("remotion_replaced:")) {
     return null;
@@ -172,6 +178,19 @@ export function getUserWorkerJobRetryPolicy(
       .some(value => value.includes("revisionId is not defined"))
   ) {
     return { mode: "review_recovery", reason: "known_runtime_failure" };
+  }
+
+  if (
+    row.status === "expired" &&
+    row.jobType === "remotion_render_video" &&
+    row.statusReason === "job_deadline" &&
+    row.errorCode === "JOB_DEADLINE_EXPIRED" &&
+    evidence.workerId === null &&
+    evidence.startedAt === null &&
+    evidence.hasVerifiedOutput !== true &&
+    evidence.hasUnpublishedRemotionArtifact !== true
+  ) {
+    return { mode: "review_recovery", reason: "remotion_runtime_repaired" };
   }
 
   if (row.status === "failed" && row.jobType === "cloudflare.staging.deploy" && row.errorCode === "CLOUDFLARE_HTTP_400_API_10021") {
@@ -966,6 +985,8 @@ function projectJob(
     hasUnpublishedRemotionArtifact:
       row.jobType === "remotion_render_video"
       && (artifactsByJobId.get(row.id) ?? []).some(isPublishableRemotionArtifact),
+    workerId: row.workerId,
+    startedAt: row.startedAt,
   });
   const isSuccessful = ["succeeded", "completed"].includes(status);
   const input = asRecord(row.inputJson);
@@ -1347,6 +1368,8 @@ export async function retryUserWorkerJob(
   const retryPolicy = getUserWorkerJobRetryPolicy(current, {
     hasVerifiedOutput,
     hasUnpublishedRemotionArtifact,
+    workerId: current.workerId,
+    startedAt: current.startedAt,
   });
   if (!retryPolicy) {
     throw new TRPCError({
@@ -1415,6 +1438,11 @@ export async function retryUserWorkerJob(
       ? {
           disposition: "provider_operation_resolved" as const,
           knownRuntime: "content_protection_provider" as const,
+        }
+      : retryPolicy.reason === "remotion_runtime_repaired"
+      ? {
+          disposition: "pre_submission_failure" as const,
+          knownRuntime: "remotion_worker_runtime_repaired" as const,
         }
       : { disposition: "pre_submission_failure" as const };
   const accepted = retryPolicy.mode === "review_recovery"
