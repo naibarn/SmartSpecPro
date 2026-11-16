@@ -1,0 +1,42 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.6/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.6/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-modular-runner-runtime",
+    "section-02-explicit-mission-job-binding",
+    "section-03-live-verification-release-handoff"
+  ],
+  "sections_state": {
+    "section-01-modular-runner-runtime": {
+      "status": "in_progress",
+      "next_action": "Wait for a tenant-scoped Modular Runner Gateway enrollment/publication protocol and registered deployment controller; existing source exposes only legacy gateway plus Modular read-only catalog. Preserve current service and continue other sections."
+    },
+    "section-02-explicit-mission-job-binding": {
+      "status": "in_progress",
+      "next_action": "Add migration 0443 explicit Mission-to-Job binding and update Core request path, Mission and Harness projections with focused regression coverage."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-16T07:50:58.463471+00:00",
+  "generation": 5,
+  "updated_at": "2026-11-16T07:55:43.581894+00:00",
+  "progress": {
+    "active_section": "section-02-explicit-mission-job-binding",
+    "next_action": "Add migration 0443 explicit Mission-to-Job binding and update Core request path, Mission and Harness projections with focused regression coverage.",
+    "gaps": [
+      "No Modular Runner Gateway endpoint/provisioning contract exists in current Modular Hono source; no safe endpoint or tenant-scoped credentials can be configured."
+    ]
+  }
+}

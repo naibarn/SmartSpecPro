@@ -3004,6 +3004,13 @@
       "when": 1794770000003,
       "tag": "0442_runner_harness_instances",
       "breakpoints": true
+    },
+    {
+      "idx": 443,
+      "version": "7",
+      "when": 1794770000004,
+      "tag": "0443_modular_chat_explicit_mission_job_binding",
+      "breakpoints": true
     }
   ]
 }

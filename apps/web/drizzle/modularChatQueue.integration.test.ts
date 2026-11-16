@@ -11,9 +11,16 @@ suite("Modular Chat queue database contract", () => {
     const connectionString = process.env.MODULAR_CHAT_TEST_DATABASE_URL;
     const email = process.env.MODULAR_CHAT_TEST_EMAIL;
     if (!connectionString || !email) throw new Error("MODULAR_CHAT_TEST_DATABASE_URL and MODULAR_CHAT_TEST_EMAIL are required");
-    const client = new Client({ connectionString, connectionTimeoutMillis: 5000, statement_timeout: 10000 });
+    const client = new Client({
+      connectionString,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 10000,
+      application_name: "spec312-r124-single-owner-dev-admin",
+    });
     await client.connect();
     try {
+      const serverVersion = Number((await client.query("SELECT current_setting('server_version_num') AS version_num")).rows[0]?.version_num);
+      expect(serverVersion).toBe(150017);
       const user = (await client.query("SELECT id FROM public.users WHERE lower(email) = lower($1) LIMIT 1", [email])).rows[0];
       expect(user).toBeDefined();
       const workspace = (await client.query(`SELECT member.workspace_id FROM public.modular_workspace_members AS member
@@ -28,6 +35,7 @@ suite("Modular Chat queue database contract", () => {
       const migrationHash = (tag: string) => createHash("sha256")
         .update(readFileSync(new URL(`./${tag}.sql`, import.meta.url))).digest("hex");
       const missionMigrationHash = migrationHash("0441_modular_chat_missions");
+      const missionJobBindingMigrationHash = migrationHash("0443_modular_chat_explicit_mission_job_binding");
       const baselineHashes = [migrationHash("0439_modular_chat_output_artifacts"), migrationHash("0440_seedream_5_5_unified_model")];
       const appliedHashes = (await client.query("SELECT hash FROM drizzle.__drizzle_migrations")).rows.map((row) => row.hash);
       expect(appliedHashes).toEqual(expect.arrayContaining(baselineHashes));
@@ -42,6 +50,14 @@ suite("Modular Chat queue database contract", () => {
       if (!missionMigrationApplied) {
         await client.query(readFileSync(new URL("./0441_modular_chat_missions.sql", import.meta.url), "utf8"));
       }
+      if (!appliedHashes.includes(missionJobBindingMigrationHash)) {
+        await client.query(readFileSync(new URL("./0443_modular_chat_explicit_mission_job_binding.sql", import.meta.url), "utf8"));
+      }
+      const harnessProjection = (await client.query(`SELECT pg_get_functiondef(
+        'public.list_modular_chat_harness_projection(integer,character varying,character varying)'::regprocedure
+      ) AS definition`)).rows[0]?.definition as string;
+      expect(harnessProjection).toContain("FROM public.modular_chat_mission_jobs binding");
+      expect(harnessProjection).not.toContain("'missionId', NULL::varchar");
       const missionFunctions = (await client.query(`SELECT p.oid::regprocedure::text AS function_name,
           pg_get_userbyid(p.proowner) AS owner, p.proconfig,
           owner_role.rolcanlogin, owner_role.rolsuper, owner_role.rolcreatedb, owner_role.rolcreaterole,
@@ -128,19 +144,57 @@ suite("Modular Chat queue database contract", () => {
       )).rows[0];
       expect(mission).toMatchObject({ mission_id: missionId, tenant_id: "modular-development",
         workspace_id: workspace.workspace_id, conversation_id: first.conversation_id,
-        status: "active", job_ids: expect.arrayContaining([first.job_id]), event_cursor: expect.any(Number), agent_ids: [] });
+        status: "active", job_ids: [], event_cursor: 0, agent_ids: [] });
+      const boundInput = [user.id, "modular-development", workspace.workspace_id, first.conversation_id,
+        "Explicit Mission-bound DEV task", provider.provider_id, "diagnostic/free", randomUUID(), missionId];
+      const boundJob = (await client.query(
+        "SELECT * FROM public.create_modular_chat_turn_job_for_mission($1,$2,$3,$4,$5,$6,$7,$8,$9)", boundInput,
+      )).rows[0];
+      const boundRetry = (await client.query(
+        "SELECT * FROM public.create_modular_chat_turn_job_for_mission($1,$2,$3,$4,$5,$6,$7,$8,$9)", boundInput,
+      )).rows[0];
+      expect(boundJob).toMatchObject({ created: true, conversation_id: first.conversation_id });
+      expect(boundRetry).toMatchObject({ created: false, job_id: boundJob.job_id });
+      const bindingRows = await client.query("SELECT mission_id, worker_job_id FROM public.modular_chat_mission_jobs");
+      expect(bindingRows.rows).toEqual([{ mission_id: missionId, worker_job_id: boundJob.job_id }]);
+      const boundOutbox = (await client.query(
+        "SELECT * FROM public.prepare_modular_chat_turn_outbox($1,$2,$3)", ["modular-development", dispatchHash, boundJob.job_id],
+      )).rows[0];
+      expect((await client.query("SELECT public.mark_modular_chat_turn_outbox_published($1,$2,$3) AS ok",
+        [boundOutbox.outbox_id, boundOutbox.dedupe_key, dispatchHash])).rows[0].ok).toBe(true);
+      const boundLease = randomUUID();
+      const boundLeaseHash = createHash("sha256").update(boundLease).digest("hex");
+      const boundClaim = (await client.query("SELECT * FROM public.claim_modular_chat_turn_job($1,$2,$3)",
+        [boundJob.job_id, boundLease, boundLeaseHash])).rows[0];
+      const boundAttempt = (await client.query("SELECT * FROM public.begin_modular_chat_turn_job($1,$2,$3,$4)",
+        [boundJob.job_id, boundLease, boundLeaseHash, boundClaim.fencing_version])).rows[0];
+      expect(boundAttempt.attempt_id).toEqual(expect.any(String));
+      expect((await client.query("SELECT * FROM public.complete_modular_chat_turn_job($1,$2,$3,$4,$5,$6)",
+        [boundJob.job_id, boundLease, boundClaim.fencing_version, "Mission-bound diagnostic response", 1, 1])).rows[0].completed).toBe(true);
+      const missionWithExplicitJob = (await client.query(
+        "SELECT * FROM public.list_modular_chat_missions($1,$2,$3,$4)",
+        [user.id, "modular-development", workspace.workspace_id, first.conversation_id],
+      )).rows[0];
+      expect(missionWithExplicitJob.job_ids).toEqual([boundJob.job_id]);
+      await client.query("SAVEPOINT mission_binding_scope_check");
+      await expect(client.query(
+        "SELECT * FROM public.create_modular_chat_turn_job_for_mission($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [2147483647, "modular-development", workspace.workspace_id, first.conversation_id,
+          "Unauthorized Mission-bound task", provider.provider_id, "diagnostic/free", randomUUID(), missionId],
+      )).rejects.toMatchObject({ code: "42501" });
+      await client.query("ROLLBACK TO SAVEPOINT mission_binding_scope_check");
       const artifactId = randomUUID();
       const artifactMetadata = {
         schemaVersion: "smartaihub.chat-output-artifact.v1", contentType: "text/markdown; charset=utf-8",
         sizeBytes: 19, sha256: "a".repeat(64), expiresAt: new Date(Date.now() + 86400000).toISOString(),
         conversationId: first.conversation_id, workspaceId: workspace.workspace_id, userId: user.id,
-        jobId: first.job_id, attemptId: firstTask?.attempt_id, attemptNumber: 1,
+        jobId: boundJob.job_id, attemptId: boundAttempt.attempt_id, attemptNumber: 1,
       };
-      const storageRef = `chat-outputs/v1/modular-development/${workspace.workspace_id}/${first.job_id}/attempt-1.md`;
+      const storageRef = `chat-outputs/v1/modular-development/${workspace.workspace_id}/${boundJob.job_id}/attempt-1.md`;
       // Artifact persistence is an internal worker write, not a direct app-role capability.
       await client.query("RESET SESSION AUTHORIZATION");
       await client.query(`INSERT INTO public.worker_artifacts (id, "workerJobId", "artifactType", "storageRef", "metadataJson")
-        VALUES ($1, $2, 'chat_output_markdown', $3, $4::jsonb)`, [artifactId, first.job_id, storageRef, JSON.stringify(artifactMetadata)]);
+        VALUES ($1, $2, 'chat_output_markdown', $3, $4::jsonb)`, [artifactId, boundJob.job_id, storageRef, JSON.stringify(artifactMetadata)]);
       await client.query("SET LOCAL SESSION AUTHORIZATION modular_core_auth_dev");
       const artifacts = await client.query(
         "SELECT * FROM public.list_modular_chat_conversation_artifacts($1,$2,$3,$4)",

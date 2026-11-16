@@ -334,7 +334,7 @@ describe("RunnerGateway", () => {
     await expect(
       refreshRunnerAccessTokens(tokens.refreshToken)
     ).rejects.toMatchObject({
-      code: "runner_auth_invalid",
+      code: "runner_refresh_revoked",
     });
   });
 
