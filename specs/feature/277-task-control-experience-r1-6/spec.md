@@ -3630,3 +3630,8 @@ SPEC-277 remains the owner of Task Control read-model semantics. The protected `
 # Additive integration note — SPEC-312 R1.22
 
 SPEC-277 remains the authority for Task Control read semantics and canonical Job/Attempt/Event projections. `workerJobs.observabilityV1` MUST be read-only, protected by the existing authenticated account/tenant scope, and MUST return only records authorized for that scope. The current owner read model does not establish a canonical workspace identity; consumers MUST preserve `workspaceId: null` and MUST NOT substitute `tenantId`. The owner API runtime deployment and authorization evidence are separate from Modular Core deployments. Modular Chat may adapt its own canonical Core Jobs independently, but MUST NOT forward legacy session cookies or merge owner records across data planes. Owner runtime acceptance requires an actual `SmartSpecPro` DEV deployment and authenticated in-scope plus cross-scope denial evidence; a Modular Core release cannot satisfy it.
+
+
+## 2026-11-16 — SPEC-294 R03 DEV UX cross-reference
+
+SPEC-294 R03 provides an isolated DEV-only Task Control concept with project-first Goal → Task → Run/Attempt navigation, evidence tabs, and a full-width evidence dock. It uses synthetic fixtures and does not establish canonical Task Control state or acceptance. SPEC-277 remains authoritative for real Job projection, lifecycle stage, authorization, evidence freshness, and operational actions. See SPEC-294 `amendments/unified-workspace-ux-r03/`.

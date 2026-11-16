@@ -49,6 +49,13 @@
         "scope": "Authenticated DEV-only synthetic Mission Control concept; platform source, local desktop/tablet/mobile browser interactions and no-overflow screenshots verified; registered modular-debian-dev deployment and public route/lazy assets verified. Owner authenticated UX acceptance and live canonical Mission integration remain pending.",
         "source_sha": "5c504e6ec55b1bab4a2549a098655132f7880864",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "UNIFIED_WORKSPACE_UX_R03_DEV_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-ux-r03-20261116.md",
+        "scope": "Integrated shared Chat/Task/Mission navigation, distinct synthetic project-first Task workbench and fleet-first Mission preview routes; 15/15 focused tests, build/Wrangler dry run, responsive browser interactions and modular-debian-dev release verified. Authenticated owner UAT and canonical runtime parity remain pending.",
+        "source_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -72,13 +79,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "a1af26d54cb3006cf631b7e3d81360f92ad1857f",
-    "expected_spec_digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271"
+    "expected_spec_digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147"
   },
   "continuation": {
-    "next_action": "Owner: sign in normally at https://aimarkethubs.com/dev/mission-control-prototype and review the synthetic Mission Control concept at desktop, tablet, and mobile sizes. Record UX acceptance or requested changes. Keep canonical live Mission/Job integration, authenticated operational UAT, SPEC-224 acceptance, and SPEC-312 closure as separate pending work.",
-    "next_ready_workunit": "MISSION_CONTROL_OWNER_UX_REVIEW",
+    "next_action": "Owner: sign in at https://aimarkethubs.com and review both DEV concept routes: /dev/task-control-prototype and /dev/mission-control-prototype at desktop, tablet, and mobile sizes. Record UX acceptance or concrete requested changes. Keep canonical live Task/Mission integration, authenticated operational UAT, SPEC-224 acceptance, and SPEC-312 closure as separate pending work.",
+    "next_ready_workunit": "UNIFIED_WORKSPACE_OWNER_UX_REVIEW",
     "reactivation_predicate": null,
-    "resume_point": "DEV-only interactive synthetic Mission Control prototype is integrated and deployed from Platform main 5c504e6ec55b1bab4a2549a098655132f7880864 at https://aimarkethubs.com/dev/mission-control-prototype. Route/assets and registered modular-debian-dev health checks passed; focused UI tests 11/11 and Vite/Wrangler dry-run build passed. Desktop 1440x900, tablet 820x1180, and mobile 390x844 browser interactions were exercised with no horizontal overflow. Owner authenticated UX acceptance and canonical live Mission/Job integration remain pending; SPEC-294 and SPEC-312 stay open. See handoff/evidence/mission-control-ux-prototype-20261116.md.",
+    "resume_point": "Unified Chat/Task/Mission shell and structurally distinct synthetic DEV concept routes are integrated from Platform main c8dee72b71367282167bbddd3880e902a2678f2b and deployed to https://aimarkethubs.com. Review /dev/task-control-prototype and /dev/mission-control-prototype. Focused tests 15/15, Vite/Wrangler dry-run build, desktop 1440x900/tablet 820x1180/mobile 390x844 local interactions and no-overflow checks passed. Release target modular-debian-dev is verified. Owner authenticated UX acceptance, live canonical Mission/Task evidence parity, SPEC-277 operational acceptance, SPEC-224 runtime evidence, and SPEC-312 closure remain pending. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-ux-r03-20261116.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -174,14 +181,15 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:54afd984b9b463fb38a193f62445f576dd0d89de8827fb9cf066e82e561ca6b9",
-    "environment": "production: https://smartaihub.app (Linux systemd)",
+    "artifact_digest": "sha256:f9f5bc1ebe8eac7d7b8d3e432404f6027ae6f2fcb72c4ecd1bf696e8ce7d5263",
+    "environment": "development: https://aimarkethubs.com (modular-debian-dev; Debian + local Workerd)",
     "evidence": [
       "handoff/evidence/production-chat-session-mission-control-deploy-20261030.md",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/workspace-2-dev-delivery-20261030.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/workspace-2-dev-delivery-20261030.md",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-ux-r03-20261116.md"
     ],
     "required": false,
-    "source_sha": "182febfdab9fb54ee7c47201359d78e29aed2e12",
+    "source_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
     "status": "PASS"
   },
   "disposition": {
@@ -196,13 +204,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 154,
+  "generation": 157,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-    "digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
+    "digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-15T09:33:16.768795Z",
+      "last_evidence_at": "2026-11-16T00:39:57.335729Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -1405,10 +1413,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-15T09:33:16.768795Z",
+    "reconciled_at": "2026-11-16T00:39:57.335729Z",
     "sources": [
       {
-        "digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
+        "digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1461,6 +1469,61 @@
         "digest": "32e2a9f96e5baf2cc8c2e621258c31e99d78cf5feac72938914259e42d0b14c4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/section-03-controls-tests-and-handoff.md"
+      },
+      {
+        "digest": "cb450dbef52f9dd7276e0a8bedf831e2f21a263196129b90379d3e04c0ebbd2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/claude-plan.md"
+      },
+      {
+        "digest": "b854cf7ecee305dca4b30f9f9667c2792b7054f7f7b67349041f592356e1d734",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "3104f39b3cef37a602075fd5239170213caf665a947af032d82b650dd74e6ac4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "37360ec848235e44e64821bc4721c2fa831d7ece7df6dfaad8582fab1cf243b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "592c639083ef64842aa06398ad89c600c7d2b9ab792d51636f884fd5415e7fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "09cdc2e2a496ec86c9f582208c61e3393c0bce5c74da250428eae3eda590e74d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/index.md"
+      },
+      {
+        "digest": "99824b097606cada01ef6d2c0cd582f0ccf265b2fd759c85f087d97e58a6cb12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-01-shell-routing.md"
+      },
+      {
+        "digest": "89c10ffa468e1cf6da643c3d54bc934e44c14804d655055c19b486e97fd0eae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-02-task-workbench.md"
+      },
+      {
+        "digest": "1f04e52377fd0b932e07ed52b2b90587bc8105347e44c2e812b859c07fb599c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-03-mission-fleet.md"
+      },
+      {
+        "digest": "c651e3ea03eeb0990cc79b693f261bafac2c9632179e7cb0c8b54833fc22dffc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-04-validation-handoff.md"
       },
       {
         "digest": "a84a76a4d407d11b82a4938254086cb4b847e9f18a01b323ec35bf1e656a9ee2",
@@ -1595,6 +1658,20 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
+        "excerpt": "sections_state.section-01-shell-routing: in_progress; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-shell-routing",
+        "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/deep_implement_config.json",
+        "source_digest": "37360ec848235e44e64821bc4721c2fa831d7ece7df6dfaad8582fab1cf243b4",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
         "excerpt": "sections_state.event-projection: checkpointed; commit_hash=missing",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": null,
@@ -1625,7 +1702,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
+        "source_digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
@@ -1694,6 +1771,19 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
+        "excerpt": "sections_state.section-01-shell-routing: in_progress; commit_hash=missing",
+        "line": null,
+        "section": "section-01-shell-routing",
+        "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/deep_implement_config.json",
+        "source_digest": "37360ec848235e44e64821bc4721c2fa831d7ece7df6dfaad8582fab1cf243b4",
+        "value": "in_progress"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
         "excerpt": "sections_state.event-projection: checkpointed; commit_hash=missing",
         "line": null,
         "section": "event-projection",
@@ -1721,14 +1811,14 @@
         "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
+        "source_digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "c02f8a6436d2b0547f1484d3b4e9c42a85ae12acafc74a838a513d3c5fab3271",
+        "digest": "f6f3ca89627758ac9f828eecf7f3247e8565286443dbb99a304eb466eaf39147",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1781,6 +1871,61 @@
         "digest": "32e2a9f96e5baf2cc8c2e621258c31e99d78cf5feac72938914259e42d0b14c4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/section-03-controls-tests-and-handoff.md"
+      },
+      {
+        "digest": "cb450dbef52f9dd7276e0a8bedf831e2f21a263196129b90379d3e04c0ebbd2d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/claude-plan.md"
+      },
+      {
+        "digest": "b854cf7ecee305dca4b30f9f9667c2792b7054f7f7b67349041f592356e1d734",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/claude-spec.md"
+      },
+      {
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/.deep_implement_state.lock"
+      },
+      {
+        "digest": "3104f39b3cef37a602075fd5239170213caf665a947af032d82b650dd74e6ac4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "37360ec848235e44e64821bc4721c2fa831d7ece7df6dfaad8582fab1cf243b4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "592c639083ef64842aa06398ad89c600c7d2b9ab792d51636f884fd5415e7fb7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "09cdc2e2a496ec86c9f582208c61e3393c0bce5c74da250428eae3eda590e74d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/index.md"
+      },
+      {
+        "digest": "99824b097606cada01ef6d2c0cd582f0ccf265b2fd759c85f087d97e58a6cb12",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-01-shell-routing.md"
+      },
+      {
+        "digest": "89c10ffa468e1cf6da643c3d54bc934e44c14804d655055c19b486e97fd0eae6",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-02-task-workbench.md"
+      },
+      {
+        "digest": "1f04e52377fd0b932e07ed52b2b90587bc8105347e44c2e812b859c07fb599c2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-03-mission-fleet.md"
+      },
+      {
+        "digest": "c651e3ea03eeb0990cc79b693f261bafac2c9632179e7cb0c8b54833fc22dffc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections/section-04-validation-handoff.md"
       },
       {
         "digest": "a84a76a4d407d11b82a4938254086cb4b847e9f18a01b323ec35bf1e656a9ee2",
@@ -1883,20 +2028,21 @@
     "unresolved": 551
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T18:09:05.098972Z",
+  "updated_at": "2026-11-16T00:41:46.360629Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "Chat right output dock checkpoint beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41: focused Vitest 3 files / 41 tests passed; Vite production-mode client build passed to /tmp/smartspec-ui-p0-build-final2. Build warning is a duplicate object key in unrelated dirty VerticalDramaEpisodePage.tsx; no source changes made there.",
       "No service restart/deployment or hosted authenticated browser acceptance was performed. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-output-dock-20261030.md.",
       "Workspace 2.0 source 092d284ee582237e43959b9b092b3547b7a5fd7d: focused Vitest 7 files/110 tests passed; Vite production-mode build passed to /tmp; development service restarted from this SHA and health/SPA routes returned 200. Authenticated UI remains unverified (dev Admin login 401); standard dev browser acceptance stopped on existing tenant Home/logo 404. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/workspace-2-dev-delivery-20261030.md.",
-      "P0 actual full-page workspace correction source 961f94291517e372281a1d46b4cc35dc2a6fc5ae: quick profile, focused Vitest 4 files / 75 tests PASS; Vite production-mode client build PASS (3m58s; pre-build memory 30 GiB total / 20 GiB available, 351 GiB disk available; temporary bundle included existing 18 GiB releases tree); dev restart and health/permission-guard PASS; local and aimarkethubs.com Chat/Task/Mission routes plus served workspace/launcher/inspector modules HTTP 200. Authenticated owner UAT and live harness are not proven. See handoff/evidence/p0-actual-fullpage-workspace-20261030.md."
+      "P0 actual full-page workspace correction source 961f94291517e372281a1d46b4cc35dc2a6fc5ae: quick profile, focused Vitest 4 files / 75 tests PASS; Vite production-mode client build PASS (3m58s; pre-build memory 30 GiB total / 20 GiB available, 351 GiB disk available; temporary bundle included existing 18 GiB releases tree); dev restart and health/permission-guard PASS; local and aimarkethubs.com Chat/Task/Mission routes plus served workspace/launcher/inspector modules HTTP 200. Authenticated owner UAT and live harness are not proven. See handoff/evidence/p0-actual-fullpage-workspace-20261030.md.",
+      "Unified Workspace UX R03 Platform source c8dee72b71367282167bbddd3880e902a2678f2b: focused saas-shell Vitest 2 files / 15 tests PASS; Vite/Wrangler dry-run build PASS; local mocked-session browser interactions at desktop/tablet/mobile PASS with no horizontal overflow; modular-debian-dev release controller and public route/API-boundary checks PASS. Authenticated owner UAT and canonical Mission/Task runtime parity remain pending. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-ux-r03-20261116.md."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "package"
     ],
-    "sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+    "sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
     "status": "PARTIAL",
     "task_regressions": []
   }

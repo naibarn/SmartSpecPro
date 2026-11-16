@@ -1,0 +1,57 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shell-routing",
+    "section-02-task-workbench",
+    "section-03-mission-fleet",
+    "section-04-validation-handoff"
+  ],
+  "sections_state": {
+    "section-01-shell-routing": {
+      "status": "checkpointed",
+      "next_action": "Review owner feedback on the deployed shared shell and route behavior; keep Chat runtime and canonical execution integration separate.",
+      "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b"
+    },
+    "section-02-task-workbench": {
+      "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "status": "checkpointed",
+      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "next_action": "Collect owner UX feedback; integrate canonical Task/Job evidence only through the approved SPEC-277 runtime contract."
+    },
+    "section-03-mission-fleet": {
+      "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "status": "checkpointed",
+      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "next_action": "Collect owner UX feedback; integrate canonical Mission/Job/Run projections only with runtime and authorization evidence."
+    },
+    "section-04-validation-handoff": {
+      "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "status": "checkpointed",
+      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
+      "next_action": "Owner visual/functional UAT remains pending; after review, record acceptance or a concrete follow-up without treating DEMO fixtures as runtime acceptance."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-16T00:09:12.456709+00:00",
+  "generation": 6,
+  "updated_at": "2026-11-16T00:41:09.257407+00:00",
+  "progress": {
+    "active_section": "section-04-validation-handoff",
+    "next_action": "Owner visual/functional UAT remains pending; after review, record acceptance or a concrete follow-up without treating DEMO fixtures as runtime acceptance.",
+    "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b"
+  }
+}
