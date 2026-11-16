@@ -400,9 +400,13 @@ export async function downloadMediaToTempFile(
   sourceUrl: string,
   mediaType: VerticalDramaMediaType,
   requestedMimeType?: string,
+  options: { timeoutMs?: number } = {},
 ): Promise<{ tempDir: string; tempPath: string; mimeType: string }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? DOWNLOAD_TIMEOUT_MS,
+  );
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "vd-r2-"));
   const tempPath = path.join(tempDir, "source.bin");
   try {

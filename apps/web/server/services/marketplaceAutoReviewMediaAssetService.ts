@@ -7,6 +7,10 @@ import {
 } from "./verticalDramaMediaAssetService";
 import { assertR2StorageActive, storagePutFromPath } from "../storage";
 
+// Provider image URLs are copied only after generation completes. Give this
+// post-generation transfer a longer window than the generic media download.
+const AUTO_REVIEW_IMAGE_DOWNLOAD_TIMEOUT_MS = 8 * 60 * 1000;
+
 export type MarketplaceAutoReviewTaskDurability = {
   task: MediaTask;
   durableUrl: string;
@@ -187,7 +191,10 @@ export async function ensureMarketplaceAutoReviewMediaUrlDurable(input: {
   const downloaded = await downloadMediaToTempFile(
     sourceUrl,
     input.mediaType,
-    input.mediaType === "image" ? "image/png" : "video/mp4"
+    input.mediaType === "image" ? "image/png" : "video/mp4",
+    input.mediaType === "image"
+      ? { timeoutMs: AUTO_REVIEW_IMAGE_DOWNLOAD_TIMEOUT_MS }
+      : undefined
   );
   try {
     const contentHash = crypto
