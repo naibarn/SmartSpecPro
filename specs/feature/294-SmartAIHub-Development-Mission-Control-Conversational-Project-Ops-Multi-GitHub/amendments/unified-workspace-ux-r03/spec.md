@@ -24,3 +24,9 @@ The R03 DEV preview is implemented in `smartaihub-platform` at source SHA `c8dee
 Focused route/workspace tests passed 15/15, the shell production-mode build and Wrangler dry-run passed, and desktop/tablet/mobile captures were taken at 1440×900, 820×1180, and 390×844 with no horizontal overflow or browser page errors. The deployment controller reported `DEPLOYED_AND_VERIFIED`, local Core/Chat/Shell health 200, Chat unauthenticated boundary 401, and public shell/Chat route health 200.
 
 This is an authenticated DEV-only synthetic UX concept; authenticated owner review, live canonical Mission/Job/Run binding, real execution evidence parity, and SPEC-224 acceptance remain open. See `deliverables/` and the canonical Spec handoff evidence entry.
+
+## R03.2 implementation evidence (2026-11-16)
+
+R03.2 is implemented at Platform source `b1f29c58aaf645fbc485209cafee07e7e6179979` and deployed to `modular-debian-dev` (`aimarkethubs.com`). It adds persistent independent Harness tabs, execution and Attempt selection, responsive split views, readiness disclosure and exact fixture Task Control navigation. The focused Mission prototype suite passes 9/9; canonical Core/Shell/Chat build and DEV release smoke passed. Browser checks at 1440×900, 820×1180 and 390×844 had no page errors or horizontal document overflow. R03.2 acceptance proof and screenshots are in `deliverables/r03.2/`.
+
+This completes only the R03.2 synthetic prototype slice. Authenticated live catalog/Runner adapters, canonical Mission/Job/Run/Attempt and event sources, production Task Control authorization/deep links, cross-tenant live denial, and SPEC-224 execution evidence remain open. `execution` and `attempt` query values are fixture-only and are not an API contract.

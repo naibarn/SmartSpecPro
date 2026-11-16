@@ -12,3 +12,9 @@
 ## Deployment outcome
 
 The DEV preview is deployed to `https://aimarkethubs.com/dev/mission-control-prototype` and `https://aimarkethubs.com/dev/task-control-prototype` from Platform source `c8dee72b71367282167bbddd3880e902a2678f2b`. The release controller verified Core/Chat/Shell local health, unauthenticated Chat boundary, shell root/login, Chat health and manifest. Owner authenticated UX review remains pending. `smartaihub.app` and `smartsihub.com` were not targeted.
+
+## R03.2 deployment and runtime boundary (2026-11-16)
+
+The multi-Harness prototype and responsive split refinement are deployed to `modular-debian-dev` at `https://aimarkethubs.com/dev/mission-control-prototype`, Platform source `b1f29c58aaf645fbc485209cafee07e7e6179979`. Release receipt: `/home/dev/modular-development-releases/modular-debian-dev-b1f29c58aaf645fbc485209cafee07e7e6179979-mission-control-r032/release-manifest.json`. Controller local/public smoke passed Core/Shell/Chat and unauthenticated Chat boundary checks. No Cloudflare Worker or production target was deployed.
+
+R03.2 uses only labeled synthetic fixtures. The Harness catalog, heartbeat, trust, entitlement, workspace authorization, dispatch readiness, canonical Mission/Job/Run/Attempt read models, durable event replay and production Task Control deep-link authorization are not wired by this slice. The R03.2 gap matrix names the existing adapter authorities and required proof. Browser captures used a synthetic shell user bootstrap and prove layout/interaction only, not authenticated owner UAT or runtime acceptance.

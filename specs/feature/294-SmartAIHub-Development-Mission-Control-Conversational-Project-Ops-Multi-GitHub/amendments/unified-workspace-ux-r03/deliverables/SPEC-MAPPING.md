@@ -10,6 +10,7 @@
 | UXR03-06 Responsive | Desktop/tablet/mobile; adjustable desktop inspector; on-demand mobile navigation/detail drawers | Browser captures and no-horizontal-overflow checks at 1440×900, 820×1180, 390×844. |
 | UXR03-07 Interaction scenarios | Project and execution selection, tabs, session switch, filter, attention, attempt, cross-area navigation, local loading/error | Vitest and browser interactions; all local/synthetic. |
 | UXR03-08 Deliverables | Screenshots, this mapping, flows, inventory, evidence parity, runtime integration plan | See sibling deliverables and `screenshots/`. |
+| R03.2 Multi-Harness tabs/split | Harness instance tabs, per-Harness execution tabs/Attempts, 1/2/3/4 split, readiness fields, Task Control fixture deep links | `MissionControlPrototypePage.tsx`, `missionControlWorkspaceState.ts`, focused 9-test suite, R03.2 browser screenshots. Fixture-only; no canonical runtime adapter/API contract. |
 
 ## SPEC-294 sections 61–65
 
@@ -23,3 +24,7 @@ R03 provides a distinct project-first **concept** aligned with Project → Goal 
 ## SPEC-312
 
 The UI is delivered by the Platform modular shell and shares the registered `modular-debian-dev` target. It does not alter the Core chat/worker/credit/auth contracts, DB schema, migration state, or Cloudflare production target. Shared shell navigation is presentation-only and does not grant access.
+
+## R03.2 boundary
+
+SPEC-294 Section 68 and the R03.2 acceptance/gap matrix define prototype requirements and implementation proof. SPEC-277's additive R03.2 note defines the live deep-link authorization boundary. Existing SPEC-309/310 Harness authorities, SPEC-294 canonical Mission/Job/Run sources, SPEC-277 Task read model and SPEC-312 shell routing remain runtime owners.

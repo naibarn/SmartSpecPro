@@ -3635,3 +3635,7 @@ SPEC-277 remains the authority for Task Control read semantics and canonical Job
 ## 2026-11-16 — SPEC-294 R03 DEV UX cross-reference
 
 SPEC-294 R03 provides an isolated DEV-only Task Control concept with project-first Goal → Task → Run/Attempt navigation, evidence tabs, and a full-width evidence dock. It uses synthetic fixtures and does not establish canonical Task Control state or acceptance. SPEC-277 remains authoritative for real Job projection, lifecycle stage, authorization, evidence freshness, and operational actions. See SPEC-294 `amendments/unified-workspace-ux-r03/`.
+
+## 2026-11-16 — SPEC-294 R03.2 fixture deep-link boundary
+
+The R03.2 Mission Control prototype opens its selected synthetic execution in the isolated Task Control prototype while preserving the fixture execution and Attempt selection. Its `execution` and `attempt` URL search parameters are demo-only navigation values, not an API/router contract. A live integration MUST resolve canonical Job/Run/Attempt identities under current server-side tenant, workspace, project and user authorization; it MUST reject mismatched identities, load evidence through the authorized Task Control read model, and return to the prior Mission selection without creating or dispatching a Job. The prototype acceptance and implementation gaps are recorded in SPEC-294 R03.2 deliverables; no live Task Control acceptance is implied.
