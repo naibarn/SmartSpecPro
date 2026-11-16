@@ -124,7 +124,7 @@
   },
   "video_prompt_max_characters": {
     "ui:widget": "updown",
-    "ui:help": "งบตัวอักษรของ video prompt ต่อช็อต (ค่าคงที่ 2000)"
+    "ui:help": "งบตัวอักษรของ video prompt ต่อช็อต (ค่าคงที่ 4096)"
   },
   "loop_round": {
     "ui:widget": "updown",

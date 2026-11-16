@@ -1,3 +1,4 @@
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "@shared/storyboardPromptBudget";
 /**
  * Marketplace mandatory text-plan review gate (2026-07-23,
  * planning/marketplace-storyboard-text-gate, commit f997ba1a9). Every Auto
@@ -48,14 +49,14 @@ const SHOT_DIALOGUE_MAX_CHARS = 2000;
 // One-stop plan-review gate (2026-07-23 user request — "ตรวจสอบรอบเดียว
 // จบ"). Mirrors the SAME defaults `StoryboardReviewPage.tsx` already passes
 // to `SequentialShotReviewSection`'s `budgets` prop (`{ imageMaxChars: 4000,
-// videoMaxChars: 2000 }`) and the server's own
+// videoMaxChars: 4096 }`) and the server's own
 // `MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS`
 // (`server/services/marketplaceAutoReviewService.ts`) — the video budget has
 // no per-run override today, so it is always this constant; the image
 // budget defers to the run's own `sequentialImagePromptMaxChars` override
 // when set (section 01, server-bounded 1000-4000).
 const DEFAULT_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS = 4000;
-const SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS = 2000;
+const SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS = STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 // Display heuristic only (roughly 3-4 lines of product facts) — collapses
 // the product-facts block so a long spec sheet does not push the approve /
 // redraft actions far below the fold. Never hides content outright; the
@@ -275,7 +276,7 @@ export interface AutoReviewPlanReviewPromptBudgets {
  * Per-run prompt-length budgets for the plan-review gate's image/video
  * prompt disclosures. Mirrors the SAME defaults `StoryboardReviewPage.tsx`
  * already passes to `SequentialShotReviewSection` (`{ imageMaxChars: 4000,
- * videoMaxChars: 2000 }`) — the video budget has no per-run override today,
+ * videoMaxChars: 4096 }`) — the video budget has no per-run override today,
  * so it is always `SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS`; the image budget
  * defers to `metadataJson.sequentialImagePromptMaxChars` (section 01,
  * server-bounded 1000-4000) when it is a finite positive number, else the

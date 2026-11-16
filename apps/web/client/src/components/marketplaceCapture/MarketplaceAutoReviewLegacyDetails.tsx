@@ -1,3 +1,4 @@
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "@shared/storyboardPromptBudget";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -548,7 +549,7 @@ export function MarketplaceAutoReviewLegacyDetails({
                 key={text(run.id) || "legacy-sequential"}
                 shots={sequentialShots}
                 loopReport={null}
-                budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+                budgets={{ imageMaxChars: 4000, videoMaxChars: STORYBOARD_VIDEO_PROMPT_MAX_CHARS }}
                 busyShotId={busyShotId}
                 savingShotId={savingShotId}
                 swappingShotId={swappingShotId}

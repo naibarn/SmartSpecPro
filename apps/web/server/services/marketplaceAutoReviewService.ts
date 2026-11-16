@@ -17972,12 +17972,13 @@ function stripVideoTimingTextForImagePrompt(text: string): string {
 
 const MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS =
   PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS;
-const MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS =
+  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 // Feature 136 (section 04, §3 deliverable #2) — sequential mode's effective
 // image-prompt budget base (spec §13.3), mirrored from the runner exactly
 // like the line above mirrors `PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS`.
 // `MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS` above is reused unchanged
-// for sequential mode (spec §14.3 — identical to `VD_VIDEO_PROMPT_MAX`), no
+// for sequential mode and the shared storyboard review limit, no
 // new constant needed for video.
 const MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS =
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS;
@@ -31181,7 +31182,7 @@ const MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_VIDEO_PROMPT_PREFLIGHT_RULESET =
 
 /**
  * Effective provider char budget for a sequential video prompt: the shared
- * 2,000-char constant (imported, never re-declared), clamped further when
+ * 4,096-char constant (imported, never re-declared), clamped further when
  * the model's OWN `configJson.maxPromptLength` is smaller. Single-sourced
  * between the preflight check below and the optimizer call site so both
  * agree on exactly the same threshold.

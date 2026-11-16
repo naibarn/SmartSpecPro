@@ -1,3 +1,4 @@
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "@shared/storyboardPromptBudget";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
@@ -340,7 +341,7 @@ const STORYBOARD_REVIEW_RIGHT_PANEL_MIN_WIDTH = 300;
 const STORYBOARD_REVIEW_RIGHT_PANEL_MAX_WIDTH = 920;
 const STORYBOARD_REVIEW_PROMPT_PLANNER_CONTEXT_MAX_CHARS = 6000;
 const STORYBOARD_REVIEW_VOICEOVER_CONTINUITY_CONTEXT_MAX_CHARS = 1200;
-const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 const HYPERFRAMES_FINAL_COMPOSITE_MAX_SHOTS = 12;
 const STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS = [
   {
@@ -10638,7 +10639,7 @@ export default function StoryboardReviewPage() {
             <SequentialShotReviewSection
               shots={sequentialShotCards}
               loopReport={sequentialLoopReport}
-              budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+              budgets={{ imageMaxChars: 4000, videoMaxChars: STORYBOARD_VIDEO_PROMPT_MAX_CHARS }}
               busyShotId={sequentialRegeneratingShotId}
               savingShotId={sequentialSavingShotId}
               swappingShotId={sequentialSwappingShotId}

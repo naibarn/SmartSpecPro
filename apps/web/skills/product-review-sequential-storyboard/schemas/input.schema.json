@@ -94,8 +94,8 @@
       "description": "Hard cap for each compiled, self-contained video prompt (global block + scene + action + dialogue + performance + audio/foley + continuity).",
       "type": "integer",
       "minimum": 200,
-      "const": 2000,
-      "default": 2000
+      "const": 4096,
+      "default": 4096
     },
     "review_tone": {
       "title": "Review tone",

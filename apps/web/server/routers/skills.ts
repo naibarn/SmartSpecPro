@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "../../shared/storyboardPromptBudget";
 import { router, protectedProcedure, adminProcedure, domainAdminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
@@ -2365,7 +2366,7 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
 
 const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
 const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800;
-const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 const STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS = 20000;
 const STORYBOARD_REVIEW_PLANNER_CONTEXT_MAX_CHARS = 2400;
 const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS = new Set([

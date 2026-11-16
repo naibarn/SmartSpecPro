@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified.",
+      "next_action": "Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission.",
       "checkpoint_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
       "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-marketplace-auto-review-turn-taking"
+      "session_id": "codex-auto-review-video-budget-4096"
     }
   },
   "pre_commit": {
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 83,
-  "updated_at": "2026-11-15T16:26:47.573381+00:00",
+  "generation": 84,
+  "updated_at": "2026-11-16T00:12:54.849635+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified.",
+    "next_action": "Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission.",
     "merged_main_sha": "b1da8ad2e23340391319022f9f91125841c7e3c4",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",

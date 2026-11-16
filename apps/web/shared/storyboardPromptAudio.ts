@@ -1,3 +1,5 @@
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "./storyboardPromptBudget";
+
 export type StoryboardPromptSpeechMode = "none" | "en" | "th" | "other" | string | null | undefined;
 
 function cleanSpokenText(text: string): string {
@@ -267,7 +269,7 @@ export interface BuildCompactStoryboardReviewVideoPromptInput extends BuildVeo31
   maxCharacters?: number | null;
 }
 
-const DEFAULT_COMPACT_STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const DEFAULT_COMPACT_STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 
 export function storyboardPromptHasVeo31Sections(promptText: string): boolean {
   const text = sanitizeStoryboardVideoPromptContract(promptText);

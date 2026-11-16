@@ -743,7 +743,7 @@ describe("unified product reference storyboard skill", () => {
     );
 
     expect(skillsRouterSource).toContain(
-      "STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000"
+      "STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = STORYBOARD_VIDEO_PROMPT_MAX_CHARS"
     );
     expect(skillsRouterSource).toContain(
       "storyboard review video prompts exceeded limit; optimizing before use"

@@ -1285,28 +1285,28 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     expect(buildAutoReviewPlanReviewSequentialShotRows(null)).toEqual([]);
   });
 
-  it("buildAutoReviewPlanReviewPromptBudgets defaults image to 4000 and video to 2000, honoring a valid sequentialImagePromptMaxChars override", () => {
+  it("buildAutoReviewPlanReviewPromptBudgets defaults image to 4000 and video to 4096, honoring a valid sequentialImagePromptMaxChars override", () => {
     expect(buildAutoReviewPlanReviewPromptBudgets({})).toEqual({
       imageMaxChars: 4000,
-      videoMaxChars: 2000,
+      videoMaxChars: 4096,
     });
     expect(
       buildAutoReviewPlanReviewPromptBudgets({
         sequentialImagePromptMaxChars: 2500,
       })
-    ).toEqual({ imageMaxChars: 2500, videoMaxChars: 2000 });
+    ).toEqual({ imageMaxChars: 2500, videoMaxChars: 4096 });
     // Non-positive/non-finite overrides fall back to the default rather
     // than producing an impossible 0/negative budget.
     expect(
       buildAutoReviewPlanReviewPromptBudgets({
         sequentialImagePromptMaxChars: 0,
       })
-    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 2000 });
+    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 4096 });
     expect(
       buildAutoReviewPlanReviewPromptBudgets({
         sequentialImagePromptMaxChars: "not-a-number",
       })
-    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 2000 });
+    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 4096 });
   });
 
   it("buildAutoReviewPlanReviewReferenceManifestRows reads sequentialStoryboard.referenceManifest, sorts by index, and drops malformed entries", () => {
@@ -1517,7 +1517,7 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     expect(data.settings.some(row => row.key === "frameStrategy")).toBe(true);
     expect(data.promptBudgets).toEqual({
       imageMaxChars: 3000,
-      videoMaxChars: 2000,
+      videoMaxChars: 4096,
     });
     expect(data.referenceManifest).toEqual([
       {

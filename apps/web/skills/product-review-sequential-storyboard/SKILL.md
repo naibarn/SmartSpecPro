@@ -496,7 +496,7 @@ from that shot's start frame, spoken dialogue in `dialogue_language` only when
 `audio_strategy` embeds native audio (visual-only when
 `separate_tts_voiceover` or `silent`), performance direction, shot-specific
 audio/foley, and continuity constraints. Length must stay within
-`video_prompt_max_characters` (2000).
+`video_prompt_max_characters` (4096).
 
 **Mandatory global video block.** Compile this template verbatim for every
 shot, filling only the bracketed nouns from the evidence profile and

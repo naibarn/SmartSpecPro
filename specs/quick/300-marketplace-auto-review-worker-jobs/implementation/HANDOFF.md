@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `83`
-- Updated (UTC): `2026-11-15T16:26:47.573381+00:00`
+- State generation: `84`
+- Updated (UTC): `2026-11-16T00:12:54.849635+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `b1da8ad2e23340391319022f9f91125841c7e3c4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified.
+- Next action: Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-marketplace-auto-review-turn-taking | /mnt/SmartSpecDev/projects/SmartSpecPro | b1da8ad2e23340391319022f9f91125841c7e3c4 | b1da8ad2e23340391319022f9f91125841c7e3c4 | The sequential speaker turn lock is integrated and deployed as legacy-debian-dev release generation 572; runtime revision b1da8ad2 and public health are verified. Main later advanced to 9b0ebec4 with Modular deployment target metadata and SPEC-312 docs only; the legacy target remained unchanged. Continue authenticated UI UAT; provider-backed output remains unverified. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | b1da8ad2e23340391319022f9f91125841c7e3c4 | b1da8ad2e23340391319022f9f91125841c7e3c4 | Repair reported job 08f818e9: confirmed APPROVED_CONTENT_TOO_LONG before model call. Owner requires 4096 chars. Shared budget, API, UI and skill contract edited; 118 focused generation/UI tests plus 10 selected budget boundary tests pass. Next: integrate owned hunks, release legacy-debian-dev, then verify actual queued video-prompt generation without media submission. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

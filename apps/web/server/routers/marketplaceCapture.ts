@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { z } from "zod";
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "../../shared/storyboardPromptBudget";
 import { AutoReviewCreativePresetSelectionSchema } from "../../shared/hyperframes/autoReviewCreativePresets";
 import { HyperframesFinalCompositeSubtitlePresetSchema } from "../../shared/hyperframes/runtimeApiSchemas";
 import {
@@ -1559,7 +1560,7 @@ export const marketplaceCaptureRouter = router({
         dialogue: z.string().trim().max(2000).optional(),
         visualSummary: z.string().trim().max(2000).optional(),
         startFrameImagePrompt: z.string().trim().max(4000).optional(),
-        videoPrompt: z.string().trim().max(2000).optional(),
+        videoPrompt: z.string().trim().max(STORYBOARD_VIDEO_PROMPT_MAX_CHARS).optional(),
         cameraBeats: z
           .array(
             z.object({
@@ -1871,7 +1872,7 @@ export const marketplaceCaptureRouter = router({
         storySummary: z.string().trim().max(600).optional(),
         dialogue: z.string().trim().max(320).optional(),
         imagePrompt: z.string().trim().max(4000).optional(),
-        videoPrompt: z.string().trim().max(2000).optional(),
+        videoPrompt: z.string().trim().max(STORYBOARD_VIDEO_PROMPT_MAX_CHARS).optional(),
         speakerVisualBindings: z.record(z.string().trim().min(1).max(120), z.string().trim().min(1).max(40)).optional(),
       })
     )

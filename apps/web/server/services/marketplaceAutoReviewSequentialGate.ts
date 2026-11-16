@@ -24,7 +24,7 @@ export type SequentialRealLlmGateExpectations = {
   assemblyDocumented: boolean;
   /** Effective budget (section-04's `resolveSequentialImagePromptBudget`). */
   imagePromptMaxChars: number;
-  videoPromptMaxChars: 2000;
+  videoPromptMaxChars: number;
   /** Section-03 §10 frozen literal — pass `SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER`. */
   globalBlockMarker: string;
 };

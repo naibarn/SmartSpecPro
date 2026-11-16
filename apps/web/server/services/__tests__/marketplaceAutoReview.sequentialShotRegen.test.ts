@@ -572,13 +572,13 @@ describe("T10 — override rejection, one case per blocker family", () => {
     expect(result.blockers).toContain("prompt_too_long_for_image_provider");
   });
 
-  it("prompt_too_long_for_video_provider (2001 chars)", () => {
+  it("prompt_too_long_for_video_provider (4097 chars)", () => {
     const metadata = buildRegenMetadataFixture();
     const result = evaluateSequentialShotOverrideForTest({
       metadata,
       shotId: 3,
       edit: {
-        videoPrompt: `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER}. ${"a".repeat(2000)}`,
+        videoPrompt: `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER}. ${"a".repeat(4097)}`,
       },
       imageBudget: 4000,
     });

@@ -76,9 +76,10 @@ vi.mock("../enabledLlmModels", () => ({
     { modelId: "vision", supportsVision: true },
   ]),
 }));
-vi.mock("../productReviewSequentialStoryboardSkillRunner", () => ({
+vi.mock("../productReviewSequentialStoryboardSkillRunner", async () => ({
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS: 3000,
-  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS: 2000,
+  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS:
+    (await import("../../../shared/storyboardPromptBudget")).STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
 }));
 vi.mock("../marketplaceAutoReviewStoryArcPlanner", () => ({}));
 
@@ -144,6 +145,46 @@ const prefix =
   "Create a vertical 9:16 video. Use the approved image as the exact start frame. The camera follows the action. No on-screen text or captions. ";
 
 describe("Marketplace video prompt generation with real completeness validation", () => {
+  it.each(Array.from({ length: 9 }, (_, i) => i + 1))(
+    "preserves Thai dialogue and detailed visual locks across shot %i with the 4096-character budget",
+    async shotId => {
+      const originalPeople = dependencies.people;
+      dependencies.people = originalPeople.map(person => ({
+        ...person,
+        appearance: `${person.appearance}, ${"distinct hairstyle and clothing, ".repeat(8)}`.slice(0, 240),
+      }));
+      const thaiTurns = [
+        { ...turns[0], line: "ลองหวีผมเบา ๆ จากช่วงกลางลงไปถึงปลาย แล้วดูว่าหวีผ่านได้ง่ายขึ้นไหม" },
+        { ...turns[1], line: "หวีผ่านง่ายขึ้นจริงด้วย รอบนี้ไม่ต้องออกแรงดึงเลย เดี๋ยวลองอีกครั้งนะ" },
+      ];
+      try {
+        const result = await generateMarketplaceAutoReviewVideoPrompt({
+          ...request,
+          shotId,
+          shot: {
+            ...request.shot,
+            shotId,
+            visualSummary: "Both people stand in front of the mirror as one gently combs the other's hair. ".repeat(4),
+            movementDirection: "The comb moves down the hair while the camera slowly follows the motion. ".repeat(3),
+            dialogue: thaiTurns.map(turn => `${turn.speakerName}: ${turn.line}`).join("\n"),
+            dialogueTurns: thaiTurns,
+          },
+        });
+        expect(result.prompt.length).toBeGreaterThan(2000);
+        expect(result.prompt.length).toBeLessThanOrEqual(4096);
+        for (const turn of thaiTurns) {
+          expect(result.prompt.split(turn.line)).toHaveLength(2);
+        }
+        expect(result.prompt).toContain("No overlapping turns");
+        expect(result.prompt).toContain("OBJECT AND PRODUCT CONTINUITY LOCK");
+        expect(result.prompt).toContain("Mali: person-1, viewer-left");
+        expect(result.prompt).toContain("Ton: person-2, viewer-right");
+      } finally {
+        dependencies.people = originalPeople;
+      }
+    }
+  );
+
   beforeEach(() => {
     dependencies.videoPrompt = prefix + "The camera moves gently. ".repeat(12);
     dependencies.videoCalls = 0;
@@ -172,7 +213,7 @@ describe("Marketplace video prompt generation with real completeness validation"
     const result = await generateMarketplaceAutoReviewVideoPrompt(request);
     expect(result.prompt).toContain("- Mali: person-1, viewer-left — woman in a cream blouse");
     expect(result.prompt).toContain("- Ton: person-2, viewer-right — man in a dark jacket");
-    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt.length).toBeLessThanOrEqual(4096);
   });
 
   it("keeps detailed descriptions attached to the matched names rather than cast order", async () => {
@@ -190,7 +231,7 @@ describe("Marketplace video prompt generation with real completeness validation"
       const result = await generateMarketplaceAutoReviewVideoPrompt(request);
       expect(result.prompt).toContain("- Ton: person-1, viewer-left — older man with short white hair and glasses");
       expect(result.prompt).toContain("- Mali: person-2, viewer-right — young man in a dark jacket and pink shirt");
-      expect(result.prompt.length).toBeLessThanOrEqual(2000);
+      expect(result.prompt.length).toBeLessThanOrEqual(4096);
     } finally {
       dependencies.people = originalPeople;
       dependencies.framePeople = originalMatches;
@@ -201,7 +242,7 @@ describe("Marketplace video prompt generation with real completeness validation"
     dependencies.videoPrompt = prefix + "The camera moves gently. ".repeat(65);
     expect(dependencies.videoPrompt.length).toBeLessThan(2000);
     const result = await generateMarketplaceAutoReviewVideoPrompt(request);
-    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt.length).toBeLessThanOrEqual(4096);
     expect(result.prompt).toContain("Mali: person-1");
     expect(result.prompt).toContain("Ton: person-2");
     expect(result.prompt).toContain("Is the coffee ready?");
@@ -300,7 +341,7 @@ describe("Marketplace video prompt generation with real completeness validation"
   });
 
   it("rejects an oversized approved transcript before calling the video prompt model", async () => {
-    const longLine = "A".repeat(2200);
+    const longLine = "A".repeat(4097);
     await expect(
       generateMarketplaceAutoReviewVideoPrompt({
         ...request,
@@ -334,7 +375,7 @@ describe("Marketplace video prompt generation with real completeness validation"
         cast: [cast[0]],
         referenceManifest: [request.referenceManifest[0]],
       });
-      expect(result.prompt.length).toBeLessThanOrEqual(2000);
+      expect(result.prompt.length).toBeLessThanOrEqual(4096);
       expect(result.prompt).toContain(line);
     } finally {
       dependencies.people = original;
@@ -343,7 +384,7 @@ describe("Marketplace video prompt generation with real completeness validation"
 
   it("records the failed validation category without logging prompt or dialogue text", async () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const staleLine = "A retired dialogue line must never be spoken.";
+    const staleLine = "An obsolete scene unfolds behind the counter.";
     dependencies.videoPrompt = `${prefix} ${staleLine}`;
     try {
       await expect(
@@ -505,7 +546,7 @@ describe("Marketplace video prompt generation with real completeness validation"
           { ...request.referenceManifest[1], characterName: "นนท์" },
         ],
       });
-      expect(result.prompt.length).toBeLessThanOrEqual(2000);
+      expect(result.prompt.length).toBeLessThanOrEqual(4096);
       expect(result.prompt).toContain("- มาลี: person-1, viewer-left");
       expect(result.prompt).toContain("- นนท์: person-2, viewer-right");
       expect(

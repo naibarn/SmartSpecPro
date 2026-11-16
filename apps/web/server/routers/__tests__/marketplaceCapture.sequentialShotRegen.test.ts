@@ -196,13 +196,35 @@ describe("T3 — saveAutoReviewSequentialShotOverride input contract", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects videoPrompt over 2000 chars", () => {
+  it.each([2001, 4000, 4096])("accepts a videoPrompt of %i chars", length => {
+    expect(schema.safeParse({
+      runId: "mar_1",
+      shotId: 3,
+      videoPrompt: "a".repeat(length),
+    }).success).toBe(true);
+  });
+
+  it("rejects videoPrompt over 4096 chars", () => {
     const result = schema.safeParse({
       runId: "mar_1",
       shotId: 3,
-      videoPrompt: "a".repeat(2001),
+      videoPrompt: "a".repeat(4097),
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("staged Auto Review video prompt edit budget", () => {
+  const schema = procedureInputSchema("editStagedAutoReviewShot");
+
+  it.each([2001, 4000, 4096, 4097])("enforces the 4096-character boundary for %i chars", length => {
+    expect(schema.safeParse({
+      runId: "mar_1",
+      shotId: 6,
+      expectedStateDigest: "current-digest",
+      idempotencyKey: "edit-video-prompt-budget",
+      videoPrompt: "ก".repeat(length),
+    }).success).toBe(length <= 4096);
   });
 });
 

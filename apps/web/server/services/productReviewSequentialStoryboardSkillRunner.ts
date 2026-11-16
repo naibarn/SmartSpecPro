@@ -37,6 +37,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "node:crypto";
 import { nanoid } from "nanoid";
+import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "../../shared/storyboardPromptBudget";
 
 import type { Message } from "../_core/llm";
 import { calculateCreditsForLLMDynamic, deductCredits } from "./creditService";
@@ -112,8 +113,9 @@ export const PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID =
  */
 export const PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS = 4000;
 
-/** Spec §14.3 — identical to `MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS` / `VD_VIDEO_PROMPT_MAX`. */
-export const PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS = 2000;
+/** Shared with the Auto Review service, router and storyboard review UI. */
+export const PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS =
+  STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
 
 /**
  * Frozen cross-section literal (section 03 §10 marker table, section 04 §6):

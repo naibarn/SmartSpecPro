@@ -706,11 +706,11 @@ describe("T8 — deterministic preflight blockers (one fixture per blocker)", ()
     expect(result.blockers).toContain("prompt_too_long_for_image_provider");
   });
 
-  it("prompt_too_long_for_video_provider: 2001 chars", () => {
+  it("prompt_too_long_for_video_provider: 4097 chars", () => {
     const pack = makeCleanPack();
     pack.shots[0] = {
       ...pack.shots[0],
-      video_prompt: `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER} ${"x".repeat(2001)}`,
+      video_prompt: `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER} ${"x".repeat(4097)}`,
     };
     const result = validateSequentialStoryboardPackPreflight({ pack, ...baseArgs() });
     expect(result.blockers).toContain("prompt_too_long_for_video_provider");
