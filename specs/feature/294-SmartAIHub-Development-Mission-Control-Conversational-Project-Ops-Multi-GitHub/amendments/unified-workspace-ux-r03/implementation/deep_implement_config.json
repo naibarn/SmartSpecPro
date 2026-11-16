@@ -22,20 +22,20 @@
     "section-02-task-workbench": {
       "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
       "status": "checkpointed",
-      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
-      "next_action": "Collect owner UX feedback; integrate canonical Task/Job evidence only through the approved SPEC-277 runtime contract."
+      "merged_main_sha": "35884967f37e4394779f3f946a63998229e21093",
+      "next_action": "Owner review the deployed R03.1 Task prototype and record concrete UX feedback; canonical Task/Job/Run/Attempt evidence and SPEC-277 operational acceptance remain separate."
     },
     "section-03-mission-fleet": {
       "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
       "status": "checkpointed",
-      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
-      "next_action": "Collect owner UX feedback; integrate canonical Mission/Job/Run projections only with runtime and authorization evidence."
+      "merged_main_sha": "35884967f37e4394779f3f946a63998229e21093",
+      "next_action": "Owner review the deployed R03.1 Mission prototype and record concrete UX feedback; canonical Mission/Job/Run projection and live event binding remain pending."
     },
     "section-04-validation-handoff": {
       "checkpoint_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
       "status": "checkpointed",
-      "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b",
-      "next_action": "Owner visual/functional UAT remains pending; after review, record acceptance or a concrete follow-up without treating DEMO fixtures as runtime acceptance."
+      "merged_main_sha": "35884967f37e4394779f3f946a63998229e21093",
+      "next_action": "Owner authenticated review of both deployed DEV prototypes at desktop/tablet/mobile; accept the UX or provide concrete follow-up. Keep synthetic fixtures separate from live runtime acceptance."
     }
   },
   "pre_commit": {
@@ -47,11 +47,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T00:09:12.456709+00:00",
-  "generation": 6,
-  "updated_at": "2026-11-16T00:41:09.257407+00:00",
+  "generation": 9,
+  "updated_at": "2026-11-16T01:28:27.777427+00:00",
   "progress": {
     "active_section": "section-04-validation-handoff",
-    "next_action": "Owner visual/functional UAT remains pending; after review, record acceptance or a concrete follow-up without treating DEMO fixtures as runtime acceptance.",
-    "merged_main_sha": "c8dee72b71367282167bbddd3880e902a2678f2b"
+    "next_action": "Owner authenticated review of both deployed DEV prototypes at desktop/tablet/mobile; accept the UX or provide concrete follow-up. Keep synthetic fixtures separate from live runtime acceptance.",
+    "merged_main_sha": "35884967f37e4394779f3f946a63998229e21093"
   }
 }
