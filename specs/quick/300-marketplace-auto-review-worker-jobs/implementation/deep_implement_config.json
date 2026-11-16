@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability.",
-      "checkpoint_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
-      "merged_main_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
+      "next_action": "Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review.",
+      "checkpoint_sha": "69cccc75521e8d24e19ceab308f44d696b29a3ae",
+      "merged_main_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-video-budget-4096"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 89,
-  "updated_at": "2026-11-16T01:25:35.454957+00:00",
+  "generation": 91,
+  "updated_at": "2026-11-16T03:34:04.866980+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability.",
-    "merged_main_sha": "050d0eb36dea4f3bf07dcf1d7a472c3720651494",
+    "next_action": "Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review.",
+    "merged_main_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
@@ -162,6 +162,104 @@
         "max": 21474836480,
         "swap_current": 2546368512,
         "swap_max": 6442450944
+      }
+    },
+    "render_worker_recovery_evidence": {
+      "profile": "package",
+      "revision": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "verified_at_utc": "2026-11-16T03:34:24Z",
+      "original_job_id": "df8ab9f6-236c-4baf-8992-3cf83649a246",
+      "requested_features": [
+        "loudnorm",
+        "silence_trim"
+      ],
+      "required_contract": "2026-11-15.1",
+      "worker_id": "87579e2f-bede-4851-939b-2d35855f6c77",
+      "root_causes": [
+        "Published Worker App0.1.436 fromNov13 predates optional silence-trim support onNov15",
+        "Published runtime2026.09.08.2 advertises only base2026-08-04.2; packaging previously checked only the base contract even with unchanged package version0.1.6",
+        "Registration-time light doctor remained in server health projection after full checks passed",
+        "GitHub CI base runtime downloads receive Cloudflare403 cf-mitigated:challenge on API download namespace"
+      ],
+      "fixes": [
+        "Select the latest source-required contract only when the installed compiled sidecar exports every required version",
+        "Send full current doctor and render readiness on heartbeat; replace stale registration diagnostics",
+        "Add an independently signed WSL runtime candidate build using the existing approved assets and GitHub signing secret; never export signing key",
+        "Public /releases/runtime/:fileName shares the existing publication, signature, pause and rate gates with the API download route"
+      ],
+      "tests": [
+        {
+          "command": "node --test apps/worker-app/scripts/runtime-remotion-contract.test.mjs",
+          "outcome": "3 passed"
+        },
+        {
+          "command": "CARGO_BUILD_JOBS=2 cargo test --manifest-path apps/worker-app/src-tauri/Cargo.toml fix_a_heartbeat_runtime_metadata_carries_real_hermes_readiness --lib",
+          "outcome": "1 passed; 280 filtered"
+        },
+        {
+          "command": "pnpm -C apps/web exec vitest run server/services/__tests__/workerRegistryService.test.ts -t 'heartbeat|diagnostics|remotion_render_video defense' --maxWorkers=1 --no-file-parallelism",
+          "outcome": "15 passed; 44 skipped after rebuilding ignored Remotion dist to match source; 2 unrelated event-mock argument expectations remain in the full suite"
+        },
+        {
+          "command": "pnpm -C apps/web exec vitest run server/routes/__tests__/workerRuntime.test.ts -t 'diagnostic smoke runtime|verified runtime archive' --maxWorkers=1 --no-file-parallelism --testTimeout=20000",
+          "outcome": "4 passed; 35 skipped. First cold import exceeded the default5-second test timeout; the scoped check passes with20-second import allowance"
+        }
+      ],
+      "worker_app_release": {
+        "version": "0.1.437",
+        "catalog_id": 9,
+        "source_commit": "27d77549966a532a0329a177bfa433e1987be0e7",
+        "github_run": "43786599242",
+        "file_sha256": "a126425b663a5e8d77b37e256c0405f4479752dfabf4fb90c78a35cd9f37e7b5",
+        "owner_installed": true,
+        "live_heartbeat_app_version": "0.1.437",
+        "live_doctor": "ready",
+        "render_ready": true,
+        "remaining_runtime_contract": "2026-11-15.1",
+        "live_hyperframes_advertised": true
+      },
+      "runtime_candidate": {
+        "version": "2026.11.16.1",
+        "sha256": "3896840d74f528f7cd983a415d9e4620caa40c3d85b55bdd6fa126ab8f4fec5c",
+        "size_bytes": 4526367149,
+        "catalog_release_id": 7,
+        "channel": "stable",
+        "signature_and_archive_validation": "PASS",
+        "public_manifest_http": 200,
+        "range_download_http": 206,
+        "owner_installed": true,
+        "live_worker_contract": "2026-11-15.1"
+      },
+      "live_render_result": {
+        "status": "COMPLETED_VIA_SAME_PROJECT_REVISION_JOB",
+        "completed_job_id": "642b256b-6e26-429b-a833-86aad6f820ec",
+        "same_video_project_and_revision_as_original": true,
+        "worker_id": "87579e2f-bede-4851-939b-2d35855f6c77",
+        "completed_event_at": "2026-11-16T03:10:10.827Z",
+        "artifact_type": "remotion_render_mp4",
+        "artifact_size_bytes": 73987409,
+        "published_library_item_id": 1619,
+        "library_item_status_at_verification": "indexing",
+        "duplicate_render_needed": false
+      },
+      "local_repository_typecheck": "NOT_RUN per owner resource policy",
+      "original_job_retry": {
+        "job_id": "df8ab9f6-236c-4baf-8992-3cf83649a246",
+        "action_id": "bfd1f918-49a3-403f-a3de-dc2222541b5f",
+        "same_job_retry_accepted": true,
+        "terminal_status": "failed",
+        "failure_reason": "LANE_A_RENDER_ORPHANED: orphan sweep used historical createdAt and failed the recovery before worker assignment",
+        "repair_commit": "69cccc75521e8d24e19ceab308f44d696b29a3ae"
+      },
+      "lane_a_orphan_sweep_fix": {
+        "commit": "69cccc75521e8d24e19ceab308f44d696b29a3ae",
+        "test_command": "pnpm exec vitest run server/services/__tests__/videoIntelligenceJobs.test.ts -t 'uses the authorized runtime-recovery timestamp instead of the historical createdAt' --maxWorkers=1 --no-file-parallelism",
+        "test_outcome": "1 passed",
+        "deployment_revision": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+        "release_id": "smartspec-web-b222e60c7e97e41c0a84ed6ad8037849fe7b94f4-c3844b3ec400-g579",
+        "deployment_status": "DEPLOYED_VERIFIED",
+        "service_health": "HEALTHY",
+        "public_health_http": 200
       }
     }
   }

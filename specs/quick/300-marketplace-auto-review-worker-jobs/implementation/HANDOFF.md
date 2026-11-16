@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `89`
-- Updated (UTC): `2026-11-16T01:25:35.454957+00:00`
+- State generation: `91`
+- Updated (UTC): `2026-11-16T03:34:04.866980+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `050d0eb36dea4f3bf07dcf1d7a472c3720651494`
+- Latest recorded merged Main SHA: `b222e60c7e97e41c0a84ed6ad8037849fe7b94f4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability.
+- Next action: Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | 050d0eb36dea4f3bf07dcf1d7a472c3720651494 | 050d0eb36dea4f3bf07dcf1d7a472c3720651494 | Investigate queued final Remotion render df8ab9f6-236c-4baf-8992-3cf83649a246. Owner reports desktop full checks pass. Confirmed job requires silence-trim contract2026-11-15.1; public Worker App0.1.436 was built Nov13, runtime2026.09.08.2 declares only2026-08-04.2. Preserve job and requested silence_trim. Repair runtime packaging contract declaration and stale heartbeat readiness, prepare matching Worker/runtime update using existing signed release controls, then verify actual desktop claim/completion. Runtime signing key exists in GitHub Secrets, not local env; do not extract it or spoof capability. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | 69cccc75521e8d24e19ceab308f44d696b29a3ae | b222e60c7e97e41c0a84ed6ad8037849fe7b94f4 | Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
