@@ -1,0 +1,2 @@
+{"generation": 1, "at": "2026-11-16T09:58:36.450818+00:00", "reason": "config_save", "active_section": null, "merged_main_sha": null, "next_action": null, "open_gap_count": 0}
+{"generation": 2, "at": "2026-11-16T09:58:47.713017+00:00", "reason": "section:section-01-contract-and-installation", "active_section": "section-01-contract-and-installation", "merged_main_sha": null, "next_action": "Refresh installed Codex probe and capture Runner service status, then map client wire contracts to Hono routes.", "open_gap_count": 0}

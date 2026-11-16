@@ -1,0 +1,40 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.7/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.7/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contract-and-installation",
+    "section-02-enrollment-and-proof",
+    "section-03-canonical-runner-control",
+    "section-04-live-ux-deploy-and-uat"
+  ],
+  "sections_state": {
+    "section-01-contract-and-installation": {
+      "status": "completed",
+      "next_action": ""
+    },
+    "section-02-enrollment-and-proof": {
+      "status": "in_progress",
+      "next_action": "Implement durable DEV pairing approval, runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-16T09:58:36.450629+00:00",
+  "generation": 2,
+  "updated_at": "2026-11-16T09:58:47.713017+00:00",
+  "progress": {
+    "active_section": "section-02-enrollment-and-proof",
+    "next_action": "Implement durable DEV pairing approval, runner token lifecycle and atomic device-proof nonce consumption using scoped DB authority."
+  }
+}
