@@ -1,5 +1,5 @@
 {
-  "generation": 35,
+  "generation": 36,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -12683,136 +12683,159 @@
       "verification_method": "Focused MissionControlPrototypePage Vitest plus package and immutable builds, DEV controller smoke, and synthetic deployed browser checks at desktop/tablet/mobile; see acceptance evidence."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4242"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4242",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "R03.3 genuine runtime acceptance still requires a canonical Harness registry and real Mission-to-Harness Job/Run/Attempt relationship, plus authenticated owner UAT.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.3/implementation-brief.md",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Expose canonical Harness runtime identities and a real authorized Mission execution; then verify the end-to-end exact Job/Run/Attempt drill-through in authenticated UAT.",
       "requirement_digest": "0fc8cfc68c29d8df28cdbb1d45817b121929b838cf1367ebb1217a85656def3a",
       "requirement_id": "R03.3",
       "requirement_text": "R03.3 adds an explicit DEV-only `/dev/mission-control-live` view, separate from the R03.2 synthetic prototype. It MUST use the authenticated Modular Core session and current workspace membership on every request, read only existing canonical Mission and Chat Task Control projections, preserve the exact IDs returned, and never mix fixture and live data. The route is read-only: opening a Mission or deep link MUST NOT enqueue, create, dispatch, stop, or cancel a Job. The R03.2 visual layout and prototype remain available for UX comparison.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "verification_method": "Review exact code SHA, automated focused route/security tests, target controller receipt and public route/auth status."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4244"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4244",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated owner UAT was not available; page-level workspace behavior is verified by automated tests only.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.3/implementation-brief.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify live Mission and Task projections in an authenticated owner session and confirm selected workspace is enforced after refresh.",
       "requirement_digest": "e9578a6941c6cdbe82a549ec873ed1790a39fe62f4f70492e4a38873788ee332",
       "requirement_id": "REQ-294-R033-01",
       "requirement_text": "- REQ-294-R033-01: Live view MUST list only authorized workspace Missions and related canonical Jobs/Attempts returned by existing read models. Every request MUST be server-authorized for the selected workspace. Refresh and navigation MUST reauthorize; local URL or browser storage is context only.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "verification_method": "Focused Core and Shell route/security tests plus deployed DEV route and unauthenticated boundary checks."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4245"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4245",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated browser validation and a genuine live Harness-linked identity chain remain unverified.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.3/implementation-brief.md"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Perform owner UAT when an authorized browser session is available and confirm exact IDs survive opening, refresh and return navigation.",
       "requirement_digest": "491a8e0138bc5b5a69bc01b90db9e566c615fd8639be4916cfdf4686f28faf48",
       "requirement_id": "REQ-294-R033-02",
       "requirement_text": "- REQ-294-R033-02: Mission-to-Task navigation MUST validate the exact Mission, conversation, Job and returned Attempt relationship server-side, show only the matching execution projection, and preserve a safe return URL. A stale or mismatched identity MUST fail closed without creating work.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "verification_method": "Exact Mission/conversation/Job/Attempt read-only route tests, workspace denial, unauthenticated denial, mismatch fail-closed, and deployed route checks."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4246"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4246",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "No canonical Core Harness catalog, event stream, or detailed execution evidence API is available; multi-Harness tabs and evidence panels cannot bind to live identities.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.3/implementation-brief.md"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Add read-only projections over existing canonical Harness/event/evidence sources when those Core APIs become available; do not create parallel registries or event stores.",
       "requirement_digest": "85f7fbdd7ca90ad253a9e2376c185d02a89926830aeaa5a28e7eaaf052844043",
       "requirement_id": "REQ-294-R033-03",
       "requirement_text": "- REQ-294-R033-03: Harness/Agent/Run/Runner identities, readiness, events and evidence MUST be displayed only when returned by an authorized canonical source. Missing catalog or evidence MUST be labeled unavailable/NOT_CAPTURED; no fixture or inferred identity may appear in LIVE mode.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "verification_method": "Inspect LIVE projection for explicit unavailable/NOT_CAPTURED values and verify no DEMO fixture substitution."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4247"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4247",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "blocker": "Authenticated UAT remains pending.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.3/implementation-brief.md"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Confirm LIVE/DEMO separation and read-only behavior in authenticated owner browser UAT.",
       "requirement_digest": "566f1108eca82ca04b694fe759a23a7bf94b120a6ac56efd1c00730a98b69c95",
       "requirement_id": "REQ-294-R033-04",
       "requirement_text": "- REQ-294-R033-04: DEV LIVE and DEMO experiences MUST remain explicit and separate. The live surface MUST not expose lifecycle actions until their canonical action contracts are verified.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
+      "verification_method": "Route and UI source checks plus public LIVE route smoke; verify no mutation controls are exposed in LIVE view."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4248"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4248",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "blocker": "No genuine authorized Harness execution can be discovered in Modular Core because no Harness catalog or verified Mission-to-Harness Job identity source exists.",
+      "current_relevance": "CURRENT",
       "evidence_freshness": "UNKNOWN",
       "evidence_sha": null,
       "final_state": "OPEN",
-      "implementation_evidence": [],
+      "implementation_evidence": [
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/r033-live-read-only-dev-delivery-20261116.md"
+      ],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "next_action": "After a canonical Harness catalog and identity relation are available, demonstrate one actual execution end-to-end in authenticated DEV UAT.",
       "requirement_digest": "8bc6401c3a6e8d973367b2930f8a210f3db4c548dd13c9b7a5654ca547d7ab4b",
       "requirement_id": "REQ-294-R033-05",
       "requirement_text": "- REQ-294-R033-05: R03.3 genuine-runtime acceptance MUST include at least one real authorized Harness execution in Mission Control and navigation to its exact canonical Job/Run/Attempt in Task Control. Automated fixture tests, route health, or a successful deployment do not satisfy this acceptance.",
       "source_spec_digest": "56537f40439ae8934f022d8b779615e7dd886437d17a84fc07e7f42013640431",
       "successor_mapping": [],
       "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "Authenticated owner UAT showing at least one real Harness execution in Mission Control and opening its exact canonical Job/Run/Attempt in Task Control."
     },
     {
       "applicability": "UNASSESSED",
