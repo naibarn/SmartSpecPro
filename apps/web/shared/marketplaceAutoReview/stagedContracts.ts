@@ -193,9 +193,9 @@ export const StagedSequentialStoryboardStateV1Schema = z
     planRevision: z.number().int().positive(),
     storyPlanHash: z.string().min(1).nullable(),
     referenceManifestHash: z.string().min(1).nullable(),
-    // Additive (feature/marketplace-flexible-shots): staged runs may now use
-    // 1..30 shots (fixed N chosen by the user, or model-decided within
-    // 7..30 when shotCount="auto"). Old 9-shot runs still validate.
+    // Newly authored staged plans use 2..18 shots (including the model-picked
+    // "auto" range). Keep the persisted contract at 1..30 so existing jobs
+    // created under the earlier range continue to validate.
     shots: z.array(StagedShotStateV1Schema).min(0).max(30),
     reviewCheckpoints: z.array(HumanApprovalCheckpointV1Schema),
   })

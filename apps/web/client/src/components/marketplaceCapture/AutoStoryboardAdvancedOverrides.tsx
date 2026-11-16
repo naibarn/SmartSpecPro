@@ -53,7 +53,7 @@ interface AutoStoryboardAdvancedOverridesProps {
   /**
    * Marketplace flexible-shots-and-creation-casting (planning/marketplace-
    * flexible-shots-and-creation-casting/plan.md, W1/W3) — the STAGED
-   * pipeline's flexible shot count (7-30, or "auto" to let the story-arc LLM
+   * pipeline's flexible shot count (2-18, or "auto" to let the story-arc LLM
    * planner pick a count based on content + the requested per-shot
    * duration). Deliberately a dedicated prop pair, same precedent as
    * `shotDurationSeconds` above: NOT folded into `value`/`onChange`'s
@@ -358,20 +358,20 @@ export function AutoStoryboardAdvancedOverrides({
     {
       value: "auto",
       label: thai
-        ? "อัตโนมัติ (ระบบเลือกตามเนื้อหา — แนะนำ)"
-        : "Automatic (AI decides based on content — recommended)",
+        ? "อัตโนมัติ (AI เลือก 2–18 ช็อตตามเนื้อหา)"
+        : "Automatic (AI chooses 2–18 shots based on content)",
     },
-    { value: "7", label: thai ? "7 ช็อต" : "7 shots" },
-    { value: "8", label: thai ? "8 ช็อต" : "8 shots" },
-    { value: "9", label: thai ? "9 ช็อต (ค่าเริ่มต้น)" : "9 shots (default)" },
-    { value: "10", label: thai ? "10 ช็อต" : "10 shots" },
-    { value: "12", label: thai ? "12 ช็อต" : "12 shots" },
-    { value: "15", label: thai ? "15 ช็อต" : "15 shots" },
-    { value: "18", label: thai ? "18 ช็อต" : "18 shots" },
-    { value: "21", label: thai ? "21 ช็อต" : "21 shots" },
-    { value: "24", label: thai ? "24 ช็อต" : "24 shots" },
-    { value: "27", label: thai ? "27 ช็อต" : "27 shots" },
-    { value: "30", label: thai ? "30 ช็อต" : "30 shots" },
+    ...Array.from({ length: 17 }, (_, index) => index + 2).map(count => ({
+      value: String(count),
+      label:
+        count === 9
+          ? thai
+            ? "9 ช็อต (ค่าเริ่มต้น)"
+            : "9 shots (default)"
+          : thai
+            ? `${count} ช็อต`
+            : `${count} shots`,
+    })),
   ] as const;
   const frameStrategyOptions = [
     {
@@ -425,16 +425,17 @@ export function AutoStoryboardAdvancedOverrides({
   }));
   // Marketplace two-character-conversation feature (§3.6) — small fixed set
   // of common per-shot durations for the STAGED pipeline's requested video
-  // length. Server-side, the pipeline still snaps this to whatever the
-  // selected video model actually supports at dispatch time (e.g. Veo 3.1
-  // only supports 8s), so this is a "requested" duration, not a guarantee.
+  // length and dialogue pacing. The final video duration remains subject to
+  // the selected model's supported durations.
   const shotDurationSecondsOptions = [
-    { value: "5", label: thai ? "5 วินาที" : "5 seconds" },
+    { value: "6", label: thai ? "6 วินาที" : "6 seconds" },
     { value: "8", label: thai ? "8 วินาที" : "8 seconds" },
-    { value: "10", label: thai ? "10 วินาที" : "10 seconds" },
+    {
+      value: "10",
+      label: thai ? "10 วินาที (ค่าเริ่มต้น)" : "10 seconds (default)",
+    },
     { value: "15", label: thai ? "15 วินาที" : "15 seconds" },
     { value: "20", label: thai ? "20 วินาที" : "20 seconds" },
-    { value: "24", label: thai ? "24 วินาที" : "24 seconds" },
     { value: "30", label: thai ? "30 วินาที" : "30 seconds" },
   ] as const;
   const speechLanguageOptions = [
@@ -527,7 +528,7 @@ export function AutoStoryboardAdvancedOverrides({
   // select only feeds the non-staged hyperframes template machinery and
   // means nothing once the STAGED sequential pipeline is selected (that
   // pipeline reads `stagedShotCount`/`referenceAnchors.shotCount` instead,
-  // 7-30 + "auto"). Rather than show two shot-count controls at once, swap
+  // 2-18 + "auto"). Rather than show two shot-count controls at once, swap
   // between them based on the currently selected `frameStrategy`.
   const isSequentialFrameStrategySelected =
     selectedValueFor("frameStrategy") === "sequential_shot_storyboard";
@@ -683,8 +684,8 @@ export function AutoStoryboardAdvancedOverrides({
                   className="text-xs leading-5 text-slate-500 dark:text-slate-400"
                 >
                   {thai
-                    ? "โหมดอัตโนมัติให้ AI เลือกจำนวนช็อตตามรายละเอียดสินค้า โดยอิงความยาวต่อช็อตที่เลือก"
-                    : "Automatic mode lets the AI choose the shot count based on the product's content, using the selected per-shot duration as the pacing guide."}
+                    ? "ค่าเริ่มต้นคือ 9 ช็อต เลือกได้ตั้งแต่ 2–18 ช็อต; โหมดอัตโนมัติให้ AI เลือกภายในช่วงนี้ โดยอิงความยาวต่อช็อต"
+                    : "The default is 9 shots. Choose 2–18, or let AI choose within that range using the selected duration as its pacing guide."}
                 </p>
               </label>
             ) : null}
@@ -740,9 +741,7 @@ export function AutoStoryboardAdvancedOverrides({
                   aria-label={labels.shotDurationSeconds}
                   aria-describedby="shot-duration-caveat"
                   className={fieldClass}
-                  value={
-                    shotDurationSeconds != null ? String(shotDurationSeconds) : ""
-                  }
+                  value={String(shotDurationSeconds ?? 10)}
                   onChange={event => {
                     const raw = event.target.value;
                     onShotDurationSecondsChange(
@@ -750,9 +749,6 @@ export function AutoStoryboardAdvancedOverrides({
                     );
                   }}
                 >
-                  <option value="">
-                    {thai ? "อัตโนมัติ (10 วินาที)" : "Automatic (10 seconds)"}
-                  </option>
                   {shotDurationSecondsOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -764,8 +760,8 @@ export function AutoStoryboardAdvancedOverrides({
                   className="text-xs leading-5 text-slate-500 dark:text-slate-400"
                 >
                   {thai
-                    ? "ระบบจะปรับให้เข้ากับโมเดลวิดีโอที่เลือกโดยอัตโนมัติหากจำเป็น"
-                    : "The system will automatically adjust this to fit the selected video model if needed."}
+                    ? "ระบบใช้ค่านี้วางจังหวะเรื่องและความยาวบทพูดให้พอดีกับแต่ละช็อต หากสร้างวิดีโอ โมเดลที่เลือกต้องรองรับเวลานี้"
+                    : "This sets the story pacing and dialogue length for each shot. Video generation requires a model that supports this duration."}
                 </p>
               </label>
             ) : null}

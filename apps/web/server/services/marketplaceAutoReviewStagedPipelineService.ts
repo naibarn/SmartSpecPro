@@ -1059,11 +1059,8 @@ function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
       ? anchors.storytellingStructure
       : undefined;
   // User-chosen per-shot duration (advanced overrides). Omitted -> undefined
-  // -> buildStagedStoryArcPlan's own default of 10, i.e. byte-identical to
-  // before this field existed. The dispatch-time model-fit snap in
-  // handleVideoProvider (resolveStagedVideoDuration) still applies on top of
-  // whatever value is used here, so the plan's prompt text and the actual
-  // submitted duration stay as close as the selected model allows.
+  // -> buildStagedStoryArcPlan's default of 10. Video generation later
+  // requires the selected model to support this exact duration.
   const shotDurationSecondsRaw = anchors.shotDurationSeconds;
   const shotDurationSeconds =
     typeof shotDurationSecondsRaw === "number" &&

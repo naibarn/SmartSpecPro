@@ -1875,9 +1875,9 @@ export function StagedCheckpointReviewPanel(props: {
     .map(value => Number(value.trim()))
     .filter(Number.isInteger);
   // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
-  // flexible-shots-and-creation-casting/plan.md, W3) — the staged pipeline's
-  // shot count is now variable (7-30), never a hardcoded 9. Validate against
-  // the ACTUAL number of shots on this run instead.
+  // flexible-shots-and-creation-casting/plan.md, W3) — new plans use 2-18
+  // shots. Keep accepting up to 30 here so already-persisted plans from the
+  // earlier range remain reviewable.
   const expectedFinalShotCount = props.state?.shots?.length ?? 9;
   const finalOrderIsValid =
     finalOrderValues.length === expectedFinalShotCount &&
@@ -1967,7 +1967,7 @@ export function StagedCheckpointReviewPanel(props: {
   const storyShotCountComplete =
     typeof expectedStoryShotCount === "number"
       ? generatedStoryShotCount === expectedStoryShotCount
-      : generatedStoryShotCount >= 7 && generatedStoryShotCount <= 30;
+      : generatedStoryShotCount >= 2 && generatedStoryShotCount <= 30;
   const storyGenerationStatus =
     props.pendingAction === "retry-story" || activeStoryRedraft
       ? "generating"

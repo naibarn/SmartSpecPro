@@ -1041,26 +1041,26 @@ export const marketplaceCaptureRouter = router({
               .array(AutoReviewCreativePresetSelectionSchema)
               .max(8)
               .optional(),
-            // Staged pipeline only. User-chosen per-shot video duration
-            // (seconds); the pipeline still snaps this to whatever the
-            // selected video model actually supports at dispatch time via
-            // `resolveStagedVideoDuration`, but this value is what
-            // `buildStagedStoryArcPlan` uses to write the plan's own camera
-            // beats/prompt text, so the two stay consistent. Omitted =
-            // today's default of 10. Extended to 30s (feature/marketplace-
-            // flexible-shots) for newer video models that support longer
-            // single clips (e.g. 24/30s).
-            shotDurationSeconds: z.number().int().min(4).max(30).optional(),
-            // Staged pipeline only (feature/marketplace-flexible-shots). A
-            // fixed shot count (7..30), or "auto" to let the story-arc LLM
-            // planner decide the shot count itself based on how much content
-            // the product needs (using shotDurationSeconds as the pacing
-            // criterion). Omitted = today's fixed default of 9 shots,
-            // byte-compatible with every existing persisted run. Legacy
-            // (non-staged) runs ignore this field entirely and are clamped
-            // to 9 server-side — see `shouldDispatchStagedMarketplaceAutoReview`.
+            // Staged pipeline only. This exact duration sets story pacing
+            // and dialogue timing. Final video generation requires a model
+            // that supports the selected duration. Omitted defaults to 10s.
+            shotDurationSeconds: z
+              .union([
+                z.literal(6),
+                z.literal(8),
+                z.literal(10),
+                z.literal(15),
+                z.literal(20),
+                z.literal(30),
+              ])
+              .optional(),
+            // Staged pipeline only. A fixed shot count (2..18), or "auto" to
+            // let the story-arc LLM choose within that range based on the
+            // product's content and the selected per-shot duration. Omitted
+            // = the existing default of 9 shots. Legacy (non-staged) runs
+            // ignore this field entirely and remain capped at 9 server-side.
             shotCount: z
-              .union([z.literal("auto"), z.number().int().min(7).max(30)])
+              .union([z.literal("auto"), z.number().int().min(2).max(18)])
               .optional(),
             // Staged pipeline only — the LLM that authors the story plan and
             // runs the storyboard skill. Omitted = "อัตโนมัติ", which resolves

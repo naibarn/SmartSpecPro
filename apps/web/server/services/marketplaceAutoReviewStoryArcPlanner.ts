@@ -1139,11 +1139,10 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   // Additive (opt-in). See buildStagedStoryArcPlan.
   cast?: StagedCastMember[];
   shotDurationSeconds?: number;
-  // Additive (opt-in, feature/marketplace-flexible-shots). A fixed shot count
-  // (7..30), the literal "auto" (the LLM decides the shot count itself,
-  // within 7..30, using `shotDurationSeconds` as the pacing criterion — this
-  // is LLM judgment, never pre-computed in TS), or omitted (today's default
-  // of a fixed 9 shots, byte-identical prompt/schema behavior).
+  // Additive (opt-in, feature/marketplace-flexible-shots). New fixed counts
+  // are 2..18; persisted fixed runs up to 30 remain valid for redrafts. The
+  // literal "auto" lets the LLM decide within 2..18 using
+  // `shotDurationSeconds` as the pacing criterion. Omitted defaults to 9.
   shotCount?: number | "auto";
   selectedConcept?: StagedStoryConceptOption;
   conceptsOnly?: boolean;
@@ -1227,7 +1226,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   if (
     fixedShotCount !== undefined &&
     (!Number.isInteger(fixedShotCount) ||
-      fixedShotCount < 7 ||
+      fixedShotCount < 2 ||
       fixedShotCount > 30)
   ) {
     throw new Error(`STAGED_STORY_PLAN_SHOT_COUNT_INVALID:${fixedShotCount}`);
@@ -1303,7 +1302,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
 
   // Runtime state only. The loaded skill owns pacing and all creative decisions.
   const shotCountInstruction = isAutoShotCount
-    ? `shot_count: auto; allowed range: 7-30; shot duration: ${shotDurationSeconds} seconds`
+    ? `shot_count: auto; allowed range: 2-18; shot duration: ${shotDurationSeconds} seconds`
     : `shot_count: ${fixedShotCount}; shot duration: ${shotDurationSeconds} seconds`;
 
   const selectedConceptInstruction = input.selectedConcept
@@ -1317,7 +1316,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 - selected review_format: ${isDramaTieIn ? "drama_tie_in" : "general"}
 - selected storytelling_structure: ${structureKey}
 - selected review_tone: ${toneKey}
-- dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot
+- dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot. Write only dialogue that can be spoken naturally within this window; shorten the line while preserving its key story beat instead of rushing or padding it.
 - The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${castRosterBlock}${supportingCastBlock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
@@ -1416,7 +1415,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       ? {}
       : {
           shots: isAutoShotCount
-            ? z.array(shotObjectSchema).min(7).max(30)
+            ? z.array(shotObjectSchema).min(2).max(18)
             : z.array(shotObjectSchema).length(fixedShotCount ?? 9),
         }),
   });
@@ -1512,7 +1511,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       : [];
     const rawShotCount = generatedShots.length;
     const rawShotCountOk = isAutoShotCount
-      ? rawShotCount >= 7 && rawShotCount <= 30
+      ? rawShotCount >= 2 && rawShotCount <= 18
       : rawShotCount === (fixedShotCount ?? 9);
 
     if (rawShotCountOk) {
