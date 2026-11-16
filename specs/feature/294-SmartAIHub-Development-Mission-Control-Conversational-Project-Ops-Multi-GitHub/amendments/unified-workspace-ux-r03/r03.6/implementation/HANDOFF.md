@@ -3,27 +3,27 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `5`
-- Updated (UTC): `2026-11-16T07:55:43.581894+00:00`
+- State generation: `11`
+- Updated (UTC): `2026-11-16T08:28:45.502056+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.6/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `NOT_VERIFIED`
+- Latest recorded merged Main SHA: `5f5dcc2d446c4a28f00a4a89dfb922b9c60fb89a`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-explicit-mission-job-binding`
-- Next action: Add migration 0443 explicit Mission-to-Job binding and update Core request path, Mission and Harness projections with focused regression coverage.
+- Active section: `section-03-live-verification-release-handoff`
+- Next action: Resolve the missing tenant-scoped Modular Runner producer/credential contract, then enroll a genuine authorized Codex Runner and perform Mission→Job→Attempt→Task Control UAT; keep R03.6 PARTIAL until real runtime evidence and owner UAT exist.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-modular-runner-runtime | in_progress | — | — | — | — | Wait for a tenant-scoped Modular Runner Gateway enrollment/publication protocol and registered deployment controller; existing source exposes only legacy gateway plus Modular read-only catalog. Preserve current service and continue other sections. |
-| section-02-explicit-mission-job-binding | in_progress | — | — | — | — | Add migration 0443 explicit Mission-to-Job binding and update Core request path, Mission and Harness projections with focused regression coverage. |
-| section-03-live-verification-release-handoff | pending | — | — | — | — | — |
+| section-01-modular-runner-runtime | in_progress | — | — | — | — | Implement the separately scoped Modular Runner enrollment, capability publication, heartbeat and dispatch contract only after defining its Hono API and tenant credential binding; do not bridge through legacy runnerControl. |
+| section-02-explicit-mission-job-binding | checkpointed | — | — | 5f5dcc2d446c4a28f00a4a89dfb922b9c60fb89a | 5f5dcc2d446c4a28f00a4a89dfb922b9c60fb89a | Run modularChatQueue.integration.test.ts only against the registered disposable PostgreSQL 15.17 fixture after its dedicated MODULAR_CHAT_TEST_DATABASE_URL and MODULAR_CHAT_TEST_EMAIL bindings are provisioned; DEV migration 0443 is already applied and verified. |
+| section-03-live-verification-release-handoff | checkpointed | — | — | 5f5dcc2d446c4a28f00a4a89dfb922b9c60fb89a | 5f5dcc2d446c4a28f00a4a89dfb922b9c60fb89a | Resolve the missing tenant-scoped Modular Runner producer/credential contract, then enroll a genuine authorized Codex Runner and perform Mission→Job→Attempt→Task Control UAT; keep R03.6 PARTIAL until real runtime evidence and owner UAT exist. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- No Modular Runner Gateway endpoint/provisioning contract exists in current Modular Hono source; no safe endpoint or tenant-scoped credentials can be configured.
+- No tenant-scoped Modular Runner enrollment/capability/heartbeat/dispatch API or scoped credentials exist; legacy runnerControl and credentials are tenant-bound to smartaihub.app.
 
 ## Resume
 
