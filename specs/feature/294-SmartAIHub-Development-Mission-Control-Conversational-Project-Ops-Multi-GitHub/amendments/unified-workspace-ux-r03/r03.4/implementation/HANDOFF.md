@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `4`
-- Updated (UTC): `2026-11-16T04:20:37.096729+00:00`
+- State generation: `5`
+- Updated (UTC): `2026-11-16T04:21:27.288277+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-workspace-ux-r03/r03.4/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `3900173b659dd549951cf506e747a2e706c3b2ef`
+- Latest recorded merged Main SHA: `1d8f0439909116d1a5d0ba180927c7ca2d1547e4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-01-db-correlation-read-model`
 - Next action: Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity.
@@ -17,7 +17,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-db-correlation-read-model | checkpointed | — | — | 3900173b659dd549951cf506e747a2e706c3b2ef | 3900173b659dd549951cf506e747a2e706c3b2ef | Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity. |
+| section-01-db-correlation-read-model | checkpointed | — | — | 3900173b659dd549951cf506e747a2e706c3b2ef | 1d8f0439909116d1a5d0ba180927c7ca2d1547e4 | Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity. |
 | section-02-core-api-contracts | pending | — | — | — | — | — |
 | section-03-live-ui-integration | pending | — | — | — | — | — |
 | section-04-proof-deploy-handoff | pending | — | — | — | — | — |

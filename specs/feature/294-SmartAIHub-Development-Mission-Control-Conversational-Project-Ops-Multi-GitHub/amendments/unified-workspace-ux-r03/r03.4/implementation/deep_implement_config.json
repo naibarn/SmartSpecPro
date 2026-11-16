@@ -17,7 +17,7 @@
       "status": "checkpointed",
       "next_action": "Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity.",
       "checkpoint_sha": "3900173b659dd549951cf506e747a2e706c3b2ef",
-      "merged_main_sha": "3900173b659dd549951cf506e747a2e706c3b2ef"
+      "merged_main_sha": "1d8f0439909116d1a5d0ba180927c7ca2d1547e4"
     }
   },
   "pre_commit": {
@@ -29,8 +29,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T04:06:53.407458+00:00",
-  "generation": 4,
-  "updated_at": "2026-11-16T04:20:37.096729+00:00",
+  "generation": 5,
+  "updated_at": "2026-11-16T04:21:27.288277+00:00",
   "progress": {
     "active_section": "section-01-db-correlation-read-model",
     "next_action": "Resume when the authenticated Harness registration and exact Job/Attempt-to-Mission producer contract documented in ../traceability.md exists; continue implementation without inferred identity.",
@@ -39,6 +39,6 @@
       "No producer-owned exact external Job/Run/Attempt/Session-to-Mission binding exists; current Runner conversation binding is insufficient.",
       "No R03.4 runtime source change is ready for modular-debian-dev deployment; genuine owner UAT remains pending."
     ],
-    "merged_main_sha": "3900173b659dd549951cf506e747a2e706c3b2ef"
+    "merged_main_sha": "1d8f0439909116d1a5d0ba180927c7ca2d1547e4"
   }
 }
