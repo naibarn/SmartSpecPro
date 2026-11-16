@@ -5511,6 +5511,17 @@ export function createJobControlPlane(
             attempt: nextAttempt,
             nextRetryAt: null,
             statusReason: "operator_review_recovery",
+            ...(knownRemotionWorkerRuntimeRecovery ? {
+              retryPolicyJson: {
+                ...job.retryPolicyJson,
+                remotionRuntimeRecovery: {
+                  attempt: nextAttempt,
+                  retrySource: "unassigned_runtime_contract",
+                  authorizedAt: now.toISOString(),
+                  expiresAt: new Date(now.getTime() + Math.min(Math.max(job.timeoutSeconds, 60) * 1000, 60 * 60_000)).toISOString(),
+                },
+              },
+            } : {}),
             ...((knownProductionDatabaseDispatchQuarantine || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery)
               ? { inputJson: { ...job.inputJson, grantRef: evidence.replacementGrantRef },
                   retryPolicyJson: { ...job.retryPolicyJson, productionDatabaseRecovery: {

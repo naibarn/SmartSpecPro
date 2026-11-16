@@ -2605,7 +2605,7 @@ describe("job control plane", () => {
       jobType: "remotion_render_video",
       idempotencyKey: undefined,
       retryPolicy: { ...definition.retryPolicy, maxAttempts: 1, deadlineMs: 10 },
-    });
+    }, { runtimeType: "desktop_zeroclaw_managed" });
     const job = state.jobs.get(created.jobId);
     job.createdAt = new Date(Date.now() - 1000);
     await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("expired");
@@ -2629,6 +2629,12 @@ describe("job control plane", () => {
     )).resolves.toBe(true);
     expect(job).toMatchObject({ status: "queued", attempt: 2, maxAttempts: 2, startedAt: null, workerId: null });
     expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
+    expect(job.retryPolicyJson.remotionRuntimeRecovery).toMatchObject({
+      attempt: 2,
+      retrySource: "unassigned_runtime_contract",
+    });
+    const retryExpiresAt = Date.parse(job.retryPolicyJson.remotionRuntimeRecovery.expiresAt);
+    await expect(controlPlane.expireDeadline(created.jobId, new Date(retryExpiresAt - 1))).resolves.toBe("ignored");
 
     const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "recovered-render", adapter: "test" });
     await controlPlane.start(lease!);

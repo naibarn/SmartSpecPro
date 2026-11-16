@@ -405,11 +405,27 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   executionClass?: string;
   input: Record<string, unknown>;
   retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed";
+    remotionRuntimeRecovery?: { attempt: number; retrySource: "unassigned_runtime_contract"; authorizedAt: string; expiresAt: string };
     httpRuntimePrewriteRecovery?: { attempt: number; intentId: string; planDigest: string; authorizedAt: string; expiresAt: string };
     httpImagePrebuildRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string };
     productionDatabaseRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string } };
   timeoutSeconds?: number;
 }): number {
+  // A single owner-authorized recovery may reopen an expired Remotion job
+  // only when the original attempt never reached a worker. Keep the same job
+  // identity and grant a fresh, bounded execution window for that attempt.
+  const remotionRecovery = input.retryPolicy.remotionRuntimeRecovery;
+  if (remotionRecovery && input.jobType === "remotion_render_video" &&
+      input.contractVersion === "feature-186-v1" && input.runtimeType === "desktop_zeroclaw_managed" &&
+      input.executionClass === "short" && input.attempt === 2 && remotionRecovery.attempt === 2 &&
+      remotionRecovery.retrySource === "unassigned_runtime_contract") {
+    const created = input.createdAt instanceof Date ? input.createdAt.getTime() : Date.parse(input.createdAt ?? "");
+    const authorized = Date.parse(remotionRecovery.authorizedAt), expires = Date.parse(remotionRecovery.expiresAt);
+    if (Number.isFinite(created) && Number.isFinite(authorized) && Number.isFinite(expires) &&
+        authorized >= created && expires > authorized && expires - authorized <= 60 * 60_000) {
+      return expires - created;
+    }
+  }
   // One Owner-reauthorized attempt may start long after the original dispatch
   // expired. Preserve createdAt and the original budget; use only the bounded,
   // grant-bound recovery window written by recoverReviewGatedJob.
