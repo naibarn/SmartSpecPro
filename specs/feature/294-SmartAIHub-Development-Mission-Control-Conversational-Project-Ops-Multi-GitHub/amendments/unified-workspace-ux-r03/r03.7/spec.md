@@ -106,3 +106,43 @@ New acceptance evidence on 2026-11-17:
   no admin UI action, relay/mailbox contract, or recovery behavior exists yet.
   Continue R03.7 with this narrowly scoped feature before resuming canonical
   Job dispatch, then complete actual enrollment and authenticated owner UAT.
+
+## Continuation evidence — admin pairing relay deployed — 2026-11-17
+
+- Platform `0def9c3b2ba905b260033126e9c6cdd059ef205d` adds an admin/workspace-
+  admin Chat menu action, server-side owner/admin authorization, and a polling
+  view for the real approval URL. Hono returns a link only after the Debian
+  Runner initiates pairing and publishes its actual challenge; it never
+  generates a code or exports a private key.
+- Relay request lifetime is **60 minutes** to allow a headless server enough
+  time to claim the request. Once claimed, the actual device approval challenge
+  remains valid for **30 minutes**. Both values are independently enforced.
+- SmartSpecPro `0446_modular_runner_pairing_relay` is applied to DEV database
+  `smartspec`. Migration source SHA-256:
+  `d7a211184084f34d8266fb3f1086a9ba81079f8a77d3b6d9eb904ea294988f87`; ledger
+  hash and `created_at` match the source/journal. The scoped backup is retained
+  at `/home/dev/.config/smartspec-dev/backups/modular-runner-pairing-0446-scoped-20261117T004327Z.dump`.
+- Platform source `0def9c3b2ba905b260033126e9c6cdd059ef205d` was built as an
+  immutable Core/Shell/Chat artifact and deployed only to
+  `modular-debian-dev` / `aimarkethubs.com`. Release:
+  `/home/dev/modular-development-releases/modular-debian-dev-0def9c3b2ba905b260033126e9c6cdd059ef205d-runner-pairing-relay`.
+  The registered controller reported Core/Chat/Shell local health 200, Chat
+  session without a cookie 401, and public Shell/Chat health 200.
+- A separate `smartsihub-modular-dev-runner.service` is enabled with its own
+  runner/device IDs, environment file, relay key, and data root. It is active
+  and polling. It is **not enrolled yet**; without an access token its normal
+  control refresh reports `RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL`. The
+  existing `smartaihub-runner.service` was not started or modified by this
+  continuation. No authenticated browser action has yet created a relay, and
+  no owner approval or real Job execution is claimed.
+- The public relay poll route rejects unauthenticated requests with 401. The
+  shared-schema privilege cleanup remains open: `modular_chat_mission_owner`
+  has `CREATE` on `public` via the `pg_database_owner` grant; the scoped
+  migrator cannot revoke a privilege it did not grant. A database owner must
+  remove that temporary grant under the R1.24 bootstrap cleanup procedure.
+- Next: sign in as an authorized workspace admin at `/chat`, select the Chat
+  menu action to create the 60-minute relay request, wait for the headless
+  Runner to publish its 30-minute approval URL, approve with MFA, then verify
+  enrollment before attempting a harmless canonical Codex Job. Canonical Job
+  dispatch, authenticated UAT, and Mission/Task identity continuity remain
+  pending.
