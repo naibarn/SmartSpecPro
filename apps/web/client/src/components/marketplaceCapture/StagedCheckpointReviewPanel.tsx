@@ -1606,14 +1606,17 @@ export function StagedCheckpointReviewPanel(props: {
   useEffect(() => {
     if (!imageModelsQuery.data) return;
     const available = new Set(imageModels.map(model => model.id));
-    if (selectedImageModel) return;
+    if (selectedImageModel && available.has(selectedImageModel)) return;
     const configuredDefault = String(
       (imageModelsQuery.data as any)?.defaults?.image ?? ""
     ).trim();
-    if (configuredDefault && available.has(configuredDefault)) {
-      setSelectedImageModel(configuredDefault);
-      persistStoredAutoReviewImageModel(configuredDefault);
-    }
+    const nextModel =
+      configuredDefault && available.has(configuredDefault)
+        ? configuredDefault
+        : imageModels[0]?.id;
+    if (!nextModel) return;
+    setSelectedImageModel(nextModel);
+    persistStoredAutoReviewImageModel(nextModel);
   }, [imageModelsQuery.data, selectedImageModel, imageModels]);
 
   useEffect(() => {
@@ -5155,24 +5158,19 @@ export function StagedCheckpointReviewPanel(props: {
                               }),
                             "rounded-lg px-3.5 py-2 text-sm font-semibold shadow-xs transition",
                             {
-                              disabled:
-                                !selectedImageModelAvailable ||
-                                !shot.imagePrompt?.trim() ||
-                                isTaskInFlight(shot.imageTaskStatus) ||
-                                isTaskInFlight(shot.videoTaskStatus) ||
-                                isShotPromptPipelineBusy(shot.shotId),
+                              // An existing prompt is enough to open the
+                              // confirmation dialog. Availability and active
+                              // task conflicts are reported after confirmation
+                              // by the server instead of silently disabling
+                              // this recovery action.
+                              disabled: !shot.imagePrompt?.trim(),
                               confirmation: {
                                 title: `ยืนยันสร้างภาพช็อตที่ ${shot.shotId}`,
                                 description: `ระบบจะส่งงานสร้างภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${selectedImageModel} และอาจใช้เครดิต`,
                               },
                               title: !shot.imagePrompt?.trim()
                                 ? "สร้าง Prompt ภาพก่อน"
-                                : !selectedImageModelAvailable
-                                  ? "เลือกโมเดลภาพที่มีอยู่ก่อนส่งงาน"
-                                  : isTaskInFlight(shot.imageTaskStatus) ||
-                                        isTaskInFlight(shot.videoTaskStatus)
-                                      ? "รอให้งานของช็อตนี้เสร็จก่อน"
-                                      : undefined,
+                                : undefined,
                             }
                           )}
                           {/* image_prompt now auto-approves at construction —
