@@ -1736,6 +1736,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       ? Resp
       : never
     : never;
+  providerName?: string;
   retried: boolean;
   /** Number of bounded retries used before the validated response was accepted. */
   retryCount: number;
@@ -1960,7 +1961,11 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       startedAt,
       completedAt: new Date(),
     });
-    return { data: validation.data as T, response: result.response };
+    return {
+      data: validation.data as T,
+      response: result.response,
+      providerName: result.providerName,
+    };
   };
 
   let currentUserPrompt = params.userPrompt;

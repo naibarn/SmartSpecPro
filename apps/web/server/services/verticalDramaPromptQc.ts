@@ -19,10 +19,10 @@
  * convention every other Vertical Drama LLM planning call in this codebase
  * follows (see `verticalDramaStartFrameGeneration.ts`,
  * `verticalDramaVideoMotionPromptGeneration.ts`). If the refined prompt is
- * STILL over the cap, one stricter retry is attempted; if that also fails,
- * falls back to a hard sentence-boundary truncation at the cap with a logged
- * warning — this fallback NEVER throws / never blocks the user, since prompt
- * QC must not turn into a hard failure of the surrounding generation flow.
+ * STILL over the cap, one stricter retry is attempted. Video callers fail
+ * closed rather than lose protected content to truncation; legacy image
+ * callers keep the advisory truncation fallback unless they opt into the
+ * provider-ready finalizer.
  *
  * The image finalizer also canonicalizes the single prompt contract: image
  * transports do not receive a separate negative field, so legacy embedded
@@ -324,7 +324,10 @@ export interface EnsurePromptWithinLimitParams {
   finalizeWithRefiner?: boolean;
   userId: number;
   tenantId?: string;
-  seriesId: number;
+  /** Vertical Drama series scope. Omit only for an explicitly scoped shared caller. */
+  seriesId?: number;
+  /** Allows the same refiner path to serve Marketplace Auto Review without a series row. */
+  billingScope?: "marketplace_auto_review";
   idempotencyKey?: string;
   /** Human-readable label used only in log lines / credit transaction descriptions, e.g. "start-frame prompt (shot 3)". */
   label?: string;
@@ -439,6 +442,8 @@ export interface EnsurePromptWithinLimitResult {
   prompt: string;
   refined: boolean;
   creditsUsed: number;
+  modelId?: string;
+  providerName?: string;
   /** True only when the final fallback (hard truncation) had to be used because the refiner could not get under the cap in two attempts. */
   truncated: boolean;
 }
@@ -529,19 +534,33 @@ async function refineOnce(params: {
   semanticProtectedFragments?: string[];
   userId: number;
   tenantId?: string;
-  seriesId: number;
+  seriesId?: number;
+  billingScope?: "marketplace_auto_review";
   idempotencyKey?: string;
   label: string;
-}): Promise<{ optimizedPrompt: string; creditsUsed: number }> {
+}): Promise<{
+  optimizedPrompt: string;
+  creditsUsed: number;
+  modelId: string;
+  providerName?: string;
+}> {
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
     throw new Error("Insufficient credits for prompt QC refinement");
   }
 
-  const model = await resolveVerticalDramaSeriesModel(
-    params.seriesId,
-    resolveQualityLargeContextModelId,
-  );
+  const model =
+    params.seriesId != null
+      ? await resolveVerticalDramaSeriesModel(
+          params.seriesId,
+          resolveQualityLargeContextModelId,
+        )
+      : params.billingScope === "marketplace_auto_review"
+        ? await resolveQualityLargeContextModelId()
+        : null;
+  if (!model) {
+    throw new Error("No quality large-context model is available for prompt QC refinement");
+  }
   const systemPrompt = loadRefinerSystemPrompt();
   const userPrompt = buildRefinerUserPrompt({
     kind: params.kind,
@@ -553,7 +572,7 @@ async function refineOnce(params: {
     semanticProtectedFragments: params.semanticProtectedFragments,
   });
 
-  const { data, response } = await executeJsonPlanningCallWithRetry({
+  const planningResult = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -561,35 +580,55 @@ async function refineOnce(params: {
     userId: params.userId,
     maxTokens: 3000,
     schema: refinerOutputSchema,
-    label: `Vertical Drama prompt QC refine (${params.label})`,
-    verticalDramaContext: {
-      seriesId: params.seriesId,
-      taskClass: "semantic_quality_review",
-    },
+    label: `${params.billingScope === "marketplace_auto_review" ? "Marketplace Auto Review" : "Vertical Drama"} prompt QC refine (${params.label})`,
+    ...(params.seriesId != null
+      ? {
+          verticalDramaContext: {
+            seriesId: params.seriesId,
+            taskClass: "semantic_quality_review",
+          },
+        }
+      : {}),
   });
+  const { data, response, providerName } = planningResult;
+  const effectiveModel = planningResult.model || model;
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model,
+    effectiveModel,
   );
 
   await deductCredits({
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
-    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
-    description: `Vertical Drama — prompt QC refine (${params.label})`,
-    skillSlug: "vertical-drama-start-frame-video-safety-qa",
+    contextRef:
+      params.tenantId && params.seriesId != null
+        ? {
+            contextType: "series",
+            sourceType: "vertical_drama_series",
+            sourceId: String(params.seriesId),
+          }
+        : undefined,
+    description:
+      `${params.billingScope === "marketplace_auto_review" ? "Marketplace Auto Review" : "Vertical Drama"} — prompt QC refine (${params.label})`,
+    skillSlug:
+      params.billingScope === "marketplace_auto_review"
+        ? "cinematic-prompt-refiner-pro"
+        : "vertical-drama-start-frame-video-safety-qa",
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey
       ? `${params.idempotencyKey}:${params.strict ? "qc-retry" : "qc"}`
       : undefined,
     metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
+      model: effectiveModel,
+      llmModel: effectiveModel,
+      feature:
+        params.billingScope === "marketplace_auto_review"
+          ? "marketplace_auto_review"
+          : "vertical_drama_series",
       qcKind: params.kind,
       strict: params.strict,
       inputTokens: usage?.prompt_tokens ?? 0,
@@ -597,7 +636,12 @@ async function refineOnce(params: {
     },
   });
 
-  return { optimizedPrompt: data.optimized_prompt, creditsUsed };
+  return {
+    optimizedPrompt: data.optimized_prompt,
+    creditsUsed,
+    modelId: effectiveModel,
+    providerName,
+  };
 }
 
 /**
@@ -617,7 +661,15 @@ async function refineOnce(params: {
 export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
-  const { kind, context, userId, tenantId, seriesId, idempotencyKey } = params;
+  const {
+    kind,
+    context,
+    userId,
+    tenantId,
+    seriesId,
+    billingScope,
+    idempotencyKey,
+  } = params;
   const prompt =
     kind === "image"
       ? mergeImageNegativePromptIntoPrompt(params.prompt)
@@ -644,6 +696,8 @@ export async function ensurePromptWithinLimit(
   }
 
   let creditsUsed = 0;
+  let modelId: string | undefined;
+  let providerName: string | undefined;
 
   try {
     const first = await refineOnce({
@@ -657,10 +711,13 @@ export async function ensurePromptWithinLimit(
       userId,
       tenantId,
       seriesId,
+      billingScope,
       idempotencyKey,
       label,
     });
     creditsUsed += first.creditsUsed;
+    modelId = first.modelId;
+    providerName = first.providerName;
     if (
       params.finalizeWithRefiner
         ? isValidFinalImagePrompt(
@@ -680,6 +737,8 @@ export async function ensurePromptWithinLimit(
           prompt: canonicalizeValidatedFinalImagePrompt(first.optimizedPrompt),
           refined: true,
           creditsUsed,
+          modelId,
+          providerName,
           truncated: false,
         };
       }
@@ -688,7 +747,14 @@ export async function ensurePromptWithinLimit(
         params.protectedFragments,
         maxChars,
       );
-      return { prompt: finalized.prompt, refined: true, creditsUsed, truncated: finalized.truncated };
+      return {
+        prompt: finalized.prompt,
+        refined: true,
+        creditsUsed,
+        modelId,
+        providerName,
+        truncated: finalized.truncated,
+      };
     }
 
     debugLog(
@@ -708,10 +774,13 @@ export async function ensurePromptWithinLimit(
       userId,
       tenantId,
       seriesId,
+      billingScope,
       idempotencyKey,
       label,
     });
     creditsUsed += second.creditsUsed;
+    modelId = second.modelId;
+    providerName = second.providerName;
     if (
       params.finalizeWithRefiner
         ? isValidFinalImagePrompt(
@@ -731,6 +800,8 @@ export async function ensurePromptWithinLimit(
           prompt: canonicalizeValidatedFinalImagePrompt(second.optimizedPrompt),
           refined: true,
           creditsUsed,
+          modelId,
+          providerName,
           truncated: false,
         };
       }
@@ -739,7 +810,14 @@ export async function ensurePromptWithinLimit(
         params.protectedFragments,
         maxChars,
       );
-      return { prompt: finalized.prompt, refined: true, creditsUsed, truncated: finalized.truncated };
+      return {
+        prompt: finalized.prompt,
+        refined: true,
+        creditsUsed,
+        modelId,
+        providerName,
+        truncated: finalized.truncated,
+      };
     }
 
     debugError(
@@ -764,6 +842,8 @@ export async function ensurePromptWithinLimit(
       prompt: finalized.prompt,
       refined: true,
       creditsUsed,
+      modelId,
+      providerName,
       truncated: true,
     };
   } catch (error) {
