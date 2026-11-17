@@ -22,7 +22,8 @@ import { STORYBOARD_VIDEO_PROMPT_MAX_CHARS } from "@shared/storyboardPromptBudge
  * `shots.length === 0` self-disable).
  */
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Loader2, Pencil } from "lucide-react";
+import { AlertTriangle, Copy, Loader2, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import {
   Collapsible,
   CollapsibleContent,
@@ -1214,6 +1215,34 @@ function PlanReviewShotPromptBlock({
           >
             {copy.promptCharCount(charCount, maxChars)}
           </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={!hasPrompt}
+            aria-label={
+              copy.locale === "th"
+                ? `คัดลอก Prompt ${kind === "image" ? "ภาพ" : "วิดีโอ"} ช็อตที่ ${shotId}`
+                : `Copy ${kind} prompt for shot ${shotId}`
+            }
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(prompt);
+                toast.success(
+                  copy.locale === "th" ? "คัดลอก Prompt แล้ว" : "Prompt copied"
+                );
+              } catch {
+                toast.error(
+                  copy.locale === "th"
+                    ? "คัดลอก Prompt ไม่สำเร็จ"
+                    : "Could not copy prompt"
+                );
+              }
+            }}
+          >
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            {copy.locale === "th" ? "คัดลอก" : "Copy"}
+          </Button>
           <CollapsibleTrigger asChild>
             <button
               type="button"

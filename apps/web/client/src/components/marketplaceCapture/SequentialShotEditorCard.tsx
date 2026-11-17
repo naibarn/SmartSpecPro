@@ -17,6 +17,8 @@
  * single-wave case gets no layout shift.
  */
 import { useState } from "react";
+import { Copy } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -466,20 +468,48 @@ export function SequentialShotEditorCard({
       </label>
 
       <div className="block space-y-1">
-        <span className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>
             {thai
               ? `Prompt ภาพเริ่มต้น (${selectedPromptLanguage === "th" ? "ไทย" : "English"})`
               : `Start-frame image prompt (${selectedPromptLanguage})`}
           </span>
-          <span
-            className={
-              imageOverBudget ? "text-amber-700 dark:text-amber-400" : ""
-            }
-          >
-            {copy.promptCharCount(imagePrompt.length, imageMaxChars)}
-          </span>
-        </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                imageOverBudget ? "text-amber-700 dark:text-amber-400" : ""
+              }
+            >
+              {copy.promptCharCount(imagePrompt.length, imageMaxChars)}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={!imagePrompt.trim()}
+              aria-label={
+                thai
+                  ? `คัดลอก Prompt ภาพช็อตที่ ${shot.shotId}`
+                  : `Copy image prompt for shot ${shot.shotId}`
+              }
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(imagePrompt);
+                  toast.success(
+                    thai ? "คัดลอก Prompt ภาพแล้ว" : "Image prompt copied"
+                  );
+                } catch {
+                  toast.error(
+                    thai ? "คัดลอก Prompt ไม่สำเร็จ" : "Could not copy prompt"
+                  );
+                }
+              }}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" />
+              {thai ? "คัดลอก" : "Copy"}
+            </Button>
+          </div>
+        </div>
         {onGeneratePrompt ? (
           <Button
             type="button"
@@ -517,20 +547,48 @@ export function SequentialShotEditorCard({
       </div>
 
       <div className="block space-y-1">
-        <span className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span>
             {thai
               ? `Prompt วิดีโอ (${selectedPromptLanguage === "th" ? "ไทย" : "English"})`
               : `Video prompt (${selectedPromptLanguage})`}
           </span>
-          <span
-            className={
-              videoOverBudget ? "text-amber-700 dark:text-amber-400" : ""
-            }
-          >
-            {copy.promptCharCount(videoPrompt.length, videoMaxChars)}
-          </span>
-        </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                videoOverBudget ? "text-amber-700 dark:text-amber-400" : ""
+              }
+            >
+              {copy.promptCharCount(videoPrompt.length, videoMaxChars)}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={!videoPrompt.trim()}
+              aria-label={
+                thai
+                  ? `คัดลอก Prompt วิดีโอช็อตที่ ${shot.shotId}`
+                  : `Copy video prompt for shot ${shot.shotId}`
+              }
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(videoPrompt);
+                  toast.success(
+                    thai ? "คัดลอก Prompt วิดีโอแล้ว" : "Video prompt copied"
+                  );
+                } catch {
+                  toast.error(
+                    thai ? "คัดลอก Prompt ไม่สำเร็จ" : "Could not copy prompt"
+                  );
+                }
+              }}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" />
+              {thai ? "คัดลอก" : "Copy"}
+            </Button>
+          </div>
+        </div>
         {onGeneratePrompt ? (
           <Button
             type="button"

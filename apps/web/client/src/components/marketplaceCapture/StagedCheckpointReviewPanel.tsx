@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Copy } from "lucide-react";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -4283,6 +4284,10 @@ export function StagedCheckpointReviewPanel(props: {
                 const dialogueKey = `story:${shot.shotId}:dialogue`;
                 const imageDraftKey = `image:${shot.shotId}`;
                 const videoDraftKey = `video:${shot.shotId}`;
+                const imagePromptValue =
+                  drafts[imageDraftKey] ?? shot.imagePrompt ?? "";
+                const videoPromptValue =
+                  drafts[videoDraftKey] ?? shot.videoPrompt ?? "";
                 const imageMediaKey = shotMediaKey(shot.shotId, "image");
                 const videoMediaKey = shotMediaKey(shot.shotId, "video");
                 const imageMediaDragOver =
@@ -4514,21 +4519,41 @@ export function StagedCheckpointReviewPanel(props: {
                       </>
                     )}
                     <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                      <label className="block text-sm font-medium text-slate-800">
-                        <span className="flex items-center justify-between gap-2">
+                      <div className="block text-sm font-medium text-slate-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span>Prompt ภาพ</span>
-                          <span className="text-[11px] font-normal text-slate-500">
-                            {imageCheckpoint
-                              ? checkpointStateLabel(imageCheckpoint.state)
-                              : "รอสร้างหลังยืนยันเนื้อเรื่อง"}
-                          </span>
-                        </span>
+                          <div className="flex items-center gap-2 text-[11px] font-normal text-slate-500">
+                            <span>{imagePromptValue.length} ตัวอักษร</span>
+                            <span>
+                              {imageCheckpoint
+                                ? checkpointStateLabel(imageCheckpoint.state)
+                                : "รอสร้างหลังยืนยันเนื้อเรื่อง"}
+                            </span>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`คัดลอก Prompt ภาพช็อตที่ ${shot.shotId}`}
+                              disabled={!imagePromptValue.trim()}
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(
+                                    imagePromptValue
+                                  );
+                                  toast.success("คัดลอก Prompt ภาพแล้ว");
+                                } catch {
+                                  toast.error("คัดลอก Prompt ไม่สำเร็จ");
+                                }
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                              คัดลอก
+                            </button>
+                          </div>
+                        </div>
                         <textarea
                           className="mt-1 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-xs font-normal outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
                           placeholder="ระบบจะแสดง Prompt ภาพของช็อตนี้เมื่อเนื้อเรื่องผ่านการยืนยัน"
-                          value={
-                            drafts[imageDraftKey] ?? shot.imagePrompt ?? ""
-                          }
+                          value={imagePromptValue}
                           aria-label={`Prompt ภาพช็อตที่ ${shot.shotId}`}
                           onChange={event =>
                             setDrafts(prev => ({
@@ -4542,22 +4567,42 @@ export function StagedCheckpointReviewPanel(props: {
                             ) || props.pending
                           }
                         />
-                      </label>
-                      <label className="block text-sm font-medium text-slate-800">
-                        <span className="flex items-center justify-between gap-2">
+                      </div>
+                      <div className="block text-sm font-medium text-slate-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span>Prompt วิดีโอ</span>
-                          <span className="text-[11px] font-normal text-slate-500">
-                            {videoCheckpoint
-                              ? checkpointStateLabel(videoCheckpoint.state)
-                              : "รอรับรองภาพก่อน"}
-                          </span>
-                        </span>
+                          <div className="flex items-center gap-2 text-[11px] font-normal text-slate-500">
+                            <span>{videoPromptValue.length} ตัวอักษร</span>
+                            <span>
+                              {videoCheckpoint
+                                ? checkpointStateLabel(videoCheckpoint.state)
+                                : "รอรับรองภาพก่อน"}
+                            </span>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`คัดลอก Prompt วิดีโอช็อตที่ ${shot.shotId}`}
+                              disabled={!videoPromptValue.trim()}
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(
+                                    videoPromptValue
+                                  );
+                                  toast.success("คัดลอก Prompt วิดีโอแล้ว");
+                                } catch {
+                                  toast.error("คัดลอก Prompt ไม่สำเร็จ");
+                                }
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                              คัดลอก
+                            </button>
+                          </div>
+                        </div>
                         <textarea
                           className="mt-1 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-xs font-normal outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
                           placeholder="ระบบจะแสดง Prompt วิดีโอหลังรับรองภาพของช็อตนี้"
-                          value={
-                            drafts[videoDraftKey] ?? shot.videoPrompt ?? ""
-                          }
+                          value={videoPromptValue}
                           aria-label={`Prompt วิดีโอช็อตที่ ${shot.shotId}`}
                           onChange={event =>
                             setDrafts(prev => ({
@@ -4571,7 +4616,7 @@ export function StagedCheckpointReviewPanel(props: {
                             ) || props.pending
                           }
                         />
-                      </label>
+                      </div>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <div
