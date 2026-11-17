@@ -124,9 +124,6 @@ import {
   getUserWorkerJobDetail,
   listUserWorkerJobs,
 } from "../services/workerJobMonitorService";
-import { videoProjectsRouter } from "../routers/videoProjects";
-import { mediaRouter } from "../routers/media";
-import { hermesConnectionsRouter } from "../routers/hermesConnections";
 import { revokeHermesAgentDevice } from "../services/hermesAgentPairingService";
 
 export type McpSessionMode = "api_key" | "session" | "bearer" | "agent_pairing" | "delegated_worker";
@@ -2535,6 +2532,7 @@ async function cancelMediaTask(args: Record<string, unknown>, ctx: McpExecutionC
   if (!taskId) throw new Error("task_id is required");
   const user = await getUserById(ctx.session.userId);
   if (!user) throw new Error("user_not_found");
+  const { mediaRouter } = await import("../routers/media");
   const caller = mediaRouter.createCaller({
     req: { ip: "127.0.0.1", headers: {} } as any,
     res: {} as any,
@@ -2946,6 +2944,7 @@ async function disconnectHermesAgent(_args: Record<string, unknown>, ctx: McpExe
 async function createHermesCaller(ctx: McpExecutionContext) {
   const user = await getUserById(ctx.session.userId);
   if (!user) throw new Error("user_not_found");
+  const { hermesConnectionsRouter } = await import("../routers/hermesConnections");
   return {
     user,
     caller: hermesConnectionsRouter.createCaller({
@@ -3018,6 +3017,7 @@ async function executeHermesMedia(args: Record<string, unknown>, ctx: McpExecuti
   if (!connectionId || !prompt) throw new Error("operation, connection_id, and prompt are required");
   const user = await getUserById(ctx.session.userId);
   if (!user) throw new Error("user_not_found");
+  const { mediaRouter } = await import("../routers/media");
   const caller = mediaRouter.createCaller({
     req: { ip: "127.0.0.1", headers: {} } as any,
     res: {} as any,
@@ -3071,6 +3071,7 @@ async function submitRemotionRender(args: Record<string, unknown>, ctx: McpExecu
   if (!workerId) throw new Error("remotion_executor_not_ready");
   const user = await getUserById(ctx.session.userId);
   if (!user) throw new Error("user_not_found");
+  const { videoProjectsRouter } = await import("../routers/videoProjects");
   const caller = videoProjectsRouter.createCaller({
     req: {
       ip: "127.0.0.1",
