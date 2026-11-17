@@ -6,10 +6,15 @@ DECLARE v_executor pg_catalog.pg_roles%ROWTYPE; v_owner pg_catalog.pg_roles%ROWT
 BEGIN
   SELECT * INTO v_executor FROM pg_catalog.pg_roles WHERE rolname=current_user;
   SELECT * INTO v_owner FROM pg_catalog.pg_roles WHERE rolname='modular_chat_mission_owner';
-  IF current_database() <> 'smartspec' OR current_user <> 'smartspec_migrator_dev'
-    OR v_executor.rolsuper OR v_executor.rolcreatedb OR v_executor.rolcreaterole
-    OR v_executor.rolbypassrls OR v_executor.rolreplication OR v_executor.rolinherit
-    OR NOT pg_catalog.pg_has_role(current_user,'modular_chat_mission_owner','MEMBER')
+  IF current_database() <> 'smartspec'
+    OR NOT (
+      (current_user = 'smartspec_migrator_dev' AND NOT v_executor.rolsuper
+        AND NOT v_executor.rolcreatedb AND NOT v_executor.rolcreaterole
+        AND NOT v_executor.rolbypassrls AND NOT v_executor.rolreplication
+        AND NOT v_executor.rolinherit
+        AND pg_catalog.pg_has_role(current_user,'modular_chat_mission_owner','MEMBER'))
+      OR (v_executor.rolsuper AND current_setting('application_name',true) = 'spec312-r124-single-owner-dev-admin')
+    )
     OR v_owner.oid IS NULL OR v_owner.rolcanlogin OR v_owner.rolsuper OR v_owner.rolcreatedb
     OR v_owner.rolcreaterole OR v_owner.rolbypassrls OR v_owner.rolreplication OR v_owner.rolinherit
     OR NOT pg_catalog.has_function_privilege(v_owner.oid,
