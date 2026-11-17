@@ -3032,6 +3032,20 @@
       "when": 1794875821303,
       "tag": "0446_modular_runner_pairing_relay",
       "breakpoints": true
+    },
+    {
+      "idx": 447,
+      "version": "7",
+      "when": 1794930000000,
+      "tag": "0447_modular_runner_system_admin_pairing",
+      "breakpoints": true
+    },
+    {
+      "idx": 448,
+      "version": "7",
+      "when": 1794930000001,
+      "tag": "0448_modular_runner_pairing_recovery",
+      "breakpoints": true
     }
   ]
 }

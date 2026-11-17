@@ -543,20 +543,40 @@ pub fn process_pairing_relay(config: &RunnerConfig) -> Result<bool, String> {
         return Err("RUNNER_PAIRING_RELAY_RESPONSE_INVALID".into());
     }
     let relay_id = poll.relay_id.ok_or("RUNNER_PAIRING_RELAY_ID_MISSING")?;
-    let result =
-        connect_local_runner_with_options(config, |_| {}, false, Some((&relay_id, &relay_key)));
-    let finish_body = canonical_json_bytes(
-        &serde_json::json!({ "relayId": relay_id, "approved": result.is_ok() }),
-    )?;
     let finish_url = format!("{server_url}/api/runners/pairing-relay/finish");
-    let _: serde_json::Value = request_json_with_extra_header(
-        "POST",
-        &finish_url,
-        "X-SmartSIHub-Pairing-Relay-Key",
-        &relay_key,
-        &finish_body,
-    )?;
-    result.map(|_| true)
+    match connect_local_runner_with_options(config, |_| {}, false, Some((&relay_id, &relay_key))) {
+        Ok(_) => {
+            let finish_body = canonical_json_bytes(
+                &serde_json::json!({ "relayId": relay_id, "approved": true }),
+            )?;
+            let _: serde_json::Value = request_json_with_extra_header(
+                "POST",
+                &finish_url,
+                "X-SmartSIHub-Pairing-Relay-Key",
+                &relay_key,
+                &finish_body,
+            )?;
+            Ok(true)
+        }
+        Err(connect_error) => {
+            // The relay control plane records failures from either `claimed`
+            // or `link_ready`. Cleanup is best-effort; never replace the real
+            // pairing error with a secondary 404 from the finish endpoint.
+            let finish_body = canonical_json_bytes(
+                &serde_json::json!({ "relayId": relay_id, "approved": false }),
+            )?;
+            if let Err(cleanup_error) = request_json_with_extra_header::<serde_json::Value>(
+                "POST",
+                &finish_url,
+                "X-SmartSIHub-Pairing-Relay-Key",
+                &relay_key,
+                &finish_body,
+            ) {
+                eprintln!("runner pairing relay cleanup error: {cleanup_error}");
+            }
+            Err(connect_error)
+        }
+    }
 }
 
 fn reconnect_device_proof_material(config: &RunnerConfig) -> Result<DeviceProofMaterial, String> {
