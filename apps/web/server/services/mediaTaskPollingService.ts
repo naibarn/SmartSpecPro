@@ -33,7 +33,12 @@ function collectPollErrorText(
     output.push(error);
     return;
   }
-  if (error instanceof Error) output.push(error.message);
+  if (error instanceof Error) {
+    output.push(error.message);
+    if (error.name === "AbortError" || error.name === "TimeoutError") {
+      output.push("timed out");
+    }
+  }
   if (typeof error !== "object") return;
   for (const [key, value] of Object.entries(error as Record<string, unknown>)) {
     if (
@@ -103,7 +108,8 @@ export function getTransientMediaPollRetryHint(
 
   if (
     statusCode === 408 ||
-    /\b408\b|request timeout|timed? out|abort(?:ed)?|deadline exceeded/i.test(
+    statusCode === 425 ||
+    /\b(?:408|425)\b|request timeout|timed? out|abort(?:ed)?|deadline exceeded/i.test(
       text
     )
   ) {

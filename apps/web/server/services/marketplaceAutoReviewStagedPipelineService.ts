@@ -56,7 +56,10 @@ import {
   transitionStagedCheckpoint,
 } from "./marketplaceAutoReviewStagedCheckpointService";
 import { mediaGenerationService } from "./mediaGenerationService";
-import { getUnifiedMediaTask } from "./mediaTaskPollingService";
+import {
+  getTransientMediaPollRetryHint,
+  getUnifiedMediaTask,
+} from "./mediaTaskPollingService";
 import { ensureMarketplaceAutoReviewMediaUrlDurable } from "./marketplaceAutoReviewMediaAssetService";
 import { getModelById, deriveModelResolutionOptions } from "./modelRegistry";
 import {
@@ -1937,30 +1940,47 @@ async function reconcileImageProvider(params: {
     params.runtime.userToken,
     params.auth.userId
   );
-  const task = await getUnifiedMediaTask({
-    taskId: taskInfo.taskId,
-    userId: params.auth.userId,
-    userToken: token,
-    tenantId: params.run.tenantId,
-    auditContext: {
+  let task: Awaited<ReturnType<typeof getUnifiedMediaTask>>;
+  let durableTask:
+    | Awaited<ReturnType<typeof ensureMarketplaceAutoReviewMediaUrlDurable>>
+    | null = null;
+  try {
+    task = await getUnifiedMediaTask({
+      taskId: taskInfo.taskId,
       userId: params.auth.userId,
-      tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
-      traceId: `staged-image-poll:${params.run.id}:${params.shotId}`,
-      source: "marketplace_auto_review_staged",
-      stage: "image_generation",
-    },
-  });
-  const durableTask =
-    task.status === "completed" && text(task.resultUrl)
-      ? await ensureMarketplaceAutoReviewMediaUrlDurable({
-          tenantId: params.run.tenantId,
-          runId: params.run.id,
-          sourceUrl: text(task.resultUrl),
-          mediaType: "image",
-          purpose: `shot-${params.shotId}`,
-          identity: taskInfo.taskId,
-        })
-      : null;
+      userToken: token,
+      tenantId: params.run.tenantId,
+      auditContext: {
+        userId: params.auth.userId,
+        tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
+        traceId: `staged-image-poll:${params.run.id}:${params.shotId}`,
+        source: "marketplace_auto_review_staged",
+        stage: "image_generation",
+      },
+    });
+    durableTask =
+      task.status === "completed" && text(task.resultUrl)
+        ? await ensureMarketplaceAutoReviewMediaUrlDurable({
+            tenantId: params.run.tenantId,
+            runId: params.run.id,
+            sourceUrl: text(task.resultUrl),
+            mediaType: "image",
+            purpose: `shot-${params.shotId}`,
+            identity: taskInfo.taskId,
+          })
+        : null;
+  } catch (error) {
+    const retryHint = getTransientMediaPollRetryHint(error);
+    if (!retryHint) throw error;
+    // Provider status can be completed while its result CDN or the R2 copy is
+    // temporarily slow. Do not mark the provider task failed or refund it:
+    // keep the submitted task reference so the durable poll scheduler retries
+    // the result transfer on its next pass.
+    console.warn(
+      `[advanceStagedMarketplaceAutoReviewRun] image result retrieval will retry for run=${params.run.id} shot=${params.shotId} kind=${retryHint.kind} after=${retryHint.retryAfterSeconds}s`
+    );
+    return params.metadata;
+  }
   if (task.status === "pending" || task.status === "processing")
     return params.metadata;
   if (task.status === "failed" || task.status === "cancelled") {
@@ -1980,6 +2000,17 @@ async function reconcileImageProvider(params: {
     resultUrl: url,
     completedAt: new Date().toISOString(),
   });
+  const stagedPipeline = record(next.stagedPipeline);
+  const correctionRequired = record(stagedPipeline.correctionRequired);
+  if (
+    correctionRequired.stageKey === "image_generation" &&
+    Number(correctionRequired.shotId) === params.shotId
+  ) {
+    next = {
+      ...next,
+      stagedPipeline: { ...stagedPipeline, correctionRequired: null },
+    };
+  }
   const imagePrompt = checkpointFor(next, "image_prompt", params.shotId);
   const imageResultCheckpoint = buildStagedCheckpoint({
     checkpointId: `image-result:${params.run.id}:shot-${params.shotId}:r${params.plan.planRevision}`,

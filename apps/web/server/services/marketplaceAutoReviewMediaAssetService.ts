@@ -9,7 +9,7 @@ import { assertR2StorageActive, storagePutFromPath } from "../storage";
 
 // Provider image URLs are copied only after generation completes. Give this
 // post-generation transfer a longer window than the generic media download.
-const AUTO_REVIEW_IMAGE_DOWNLOAD_TIMEOUT_MS = 8 * 60 * 1000;
+const AUTO_REVIEW_IMAGE_DOWNLOAD_TIMEOUT_MS = 12 * 60 * 1000;
 
 export type MarketplaceAutoReviewTaskDurability = {
   task: MediaTask;

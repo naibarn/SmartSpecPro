@@ -117,8 +117,8 @@ export function buildStagedProviderPollAdmission(input: {
     ageMs < 10 * 60_000
       ? 60_000
       : ageMs < 60 * 60_000
-        ? 5 * 60_000
-        : 15 * 60_000;
+        ? 3 * 60_000
+        : 5 * 60_000;
   const pollBucket = Math.floor(input.now.getTime() / pollIntervalMs);
   const operationId = `staged_provider_poll:v2:${pollIntervalMs}:${pollBucket}:${taskFingerprint}`;
 
