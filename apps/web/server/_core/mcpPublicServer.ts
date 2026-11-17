@@ -74,7 +74,7 @@ type SuccessfulAuthResult = AuthResult & { ok: true };
 // Constants
 // ---------------------------------------------------------------------------
 
-// M14: Configurable session TTL, default 900s (15 minutes)
+// M14: Configurable through MCP runtime settings; the default is 1800s (30 minutes).
 const TOOL_TIMEOUT_MS = 60_000;
 const MAX_RESULT_BYTES = 100 * 1024; // 100KB
 const MAX_BATCH_SIZE = 100; // DoS protection: max items per batch request
