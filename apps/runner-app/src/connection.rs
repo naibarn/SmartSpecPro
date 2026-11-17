@@ -15,7 +15,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const CONNECTION_FILE_NAME: &str = "runner-connection.json";
 const MAX_RESPONSE_BYTES: usize = 128 * 1024;
-const MAX_PAIRING_ATTEMPTS: usize = 300;
+// The approval challenge is valid for 30 minutes. Polling every three seconds
+// must cover that full window so headless Runner relays do not time out early.
+const MAX_PAIRING_ATTEMPTS: usize = 600;
 #[cfg(windows)]
 const WINDOWS_DPAPI_PREFIX: &[u8] = b"SAH-WIN-DPAPI-V1\0";
 static CREDENTIAL_REFRESH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -67,6 +69,8 @@ struct StartPairingResponse {
     runner_id: Option<String>,
     #[serde(rename = "verificationUriComplete")]
     verification_uri_complete: String,
+    #[serde(rename = "expiresAt")]
+    expires_at: Option<String>,
     interval: Option<u64>,
     #[serde(rename = "pairingNonce")]
     pairing_nonce: Option<String>,
@@ -366,6 +370,15 @@ pub fn connect_local_runner_with_progress(
     config: &RunnerConfig,
     on_pairing_started: impl FnOnce(&str),
 ) -> Result<String, String> {
+    connect_local_runner_with_options(config, on_pairing_started, true, None)
+}
+
+fn connect_local_runner_with_options(
+    config: &RunnerConfig,
+    on_pairing_started: impl FnOnce(&str),
+    open_approval_page: bool,
+    relay: Option<(&str, &str)>,
+) -> Result<String, String> {
     if config.profile != RunnerProfile::LocalDevice {
         return Err("RUNNER_CONNECT_REQUIRES_LOCAL_DEVICE".into());
     }
@@ -401,12 +414,33 @@ pub fn connect_local_runner_with_progress(
         .as_deref()
         .ok_or_else(|| "RUNNER_CONNECT_SCHEMA_INVALID".to_string())?;
     on_pairing_started(&start.verification_uri_complete);
-    open_browser(&start.verification_uri_complete).map_err(|error| {
-        format!(
-            "{error}; open this URL to approve the Runner: {}",
-            start.verification_uri_complete
-        )
-    })?;
+    if let Some((relay_id, relay_key)) = relay {
+        let expires_at = start
+            .expires_at
+            .as_deref()
+            .ok_or("RUNNER_CONNECT_EXPIRY_MISSING")?;
+        let publish_body = canonical_json_bytes(&serde_json::json!({
+            "relayId": relay_id,
+            "verificationUriComplete": start.verification_uri_complete,
+            "pairingExpiresAt": expires_at,
+        }))?;
+        let publish_url = format!("{server_url}/api/runners/pairing-relay/publish");
+        let _: serde_json::Value = request_json_with_extra_header(
+            "POST",
+            &publish_url,
+            "X-SmartSIHub-Pairing-Relay-Key",
+            relay_key,
+            &publish_body,
+        )?;
+    }
+    if open_approval_page {
+        open_browser(&start.verification_uri_complete).map_err(|error| {
+            format!(
+                "{error}; open this URL to approve the Runner: {}",
+                start.verification_uri_complete
+            )
+        })?;
+    }
 
     let interval = std::time::Duration::from_secs(start.interval.unwrap_or(3).clamp(1, 10));
     let token_url = format!("{server_url}/api/runners/connect/token");
@@ -472,6 +506,59 @@ pub fn connect_local_runner_with_progress(
     .to_string())
 }
 
+#[derive(Deserialize)]
+struct PairingRelayPollResponse {
+    status: String,
+    #[serde(rename = "relayId")]
+    relay_id: Option<String>,
+}
+
+/// Claims and completes one admin-requested pairing relay without opening a
+/// browser. The actual approval URL is published back to the authenticated UI.
+pub fn process_pairing_relay(config: &RunnerConfig) -> Result<bool, String> {
+    let relay_key = match std::env::var("SAH_RUNNER_PAIRING_RELAY_KEY") {
+        Ok(value) if value.len() >= 32 => value,
+        _ => return Ok(false),
+    };
+    if config.profile != RunnerProfile::LocalDevice {
+        return Ok(false);
+    }
+    let control_url = config
+        .control_url
+        .as_deref()
+        .ok_or("RUNNER_CONTROL_URL_REQUIRED")?;
+    let server_url = server_base_url(control_url)?;
+    let poll_url = format!("{server_url}/api/runners/pairing-relay/poll");
+    let poll: PairingRelayPollResponse = request_json_with_extra_header(
+        "GET",
+        &poll_url,
+        "X-SmartSIHub-Pairing-Relay-Key",
+        &relay_key,
+        b"{}",
+    )?;
+    if poll.status == "idle" {
+        return Ok(false);
+    }
+    if poll.status != "claimed" {
+        return Err("RUNNER_PAIRING_RELAY_RESPONSE_INVALID".into());
+    }
+    let relay_id = poll.relay_id.ok_or("RUNNER_PAIRING_RELAY_ID_MISSING")?;
+    let result =
+        connect_local_runner_with_options(config, |_| {}, false, Some((&relay_id, &relay_key)));
+    let finish_body = canonical_json_bytes(
+        &serde_json::json!({ "relayId": relay_id, "approved": result.is_ok() }),
+    )?;
+    let finish_url = format!("{server_url}/api/runners/pairing-relay/finish");
+    let _: serde_json::Value = request_json_with_extra_header(
+        "POST",
+        &finish_url,
+        "X-SmartSIHub-Pairing-Relay-Key",
+        &relay_key,
+        &finish_body,
+    )?;
+    result.map(|_| true)
+}
+
 fn reconnect_device_proof_material(config: &RunnerConfig) -> Result<DeviceProofMaterial, String> {
     let Some(saved) = load_connection(&config.connection_store_root())? else {
         return generate_device_proof_material(config.device_id.as_deref());
@@ -518,6 +605,7 @@ mod tests {
             device_code: "device-code".into(),
             runner_id: Some("runner-1".into()),
             verification_uri_complete: "https://example.test/runners/connect?code=ABC".into(),
+            expires_at: Some("2026-11-17T00:30:00Z".into()),
             interval: Some(3),
             pairing_nonce: Some("nonce".into()),
             runner_session_id: Some("session-1".into()),
@@ -1399,6 +1487,40 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
     proof: Option<&DeviceProofSigner>,
     body: &[u8],
 ) -> Result<T, String> {
+    request_json_with_agent_and_header(agent, method, endpoint, token, proof, None, body)
+}
+
+fn request_json_with_extra_header<T: for<'de> Deserialize<'de>>(
+    method: &str,
+    endpoint: &str,
+    header_name: &str,
+    header_value: &str,
+    body: &[u8],
+) -> Result<T, String> {
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .build()
+        .new_agent();
+    request_json_with_agent_and_header(
+        &agent,
+        method,
+        endpoint,
+        None,
+        None,
+        Some((header_name, header_value)),
+        body,
+    )
+}
+
+fn request_json_with_agent_and_header<T: for<'de> Deserialize<'de>>(
+    agent: &ureq::Agent,
+    method: &str,
+    endpoint: &str,
+    token: Option<&str>,
+    proof: Option<&DeviceProofSigner>,
+    extra_header: Option<(&str, &str)>,
+    body: &[u8],
+) -> Result<T, String> {
     let path = endpoint_path(endpoint).map_err(|_| "RUNNER_CONNECT_ENDPOINT_INVALID")?;
     let mut request_builder = ureq::http::Request::builder()
         .method(method)
@@ -1406,6 +1528,9 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
         .header("Content-Type", "application/json");
     if let Some(token) = token {
         request_builder = request_builder.header("Authorization", format!("Bearer {token}"));
+    }
+    if let Some((name, value)) = extra_header {
+        request_builder = request_builder.header(name, value);
     }
     if let Some(proof) = proof {
         let headers = proof.headers(method, &path, body)?;

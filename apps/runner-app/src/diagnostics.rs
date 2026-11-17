@@ -3650,6 +3650,17 @@ where
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
             return Ok(());
         }
+        match crate::connection::process_pairing_relay(config) {
+            Ok(true) => {
+                consecutive_refresh_failures = 0;
+                observer(None);
+            }
+            Ok(false) => {}
+            Err(error) => {
+                observer(Some(runtime_error_reason(&error)));
+                eprintln!("runner pairing relay error: {error}");
+            }
+        }
         let status = connection_status_inner(config, "run", stop, &mut || {
             consecutive_refresh_failures = 0;
             observer(None);
