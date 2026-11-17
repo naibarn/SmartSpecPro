@@ -20,6 +20,12 @@ BEGIN
 END $preflight$;
 --> statement-breakpoint
 
+-- The migrator is a non-inheriting member of this narrowly scoped NOLOGIN
+-- owner role. Switch only for the SECURITY DEFINER function replacements;
+-- Drizzle's outer migration transaction rolls the role switch back on error.
+SET LOCAL ROLE modular_chat_mission_owner;
+--> statement-breakpoint
+
 CREATE OR REPLACE FUNCTION public.create_modular_runner_pairing_relay(p_request jsonb) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $function$
 DECLARE v jsonb:=p_request->0; v_environment varchar; v_id uuid; v_expires timestamptz;
@@ -76,3 +82,6 @@ BEGIN
   ALTER FUNCTION public.create_modular_runner_pairing_relay(jsonb) OWNER TO modular_chat_mission_owner;
   ALTER FUNCTION public.finish_modular_runner_pairing_relay(jsonb) OWNER TO modular_chat_mission_owner;
 END $ownership$;
+--> statement-breakpoint
+
+RESET ROLE;
