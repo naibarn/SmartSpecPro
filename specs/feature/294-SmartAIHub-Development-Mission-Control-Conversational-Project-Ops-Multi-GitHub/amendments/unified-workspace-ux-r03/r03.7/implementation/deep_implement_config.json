@@ -29,11 +29,11 @@
     },
     "section-03-canonical-runner-control": {
       "status": "checkpointed",
-      "next_action": "After owner refreshes aimarkethubs.com/chat and clicks Create Runner approval link once, read sanitized runner_pairing_relay_failed or runner_pairing_relay_not_configured diagnostics, repair exact cause, redeploy modular-debian-dev, then verify link_ready and approve the Runner.",
-      "checkpoint_sha": "aa4f34d1b7ed95d478189b18f3e8aad1e6b351",
+      "next_action": "Refresh aimarkethubs.com/chat and click Create Runner approval link; verify link_ready, then approve in the authenticated admin browser. If it fails, inspect sanitized diagnostics from source 677af92.",
+      "checkpoint_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
       "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-      "merged_main_sha": "b0cb39bebd5a716fd613b11acf874e8a54061572",
-      "session_id": "codex-20261117-runner-pairing"
+      "merged_main_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
+      "session_id": "codex-20261117-runner-tenant-binding"
     },
     "section-04-live-ux-deploy-and-uat": {
       "status": "pending",
@@ -49,20 +49,21 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T09:58:36.450629+00:00",
-  "generation": 14,
-  "updated_at": "2026-11-17T01:16:40.589674+00:00",
+  "generation": 16,
+  "updated_at": "2026-11-17T01:29:49.474375+00:00",
   "progress": {
     "active_section": "section-03-canonical-runner-control",
-    "next_action": "After owner refreshes aimarkethubs.com/chat and clicks Create Runner approval link once, read sanitized runner_pairing_relay_failed or runner_pairing_relay_not_configured diagnostics, repair exact cause, redeploy modular-debian-dev, then verify link_ready and approve the Runner.",
+    "next_action": "Refresh aimarkethubs.com/chat and click Create Runner approval link; verify link_ready, then approve in the authenticated admin browser. If it fails, inspect sanitized diagnostics from source 677af92.",
     "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-    "merged_main_sha": "b0cb39bebd5a716fd613b11acf874e8a54061572",
+    "merged_main_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
     "gaps": [
       "Modular Hono has no WSS runner.job.command/receipt adapter connected to canonical worker_jobs Job Control Plane.",
       "Real owner MFA browser session is unavailable for pairing and authenticated UAT.",
       "Authenticated admin browser UAT has not created the relay or approved the Runner; Modular Runner remains unpaired.",
       "Canonical Hono Runner Job command/receipt delivery through worker_jobs is not implemented; do not claim real Codex Job execution.",
       "Temporary public-schema CREATE grant to modular_chat_mission_owner remains; only pg_database_owner grant authority can revoke it.",
-      "Admin pairing-relay POST returned HTTP 503 on 2026-11-17 08:09 Asia/Bangkok; create endpoint currently hides configuration/DB exception details. Diagnostic source b0cb39bebd5a716fd613b11acf874e8a54061572 is deployed to modular-debian-dev; authenticated retry and root-cause fix pending."
+      "Authenticated admin has not yet retried link creation after 677af92 deployment; link_ready and Runner approval remain unverified.",
+      "Modular Debian DEV release 677af92 is deployed and public health is green; actual authenticated pairing-relay creation and Runner approval have not yet been exercised."
     ]
   }
 }
