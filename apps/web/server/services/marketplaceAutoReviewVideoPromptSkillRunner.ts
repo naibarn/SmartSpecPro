@@ -1604,6 +1604,11 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       MARKETPLACE_OBJECT_CONTINUITY_LOCK,
       MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
     ],
+    // The approved action, dialogue, speaker map, and policy locks above are
+    // protected and validated against the hard cap before refining. If both
+    // LLM passes still return an oversized prompt, let the shared QC fallback
+    // trim only the remaining prose instead of failing the whole shot.
+    failClosed: false,
     maxChars: MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS,
     userId: input.userId,
     tenantId: input.tenantId,
@@ -1612,7 +1617,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     label: `video prompt (shot ${input.shotId})`,
   });
   const prompt = promptQc.prompt;
-  if (promptQc.refined) {
+  if (promptQc.refined || promptQc.truncated) {
     console.info("[MarketplaceVideoPrompt] terminal_prompt_optimized", {
       runId: input.runId,
       shotId: input.shotId,
@@ -1620,6 +1625,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       optimizedLength: prompt.length,
       maxChars: MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS,
       creditsUsed: promptQc.creditsUsed,
+      fallbackTrimmed: promptQc.truncated,
     });
   }
   if (
