@@ -146,3 +146,33 @@ New acceptance evidence on 2026-11-17:
   enrollment before attempting a harmless canonical Codex Job. Canonical Job
   dispatch, authenticated UAT, and Mission/Task identity continuity remain
   pending.
+
+## Continuation evidence — modular admin relay authorization fix — 2026-11-17
+
+- The owner-provided browser capture showed `POST /api/runners/pairing-relay`
+  returning 403. The selected Chat workspace header carries the modular
+  personal-workspace ID, while the relay owner's session resolver had loaded
+  only legacy tenant memberships. This made the already-authorized DEV system
+  admin fail the relay's workspace check.
+- Platform `a8db8d74e35863cc508847292684e303616ecdb9` now resolves the admin's
+  modular workspace memberships together with legacy memberships before
+  applying the existing DEV-only system-runner policy. Duplicate membership
+  identity remains fail-closed. A route-level regression test proves that an
+  authenticated admin with a verified personal workspace can create the
+  system-runner relay request; it does not broaden access for regular users or
+  non-DEV environments.
+- Focused Core suite: 22 files / 148 tests passed. Immutable Core, Shell and
+  Chat build/dry-run passed. The registered release controller reported
+  `DEPLOYED_AND_VERIFIED` for `modular-debian-dev` / `aimarkethubs.com`, source
+  `a8db8d74e35863cc508847292684e303616ecdb9`, at
+  `2026-11-17T04:04:24.945613+00:00`. Local Core/Chat/Shell health and public
+  Shell/login/Chat health returned 200; unauthenticated Chat session returned
+  the expected 401.
+- Authenticated browser UAT was not available during this deployment. The
+  screenshot also displayed “This account cannot access the selected
+  workspace”; this release specifically fixes the observed Runner relay
+  membership-resolution path. Do not claim that separate Chat workspace error,
+  Runner approval, enrollment, or real Runner execution is resolved until
+  verified in an authenticated browser session. If Chat still displays that
+  error, capture the failing Core request/status and workspace ID for a
+  separate diagnosis; do not weaken workspace authorization.
