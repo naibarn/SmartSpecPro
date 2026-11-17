@@ -29,15 +29,19 @@
     },
     "section-03-canonical-runner-control": {
       "status": "checkpointed",
-      "next_action": "Refresh aimarkethubs.com/chat and click Create Runner approval link; verify link_ready, then approve in the authenticated admin browser. If it fails, inspect sanitized diagnostics from source 677af92.",
-      "checkpoint_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
+      "next_action": "In authenticated Admin Chat, click Retry Runner approval link for the stale claimed relay, confirm link_ready returns a clickable approval URL, then approve on the controlled Runner device; report pairing/UAT only after observing each step.",
+      "checkpoint_sha": "7c0824596e570fd6c304ebad4c3b2affeabc4748",
       "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-      "merged_main_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
-      "session_id": "codex-20261117-runner-tenant-binding"
+      "merged_main_sha": "7c0824596e570fd6c304ebad4c3b2affeabc4748",
+      "session_id": "codex-20261117-runner-approval-link-retry"
     },
     "section-04-live-ux-deploy-and-uat": {
-      "status": "pending",
-      "next_action": "After Section 03, use the isolated Modular DEV Runner data root and authenticated owner MFA flow, run one harmless canonical Codex Job, and verify Mission/Task continuity in the actual DEV UI."
+      "status": "checkpointed",
+      "next_action": "Deployment health, chat manifest and entry are verified on aimarkethubs.com; authenticated Admin link creation/approval and a genuine canonical Codex Job remain pending owner MFA browser UAT.",
+      "checkpoint_sha": "7c0824596e570fd6c304ebad4c3b2affeabc4748",
+      "merged_main_sha": "7c0824596e570fd6c304ebad4c3b2affeabc4748",
+      "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
+      "session_id": "codex-20261117-runner-approval-link-retry"
     }
   },
   "pre_commit": {
@@ -49,21 +53,21 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-16T09:58:36.450629+00:00",
-  "generation": 16,
-  "updated_at": "2026-11-17T01:29:49.474375+00:00",
+  "generation": 19,
+  "updated_at": "2026-11-17T06:11:48.887835+00:00",
   "progress": {
-    "active_section": "section-03-canonical-runner-control",
-    "next_action": "Refresh aimarkethubs.com/chat and click Create Runner approval link; verify link_ready, then approve in the authenticated admin browser. If it fails, inspect sanitized diagnostics from source 677af92.",
+    "active_section": "section-04-live-ux-deploy-and-uat",
+    "next_action": "Deployment health, chat manifest and entry are verified on aimarkethubs.com; authenticated Admin link creation/approval and a genuine canonical Codex Job remain pending owner MFA browser UAT.",
     "worktree": "/mnt/SmartSpecDev/projects/smartaihub-platform",
-    "merged_main_sha": "677af92d43d3fe01760d7a0afdd6e28132f5942a",
+    "merged_main_sha": "7c0824596e570fd6c304ebad4c3b2affeabc4748",
     "gaps": [
       "Modular Hono has no WSS runner.job.command/receipt adapter connected to canonical worker_jobs Job Control Plane.",
       "Real owner MFA browser session is unavailable for pairing and authenticated UAT.",
       "Authenticated admin browser UAT has not created the relay or approved the Runner; Modular Runner remains unpaired.",
       "Canonical Hono Runner Job command/receipt delivery through worker_jobs is not implemented; do not claim real Codex Job execution.",
       "Temporary public-schema CREATE grant to modular_chat_mission_owner remains; only pg_database_owner grant authority can revoke it.",
-      "Authenticated admin has not yet retried link creation after 677af92 deployment; link_ready and Runner approval remain unverified.",
-      "Modular Debian DEV release 677af92 is deployed and public health is green; actual authenticated pairing-relay creation and Runner approval have not yet been exercised."
+      "Release 7c0824596e570fd6c304ebad4c3b2affeabc4748 is deployed to modular-debian-dev and health/assets are green; authenticated Admin retry must still verify link_ready URL and pairing.",
+      "The current Modular Runner remains unpaired until the owner clicks the approval URL in the authorized Admin session and approves it."
     ]
   }
 }
