@@ -14,7 +14,7 @@ const images = [
 ];
 
 describe("MarketplaceAutoReviewProductImagePicker", () => {
-  it("shows the primary anchor and lets the user select a supporting angle", () => {
+  it("promotes a clicked image to the product hero and keeps angle selection separate", () => {
     const onToggleSupportingImage = vi.fn();
     const onPrimaryChange = vi.fn();
     render(
@@ -37,19 +37,21 @@ describe("MarketplaceAutoReviewProductImagePicker", () => {
       />
     );
 
-    expect(screen.getByText("Product Anchor หลัก")).toBeTruthy();
+    expect(screen.getByText(/Product Anchor.*Hero หลัก/)).toBeTruthy();
     expect(
-      screen.getByText(/ภาพมุมเสริมที่จะส่งเข้า storyboard นี้โดยเฉพาะ/)
+      screen.getByText(/ปุ่มภาพมุมเสริมเพื่อเพิ่ม reference/)
     ).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /เลือกภาพสินค้า 2 เป็นภาพมุมเสริม/i })
-    );
-    expect(onToggleSupportingImage).toHaveBeenCalledWith("side");
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "ใช้เป็น Product Anchor หลัก" })
+      screen.getByRole("button", {
+        name: /เลือกภาพสินค้า 2 เป็น Product Anchor \/ Hero หลัก/i,
+      })
     );
     expect(onPrimaryChange).toHaveBeenCalledWith("side");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "เลือกเป็นภาพมุมเสริม" })
+    );
+    expect(onToggleSupportingImage).toHaveBeenCalledWith("side");
   });
 });

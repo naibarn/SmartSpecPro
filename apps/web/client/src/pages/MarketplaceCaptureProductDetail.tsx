@@ -5447,6 +5447,9 @@ export default function MarketplaceCaptureProductDetail() {
       }
       const image = productImageOptions.find(option => option.id === imageId);
       if (!image) return;
+      setAutoReviewProductAngleLabels(previous =>
+        previous.filter(entry => entry.url !== image.url)
+      );
       if (image.removableId && !image.isHero) {
         setProductImageAsHero(image.removableId);
       } else {
