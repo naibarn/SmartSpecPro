@@ -28,7 +28,7 @@ import { startDetachedHyperframesRenderWorker } from "../services/backgroundWork
 import { isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 const DEFAULT_INTERVAL_MS = 60_000;
-const DEFAULT_RUN_LIMIT = 12;
+const DEFAULT_RUN_LIMIT = 50;
 const DEFAULT_OUTBOX_LIMIT = 12;
 const DEFAULT_HYPERFRAMES_WORKER_LIMIT = 25;
 const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
@@ -271,12 +271,79 @@ export async function runMarketplaceAutoReviewJob(
       .limit(
         Math.min(Math.max(options.outboxLimit ?? DEFAULT_OUTBOX_LIMIT, 1), 50)
       );
-    const runs = await db
+    const runLimit = Math.min(
+      Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1),
+      50
+    );
+    const stagedPollRunLimit = Math.max(1, Math.ceil(runLimit / 2));
+    const activeRunFilter = inArray(
+      marketplaceAutoReviewRuns.status,
+      ACTIVE_STATUSES
+    );
+    // Staged provider polls must not sit behind older active runs that have
+    // no media task to reconcile. Select pollable staged runs first, before
+    // applying the bounded scheduler batch limit.
+    const stagedProviderPollCandidate = sql.raw(`EXISTS (
+      SELECT 1
+      FROM jsonb_each(CASE
+        WHEN jsonb_typeof("marketplace_auto_review_runs"."metadataJson"->'stagedPipeline'->'tasks') = 'object'
+        THEN "marketplace_auto_review_runs"."metadataJson"->'stagedPipeline'->'tasks'
+        ELSE '{}'::jsonb
+      END) AS task(task_key, task_value)
+      CROSS JOIN LATERAL jsonb_array_elements(CASE
+        WHEN jsonb_typeof("marketplace_auto_review_runs"."metadataJson"->'stagedSequentialStoryboard'->'shots') = 'array'
+        THEN "marketplace_auto_review_runs"."metadataJson"->'stagedSequentialStoryboard'->'shots'
+        ELSE '[]'::jsonb
+      END) AS shot(shot_value)
+      WHERE task.task_key IN (
+        'image:' || (shot.shot_value->>'shotId'),
+        'video:' || (shot.shot_value->>'shotId')
+      )
+      AND NULLIF(task.task_value->>'taskId', '') IS NOT NULL
+      AND COALESCE(task.task_value->>'status', '') NOT IN ('failed', 'cancelled')
+      AND (
+        (task.task_key LIKE 'image:%'
+          AND NULLIF(shot.shot_value->>'imageArtifactHash', '') IS NULL
+          AND NULLIF(shot.shot_value->>'imageArtifactUrl', '') IS NULL)
+        OR
+        (task.task_key LIKE 'video:%'
+          AND NULLIF(shot.shot_value->>'videoArtifactHash', '') IS NULL
+          AND NULLIF(shot.shot_value->>'videoArtifactUrl', '') IS NULL)
+      )
+    )`);
+    const pollableStagedRuns = await db
       .select()
       .from(marketplaceAutoReviewRuns)
-      .where(inArray(marketplaceAutoReviewRuns.status, ACTIVE_STATUSES))
+      .where(
+        and(
+          activeRunFilter,
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture'`,
+            "staged_two_skill_v2"
+          ),
+          stagedProviderPollCandidate
+        )
+      )
       .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
-      .limit(Math.min(Math.max(options.limit ?? DEFAULT_RUN_LIMIT, 1), 50));
+      .limit(stagedPollRunLimit);
+    const otherActiveRuns = await db
+      .select()
+      .from(marketplaceAutoReviewRuns)
+      .where(
+        and(
+          activeRunFilter,
+          sql`(
+            "marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture' IS DISTINCT FROM ${"staged_two_skill_v2"}
+            OR (
+              "marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture' = ${"staged_two_skill_v2"}
+              AND "marketplace_auto_review_runs"."metadataJson"->'initializationControl'->>'status' IN ('queued', 'running')
+            )
+          )`
+        )
+      )
+      .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
+      .limit(runLimit);
+    const runs = [...pollableStagedRuns, ...otherActiveRuns].slice(0, runLimit);
 
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
@@ -623,6 +690,10 @@ export async function runMarketplaceAutoReviewJob(
             )
             .limit(1);
           if (activeAdvanceJob) {
+            await db
+              .update(marketplaceAutoReviewRuns)
+              .set({ updatedAt: new Date() })
+              .where(eq(marketplaceAutoReviewRuns.id, run.id));
             skippedRuns += 1;
             continue;
           }
@@ -632,6 +703,13 @@ export async function runMarketplaceAutoReviewJob(
             runId: run.id,
             ...admission,
           });
+          // Move this still-pending provider run behind peers for the next
+          // bounded scan. Without this touch, the same first batch can be
+          // re-polled forever while later runs never reach the provider.
+          await db
+            .update(marketplaceAutoReviewRuns)
+            .set({ updatedAt: new Date() })
+            .where(eq(marketplaceAutoReviewRuns.id, run.id));
         } else {
           await queueMarketplaceAutoReviewAdvance(
             run.id,
