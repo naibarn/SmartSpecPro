@@ -988,7 +988,11 @@ function replaceGeneratedSpeakerSections(
   authoritativeSections: string,
   approvedDialogue: readonly { line: string }[]
 ): string {
-  const withoutModelProductPlacement = prompt.replace(
+  const withoutModelPrefix = prompt.replace(
+    MARKETPLACE_VIDEO_PROMPT_PREFIX,
+    "\n"
+  );
+  const withoutModelProductPlacement = withoutModelPrefix.replace(
     /(?:^|\n)\s*Product:\s*[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gi,
     "\n"
   );
@@ -1004,7 +1008,18 @@ function replaceGeneratedSpeakerSections(
     /(?:^|\n)\s*SPEAKER-TO-FACE LOCK:[^\n]*(?:\n(?!\s*(?:Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b))[^\n]*)*/gi,
     "\n"
   );
-  let motion = withoutLock.trim();
+  const withoutApprovedAction = withoutLock.replace(
+    /(?:^|\n)\s*APPROVED SHOT ACTION \(authoritative\):[^\n]*/gi,
+    "\n"
+  );
+  let motion = withoutApprovedAction
+    .split(MARKETPLACE_SPEAKER_TURN_TAKING_LOCK)
+    .join("\n")
+    .split(MARKETPLACE_OBJECT_CONTINUITY_LOCK)
+    .join("\n")
+    .split(MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK)
+    .join("\n")
+    .trim();
   for (const line of approvedDialogue) {
     // The visual map owns the only spoken transcript. Models can still echo a
     // supplied line in their prose despite being asked not to do so.
@@ -1076,6 +1091,23 @@ export function composeMarketplaceAutoReviewVideoPrompt(input: {
     authoritativeSections,
     input.approvedDialogue
   );
+}
+
+/** Rebuild server-owned speaker/dialogue sections after a prompt refiner runs.
+ * Protected fragments can be restored at the end of an optimized prompt, but
+ * validation requires the visual map to precede its dialogue turns. */
+export function recomposeMarketplaceAutoReviewVideoPrompt(input: {
+  optimizedPrompt: string;
+  speakerSections: string;
+  approvedDialogue: readonly { line: string }[];
+  approvedShotAction: string;
+}): string {
+  return composeMarketplaceAutoReviewVideoPrompt({
+    generatedPrompt: input.optimizedPrompt,
+    speakerSections: input.speakerSections,
+    approvedDialogue: input.approvedDialogue,
+    approvedShotAction: input.approvedShotAction,
+  });
 }
 
 export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
@@ -1616,7 +1648,15 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     idempotencyKey: `${input.requestIdempotencyKey}:terminal-prompt-optimizer`,
     label: `video prompt (shot ${input.shotId})`,
   });
-  const prompt = promptQc.prompt;
+  // Reassert authoritative section order after the refiner. Its protected
+  // fragment fallback preserves exact content but may append removed sections
+  // at the end, which breaks the required speaker-map-before-dialogue order.
+  const prompt = recomposeMarketplaceAutoReviewVideoPrompt({
+    optimizedPrompt: promptQc.prompt,
+    speakerSections,
+    approvedDialogue: approvedTurns,
+    approvedShotAction,
+  });
   if (promptQc.refined || promptQc.truncated) {
     console.info("[MarketplaceVideoPrompt] terminal_prompt_optimized", {
       runId: input.runId,
