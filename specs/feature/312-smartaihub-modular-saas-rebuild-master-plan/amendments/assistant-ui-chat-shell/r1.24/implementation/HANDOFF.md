@@ -149,3 +149,21 @@ The owner reported that Chat's **Create Runner approval link** control stayed at
 - Runner control refresh separately logs `RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL`; the pairing-relay poll itself returns 200. If Runner enrollment or subsequent execution remains unavailable after link approval, diagnose that control credential separately; do not confuse it with relay queue polling.
 
 **Resume:** hard-refresh `https://aimarkethubs.com/chat`, click **Create Runner approval link**, and wait for the new-tab redirect or click the visible approval URL. Complete approval only on a device the owner controls. If the link still does not appear, capture the new UI state and matching Core/Runner timestamps; polling is now every 15 seconds, so a persistent wait indicates a different request/relay failure.
+
+## 2026-11-18 Runner approval service 503 repair
+
+The owner reported that opening a generated `/runner/approve` URL showed “The approval service is temporarily unavailable.” Runtime logs showed the approval endpoint returning 503 while relay polling was healthy. The database approval function still authorized through the Chat workspace guard, which does not recognize the reserved system tenant used by the System Admin account.
+
+- Integrated SmartSpecPro source: `e6c791770f566d9c8e2fd68f09e3754a2ae40fb1` (`main == origin/main`). Migration `0450_modular_runner_system_admin_approval.sql` SHA-256: `c35161b144561ab7759bc83876c73fd20784d6f183ee5d42f54d79b4c2a68e2b`.
+- The registered `pnpm --dir apps/web db:migrate` runner applied 0450 to the verified `modular-debian-dev` / `aimarkethubs.com` PostgreSQL `smartspec` target. Live ledger readback has migration row `id=430`, timestamp `1795000000000`, and the exact source hash above.
+- Read-only catalog/ACL verification confirms the function remains owned by `modular_chat_mission_owner`; DEV auth can execute it; PUBLIC cannot; the owner has no standing `CREATE` on schema `public`; and the function calls `assert_modular_runner_pairing_access` rather than the old workspace guard. The migration uses a temporary schema CREATE grant and revokes it before commit.
+- Focused migration regression test passed 3/3. `https://aimarkethubs.com/livez` and `/api/chat/livez` both returned HTTP 200 after the database change. No application/Runner release was required for this database-only fix; legacy `smartaihub.app` and Cloudflare production were untouched.
+- Authenticated browser approval has not yet been re-performed, so `UAT_PENDING` remains. Reload the approval URL while it is still valid and sign in as the authorized System Admin before approving. If it has expired, create a fresh link in Chat and open its returned URL in a new tab. Do not reuse an expired pairing code.
+
+| Status | Result |
+| --- | --- |
+| `APPROVAL_503_ROOT_CAUSE` | `FIXED` — wrong workspace authorization guard in the database approval function |
+| `MIGRATED_DEV` | `COMPLETE` — 0450 applied by the registered runner; exact ledger/source hash matches |
+| `APPROVAL_FUNCTION_ACL` | `VERIFIED` — restricted owner, runtime EXECUTE only, temporary schema CREATE revoked |
+| `DEV_HEALTH` | `PASS` — Core and Chat livez return HTTP 200 |
+| `APPROVAL_BROWSER_UAT` | `UAT_PENDING` — owner must confirm approval from an authenticated browser session |
