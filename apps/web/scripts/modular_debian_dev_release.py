@@ -376,6 +376,16 @@ def verify_local_components(*, attempts: int = 6, interval: float = 1) -> dict[s
     raise last_error or ReleaseError("LOCAL_COMPONENTS_UNAVAILABLE")
 
 
+def verify_initial_handover_rollback(target: dict[str, Any]) -> None:
+    """Require the legacy rollback site only for the first modular handover."""
+    if target.get("status") != "prepared":
+        return
+    run(["systemctl", "--user", "is-active", target["handover"]["currentService"]])
+    old_status, _ = http_status("http://127.0.0.1:3100/")
+    if old_status != 200:
+        raise ReleaseError("LEGACY_ROLLBACK_SERVICE_UNHEALTHY")
+
+
 def _verify_public_site_once() -> dict[str, int]:
     outcomes = {}
     for name, path, expected in (
@@ -446,10 +456,7 @@ def deploy(args: argparse.Namespace) -> dict[str, Any]:
     candidate_document = yaml.safe_load(args.candidate_config.read_text())
     validate_tunnel_configuration(candidate_document, active_document)
 
-    run(["systemctl", "--user", "is-active", target["handover"]["currentService"]])
-    old_status, _ = http_status("http://127.0.0.1:3100/")
-    if old_status != 200:
-        raise ReleaseError("LEGACY_ROLLBACK_SERVICE_UNHEALTHY")
+    verify_initial_handover_rollback(target)
 
     previous_service_directories = capture_service_directories()
     local_smoke = verify_local_components()

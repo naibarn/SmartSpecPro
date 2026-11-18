@@ -82,6 +82,21 @@ class ModularDebianReleasePolicyTests(unittest.TestCase):
                 {"tunnel": "dev-tunnel", "credentials-file": "/private/tunnel.json"},
             )
 
+    def test_legacy_rollback_health_is_required_only_for_first_handover(self):
+        target = target_map()["targets"]["modular-debian-dev"]
+        with patch.object(release, "run") as run, patch.object(
+            release, "http_status", return_value=(200, "ok"),
+        ) as http_status:
+            release.verify_initial_handover_rollback(target)
+        run.assert_called_once_with(["systemctl", "--user", "is-active", "smartspec-dev-web.service"])
+        http_status.assert_called_once_with("http://127.0.0.1:3100/")
+
+        target["status"] = "serving"
+        with patch.object(release, "run") as run, patch.object(release, "http_status") as http_status:
+            release.verify_initial_handover_rollback(target)
+        run.assert_not_called()
+        http_status.assert_not_called()
+
     def test_runtime_dependency_preflight_accepts_a_complete_workspace_install(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
