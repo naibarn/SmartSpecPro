@@ -85,3 +85,14 @@ This is the latest authoritative execution status. Prior blocked reports remain 
 | `RUNTIME_VERIFIED` | `PARTIAL` — health, asset delivery, and anonymous-denial boundary proven; signed-in behavior pending |
 | `UAT_VERIFIED` | `UAT_PENDING` |
 | `SPEC_ACCEPTANCE` | `PENDING` — remain open pending normal MFA UAT |
+
+## 2026-11-18 Runner approval-link relay follow-up
+
+| Requirement | Implementation / evidence | Result | Remaining action |
+| --- | --- | --- | --- |
+| Chat admin can create a Runner approval link and open it in a new browser tab | Existing Chat client opens a tab synchronously on the click and redirects it to the Runner-provided verification URL; it also renders the returned URL as an anchor. Modular Runner previously consumed relay requests only on the 300-second normal refresh loop. Commit `e0584cfa55b03d176815cf4a0d392955509e8135` changes `apps/runner-app/src/diagnostics.rs` to poll the relay every 15 seconds while idle, without changing normal control refresh. | `IMPLEMENTED_AND_INSTALLED`; Runner service active; relay polls returned HTTP 200 at approximately 15-second cadence | Owner browser UAT: hard-refresh Chat, create a fresh request, verify the URL appears and opens in the new tab, then complete pairing. No fresh authenticated request/approval was performed by this change. |
+| Keep legacy Runner and production isolated | Installed the binary only to `smartsihub-modular-dev-runner.service` for `modular-debian-dev` / `aimarkethubs.com`; legacy Runner and Cloudflare production were untouched. Previous Modular Runner binary retained for rollback. | `PASS` | None. |
+
+**Focused verification:** profile `package`; `cargo check --manifest-path apps/runner-app/Cargo.toml --bin smartaihub-runner`, release binary build, and `git diff --check` passed. Deployed binary SHA-256 is `f9ef067d6fd8ecd235bcaf841b9981322eaef9a8550d04eed6b0e12d53705971`. Runtime journal showed relay poll HTTP 200 at 09:22:45, 09:22:50, 09:22:59, and 09:23:14 (Asia/Bangkok), after service restart. These are relay availability/polling checks, not authenticated UI approval evidence.
+
+**Current handoff:** click the Chat sidebar control after a hard refresh. A genuine fresh pairing URL is produced only after the Runner claims the request; the browser then opens/navigates its tab to the returned verification URI. Authenticated browser confirmation remains `UAT_PENDING`. A separate `RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL` warning was observed on the Runner's normal control refresh and should be investigated only if it prevents post-pairing enrollment/execution; relay polling currently succeeds.
