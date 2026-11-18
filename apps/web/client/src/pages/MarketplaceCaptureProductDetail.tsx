@@ -5441,12 +5441,30 @@ export default function MarketplaceCaptureProductDetail() {
 
   const selectProductAnchor = useCallback(
     (imageId: string | null) => {
-      setSelectedProductImageId(imageId);
-      if (imageId && selectedProductImageId !== imageId) {
+      if (imageId === null) {
+        setSelectedProductImageId(null);
+        return;
+      }
+      const image = productImageOptions.find(option => option.id === imageId);
+      if (!image) return;
+      if (image.removableId && !image.isHero) {
+        setProductImageAsHero(image.removableId);
+      } else {
+        setSelectedProductImageId(imageId);
+      }
+      if (
+        selectedProductImageId !== imageId &&
+        (image.isHero || !image.removableId)
+      ) {
         toast.success("Product anchor selected");
       }
     },
-    [selectedProductImageId, setSelectedProductImageId]
+    [
+      productImageOptions,
+      selectedProductImageId,
+      setProductImageAsHero,
+      setSelectedProductImageId,
+    ]
   );
 
   const addAutoReviewDramaCharacters = useCallback(
