@@ -222,6 +222,7 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
           .array(AutoReviewCreativePresetSelectionSchema)
           .max(8)
           .optional(),
+        excludePromotionalContent: z.boolean().optional(),
         requiredRoles: z
           .array(z.enum(["product", "character", "environment"]))
           .optional(),

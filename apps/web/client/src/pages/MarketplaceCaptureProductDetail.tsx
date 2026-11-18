@@ -60,6 +60,7 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
@@ -2905,6 +2906,14 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewCreativePresets, setAutoReviewCreativePresets] = useState<
     AutoReviewCreativePresetSelection[]
   >([]);
+  const [
+    autoReviewExcludePromotionalContent,
+    setAutoReviewExcludePromotionalContent,
+  ] = useState(true);
+  useEffect(() => {
+    setAutoReviewExcludePromotionalContent(true);
+    setConceptSelectionRunId("");
+  }, [productId]);
   // Feature 136 (section 02) — selected multi-angle product reference
   // images; default empty. Section 11 owns the picker UI (chips/meter) that
   // populates this via `setAutoReviewProductAngleLabels`; this exact state
@@ -5548,6 +5557,7 @@ export default function MarketplaceCaptureProductDetail() {
         ...(autoReviewCreativePresets.length > 0
           ? { creativePresets: autoReviewCreativePresets }
           : {}),
+        excludePromotionalContent: autoReviewExcludePromotionalContent,
         characterMode: autoReviewCharacterMode,
         characterBrief: autoReviewCharacterBrief.summary,
         characterPreset: autoReviewCharacterBrief,
@@ -5721,6 +5731,7 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewCharacterBrief,
       autoReviewCharacterMode,
       autoReviewCreativePresets,
+      autoReviewExcludePromotionalContent,
       autoReviewProductAngleLabels,
       autoReviewShotDurationSeconds,
       autoReviewStagedShotCount,
@@ -6814,6 +6825,20 @@ export default function MarketplaceCaptureProductDetail() {
             </div>
           );
         })}
+        <CheckboxInput
+          label="ไม่ใส่โปรโมชัน ราคา หรือของแถมในไอเดียและเนื้อหารีวิว"
+          description={
+            autoReviewExcludePromotionalContent
+              ? "ค่าเริ่มต้น: งดราคา ส่วนลด คูปอง ซื้อ 1 แถม 1 และของแถมในไอเดียกับบทรีวิว"
+              : "อนุญาตให้กล่าวถึงราคาและข้อเสนอที่มีหลักฐานในข้อมูลสินค้า โดยระบบจะไม่แต่งข้อมูลเพิ่ม"
+          }
+          value={autoReviewExcludePromotionalContent}
+          onChange={setAutoReviewExcludePromotionalContent}
+          isDisabled={
+            Boolean(conceptSelectionRunId) ||
+            startAutoStoryboardReviewMutation.isPending
+          }
+        />
         {effectiveAutoReviewLaunchMode !== "auto_storyboard_review" ? (
           <div>
             {renderCharacterDetailField(

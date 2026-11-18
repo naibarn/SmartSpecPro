@@ -386,6 +386,7 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   creativePresets?: AutoReviewCreativePresetSelection[] | null;
+  excludePromotionalContent?: boolean | null;
   requiredRoles?: string[] | null;
   lockPolicy?: Record<string, unknown> | null;
   productImageUrl?: string | null;
@@ -443,6 +444,7 @@ type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   reviewTone?: string | null;
   storytellingStructure?: string | null;
   creativePresets: AutoReviewCreativePresetSelection[];
+  excludePromotionalContent: boolean;
   requiredRoles: string[];
   lockPolicy?: Record<string, unknown>;
   productImageUrl: string;
@@ -6507,6 +6509,8 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     reviewTone,
     storytellingStructure,
     creativePresets,
+    excludePromotionalContent:
+      params.referenceAnchors?.excludePromotionalContent !== false,
     requiredRoles,
     lockPolicy: asRecord(params.referenceAnchors?.lockPolicy),
     productImageUrl,
@@ -7630,6 +7634,9 @@ function referenceAnchorsInputSnapshot(
     creativePresets: normalizeAutoReviewCreativePresetSelections(
       anchors.creativePresets
     ),
+    ...(typeof anchors.excludePromotionalContent === "boolean"
+      ? { excludePromotionalContent: anchors.excludePromotionalContent }
+      : {}),
     requiredRoles,
     productImageUrl: cleanText(anchors.productImageUrl) || null,
     productImageRef: cleanText(anchors.productImageRef) || null,

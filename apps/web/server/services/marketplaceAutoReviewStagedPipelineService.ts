@@ -1126,6 +1126,8 @@ function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
     anchors.storyPlanningModel.trim()
       ? anchors.storyPlanningModel.trim()
       : undefined;
+  const excludePromotionalContent =
+    anchors.excludePromotionalContent !== false;
   const cast = deriveStagedCastFromManifest(base.customReferenceManifest);
   return {
     reviewFormat,
@@ -1134,6 +1136,7 @@ function stagedPlanContextFromMetadataBase(base: Record<string, any>) {
     shotDurationSeconds,
     shotCount,
     storyPlanningModel,
+    excludePromotionalContent,
     cast,
   };
 }
@@ -1250,6 +1253,7 @@ export async function buildStagedPlanAndMetadataForInit(
     shotDurationSeconds,
     shotCount,
     storyPlanningModel,
+    excludePromotionalContent,
     cast,
   } = stagedPlanContextFromMetadataBase(base);
   const existingPlan = stagedPlanFromMetadata(base);
@@ -1281,6 +1285,7 @@ export async function buildStagedPlanAndMetadataForInit(
     reviewFormat,
     reviewTone,
     storytellingStructure,
+    excludePromotionalContent,
     cast,
     shotDurationSeconds,
     shotCount,
@@ -1407,6 +1412,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     shotDurationSeconds,
     shotCount,
     storyPlanningModel,
+    excludePromotionalContent,
     cast,
   } = stagedPlanContextFromMetadataBase(base);
   const current = stagedPlanFromMetadata(base);
@@ -1432,6 +1438,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     reviewFormat,
     reviewTone,
     storytellingStructure,
+    excludePromotionalContent,
     cast,
     shotDurationSeconds: resolvedShotDurationSeconds,
   };
