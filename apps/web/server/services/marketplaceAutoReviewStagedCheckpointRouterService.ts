@@ -2086,6 +2086,30 @@ export async function editStagedAutoReviewShot(input: {
           referenceManifestHash:
             metadata.stagedSequentialStoryboard.referenceManifestHash,
         });
+        const invalidatedCheckpoints =
+          metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
+            checkpoint => {
+              const invalidated =
+                checkpoint.kind === "story_plan" ||
+                checkpoint.kind === "video_prompt" ||
+                checkpoint.kind === "video_result" ||
+                checkpoint.kind === "audio_plan" ||
+                checkpoint.kind === "final_assembly";
+              return invalidated && checkpoint.state !== "superseded"
+                ? {
+                    ...checkpoint,
+                    state: "superseded" as const,
+                    rejectionReasonCode: "staged_story_updated",
+                  }
+                : checkpoint;
+            }
+          );
+        const pipeline = record((metadata as any).stagedPipeline);
+        const tasks = Object.fromEntries(
+          Object.entries(record(pipeline.tasks)).filter(([key]) =>
+            !/^(?:image|video|audio):/.test(key)
+          )
+        );
         return {
           metadata: {
             ...metadata,
@@ -2096,10 +2120,10 @@ export async function editStagedAutoReviewShot(input: {
               approvedRevision: null,
             },
             stagedPipeline: {
-              ...((metadata as any).stagedPipeline ?? {}),
+              ...pipeline,
               plan: nextPlan,
               planView: buildStagedPlanView(nextPlan),
-              tasks: {},
+              tasks,
               audioPlan: null,
               audioUrl: null,
               finalAssembly: null,
@@ -2111,18 +2135,17 @@ export async function editStagedAutoReviewShot(input: {
               storyPlanHash: nextPlan.storyPlanHash,
               shots: metadata.stagedSequentialStoryboard.shots.map(item => ({
                 ...item,
-                revision,
-                state: "story_awaiting" as const,
-                imagePrompt: null,
-                imagePromptHash: null,
-                imageArtifactHash: null,
-                imageArtifactUrl: null,
+                revision: item.revision + 1,
+                state:
+                  item.imageArtifactHash && item.imageArtifactUrl
+                    ? "image_result_approved"
+                    : "story_awaiting",
                 videoPrompt: null,
                 videoPromptHash: null,
                 videoArtifactHash: null,
                 videoArtifactUrl: null,
               })),
-              reviewCheckpoints: [replacement],
+              reviewCheckpoints: [...invalidatedCheckpoints, replacement],
             },
           },
           planRevision: revision,
@@ -2314,20 +2337,20 @@ export async function editStagedAutoReviewShot(input: {
 
       if (storyEdit) {
         const revision = metadata.planReview.planRevision + 1;
+        const shotRevision = shot.revision + 1;
         const safeDialogue = removeStagedMinorDialogueLines(
           input.dialogue ?? shot.dialogue,
           plan.cast
         );
         const nextShot = {
           ...shot,
-          revision,
+          revision: shotRevision,
           storySummary: input.storySummary ?? shot.storySummary,
           dialogue: safeDialogue,
-          state: "story_awaiting",
-          imagePrompt: null,
-          imagePromptHash: null,
-          imageArtifactHash: null,
-          imageArtifactUrl: null,
+          state:
+            shot.imageArtifactHash || shot.imageArtifactUrl
+              ? "image_result_approved"
+              : "story_awaiting",
           videoPrompt: null,
           videoPromptHash: null,
           videoArtifactHash: null,
@@ -2375,7 +2398,12 @@ export async function editStagedAutoReviewShot(input: {
             .filter(checkpoint => {
               if (checkpoint.state === "superseded") return true;
               if (checkpoint.kind === "story_plan") return false;
-              if (checkpoint.shotId === input.shotId) return false;
+              if (
+                checkpoint.shotId === input.shotId &&
+                ["video_prompt", "video_result"].includes(checkpoint.kind)
+              ) {
+                return false;
+              }
               if (dialogueChanged && checkpoint.kind === "audio_plan")
                 return false;
               if (checkpoint.kind === "final_assembly") return false;
@@ -2415,6 +2443,9 @@ export async function editStagedAutoReviewShot(input: {
               planRevision: revision,
               storyPlanStatus: "awaiting" as const,
               storyPlanHash: nextPlan.storyPlanHash,
+              // A per-shot narrative/dialogue edit can change motion without
+              // invalidating the already approved start frame. Keep its image
+              // prompt and artifact, and regenerate only downstream video.
               shots: nextShots,
               reviewCheckpoints: checkpoints,
             },
