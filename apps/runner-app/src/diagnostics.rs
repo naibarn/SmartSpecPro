@@ -36,6 +36,7 @@ use std::time::Duration;
 const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
 const MIN_REFRESH_INTERVAL_SECONDS: u64 = 15;
 const MAX_REFRESH_INTERVAL_SECONDS: u64 = 86_400;
+const PAIRING_RELAY_POLL_INTERVAL: Duration = Duration::from_secs(15);
 const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
@@ -3703,7 +3704,8 @@ where
         } else {
             control_retry_delay(interval, consecutive_refresh_failures)
         };
-        if !wait_for_control_retry(
+        if !wait_for_control_retry_with_pairing(
+            config,
             delay,
             consecutive_refresh_failures > 0,
             stop,
@@ -3730,6 +3732,39 @@ fn wait_for_control_retry(
         let slice = remaining.min(Duration::from_millis(250));
         std::thread::sleep(slice);
         remaining = remaining.saturating_sub(slice);
+    }
+    true
+}
+
+fn wait_for_control_retry_with_pairing(
+    config: &RunnerConfig,
+    mut remaining: Duration,
+    retrying: bool,
+    stop: Option<&AtomicBool>,
+    requested: &AtomicBool,
+) -> bool {
+    if remaining <= PAIRING_RELAY_POLL_INTERVAL {
+        return wait_for_control_retry(remaining, retrying, stop, requested);
+    }
+    let mut pairing_poll_after = PAIRING_RELAY_POLL_INTERVAL;
+    while !remaining.is_zero() {
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            return false;
+        }
+        if retrying && requested.swap(false, Ordering::AcqRel) {
+            return true;
+        }
+        let slice = remaining.min(pairing_poll_after).min(Duration::from_millis(250));
+        std::thread::sleep(slice);
+        remaining = remaining.saturating_sub(slice);
+        pairing_poll_after = pairing_poll_after.saturating_sub(slice);
+        if pairing_poll_after.is_zero() {
+            match crate::connection::process_pairing_relay(config) {
+                Ok(_) => {}
+                Err(error) => eprintln!("runner pairing relay error: {error}"),
+            }
+            pairing_poll_after = PAIRING_RELAY_POLL_INTERVAL;
+        }
     }
     true
 }
