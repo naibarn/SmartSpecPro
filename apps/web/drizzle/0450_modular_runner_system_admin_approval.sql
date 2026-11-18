@@ -20,6 +20,13 @@ BEGIN
 END $preflight$;
 --> statement-breakpoint
 
+-- PostgreSQL requires CREATE on the schema even when replacing a function
+-- already owned by this role. The grant is transaction-scoped and revoked
+-- immediately after the replacement; the restricted owner keeps no standing
+-- schema-creation privilege.
+GRANT CREATE ON SCHEMA public TO modular_chat_mission_owner;
+--> statement-breakpoint
+
 SET LOCAL ROLE modular_chat_mission_owner;
 --> statement-breakpoint
 
@@ -47,3 +54,6 @@ END $function$;
 --> statement-breakpoint
 
 RESET ROLE;
+--> statement-breakpoint
+
+REVOKE CREATE ON SCHEMA public FROM modular_chat_mission_owner;

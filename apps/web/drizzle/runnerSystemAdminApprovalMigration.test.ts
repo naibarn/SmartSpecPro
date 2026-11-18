@@ -22,8 +22,10 @@ describe("0450 system-admin Runner approval scope", () => {
 
   it("keeps the function under the restricted owner and the registered migration preflight", () => {
     expect(migration).toContain("current_database() <> 'smartspec'");
+    expect(migration).toContain("GRANT CREATE ON SCHEMA public TO modular_chat_mission_owner");
     expect(migration).toContain("SET LOCAL ROLE modular_chat_mission_owner");
     expect(migration).toContain("SECURITY DEFINER SET search_path=pg_catalog,public");
     expect(migration).toContain("RESET ROLE");
+    expect(migration).toContain("REVOKE CREATE ON SCHEMA public FROM modular_chat_mission_owner");
   });
 });
