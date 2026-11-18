@@ -787,6 +787,7 @@ export async function getStagedAutoReviewCheckpointState(
       dialogue: shot.dialogue,
       title: detail.title ?? null,
       visualSummary: detail.visualSummary ?? null,
+      approvedShotAction: shot.approvedShotAction ?? null,
       imagePrompt: shot.imagePrompt ?? null,
       videoPrompt: shot.videoPrompt ?? null,
       imageArtifactHash: shot.imageArtifactHash,
@@ -2017,6 +2018,7 @@ export async function editStagedAutoReviewShot(input: {
   expectedStateDigest: string;
   idempotencyKey: string;
   storySummary?: string;
+  approvedShotAction?: string;
   dialogue?: string;
   imagePrompt?: string;
   videoPrompt?: string;
@@ -2026,6 +2028,7 @@ export async function editStagedAutoReviewShot(input: {
   if (
     ![
       input.storySummary,
+      input.approvedShotAction,
       input.dialogue,
       input.imagePrompt,
       input.videoPrompt,
@@ -2046,6 +2049,7 @@ export async function editStagedAutoReviewShot(input: {
     mutate(metadata, operationId) {
       const storyEdit =
         input.storySummary !== undefined || input.dialogue !== undefined;
+      const approvedShotActionEdit = input.approvedShotAction !== undefined;
       const plan = ((metadata as any).stagedPipeline?.plan ??
         null) as StagedStoryArcPlan | null;
       const storyCheckpoint =
@@ -2139,6 +2143,84 @@ export async function editStagedAutoReviewShot(input: {
           code: "BAD_REQUEST",
           message: "staged_invalid_shot_contract",
         });
+      }
+
+      if (approvedShotActionEdit) {
+        if (
+          input.storySummary !== undefined ||
+          input.dialogue !== undefined ||
+          input.imagePrompt !== undefined ||
+          input.videoPrompt !== undefined ||
+          input.speakerVisualBindings !== undefined
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "staged_shot_action_edit_must_be_isolated",
+          });
+        }
+        const approvedShotAction = input.approvedShotAction!.trim();
+        if (!approvedShotAction || approvedShotAction.length > 420) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "staged_shot_action_required",
+          });
+        }
+        const revision = shot.revision + 1;
+        const invalidatedCheckpoints =
+          metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
+            checkpoint => {
+              const invalidatedVideo =
+                checkpoint.shotId === input.shotId &&
+                ["video_prompt", "video_result"].includes(checkpoint.kind);
+              const invalidatedFinal = checkpoint.kind === "final_assembly";
+              return (invalidatedVideo || invalidatedFinal) &&
+                checkpoint.state !== "superseded"
+                ? {
+                    ...checkpoint,
+                    state: "superseded" as const,
+                    rejectionReasonCode: "staged_shot_action_updated",
+                  }
+                : checkpoint;
+            }
+          );
+        const tasks = removeStagedTasksInvalidatedByPrompt(
+          record((metadata as any).stagedPipeline),
+          [{ shotId: input.shotId, stage: "video" }]
+        );
+        return {
+          metadata: {
+            ...metadata,
+            stagedPipeline: {
+              ...record((metadata as any).stagedPipeline),
+              tasks,
+              finalAssembly: null,
+            },
+            stagedSequentialStoryboard: {
+              ...metadata.stagedSequentialStoryboard,
+              shots: metadata.stagedSequentialStoryboard.shots.map(item =>
+                item.shotId === input.shotId
+                  ? {
+                      ...item,
+                      revision,
+                      approvedShotAction,
+                      state:
+                        shot.videoPrompt ||
+                        shot.videoArtifactHash ||
+                        shot.videoArtifactUrl
+                          ? "video_prompt_awaiting"
+                          : shot.state,
+                      videoPrompt: null,
+                      videoPromptHash: null,
+                      videoArtifactHash: null,
+                      videoArtifactUrl: null,
+                    }
+                  : item
+              ),
+              reviewCheckpoints: invalidatedCheckpoints,
+            },
+          },
+          planRevision: metadata.planReview.planRevision,
+        };
       }
 
       if (input.speakerVisualBindings !== undefined) {
@@ -3162,7 +3244,9 @@ async function generateCompleteStagedShotPrompt(input: {
     approvedImageUrl,
     promptModel: input.model,
     requestIdempotencyKey: input.requestIdempotencyKey,
-    shot: planShot,
+    shot: stagedShot?.approvedShotAction
+      ? { ...planShot, approvedShotAction: stagedShot.approvedShotAction }
+      : planShot,
     speakerVisualBindings: savedBindings,
     ...(savedDetection
       ? {

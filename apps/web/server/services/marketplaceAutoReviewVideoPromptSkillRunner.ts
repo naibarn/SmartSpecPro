@@ -793,6 +793,8 @@ function motionPromptBudget(
 }
 
 function marketplaceApprovedShotAction(shot: StagedStoryArcShot): string {
+  const explicitAction = clean(shot.approvedShotAction, 420);
+  if (explicitAction) return explicitAction;
   const visual = clean(shot.visualSummary, 420);
   const movement = clean(shot.movementDirection, 260);
   return Array.from(new Set([visual, movement].filter(Boolean)))
@@ -1138,6 +1140,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     input.cast
   );
   const productName = clean(input.productName, 200);
+  const approvedShotAction = marketplaceApprovedShotAction(input.shot);
   const approvedVisualAction = [
     clean(input.shot.visualSummary, 900),
     clean(input.shot.movementDirection, 900),
@@ -1158,7 +1161,6 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
         .filter((section): section is string => Boolean(section))
         .join("\n")
     : null;
-  const approvedShotAction = marketplaceApprovedShotAction(input.shot);
   const maximumMotionBudget = motionPromptBudget(
     dialogue,
     input.detectedPeople,
@@ -1269,6 +1271,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Shot title: ${clean(input.shot.title, 200)}`,
     `Approved story beat: ${clean(input.shot.storySummary, 900)}`,
     `Approved visual direction: ${clean(input.shot.visualSummary, 900)}`,
+    `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`,
     input.shot.cameraDirection
       ? `Planned camera framing and movement: ${clean(input.shot.cameraDirection, 240)}`
       : null,

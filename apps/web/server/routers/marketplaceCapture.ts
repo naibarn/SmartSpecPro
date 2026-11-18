@@ -1870,6 +1870,7 @@ export const marketplaceCaptureRouter = router({
         expectedStateDigest: z.string().min(1).max(256),
         idempotencyKey: z.string().min(8).max(200),
         storySummary: z.string().trim().max(600).optional(),
+        approvedShotAction: z.string().trim().min(1).max(420).optional(),
         dialogue: z.string().trim().max(320).optional(),
         imagePrompt: z.string().trim().max(4000).optional(),
         videoPrompt: z.string().trim().max(STORYBOARD_VIDEO_PROMPT_MAX_CHARS).optional(),

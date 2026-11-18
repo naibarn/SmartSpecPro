@@ -435,6 +435,9 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.storySummary !== undefined
         ? { storySummary: input.storySummary }
         : {}),
+      ...(input.approvedShotAction !== undefined
+        ? { approvedShotAction: input.approvedShotAction }
+        : {}),
       ...(input.dialogue !== undefined ? { dialogue: input.dialogue } : {}),
       ...(input.imagePrompt !== undefined
         ? { imagePrompt: input.imagePrompt }

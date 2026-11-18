@@ -507,6 +507,8 @@ export type StagedStoryArcShot = {
   title: string;
   storySummary: string;
   visualSummary: string;
+  /** User-approved per-shot override used by video prompt generation. */
+  approvedShotAction?: string;
   /** True only when the specific marketplace product is physically visible
    * in this shot. New plans always author this; older plans infer it from the
    * visual direction so dialogue alone cannot pull the product into frame. */

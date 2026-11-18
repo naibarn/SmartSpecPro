@@ -158,6 +158,7 @@ export const StagedShotStateV1Schema = z
     state: z.string().min(1),
     storySummary: z.string().min(1),
     dialogue: z.string(),
+    approvedShotAction: z.string().trim().min(1).max(420).optional(),
     // Additive (opt-in): populated only when the shot is part of a
     // two-person conversation. Absent for every existing solo/product-only
     // run, so previously-persisted rows keep validating unchanged.

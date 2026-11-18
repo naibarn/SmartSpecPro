@@ -12,6 +12,7 @@ import {
   SegmentedControlItem,
 } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
+import { TextArea } from "@astryxdesign/core/TextArea";
 import { VStack } from "@astryxdesign/core/VStack";
 import { trpc } from "@/lib/trpc";
 import {
@@ -239,6 +240,7 @@ export type StagedReviewState = {
     state?: string | null;
     title?: string | null;
     visualSummary?: string | null;
+    approvedShotAction?: string | null;
     storySummary: string;
     dialogue: string;
     imagePrompt?: string | null;
@@ -346,6 +348,7 @@ const STRUCTURE_LABELS: Record<string, string> = {
 export type StagedCheckpointEdit = {
   shotId?: number;
   storySummary?: string;
+  approvedShotAction?: string;
   dialogue?: string;
   imagePrompt?: string;
   videoPrompt?: string;
@@ -4282,6 +4285,7 @@ export function StagedCheckpointReviewPanel(props: {
                 );
                 const storySummaryKey = `story:${shot.shotId}:summary`;
                 const dialogueKey = `story:${shot.shotId}:dialogue`;
+                const shotActionKey = `action:${shot.shotId}`;
                 const imageDraftKey = `image:${shot.shotId}`;
                 const videoDraftKey = `video:${shot.shotId}`;
                 const imagePromptValue =
@@ -4402,9 +4406,53 @@ export function StagedCheckpointReviewPanel(props: {
                         </span>
                       ) : null}
                     </div>
-                    {shot.visualSummary ? (
+                    {storyEditable ? (
+                      <VStack gap={2}>
+                        <TextArea
+                          label="การกระทำของช็อต (ใช้ใน APPROVED SHOT ACTION)"
+                          description="ระบบจะส่งข้อความนี้ให้ Skill ใช้สร้าง Prompt วิดีโอของช็อตนี้"
+                          value={
+                            drafts[shotActionKey] ??
+                            shot.approvedShotAction ??
+                            shot.visualSummary ??
+                            ""
+                          }
+                          rows={3}
+                          maxLength={420}
+                          width="100%"
+                          isDisabled={props.pending}
+                          onChange={value =>
+                            setDrafts(prev => ({
+                              ...prev,
+                              [shotActionKey]: value.slice(0, 420),
+                            }))
+                          }
+                        />
+                        {(drafts[shotActionKey] ??
+                          shot.approvedShotAction ??
+                          shot.visualSummary ??
+                          "") !==
+                          (shot.approvedShotAction ?? shot.visualSummary ??
+                            "") &&
+                        (drafts[shotActionKey] ?? "").trim() ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            isDisabled={props.pending}
+                            label={`บันทึกการกระทำของช็อตที่ ${shot.shotId}`}
+                            onClick={() =>
+                              props.onEdit({
+                                shotId: shot.shotId,
+                                approvedShotAction: drafts[shotActionKey],
+                              })
+                            }
+                          />
+                        ) : null}
+                      </VStack>
+                    ) : shot.approvedShotAction || shot.visualSummary ? (
                       <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
-                        {shot.visualSummary}
+                        {shot.approvedShotAction ?? shot.visualSummary}
                       </p>
                     ) : null}
                     {/* Per-shot cast + look switching
