@@ -214,6 +214,7 @@ import {
 } from "../../shared/marketplaceCapture/startFramePromptStyle";
 import {
   advanceStagedMarketplaceAutoReviewRun,
+  buildLegacyConcept,
   initializeStagedMarketplaceAutoReviewRun,
   redraftStagedMarketplaceAutoReviewRun,
 } from "./marketplaceAutoReviewStagedPipelineService";
@@ -35445,6 +35446,20 @@ async function ensureRender(params: {
 
 function extractPlanFromRun(run: MarketplaceAutoReviewRun): AutoReviewPlan {
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const stagedPlan = asRecord(asRecord(metadata.stagedPipeline).plan);
+  if (metadata.planningArchitecture === "staged_two_skill_v2") {
+    if (
+      !Array.isArray(stagedPlan.shots) ||
+      stagedPlan.shots.length === 0 ||
+      !stagedPlan.product ||
+      typeof stagedPlan.product !== "object"
+    ) {
+      throw new Error("STAGED_PERSISTED_STORY_PLAN_REQUIRED");
+    }
+    return buildLegacyConcept(
+      stagedPlan as Parameters<typeof buildLegacyConcept>[0]
+    ) as AutoReviewPlan;
+  }
   const concept = metadata.concept;
   if (!concept || typeof concept !== "object") {
     throw new Error("Auto review run is missing concept metadata");
@@ -36067,6 +36082,67 @@ function stagedRemotionFinalRenderManifest(metadata: RunMetadata) {
   };
 }
 
+function stagedRenderManifestHash(
+  manifest: ReturnType<typeof stagedRemotionFinalRenderManifest>
+): string {
+  return buildProductionStableHash({
+    planRevision: manifest.planRevision,
+    videoUnitIds: manifest.videoUnitIds,
+    videoClipUrls: manifest.videoClipUrls,
+    includeAudio: manifest.includeAudio,
+    audioUrl: manifest.audioUrl,
+  });
+}
+
+function stagedRenderSnapshotMatchesCurrent(metadata: RunMetadata): boolean {
+  const submittedVideoClipUrls = Array.isArray(metadata.videoClipUrls)
+    ? metadata.videoClipUrls.map((url: unknown) => cleanText(url))
+    : [];
+  const submittedVideoUnitIds = Array.isArray(metadata.videoUnitIds)
+    ? metadata.videoUnitIds.map((id: unknown) => cleanText(id))
+    : [];
+  if (
+    submittedVideoClipUrls.length === 0 ||
+    submittedVideoUnitIds.length === 0
+  ) {
+    return false;
+  }
+
+  try {
+    const current = stagedRemotionFinalRenderManifest(metadata);
+    const submittedPlanRevision = Number(metadata.stagedRenderPlanRevision);
+    if (
+      Number.isInteger(submittedPlanRevision) &&
+      submittedPlanRevision > 0 &&
+      submittedPlanRevision !== current.planRevision
+    ) {
+      return false;
+    }
+    const arraysMatch =
+      submittedVideoClipUrls.length === current.videoClipUrls.length &&
+      submittedVideoUnitIds.length === current.videoUnitIds.length &&
+      current.videoClipUrls.every(
+        (url, index) => submittedVideoClipUrls[index] === url
+      ) &&
+      current.videoUnitIds.every(
+        (id, index) => submittedVideoUnitIds[index] === id
+      );
+    if (!arraysMatch) return false;
+
+    const submittedManifestHash = cleanText(
+      metadata.stagedRenderManifestHash
+    );
+    return (
+      !submittedManifestHash ||
+      submittedManifestHash === stagedRenderManifestHash(current)
+    );
+  } catch {
+    // An incomplete or unapproved current shot manifest cannot validate an
+    // older render snapshot. Let the shot pipeline resume instead.
+    return false;
+  }
+}
+
 export function buildStagedRemotionFinalRenderManifestForTest(
   metadata: RunMetadata
 ) {
@@ -36143,6 +36219,8 @@ export function clearStagedRenderRefsFromMetadataForTest(
     renderSubmittedAt: _clearedRenderSubmittedAt,
     renderUrl: _clearedRenderUrl,
     renderResultUrl: _clearedRenderResultUrl,
+    stagedRenderManifestHash: _clearedStagedRenderManifestHash,
+    stagedRenderPlanRevision: _clearedStagedRenderPlanRevision,
     resultLibraryItemId: _clearedResultLibraryItemId,
     renderArtifactProbe: _clearedRenderArtifactProbe,
     finalRenderQaEnvelope: _clearedFinalRenderQaEnvelope,
@@ -36943,6 +37021,8 @@ export async function submitStagedAutoReviewFinalRender(input: {
       ...metadata,
       ...disclosureMetadata,
       stagedRenderAttempt: renderAttempt,
+      stagedRenderPlanRevision: renderManifest.planRevision,
+      stagedRenderManifestHash: stagedRenderManifestHash(renderManifest),
       videoClipUrls: renderManifest.videoClipUrls,
       videoUnitIds: renderManifest.videoUnitIds,
       renderJobId: submitted.jobId,
@@ -37073,35 +37153,88 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   targetShotIds?: number[];
   reconcileOnly?: boolean;
 }) {
-  const initialMetadata = asRecord(params.run.metadataJson) as RunMetadata;
-  if (
-    shouldReconcileStagedRemotionRenderBeforeAdvance(
-      params.run,
-      initialMetadata
-    )
-  ) {
-    // Render submission is the user's explicit approval to assemble the
-    // already-approved shot videos. A stale story-plan review checkpoint must
-    // not prevent this Worker App job from returning its result to the run.
-    const refreshed = await reloadRun(params.db, params.run.id, params.auth);
-    const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
-    const plan = extractPlanFromRun(refreshed);
-    await reconcileStagedRemotionFinalRender({
-      db: params.db,
-      tenantId: tenantIdForRun(refreshed, params.auth),
-      auth: params.auth,
-      run: refreshed,
-      plan,
-      metadata,
+  let run = params.run;
+  const initialMetadata = asRecord(run.metadataJson) as RunMetadata;
+  if (shouldReconcileStagedRemotionRenderBeforeAdvance(run, initialMetadata)) {
+    const hasShotUpdate =
+      Array.isArray(params.targetShotIds) && params.targetShotIds.length > 0;
+    if (
+      !hasShotUpdate &&
+      stagedRenderSnapshotMatchesCurrent(initialMetadata)
+    ) {
+      // Render submission is the user's explicit approval to assemble the
+      // already-approved shot videos. Reconcile that Worker App job directly;
+      // a stale story-plan review checkpoint must not prevent the submitted
+      // render from returning its result to the run.
+      const refreshed = await reloadRun(params.db, run.id, params.auth);
+      const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
+      const plan = extractPlanFromRun(refreshed);
+      await reconcileStagedRemotionFinalRender({
+        db: params.db,
+        tenantId: tenantIdForRun(refreshed, params.auth),
+        auth: params.auth,
+        run: refreshed,
+        plan,
+        metadata,
+      });
+      return getMarketplaceAutoReviewRun(run.id, params.auth);
+    }
+
+    const renderJobId =
+      cleanText(initialMetadata.renderJobId) || cleanText(run.renderJobId);
+    const stagedPipeline = asRecord(initialMetadata.stagedPipeline);
+    const supersededRenders = Array.isArray(stagedPipeline.supersededRenders)
+      ? stagedPipeline.supersededRenders
+      : [];
+    const supersededMetadata = withUpdatedCreditSummary({
+      ...clearStagedRenderRefsFromMetadataForTest(initialMetadata),
+      stagedPipeline: {
+        ...stagedPipeline,
+        supersededRenders: [
+          ...supersededRenders,
+          {
+            renderJobId: renderJobId || null,
+            planRevision: Number(
+              initialMetadata.stagedRenderPlanRevision ??
+                asRecord(stagedPipeline.plan).planRevision
+            ),
+            supersededAt: nowIso(),
+            reason: hasShotUpdate
+              ? "shot_update_requested"
+              : "render_manifest_changed",
+            submittedManifestHash:
+              cleanText(initialMetadata.stagedRenderManifestHash) || null,
+          },
+        ].slice(-10),
+      },
     });
-    return getMarketplaceAutoReviewRun(params.run.id, params.auth);
+    await updateRun({
+      db: params.db,
+      runId: run.id,
+      renderJobId: null,
+      resultLibraryItemId: null,
+      resultJson: clearStagedRenderRefsFromResultJsonForTest(run.resultJson),
+      metadataJson: supersededMetadata,
+    });
+    run = await reloadRun(params.db, run.id, params.auth);
+    if (params.reconcileOnly && !hasShotUpdate) {
+      await updateRun({
+        db: params.db,
+        runId: run.id,
+        status: "running",
+        currentStage: "storyboard_review",
+        stageIndex: 6,
+        stageCount: FULL_VIDEO_STAGES.length,
+      });
+      return getMarketplaceAutoReviewRun(run.id, params.auth);
+    }
   }
 
   let result: Awaited<ReturnType<typeof advanceStagedMarketplaceAutoReviewRun>>;
   try {
     result = await advanceStagedMarketplaceAutoReviewRun({
       db: params.db,
-      run: params.run,
+      run,
       auth: params.auth,
       runtime: params.runtime,
       ...(params.targetShotIds ? { targetShotIds: params.targetShotIds } : {}),
@@ -37110,7 +37243,7 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   } catch (error) {
     await recordStagedProviderFailureAndRefund({
       db: params.db,
-      run: params.run,
+      run,
       auth: params.auth,
       error,
     });
@@ -37119,7 +37252,7 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   // The staged pipeline owns every approval and media boundary. Final render
   // is deliberately kept in this service so the existing render/library
   // evidence path remains the single finalizer for both architectures.
-  if (result.finalAssemblyApproved && params.run.outputMode === "full_video") {
+  if (result.finalAssemblyApproved && run.outputMode === "full_video") {
     const refreshed = await reloadRun(params.db, params.run.id, params.auth);
     const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
     const plan = extractPlanFromRun(refreshed);

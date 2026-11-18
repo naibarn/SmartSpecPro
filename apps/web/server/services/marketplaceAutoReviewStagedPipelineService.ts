@@ -490,7 +490,7 @@ export function resolveShotCastSelectionFromMetadata(params: {
   return { castInShot, castLooks };
 }
 
-function buildLegacyConcept(plan: StagedStoryArcPlan) {
+export function buildLegacyConcept(plan: StagedStoryArcPlan) {
   const truth = {
     productId: plan.product.productId,
     productName: plan.product.productName,
@@ -512,23 +512,18 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
     specs: plan.product.specs ?? {},
     imageUrls: plan.product.imageUrls,
   };
-  return {
-    conceptId: `staged-${plan.product.productId}-${plan.planRevision}`,
-    title: plan.title,
-    productTruth: truth,
-    storyboardGuide: plan.storySummary,
-    voiceoverScript: plan.shots
-      .map(shot => removeStagedMinorDialogueLines(shot.dialogue, plan.cast))
-      .filter(Boolean)
-      .join("\n"),
-    productDetail: plan.product.description,
-    shots: plan.shots.map(shot => ({
+  let nextStartSeconds = 0;
+  const shots = plan.shots.map(shot => {
+    const startSeconds = nextStartSeconds;
+    const durationSeconds = shot.durationSeconds;
+    nextStartSeconds += durationSeconds;
+    return {
       id: `shot-${shot.shotId}`,
       order: shot.shotId,
       title: shot.title,
-      startSeconds: (shot.shotId - 1) * 10,
-      endSeconds: shot.shotId * 10,
-      durationSeconds: 10,
+      startSeconds,
+      endSeconds: nextStartSeconds,
+      durationSeconds,
       storyboardGuide: shot.storySummary,
       voiceover: removeStagedMinorDialogueLines(shot.dialogue, plan.cast),
       camera:
@@ -540,7 +535,19 @@ function buildLegacyConcept(plan: StagedStoryArcPlan) {
         `Show the action described for this shot: ${shot.visualSummary}`,
       ...(shot.transition ? { transition: shot.transition } : {}),
       productRole: "evidence-grounded product presentation",
-    })),
+    };
+  });
+  return {
+    conceptId: `staged-${plan.product.productId}-${plan.planRevision}`,
+    title: plan.title,
+    productTruth: truth,
+    storyboardGuide: plan.storySummary,
+    voiceoverScript: plan.shots
+      .map(shot => removeStagedMinorDialogueLines(shot.dialogue, plan.cast))
+      .filter(Boolean)
+      .join("\n"),
+    productDetail: plan.product.description,
+    shots,
   };
 }
 
