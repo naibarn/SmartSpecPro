@@ -293,6 +293,12 @@ button, input, textarea, select {
   min-width: 0;
 }
 
+.production-review-references {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .production-shot-card {
   min-width: 0;
   border: 1px solid #e2e8f0;

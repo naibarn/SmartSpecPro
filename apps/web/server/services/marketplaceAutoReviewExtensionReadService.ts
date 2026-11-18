@@ -229,6 +229,13 @@ export interface AutoReviewProjectDetail {
   id: string;
   productId: string;
   productName: string;
+  productImageUrl: string | null;
+  referenceImages: Array<{
+    url: string;
+    role: string;
+    label: string | null;
+    active: boolean;
+  }>;
   status: string;
   updatedAt: Date;
   shots: AutoReviewShot[];
@@ -258,20 +265,24 @@ export async function getMarketplaceAutoReviewProjectForExtension(
     throw Object.assign(new Error("Auto review project not found"), { status: 404, code: "not_found" });
   }
 
-  const [productRow] = await db
-    .select({ productName: marketplaceProducts.productName })
-    .from(marketplaceProducts)
-    .where(and(
-      eq(marketplaceProducts.id, run.productId),
-      eq(marketplaceProducts.userId, auth.userId),
-      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
-    ))
-    .limit(1);
+  const product = (await loadProductSummaries(db, auth, [run.productId])).get(run.productId);
 
   const checkpointState = await getStagedAutoReviewCheckpointState(runId, {
     userId: auth.userId,
     tenantId: auth.tenantId,
   });
+  const referenceImages = checkpointState.referenceManifest
+    .filter((entry) => entry.role === "product" || entry.role === "character")
+    .map((entry) => ({
+      url: entry.url,
+      role: entry.role,
+      label: typeof entry.label === "string" ? entry.label : null,
+      active: entry.active,
+    }));
+  const productImageUrl = referenceImages.find((entry) => entry.role === "product" && entry.active)?.url
+    ?? referenceImages.find((entry) => entry.role === "product")?.url
+    ?? product?.thumbnailUrl
+    ?? null;
 
   const shots: AutoReviewShot[] = checkpointState.shots.map((shot): AutoReviewShot => ({
     shotId: Number(shot.shotId),
@@ -289,7 +300,9 @@ export async function getMarketplaceAutoReviewProjectForExtension(
     project: {
       id: run.id,
       productId: run.productId,
-      productName: productRow?.productName ?? "",
+      productName: product?.productName ?? "",
+      productImageUrl,
+      referenceImages,
       status: run.status,
       updatedAt: run.updatedAt,
       shots,

@@ -377,10 +377,19 @@ interface AutoReviewShot {
   state: string;
 }
 
+interface AutoReviewReferenceImage {
+  url: string;
+  role: "product" | "character" | string;
+  label: string | null;
+  active: boolean;
+}
+
 interface AutoReviewProjectDetail {
   id: string;
   productId: string;
   productName: string;
+  productImageUrl: string | null;
+  referenceImages: AutoReviewReferenceImage[];
   status: string;
   updatedAt: string;
   shots: AutoReviewShot[];
@@ -4241,10 +4250,17 @@ export default function App() {
   }
 
   async function prepareAutoReviewProjectMediaFiles(project: AutoReviewProjectDetail) {
-    const jobs: ProductionMediaPrepareJob[] = project.shots.flatMap((shot) => [
-      { url: shot.imageArtifactUrl, title: `auto-review-shot-${shot.shotId}-image` },
-      { url: shot.videoArtifactUrl, title: `auto-review-shot-${shot.shotId}-video`, kind: "video" as const },
-    ]);
+    const jobs: ProductionMediaPrepareJob[] = [
+      { url: project.productImageUrl, title: `auto-review-${project.id}-product-reference` },
+      ...project.referenceImages.map((image, index) => ({
+        url: image.url,
+        title: `auto-review-${project.id}-${image.role}-reference-${index + 1}`,
+      })),
+      ...project.shots.flatMap((shot) => [
+        { url: shot.imageArtifactUrl, title: `auto-review-shot-${shot.shotId}-image` },
+        { url: shot.videoArtifactUrl, title: `auto-review-shot-${shot.shotId}-video`, kind: "video" as const },
+      ]),
+    ];
     await prepareDragMediaFiles(jobs);
   }
 
@@ -6280,6 +6296,25 @@ export default function App() {
                   <strong>{selectedAutoReviewProject.productName || selectedAutoReviewProject.id}</strong>
                   <div className="muted">{selectedAutoReviewProject.status} | {formatDateTime(selectedAutoReviewProject.updatedAt)}</div>
                 </div>
+                {selectedAutoReviewProject.referenceImages.length > 0 || selectedAutoReviewProject.productImageUrl ? (
+                  <div className="production-review-references">
+                    <strong>Product and person references · drag to another website</strong>
+                    <div className="production-shot-assets">
+                      {selectedAutoReviewProject.referenceImages.map((image, index) => productionMediaCard({
+                        label: `${image.role === "character" ? "Person reference" : "Product reference"}${image.label ? ` · ${image.label}` : ""}`,
+                        url: image.url,
+                        urls: [image.url],
+                        title: `auto-review-${selectedAutoReviewProject.id}-${image.role}-reference-${index + 1}`,
+                      }))}
+                      {!selectedAutoReviewProject.referenceImages.some((image) => image.role === "product") && selectedAutoReviewProject.productImageUrl ? productionMediaCard({
+                        label: "Product image",
+                        url: selectedAutoReviewProject.productImageUrl,
+                        urls: [selectedAutoReviewProject.productImageUrl],
+                        title: `auto-review-${selectedAutoReviewProject.id}-product-image`,
+                      }) : null}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="production-shot-list">
                   {selectedAutoReviewProject.shots.length > 0 ? selectedAutoReviewProject.shots.map((shot) => (
                     <div className="production-shot-card" key={shot.shotId}>
