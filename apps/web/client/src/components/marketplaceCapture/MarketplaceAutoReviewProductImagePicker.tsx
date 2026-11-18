@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, ImageIcon, LockKeyhole } from "lucide-react";
+import { CheckCircle2, Circle, ImageIcon } from "lucide-react";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   isSequentialEvidenceOnlyAngleLabel,
@@ -26,7 +26,7 @@ interface MarketplaceAutoReviewProductImagePickerProps {
   sequentialEnabled: boolean;
   capacity: SequentialProductAngleChipsCapacity;
   modelLabel: string;
-  onPrimaryChange: (imageId: string) => void;
+  onPrimaryChange: (imageId: string | null) => void;
   onToggleSupportingImage: (imageId: string) => void;
   onAngleLabelChange: (
     imageId: string,
@@ -68,7 +68,7 @@ export function MarketplaceAutoReviewProductImagePicker({
             ภาพสินค้าอ้างอิง
           </span>
           <span className="mt-1 block max-w-3xl text-xs leading-5 text-sky-800">
-            เลือกภาพหลักที่ต้องการให้ระบบยึดเป็น Product Anchor
+            เลือกภาพใดก็ได้เป็น Product Anchor หลัก แตะภาพหลักอีกครั้งเพื่อยกเลิก
             และเลือกภาพมุมเสริมที่จะส่งเข้า storyboard นี้โดยเฉพาะ
           </span>
         </span>
@@ -109,7 +109,9 @@ export function MarketplaceAutoReviewProductImagePicker({
                       type="button"
                       className="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset"
                       onClick={() => {
-                        if (canToggleSupporting) {
+                        if (isPrimary) {
+                          onPrimaryChange(null);
+                        } else if (canToggleSupporting) {
                           onToggleSupportingImage(image.id);
                         } else if (!sequentialEnabled) {
                           onPrimaryChange(image.id);
@@ -123,9 +125,11 @@ export function MarketplaceAutoReviewProductImagePicker({
                       aria-label={
                         sequentialEnabled
                           ? isPrimary
-                            ? `ภาพสินค้า ${index + 1} เป็น Product Anchor หลัก`
+                            ? `ยกเลิกภาพสินค้า ${index + 1} จาก Product Anchor หลัก`
                             : `${isSupporting ? "ยกเลิกเลือก" : "เลือก"}ภาพสินค้า ${index + 1} เป็นภาพมุมเสริม`
-                          : `${isPrimary ? "เลือกแล้ว" : "เลือก"}ภาพสินค้า ${index + 1} เป็น Product Anchor`
+                          : isPrimary
+                            ? `ยกเลิกเลือกภาพสินค้า ${index + 1} เป็น Product Anchor`
+                            : `เลือกภาพสินค้า ${index + 1} เป็น Product Anchor`
                       }
                     >
                       <span className="relative block aspect-[4/3] bg-slate-50 p-2">
@@ -154,7 +158,7 @@ export function MarketplaceAutoReviewProductImagePicker({
                         </span>
                         {isPrimary ? (
                           <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-1 text-[11px] font-semibold text-sky-800">
-                            <LockKeyhole className="h-3 w-3" /> Product Anchor
+                            <CheckCircle2 className="h-3 w-3" /> Product Anchor
                             หลัก
                           </span>
                         ) : isSupporting ? (
@@ -164,7 +168,15 @@ export function MarketplaceAutoReviewProductImagePicker({
                         ) : null}
                       </span>
                     </button>
-                    {sequentialEnabled && !isPrimary ? (
+                    {isPrimary ? (
+                      <button
+                        type="button"
+                        className="mx-3 mb-3 block w-[calc(100%-1.5rem)] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        onClick={() => onPrimaryChange(null)}
+                      >
+                        ยกเลิก Product Anchor หลัก
+                      </button>
+                    ) : sequentialEnabled ? (
                       <button
                         type="button"
                         className="mx-3 mb-3 block w-[calc(100%-1.5rem)] rounded-md border border-sky-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-sky-700 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -211,7 +223,7 @@ export function MarketplaceAutoReviewProductImagePicker({
           </ul>
           <p className="mt-3 text-xs leading-5 text-sky-800">
             {sequentialEnabled
-              ? "ภาพหลักจะถูกล็อกเป็น Image 1 ส่วนภาพที่ติ๊กเลือกจะเป็น reference มุมเสริมของ Job นี้เท่านั้น ไม่เปลี่ยนข้อมูลสินค้าเดิม"
+              ? "เลือกหรือยกเลิกภาพหลักได้ตามต้องการ ภาพที่เลือกเป็นมุมเสริมจะถูกส่งเป็น reference เพิ่มเติม และไม่เปลี่ยนข้อมูลสินค้าเดิม"
               : `ภาพที่เลือก: ${primaryImage ? imageLabel(primaryImage, images.indexOf(primaryImage)) : "ยังไม่ได้เลือก"}`}
           </p>
           <div className="mt-3">

@@ -2811,9 +2811,23 @@ export default function MarketplaceCaptureProductDetail() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const characterAnchorUploadInputRef = useRef<HTMLInputElement | null>(null);
   const environmentAnchorUploadInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedProductImageId, setSelectedProductImageId] = useState<
-    string | null
-  >(null);
+  const [productAnchorSelection, setProductAnchorSelection] = useState<{
+    productId: string;
+    imageId: string | null;
+    explicit: boolean;
+  }>(() => ({ productId, imageId: null, explicit: false }));
+  const currentProductAnchorSelection =
+    productAnchorSelection.productId === productId
+      ? productAnchorSelection
+      : null;
+  const selectedProductImageId =
+    currentProductAnchorSelection?.imageId ?? null;
+  const setSelectedProductImageId = useCallback(
+    (imageId: string | null) => {
+      setProductAnchorSelection({ productId, imageId, explicit: true });
+    },
+    [productId]
+  );
   const [optimisticProductImage, setOptimisticProductImage] = useState<Record<
     string,
     unknown
@@ -4822,7 +4836,7 @@ export default function MarketplaceCaptureProductDetail() {
       setProductHeroImageMutation.mutate({ productId, imageId });
       setSelectedProductImageId(imageId);
     },
-    [productId, setProductHeroImageMutation]
+    [productId, setProductHeroImageMutation, setSelectedProductImageId]
   );
 
   const productImageOptions = useMemo(
@@ -4876,17 +4890,13 @@ export default function MarketplaceCaptureProductDetail() {
     [coverImageAssetId, heroProductImageId, heroProductImageUrl, images]
   );
   const selectedProductImage = useMemo(() => {
-    if (!selectedProductImageId) return null;
+    if (selectedProductImageId === null) return null;
     return (
       productImageOptions.find(image => image.id === selectedProductImageId) ??
       null
     );
   }, [productImageOptions, selectedProductImageId]);
-  const resolvedProductAnchorImage =
-    selectedProductImage ??
-    productImageOptions.find(image => image.isHero) ??
-    productImageOptions[0] ??
-    null;
+  const resolvedProductAnchorImage = selectedProductImage;
   const resolvedProductAnchorImageUrl = compactText(
     resolvedProductAnchorImage?.url
   );
@@ -5172,18 +5182,26 @@ export default function MarketplaceCaptureProductDetail() {
   ]);
 
   useEffect(() => {
-    if (
-      selectedProductImageId &&
-      productImageOptions.some(image => image.id === selectedProductImageId)
-    ) {
+    const selectedImageExists =
+      selectedProductImageId !== null &&
+      productImageOptions.some(image => image.id === selectedProductImageId);
+    if (currentProductAnchorSelection?.explicit) {
+      if (selectedProductImageId !== null && !selectedImageExists) {
+        setSelectedProductImageId(null);
+      }
       return;
     }
+    if (selectedImageExists) return;
     const heroOption = productImageOptions.find(image => image.isHero);
-    setSelectedProductImageId(
-      heroOption?.id ??
-        (productImageOptions.length === 1 ? productImageOptions[0].id : null)
-    );
-  }, [productImageOptions, selectedProductImageId]);
+    const defaultOption = heroOption ??
+      (productImageOptions.length === 1 ? productImageOptions[0] : null);
+    if (defaultOption) setSelectedProductImageId(defaultOption.id);
+  }, [
+    currentProductAnchorSelection,
+    productImageOptions,
+    selectedProductImageId,
+    setSelectedProductImageId,
+  ]);
 
   const rememberImageDimensions = useCallback(
     (key: string, event: SyntheticEvent<HTMLImageElement>) => {
@@ -5422,13 +5440,13 @@ export default function MarketplaceCaptureProductDetail() {
   );
 
   const selectProductAnchor = useCallback(
-    (imageId: string) => {
+    (imageId: string | null) => {
       setSelectedProductImageId(imageId);
-      if (selectedProductImageId !== imageId) {
+      if (imageId && selectedProductImageId !== imageId) {
         toast.success("Product anchor selected");
       }
     },
-    [selectedProductImageId]
+    [selectedProductImageId, setSelectedProductImageId]
   );
 
   const addAutoReviewDramaCharacters = useCallback(
