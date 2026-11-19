@@ -31,6 +31,7 @@ import {
   storageStreamFile,
 } from "../storage";
 import { STAGED_OVERLAY_ANCHORS } from "../services/marketplaceAutoReviewStagedRemotionRender";
+import { attachMarketplaceAutoReviewJobPreviews } from "../services/marketplaceAutoReviewJobPreviewService";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
 import {
   getMarketplaceCaptureForUser,
@@ -1481,7 +1482,10 @@ export const marketplaceCaptureRouter = router({
     .output(z.array(z.any()))
     .query(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
-      return listMarketplaceAutoReviewRuns(input, auth);
+      const runs = await listMarketplaceAutoReviewRuns(input, auth);
+      return input?.summary
+        ? attachMarketplaceAutoReviewJobPreviews(runs, auth)
+        : runs;
     }),
 
   listAutoReviewRunProducts: protectedProcedure

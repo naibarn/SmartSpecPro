@@ -12,6 +12,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+} from "@/components/media/AuthenticatedMediaImage";
 
 export type MarketplaceAutoReviewJobSummary = Record<string, any>;
 
@@ -416,6 +420,13 @@ export function MarketplaceAutoReviewJobNavigator({
                 ? `ขั้นตอน ${Math.min(stageIndex, stageCount)}/${stageCount}`
                 : null;
             const mediaProgress = stagedProgress(run);
+            const productThumbnailUrl = text(run.productThumbnailUrl);
+            const videoPreviewUrl = text(run.videoPreviewUrl);
+            const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
+            const productLabel =
+              productNameById.get(String(run.productId ?? "")) ||
+              productName ||
+              jobTitle(run);
             return (
               <li key={runId} className="relative">
                 <button
@@ -429,29 +440,44 @@ export function MarketplaceAutoReviewJobNavigator({
                   onClick={() => onOpenRun(runId)}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-1.5">
-                        <span className="block truncate text-sm font-semibold text-white">
-                          {jobTitle(run)}
+                    <span className="flex min-w-0 flex-1 items-start gap-3">
+                      {productThumbnailUrl ? (
+                        <AuthenticatedMediaImage
+                          src={productThumbnailUrl}
+                          alt={`ภาพสินค้า: ${productLabel}`}
+                          loading="lazy"
+                          className="h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
+                          fallback={
+                            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400">
+                              ภาพสินค้าไม่พร้อม
+                            </span>
+                          }
+                        />
+                      ) : null}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="block truncate text-sm font-semibold text-white">
+                            {jobTitle(run)}
+                          </span>
+                          {index === 0 ? (
+                            <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
+                              ล่าสุด
+                            </span>
+                          ) : null}
                         </span>
-                        {index === 0 ? (
-                          <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
-                            ล่าสุด
+                        <span className="mt-1 block truncate text-[11px] text-slate-400">
+                          {shortRunId(runId)}
+                        </span>
+                        {allProducts && run.productId ? (
+                          <span
+                            className="mt-1 block truncate text-[10px] text-slate-500"
+                            title={String(run.productId)}
+                          >
+                            {productNameById.get(String(run.productId)) || "สินค้าไม่พบ"}
+                            <span className="ml-1">· {String(run.productId)}</span>
                           </span>
                         ) : null}
                       </span>
-                      <span className="mt-1 block truncate text-[11px] text-slate-400">
-                        {shortRunId(runId)}
-                      </span>
-                      {allProducts && run.productId ? (
-                        <span
-                          className="mt-1 block truncate text-[10px] text-slate-500"
-                          title={String(run.productId)}
-                        >
-                          {productNameById.get(String(run.productId)) || "สินค้าไม่พบ"}
-                          <span className="ml-1">· {String(run.productId)}</span>
-                        </span>
-                      ) : null}
                     </span>
                     <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
                   </span>
@@ -490,6 +516,33 @@ export function MarketplaceAutoReviewJobNavigator({
                     อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
                   </span>
                 </button>
+                {videoPreviewUrl ? (
+                  <figure className="mt-2 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-2">
+                    <AuthenticatedMediaVideo
+                      src={videoPreviewUrl}
+                      poster={videoPreviewPosterUrl || undefined}
+                      controls
+                      muted
+                      playsInline
+                      preload="metadata"
+                      aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${jobTitle(run)}`}
+                      className="aspect-[9/16] max-h-40 w-24 shrink-0 rounded-md bg-black object-contain"
+                      fallback={
+                        <span className="flex aspect-[9/16] max-h-40 w-24 shrink-0 items-center justify-center rounded-md bg-black px-2 text-center text-[10px] text-slate-300">
+                          วิดีโอไม่พร้อมเล่น
+                        </span>
+                      }
+                    />
+                    <figcaption className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-200">
+                        วิดีโอที่รวมแล้ว
+                      </span>
+                      <span className="mt-1 block text-[10px] leading-4 text-slate-400">
+                        เล่นตัวอย่างได้จากรายการงาน โดยไม่เปิด Job Workbench
+                      </span>
+                    </figcaption>
+                  </figure>
+                ) : null}
                 {/* Delete — sits OUTSIDE the card button (buttons can't nest)
                     and is absolutely positioned over its top-right corner.
                     Two-step confirm, since a deleted job takes its stages,
