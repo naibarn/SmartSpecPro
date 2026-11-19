@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `100`
-- Updated (UTC): `2026-11-19T15:55:17.080248+00:00`
+- State generation: `101`
+- Updated (UTC): `2026-11-19T15:57:03.265115+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `ba3d1bac3cfe5d8f302cac5487df26f7ee34158b`
+- Latest recorded merged Main SHA: `710b3902b86c8d18877f7aad363518e0b50e1633`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Integrate the opt-in complete-JSON recovery for Marketplace Auto Review story-plan generation, then deploy the integrated revision to legacy-debian-dev and check service/public health; do not rerun provider-backed jobs.
+- Next action: Run the canonical legacy-debian-dev release for integrated SHA 710b3902b86c8d18877f7aad363518e0b50e1633, verify smartaihub.app health, and leave the terminal failed provider job unreplayed; a new user-triggered story-plan request is required to confirm provider-backed success.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-shot2-prompt-conflict | /mnt/SmartSpecDev/projects/SmartSpecPro | ba3d1bac3cfe5d8f302cac5487df26f7ee34158b | ba3d1bac3cfe5d8f302cac5487df26f7ee34158b | Integrate the opt-in complete-JSON recovery for Marketplace Auto Review story-plan generation, then deploy the integrated revision to legacy-debian-dev and check service/public health; do not rerun provider-backed jobs. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-shot2-prompt-conflict | /mnt/SmartSpecDev/projects/SmartSpecPro | 710b3902b86c8d18877f7aad363518e0b50e1633 | 710b3902b86c8d18877f7aad363518e0b50e1633 | Run the canonical legacy-debian-dev release for integrated SHA 710b3902b86c8d18877f7aad363518e0b50e1633, verify smartaihub.app health, and leave the terminal failed provider job unreplayed; a new user-triggered story-plan request is required to confirm provider-backed success. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -30,6 +30,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Shot 2 provider rejection and generated-video success have not been re-verified after the prompt-authoring fix; the existing approved prompt must be regenerated on the updated release.
 - Existing affected runs mar_6dc357649f7121a97ab6e1f27bf0aae0 and mar_d865bac6f4e1e518d648e479e61b744b retain zero image prompts and legacy generic correction markers; after deployment, regenerate only their missing per-shot prompts.
 - Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal.
+- Provider-backed confirmation is pending for the new complete-JSON repair: original failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c is terminal and will not be replayed or charged again; after release, confirm with a fresh user-triggered story-plan job.
 
 ## Resume
 
