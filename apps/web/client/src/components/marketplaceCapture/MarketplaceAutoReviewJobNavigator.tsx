@@ -423,133 +423,151 @@ export function MarketplaceAutoReviewJobNavigator({
             const productThumbnailUrl = text(run.productThumbnailUrl);
             const videoPreviewUrl = text(run.videoPreviewUrl);
             const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
+            const hasVideoPreview = Boolean(videoPreviewUrl);
+            const deleteActionPosition = hasVideoPreview
+              ? "right-2 top-2 sm:right-[8.5rem]"
+              : "right-2 top-2";
+            const deleteButtonPosition = hasVideoPreview
+              ? "right-8 top-2 sm:right-[10rem]"
+              : "right-8 top-2";
             const productLabel =
               productNameById.get(String(run.productId ?? "")) ||
               productName ||
               jobTitle(run);
             return (
               <li key={runId} className="relative">
-                <button
-                  type="button"
-                  className={`w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
-                    selected
-                      ? "border-violet-300 bg-violet-500/20"
-                      : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.08]"
-                  }`}
-                  aria-current={selected ? "page" : undefined}
-                  onClick={() => onOpenRun(runId)}
+                <div
+                  className={
+                    hasVideoPreview
+                      ? "grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem]"
+                      : ""
+                  }
                 >
-                  <span className="flex items-start justify-between gap-2">
-                    <span className="flex min-w-0 flex-1 items-start gap-3">
-                      {productThumbnailUrl ? (
-                        <AuthenticatedMediaImage
-                          src={productThumbnailUrl}
-                          alt={`ภาพสินค้า: ${productLabel}`}
-                          loading="lazy"
-                          className="h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
-                          fallback={
-                            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400">
-                              ภาพสินค้าไม่พร้อม
+                  <button
+                    type="button"
+                    className={`w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
+                      selected
+                        ? "border-violet-300 bg-violet-500/20"
+                        : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.08]"
+                    }`}
+                    aria-current={selected ? "page" : undefined}
+                    onClick={() => onOpenRun(runId)}
+                  >
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="flex min-w-0 flex-1 items-start gap-3">
+                        {productThumbnailUrl ? (
+                          <AuthenticatedMediaImage
+                            src={productThumbnailUrl}
+                            alt={`ภาพสินค้า: ${productLabel}`}
+                            loading="lazy"
+                            className="h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
+                            fallback={
+                              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400">
+                                ภาพสินค้าไม่พร้อม
+                              </span>
+                            }
+                          />
+                        ) : null}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="block truncate text-sm font-semibold text-white">
+                              {jobTitle(run)}
                             </span>
-                          }
-                        />
-                      ) : null}
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5">
-                          <span className="block truncate text-sm font-semibold text-white">
-                            {jobTitle(run)}
+                            {index === 0 ? (
+                              <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
+                                ล่าสุด
+                              </span>
+                            ) : null}
                           </span>
-                          {index === 0 ? (
-                            <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
-                              ล่าสุด
+                          <span className="mt-1 block truncate text-[11px] text-slate-400">
+                            {shortRunId(runId)}
+                          </span>
+                          {allProducts && run.productId ? (
+                            <span
+                              className="mt-1 block truncate text-[10px] text-slate-500"
+                              title={String(run.productId)}
+                            >
+                              {productNameById.get(String(run.productId)) ||
+                                "สินค้าไม่พบ"}
+                              <span className="ml-1">
+                                · {String(run.productId)}
+                              </span>
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-1 block truncate text-[11px] text-slate-400">
-                          {shortRunId(runId)}
-                        </span>
-                        {allProducts && run.productId ? (
-                          <span
-                            className="mt-1 block truncate text-[10px] text-slate-500"
-                            title={String(run.productId)}
-                          >
-                            {productNameById.get(String(run.productId)) || "สินค้าไม่พบ"}
-                            <span className="ml-1">· {String(run.productId)}</span>
-                          </span>
-                        ) : null}
                       </span>
+                      <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
                     </span>
-                    <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
-                  </span>
-                  <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-medium ${status.className}`}
-                    >
-                      <StatusIcon
-                        className={`h-3 w-3 ${status.Icon === Loader2 ? "animate-spin" : ""}`}
-                      />
-                      {status.label}
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-400">
-                      {staged ? "Staged" : "Legacy"}
-                    </span>
-                    {progress ? (
+                    <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-medium ${status.className}`}
+                      >
+                        <StatusIcon
+                          className={`h-3 w-3 ${status.Icon === Loader2 ? "animate-spin" : ""}`}
+                        />
+                        {status.label}
+                      </span>
                       <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-400">
-                        {progress}
+                        {staged ? "Staged" : "Legacy"}
+                      </span>
+                      {progress ? (
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-400">
+                          {progress}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="mt-2 block truncate text-xs text-slate-300">
+                      {stagedStageLabel(run)}
+                    </span>
+                    {mediaProgress ? (
+                      <span className="mt-1 block truncate text-[11px] text-sky-300">
+                        Prompt ภาพ {mediaProgress.imagePromptsReady}/
+                        {mediaProgress.total} · ภาพ{" "}
+                        {mediaProgress.imageArtifactsReady}/
+                        {mediaProgress.total}
                       </span>
                     ) : null}
-                  </span>
-                  <span className="mt-2 block truncate text-xs text-slate-300">
-                    {stagedStageLabel(run)}
-                  </span>
-                  {mediaProgress ? (
-                    <span className="mt-1 block truncate text-[11px] text-sky-300">
-                      Prompt ภาพ {mediaProgress.imagePromptsReady}/
-                      {mediaProgress.total} · ภาพ{" "}
-                      {mediaProgress.imageArtifactsReady}/{mediaProgress.total}
+                    <span className="mt-1 block truncate text-[10px] text-slate-500">
+                      สร้าง {formatDate(run.createdAt)}
                     </span>
-                  ) : null}
-                  <span className="mt-1 block truncate text-[10px] text-slate-500">
-                    สร้าง {formatDate(run.createdAt)}
-                  </span>
-                  <span className="block truncate text-[10px] text-slate-500">
-                    อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
-                  </span>
-                </button>
-                {videoPreviewUrl ? (
-                  <figure className="mt-2 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-2">
-                    <AuthenticatedMediaVideo
-                      src={videoPreviewUrl}
-                      poster={videoPreviewPosterUrl || undefined}
-                      controls
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${jobTitle(run)}`}
-                      className="aspect-[9/16] max-h-40 w-24 shrink-0 rounded-md bg-black object-contain"
-                      fallback={
-                        <span className="flex aspect-[9/16] max-h-40 w-24 shrink-0 items-center justify-center rounded-md bg-black px-2 text-center text-[10px] text-slate-300">
-                          วิดีโอไม่พร้อมเล่น
+                    <span className="block truncate text-[10px] text-slate-500">
+                      อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
+                    </span>
+                  </button>
+                  {videoPreviewUrl ? (
+                    <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
+                      <AuthenticatedMediaVideo
+                        src={videoPreviewUrl}
+                        poster={videoPreviewPosterUrl || undefined}
+                        controls
+                        muted
+                        playsInline
+                        preload="metadata"
+                        aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${jobTitle(run)}`}
+                        className="aspect-[9/16] h-36 w-20 shrink-0 rounded-md bg-black object-contain"
+                        fallback={
+                          <span className="flex aspect-[9/16] h-36 w-20 shrink-0 items-center justify-center rounded-md bg-black px-2 text-center text-[10px] text-slate-300">
+                            วิดีโอไม่พร้อมเล่น
+                          </span>
+                        }
+                      />
+                      <figcaption className="min-w-0 text-center">
+                        <span className="block text-[10px] font-semibold text-slate-200">
+                          วิดีโอที่รวมแล้ว
                         </span>
-                      }
-                    />
-                    <figcaption className="min-w-0">
-                      <span className="block text-xs font-semibold text-slate-200">
-                        วิดีโอที่รวมแล้ว
-                      </span>
-                      <span className="mt-1 block text-[10px] leading-4 text-slate-400">
-                        เล่นตัวอย่างได้จากรายการงาน โดยไม่เปิด Job Workbench
-                      </span>
-                    </figcaption>
-                  </figure>
-                ) : null}
+                      </figcaption>
+                    </figure>
+                  ) : null}
+                </div>
                 {/* Delete — sits OUTSIDE the card button (buttons can't nest)
                     and is absolutely positioned over its top-right corner.
                     Two-step confirm, since a deleted job takes its stages,
                     attempts and artifacts with it. */}
                 {onDeleteRun ? (
                   confirmingDeleteRunId === runId ? (
-                    <span className="absolute right-2 top-2 z-20 flex items-center gap-1 rounded-md border border-white/20 bg-slate-900/95 px-1 py-0.5 shadow-lg">
+                    <span
+                      className={`absolute ${deleteActionPosition} z-20 flex items-center gap-1 rounded-md border border-white/20 bg-slate-900/95 px-1 py-0.5 shadow-lg`}
+                    >
                       <span className="px-1 text-[10px] text-slate-200">
                         ลบงานนี้?
                       </span>
@@ -586,7 +604,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       // ALWAYS visible, never hover-only: an affordance the
                       // user cannot see is one they will report as missing —
                       // the same mistake the look selector made earlier today.
-                      className="absolute right-8 top-2 z-10 rounded-md border border-white/10 bg-slate-900/70 p-1 text-slate-400 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-60"
+                      className={`absolute ${deleteButtonPosition} z-10 rounded-md border border-white/10 bg-slate-900/70 p-1 text-slate-400 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-60`}
                       aria-label={`ลบ ${jobTitle(run)}`}
                       title="ลบงานนี้"
                       data-testid={`job-delete-${runId}`}

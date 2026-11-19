@@ -17,6 +17,8 @@ Verify the canonical worker lifecycle and make the integrated fix available on t
 
 ## Acceptance
 
+- A completed job's published video preview appears in a compact right-hand
+  column beside its job card, stacking below the card at narrow widths.
 - Tests pass; no local full TypeScript check is run.
 - Main and `origin/main` match the integrated SHA.
 - The Debian development runtime reports healthy on the new revision; no Cloudflare/production target is touched.
