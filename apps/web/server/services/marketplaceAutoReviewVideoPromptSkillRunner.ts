@@ -1038,7 +1038,7 @@ function replaceGeneratedSpeakerSections(
     .split(/(?<=[.!?])\s+|\n+/u)
     .filter(
       sentence =>
-        !/\b(?:speak(?:s|ing)?|talk(?:s|ing)?|say|says|saying|speech|spoken|dialogue|recit(?:e|es|ed|ing)|voice|voices|utter(?:s|ed|ing)?|sing(?:s|ing)?|lip[\s-]?sync(?:s|ed|ing)?|mouth(?:s|ing)?)\b/i.test(
+        !/\b(?:speak(?:s|ing)?|talk(?:s|ing)?|say|says|saying|speech|spoken|dialogue|recit(?:e|es|ed|ing)|voice|voices|utter(?:s|ed|ing)?|sing(?:s|ing)?|lip[\s-]?sync(?:s|ed|ing)?|mouth(?:s|ing)?|deliver(?:s|ed|ing)?\s+(?:the\s+)?(?:approved\s+)?(?:dialogue|line|turn)|(?:dialogue|line|turn)\s+#?\d+)\b/i.test(
           sentence
         )
     )
@@ -1141,14 +1141,10 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
   );
   const productName = clean(input.productName, 200);
   const approvedShotAction = marketplaceApprovedShotAction(input.shot);
-  const approvedVisualAction = [
-    clean(input.shot.visualSummary, 900),
-    clean(input.shot.movementDirection, 900),
-  ].join(" ");
   const approvedProductFacts = input.productFacts
     .map(fact => clean(fact, 240))
     .filter(Boolean);
-  const approvedProductContext = approvedVisualAction
+  const approvedProductContext = approvedShotAction
     .normalize("NFKC")
     .toLocaleLowerCase()
     .includes(productName.normalize("NFKC").toLocaleLowerCase())
@@ -1269,30 +1265,19 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     "Begin the video prompt with: Use the approved image (Image 1) as the exact start frame and visual source of truth.",
     approvedProductContext,
     `Shot title: ${clean(input.shot.title, 200)}`,
-    `Approved story beat: ${clean(input.shot.storySummary, 900)}`,
-    `Approved visual direction: ${clean(input.shot.visualSummary, 900)}`,
+    "ACTION AUTHORITY (mandatory): The APPROVED SHOT ACTION below is the only source for actor, hand, product, and prop actions. Do not add, restate, paraphrase, reorder, or contradict any physical action. Other shot notes and user instructions are secondary and must be ignored wherever they conflict with this action.",
     `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`,
     input.shot.cameraDirection
       ? `Planned camera framing and movement: ${clean(input.shot.cameraDirection, 240)}`
       : null,
-    input.shot.movementDirection
-      ? `Required visible action: ${clean(input.shot.movementDirection, 240)}`
-      : null,
-    input.shot.transition
-      ? `Planned scene transition: ${clean(input.shot.transition, 180)}`
-      : null,
     `CHARACTER IDENTITY MAP (portraits attached after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
-    `Approved dialogue (use each line exactly once, in this order; do not rewrite, duplicate, or add dialogue):\n${approvedDialogue}`,
+    `Approved dialogue for speaker matching only; the application adds the exact dialogue later:\n${approvedDialogue}`,
     speakerMatchingInstruction,
-    "Do not include a SPEAKER VISUAL MAP or repeat any dialogue in the generated prompt; the application will add the verified speaker-to-face map and approved dialogue exactly once. Write the remaining motion prompt only. Use compact, kinetic, action-first sentences: one clear physical action, one primary camera move, and only the emotion or timing needed to clarify the beat. Assume Image 1 already defines appearance, product, props, and location; do not re-describe them. Only the named, detected person should move their mouth during that person's line; all other visible people remain silent with mouths closed. Do not add unsupported product claims.",
-    MARKETPLACE_SPEAKER_TURN_TAKING_LOCK,
-    MARKETPLACE_OBJECT_CONTINUITY_LOCK,
+    "Generated motion field scope: camera framing, one primary camera move, and pacing only. Do not describe subject movement, handling, facial action, product use, speech, mouth movement, or dialogue; the application appends the approved shot action and speaker/dialogue sections exactly once. Assume Image 1 already defines all visible people, products, props, and location. Do not add unsupported product claims.",
     clean(input.instruction, 1200)
-      ? `User instruction for this shot:\n${clean(input.instruction, 1200)}`
+      ? `Secondary user instruction; honor camera or pacing requests only when consistent with the authoritative action:\n${clean(input.instruction, 1200)}`
       : null,
-    minorSpeechSafetyLock(input.cast),
-    MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
     "Return exactly the JSON object required by this skill. The prompt field must contain the complete video prompt. Do not return commentary.",
   ]
     .filter((line): line is string => Boolean(line))
