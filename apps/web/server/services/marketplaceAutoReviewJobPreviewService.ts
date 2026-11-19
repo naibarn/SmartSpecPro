@@ -5,6 +5,8 @@ import {
   marketplaceCaptureAssets,
   marketplaceProductImages,
   marketplaceProducts,
+  workerArtifacts,
+  workerJobs,
 } from "../../drizzle/schema";
 import { marketplaceMediaUrl } from "./marketplaceMediaUrl";
 import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
@@ -17,6 +19,7 @@ type MarketplaceAutoReviewRunPreviewSource = {
   id?: unknown;
   productId?: unknown;
   resultLibraryItemId?: unknown;
+  renderJobId?: unknown;
   [key: string]: unknown;
 };
 
@@ -129,6 +132,11 @@ export async function attachMarketplaceAutoReviewJobPreviews<
   );
   const runIds = Array.from(
     new Set(runs.map(run => String(run.id ?? "").trim()).filter(Boolean))
+  );
+  const renderJobIds = Array.from(
+    new Set(
+      runs.map(run => String(run.renderJobId ?? "").trim()).filter(Boolean)
+    )
   );
 
   const productRows = productIds.length
@@ -268,6 +276,46 @@ export async function attachMarketplaceAutoReviewJobPreviews<
           )
           .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.id))
       : [];
+  // Auto Review renders published through the worker pipeline are connected
+  // to their run by renderJobId -> worker_artifacts.publishedItemId. These
+  // library rows do not necessarily carry auto_review_run_id metadata, so
+  // resolve that canonical link under the same tenant and user scope.
+  const renderedWorkerLibraryRows =
+    renderJobIds.length > 0
+      ? await db
+          .select({
+            renderJobId: workerArtifacts.workerJobId,
+            id: libraryItems.id,
+            sourceUrl: libraryItems.sourceUrl,
+            thumbnailUrl: libraryItems.thumbnailUrl,
+            metadata: libraryItems.metadata,
+          })
+          .from(workerArtifacts)
+          .innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+          .innerJoin(
+            libraryItems,
+            eq(libraryItems.id, workerArtifacts.publishedItemId)
+          )
+          .where(
+            and(
+              inArray(workerJobs.id, renderJobIds),
+              eq(workerJobs.tenantId, tenantId),
+              eq(workerJobs.requestedByUserId, auth.userId),
+              eq(workerJobs.jobType, "remotion_render_video"),
+              eq(workerJobs.status, "completed"),
+              eq(workerArtifacts.artifactType, "remotion_render_mp4"),
+              eq(libraryItems.tenantId, tenantId),
+              eq(libraryItems.ownerUserId, auth.userId),
+              eq(libraryItems.itemType, "video"),
+              isNull(libraryItems.deletedAt)
+            )
+          )
+          .orderBy(
+            desc(workerArtifacts.createdAt),
+            desc(libraryItems.updatedAt),
+            desc(libraryItems.id)
+          )
+      : [];
   const libraryById = new Map<number, LibraryMediaRow>();
   for (const item of [...linkedLibraryRows, ...libraryRows]) {
     libraryById.set(item.id, item);
@@ -279,6 +327,12 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       libraryByRunId.set(linkedRunId, item);
     }
   }
+  const libraryByRenderJobId = new Map<string, LibraryMediaRow>();
+  for (const item of renderedWorkerLibraryRows) {
+    if (!libraryByRenderJobId.has(item.renderJobId)) {
+      libraryByRenderJobId.set(item.renderJobId, item);
+    }
+  }
 
   return result.map(run => {
     const productId = String(run.productId ?? "").trim();
@@ -286,7 +340,9 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     const libraryItem =
       (Number.isSafeInteger(libraryItemId)
         ? libraryById.get(libraryItemId)
-        : undefined) ?? libraryByRunId.get(String(run.id ?? ""));
+        : undefined) ??
+      libraryByRunId.get(String(run.id ?? "")) ??
+      libraryByRenderJobId.get(String(run.renderJobId ?? "").trim());
     const libraryMetadata = record(libraryItem?.metadata);
     const renderStorage = record(
       libraryMetadata.render_storage_envelope ??
