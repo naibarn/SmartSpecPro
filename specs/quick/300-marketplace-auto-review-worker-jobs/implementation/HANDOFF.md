@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `96`
-- Updated (UTC): `2026-11-19T09:29:07.742682+00:00`
+- State generation: `97`
+- Updated (UTC): `2026-11-19T09:55:23.013694+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `5e43f754f26462b2e4c1e89e6766cf747b91504c`
+- Latest recorded merged Main SHA: `d69b453dcf140b1fdbafec5b3f7221cb762f373d`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Per-run prompt failure handling integrated at 5e43f754. After the target-aware legacy-debian-dev release preflight is repaired, deploy the exact integrated SHA and retry the empty image prompts in the affected runs.
+- Next action: Image prompt worker failures now report per run and legacy correction markers clear after all missing prompts are restored. After target-aware legacy-debian-dev release preflight is repaired, deploy this exact SHA and regenerate the empty prompts in the affected runs.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-shot2-prompt-conflict | /mnt/SmartSpecDev/projects/SmartSpecPro | 1eb2b258b93b56417681a58102e1865af6a63362 | 5e43f754f26462b2e4c1e89e6766cf747b91504c | Per-run prompt failure handling integrated at 5e43f754. After the target-aware legacy-debian-dev release preflight is repaired, deploy the exact integrated SHA and retry the empty image prompts in the affected runs. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-shot2-prompt-conflict | /mnt/SmartSpecDev/projects/SmartSpecPro | 1eb2b258b93b56417681a58102e1865af6a63362 | d69b453dcf140b1fdbafec5b3f7221cb762f373d | Image prompt worker failures now report per run and legacy correction markers clear after all missing prompts are restored. After target-aware legacy-debian-dev release preflight is repaired, deploy this exact SHA and regenerate the empty prompts in the affected runs. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
