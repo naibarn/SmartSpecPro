@@ -37,6 +37,7 @@ import {
 import {
   isStagedCastMemberMinor,
   removeStagedMinorDialogueLines,
+  selectStagedLeadCast,
   type StagedCastMember,
   type StagedDialogueTurn,
   type StagedStoryArcShot,
@@ -277,6 +278,17 @@ function normalizeSpeakerLabel(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
+function inferSingleShotDialogueSpeaker(
+  shot: Pick<StagedStoryArcShot, "castInShot">,
+  cast: readonly StagedCastMember[]
+): string | undefined {
+  const selectedCastIds = new Set(shot.castInShot ?? []);
+  const eligibleSpeakers = selectStagedLeadCast([...cast]).filter(
+    member => !selectedCastIds.size || selectedCastIds.has(member.castId)
+  );
+  return eligibleSpeakers.length === 1 ? eligibleSpeakers[0]!.name : undefined;
+}
+
 async function matchMarketplaceAutoReviewShotSpeakers(input: {
   userId: number;
   tenantId: string;
@@ -302,7 +314,12 @@ async function matchMarketplaceAutoReviewShotSpeakers(input: {
 }> {
   let dialogue: Array<{ speaker: string; line: string }>;
   try {
-    dialogue = parseDialogue(input.dialogue);
+    dialogue = parseDialogue(
+      input.dialogue,
+      input.references.length === 1
+        ? input.references[0]?.speakerLabel
+        : undefined
+    );
   } catch {
     return { bindings: {}, issue: "dialogue_invalid" };
   }
@@ -490,15 +507,18 @@ function absoluteUrl(value: string, publicUrl?: string | null): string {
 }
 
 function parseDialogue(
-  dialogue: string
+  dialogue: string,
+  defaultSpeaker?: string | null
 ): Array<{ speaker: string; line: string }> {
+  const fallbackSpeaker = defaultSpeaker?.trim();
   const lines = dialogue
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
     .map(line => {
       const match = line.match(/^([^:\n]{1,100}):\s*(.+)$/);
-      return match ? { speaker: match[1].trim(), line: match[2].trim() } : null;
+      if (match) return { speaker: match[1].trim(), line: match[2].trim() };
+      return fallbackSpeaker ? { speaker: fallbackSpeaker, line } : null;
     });
   if (lines.some(line => line === null)) {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_DIALOGUE_INVALID");
@@ -1136,7 +1156,10 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     input.cast
   );
   const dialogue = filterMinorDialogueTurns(
-    parseDialogue(safeDialogueText),
+    parseDialogue(
+      safeDialogueText,
+      inferSingleShotDialogueSpeaker(input.shot, input.cast)
+    ),
     input.cast
   );
   const productName = clean(input.productName, 200);
@@ -1308,8 +1331,12 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     input.shot.dialogue,
     input.cast
   );
+  const defaultDialogueSpeaker = inferSingleShotDialogueSpeaker(
+    input.shot,
+    input.cast
+  );
   const dialogue = filterMinorDialogueTurns(
-    parseDialogue(safeShotDialogue),
+    parseDialogue(safeShotDialogue, defaultDialogueSpeaker),
     input.cast
   );
   const safeSpeakerNames = new Set(
@@ -1667,7 +1694,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
   ) {
     const detectedPersonIds = detectedPeople.map(person => person.id);
     const approvedTurnKeys = new Set(
-      parseDialogue(safeShot.dialogue).map(turn =>
+      parseDialogue(safeShot.dialogue, defaultDialogueSpeaker).map(turn =>
         `${turn.speaker.normalize("NFKC").trim().toLocaleLowerCase()}\n${turn.line}`
       )
     );
