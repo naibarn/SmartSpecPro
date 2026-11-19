@@ -4347,7 +4347,7 @@ export function StagedCheckpointReviewPanel(props: {
                         "bulk-image-prompt-generate",
                         `สร้าง Prompt ภาพทุกช็อต (${bulkImagePromptTargets.length})`,
                         () => props.onBulkGenerate!(bulkImagePromptTargets),
-                        "rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition",
+                        "rounded-lg border border-violet-800 bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-violet-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100",
                         {
                           disabled:
                             activeBulkGeneration ||
@@ -4370,7 +4370,7 @@ export function StagedCheckpointReviewPanel(props: {
                         "bulk-image-generation",
                         `สร้างภาพทุกช็อต (${bulkImageGenerationTargets.length})`,
                         () => props.onBulkGenerate!(bulkImageGenerationTargets),
-                        "rounded-lg border border-violet-300 bg-white px-3.5 py-1.5 text-xs font-bold text-violet-800 shadow-xs transition",
+                        "rounded-lg border border-violet-500 bg-white px-3.5 py-1.5 text-xs font-bold text-violet-900 shadow-xs transition hover:bg-violet-50 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100",
                         {
                           disabled:
                             activeBulkGeneration ||
@@ -4403,7 +4403,7 @@ export function StagedCheckpointReviewPanel(props: {
                         "bulk-video-prompt-generate",
                         `สร้าง Prompt วิดีโอทุกช็อต (${bulkVideoPromptTargets.length})`,
                         () => props.onBulkGenerate!(bulkVideoPromptTargets),
-                        "rounded-lg border border-sky-400 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-sky-100 shadow-xs transition",
+                        "rounded-lg border border-slate-900 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-slate-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100",
                         {
                           disabled:
                             activeBulkGeneration ||
@@ -4426,7 +4426,7 @@ export function StagedCheckpointReviewPanel(props: {
                         "bulk-video-generation",
                         `สร้างวิดีโอทุกช็อต (${bulkVideoGenerationTargets.length})`,
                         () => props.onBulkGenerate!(bulkVideoGenerationTargets),
-                        "rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-sky-800",
+                        "rounded-lg border border-sky-800 bg-sky-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-sky-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100",
                         {
                           disabled:
                             activeBulkGeneration ||
