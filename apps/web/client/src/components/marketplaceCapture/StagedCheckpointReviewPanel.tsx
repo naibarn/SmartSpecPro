@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -357,6 +361,7 @@ export type StagedCheckpointEdit = {
   finalShotOrder?: number[];
   includeAudio?: boolean;
   speakerVisualBindings?: Record<string, string>;
+  detectedPeople?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>;
 };
 
 export type StagedCheckpointRetry = {
@@ -440,18 +445,142 @@ function ShotSpeakerBindingPanel(props: {
   speakerVisualMatchIssue?: StagedReviewState["shots"][number]["speakerVisualMatchIssue"];
   dialoguePendingSave?: boolean;
   onDetect?: () => void;
-  onSave: (bindings: Record<string, string>) => void;
+  onSave: (
+    bindings: Record<string, string> | undefined,
+    people?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>
+  ) => void;
 }) {
   const speakers = dialogueSpeakerLabels(props.dialogue);
   const [draft, setDraft] = useState<Record<string, string>>(
     props.bindings ?? {}
   );
   useEffect(() => setDraft(props.bindings ?? {}), [props.bindings]);
-  if (!speakers.length || !props.imageUrl) return null;
   const people = props.people ?? [];
+  const [draftPeople, setDraftPeople] = useState(people);
+  const [selectedPersonId, setSelectedPersonId] = useState(people[0]?.id ?? "");
+  const [editingBounds, setEditingBounds] = useState(false);
+  const [imageSize, setImageSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [drawingBox, setDrawingBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const frameRef = useRef<HTMLElement>(null);
+  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastImageUrlRef = useRef(props.imageUrl);
+  const peopleFingerprint = JSON.stringify(people);
+  useEffect(() => {
+    setDraftPeople(people);
+    setSelectedPersonId(current =>
+      people.some(person => person.id === current)
+        ? current
+        : people[0]?.id ?? ""
+    );
+    // Content fingerprint avoids resetting an in-progress edit when a parent
+    // re-renders with a newly allocated but equivalent people array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.shotId, peopleFingerprint]);
+  useEffect(() => {
+    if (lastImageUrlRef.current === props.imageUrl) return;
+    lastImageUrlRef.current = props.imageUrl;
+    setImageSize(null);
+  }, [props.imageUrl]);
   const saved = props.bindings ?? {};
-  const changed = speakers.some(name => (draft[name] ?? "") !== (saved[name] ?? ""));
+  const mappingChanged = speakers.some(
+    name => (draft[name] ?? "") !== (saved[name] ?? "")
+  );
+  const boxSnapshot = (items: typeof draftPeople) =>
+    JSON.stringify(
+      items.map(person => ({ id: person.id, boundingBox: person.boundingBox }))
+    );
+  const boxesChanged = boxSnapshot(draftPeople) !== boxSnapshot(people);
+  const changed = mappingChanged || boxesChanged;
+  const hasCompleteDraftMapping =
+    speakers.every(name => Boolean(draft[name])) &&
+    new Set(speakers.map(name => draft[name])).size === speakers.length;
+  const getPoint = (event: ReactPointerEvent<HTMLElement>) => {
+    const bounds = frameRef.current?.getBoundingClientRect();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return null;
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height)),
+    };
+  };
+  const handleDrawStart = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!editingBounds || !selectedPersonId || props.disabled || props.detecting) return;
+    const point = getPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drawStartRef.current = point;
+    setDrawingBox({ ...point, width: 0, height: 0 });
+  };
+  const handleDrawMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const start = drawStartRef.current;
+    const point = getPoint(event);
+    if (!start || !point) return;
+    setDrawingBox({
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    });
+  };
+  const handleDrawEnd = (event: ReactPointerEvent<HTMLElement>) => {
+    const start = drawStartRef.current;
+    const point = getPoint(event);
+    drawStartRef.current = null;
+    setDrawingBox(null);
+    if (!start || !point) return;
+    const nextBox = {
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    };
+    if (nextBox.width < 0.02 || nextBox.height < 0.02) return;
+    setDraftPeople(current =>
+      current.map(person =>
+        person.id === selectedPersonId
+          ? { ...person, boundingBox: nextBox }
+          : person
+      )
+    );
+  };
+  const handleBoundsKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+    if (!editingBounds || !keys.includes(event.key)) return;
+    event.preventDefault();
+    const step = event.shiftKey ? 0.02 : 0.005;
+    setDraftPeople(current =>
+      current.map(person => {
+        if (person.id !== selectedPersonId) return person;
+        const box = person.boundingBox;
+        const next = { ...box };
+        if (event.key === "ArrowLeft") {
+          if (event.shiftKey) next.width = Math.max(0.02, box.width - step);
+          else next.x = Math.max(0, box.x - step);
+        } else if (event.key === "ArrowRight") {
+          if (event.shiftKey) next.width = Math.min(1 - box.x, box.width + step);
+          else next.x = Math.min(1 - box.width, box.x + step);
+        } else if (event.key === "ArrowUp") {
+          if (event.shiftKey) next.height = Math.max(0.02, box.height - step);
+          else next.y = Math.max(0, box.y - step);
+        } else if (event.shiftKey) {
+          next.height = Math.min(1 - box.y, box.height + step);
+        } else {
+          next.y = Math.min(1 - box.height, box.y + step);
+        }
+        return { ...person, boundingBox: next };
+      })
+    );
+  };
   const hasSavedMapping = speakers.length > 0 && speakers.every(name => Boolean(saved[name]));
+  if (!speakers.length || !props.imageUrl) return null;
   return (
     <Card variant="cyan" padding={4}>
       <VStack as="section" gap={3} aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
@@ -518,21 +647,99 @@ function ShotSpeakerBindingPanel(props: {
           )}
         </HStack>
         <Grid columns={{ minWidth: 260, max: 2 }} gap={4} align="start">
-          <VStack as="figure" gap={2} className="relative mx-auto w-full max-w-64 overflow-hidden rounded-lg bg-slate-900">
-            <AuthenticatedMediaImage src={props.imageUrl} alt={`Start frame ช็อตที่ ${props.shotId}`} className="aspect-[9/16] w-full object-contain" />
-            {people.map((person, index) => (
-              <aside
-                key={person.id}
-                aria-hidden="true"
-                className="pointer-events-none absolute border-2 border-cyan-400"
-                style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
-              >
-                <strong className="absolute -top-5 left-0 rounded bg-cyan-600 px-1.5 text-xs font-bold text-white">{index + 1}</strong>
-              </aside>
-            ))}
-            <figcaption className="sr-only">กรอบหมายเลขแสดงตำแหน่งบุคคลที่ตรวจพบในภาพ</figcaption>
+          <VStack as="section" gap={2} className="mx-auto w-full max-w-64">
+            <figure
+              ref={frameRef}
+              className={`relative w-full overflow-hidden rounded-lg bg-slate-900 ${editingBounds ? "cursor-crosshair touch-none" : ""}`}
+              style={{
+                aspectRatio: imageSize
+                  ? `${imageSize.width} / ${imageSize.height}`
+                  : "9 / 16",
+              }}
+              onPointerDown={handleDrawStart}
+              onPointerMove={handleDrawMove}
+              onPointerUp={handleDrawEnd}
+              onPointerCancel={() => {
+                drawStartRef.current = null;
+                setDrawingBox(null);
+              }}
+              onKeyDown={handleBoundsKeyDown}
+              tabIndex={editingBounds ? 0 : -1}
+              role="group"
+              aria-label={`กรอบเลือกบุคคลบนภาพช็อตที่ ${props.shotId}`}
+            >
+              <AuthenticatedMediaImage
+                src={props.imageUrl}
+                alt={`Start frame ช็อตที่ ${props.shotId}`}
+                className="absolute inset-0 h-full w-full object-contain"
+                onLoad={event =>
+                  setImageSize({
+                    width: event.currentTarget.naturalWidth || 9,
+                    height: event.currentTarget.naturalHeight || 16,
+                  })
+                }
+              />
+              {draftPeople.map((person, index) => (
+                <aside
+                  key={person.id}
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute border-2 ${person.id === selectedPersonId ? "border-amber-400" : "border-cyan-400"}`}
+                  style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
+                >
+                  <strong className={`absolute -top-5 left-0 rounded px-1.5 text-xs font-bold text-white ${person.id === selectedPersonId ? "bg-amber-600" : "bg-cyan-600"}`}>{index + 1}</strong>
+                </aside>
+              ))}
+              {drawingBox ? (
+                <aside
+                  aria-hidden="true"
+                  className="pointer-events-none absolute border-2 border-amber-300 bg-amber-300/20"
+                  style={{ left: `${drawingBox.x * 100}%`, top: `${drawingBox.y * 100}%`, width: `${drawingBox.width * 100}%`, height: `${drawingBox.height * 100}%` }}
+                />
+              ) : null}
+              <figcaption className="sr-only">กรอบหมายเลขแสดงตำแหน่งบุคคลที่ตรวจพบในภาพ</figcaption>
+            </figure>
           </VStack>
           <VStack as="section" gap={3}>
+            {people.length ? (
+              <VStack gap={2}>
+                <label className="block rounded-lg border border-slate-200 bg-white p-3">
+                  <Text as="span" type="label">กรอบบุคคลที่ต้องการปรับ</Text>
+                  <select
+                    aria-label="เลือกบุคคลเพื่อปรับกรอบ"
+                    className="mt-2 w-full rounded-md border border-slate-300 bg-white p-2"
+                    value={selectedPersonId}
+                    disabled={props.disabled || props.detecting}
+                    onChange={event => setSelectedPersonId(event.target.value)}
+                  >
+                    {draftPeople.map((person, index) => <option key={person.id} value={person.id}>{index + 1}. {person.appearance}</option>)}
+                  </select>
+                </label>
+                <HStack gap={2} wrap="wrap">
+                  <Button
+                    type="button"
+                    variant={editingBounds ? "primary" : "secondary"}
+                    size="sm"
+                    aria-pressed={editingBounds}
+                    isDisabled={props.disabled || props.detecting}
+                    onClick={() => setEditingBounds(value => !value)}
+                    label={editingBounds ? "เสร็จสิ้นการปรับกรอบ" : "ปรับกรอบให้ตรงกับคน"}
+                  />
+                  {boxesChanged ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      isDisabled={props.disabled || props.detecting}
+                      onClick={() => setDraftPeople(people)}
+                      label="คืนกรอบจาก AI"
+                    />
+                  ) : null}
+                </HStack>
+                {editingBounds ? (
+                  <Text type="supporting" color="secondary">ลากบนภาพเพื่อวาดกรอบใหม่ หรือใช้ปุ่มลูกศรเพื่อขยับกรอบ และ Shift + ลูกศรเพื่อปรับขนาด</Text>
+                ) : null}
+              </VStack>
+            ) : null}
             {people.length ? speakers.map(name => (
               <label key={name} className="block rounded-lg border border-slate-200 bg-white p-3">
                 <Text as="span" type="label">ผู้พูด: {name}</Text>
@@ -552,9 +759,12 @@ function ShotSpeakerBindingPanel(props: {
                 <Button
                   type="button"
                   variant="primary"
-                  isDisabled={props.disabled || props.dialoguePendingSave || props.detecting || !changed || speakers.some(name => !draft[name]) || new Set(speakers.map(name => draft[name])).size !== speakers.length}
-                  onClick={() => props.onSave(Object.fromEntries(speakers.map(name => [name, draft[name]])))}
-                  label="บันทึกการจับคู่"
+                  isDisabled={props.disabled || props.dialoguePendingSave || props.detecting || !changed || (mappingChanged && !hasCompleteDraftMapping)}
+                  onClick={() => props.onSave(
+                    mappingChanged ? Object.fromEntries(speakers.map(name => [name, draft[name]])) : undefined,
+                    boxesChanged ? draftPeople : undefined
+                  )}
+                  label={boxesChanged ? "บันทึกกรอบและการจับคู่" : "บันทึกการจับคู่"}
                 />
               </VStack>
             ) : null}
@@ -4502,10 +4712,13 @@ export function StagedCheckpointReviewPanel(props: {
                         "completed"
                       }
                       onDetect={() => props.onDetectShotPeople?.(shot.shotId)}
-                      onSave={speakerVisualBindings =>
+                      onSave={(speakerVisualBindings, detectedPeople) =>
                         props.onEdit({
                           shotId: shot.shotId,
-                          speakerVisualBindings,
+                          ...(speakerVisualBindings
+                            ? { speakerVisualBindings }
+                            : {}),
+                          ...(detectedPeople ? { detectedPeople } : {}),
                         })
                       }
                     />

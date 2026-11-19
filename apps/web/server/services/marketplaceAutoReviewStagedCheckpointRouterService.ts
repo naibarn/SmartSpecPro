@@ -2023,6 +2023,12 @@ export async function editStagedAutoReviewShot(input: {
   imagePrompt?: string;
   videoPrompt?: string;
   speakerVisualBindings?: Record<string, string>;
+  detectedPeople?: Array<{
+    id: string;
+    appearance: string;
+    confidence: number;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  }>;
   auth: StagedCheckpointAuth;
 }) {
   if (
@@ -2033,6 +2039,7 @@ export async function editStagedAutoReviewShot(input: {
       input.imagePrompt,
       input.videoPrompt,
       input.speakerVisualBindings,
+      input.detectedPeople,
     ].some(value => value !== undefined)
   ) {
     throw new TRPCError({
@@ -2045,7 +2052,9 @@ export async function editStagedAutoReviewShot(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
-    queueAdvance: input.speakerVisualBindings === undefined,
+    queueAdvance:
+      input.speakerVisualBindings === undefined &&
+      input.detectedPeople === undefined,
     mutate(metadata, operationId) {
       const storyEdit =
         input.storySummary !== undefined || input.dialogue !== undefined;
@@ -2174,7 +2183,8 @@ export async function editStagedAutoReviewShot(input: {
           input.dialogue !== undefined ||
           input.imagePrompt !== undefined ||
           input.videoPrompt !== undefined ||
-          input.speakerVisualBindings !== undefined
+          input.speakerVisualBindings !== undefined ||
+          input.detectedPeople !== undefined
         ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2246,7 +2256,10 @@ export async function editStagedAutoReviewShot(input: {
         };
       }
 
-      if (input.speakerVisualBindings !== undefined) {
+      if (
+        input.speakerVisualBindings !== undefined ||
+        input.detectedPeople !== undefined
+      ) {
         if (
           input.storySummary !== undefined || input.dialogue !== undefined ||
           input.imagePrompt !== undefined || input.videoPrompt !== undefined
@@ -2264,21 +2277,60 @@ export async function editStagedAutoReviewShot(input: {
         const promptGeneration = record((metadata as any).stagedPipeline?.promptGeneration);
         const standaloneDetection = record(promptGeneration[`person_detection:${input.shotId}`]);
         const videoDetection = record(promptGeneration[`video:${input.shotId}`]);
-        const detected =
+        const detectionKey =
           standaloneDetection.sourceImageHash === shot.imageArtifactHash &&
           Array.isArray(standaloneDetection.detectedPeople)
-            ? standaloneDetection.detectedPeople
-            : videoDetection.sourceImageHash === shot.imageArtifactHash
-              ? videoDetection.detectedPeople
-              : null;
-        const detectedIds = new Set(Array.isArray(detected) ? detected.map((person: any) => person?.id).filter((id: unknown): id is string => typeof id === "string") : []);
-        const selectedIds = Object.values(bindings);
-        if (
-          Object.keys(bindings).length !== dialogueSpeakers.length ||
-          dialogueSpeakers.some(speaker => typeof bindings[speaker] !== "string" || !detectedIds.has(bindings[speaker])) ||
-          new Set(selectedIds).size !== selectedIds.length
-        ) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_speaker_visual_bindings" });
+            ? `person_detection:${input.shotId}`
+            : `video:${input.shotId}`;
+        const currentDetection =
+          detectionKey === `person_detection:${input.shotId}`
+            ? standaloneDetection
+            : videoDetection;
+        const detected =
+          currentDetection.sourceImageHash === shot.imageArtifactHash &&
+          Array.isArray(currentDetection.detectedPeople)
+            ? currentDetection.detectedPeople
+            : null;
+        if (!Array.isArray(detected)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "staged_person_detection_required" });
+        }
+        let nextDetectedPeople = detected;
+        if (input.detectedPeople !== undefined) {
+          const originalById = new Map(
+            detected.map((person: any) => [person?.id, person])
+          );
+          const editedIds = input.detectedPeople.map(person => person.id);
+          const validPeopleEdit =
+            input.detectedPeople.length === detected.length &&
+            new Set(editedIds).size === editedIds.length &&
+            input.detectedPeople.every(person => {
+              const original = originalById.get(person.id) as any;
+              const box = person.boundingBox;
+              return Boolean(
+                original &&
+                  person.appearance === original.appearance &&
+                  person.confidence === Number(original.confidence) &&
+                  box.x + box.width <= 1.000001 &&
+                  box.y + box.height <= 1.000001
+              );
+            });
+          if (!validPeopleEdit) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_person_bounds" });
+          }
+          nextDetectedPeople = input.detectedPeople;
+        }
+        if (bindings !== undefined) {
+          const detectedIds = new Set(
+            nextDetectedPeople.map((person: any) => person?.id)
+          );
+          const selectedIds = Object.values(bindings);
+          if (
+            Object.keys(bindings).length !== dialogueSpeakers.length ||
+            dialogueSpeakers.some(speaker => typeof bindings[speaker] !== "string" || !detectedIds.has(bindings[speaker])) ||
+            new Set(selectedIds).size !== selectedIds.length
+          ) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_speaker_visual_bindings" });
+          }
         }
         const revision = shot.revision + 1;
         const bindingsSourceHash = buildStagedSpeakerBindingsSourceHash({
@@ -2293,7 +2345,10 @@ export async function editStagedAutoReviewShot(input: {
               ? {
                   ...checkpoint,
                   state: "superseded" as const,
-                  rejectionReasonCode: "staged_speaker_binding_updated",
+                      rejectionReasonCode:
+                        input.detectedPeople !== undefined && bindings === undefined
+                          ? "staged_person_bounds_updated"
+                          : "staged_speaker_binding_updated",
                 }
               : checkpoint
         );
@@ -2301,6 +2356,34 @@ export async function editStagedAutoReviewShot(input: {
           record((metadata as any).stagedPipeline),
           [{ shotId: input.shotId, stage: "video" }]
         );
+        const nextShot = {
+          ...shot,
+          revision,
+          state: "video_prompt_awaiting" as const,
+          videoPrompt: null,
+          videoPromptHash: null,
+          videoArtifactHash: null,
+          videoArtifactUrl: null,
+          ...(bindings !== undefined
+            ? {
+                speakerVisualBindings: bindings,
+                speakerVisualBindingsImageHash: shot.imageArtifactHash,
+                speakerVisualBindingsMatchType: "manual",
+                speakerVisualBindingsSourceHash: bindingsSourceHash,
+              }
+            : {}),
+        };
+        const nextPromptGeneration =
+          input.detectedPeople !== undefined
+            ? {
+                ...promptGeneration,
+                [detectionKey]: {
+                  ...currentDetection,
+                  detectedPeople: nextDetectedPeople,
+                  manuallyAdjustedAt: new Date().toISOString(),
+                },
+              }
+            : promptGeneration;
         return {
           metadata: {
             ...metadata,
@@ -2308,24 +2391,15 @@ export async function editStagedAutoReviewShot(input: {
               ...record((metadata as any).stagedPipeline),
               tasks,
               finalAssembly: null,
+              ...(input.detectedPeople !== undefined
+                ? { promptGeneration: nextPromptGeneration }
+                : {}),
             },
             stagedSequentialStoryboard: {
               ...metadata.stagedSequentialStoryboard,
               shots: metadata.stagedSequentialStoryboard.shots.map(item =>
                 item.shotId === input.shotId
-                  ? {
-                      ...item,
-                      revision,
-                      state: "video_prompt_awaiting",
-                      videoPrompt: null,
-                      videoPromptHash: null,
-                      videoArtifactHash: null,
-                      videoArtifactUrl: null,
-                      speakerVisualBindings: bindings,
-                      speakerVisualBindingsImageHash: shot.imageArtifactHash,
-                      speakerVisualBindingsMatchType: "manual",
-                      speakerVisualBindingsSourceHash: bindingsSourceHash,
-                    }
+                  ? nextShot
                   : item
               ),
               reviewCheckpoints: invalidatedCheckpoints,
