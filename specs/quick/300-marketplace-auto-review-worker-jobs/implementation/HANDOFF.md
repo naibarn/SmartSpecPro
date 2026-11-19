@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `92`
-- Updated (UTC): `2026-11-19T07:03:47.601329+00:00`
+- State generation: `93`
+- Updated (UTC): `2026-11-19T07:18:11.967254+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `c49ca453c82bde826d33cf0eafbd958b2f898dcb`
+- Latest recorded merged Main SHA: `8797e4da297d2a854a05d4b09607385f859e0a95`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain.
+- Next action: Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | c49ca453c82bde826d33cf0eafbd958b2f898dcb | c49ca453c82bde826d33cf0eafbd958b2f898dcb | Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-video-budget-4096 | /mnt/SmartSpecDev/projects/SmartSpecPro | 8797e4da297d2a854a05d4b09607385f859e0a95 | 8797e4da297d2a854a05d4b09607385f859e0a95 | Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

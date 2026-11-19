@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain.",
-      "checkpoint_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
-      "merged_main_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
+      "next_action": "Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video.",
+      "checkpoint_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
+      "merged_main_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-video-budget-4096"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 92,
-  "updated_at": "2026-11-19T07:03:47.601329+00:00",
+  "generation": 93,
+  "updated_at": "2026-11-19T07:18:11.967254+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain.",
-    "merged_main_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
+    "next_action": "Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video.",
+    "merged_main_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
