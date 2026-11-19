@@ -205,6 +205,51 @@ describe("callLLMStructured", () => {
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(2);
   });
 
+  it("repairs complete story-plan JSON without changing multi-speaker turns", async () => {
+    const conversationSchema = z.object({
+      shots: z.array(
+        z.object({
+          dialogueTurns: z.array(
+            z.object({
+              castId: z.string(),
+              line: z.string(),
+            }),
+          ).min(2),
+        }),
+      ),
+    });
+    const content =
+      '{"shots":[{"dialogueTurns":[{"castId":"cast-1","line":"First line"},{"castId":"cast-2","line":"Second line"}]}] "storySummary":"Two speakers"}';
+    mockExecuteWithFallback.mockResolvedValue(makeSuccessResponse(content));
+
+    const result = await callLLMStructured({
+      ...baseParams,
+      zodSchema: conversationSchema,
+      repairCompleteJson: true,
+      maxRetries: 0,
+    });
+
+    expect(result.data.shots[0].dialogueTurns).toEqual([
+      { castId: "cast-1", line: "First line" },
+      { castId: "cast-2", line: "Second line" },
+    ]);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not repair a visibly truncated response", async () => {
+    mockExecuteWithFallback.mockResolvedValue(
+      makeSuccessResponse('{"title":"Partial","items":["one"]'),
+    );
+
+    await expect(
+      callLLMStructured({
+        ...baseParams,
+        repairCompleteJson: true,
+        maxRetries: 0,
+      }),
+    ).rejects.toThrow("LLM returned invalid JSON");
+  });
+
   it("throws after retry when both attempts fail Zod validation", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const wrongShape = JSON.stringify({ wrong: "shape" });

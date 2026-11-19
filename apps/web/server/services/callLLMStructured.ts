@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { jsonrepair } from "jsonrepair";
 import type { Message, MessageContent } from "../_core/llm";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { calculateCreditsForLLMDynamic, calculateCreditsFromCost, deductCreditsForModel, drawFromReservation } from "./creditService";
@@ -32,6 +33,8 @@ export interface CallLLMStructuredParams<T> {
   disableProviderFallbacks?: boolean;
   zodSchema: z.ZodType<T, any, unknown>;
   maxRetries?: number; // default 1
+  /** Repair a syntactically malformed but complete JSON response before schema validation. */
+  repairCompleteJson?: boolean;
   userId: number;
   tenantId: string;
   billingDescription?: string;
@@ -82,6 +85,55 @@ export class LLMStructuredOutputError extends Error {
 function stripMarkdownFences(text: string): string {
   const fenced = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
   return fenced ? fenced[1].trim() : text.trim();
+}
+
+function findCompleteJsonCandidate(text: string): string | null {
+  const braceStart = text.indexOf("{");
+  const bracketStart = text.indexOf("[");
+  const start =
+    braceStart >= 0 && (bracketStart < 0 || braceStart < bracketStart)
+      ? braceStart
+      : bracketStart;
+  if (start < 0) return null;
+
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character === "{" || character === "[") {
+      stack.push(character === "{" ? "}" : "]");
+      continue;
+    }
+    if (character === "}" || character === "]") {
+      if (stack.pop() !== character) return null;
+      if (stack.length === 0) return text.slice(start, index + 1);
+    }
+  }
+
+  // Do not ask jsonrepair to invent missing closing delimiters: provider
+  // truncation can otherwise look like valid content after an inner array.
+  return null;
+}
+
+function repairCompleteJsonResponse(text: string): unknown | undefined {
+  const candidate = findCompleteJsonCandidate(text);
+  if (!candidate) return undefined;
+  try {
+    return JSON.parse(jsonrepair(candidate));
+  } catch {
+    return undefined;
+  }
 }
 
 function getResponseKeys(response: unknown): string[] {
@@ -790,43 +842,52 @@ The JSON must strictly conform to the expected schema.`;
     // Strip markdown fences and attempt JSON parse
     const cleaned = stripMarkdownFences(content);
     let parsed: unknown;
+    let repairedJson = false;
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      console.warn("[callLLMStructured] Structured output returned invalid JSON", {
-        provider: result.providerName,
-        model: effectiveModel,
-        attempt: attempt + 1,
-        billingDescription,
-        workflow: billingMetadata?.workflow,
-        disableProviderFallbacks,
-        responsePreview: cleaned.slice(0, 1200),
-      });
-      auditLogger.log({
-        eventType: "error",
-        userId,
-        tenantId,
-        providerName: result.providerName ?? null,
-        model: effectiveModel,
-        errorType: "structured_output_invalid_json",
-        errorMessage: `Invalid structured JSON on attempt ${attempt + 1}`,
-        metadata: {
+      const repaired = params.repairCompleteJson
+        ? repairCompleteJsonResponse(cleaned)
+        : undefined;
+      if (repaired !== undefined) {
+        parsed = repaired;
+        repairedJson = true;
+      } else {
+        console.warn("[callLLMStructured] Structured output returned invalid JSON", {
+          provider: result.providerName,
+          model: effectiveModel,
           attempt: attempt + 1,
-          workflow: billingMetadata?.workflow ?? billingDescription ?? null,
-          disableProviderFallbacks: disableProviderFallbacks ?? false,
+          billingDescription,
+          workflow: billingMetadata?.workflow,
+          disableProviderFallbacks,
           responsePreview: cleaned.slice(0, 1200),
-        },
-      });
-      // JSON parse failed — retry if we have attempts left
-      lastZodError = undefined;
-      if (attempt < maxRetries) continue;
-      throw new LLMStructuredOutputError(
-        `LLM returned invalid JSON after ${attempt + 1} attempt(s)`,
-        content,
-        undefined,
-        totalTokens,
-        totalCredits,
-      );
+        });
+        auditLogger.log({
+          eventType: "error",
+          userId,
+          tenantId,
+          providerName: result.providerName ?? null,
+          model: effectiveModel,
+          errorType: "structured_output_invalid_json",
+          errorMessage: `Invalid structured JSON on attempt ${attempt + 1}`,
+          metadata: {
+            attempt: attempt + 1,
+            workflow: billingMetadata?.workflow ?? billingDescription ?? null,
+            disableProviderFallbacks: disableProviderFallbacks ?? false,
+            responsePreview: cleaned.slice(0, 1200),
+          },
+        });
+        // JSON parse failed — retry if we have attempts left
+        lastZodError = undefined;
+        if (attempt < maxRetries) continue;
+        throw new LLMStructuredOutputError(
+          `LLM returned invalid JSON after ${attempt + 1} attempt(s)`,
+          content,
+          undefined,
+          totalTokens,
+          totalCredits,
+        );
+      }
     }
 
     // Validate against Zod schema
@@ -879,6 +940,15 @@ The JSON must strictly conform to the expected schema.`;
     }
 
     // Success
+    if (repairedJson) {
+      console.warn("[callLLMStructured] Repaired a complete structured JSON response", {
+        provider: result.providerName,
+        model: effectiveModel,
+        attempt: attempt + 1,
+        billingDescription,
+        workflow: billingMetadata?.workflow,
+      });
+    }
     auditLogger.log({
       eventType: "llm_response",
       userId,

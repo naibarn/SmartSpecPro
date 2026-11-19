@@ -26,7 +26,7 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Create a fresh video-prompt generation request for the failed run mar_71ac0520464e4d1b607b34404964851b (terminal worker job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 cannot be retried in place), then verify the new job completes. Release 602 is deployed to legacy-debian-dev / smartaihub.app at source SHA ba3d1bac3cfe5d8f302cac5487df26f7ee34158b, artifact sha256:ea419bff201dec1f42e49e8169ff321c406caec1a4ccf8ec6a31452bdabf5d0e; receipt /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ba3d1bac3cfe5d8f302cac5487df26f7ee34158b-46699e6068c8-602.json. Dialogue fallback applies only when the full cast has one eligible lead; keep explicit speaker labels for multi-speaker dialogue.",
+      "next_action": "Integrate the opt-in complete-JSON recovery for Marketplace Auto Review story-plan generation, then deploy the integrated revision to legacy-debian-dev and check service/public health; do not rerun provider-backed jobs.",
       "checkpoint_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
       "merged_main_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 99,
-  "updated_at": "2026-11-19T14:58:12.899185+00:00",
+  "generation": 100,
+  "updated_at": "2026-11-19T15:55:17.080248+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Create a fresh video-prompt generation request for the failed run mar_71ac0520464e4d1b607b34404964851b (terminal worker job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 cannot be retried in place), then verify the new job completes. Release 602 is deployed to legacy-debian-dev / smartaihub.app at source SHA ba3d1bac3cfe5d8f302cac5487df26f7ee34158b, artifact sha256:ea419bff201dec1f42e49e8169ff321c406caec1a4ccf8ec6a31452bdabf5d0e; receipt /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ba3d1bac3cfe5d8f302cac5487df26f7ee34158b-46699e6068c8-602.json. Dialogue fallback applies only when the full cast has one eligible lead; keep explicit speaker labels for multi-speaker dialogue.",
+    "next_action": "Integrate the opt-in complete-JSON recovery for Marketplace Auto Review story-plan generation, then deploy the integrated revision to legacy-debian-dev and check service/public health; do not rerun provider-backed jobs.",
     "merged_main_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",

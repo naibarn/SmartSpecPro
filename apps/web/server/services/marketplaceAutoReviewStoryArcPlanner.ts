@@ -1511,6 +1511,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       userId,
       tenantId,
       maxRetries: 1,
+      repairCompleteJson: true,
       disableProviderFallbacks: true,
       billingDescription: `Staged Story Arc Plan generation (${chosenModel})`,
     });
