@@ -48,6 +48,7 @@ import {
 import {
   detectMarketplaceAutoReviewShotPeople,
   generateMarketplaceAutoReviewVideoPrompt,
+  inferMarketplaceSingleSpeakerDialogueDefault,
   isMarketplaceAutoReviewVideoPromptComplete,
   MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
   MARKETPLACE_VERTICAL_DRAMA_VIDEO_PROMPT_SKILL,
@@ -3539,6 +3540,8 @@ export async function detectStagedAutoReviewShotPeople(input: {
     requestIdempotencyKey: input.idempotencyKey,
     dialogue: safeDialogue,
     speakerReferences,
+    singleSpeakerDialogueFallback:
+      inferMarketplaceSingleSpeakerDialogueDefault(plan.cast ?? []),
     onProgress: input.onProgress,
   });
 

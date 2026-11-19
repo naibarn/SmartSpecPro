@@ -114,6 +114,7 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
   requestIdempotencyKey: string;
   dialogue?: string;
   speakerReferences?: readonly MarketplaceSpeakerVisualReference[];
+  singleSpeakerDialogueFallback?: string;
   onProgress?: (progress: MarketplaceVideoPromptProgress) => Promise<void>;
 }): Promise<{
   detectedPeople: VerticalDramaDetectedShotPerson[];
@@ -204,6 +205,7 @@ export async function detectMarketplaceAutoReviewShotPeople(input: {
         requestIdempotencyKey: input.requestIdempotencyKey,
         approvedImageUrl: approvedFrame,
         dialogue: input.dialogue,
+        singleSpeakerDialogueFallback: input.singleSpeakerDialogueFallback,
         people: detection.people,
         references: input.speakerReferences,
         promptModel: input.promptModel,
@@ -278,15 +280,34 @@ function normalizeSpeakerLabel(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
+export function inferMarketplaceSingleSpeakerDialogueDefault(
+  cast: readonly StagedCastMember[]
+): string | undefined {
+  if (cast.length !== 1) return undefined;
+  const onlyMember = cast[0]!;
+  const eligibleSpeakers = selectStagedLeadCast([...cast]);
+  return eligibleSpeakers.length === 1 &&
+    eligibleSpeakers[0]!.castId === onlyMember.castId &&
+    onlyMember.name.trim()
+    ? onlyMember.name.trim()
+    : undefined;
+}
+
 function inferSingleShotDialogueSpeaker(
   shot: Pick<StagedStoryArcShot, "castInShot">,
   cast: readonly StagedCastMember[]
 ): string | undefined {
-  const selectedCastIds = new Set(shot.castInShot ?? []);
-  const eligibleSpeakers = selectStagedLeadCast([...cast]).filter(
-    member => !selectedCastIds.size || selectedCastIds.has(member.castId)
-  );
-  return eligibleSpeakers.length === 1 ? eligibleSpeakers[0]!.name : undefined;
+  const defaultSpeaker = inferMarketplaceSingleSpeakerDialogueDefault(cast);
+  if (!defaultSpeaker) return undefined;
+  const selectedCastIds = shot.castInShot ?? [];
+  const onlyCastId = cast[0]!.castId;
+  if (
+    selectedCastIds.length > 0 &&
+    (selectedCastIds.length !== 1 || selectedCastIds[0] !== onlyCastId)
+  ) {
+    return undefined;
+  }
+  return defaultSpeaker;
 }
 
 async function matchMarketplaceAutoReviewShotSpeakers(input: {
@@ -298,6 +319,7 @@ async function matchMarketplaceAutoReviewShotSpeakers(input: {
   requestIdempotencyKey: string;
   approvedImageUrl: string;
   dialogue: string;
+  singleSpeakerDialogueFallback?: string;
   people: VerticalDramaDetectedShotPerson[];
   references: readonly MarketplaceSpeakerVisualReference[];
   promptModel?: string | null;
@@ -314,12 +336,7 @@ async function matchMarketplaceAutoReviewShotSpeakers(input: {
 }> {
   let dialogue: Array<{ speaker: string; line: string }>;
   try {
-    dialogue = parseDialogue(
-      input.dialogue,
-      input.references.length === 1
-        ? input.references[0]?.speakerLabel
-        : undefined
-    );
+    dialogue = parseDialogue(input.dialogue, input.singleSpeakerDialogueFallback);
   } catch {
     return { bindings: {}, issue: "dialogue_invalid" };
   }
