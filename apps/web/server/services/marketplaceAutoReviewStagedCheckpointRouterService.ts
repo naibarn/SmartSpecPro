@@ -3941,12 +3941,6 @@ export async function generateStagedAutoReviewShotPrompt(input: {
       const correctionRequired = record(
         record((current as any).stagedPipeline).correctionRequired
       );
-      const clearsPromptGenerationCorrection =
-        input.stage === "image" &&
-        correctionRequired.reasonCode ===
-          "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED" &&
-        correctionRequired.stageKey === "image_generation" &&
-        Number(correctionRequired.shotId) === input.shotId;
       const nextShot = {
         ...currentShot,
         revision,
@@ -3963,6 +3957,24 @@ export async function generateStagedAutoReviewShotPrompt(input: {
               state: "video_prompt_awaiting",
             }),
       };
+      const nextShots = current.stagedSequentialStoryboard.shots.map(item =>
+        item.shotId === input.shotId ? nextShot : item
+      );
+      const isLegacyUnscopedPromptCorrection =
+        (correctionRequired.reasonCode ===
+          "MARKETPLACE_SINGLE_SHOT_SKILL_FAILED" ||
+          correctionRequired.reasonCode ===
+            "MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE") &&
+        (correctionRequired.shotId === null ||
+          correctionRequired.shotId === undefined) &&
+        nextShots.every(shot => Boolean(String(shot.imagePrompt ?? "").trim()));
+      const clearsPromptGenerationCorrection =
+        input.stage === "image" &&
+        correctionRequired.stageKey === "image_generation" &&
+        ((correctionRequired.reasonCode ===
+          "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED" &&
+          Number(correctionRequired.shotId) === input.shotId) ||
+          isLegacyUnscopedPromptCorrection);
       return {
         metadata: {
           ...current,
@@ -3994,9 +4006,7 @@ export async function generateStagedAutoReviewShotPrompt(input: {
           },
           stagedSequentialStoryboard: {
             ...current.stagedSequentialStoryboard,
-            shots: current.stagedSequentialStoryboard.shots.map(item =>
-              item.shotId === input.shotId ? nextShot : item
-            ),
+            shots: nextShots,
             reviewCheckpoints: [...invalidated, replacement],
           },
         },
