@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Repair the legacy-debian-dev environment-validation preflight, deploy 0413493a8cefa8f19496ec387e63662c4ccc2ace, then re-run video-prompt generation for run mar_71ac0520464e4d1b607b34404964851b.",
-      "checkpoint_sha": "0413493a8cefa8f19496ec387e63662c4ccc2ace",
-      "merged_main_sha": "0413493a8cefa8f19496ec387e63662c4ccc2ace",
+      "next_action": "Create a fresh video-prompt generation request for the failed run mar_71ac0520464e4d1b607b34404964851b (terminal worker job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 cannot be retried in place), then verify the new job completes. Release 602 is deployed to legacy-debian-dev / smartaihub.app at source SHA ba3d1bac3cfe5d8f302cac5487df26f7ee34158b, artifact sha256:ea419bff201dec1f42e49e8169ff321c406caec1a4ccf8ec6a31452bdabf5d0e; receipt /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ba3d1bac3cfe5d8f302cac5487df26f7ee34158b-46699e6068c8-602.json. Dialogue fallback applies only when the full cast has one eligible lead; keep explicit speaker labels for multi-speaker dialogue.",
+      "checkpoint_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
+      "merged_main_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-shot2-prompt-conflict"
     }
@@ -42,21 +42,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 98,
-  "updated_at": "2026-11-19T14:23:38.190211+00:00",
+  "generation": 99,
+  "updated_at": "2026-11-19T14:58:12.899185+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Repair the legacy-debian-dev environment-validation preflight, deploy 0413493a8cefa8f19496ec387e63662c4ccc2ace, then re-run video-prompt generation for run mar_71ac0520464e4d1b607b34404964851b.",
-    "merged_main_sha": "0413493a8cefa8f19496ec387e63662c4ccc2ace",
+    "next_action": "Create a fresh video-prompt generation request for the failed run mar_71ac0520464e4d1b607b34404964851b (terminal worker job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 cannot be retried in place), then verify the new job completes. Release 602 is deployed to legacy-debian-dev / smartaihub.app at source SHA ba3d1bac3cfe5d8f302cac5487df26f7ee34158b, artifact sha256:ea419bff201dec1f42e49e8169ff321c406caec1a4ccf8ec6a31452bdabf5d0e; receipt /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-ba3d1bac3cfe5d8f302cac5487df26f7ee34158b-46699e6068c8-602.json. Dialogue fallback applies only when the full cast has one eligible lead; keep explicit speaker labels for multi-speaker dialogue.",
+    "merged_main_sha": "ba3d1bac3cfe5d8f302cac5487df26f7ee34158b",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
       "Live provider-backed video output for the shot 2 dialogue turn lock remains unverified; focused prompt tests and deploy health do not prove generated lip movement.",
       "Authenticated browser UAT remains NOT_RUN. Real canonical-queue video-prompt generation is verified 3/3 rounds on generation574; video rendering, generated lip movement, and full QC/media UAT remain outside this prompt-only proof.",
-      "Deployment preflight is blocked by env-validator: no target-aware apps/web/.env-validator.json; heuristic mode reports deploy_ready=false with 39 missing and 2 empty example variables. Current release: legacy-debian-dev / smartaihub.app generation 601 at revision 8797e4da; release controller status confirms the configured rollback source.",
       "Shot 2 provider rejection and generated-video success have not been re-verified after the prompt-authoring fix; the existing approved prompt must be regenerated on the updated release.",
       "Existing affected runs mar_6dc357649f7121a97ab6e1f27bf0aae0 and mar_d865bac6f4e1e518d648e479e61b744b retain zero image prompts and legacy generic correction markers; after deployment, regenerate only their missing per-shot prompts.",
-      "Worker job 968014fa-5d9b-4a71-9cb9-14718e71d64f failed before model invocation because its five approved dialogue lines were unlabeled; parser fix is integrated at 0413493a8cefa8f19496ec387e63662c4ccc2ace, but the live runtime still needs deployment and the job needs a fresh prompt-generation run."
+      "Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
