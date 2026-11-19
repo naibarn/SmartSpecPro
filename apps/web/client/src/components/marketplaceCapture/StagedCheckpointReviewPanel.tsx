@@ -918,6 +918,11 @@ function correctionSafeMessage(
   stageKey?: string | null
 ) {
   switch (reasonCode) {
+    case "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED":
+      return "สร้าง Prompt ภาพของช็อตนี้ไม่สำเร็จ ลองสร้าง Prompt ใหม่เฉพาะช็อตที่ระบุได้ โดยไม่ต้องสร้างภาพซ้ำ";
+    case "MARKETPLACE_SINGLE_SHOT_SKILL_FAILED":
+    case "MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE":
+      return "การสร้าง Prompt ภาพหยุดก่อนเสร็จ Prompt ที่บันทึกสำเร็จแล้วจะยังอยู่ ให้สร้างต่อเฉพาะช็อตที่ยังว่างจากปุ่มของช็อตนั้นด้านล่าง";
     case "Desktop token identity mismatch":
       return "งานสร้างภาพก่อนหน้าไม่ผ่านการยืนยันตัวตนของ worker จึงยังไม่มีภาพ ระบบได้รับการแก้แล้ว กดสร้างภาพของช็อตที่ต้องการอีกครั้งได้";
     case "checkpoint_consumed":
@@ -3368,7 +3373,31 @@ export function StagedCheckpointReviewPanel(props: {
                       props.onRetry({ stage: "audio" })
                     )
                   : null}
-                {props.state.correctionRequired.shotId &&
+                {props.state.correctionRequired.reasonCode ===
+                  "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED" &&
+                props.state.correctionRequired.shotId
+                  ? action(
+                      "retry-image-prompt-shot",
+                      `สร้าง Prompt ภาพช็อตที่ ${props.state.correctionRequired.shotId} ใหม่`,
+                      () =>
+                        props.onGeneratePrompt({
+                          shotId: props.state!.correctionRequired!.shotId!,
+                          stage: "image",
+                          ...(promptModel ? { model: promptModel } : {}),
+                        }),
+                      "rounded border border-amber-400 bg-white px-3 py-2 text-sm font-semibold text-amber-900",
+                      {
+                        confirmation: {
+                          title: `ยืนยันสร้าง Prompt ภาพช็อตที่ ${props.state.correctionRequired.shotId} ใหม่`,
+                          description:
+                            "ระบบจะสร้างเฉพาะ Prompt ของช็อตนี้ โดยไม่สร้างภาพหรือเปลี่ยน Prompt ของช็อตอื่น",
+                        },
+                      }
+                    )
+                  : null}
+                {props.state.correctionRequired.reasonCode !==
+                  "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED" &&
+                props.state.correctionRequired.shotId &&
                 (props.state.correctionRequired.stageKey ===
                   "image_generation" ||
                   props.state.correctionRequired.stageKey ===

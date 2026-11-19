@@ -3938,6 +3938,15 @@ export async function generateStagedAutoReviewShotPrompt(input: {
         record((current as any).stagedPipeline),
         [{ shotId: input.shotId, stage: input.stage, promptOnly: true }]
       );
+      const correctionRequired = record(
+        record((current as any).stagedPipeline).correctionRequired
+      );
+      const clearsPromptGenerationCorrection =
+        input.stage === "image" &&
+        correctionRequired.reasonCode ===
+          "MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED" &&
+        correctionRequired.stageKey === "image_generation" &&
+        Number(correctionRequired.shotId) === input.shotId;
       const nextShot = {
         ...currentShot,
         revision,
@@ -3959,6 +3968,9 @@ export async function generateStagedAutoReviewShotPrompt(input: {
           ...current,
           stagedPipeline: {
             ...((current as any).stagedPipeline ?? {}),
+            ...(clearsPromptGenerationCorrection
+              ? { correctionRequired: null }
+              : {}),
             tasks,
             finalAssembly: null,
             promptGeneration: {

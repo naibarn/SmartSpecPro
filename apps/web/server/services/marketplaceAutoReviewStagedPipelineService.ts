@@ -1602,12 +1602,17 @@ async function compileImagePromptCheckpoints(params: {
       requestIdempotencyKey: `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}`,
       stage: "image",
     });
-    const refresh =
-      await refreshSequentialShotPromptWithSkillDirect(refreshInput);
-    const prompt = refresh.startFrameImagePrompt.trim();
-    if (!isCompleteStagedImagePrompt(prompt)) {
+    let prompt: string;
+    try {
+      const refresh =
+        await refreshSequentialShotPromptWithSkillDirect(refreshInput);
+      prompt = refresh.startFrameImagePrompt.trim();
+      if (!isCompleteStagedImagePrompt(prompt)) {
+        throw new Error("incomplete_image_prompt");
+      }
+    } catch {
       throw new Error(
-        `MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${shot.shotId}`
+        `MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED:shot:${shot.shotId}`
       );
     }
     const hash = buildStagedImagePromptContentHash({

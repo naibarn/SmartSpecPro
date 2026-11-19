@@ -415,7 +415,7 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         import("./marketplaceAutoReviewService"),
         import("./marketplaceAutoReviewWorkerRuntime"),
       ]);
-      return advanceMarketplaceAutoReviewRun(
+      const result = await advanceMarketplaceAutoReviewRun(
         input.job.runId,
         auth,
         await runtime.createMarketplaceAutoReviewWorkerRuntime({
@@ -428,6 +428,46 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         input.job.targetShotIds,
         input.job.reconcileOnly
       );
+      const resultMetadata =
+        result && typeof result === "object"
+          ? (result as { metadataJson?: unknown }).metadataJson
+          : null;
+      const stagedPipeline =
+        resultMetadata && typeof resultMetadata === "object"
+          ? (resultMetadata as { stagedPipeline?: unknown }).stagedPipeline
+          : null;
+      const correctionRequired =
+        stagedPipeline && typeof stagedPipeline === "object"
+          ? (stagedPipeline as { correctionRequired?: unknown })
+              .correctionRequired
+          : null;
+      if (
+        correctionRequired &&
+        typeof correctionRequired === "object" &&
+        (correctionRequired as { state?: unknown }).state ===
+          "correction_required"
+      ) {
+        const correction = correctionRequired as {
+          reasonCode?: unknown;
+          stageKey?: unknown;
+          shotId?: unknown;
+        };
+        const reasonCode =
+          typeof correction.reasonCode === "string" &&
+          /^[A-Z0-9_]+$/.test(correction.reasonCode)
+            ? correction.reasonCode
+            : "MARKETPLACE_AUTO_REVIEW_CORRECTION_REQUIRED";
+        const stageKey =
+          typeof correction.stageKey === "string" &&
+          /^[a-z_]+$/.test(correction.stageKey)
+            ? correction.stageKey
+            : "unknown";
+        const shotId = Number(correction.shotId);
+        throw new Error(
+          `MARKETPLACE_AUTO_REVIEW_CORRECTION_REQUIRED:${reasonCode}:stage:${stageKey}${Number.isInteger(shotId) && shotId > 0 ? `:shot:${shotId}` : ""}`
+        );
+      }
+      return result;
     }
     case "draft_quality_qc": {
       const { processMarketplaceAutoReviewDraftQualityQc } =
