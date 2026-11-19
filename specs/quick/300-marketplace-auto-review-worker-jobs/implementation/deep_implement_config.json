@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review.",
-      "checkpoint_sha": "69cccc75521e8d24e19ceab308f44d696b29a3ae",
-      "merged_main_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+      "next_action": "Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain.",
+      "checkpoint_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
+      "merged_main_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-video-budget-4096"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 91,
-  "updated_at": "2026-11-16T03:34:04.866980+00:00",
+  "generation": 92,
+  "updated_at": "2026-11-19T07:03:47.601329+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Desktop Worker 0.1.437 installed runtime 2026.11.16.1 and reports Remotion contract 2026-11-15.1, doctor ready, HyperFrames advertised. The same video project/revision as original df8ab9f6 was completed by job 642b256b; its 73,987,409-byte remotion_render_mp4 is published to owner library item 1619. The original-job retry exposed LANE_A_RENDER_ORPHANED using historical createdAt instead of authorized recovery time; commit 69cccc755 fixes this and its focused regression passes. Release g579 at b222e60 is DEPLOYED_VERIFIED and public /healthz is HTTP 200. Keep original job as failed history; no duplicate render is needed. Remaining separate work: authenticated browser UAT, generated lip-motion proof, and provider-backed QC/media review.",
-    "merged_main_sha": "b222e60c7e97e41c0a84ed6ad8037849fe7b94f4",
+    "next_action": "Render previews now resolve from completed Remotion worker jobs through their published MP4 artifacts and are deployed in release smartspec-web-c49ca453c82bde826d33cf0eafbd958b2f898dcb-94202499bcba (generation 600); runtime and public health are healthy. Refresh the authenticated Auto Review list to confirm published previews; jobs before completed render have no preview yet. Existing authenticated browser UAT and provider-backed QC/media gaps remain.",
+    "merged_main_sha": "c49ca453c82bde826d33cf0eafbd958b2f898dcb",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
