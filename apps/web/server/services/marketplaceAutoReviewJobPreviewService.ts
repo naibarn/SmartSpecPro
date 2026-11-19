@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   libraryItems,
@@ -26,6 +26,7 @@ type PreviewAuth = {
 };
 
 type LibraryMediaRow = {
+  id: number;
   sourceUrl: string | null;
   thumbnailUrl: string | null;
   metadata: unknown;
@@ -39,6 +40,13 @@ function record(value: unknown): Record<string, unknown> {
 
 function storagePath(key: string): string {
   return key.split("/").map(encodeURIComponent).join("/");
+}
+
+function firstText(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
 }
 
 function libraryMediaUrl(
@@ -58,7 +66,8 @@ function libraryMediaUrl(
       : null) ?? parsed?.key;
 
   if (key) {
-    const prefix = parsed?.kind === "upload" ? "/uploads/" : "/api/storage/files/";
+    const prefix =
+      parsed?.kind === "upload" ? "/uploads/" : "/api/storage/files/";
     return `${prefix}${storagePath(key)}`;
   }
 
@@ -82,11 +91,18 @@ function libraryMediaUrl(
  */
 export async function attachMarketplaceAutoReviewJobPreviews<
   T extends MarketplaceAutoReviewRunPreviewSource,
->(runs: T[], auth: PreviewAuth): Promise<Array<T & {
-  productThumbnailUrl: string | null;
-  videoPreviewUrl: string | null;
-  videoPreviewPosterUrl: string | null;
-}>> {
+>(
+  runs: T[],
+  auth: PreviewAuth
+): Promise<
+  Array<
+    T & {
+      productThumbnailUrl: string | null;
+      videoPreviewUrl: string | null;
+      videoPreviewPosterUrl: string | null;
+    }
+  >
+> {
   const result = runs.map(run => ({
     ...run,
     productThumbnailUrl: null,
@@ -102,11 +118,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
   if (!tenantId) return result;
 
   const productIds = Array.from(
-    new Set(
-      runs
-        .map(run => String(run.productId ?? "").trim())
-        .filter(Boolean)
-    )
+    new Set(runs.map(run => String(run.productId ?? "").trim()).filter(Boolean))
   );
   const libraryItemIds = Array.from(
     new Set(
@@ -114,6 +126,9 @@ export async function attachMarketplaceAutoReviewJobPreviews<
         .map(run => Number(run.resultLibraryItemId))
         .filter(id => Number.isSafeInteger(id) && id > 0)
     )
+  );
+  const runIds = Array.from(
+    new Set(runs.map(run => String(run.id ?? "").trim()).filter(Boolean))
   );
 
   const productRows = productIds.length
@@ -169,7 +184,10 @@ export async function attachMarketplaceAutoReviewJobPreviews<
           and(
             inArray(marketplaceCaptureAssets.id, assetIds),
             eq(marketplaceCaptureAssets.userId, auth.userId),
-            marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, tenantId)
+            marketplaceOwnerTenantScope(
+              marketplaceCaptureAssets.tenantId,
+              tenantId
+            )
           )
         )
     : [];
@@ -217,28 +235,106 @@ export async function attachMarketplaceAutoReviewJobPreviews<
             )
           )
       : [];
-  const libraryById = new Map<number, LibraryMediaRow>(
-    libraryRows.map(item => [item.id, item] as const)
-  );
+
+  // Completed renders can be linked to a run through library metadata before
+  // `resultLibraryItemId` is backfilled onto the run row. Resolve those links
+  // in one owner/tenant-scoped query so preview availability does not depend
+  // on the timing of that backfill.
+  const linkedLibraryRows =
+    runIds.length > 0
+      ? await db
+          .select({
+            id: libraryItems.id,
+            sourceUrl: libraryItems.sourceUrl,
+            thumbnailUrl: libraryItems.thumbnailUrl,
+            metadata: libraryItems.metadata,
+          })
+          .from(libraryItems)
+          .where(
+            and(
+              eq(libraryItems.tenantId, tenantId),
+              eq(libraryItems.ownerUserId, auth.userId),
+              eq(libraryItems.itemType, "video"),
+              isNull(libraryItems.deletedAt),
+              inArray(
+                sql`${libraryItems.metadata}->>'auto_review_run_id'`,
+                runIds
+              ),
+              eq(
+                sql`${libraryItems.metadata}->>'source_type'`,
+                "marketplace_auto_review_render"
+              )
+            )
+          )
+          .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.id))
+      : [];
+  const libraryById = new Map<number, LibraryMediaRow>();
+  for (const item of [...linkedLibraryRows, ...libraryRows]) {
+    libraryById.set(item.id, item);
+  }
+  const libraryByRunId = new Map<string, LibraryMediaRow>();
+  for (const item of linkedLibraryRows) {
+    const linkedRunId = firstText(record(item.metadata).auto_review_run_id);
+    if (linkedRunId && !libraryByRunId.has(linkedRunId)) {
+      libraryByRunId.set(linkedRunId, item);
+    }
+  }
 
   return result.map(run => {
     const productId = String(run.productId ?? "").trim();
     const libraryItemId = Number(run.resultLibraryItemId);
-    const libraryItem = Number.isSafeInteger(libraryItemId)
-      ? libraryById.get(libraryItemId)
-      : undefined;
+    const libraryItem =
+      (Number.isSafeInteger(libraryItemId)
+        ? libraryById.get(libraryItemId)
+        : undefined) ?? libraryByRunId.get(String(run.id ?? ""));
+    const libraryMetadata = record(libraryItem?.metadata);
+    const renderStorage = record(
+      libraryMetadata.render_storage_envelope ??
+        libraryMetadata.renderStorageEnvelope
+    );
+    const publishablePackage = record(
+      libraryMetadata.publishable_asset_package ??
+        libraryMetadata.publishableAssetPackage
+    );
+    const sourceKey = firstText(
+      libraryMetadata.source_key,
+      libraryMetadata.sourceKey,
+      renderStorage.source_key,
+      renderStorage.sourceKey,
+      renderStorage.storageKey,
+      renderStorage.objectKey,
+      publishablePackage.source_key,
+      publishablePackage.sourceKey,
+      publishablePackage.storageKey
+    );
+    const posterKey = firstText(
+      libraryMetadata.thumbnail_key,
+      libraryMetadata.thumbnailKey,
+      publishablePackage.thumbnail_key,
+      publishablePackage.thumbnailKey
+    );
+    const mediaMetadata = {
+      ...libraryMetadata,
+      ...(sourceKey ? { source_key: sourceKey } : {}),
+      ...(posterKey ? { thumbnail_key: posterKey } : {}),
+    };
+    const videoSource = firstText(
+      libraryItem?.sourceUrl,
+      renderStorage.resultUrl,
+      publishablePackage.resultUrl
+    );
+    const posterSource = firstText(
+      libraryItem?.thumbnailUrl,
+      publishablePackage.thumbnailUrl
+    );
     return {
       ...run,
       productThumbnailUrl: productById.get(productId) ?? null,
       videoPreviewUrl: libraryItem
-        ? libraryMediaUrl(libraryItem.sourceUrl, libraryItem.metadata, "source_key")
+        ? libraryMediaUrl(videoSource, mediaMetadata, "source_key")
         : null,
       videoPreviewPosterUrl: libraryItem
-        ? libraryMediaUrl(
-            libraryItem.thumbnailUrl,
-            libraryItem.metadata,
-            "thumbnail_key"
-          )
+        ? libraryMediaUrl(posterSource, mediaMetadata, "thumbnail_key")
         : null,
     };
   });
