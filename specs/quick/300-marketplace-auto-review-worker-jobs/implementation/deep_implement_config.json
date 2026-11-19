@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video.",
-      "checkpoint_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
-      "merged_main_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
+      "next_action": "Speaker/person boxes now align to the natural image frame and can be redrawn, nudged, or resized; edits persist into the detection data used by video-prompt generation. Integrated at 63b3890d9369cfb01b45ca547c0213d6cc13591b. Esbuild syntax checks passed; tests and typecheck were not run. Deployment remains pending: env-validator returned deploy_ready=false in heuristic mode without an apps/web/.env-validator.json. Verify a target-aware manifest against legacy service configuration, rerun deploy preflight, then release this exact SHA to legacy-debian-dev.",
+      "checkpoint_sha": "63b3890d9369cfb01b45ca547c0213d6cc13591b",
+      "merged_main_sha": "63b3890d9369cfb01b45ca547c0213d6cc13591b",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "codex-auto-review-video-budget-4096"
     }
@@ -42,17 +42,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 93,
-  "updated_at": "2026-11-19T07:18:11.967254+00:00",
+  "generation": 94,
+  "updated_at": "2026-11-19T07:39:44.470474+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Job cards now place completed video previews in a right-hand column beside job details and stack the preview below at narrow widths; delete controls avoid the preview column. Release smartspec-web-8797e4da297d2a854a05d4b09607385f859e0a95-ba06f8e7ef1f (generation 601) is DEPLOYED_VERIFIED; public /marketplace/auto-review and /healthz return 200. Refresh the authenticated page for visual confirmation; browser UAT was not run. Jobs without a completed published render remain without video.",
-    "merged_main_sha": "8797e4da297d2a854a05d4b09607385f859e0a95",
+    "next_action": "Speaker/person boxes now align to the natural image frame and can be redrawn, nudged, or resized; edits persist into the detection data used by video-prompt generation. Integrated at 63b3890d9369cfb01b45ca547c0213d6cc13591b. Esbuild syntax checks passed; tests and typecheck were not run. Deployment remains pending: env-validator returned deploy_ready=false in heuristic mode without an apps/web/.env-validator.json. Verify a target-aware manifest against legacy service configuration, rerun deploy preflight, then release this exact SHA to legacy-debian-dev.",
+    "merged_main_sha": "63b3890d9369cfb01b45ca547c0213d6cc13591b",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
       "Live provider-backed video output for the shot 2 dialogue turn lock remains unverified; focused prompt tests and deploy health do not prove generated lip movement.",
-      "Authenticated browser UAT remains NOT_RUN. Real canonical-queue video-prompt generation is verified 3/3 rounds on generation574; video rendering, generated lip movement, and full QC/media UAT remain outside this prompt-only proof."
+      "Authenticated browser UAT remains NOT_RUN. Real canonical-queue video-prompt generation is verified 3/3 rounds on generation574; video rendering, generated lip movement, and full QC/media UAT remain outside this prompt-only proof.",
+      "Deployment preflight is blocked by env-validator: no target-aware apps/web/.env-validator.json; heuristic mode reports deploy_ready=false with 39 missing and 2 empty example variables. Current release: legacy-debian-dev / smartaihub.app generation 601 at revision 8797e4da; release controller status confirms the configured rollback source."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
