@@ -19,6 +19,7 @@ function uiIdempotencyKey(prefix: string, value: string) {
 export function StagedCheckpointReviewSurface(props: {
   runId?: string | null;
   enabled?: boolean;
+  productDescription?: string;
   className?: string;
   onStoryConceptConfirmed?: () => void;
 }) {
@@ -824,6 +825,7 @@ export function StagedCheckpointReviewSurface(props: {
       <StagedCheckpointReviewPanel
         runId={runId}
         state={state}
+        productDescription={props.productDescription}
         loading={stateQuery.isLoading}
         error={
           actionError ??

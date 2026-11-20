@@ -1125,6 +1125,7 @@ function buildWorkflowSteps(state: StagedReviewState): WorkflowStep[] {
 export function StagedCheckpointReviewPanel(props: {
   runId: string;
   state: StagedReviewState | null | undefined;
+  productDescription?: string;
   loading?: boolean;
   error?: string | null;
   notice?: string | null;
@@ -3892,6 +3893,16 @@ export function StagedCheckpointReviewPanel(props: {
                   เลือกหรือติ๊กภาพสินค้าที่จะส่งไปสร้างภาพ
                   (สามารถติ๊กเลือกเฉพาะภาพที่ต้องการเพื่อป้องกัน AI สับสน)
                 </p>
+
+                <details className="rounded-lg border border-sky-200 bg-white/80 px-3 py-2">
+                  <summary className="cursor-pointer select-none text-xs font-semibold text-sky-900">
+                    รายละเอียดสินค้า (Description) — เปิดดูเพื่อเทียบกับเนื้อหาและบทพูด
+                  </summary>
+                  <p className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-sky-50/70 p-3 text-xs leading-5 text-slate-700">
+                    {props.productDescription?.trim() ||
+                      "ไม่มี Description ของสินค้านี้"}
+                  </p>
+                </details>
 
                 {/* Product Images Grid */}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

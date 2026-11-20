@@ -816,6 +816,11 @@ export default function MarketplaceAutoReviewWorkflowPage() {
             <StagedCheckpointReviewSurface
               runId={runId}
               enabled={isStaged}
+              productDescription={
+                typeof product?.descriptionText === "string"
+                  ? product.descriptionText
+                  : ""
+              }
               className="mt-4"
             />
           </div>
