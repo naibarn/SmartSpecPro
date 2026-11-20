@@ -5,9 +5,9 @@ import { z } from "zod";
 import { workerJobs } from "../../drizzle/schema";
 import { createCanonicalJobInTransaction } from "./jobControlPlane";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE } from "./marketplaceAutoReviewQueuePolicy";
 
-export const MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE =
-  "marketplace.auto_review.execute";
+export { MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE } from "./marketplaceAutoReviewQueuePolicy";
 export const MARKETPLACE_AUTO_REVIEW_WORKER_CONTRACT_VERSION =
   "feature-186-v1" as const;
 

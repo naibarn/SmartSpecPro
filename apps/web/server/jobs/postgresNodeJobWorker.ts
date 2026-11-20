@@ -5,6 +5,11 @@ import { asc, desc, eq, sql } from "drizzle-orm";
 import { closeDb, db, getDb } from "../db";
 import { workerJobOutbox, workerJobs } from "../../drizzle/schema";
 import { createJobControlPlane } from "../services/jobControlPlane";
+import {
+  activeMarketplaceAutoReviewJobs,
+  MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+  marketplaceAutoReviewWorkerSlots,
+} from "../services/marketplaceAutoReviewQueuePolicy";
 import { defaultJobExecutorRegistry, type JobExecutorRegistry } from "../services/jobExecutorRegistry";
 import { executeCanonicalJobEnvelope } from "./unifiedJobConsumer";
 import { POSTGRES_NODE_JOB_TYPES } from "./feature186JobTypes";
@@ -268,6 +273,7 @@ type ReadyNodeEnvelope = {
 
 async function findReadyNodeEnvelopes(limit: number): Promise<ReadyNodeEnvelope[]> {
   getDb();
+  const marketplaceSlots = marketplaceAutoReviewWorkerSlots();
   const rows = await db
     .select({
       jobId: workerJobs.id,
@@ -286,6 +292,17 @@ async function findReadyNodeEnvelopes(limit: number): Promise<ReadyNodeEnvelope[
       AND ${workerJobOutbox.publishedAt} IS NOT NULL
       AND ${workerJobOutbox.cancelledAt} IS NULL
       AND ${workerJobOutbox.quarantinedAt} IS NULL
+      AND (
+        ${workerJobs.jobType} <> ${MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE}
+        OR (
+          (SELECT count(*) FROM (${activeMarketplaceAutoReviewJobs}) active) < ${marketplaceSlots}
+          AND NOT EXISTS (
+            SELECT 1 FROM (${activeMarketplaceAutoReviewJobs}) active
+            WHERE active."tenantId" IS NOT DISTINCT FROM ${workerJobs.tenantId}
+              AND active."runId" = ${workerJobs.inputJson}->>'runId'
+          )
+        )
+      )
       AND EXISTS (
         SELECT 1
         FROM "worker_job_dispatches" dispatch
@@ -294,7 +311,21 @@ async function findReadyNodeEnvelopes(limit: number): Promise<ReadyNodeEnvelope[
           AND dispatch."dedupeKey" = ${workerJobOutbox.dedupeKey}
           AND dispatch."consumedAt" IS NULL
       )`)
-    .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt), asc(workerJobs.id), desc(workerJobOutbox.createdAt))
+    .orderBy(
+      // Sample each Auto Review submitter before taking more of their
+      // backlog. Otherwise one busy submitter can fill the whole poll batch.
+      sql`CASE WHEN ${workerJobs.jobType} = ${MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE}
+        THEN row_number() OVER (
+          PARTITION BY ${workerJobs.jobType}, ${workerJobs.requestedByUserId},
+            CASE WHEN ${workerJobs.requestedByUserId} IS NULL THEN ${workerJobs.tenantId} END
+          ORDER BY ${workerJobs.priority} DESC, ${workerJobs.createdAt}, ${workerJobs.id}, ${workerJobOutbox.createdAt} DESC
+        )
+        ELSE 1 END`,
+      desc(workerJobs.priority),
+      asc(workerJobs.createdAt),
+      asc(workerJobs.id),
+      desc(workerJobOutbox.createdAt),
+    )
     .limit(Math.min(500, Math.max(limit, limit * 4)));
 
   const latestByJob = new Map<string, typeof rows[number]>();
@@ -440,7 +471,7 @@ export async function runPostgresNodeJobWorkerForever(
       pollIntervalMs,
       initialDispatchCount,
       fairnessWaitMs,
-      concurrencyPolicy: "unbounded_after_fairness_window",
+      marketplaceAutoReviewSlots: marketplaceAutoReviewWorkerSlots(),
     });
     stopQueueRecovery = startNodeWorkerQueueRecovery();
     await loadNodeExecutorModules();
@@ -448,7 +479,8 @@ export async function runPostgresNodeJobWorkerForever(
     let lastDispatchAt: number | null = null;
     while (!shutdownRequested) {
       try {
-        const candidates = await findReadyNodeEnvelopes(batchSize);
+        const candidates = (await findReadyNodeEnvelopes(batchSize))
+          .filter(candidate => !activeExecutions.has(candidate.jobId));
         const activeUserKeys = new Set(activeUserCounts.keys());
         if (shouldDispatchNextNodeWorkerTask({
           activeCount: activeExecutions.size,
@@ -459,7 +491,7 @@ export async function runPostgresNodeJobWorkerForever(
           fairnessWaitMs,
         })) {
           const candidate = selectFairNodeWorkerTask(candidates, activeUserKeys);
-          if (candidate && !shutdownRequested && !activeExecutions.has(candidate.jobId)) {
+          if (candidate && !shutdownRequested) {
             if (candidate.userKey) activeUserCounts.set(candidate.userKey, (activeUserCounts.get(candidate.userKey) ?? 0) + 1);
             const execution = executeReadyNodeEnvelope(candidate, {
               controlPlane: createJobControlPlane(),

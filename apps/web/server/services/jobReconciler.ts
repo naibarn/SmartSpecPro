@@ -5,6 +5,7 @@ import { db, getDb } from "../db";
 import { storyboardSkillRuns, workerJobEvents, workerJobs } from "../../drizzle/schema";
 import { DEVELOPER_FAST_LANE_CONTRACT, DEVELOPER_FAST_LANE_JOB } from "./spec224DeveloperFastLaneContract";
 import { createJobControlPlane } from "./jobControlPlane";
+import { MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE } from "./marketplaceAutoReviewQueuePolicy";
 import { classifyWaitingExternal, type WaitingExternalDecision } from "./jobReconciliationPolicy";
 import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPublisher";
 import type { JobTransportAdapter } from "./jobTransportAdapters";
@@ -144,6 +145,9 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
         ),
       ),
       sql`${workerJobs.retryPolicyJson}->>'deadlineMode' IN ('adaptive', 'fixed')`,
+      sql`(${workerJobs.jobType} <> ${MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE}
+        OR ${workerJobs.status} NOT IN ('queued', 'leased')
+        OR ${workerJobs.startedAt} IS NOT NULL)`,
     ))
     .orderBy(asc(workerJobs.createdAt))
     .limit(limit);

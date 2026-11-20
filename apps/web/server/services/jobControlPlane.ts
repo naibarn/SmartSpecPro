@@ -52,6 +52,10 @@ import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
 import type { RunnerJobCommand } from "./runnerContracts";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 import { evaluateSpec224GoalDelegation, mapSpec224GoalGrantAuthorityEvidence, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
+import {
+  hasMarketplaceAutoReviewExecutionSlot,
+  MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+} from "./marketplaceAutoReviewQueuePolicy";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
@@ -79,6 +83,7 @@ export function leaseDurationMs(executionClass: string): number {
 export type TxRepo = {
   findJob(jobId: string): Promise<WorkerJob | null>;
   findJobForUpdate?(jobId: string): Promise<WorkerJob | null>;
+  hasMarketplaceAutoReviewExecutionSlot?(job: WorkerJob): Promise<boolean>;
   findByIdempotency(
     tenantId: string,
     idempotencyKey: string
@@ -623,6 +628,9 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .where(eq(workerJobs.id, jobId))
                   .limit(1);
                 return row ?? null;
+              },
+              hasMarketplaceAutoReviewExecutionSlot(job) {
+                return hasMarketplaceAutoReviewExecutionSlot(query, job);
               },
               async findByIdempotency(tenantId, idempotencyKey) {
                 const [row] = await query
@@ -3403,6 +3411,13 @@ export function createJobControlPlane(
         if (
           input.attemptId &&
           (!existingAttempt || existingAttempt.id !== input.attemptId)
+        )
+          return null;
+        if (
+          job.jobType === MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE &&
+          job.runtimeType === "node_job_worker" &&
+          repo.hasMarketplaceAutoReviewExecutionSlot &&
+          !(await repo.hasMarketplaceAutoReviewExecutionSlot(job))
         )
           return null;
         const attemptId = existingAttempt?.id ?? randomUUID();
@@ -7657,6 +7672,10 @@ export function createJobControlPlane(
         // durable authorization hold until the bound grant/budget is released.
         if (isSpec224AuthorizationHold)
           return { outcome: "ignored" as const, jobType: undefined };
+        const marketplaceJob =
+          job.jobType === MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE;
+        if (marketplaceJob && !job.startedAt && ["queued", "leased"].includes(job.status))
+          return { outcome: "ignored" as const, jobType: undefined };
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
         // Keep pre-policy backlog untouched during rollout. Only jobs admitted
         // with an explicit deadline mode participate in automatic expiry.
@@ -7673,9 +7692,11 @@ export function createJobControlPlane(
           retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
           timeoutSeconds: job.timeoutSeconds, createdAt: job.createdAt, attempt: job.attempt,
         });
-        const deadlineAnchor = job.jobType === "external_agent_task" && spec224Run && spec224Projection
-          ? job.scheduledAt ?? job.createdAt
-          : job.createdAt;
+        const deadlineAnchor = marketplaceJob
+          ? job.startedAt ?? job.createdAt
+          : job.jobType === "external_agent_task" && spec224Run && spec224Projection
+            ? job.scheduledAt ?? job.createdAt
+            : job.createdAt;
         if (now.getTime() < deadlineAnchor.getTime() + deadlineMs)
           return { outcome: "ignored" as const, jobType: undefined };
         const updated = await repo.updateJob({

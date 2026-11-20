@@ -17,6 +17,7 @@ import { assertCanonicalJobTransition } from "../jobControlPlaneTypes";
 import type { JobControlPlaneRepository } from "../jobControlPlane";
 import { redactJobPayload } from "../jobCanonicalization";
 import { registerJobSettlementHook, resetJobSettlementHooksForTests } from "../jobSettlementHooks";
+import { MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE } from "../marketplaceAutoReviewQueuePolicy";
 
 function makeRepository() {
   const jobs = new Map<string, any>();
@@ -2856,6 +2857,52 @@ describe("job control plane", () => {
     ).resolves.toBe("expired");
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.events.map(event => event.eventType)).toContain("EXPIRED");
+  });
+
+  it("keeps an Auto Review request queued with its original attempt while execution capacity is busy", async () => {
+    const state = makeRepository();
+    const hasSlot = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const controlPlane = createJobControlPlane({
+      transaction: work => state.repository.transaction(repo =>
+        work({ ...repo, hasMarketplaceAutoReviewExecutionSlot: hasSlot })
+      ),
+    });
+    const { jobId } = await controlPlane.create({
+      ...definition,
+      jobType: MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+      input: { operation: "advance_run", runId: "review-a" },
+    });
+    const claim = { jobId, runnerId: "runner-1", adapter: "postgres-pull" };
+    await expect(controlPlane.claim(claim)).resolves.toBeNull();
+    expect(state.jobs.get(jobId)).toMatchObject({ status: "queued", attempt: 1 });
+    expect(state.attempts).toHaveLength(0);
+    expect(state.events.map(event => event.eventType)).not.toContain("LEASE_ACQUIRED");
+
+    await expect(controlPlane.claim(claim)).resolves.toMatchObject({ jobId });
+    expect(state.jobs.get(jobId)).toMatchObject({ status: "leased", attempt: 1 });
+  });
+
+  it("starts the Auto Review deadline at execution instead of queue admission", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const { jobId } = await controlPlane.create({
+      ...definition,
+      jobType: MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
+      input: { operation: "advance_run", runId: "review-a" },
+    });
+    const job = state.jobs.get(jobId);
+    const now = new Date();
+    job.createdAt = new Date(now.getTime() - 48 * 60 * 60_000);
+    await expect(controlPlane.expireDeadline(jobId, now)).resolves.toBe("ignored");
+    expect(state.jobs.get(jobId).status).toBe("queued");
+
+    const lease = await controlPlane.claim({ jobId, runnerId: "runner-1", adapter: "postgres-pull" });
+    await expect(controlPlane.expireDeadline(jobId, now)).resolves.toBe("ignored");
+    await controlPlane.start(lease!);
+    await expect(controlPlane.expireDeadline(jobId, now)).resolves.toBe("ignored");
+    await expect(controlPlane.expireDeadline(
+      jobId, new Date(now.getTime() + 48 * 60 * 60_000),
+    )).resolves.toBe("expired");
   });
 
   it("leaves legacy jobs with 24-hour deadlines unchanged during rollout", async () => {
