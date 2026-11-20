@@ -29,9 +29,7 @@ import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { isCompleteStagedVideoPrompt } from "./marketplaceAutoReviewStagedPromptCompiler";
-import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
 import {
-  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
   type SequentialReferenceManifestEntry,
 } from "./productReviewSequentialStoryboardSkillRunner";
 import {
@@ -732,18 +730,37 @@ type MarketplaceSpeakerVisualEntry = {
   detected_person_id?: string;
 };
 
-const MARKETPLACE_VIDEO_PROMPT_PREFIX =
-  "Create a vertical 9:16 video using the approved image as the exact start frame. Camera movement follows the shot action. No on-screen text, captions, or subtitles.";
 const MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS = 3000;
 
 const MARKETPLACE_OBJECT_CONTINUITY_LOCK =
-  "OBJECT AND PRODUCT CONTINUITY LOCK (MANDATORY): Image 1 is the exact start frame and the source of truth for the scene's complete visible object inventory. Preserve the objects already visible there. Do not add, spawn, reveal, duplicate, or replace any product, prop, tool, package, furniture, decor, person, label, or text absent from Image 1 unless the approved shot action explicitly requires that exact object. global product metadata is not permission to add it; dialogue alone does not authorize a visual insertion. Keep every other absent item off-screen. No invented product placement or cutaway.";
-
+  "Preserve visible objects and existing printed labels. Add an object only if the approved action explicitly requires it.";
 const MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK =
-  "NO-ADDED-TEXT LOCK (MANDATORY): Do not create, add, overlay, animate, or display any new text anywhere in the video. No subtitles, captions, transcribed dialogue, speech bubbles, title cards, labels, callouts, text-bearing graphics, logos, watermarks, or decorative/random glyphs. Spoken dialogue is audio only. Preserve authentic text already physically printed on the approved product/reference frame unchanged; do not invent, rewrite, or alter it.";
-
+  "Do not add subtitles, captions, or other on-screen text.";
 const MARKETPLACE_SPEAKER_TURN_TAKING_LOCK =
-  "SPEAKER TURN-TAKING LOCK (MANDATORY): Speak each approved line once, in order, one person at a time. Only that speaker moves their mouth; everyone else stays silent with mouths closed. No overlapping turns, synchronized lips, echoes, chorus, shared or repeated lines, paraphrase, or ad-libs.";
+  "Only the current speaker moves their mouth. Everyone else stays silent with mouths closed.";
+
+const CAMERA_CUES = {
+  locked: "Keep the camera steady.",
+  slow_push_in: "Use a very slow push-in.",
+  slow_push_in_drift_right: "Use a very slow push-in with a slight rightward camera drift.",
+  slow_push_in_drift_left: "Use a very slow push-in with a slight leftward camera drift.",
+  slow_pull_back: "Use a gentle pullback.",
+  slow_pan_left: "Use a slow leftward pan.",
+  slow_pan_right: "Use a slow rightward pan.",
+  gentle_tilt_up: "Use a gentle upward tilt.",
+  gentle_tilt_down: "Use a gentle downward tilt.",
+  gentle_tracking: "Use a restrained camera tracking move.",
+} as const;
+
+function cameraCue(value: unknown): string | undefined {
+  if (typeof value !== "string") return;
+  const key = value.trim().toLowerCase().replace(/[ -]+/g, "_");
+  if (key === "push_in") return CAMERA_CUES.slow_push_in;
+  if (key === "pull_back") return CAMERA_CUES.slow_pull_back;
+  if (Object.hasOwn(CAMERA_CUES, key)) {
+    return CAMERA_CUES[key as keyof typeof CAMERA_CUES];
+  }
+}
 
 export type MarketplaceVideoSpeakerBinding = {
   speaker: string;
@@ -763,103 +780,42 @@ export function renderMarketplaceVideoSpeakerSections(
         item => normalizedName(item.speaker) === normalizedName(binding.speaker)
       ) === index
   );
+  if (!bindings.length) {
+    return "Use natural ambient sound with no speech.";
+  }
   return [
     "SPEAKER VISUAL MAP FOR THIS SHOT:",
-    ...uniqueBindings.map(
-      binding => `- ${binding.speaker}: ${binding.cue} — ${binding.person.appearance}`
-    ),
-    "Approved dialogue:",
-    ...bindings.map((binding, index) => {
-      const otherSpeakers = uniqueBindings
-        .filter(item => normalizedName(item.speaker) !== normalizedName(binding.speaker))
-        .map(item => `${item.speaker} (${item.person.id})`);
-      const closedMouthInstruction = otherSpeakers.length
-        ? `While ${binding.speaker} speaks, ${otherSpeakers.join(" and ")} keep mouths fully closed; no lip movement or speech.`
-        : "All other visible people keep mouths fully closed and stay silent.";
-      return `TURN ${index + 1} — ${binding.speaker} (${binding.person.id}) speaks once: "${binding.line}". ${closedMouthInstruction}`;
+    ...uniqueBindings.map(binding => {
+      const appearance = clean(binding.person.appearance, 100);
+      return `- ${binding.speaker}: ${binding.cue}${appearance ? ` — ${appearance}` : ""}`;
     }),
+    "",
+    "Approved dialogue: Speak naturally. Use these lines once, in order, with no overlap or extra dialogue.",
+    ...bindings.map(
+      (binding, index) => `${index + 1}. ${binding.speaker}: “${binding.line}”`
+    ),
+    "",
+    MARKETPLACE_SPEAKER_TURN_TAKING_LOCK,
   ].join("\n");
 }
 
-function motionPromptBudget(
-  dialogue: readonly { speaker: string; line: string }[],
-  people: readonly VerticalDramaDetectedShotPerson[],
-  estimate: "longest" | "shortest",
-  approvedShotAction: string
-): number {
-  const id = people.reduce(
-    (selected, person) =>
-      (
-        estimate === "longest"
-          ? person.id.length > selected.length
-          : person.id.length < selected.length
-      )
-        ? person.id
-        : selected,
-    people[0]?.id ?? "person-1"
-  );
-  const appearance = people.reduce(
-    (selected, person) =>
-      (
-        estimate === "longest"
-          ? person.appearance.length > selected.length
-          : person.appearance.length < selected.length
-      )
-        ? person.appearance
-        : selected,
-    people[0]?.appearance ?? ""
-  );
-  const cue = `${id}, viewer-center`;
-  const sections = renderMarketplaceVideoSpeakerSections(
-    dialogue.map(turn => ({
-      ...turn,
-      person: { id, appearance },
-      cue,
-    }))
-  );
-  const authoritativeSections = renderMarketplaceVideoPromptAuthoritativeSections(
-    sections,
-    approvedShotAction
-  );
-  return (
-    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS -
-    MARKETPLACE_VIDEO_PROMPT_PREFIX.length -
-    authoritativeSections.length -
-    4
-  );
-}
-
 function marketplaceApprovedShotAction(shot: StagedStoryArcShot): string {
-  const explicitAction = clean(shot.approvedShotAction, 420);
-  if (explicitAction) return explicitAction;
-  const visual = clean(shot.visualSummary, 420);
-  const movement = clean(shot.movementDirection, 260);
-  return Array.from(new Set([visual, movement].filter(Boolean)))
-    .join(" ")
-    .slice(0, 640);
-}
-
-function renderMarketplaceVideoPromptAuthoritativeSections(
-  speakerSections: string,
-  approvedShotAction: string
-): string {
-  return [
-    speakerSections.trim(),
-    speakerSections.trim() ? MARKETPLACE_SPEAKER_TURN_TAKING_LOCK : null,
-    approvedShotAction
-      ? `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`
-      : null,
-    MARKETPLACE_OBJECT_CONTINUITY_LOCK,
-    MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
-  ]
-    .filter((section): section is string => Boolean(section))
-    .join("\n\n");
+  return clean(shot.approvedShotAction, 420) ||
+    clean(shot.visualSummary, 420) ||
+    clean(shot.movementDirection, 260);
 }
 
 function detectedPersonPosition(
-  person: VerticalDramaDetectedShotPerson
+  person: VerticalDramaDetectedShotPerson,
+  people: readonly VerticalDramaDetectedShotPerson[]
 ): "viewer-left" | "viewer-center" | "viewer-right" {
-  const centerX = person.boundingBox.x + person.boundingBox.width / 2;
+  const center = (value: VerticalDramaDetectedShotPerson) =>
+    value.boundingBox.x + value.boundingBox.width / 2;
+  const centerX = center(person);
+  const other = people.length === 2 ? people.find(item => item.id !== person.id) : undefined;
+  if (other && Math.abs(centerX - center(other)) >= 0.12) {
+    return centerX < center(other) ? "viewer-left" : "viewer-right";
+  }
   return centerX < 0.34
     ? "viewer-left"
     : centerX > 0.66
@@ -957,7 +913,7 @@ function buildAuthoritativeSpeakerSections(input: {
         throw matchError("manual-detected-person-already-used");
       }
       usedPersonIds.add(person.id);
-      const position = detectedPersonPosition(person);
+      const position = detectedPersonPosition(person, input.detectedPeople);
       const cue = `${person.id}, ${position}`;
       bySpeaker.set(speakerKey, { person, cue });
       return { ...turn, person, cue };
@@ -1014,7 +970,7 @@ function buildAuthoritativeSpeakerSections(input: {
       throw matchError("detected-person-binding");
     }
     usedPersonIds.add(person.id);
-    const position = detectedPersonPosition(person);
+    const position = detectedPersonPosition(person, input.detectedPeople);
     const cue = `${person.id}, ${position}`;
     bySpeaker.set(speakerKey, { person, cue });
     return { ...turn, person, cue };
@@ -1022,131 +978,36 @@ function buildAuthoritativeSpeakerSections(input: {
   return renderMarketplaceVideoSpeakerSections(bindings);
 }
 
-function replaceGeneratedSpeakerSections(
-  prompt: string,
-  authoritativeSections: string,
-  approvedDialogue: readonly { line: string }[]
-): string {
-  const withoutModelPrefix = prompt.replace(
-    MARKETPLACE_VIDEO_PROMPT_PREFIX,
-    "\n"
-  );
-  const withoutModelProductPlacement = withoutModelPrefix.replace(
-    /(?:^|\n)\s*Product:\s*[^\n]*(?:\n(?!\s*\n)[^\n]*)*/gi,
-    "\n"
-  );
-  const withoutSpeakerMap = withoutModelProductPlacement.replace(
-    /(?:^|\n)\s*SPEAKER VISUAL MAP FOR THIS SHOT[^\n]*[\s\S]*?(?=\n\s*(?:Approved dialogue\b|Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b)|$)/gi,
-    "\n"
-  );
-  const withoutDialogue = withoutSpeakerMap.replace(
-    /(?:^|\n)\s*Approved dialogue[^\n]*\n[\s\S]*?(?=\n\s*(?:SPEAKER-TO-FACE LOCK:|Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b)|$)/gi,
-    "\n"
-  );
-  const withoutLock = withoutDialogue.replace(
-    /(?:^|\n)\s*SPEAKER-TO-FACE LOCK:[^\n]*(?:\n(?!\s*(?:Camera\/action:|Pacing:|Audio:|Photorealistic\b|No unsupported claims\b))[^\n]*)*/gi,
-    "\n"
-  );
-  const withoutApprovedAction = withoutLock.replace(
-    /(?:^|\n)\s*APPROVED SHOT ACTION \(authoritative\):[^\n]*/gi,
-    "\n"
-  );
-  let motion = withoutApprovedAction
-    .split(MARKETPLACE_SPEAKER_TURN_TAKING_LOCK)
-    .join("\n")
-    .split(MARKETPLACE_OBJECT_CONTINUITY_LOCK)
-    .join("\n")
-    .split(MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK)
-    .join("\n")
-    .trim();
-  for (const line of approvedDialogue) {
-    // The visual map owns the only spoken transcript. Models can still echo a
-    // supplied line in their prose despite being asked not to do so.
-    const escaped = line.line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    motion = motion.replace(
-      new RegExp(`["“‘']\\s*${escaped}\\s*["”’']`, "gu"),
-      "the approved line"
-    );
-    if (line.line.length >= 8) {
-      motion = motion.split(line.line).join("the approved line");
-    }
-  }
-  motion = motion
-    .split(/(?<=[.!?])\s+|\n+/u)
-    .filter(
-      sentence =>
-        !/\b(?:speak(?:s|ing)?|talk(?:s|ing)?|say|says|saying|speech|spoken|dialogue|recit(?:e|es|ed|ing)|voice|voices|utter(?:s|ed|ing)?|sing(?:s|ing)?|lip[\s-]?sync(?:s|ed|ing)?|mouth(?:s|ing)?|deliver(?:s|ed|ing)?\s+(?:the\s+)?(?:approved\s+)?(?:dialogue|line|turn)|(?:dialogue|line|turn)\s+#?\d+)\b/i.test(
-          sentence
-        )
-    )
-    .join(" ")
-    .trim();
-  if (
-    motion.length < 40 ||
-    /^(?:i\s+)?(?:cannot|can't|am unable|am sorry|apolog)/i.test(motion)
-  ) {
-    throw new Error("MARKETPLACE_VIDEO_PROMPT_MOTION_INCOMPLETE");
-  }
-  const maxLength = PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS;
-  const remaining =
-    maxLength -
-    MARKETPLACE_VIDEO_PROMPT_PREFIX.length -
-    authoritativeSections.length -
-    4;
-  if (remaining < 80) {
+export function composeMarketplaceAutoReviewVideoPrompt(input: {
+  cameraMotion?: string;
+  durationSeconds: number;
+  speakerSections: string;
+  approvedShotAction: string;
+}): string {
+  // If the approved action already directs the camera, use that instruction
+  // alone. Never copy free-form skill prose into the final provider prompt.
+  const actionDirectsCamera =
+    /กล้อง\s*(?:ค่อย|แพน|เลื่อน|ขยับ|เคลื่อน|ติดตาม|นิ่ง|ซูม|ดัน|ถอย|กวาด)|มุมกล้อง|ซูม|\bcamera\s*(?::|(?:slowly\s+)?(?:moves?|pans?|tilts?|drifts?|tracks?|pushes?|pulls?|stays?|follows?)\b)|\b(?:zoom\s+(?:in|out)|push[- ]in|pull[- ]back|close[- ]up)\b/i
+      .test(input.approvedShotAction);
+  const camera = actionDirectsCamera
+    ? ""
+    : cameraCue(input.cameraMotion) ?? CAMERA_CUES.locked;
+  const prompt = [
+    `Create a ${input.durationSeconds}-second vertical 9:16 video using the approved image (Image 1) as the exact first frame. Keep the same people, appearance, clothing, lighting, and location in one continuous shot with no cuts.`,
+    [
+      input.approvedShotAction
+        ? `APPROVED SHOT ACTION (authoritative): ${input.approvedShotAction}`
+        : "Keep movement subtle and natural.",
+      camera ? `Camera: ${camera} Keep the subjects and relevant visible objects in frame.` : "",
+      MARKETPLACE_OBJECT_CONTINUITY_LOCK,
+    ].filter(Boolean).join("\n"),
+    input.speakerSections,
+    MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
+  ].filter(Boolean).join("\n\n");
+  if (prompt.length > MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
     throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_CONTENT_TOO_LONG");
   }
-  if (motion.length > remaining) {
-    let end = remaining;
-    if (/[\uD800-\uDBFF]/.test(motion.charAt(end - 1))) end -= 1;
-    const slice = motion.slice(0, end);
-    const sentenceEnd = Math.max(
-      slice.lastIndexOf(". "),
-      slice.lastIndexOf("! "),
-      slice.lastIndexOf("? "),
-      slice.lastIndexOf("\n")
-    );
-    motion = (
-      sentenceEnd >= Math.floor(remaining / 2)
-        ? slice.slice(0, sentenceEnd + 1)
-        : slice
-    ).trimEnd();
-  }
-  return `${MARKETPLACE_VIDEO_PROMPT_PREFIX}\n\n${motion}\n\n${authoritativeSections}`;
-}
-
-export function composeMarketplaceAutoReviewVideoPrompt(input: {
-  generatedPrompt: string;
-  speakerSections: string;
-  approvedDialogue: readonly { line: string }[];
-  approvedShotAction: string;
-}): string {
-  const authoritativeSections = renderMarketplaceVideoPromptAuthoritativeSections(
-    input.speakerSections,
-    input.approvedShotAction
-  );
-  return replaceGeneratedSpeakerSections(
-    input.generatedPrompt,
-    authoritativeSections,
-    input.approvedDialogue
-  );
-}
-
-/** Rebuild server-owned speaker/dialogue sections after a prompt refiner runs.
- * Protected fragments can be restored at the end of an optimized prompt, but
- * validation requires the visual map to precede its dialogue turns. */
-export function recomposeMarketplaceAutoReviewVideoPrompt(input: {
-  optimizedPrompt: string;
-  speakerSections: string;
-  approvedDialogue: readonly { line: string }[];
-  approvedShotAction: string;
-}): string {
-  return composeMarketplaceAutoReviewVideoPrompt({
-    generatedPrompt: input.optimizedPrompt,
-    speakerSections: input.speakerSections,
-    approvedDialogue: input.approvedDialogue,
-    approvedShotAction: input.approvedShotAction,
-  });
+  return prompt;
 }
 
 export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
@@ -1197,27 +1058,6 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
         .filter((section): section is string => Boolean(section))
         .join("\n")
     : null;
-  const maximumMotionBudget = motionPromptBudget(
-    dialogue,
-    input.detectedPeople,
-    "shortest",
-    approvedShotAction
-  );
-  if (maximumMotionBudget < 80) {
-    throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_CONTENT_TOO_LONG");
-  }
-  const motionBudget = Math.max(
-    80,
-    Math.min(
-      1500,
-      motionPromptBudget(
-        dialogue,
-        input.detectedPeople,
-        "longest",
-        approvedShotAction
-      )
-    )
-  );
   const castByName = new Map(
     input.cast.map(member => [
       member.name.normalize("NFKC").trim().toLowerCase(),
@@ -1292,7 +1132,7 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
         "SAVED SPEAKER-TO-PERSON MATCH (authoritative and already reviewed):",
         ...verifiedSpeakerMap.map(
           binding =>
-            `- ${binding.speaker} = ${binding.personId}, ${detectedPersonPosition(binding.person)}`
+            `- ${binding.speaker} = ${binding.personId}, ${detectedPersonPosition(binding.person, input.detectedPeople)}`
         ),
         "Do not run visual matching again, change these assignments, or infer identity from cast/dialogue order. In JSON frame_analysis.people, echo the exact saved speaker label, detected_person_id, and position above. The application will use this saved mapping as the source of truth.",
       ].join("\n")
@@ -1301,24 +1141,23 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
     `Create one video motion prompt for Marketplace Auto Review shot ${input.shotId}. This action creates prompt text only; do not render or generate a video.`,
     "Use Image 1 as the exact approved start frame and the source of truth for the people, product, blocking, and scene.",
     `Format: vertical 9:16, ${input.shot.durationSeconds} seconds.`,
-    `Limit the generated motion prompt field to ${motionBudget} characters; the application reserves the remaining space for the exact speaker map and dialogue.`,
-    "Begin the video prompt with: Use the approved image (Image 1) as the exact start frame and visual source of truth.",
+    `Choose one camera preset for the prompt field: ${Object.keys(CAMERA_CUES).join(", ")}. Use locked when the requested motion does not fit a preset or the frame cannot support it.`,
     approvedProductContext,
     `Shot title: ${clean(input.shot.title, 200)}`,
     "ACTION AUTHORITY (mandatory): The APPROVED SHOT ACTION below is the only source for actor, hand, product, and prop actions. Do not add, restate, paraphrase, reorder, or contradict any physical action. Other shot notes and user instructions are secondary and must be ignored wherever they conflict with this action.",
     `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`,
-    input.shot.cameraDirection
-      ? `Planned camera framing and movement: ${clean(input.shot.cameraDirection, 240)}`
+    (input.shot.cameraDirection || input.shot.movementDirection)
+      ? `Secondary movement notes for camera preset selection: ${clean(input.shot.cameraDirection || input.shot.movementDirection, 240)}`
       : null,
     `CHARACTER IDENTITY MAP (portraits attached after Image 1):\n${portraitManifest}`,
     `People detected from Image 1 by ${MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL}:\n${formatDetectedPeople(input.detectedPeople)}`,
     `Approved dialogue for speaker matching only; the application adds the exact dialogue later:\n${approvedDialogue}`,
     speakerMatchingInstruction,
-    "Generated motion field scope: camera framing, one primary camera move, and pacing only. Do not describe subject movement, handling, facial action, product use, speech, mouth movement, or dialogue; the application appends the approved shot action and speaker/dialogue sections exactly once. Assume Image 1 already defines all visible people, products, props, and location. Do not add unsupported product claims.",
+    "This shot uses one continuous take. Choose a camera move that keeps the essential subjects and objects visible. If the approved action includes a camera instruction, use locked so the application can preserve that instruction directly. Do not invent product claims, graphics, or new label text.",
     clean(input.instruction, 1200)
       ? `Secondary user instruction; honor camera or pacing requests only when consistent with the authoritative action:\n${clean(input.instruction, 1200)}`
       : null,
-    "Return exactly the JSON object required by this skill. The prompt field must contain the complete video prompt. Do not return commentary.",
+    "Return the required skill JSON. In prompt, repeat only the selected camera preset key. The application composes the final prompt using the verified speaker mapping and approved action and dialogue.",
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n\n");
@@ -1356,6 +1195,10 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     parseDialogue(safeShotDialogue, defaultDialogueSpeaker),
     input.cast
   );
+  if (dialogue.reduce((size, turn) => size + turn.speaker.length + turn.line.length, 0) >=
+    MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_APPROVED_CONTENT_TOO_LONG");
+  }
   const safeSpeakerNames = new Set(
     dialogue.map(turn => turn.speaker.normalize("NFKC").trim().toLowerCase())
   );
@@ -1516,6 +1359,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
       publicUrl: input.publicUrl,
       userPromptText: promptInput,
       images: imageInputs,
+      cameraPresetKeys: Object.keys(CAMERA_CUES),
       onUsage: collectUsageObserver(promptUsage),
     });
   } catch (error) {
@@ -1594,7 +1438,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     const repairUsage = { current: null as Usage | null };
     const repairInstruction = [
       "SPEAKER MAP CORRECTION REQUIRED: Your previous frame_analysis could not be safely matched to the approved dialogue.",
-      "Return the same complete JSON contract and preserve the approved prompt content, but correct frame_analysis.people.",
+      "Return the same JSON contract and camera preset, but correct frame_analysis.people.",
       "For every approved dialogue speaker that is visibly matched to a portrait, use the exact approved speaker label as name, the visually verified position, and the exact detected_person_id from the detected-person map.",
       "Do not guess, use cast/order assumptions, rename speakers, or omit a speaker that can be visually matched. If a speaker cannot be confidently identified from the supplied images, omit that person and do not invent a binding.",
       `Approved speaker labels: ${approvedTurns.map(turn => turn.speaker).join(" | ")}`,
@@ -1611,6 +1455,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
         publicUrl: input.publicUrl,
         userPromptText: `${promptInput}\n\n${repairInstruction}`,
         images: imageInputs,
+        cameraPresetKeys: Object.keys(CAMERA_CUES),
         onUsage: collectUsageObserver(repairUsage),
       });
     } catch (repairError) {
@@ -1642,64 +1487,17 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     generated = repaired;
     speakerSections = buildSpeakerSections(generated.data);
   }
-  const composedPrompt = composeMarketplaceAutoReviewVideoPrompt({
-    generatedPrompt: generated.data.prompt.trim(),
+  const skillPrompt = generated.data.prompt.trim();
+  if (/^(?:i\s+)?(?:cannot|can['’]t|am unable|am sorry|apolog)/i.test(skillPrompt)) {
+    throw new Error("MARKETPLACE_VIDEO_PROMPT_MOTION_INCOMPLETE");
+  }
+  const cameraMotion = generated.data.motion_profile?.camera_motion;
+  const prompt = composeMarketplaceAutoReviewVideoPrompt({
+    cameraMotion: cameraCue(skillPrompt) ? skillPrompt : cameraMotion,
+    durationSeconds: safeShot.durationSeconds,
     speakerSections,
-    approvedDialogue: approvedTurns,
     approvedShotAction: marketplaceApprovedShotAction(safeShot),
   });
-  const speakerMapFragments = speakerSections
-    .split(/\nApproved dialogue:/i, 1)[0]
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean);
-  const approvedShotAction = marketplaceApprovedShotAction(safeShot);
-  const promptQc = await ensurePromptWithinLimit({
-    kind: "video",
-    prompt: composedPrompt,
-    context:
-      "Marketplace Auto Review video prompt. Keep the approved action, verified speaker map, exact approved dialogue, product/object continuity, and no-added-text restrictions. The attached start frame already defines people, product, props, and location, so compress repeated visual description first.",
-    protectedFragments: [
-      MARKETPLACE_VIDEO_PROMPT_PREFIX,
-      ...speakerMapFragments,
-      ...approvedTurns.map(turn => turn.line),
-      MARKETPLACE_SPEAKER_TURN_TAKING_LOCK,
-      `APPROVED SHOT ACTION (authoritative): ${approvedShotAction}`,
-      MARKETPLACE_OBJECT_CONTINUITY_LOCK,
-      MARKETPLACE_NO_ADDED_VIDEO_TEXT_LOCK,
-    ],
-    // The approved action, dialogue, speaker map, and policy locks above are
-    // protected and validated against the hard cap before refining. If both
-    // LLM passes still return an oversized prompt, let the shared QC fallback
-    // trim only the remaining prose instead of failing the whole shot.
-    failClosed: false,
-    maxChars: MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS,
-    userId: input.userId,
-    tenantId: input.tenantId,
-    billingScope: "marketplace_auto_review",
-    idempotencyKey: `${input.requestIdempotencyKey}:terminal-prompt-optimizer`,
-    label: `video prompt (shot ${input.shotId})`,
-  });
-  // Reassert authoritative section order after the refiner. Its protected
-  // fragment fallback preserves exact content but may append removed sections
-  // at the end, which breaks the required speaker-map-before-dialogue order.
-  const prompt = recomposeMarketplaceAutoReviewVideoPrompt({
-    optimizedPrompt: promptQc.prompt,
-    speakerSections,
-    approvedDialogue: approvedTurns,
-    approvedShotAction,
-  });
-  if (promptQc.refined || promptQc.truncated) {
-    console.info("[MarketplaceVideoPrompt] terminal_prompt_optimized", {
-      runId: input.runId,
-      shotId: input.shotId,
-      sourceLength: composedPrompt.length,
-      optimizedLength: prompt.length,
-      maxChars: MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS,
-      creditsUsed: promptQc.creditsUsed,
-      fallbackTrimmed: promptQc.truncated,
-    });
-  }
   if (
     !isMarketplaceAutoReviewVideoPromptComplete({
       value: prompt,
@@ -1766,7 +1564,7 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
     detectedPeople,
     model: videoPromptModel.modelId,
     provider: generated.providerName,
-    estimatedCredits: detectionCredits + promptCredits + promptQc.creditsUsed,
+    estimatedCredits: detectionCredits + promptCredits,
     skillRuns: [
       {
         skill: MARKETPLACE_VERTICAL_DRAMA_DETECTION_SKILL,
@@ -1783,16 +1581,6 @@ export async function generateMarketplaceAutoReviewVideoPrompt(
         provider: generated.providerName,
         estimatedCredits: promptCredits,
       },
-      ...(promptQc.refined
-        ? [
-            {
-              skill: "cinematic-prompt-refiner-pro",
-              model: promptQc.modelId ?? "unknown",
-              provider: promptQc.providerName ?? "unknown",
-              estimatedCredits: promptQc.creditsUsed,
-            },
-          ]
-        : []),
     ],
   };
 }

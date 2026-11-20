@@ -1540,15 +1540,24 @@ export async function generateVerticalDramaShotVideoPromptDirect(input: {
   publicUrl?: string | null;
   userPromptText: string;
   images: VisionAwareImageInput[];
+  cameraPresetKeys?: readonly string[];
   onUsage?: VerticalDramaShotVideoPromptUsageObserver;
 }): Promise<{
   data: ShotVideoPromptOutput;
   providerName: string;
   response: VisionAwareCallResponse;
 }> {
+  const skillPrompt = loadShotVideoPromptSystemPrompt();
+  const systemPrompt = input.cameraPresetKeys?.length
+    ? [
+        skillPrompt,
+        "MARKETPLACE COMPACT OUTPUT: For this call, the application writes the provider-facing prompt from the approved action, dialogue and camera preset. Apply the skill's visual analysis and safety rules. Return the required JSON with frame_analysis and set prompt to one camera preset key only. Omit generated dialogue, audio direction, motion prose and negative_prompt instructions. Use locked if the requested move would contradict the approved action or lose the subjects from the frame.",
+        `Allowed camera presets: ${input.cameraPresetKeys.join(", ")}.`,
+      ].join("\n\n")
+    : skillPrompt;
   const outcome = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
     model: input.model,
-    systemPrompt: loadShotVideoPromptSystemPrompt(),
+    systemPrompt,
     userPromptText: input.userPromptText,
     hasVision: true,
     images: input.images,

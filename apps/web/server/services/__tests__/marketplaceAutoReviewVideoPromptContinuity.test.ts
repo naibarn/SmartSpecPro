@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildMarketplaceVerticalDramaVideoPromptInput,
   composeMarketplaceAutoReviewVideoPrompt,
-  recomposeMarketplaceAutoReviewVideoPrompt,
+  isMarketplaceAutoReviewVideoPromptComplete,
   renderMarketplaceVideoSpeakerSections,
 } from "../marketplaceAutoReviewVideoPromptSkillRunner";
-import { isCompleteStagedVideoPrompt } from "../marketplaceAutoReviewStagedPromptCompiler";
 import type { StagedStoryArcShot } from "../marketplaceAutoReviewStoryArcPlanner";
 
 describe("Marketplace Auto Review video prompt object continuity", () => {
@@ -37,8 +36,6 @@ describe("Marketplace Auto Review video prompt object continuity", () => {
 
     expect(prompt).not.toContain("Product: Cella Protein Hair Mask");
     expect(prompt).not.toContain("500 ml bottle");
-    expect(prompt).toContain("OBJECT AND PRODUCT CONTINUITY LOCK");
-    expect(prompt).toContain("global product metadata is not permission to add it");
   });
 
   it("passes product details only when the approved visual action names that product", () => {
@@ -64,142 +61,71 @@ describe("Marketplace Auto Review video prompt object continuity", () => {
     expect(prompt).toContain("500 ml bottle");
   });
 
-  it("removes a model-added product placement and appends approved shot action plus a continuity lock", () => {
+  it("uses the approved action once, with a bounded camera move and printed-label continuity", () => {
+    const approvedShotAction = "She smooths her hair and turns toward him.";
     const prompt = composeMarketplaceAutoReviewVideoPrompt({
-      generatedPrompt: [
-        "Use Image 1 as the exact start frame.",
-        "Camera: slowly pushes toward the mirror.",
-        "Product: include Cella Protein Hair Mask as a prop beside the mirror.",
-        "Action: she smooths her hair and turns toward him.",
-      ].join("\n\n"),
-      speakerSections: "SPEAKER VISUAL MAP FOR THIS SHOT:\nApproved dialogue:",
-      approvedDialogue: [],
-      approvedShotAction: "She smooths her hair and turns toward him.",
+      cameraMotion: "slow_push_in_drift_right",
+      durationSeconds: 10,
+      speakerSections: renderMarketplaceVideoSpeakerSections([]),
+      approvedShotAction,
     });
 
-    expect(prompt).not.toContain("Product: include Cella Protein Hair Mask");
-    expect(prompt).toContain("APPROVED SHOT ACTION (authoritative)");
-    expect(prompt).toContain("She smooths her hair and turns toward him.");
-    expect(prompt).toContain("OBJECT AND PRODUCT CONTINUITY LOCK");
-    expect(prompt).toContain("global product metadata is not permission to add it");
-    expect(prompt.indexOf("OBJECT AND PRODUCT CONTINUITY LOCK")).toBeGreaterThan(
-      prompt.indexOf("APPROVED SHOT ACTION (authoritative)")
-    );
+    expect(prompt).toContain("10-second vertical 9:16");
+    expect(prompt).toContain("Image 1");
+    expect(prompt).toContain("one continuous shot with no cuts");
+    expect(prompt.split(approvedShotAction)).toHaveLength(2);
+    expect(prompt).toContain("very slow push-in with a slight rightward camera drift");
+    expect(prompt).toContain("Preserve visible objects and existing printed labels");
+    expect(prompt).toContain("Use natural ambient sound with no speech.");
+    expect(prompt).toContain("Do not add subtitles, captions, or other on-screen text.");
   });
 
-  it("rejects model-authored overlapping speech and serializes approved dialogue turns", () => {
+  it("uses one camera direction when the approved action already describes it", () => {
+    const action = "ทั้งคู่ชี้ฉลาก กล้องค่อย ๆ แพนไปทางขวา";
     const prompt = composeMarketplaceAutoReviewVideoPrompt({
-      generatedPrompt: [
-        "Both characters speak simultaneously and repeat the same line.",
-        "They recite their lines together.",
-        "Nicha says 'My hair is frizzy.' as Krit repeats it.",
-        "Camera slowly pushes toward the mirror.",
-        "Nicha smooths her hair and turns toward Krit.",
-      ].join(" "),
-      speakerSections: [
-        "SPEAKER VISUAL MAP FOR THIS SHOT:",
-        "Nicha: person-1, viewer-left",
-        "Krit: person-2, viewer-right",
-        "Approved dialogue:",
-        "Nicha: My hair is frizzy.",
-        "Krit: I can help.",
-      ].join("\n"),
-      approvedDialogue: [
-        { line: "My hair is frizzy." },
-        { line: "I can help." },
-      ],
-      approvedShotAction: "Nicha smooths her hair and turns toward Krit.",
+      cameraMotion: "slow_push_in",
+      durationSeconds: 10,
+      speakerSections: "",
+      approvedShotAction: action,
     });
-
-    expect(prompt).not.toMatch(/speak simultaneously|repeat the same line|recite their lines/i);
-    expect(prompt).toContain("Camera slowly pushes toward the mirror.");
-    expect(prompt).toContain("SPEAKER TURN-TAKING LOCK");
-    expect(prompt).toContain("one person at a time");
-    expect(prompt).toContain("No overlapping turns");
-    expect(prompt.match(/My hair is frizzy\./g)).toHaveLength(1);
+    expect(prompt).toContain(action);
+    expect(prompt).not.toContain("push-in");
+    expect(prompt).not.toContain("Camera:");
   });
 
-  it("restores the speaker map before dialogue when the optimizer appends protected fragments", () => {
+  it("passes completeness validation with the verified speaker map and exact ordered dialogue", () => {
     const cast = [
-      { castId: "cast-1", name: "Nicha", role: "host", source: "uploaded", imageIndex: 2 },
-      { castId: "cast-2", name: "Krit", role: "guest", source: "uploaded", imageIndex: 3 },
-    ] as any;
-    const dialogue = "Nicha: My hair is frizzy.\nKrit: I can help.";
+      { castId: "cast-1", name: "ธีร์", role: "host", source: "uploaded", imageIndex: 2 },
+      { castId: "cast-2", name: "พิมพ์ชนก", role: "guest", source: "uploaded", imageIndex: 3 },
+    ] as const;
     const turns = [
-      { castId: "cast-1", speakerName: "Nicha", line: "My hair is frizzy." },
-      { castId: "cast-2", speakerName: "Krit", line: "I can help." },
+      { castId: "cast-1", speakerName: "ธีร์", line: "ตัวนี้ระบุ Copper Tripeptide-1 เป็นส่วนประกอบ และใช้ทาบนใบหน้าได้" },
+      { castId: "cast-2", speakerName: "พิมพ์ชนก", line: "อย่างน้อยก็ได้เริ่มจากข้อมูลจริง ไม่ต้องเดาเอาเอง" },
     ];
-    const speakerSections = renderMarketplaceVideoSpeakerSections([
-      {
-        speaker: "Nicha",
-        line: "My hair is frizzy.",
-        cue: "person-1, viewer-left",
-        person: { id: "person-1", appearance: "woman with long dark hair wearing a cream blouse" },
-      },
-      {
-        speaker: "Krit",
-        line: "I can help.",
-        cue: "person-2, viewer-right",
-        person: { id: "person-2", appearance: "man with short dark hair wearing a navy sweater" },
-      },
-    ]);
-    const original = composeMarketplaceAutoReviewVideoPrompt({
-      generatedPrompt: "Camera movement slowly follows the action as both characters move naturally.",
-      speakerSections,
-      approvedDialogue: turns,
-      approvedShotAction: "Nicha smooths her hair and turns toward Krit.",
+    const prompt = composeMarketplaceAutoReviewVideoPrompt({
+      durationSeconds: 10,
+      cameraMotion: "slow_push_in_drift_right",
+      approvedShotAction: "ธีร์ยื่นขวดเซรั่มที่อยู่ในเฟรม ทั้งสองคนชี้ไปที่ฉลากเดิม",
+      speakerSections: renderMarketplaceVideoSpeakerSections(turns.map((turn, index) => ({
+        speaker: turn.speakerName,
+        line: turn.line,
+        cue: index === 0 ? "person-1, viewer-left" : "person-2, viewer-right",
+        person: { id: `person-${index + 1}`, appearance: index === 0 ? "man in navy pajamas" : "woman in navy pajamas" },
+      }))),
     });
-    const mapStart = original.indexOf("SPEAKER VISUAL MAP FOR THIS SHOT:");
-    const dialogueStart = original.indexOf("Approved dialogue:", mapStart);
-    const speakerMap = original.slice(mapStart, dialogueStart).trim();
-    const withoutMap = `${original.slice(0, mapStart)}${original.slice(dialogueStart)}`;
-    const optimizedWithAppendedMap = `${withoutMap.trim()}\n\n${speakerMap}`;
-
-    expect(
-      isCompleteStagedVideoPrompt(
-        optimizedWithAppendedMap,
-        dialogue,
-        ["person-1", "person-2"],
-        turns,
-        cast
-      )
-    ).toBe(false);
-
-    const repaired = recomposeMarketplaceAutoReviewVideoPrompt({
-      optimizedPrompt: optimizedWithAppendedMap,
-      speakerSections,
-      approvedDialogue: turns,
-      approvedShotAction: "Nicha smooths her hair and turns toward Krit.",
-    });
-
-    expect(repaired.indexOf("SPEAKER VISUAL MAP FOR THIS SHOT:")).toBeLessThan(
-      repaired.indexOf("Approved dialogue:")
-    );
-    expect(
-      repaired.match(/Create a vertical 9:16 video using the approved image/g)
-    ).toHaveLength(1);
-    expect(
-      repaired.match(/APPROVED SHOT ACTION \(authoritative\):/g)
-    ).toHaveLength(1);
-    expect(
-      repaired.match(/OBJECT AND PRODUCT CONTINUITY LOCK \(MANDATORY\):/g)
-    ).toHaveLength(1);
-    expect(
-      repaired.match(/NO-ADDED-TEXT LOCK \(MANDATORY\):/g)
-    ).toHaveLength(1);
-    expect(repaired.length).toBeLessThanOrEqual(3000);
-    expect(
-      isCompleteStagedVideoPrompt(
-        repaired,
-        dialogue,
-        ["person-1", "person-2"],
-        turns,
-        cast
-      )
-    ).toBe(true);
+    expect(prompt.length).toBeLessThan(1200);
+    expect(isMarketplaceAutoReviewVideoPromptComplete({
+      value: prompt,
+      approvedDialogue: turns.map(turn => `${turn.speakerName}: ${turn.line}`).join("\n"),
+      detectedPersonIds: ["person-1", "person-2"],
+      derivedDialogueTurns: turns,
+      cast,
+    })).toBe(true);
+    for (const turn of turns) expect(prompt.split(turn.line)).toHaveLength(2);
+    expect(prompt.indexOf(turns[0].line)).toBeLessThan(prompt.indexOf(turns[1].line));
   });
 
-  it("tells each non-speaking character to keep their mouth closed during every line", () => {
+  it("uses one turn-taking instruction with numbered verbatim lines", () => {
     const sections = renderMarketplaceVideoSpeakerSections([
       {
         speaker: "Nicha",
@@ -215,10 +141,8 @@ describe("Marketplace Auto Review video prompt object continuity", () => {
       },
     ]);
 
-    expect(sections).toContain("TURN 1 — Nicha (person-1) speaks once");
-    expect(sections).toContain("While Nicha speaks, Krit (person-2) keep mouths fully closed");
-    expect(sections).toContain("TURN 2 — Krit (person-2) speaks once");
-    expect(sections).toContain("While Krit speaks, Nicha (person-1) keep mouths fully closed");
-    expect(sections.indexOf("TURN 1 —")).toBeLessThan(sections.indexOf("TURN 2 —"));
+    expect(sections).toContain("1. Nicha: “My hair is frizzy.”");
+    expect(sections).toContain("2. Krit: “I can help.”");
+    expect(sections).toContain("Only the current speaker moves their mouth. Everyone else stays silent with mouths closed.");
   });
 });

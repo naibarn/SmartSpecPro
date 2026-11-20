@@ -21,6 +21,7 @@ const dependencies = vi.hoisted(() => ({
     { name: "Ton", position: "right", detected_person_id: "person-2" },
   ],
   positionSource: "image",
+  cameraMotion: "locked",
   videoCalls: 0,
 }));
 
@@ -49,6 +50,7 @@ vi.mock("../verticalDramaVideoMotionPromptGeneration", () => ({
       providerName: "provider",
       data: {
         prompt: dependencies.videoPrompt,
+        motion_profile: { camera_motion: dependencies.cameraMotion },
         frame_analysis: {
           position_source: dependencies.positionSource,
           people: dependencies.framePeople,
@@ -81,7 +83,6 @@ vi.mock("../productReviewSequentialStoryboardSkillRunner", async () => ({
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS:
     (await import("../../../shared/storyboardPromptBudget")).STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
 }));
-vi.mock("../marketplaceAutoReviewStoryArcPlanner", () => ({}));
 
 import { generateMarketplaceAutoReviewVideoPrompt } from "../marketplaceAutoReviewVideoPromptSkillRunner";
 
@@ -146,7 +147,7 @@ const prefix =
 
 describe("Marketplace video prompt generation with real completeness validation", () => {
   it.each(Array.from({ length: 9 }, (_, i) => i + 1))(
-    "preserves Thai dialogue and detailed visual locks across shot %i with the 4096-character budget",
+    "preserves Thai dialogue and detailed visual locks across shot %i with the compact renderer",
     async shotId => {
       const originalPeople = dependencies.people;
       dependencies.people = originalPeople.map(person => ({
@@ -170,13 +171,12 @@ describe("Marketplace video prompt generation with real completeness validation"
             dialogueTurns: thaiTurns,
           },
         });
-        expect(result.prompt.length).toBeGreaterThan(2000);
-        expect(result.prompt.length).toBeLessThanOrEqual(4096);
+        expect(result.prompt.length).toBeLessThan(1500);
         for (const turn of thaiTurns) {
           expect(result.prompt.split(turn.line)).toHaveLength(2);
         }
-        expect(result.prompt).toContain("No overlapping turns");
-        expect(result.prompt).toContain("OBJECT AND PRODUCT CONTINUITY LOCK");
+        expect(result.prompt).toContain("with no overlap or extra dialogue");
+        expect(result.prompt).toContain("Preserve visible objects and existing printed labels");
         expect(result.prompt).toContain("Mali: person-1, viewer-left");
         expect(result.prompt).toContain("Ton: person-2, viewer-right");
       } finally {
@@ -188,6 +188,7 @@ describe("Marketplace video prompt generation with real completeness validation"
   beforeEach(() => {
     dependencies.videoPrompt = prefix + "The camera moves gently. ".repeat(12);
     dependencies.videoCalls = 0;
+    dependencies.cameraMotion = "locked";
   });
 
   it("generates a valid prompt with a visual map and exact approved speech", async () => {
@@ -310,8 +311,9 @@ describe("Marketplace video prompt generation with real completeness validation"
     const result = await generateMarketplaceAutoReviewVideoPrompt(request);
     expect(result.prompt).toContain("vertical 9:16");
     expect(result.prompt).toContain("approved image");
-    expect(result.prompt).toContain("No on-screen text");
-    expect(result.prompt).toContain("camera drifts slowly");
+    expect(result.prompt).toContain("Do not add subtitles, captions, or other on-screen text.");
+    expect(result.prompt).toContain("Keep the camera steady.");
+    expect(result.prompt).not.toContain("camera drifts slowly");
   });
 
   it("does not accept a speaker match based on an image prompt instead of the actual frame", async () => {
@@ -382,31 +384,19 @@ describe("Marketplace video prompt generation with real completeness validation"
     }
   });
 
-  it("records the failed validation category without logging prompt or dialogue text", async () => {
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("discards stale action prose and accepts only the structured camera preset", async () => {
     const staleLine = "An obsolete scene unfolds behind the counter.";
     dependencies.videoPrompt = `${prefix} ${staleLine}`;
-    try {
-      await expect(
-        generateMarketplaceAutoReviewVideoPrompt({
-          ...request,
-          shot: {
-            ...request.shot,
-            dialogueTurns: [...turns, { ...turns[0], line: staleLine }],
-          },
-        })
-      ).rejects.toThrow("MARKETPLACE_VIDEO_PROMPT_SKILL_OUTPUT_INCOMPLETE");
-      const event = warning.mock.calls.find(
-        call => call[0] === "[MarketplaceVideoPrompt] validation failed"
-      );
-      expect(event?.[1]).toMatchObject({
-        failedCheck: "stale_dialogue",
-        shotId: 1,
-      });
-      expect(JSON.stringify(event)).not.toContain(staleLine);
-    } finally {
-      warning.mockRestore();
-    }
+    dependencies.cameraMotion = "slow_push_in_drift_right";
+    const result = await generateMarketplaceAutoReviewVideoPrompt({
+      ...request,
+      shot: {
+        ...request.shot,
+        dialogueTurns: [...turns, { ...turns[0], line: staleLine }],
+      },
+    });
+    expect(result.prompt).not.toContain(staleLine);
+    expect(result.prompt).toContain("very slow push-in with a slight rightward camera drift");
   });
 
   it("replaces a model-generated fallback map while retaining the shot action", async () => {
@@ -425,7 +415,8 @@ describe("Marketplace video prompt generation with real completeness validation"
     const result = await generateMarketplaceAutoReviewVideoPrompt(request);
     expect(result.prompt).not.toContain("not visually resolved");
     expect(result.prompt).not.toContain("offscreen voice-over");
-    expect(result.prompt).toContain("Mali raises the cup");
+    expect(result.prompt).toContain("They stand by the machine.");
+    expect(result.prompt).not.toContain("Mali raises the cup");
     expect(result.prompt.match(/Is the coffee ready\?/g)).toHaveLength(1);
   });
 
