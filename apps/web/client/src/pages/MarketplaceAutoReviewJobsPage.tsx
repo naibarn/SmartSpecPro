@@ -89,6 +89,7 @@ export default function MarketplaceAutoReviewJobsPage() {
         loading={jobsQuery.isLoading}
         error={jobsQuery.error?.message ?? null}
         allProducts
+        largeProductThumbnails
         productOptions={productsQuery.data ?? []}
         hasMore={jobsQuery.hasNextPage}
         loadingMore={jobsQuery.isFetchingNextPage}

@@ -30,6 +30,10 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   selectedProductFilter?: string;
   onProductFilterChange?: (productId: string) => void;
   allProducts?: boolean;
+  /** Show merged video only when this navigator is used in the full workbench. */
+  showVideoPreview?: boolean;
+  /** Use a larger product image in the full job-history listing. */
+  largeProductThumbnails?: boolean;
   setupMode?: boolean;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -296,6 +300,8 @@ export function MarketplaceAutoReviewJobNavigator({
   selectedProductFilter,
   onProductFilterChange,
   allProducts = false,
+  showVideoPreview = false,
+  largeProductThumbnails = false,
   setupMode = false,
   hasMore = false,
   loadingMore = false,
@@ -423,7 +429,14 @@ export function MarketplaceAutoReviewJobNavigator({
             const productThumbnailUrl = text(run.productThumbnailUrl);
             const videoPreviewUrl = text(run.videoPreviewUrl);
             const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
-            const hasVideoPreview = Boolean(videoPreviewUrl);
+            const hasVideoPreview =
+              showVideoPreview && Boolean(videoPreviewUrl);
+            const productThumbnailClassName = largeProductThumbnails
+              ? "h-24 w-24 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
+              : "h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover";
+            const productThumbnailFallbackClassName = largeProductThumbnails
+              ? "flex h-24 w-24 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400"
+              : "flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400";
             const deleteActionPosition = hasVideoPreview
               ? "right-2 top-2 sm:right-[8.5rem]"
               : "right-2 top-2";
@@ -460,9 +473,11 @@ export function MarketplaceAutoReviewJobNavigator({
                             src={productThumbnailUrl}
                             alt={`ภาพสินค้า: ${productLabel}`}
                             loading="lazy"
-                            className="h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
+                            className={productThumbnailClassName}
                             fallback={
-                              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400">
+                              <span
+                                className={productThumbnailFallbackClassName}
+                              >
                                 ภาพสินค้าไม่พร้อม
                               </span>
                             }
@@ -534,7 +549,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
                     </span>
                   </button>
-                  {videoPreviewUrl ? (
+                  {hasVideoPreview ? (
                     <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
                       <AuthenticatedMediaVideo
                         src={videoPreviewUrl}
