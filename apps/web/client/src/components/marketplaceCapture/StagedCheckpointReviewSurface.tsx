@@ -449,9 +449,6 @@ export function StagedCheckpointReviewSurface(props: {
       ...(input.speakerVisualBindings !== undefined
         ? { speakerVisualBindings: input.speakerVisualBindings }
         : {}),
-      ...(input.detectedPeople !== undefined
-        ? { detectedPeople: input.detectedPeople }
-        : {}),
     });
   };
   const onSaveRenderSettings = (settings: {

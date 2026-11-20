@@ -2024,12 +2024,6 @@ export async function editStagedAutoReviewShot(input: {
   imagePrompt?: string;
   videoPrompt?: string;
   speakerVisualBindings?: Record<string, string>;
-  detectedPeople?: Array<{
-    id: string;
-    appearance: string;
-    confidence: number;
-    boundingBox: { x: number; y: number; width: number; height: number };
-  }>;
   auth: StagedCheckpointAuth;
 }) {
   if (
@@ -2040,7 +2034,6 @@ export async function editStagedAutoReviewShot(input: {
       input.imagePrompt,
       input.videoPrompt,
       input.speakerVisualBindings,
-      input.detectedPeople,
     ].some(value => value !== undefined)
   ) {
     throw new TRPCError({
@@ -2053,9 +2046,7 @@ export async function editStagedAutoReviewShot(input: {
     expectedStateDigest: input.expectedStateDigest,
     idempotencyKey: input.idempotencyKey,
     auth: input.auth,
-    queueAdvance:
-      input.speakerVisualBindings === undefined &&
-      input.detectedPeople === undefined,
+    queueAdvance: input.speakerVisualBindings === undefined,
     mutate(metadata, operationId) {
       const storyEdit =
         input.storySummary !== undefined || input.dialogue !== undefined;
@@ -2184,8 +2175,7 @@ export async function editStagedAutoReviewShot(input: {
           input.dialogue !== undefined ||
           input.imagePrompt !== undefined ||
           input.videoPrompt !== undefined ||
-          input.speakerVisualBindings !== undefined ||
-          input.detectedPeople !== undefined
+          input.speakerVisualBindings !== undefined
         ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2257,10 +2247,7 @@ export async function editStagedAutoReviewShot(input: {
         };
       }
 
-      if (
-        input.speakerVisualBindings !== undefined ||
-        input.detectedPeople !== undefined
-      ) {
+      if (input.speakerVisualBindings !== undefined) {
         if (
           input.storySummary !== undefined || input.dialogue !== undefined ||
           input.imagePrompt !== undefined || input.videoPrompt !== undefined
@@ -2295,34 +2282,9 @@ export async function editStagedAutoReviewShot(input: {
         if (!Array.isArray(detected)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "staged_person_detection_required" });
         }
-        let nextDetectedPeople = detected;
-        if (input.detectedPeople !== undefined) {
-          const originalById = new Map(
-            detected.map((person: any) => [person?.id, person])
-          );
-          const editedIds = input.detectedPeople.map(person => person.id);
-          const validPeopleEdit =
-            input.detectedPeople.length === detected.length &&
-            new Set(editedIds).size === editedIds.length &&
-            input.detectedPeople.every(person => {
-              const original = originalById.get(person.id) as any;
-              const box = person.boundingBox;
-              return Boolean(
-                original &&
-                  person.appearance === original.appearance &&
-                  person.confidence === Number(original.confidence) &&
-                  box.x + box.width <= 1.000001 &&
-                  box.y + box.height <= 1.000001
-              );
-            });
-          if (!validPeopleEdit) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "staged_invalid_person_bounds" });
-          }
-          nextDetectedPeople = input.detectedPeople;
-        }
         if (bindings !== undefined) {
           const detectedIds = new Set(
-            nextDetectedPeople.map((person: any) => person?.id)
+            detected.map((person: any) => person?.id)
           );
           const selectedIds = Object.values(bindings);
           if (
@@ -2346,10 +2308,7 @@ export async function editStagedAutoReviewShot(input: {
               ? {
                   ...checkpoint,
                   state: "superseded" as const,
-                      rejectionReasonCode:
-                        input.detectedPeople !== undefined && bindings === undefined
-                          ? "staged_person_bounds_updated"
-                          : "staged_speaker_binding_updated",
+                  rejectionReasonCode: "staged_speaker_binding_updated",
                 }
               : checkpoint
         );
@@ -2374,17 +2333,6 @@ export async function editStagedAutoReviewShot(input: {
               }
             : {}),
         };
-        const nextPromptGeneration =
-          input.detectedPeople !== undefined
-            ? {
-                ...promptGeneration,
-                [detectionKey]: {
-                  ...currentDetection,
-                  detectedPeople: nextDetectedPeople,
-                  manuallyAdjustedAt: new Date().toISOString(),
-                },
-              }
-            : promptGeneration;
         return {
           metadata: {
             ...metadata,
@@ -2392,9 +2340,6 @@ export async function editStagedAutoReviewShot(input: {
               ...record((metadata as any).stagedPipeline),
               tasks,
               finalAssembly: null,
-              ...(input.detectedPeople !== undefined
-                ? { promptGeneration: nextPromptGeneration }
-                : {}),
             },
             stagedSequentialStoryboard: {
               ...metadata.stagedSequentialStoryboard,

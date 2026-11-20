@@ -1879,17 +1879,6 @@ export const marketplaceCaptureRouter = router({
         imagePrompt: z.string().trim().max(4000).optional(),
         videoPrompt: z.string().trim().max(STORYBOARD_VIDEO_PROMPT_MAX_CHARS).optional(),
         speakerVisualBindings: z.record(z.string().trim().min(1).max(120), z.string().trim().min(1).max(40)).optional(),
-        detectedPeople: z.array(z.object({
-          id: z.string().trim().min(1).max(40),
-          appearance: z.string().trim().min(1).max(240),
-          confidence: z.number().min(0).max(1),
-          boundingBox: z.object({
-            x: z.number().min(0).max(1),
-            y: z.number().min(0).max(1),
-            width: z.number().min(0.001).max(1),
-            height: z.number().min(0.001).max(1),
-          }),
-        })).max(12).optional(),
       })
     )
     .output(z.any())

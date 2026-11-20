@@ -253,10 +253,12 @@ export async function detectVerticalDramaShotPeople(params: {
 }
 
 /**
- * Run the same Vertical Drama detection skill once for a caller-owned image.
+ * Run the same Vertical Drama detection skill for a caller-owned image.
  * Marketplace Auto Review uses this direct entry point so it can preserve its
  * own billing/source context without inventing a series or episode record.
- * Provider, model, schema, and text-only fallbacks are intentionally disabled.
+ * A coordinate-only vision pass may refine the first pass without changing its
+ * person roster or descriptions. Provider, model, schema, and text-only
+ * fallbacks are intentionally disabled.
  */
 export async function detectVerticalDramaShotPeopleDirect(params: {
   userId: number;
@@ -272,39 +274,90 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
   providerName: string;
   response: VisionAwareCallResponse;
 }> {
-  const outcome = await executeVisionAwareJsonCallWithRetry<
-    z.infer<typeof outputSchema>
-  >({
-    model: params.model,
-    systemPrompt: loadSkillSystemPrompt(),
-    userPromptText: [
-      `Shot number: ${params.shotNumber}. Detect every visible person in the attached approved image.`,
-      "Bounding-box precision only: use normalized coordinates against the entire uncropped image, with the top-left corner as (0, 0). For each person, make a tight rectangle around that person's complete visible silhouette, from the top of the visible head or hair to the lowest visible body/clothing edge; include visible torso and limbs, not only the face or central body. Keep the rectangle aligned to that person's actual left, top, right, and bottom edges, exclude neighboring people and background, and do not add padding. If the person is clipped by the image edge, stop the box at that edge. Before returning JSON, check each box against the image and correct any box that misses part of its person or covers a neighboring person.",
-      "Keep the person detection, IDs, appearance descriptions, confidence, and ordering governed by the existing skill rules; refine only bounding_box geometry.",
-    ].join(" "),
-    hasVision: true,
-    images: [
+  const observedUsage: Array<{
+    response: VisionAwareCallResponse;
+    providerName: string;
+  }> = [];
+  const onUsage = (
+    response: VisionAwareCallResponse,
+    _requestedModel: string,
+    providerName: string
+  ) => {
+    observedUsage.push({ response, providerName });
+  };
+  const reportUsage = (
+    response: VisionAwareCallResponse,
+    providerName: string
+  ) => {
+    if (!params.onUsage || observedUsage.length === 0) return;
+    const promptTokens = observedUsage.reduce(
+      (total, item) => total + (item.response.usage?.prompt_tokens ?? 0),
+      0
+    );
+    const completionTokens = observedUsage.reduce(
+      (total, item) => total + (item.response.usage?.completion_tokens ?? 0),
+      0
+    );
+    params.onUsage(
       {
-        url: params.imageUrl,
-        label: "APPROVED_START_FRAME_IMAGE (the only source for people and coordinates):",
+        ...response,
+        usage: {
+          ...(response.usage ?? {}),
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+        },
       },
-    ],
-    userId: params.userId,
-    tenantId: params.tenantId,
-    publicUrl: params.publicUrl,
-    schema: outputSchema,
-    firstAttemptMaxTokens: 1400,
-    retryMaxTokens: 1400,
-    singleAttempt: true,
-    disableModelFallback: true,
-    disableProviderFallbacks: true,
-    onUsage: params.onUsage,
-  });
+      params.model,
+      providerName
+    );
+  };
+
+  let outcome: {
+    data: z.infer<typeof outputSchema>;
+    response: VisionAwareCallResponse;
+    providerName: string;
+    usedVision: boolean;
+  };
+  try {
+    outcome = await executeVisionAwareJsonCallWithRetry<
+      z.infer<typeof outputSchema>
+    >({
+      model: params.model,
+      systemPrompt: loadSkillSystemPrompt(),
+      userPromptText: [
+        `Shot number: ${params.shotNumber}. Detect every visible person in the attached approved image.`,
+        "Bounding-box precision only: use normalized coordinates against the entire uncropped image, with the top-left corner as (0, 0). For each person, make a tight rectangle around that person's complete visible silhouette, from the top of the visible head or hair to the lowest visible body/clothing edge; include visible torso and limbs, not only the face or central body. Keep the rectangle aligned to that person's actual left, top, right, and bottom edges, exclude neighboring people and background, and do not add padding. If the person is clipped by the image edge, stop the box at that edge. Before returning JSON, check each box against the image and correct any box that misses part of its person or covers a neighboring person.",
+        "Keep the person detection, IDs, appearance descriptions, confidence, and ordering governed by the existing skill rules; refine only bounding_box geometry.",
+      ].join(" "),
+      hasVision: true,
+      images: [
+        {
+          url: params.imageUrl,
+          label: "APPROVED_START_FRAME_IMAGE (the only source for people and coordinates):",
+        },
+      ],
+      userId: params.userId,
+      tenantId: params.tenantId,
+      publicUrl: params.publicUrl,
+      schema: outputSchema,
+      firstAttemptMaxTokens: 1400,
+      retryMaxTokens: 1400,
+      singleAttempt: true,
+      disableModelFallback: true,
+      disableProviderFallbacks: true,
+      onUsage,
+    });
+  } catch (error) {
+    const lastUsage = observedUsage[observedUsage.length - 1];
+    if (lastUsage) reportUsage(lastUsage.response, lastUsage.providerName);
+    throw error;
+  }
 
   if (!outcome.usedVision) {
+    reportUsage(outcome.response, outcome.providerName);
     throw new Error("VERTICAL_DRAMA_SPEAKER_DETECTION_VISION_REQUIRED");
   }
-  const people = (outcome.data.people as DetectedShotPersonOutput[])
+  const firstPassPeople = (outcome.data.people as DetectedShotPersonOutput[])
     .map(person => ({
       id: person.id,
       boundingBox: person.bounding_box,
@@ -320,6 +373,61 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
         : left.boundingBox.y - right.boundingBox.y;
     })
     .map((person, index) => ({ ...person, id: `person-${index + 1}` }));
+
+  let people = firstPassPeople;
+  if (firstPassPeople.length > 0) {
+    try {
+      const refined = await executeVisionAwareJsonCallWithRetry<
+        z.infer<typeof outputSchema>
+      >({
+        model: params.model,
+        systemPrompt: loadSkillSystemPrompt(),
+        userPromptText: [
+          `Shot number: ${params.shotNumber}. Refine the bounding boxes for the already detected people in the attached approved image.`,
+          "The first pass correctly identified the people. Treat its roster below as authoritative: do not add, remove, merge, split, rename, reorder, or re-identify any person. Preserve each id, appearance, and confidence exactly; only return a corrected bounding_box for each same person.",
+          "Use normalized coordinates on the complete uncropped image, with (0, 0) at its top-left. Each tight box must follow that person's visible silhouette from the top of the head or hair to the lowest visible body or clothing edge, include visible torso and limbs, exclude mirrors/reflections and other people, and remain entirely inside the image. Inspect the attached image directly to correct coordinate placement; do not copy a box merely because it was in the initial estimates.",
+          `Authoritative first-pass roster: ${JSON.stringify(firstPassPeople.map(person => ({ id: person.id, appearance: person.appearance, confidence: person.confidence, bounding_box: person.boundingBox })))}`,
+        ].join(" "),
+        hasVision: true,
+        images: [
+          {
+            url: params.imageUrl,
+            label: "APPROVED_START_FRAME_IMAGE (the only source for people and coordinates):",
+          },
+        ],
+        userId: params.userId,
+        tenantId: params.tenantId,
+        publicUrl: params.publicUrl,
+        schema: outputSchema,
+        firstAttemptMaxTokens: 1400,
+        retryMaxTokens: 1400,
+        singleAttempt: true,
+        disableModelFallback: true,
+        disableProviderFallbacks: true,
+        onUsage,
+      });
+      const refinedById = new Map(
+        (refined.data.people as DetectedShotPersonOutput[]).map(person => [
+          person.id,
+          person,
+        ])
+      );
+      if (
+        refined.usedVision &&
+        refined.providerName === outcome.providerName &&
+        refinedById.size === firstPassPeople.length &&
+        firstPassPeople.every(person => refinedById.has(person.id))
+      ) {
+        people = firstPassPeople.map(person => ({
+          ...person,
+          boundingBox: refinedById.get(person.id)!.bounding_box,
+        }));
+      }
+    } catch {
+      // Keep the valid first-pass detections if coordinate-only refinement fails.
+    }
+  }
+  reportUsage(outcome.response, outcome.providerName);
 
   return {
     people,
