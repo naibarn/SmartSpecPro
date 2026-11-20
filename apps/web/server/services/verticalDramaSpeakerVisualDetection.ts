@@ -73,6 +73,29 @@ const outputSchema = z
     }
   });
 
+const boundingBoxSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().gt(0).max(1),
+    height: z.number().gt(0).max(1),
+  })
+  .strict()
+  .superRefine((box, context) => {
+    if (box.x + box.width > 1.001 || box.y + box.height > 1.001) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Bounding box must stay inside the image",
+      });
+    }
+  });
+
+const boundingBoxRefinementSchema = z
+  .object({
+    bounding_boxes: z.array(boundingBoxSchema).max(16),
+  })
+  .strict();
+
 type DetectedShotPersonOutput = z.infer<typeof personSchema>;
 
 export type VerticalDramaSpeakerDetectionUsageObserver = (
@@ -378,15 +401,16 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
   if (firstPassPeople.length > 0) {
     try {
       const refined = await executeVisionAwareJsonCallWithRetry<
-        z.infer<typeof outputSchema>
+        z.infer<typeof boundingBoxRefinementSchema>
       >({
         model: params.model,
-        systemPrompt: loadSkillSystemPrompt(),
+        systemPrompt:
+          "You are a precise visual bounding-box annotator. Inspect the attached image and return only JSON matching the supplied schema. Coordinates must describe the visible people in this image.",
         userPromptText: [
-          `Shot number: ${params.shotNumber}. Refine the bounding boxes for the already detected people in the attached approved image.`,
-          "The first pass correctly identified the people. Treat its roster below as authoritative: do not add, remove, merge, split, rename, reorder, or re-identify any person. Preserve each id, appearance, and confidence exactly; only return a corrected bounding_box for each same person.",
-          "Use normalized coordinates on the complete uncropped image, with (0, 0) at its top-left. Each tight box must follow that person's visible silhouette from the top of the head or hair to the lowest visible body or clothing edge, include visible torso and limbs, exclude mirrors/reflections and other people, and remain entirely inside the image. Inspect the attached image directly to correct coordinate placement; do not copy a box merely because it was in the initial estimates.",
-          `Authoritative first-pass roster: ${JSON.stringify(firstPassPeople.map(person => ({ id: person.id, appearance: person.appearance, confidence: person.confidence, bounding_box: person.boundingBox })))}`,
+          `Shot number: ${params.shotNumber}. Return exactly ${firstPassPeople.length} bounding boxes for the already detected people in the approved image.`,
+          "The existing people, their IDs, descriptions, confidence, and order are authoritative and must not be reconsidered. Return one box per roster entry, in exactly the same order. Do not add, omit, merge, split, rename, or reorder people. This pass changes bounding-box coordinates only.",
+          "Use normalized coordinates relative to the complete uncropped image, with (0, 0) at the top-left. x and y are the box's LEFT and TOP edges; width and height extend RIGHT and DOWN from those edges (they are not center, right, or bottom coordinates). For each listed person, tightly enclose their visible silhouette from the top of visible head or hair to the lowest visible body/clothing edge, including visible torso and limbs. Exclude background and neighboring people. Keep every box inside the image. Inspect the image itself and place each box on the same person described by its roster entry; do not copy a misplaced initial estimate.",
+          `Authoritative roster in required output order: ${JSON.stringify(firstPassPeople.map((person, index) => ({ index: index + 1, id: person.id, appearance: person.appearance, current_box: person.boundingBox })))}`,
         ].join(" "),
         hasVision: true,
         images: [
@@ -398,29 +422,23 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
         userId: params.userId,
         tenantId: params.tenantId,
         publicUrl: params.publicUrl,
-        schema: outputSchema,
-        firstAttemptMaxTokens: 1400,
-        retryMaxTokens: 1400,
+        schema: boundingBoxRefinementSchema,
+        firstAttemptMaxTokens: 900,
+        retryMaxTokens: 900,
         singleAttempt: true,
         disableModelFallback: true,
         disableProviderFallbacks: true,
         onUsage,
       });
-      const refinedById = new Map(
-        (refined.data.people as DetectedShotPersonOutput[]).map(person => [
-          person.id,
-          person,
-        ])
-      );
+      const refinedBoxes = refined.data.bounding_boxes;
       if (
         refined.usedVision &&
         refined.providerName === outcome.providerName &&
-        refinedById.size === firstPassPeople.length &&
-        firstPassPeople.every(person => refinedById.has(person.id))
+        refinedBoxes.length === firstPassPeople.length
       ) {
-        people = firstPassPeople.map(person => ({
+        people = firstPassPeople.map((person, index) => ({
           ...person,
-          boundingBox: refinedById.get(person.id)!.bounding_box,
+          boundingBox: refinedBoxes[index],
         }));
       }
     } catch {
