@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `103`
-- Updated (UTC): `2026-11-19T16:06:46.484634+00:00`
+- State generation: `104`
+- Updated (UTC): `2026-11-20T01:15:11.410352+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `f26a5a1839d8f2eb76899cb129f28c67e90d6aa4`
+- Latest recorded merged Main SHA: `e7ebd5bf679b2d28161b882c4c87c0dee106a0f4`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Focused callLLMStructured.test.ts passed 19/19 and git diff --check passed. Release smartspec-web-f26a5a1839d8f2eb76899cb129f28c67e90d6aa4-897afb3fa3e3 generation 603 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app; web and node worker runtime revisions match f26a5a1839d8f2eb76899cb129f28c67e90d6aa4 and public /healthz returned HTTP 200. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-f26a5a1839d8f2eb76899cb129f28c67e90d6aa4-897afb3fa3e3-603.json. Original failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c stays terminal; next action is a fresh user-triggered story-plan generation to verify provider-backed success.
+- Next action: Job history now uses larger product thumbnails and hides merged video previews; full Job Workbench explicitly retains the video preview. UI source is integrated at e7ebd5bf679b2d28161b882c4c87c0dee106a0f4. Browser visual UAT and a new development release were not performed for this layout-only change; deploy if a live preview is needed.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-story-plan-json-recovery | /mnt/SmartSpecDev/projects/SmartSpecPro | f26a5a1839d8f2eb76899cb129f28c67e90d6aa4 | f26a5a1839d8f2eb76899cb129f28c67e90d6aa4 | Focused callLLMStructured.test.ts passed 19/19 and git diff --check passed. Release smartspec-web-f26a5a1839d8f2eb76899cb129f28c67e90d6aa4-897afb3fa3e3 generation 603 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app; web and node worker runtime revisions match f26a5a1839d8f2eb76899cb129f28c67e90d6aa4 and public /healthz returned HTTP 200. Receipt: /mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/development-deployments/smartspec-web-f26a5a1839d8f2eb76899cb129f28c67e90d6aa4-897afb3fa3e3-603.json. Original failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c stays terminal; next action is a fresh user-triggered story-plan generation to verify provider-backed success. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-job-history-layout | /mnt/SmartSpecDev/projects/SmartSpecPro | e7ebd5bf679b2d28161b882c4c87c0dee106a0f4 | e7ebd5bf679b2d28161b882c4c87c0dee106a0f4 | Job history now uses larger product thumbnails and hides merged video previews; full Job Workbench explicitly retains the video preview. UI source is integrated at e7ebd5bf679b2d28161b882c4c87c0dee106a0f4. Browser visual UAT and a new development release were not performed for this layout-only change; deploy if a live preview is needed. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -31,6 +31,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Existing affected runs mar_6dc357649f7121a97ab6e1f27bf0aae0 and mar_d865bac6f4e1e518d648e479e61b744b retain zero image prompts and legacy generic correction markers; after deployment, regenerate only their missing per-shot prompts.
 - Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal.
 - Fresh provider-backed story-plan generation after release 603 is still pending; the terminal failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c was not replayed.
+- Job history layout change is integrated on main; browser visual UAT and deployment to smartaihub.app remain pending.
 
 ## Resume
 
