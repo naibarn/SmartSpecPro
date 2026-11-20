@@ -459,10 +459,6 @@ function ShotSpeakerBindingPanel(props: {
   const [draftPeople, setDraftPeople] = useState(people);
   const [selectedPersonId, setSelectedPersonId] = useState(people[0]?.id ?? "");
   const [editingBounds, setEditingBounds] = useState(false);
-  const [imageSize, setImageSize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
   const [drawingBox, setDrawingBox] = useState<{
     x: number;
     y: number;
@@ -471,7 +467,6 @@ function ShotSpeakerBindingPanel(props: {
   } | null>(null);
   const frameRef = useRef<HTMLElement>(null);
   const drawStartRef = useRef<{ x: number; y: number } | null>(null);
-  const lastImageUrlRef = useRef(props.imageUrl);
   const peopleFingerprint = JSON.stringify(people);
   useEffect(() => {
     setDraftPeople(people);
@@ -484,11 +479,6 @@ function ShotSpeakerBindingPanel(props: {
     // re-renders with a newly allocated but equivalent people array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.shotId, peopleFingerprint]);
-  useEffect(() => {
-    if (lastImageUrlRef.current === props.imageUrl) return;
-    lastImageUrlRef.current = props.imageUrl;
-    setImageSize(null);
-  }, [props.imageUrl]);
   const saved = props.bindings ?? {};
   const mappingChanged = speakers.some(
     name => (draft[name] ?? "") !== (saved[name] ?? "")
@@ -649,53 +639,46 @@ function ShotSpeakerBindingPanel(props: {
         <Grid columns={{ minWidth: 260, max: 2 }} gap={4} align="start">
           <VStack as="section" gap={2} className="mx-auto w-full max-w-64">
             <figure
-              ref={frameRef}
-              className={`relative w-full overflow-hidden rounded-lg bg-slate-900 ${editingBounds ? "cursor-crosshair touch-none" : ""}`}
-              style={{
-                aspectRatio: imageSize
-                  ? `${imageSize.width} / ${imageSize.height}`
-                  : "9 / 16",
-              }}
-              onPointerDown={handleDrawStart}
-              onPointerMove={handleDrawMove}
-              onPointerUp={handleDrawEnd}
-              onPointerCancel={() => {
-                drawStartRef.current = null;
-                setDrawingBox(null);
-              }}
-              onKeyDown={handleBoundsKeyDown}
-              tabIndex={editingBounds ? 0 : -1}
-              role="group"
-              aria-label={`กรอบเลือกบุคคลบนภาพช็อตที่ ${props.shotId}`}
+              className="mx-auto w-full"
             >
-              <AuthenticatedMediaImage
-                src={props.imageUrl}
-                alt={`Start frame ช็อตที่ ${props.shotId}`}
-                className="absolute inset-0 h-full w-full object-contain"
-                onLoad={event =>
-                  setImageSize({
-                    width: event.currentTarget.naturalWidth || 9,
-                    height: event.currentTarget.naturalHeight || 16,
-                  })
-                }
-              />
-              {draftPeople.map((person, index) => (
-                <aside
-                  key={person.id}
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute border-2 ${person.id === selectedPersonId ? "border-amber-400" : "border-cyan-400"}`}
-                  style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
-                >
-                  <strong className={`absolute -top-5 left-0 rounded px-1.5 text-xs font-bold text-white ${person.id === selectedPersonId ? "bg-amber-600" : "bg-cyan-600"}`}>{index + 1}</strong>
-                </aside>
-              ))}
-              {drawingBox ? (
-                <aside
-                  aria-hidden="true"
-                  className="pointer-events-none absolute border-2 border-amber-300 bg-amber-300/20"
-                  style={{ left: `${drawingBox.x * 100}%`, top: `${drawingBox.y * 100}%`, width: `${drawingBox.width * 100}%`, height: `${drawingBox.height * 100}%` }}
+              <section
+                ref={frameRef}
+                className={`relative w-full overflow-hidden rounded-md bg-slate-900 ${editingBounds ? "cursor-crosshair touch-none" : ""}`}
+                onPointerDown={handleDrawStart}
+                onPointerMove={handleDrawMove}
+                onPointerUp={handleDrawEnd}
+                onPointerCancel={() => {
+                  drawStartRef.current = null;
+                  setDrawingBox(null);
+                }}
+                onKeyDown={handleBoundsKeyDown}
+                tabIndex={editingBounds ? 0 : -1}
+                role="group"
+                aria-label={`กรอบเลือกบุคคลบนภาพช็อตที่ ${props.shotId}`}
+              >
+                <AuthenticatedMediaImage
+                  src={props.imageUrl}
+                  alt={`Start frame ช็อตที่ ${props.shotId}`}
+                  className="block h-auto w-full"
                 />
-              ) : null}
+                {draftPeople.map((person, index) => (
+                  <aside
+                    key={person.id}
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute border-2 ${person.id === selectedPersonId ? "border-amber-400" : "border-cyan-400"}`}
+                    style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
+                  >
+                    <strong className={`absolute -top-5 left-0 rounded px-1.5 text-xs font-bold text-white ${person.id === selectedPersonId ? "bg-amber-600" : "bg-cyan-600"}`}>{index + 1}</strong>
+                  </aside>
+                ))}
+                {drawingBox ? (
+                  <aside
+                    aria-hidden="true"
+                    className="pointer-events-none absolute border-2 border-amber-300 bg-amber-300/20"
+                    style={{ left: `${drawingBox.x * 100}%`, top: `${drawingBox.y * 100}%`, width: `${drawingBox.width * 100}%`, height: `${drawingBox.height * 100}%` }}
+                  />
+                ) : null}
+              </section>
               <figcaption className="sr-only">กรอบหมายเลขแสดงตำแหน่งบุคคลที่ตรวจพบในภาพ</figcaption>
             </figure>
           </VStack>
