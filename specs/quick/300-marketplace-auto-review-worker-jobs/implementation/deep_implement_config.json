@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Auto Review history layout is deployed on legacy-debian-dev / smartaihub.app at release generation 604. Web and Node worker runtime revisions match 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc; public /healthz and / both returned HTTP 200. Release: smartspec-web-3f1a01866396ff9bc9a3b537c0f8b8b891c458cc-d301a607917f; artifact sha256:40baa8a8d357e7caf10fca626ebb59d3880dc2d9e50bb9e3229e513a3e1133cc. Browser visual UAT remains pending.",
-      "checkpoint_sha": "3f1a01866396ff9bc9a3b537c0f8b8b891c458cc",
-      "merged_main_sha": "3f1a01866396ff9bc9a3b537c0f8b8b891c458cc",
+      "next_action": "Width-based Auto Review history previews are deployed in generation 605 on legacy-debian-dev / smartaihub.app; source SHA 452dc2d5c30a2618cfcc915a41c329a1cbfdb506, web and Node worker healthy, public /healthz and / returned HTTP 200. Wide/single-column navigator (>=360px) shows merged video; narrow 280px Workbench rail hides it; product thumbnails remain large on the full jobs list. Esbuild syntax transpile and git diff --check passed; authenticated browser visual UAT remains pending.",
+      "checkpoint_sha": "452dc2d5c30a2618cfcc915a41c329a1cbfdb506",
+      "merged_main_sha": "452dc2d5c30a2618cfcc915a41c329a1cbfdb506",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "codex-auto-review-job-history-layout"
+      "session_id": "codex-auto-review-responsive-history-preview"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 105,
-  "updated_at": "2026-11-20T01:20:33.333453+00:00",
+  "generation": 106,
+  "updated_at": "2026-11-20T01:32:51.044272+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Auto Review history layout is deployed on legacy-debian-dev / smartaihub.app at release generation 604. Web and Node worker runtime revisions match 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc; public /healthz and / both returned HTTP 200. Release: smartspec-web-3f1a01866396ff9bc9a3b537c0f8b8b891c458cc-d301a607917f; artifact sha256:40baa8a8d357e7caf10fca626ebb59d3880dc2d9e50bb9e3229e513a3e1133cc. Browser visual UAT remains pending.",
-    "merged_main_sha": "3f1a01866396ff9bc9a3b537c0f8b8b891c458cc",
+    "next_action": "Width-based Auto Review history previews are deployed in generation 605 on legacy-debian-dev / smartaihub.app; source SHA 452dc2d5c30a2618cfcc915a41c329a1cbfdb506, web and Node worker healthy, public /healthz and / returned HTTP 200. Wide/single-column navigator (>=360px) shows merged video; narrow 280px Workbench rail hides it; product thumbnails remain large on the full jobs list. Esbuild syntax transpile and git diff --check passed; authenticated browser visual UAT remains pending.",
+    "merged_main_sha": "452dc2d5c30a2618cfcc915a41c329a1cbfdb506",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
@@ -57,7 +57,7 @@
       "Existing affected runs mar_6dc357649f7121a97ab6e1f27bf0aae0 and mar_d865bac6f4e1e518d648e479e61b744b retain zero image prompts and legacy generic correction markers; after deployment, regenerate only their missing per-shot prompts.",
       "Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal.",
       "Fresh provider-backed story-plan generation after release 603 is still pending; the terminal failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c was not replayed.",
-      "Browser visual UAT of the updated job-history listing and full-workbench video preview remains pending."
+      "Authenticated browser visual confirmation of width-based Auto Review video preview remains pending."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
