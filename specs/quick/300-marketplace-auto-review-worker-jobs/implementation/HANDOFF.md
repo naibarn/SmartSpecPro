@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `104`
-- Updated (UTC): `2026-11-20T01:15:11.410352+00:00`
+- State generation: `105`
+- Updated (UTC): `2026-11-20T01:20:33.333453+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `e7ebd5bf679b2d28161b882c4c87c0dee106a0f4`
+- Latest recorded merged Main SHA: `3f1a01866396ff9bc9a3b537c0f8b8b891c458cc`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Job history now uses larger product thumbnails and hides merged video previews; full Job Workbench explicitly retains the video preview. UI source is integrated at e7ebd5bf679b2d28161b882c4c87c0dee106a0f4. Browser visual UAT and a new development release were not performed for this layout-only change; deploy if a live preview is needed.
+- Next action: Auto Review history layout is deployed on legacy-debian-dev / smartaihub.app at release generation 604. Web and Node worker runtime revisions match 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc; public /healthz and / both returned HTTP 200. Release: smartspec-web-3f1a01866396ff9bc9a3b537c0f8b8b891c458cc-d301a607917f; artifact sha256:40baa8a8d357e7caf10fca626ebb59d3880dc2d9e50bb9e3229e513a3e1133cc. Browser visual UAT remains pending.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-job-history-layout | /mnt/SmartSpecDev/projects/SmartSpecPro | e7ebd5bf679b2d28161b882c4c87c0dee106a0f4 | e7ebd5bf679b2d28161b882c4c87c0dee106a0f4 | Job history now uses larger product thumbnails and hides merged video previews; full Job Workbench explicitly retains the video preview. UI source is integrated at e7ebd5bf679b2d28161b882c4c87c0dee106a0f4. Browser visual UAT and a new development release were not performed for this layout-only change; deploy if a live preview is needed. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-job-history-layout | /mnt/SmartSpecDev/projects/SmartSpecPro | 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc | 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc | Auto Review history layout is deployed on legacy-debian-dev / smartaihub.app at release generation 604. Web and Node worker runtime revisions match 3f1a01866396ff9bc9a3b537c0f8b8b891c458cc; public /healthz and / both returned HTTP 200. Release: smartspec-web-3f1a01866396ff9bc9a3b537c0f8b8b891c458cc-d301a607917f; artifact sha256:40baa8a8d357e7caf10fca626ebb59d3880dc2d9e50bb9e3229e513a3e1133cc. Browser visual UAT remains pending. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -31,7 +31,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Existing affected runs mar_6dc357649f7121a97ab6e1f27bf0aae0 and mar_d865bac6f4e1e518d648e479e61b744b retain zero image prompts and legacy generic correction markers; after deployment, regenerate only their missing per-shot prompts.
 - Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal.
 - Fresh provider-backed story-plan generation after release 603 is still pending; the terminal failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c was not replayed.
-- Job history layout change is integrated on main; browser visual UAT and deployment to smartaihub.app remain pending.
+- Browser visual UAT of the updated job-history listing and full-workbench video preview remains pending.
 
 ## Resume
 
