@@ -7,6 +7,7 @@ import {
   resolveStagedConversationMode,
 } from "../marketplaceAutoReviewStoryArcPlanner";
 import {
+  advanceStagedMarketplaceAutoReviewRun,
   buildStagedPlanAndMetadataForInit,
   deriveStagedCastFromManifestForTest as deriveCastFromManifest,
   planAndMetadataFromRun,
@@ -258,7 +259,7 @@ describe("marketplace staged storyboard pipeline contracts", () => {
     ).toBe(true);
   });
 
-  it("buildStagedPlanAndMetadataForInit drafts three review ideas from the product brief", async () => {
+  it("drafts three review ideas and waits for selection even if an advance was already queued", async () => {
     const concepts = [
       {
         conceptId: "idea-1",
@@ -329,13 +330,37 @@ describe("marketplace staged storyboard pipeline contracts", () => {
         ],
       },
     };
-    const { plan } = await buildStagedPlanAndMetadataForInit(rawRun as any);
+    const { plan, metadata } = await buildStagedPlanAndMetadataForInit(
+      rawRun as any
+    );
     mockCallLLMStructured.mockReset();
     expect(plan.shots).toHaveLength(0);
     expect(plan.source).toBe("llm_story_arc");
     expect(plan.conceptOptions).toEqual(concepts);
     expect(plan.product.description).toBe("Product brief ที่ใช้อธิบายสินค้า");
     expect(plan.product.specs).toEqual({ material: "stainless steel" });
+
+    const run = {
+      ...rawRun,
+      status: "running",
+      currentStage: "concept_story",
+      metadataJson: metadata,
+    } as Parameters<typeof advanceStagedMarketplaceAutoReviewRun>[0]["run"];
+    // A previously queued generic advance must leave the waiting draft
+    // untouched without accessing the database or a media provider.
+    const advance = {
+      db: {} as Parameters<typeof advanceStagedMarketplaceAutoReviewRun>[0]["db"],
+      run,
+      auth: { userId: run.userId, tenantId: "tenant-1" },
+      runtime: {},
+    };
+    await expect(advanceStagedMarketplaceAutoReviewRun(advance)).resolves.toEqual({
+      run,
+      finalAssemblyApproved: false,
+    });
+    await expect(
+      advanceStagedMarketplaceAutoReviewRun({ ...advance, targetShotIds: [1] })
+    ).rejects.toThrow("STAGED_STORY_CONCEPT_SELECTION_REQUIRED");
   });
 
   it("uses a review plan fixture for contract-level story summary assertions", () => {

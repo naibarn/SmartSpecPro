@@ -236,6 +236,18 @@ function stagedPlanFromMetadata(
   return plan as StagedStoryArcPlan;
 }
 
+export function isAwaitingStagedStoryConceptSelection(
+  metadata: Record<string, unknown>
+): boolean {
+  const plan = stagedPlanFromMetadata(metadata);
+  return Boolean(
+    plan &&
+      plan.shots.length === 0 &&
+      plan.conceptOptions?.length &&
+      !plan.selectedConceptId
+  );
+}
+
 function buildProductFromMetadata(
   run: MarketplaceAutoReviewRun,
   metadata: Record<string, any>
@@ -2528,6 +2540,15 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   const { plan, metadata: initialMetadata } = planAndMetadataFromRun(
     params.run
   );
+  // An advance queued during initialization can arrive while the user
+  // is still choosing a concept. The persisted draft already shows that state.
+  if (
+    params.targetShotIds === undefined &&
+    !params.reconcileOnly &&
+    isAwaitingStagedStoryConceptSelection(initialMetadata)
+  ) {
+    return { run: params.run, finalAssemblyApproved: false };
+  }
   if (
     plan.shots.length === 0 ||
     (plan.conceptOptions?.length && !plan.selectedConceptId)

@@ -22,7 +22,58 @@ describe("Marketplace Auto Review advance queue regression", () => {
     enqueueMock.mockResolvedValue({ jobId: "advance-job-1" });
   });
 
-  it("queues a follow-up worker job while reading a run that awaits its provider", async () => {
+  it("does not enqueue a generic advance for a staged run awaiting concept selection", async () => {
+    const run = {
+      id: "run-awaiting-concept",
+      userId: 42,
+      tenantId: "tenant-1",
+      status: "running",
+      currentStage: "concept_story",
+      stageIndex: 3,
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        stagedPipeline: {
+          plan: {
+            conceptOptions: [{ conceptId: "idea-1" }],
+            shots: [],
+          },
+        },
+      },
+    };
+    const select = vi.fn().mockReturnValue({
+      from: () => ({
+        where: () => ({ limit: async () => [run] }),
+      }),
+    });
+    getDbMock.mockResolvedValue({ select });
+
+    await queueMarketplaceAutoReviewAdvance(
+      run.id,
+      { userId: 42, tenantId: "tenant-1" },
+      { schedulerSource: "worker_jobs:initialize_run" },
+      500
+    );
+
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["legacy", {}],
+    [
+      "staged",
+      {
+        planningArchitecture: "staged_two_skill_v2",
+        stagedPipeline: {
+          plan: {
+            conceptOptions: [{ conceptId: "idea-1" }],
+            selectedConceptId: "idea-1",
+            shots: [{ shotId: 1 }],
+          },
+        },
+      },
+    ],
+  ])("queues a follow-up worker job for a %s run awaiting its provider", async (_architecture, metadataJson) => {
     const run = {
       id: "run-awaiting-provider",
       userId: 42,
@@ -30,7 +81,7 @@ describe("Marketplace Auto Review advance queue regression", () => {
       status: "waiting_provider",
       currentStage: "image_generation",
       stageIndex: 4,
-      metadataJson: {},
+      metadataJson,
     };
     const queryResults = [[run], [], []];
     let queryIndex = 0;

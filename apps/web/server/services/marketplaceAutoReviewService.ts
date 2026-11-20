@@ -216,6 +216,7 @@ import {
   advanceStagedMarketplaceAutoReviewRun,
   buildLegacyConcept,
   initializeStagedMarketplaceAutoReviewRun,
+  isAwaitingStagedStoryConceptSelection,
   redraftStagedMarketplaceAutoReviewRun,
 } from "./marketplaceAutoReviewStagedPipelineService";
 import {
@@ -38193,6 +38194,12 @@ export async function queueMarketplaceAutoReviewAdvance(
     return;
   }
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  if (
+    metadata.planningArchitecture === "staged_two_skill_v2" &&
+    isAwaitingStagedStoryConceptSelection(metadata)
+  ) {
+    return;
+  }
   const admissionReview = asRecord(metadata.workerJobAdmissionReview);
   if (
     admissionReview.status === "awaiting_confirmation" ||
