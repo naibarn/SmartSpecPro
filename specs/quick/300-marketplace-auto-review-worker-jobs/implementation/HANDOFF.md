@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `111`
-- Updated (UTC): `2026-11-20T04:28:56.869307+00:00`
+- State generation: `112`
+- Updated (UTC): `2026-11-20T04:57:18.210825+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `612ed91e545b75fa890ccf53c609a275db992998`
+- Latest recorded merged Main SHA: `82188021a7c74c098501b559189cd469987ca387`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Development release 610 DEPLOYED_VERIFIED for smartaihub.app at 612ed91e545b75fa890ccf53c609a275db992998. Chromium verified the real React panel with the approved frame and saved coordinates from run mar_14b9cbcc4a40e70abee195208d0db263 shot 1, including saved speaker selections. Separately Chromium loaded the public vision bundle, model and WASM from the deployed hostname (HTTP 200) and reproduced the corrected boxes on that frame. The overlay-only change runs on image load and does not rerun detection or mutate the workbench. Ambiguous detector results keep saved geometry. The authenticated workbench route was not opened as the user.
+- Next action: Development release 611 DEPLOYED_VERIFIED for smartaihub.app at 82188021a7c74c098501b559189cd469987ca387. Shot 4 saved detection reproduced the reported boxes. The actual frame detector returned the man at score 0.546875, just below the former 0.55 threshold. The overlay now considers a bounded 0.50 tier when it supplies exactly the missing people and spatial checks pass, and displays no stale geometry if positioning fails. Chromium rendered the actual React panel with all five approved frames and saved mappings from the affected job. Both correct faces were inside their respective boxes for each shot, and a failed model download left mappings intact with no stale rectangles. Separate Chromium proof used the published model, JS and WASM on all five frames. The public app bundle matches the built artifact and /healthz returned HTTP 200. The authenticated workbench was not opened as the job owner.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | marketplace-speaker-overlay | /mnt/SmartSpecDev/projects/SmartSpecPro | 612ed91e545b75fa890ccf53c609a275db992998 | 612ed91e545b75fa890ccf53c609a275db992998 | Development release 610 DEPLOYED_VERIFIED for smartaihub.app at 612ed91e545b75fa890ccf53c609a275db992998. Chromium verified the real React panel with the approved frame and saved coordinates from run mar_14b9cbcc4a40e70abee195208d0db263 shot 1, including saved speaker selections. Separately Chromium loaded the public vision bundle, model and WASM from the deployed hostname (HTTP 200) and reproduced the corrected boxes on that frame. The overlay-only change runs on image load and does not rerun detection or mutate the workbench. Ambiguous detector results keep saved geometry. The authenticated workbench route was not opened as the user. |
+| section-03-proof-and-deployment | checkpointed | marketplace-speaker-overlay-closeup | /mnt/SmartSpecDev/projects/SmartSpecPro | 82188021a7c74c098501b559189cd469987ca387 | 82188021a7c74c098501b559189cd469987ca387 | Development release 611 DEPLOYED_VERIFIED for smartaihub.app at 82188021a7c74c098501b559189cd469987ca387. Shot 4 saved detection reproduced the reported boxes. The actual frame detector returned the man at score 0.546875, just below the former 0.55 threshold. The overlay now considers a bounded 0.50 tier when it supplies exactly the missing people and spatial checks pass, and displays no stale geometry if positioning fails. Chromium rendered the actual React panel with all five approved frames and saved mappings from the affected job. Both correct faces were inside their respective boxes for each shot, and a failed model download left mappings intact with no stale rectangles. Separate Chromium proof used the published model, JS and WASM on all five frames. The public app bundle matches the built artifact and /healthz returned HTTP 200. The authenticated workbench was not opened as the job owner. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -32,7 +32,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Post-deployment provider verification is pending: generate a fresh job for run mar_71ac0520464e4d1b607b34404964851b and confirm success; the pre-deployment failed job 2c1d8b1d-0035-4b75-b26a-ab48594b2853 remains terminal.
 - Fresh provider-backed story-plan generation after release 603 is still pending; the terminal failed job 9a7b5c7c-5b82-4d2c-8917-da9a4d787c9c was not replayed.
 - Authenticated browser visual confirmation of the width-based video preview and collapsed product Description panel remains pending.
-- Marketplace speaker overlay browser proof uses the affected approved frame and deployed detector assets. Authenticated UI UAT as the owner of that job was not run.
+- Marketplace speaker overlay browser proof covers the affected job's five approved frames and deployed detector assets. Authenticated UI UAT as the owner of that job was not run.
 
 ## Resume
 
