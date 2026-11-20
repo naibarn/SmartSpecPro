@@ -2,10 +2,13 @@ import type { ObjectDetector } from "@mediapipe/tasks-vision";
 import type { VerticalDramaDetectedShotPerson } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
 type Box = VerticalDramaDetectedShotPerson["boundingBox"];
+type Candidate = { box: Box; score: number };
 
 // Google MediaPipe EfficientDet-Lite0 int8, version 1:
 // https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/1/efficientdet_lite0.tflite
 const MODEL_PATH = "/models/efficientdet_lite0_int8_v1.tflite";
+const PREFERRED_PERSON_SCORE = 0.55;
+const MIN_PERSON_SCORE = 0.5;
 let detectorPromise: Promise<ObjectDetector> | undefined;
 
 async function createDetector(): Promise<ObjectDetector> {
@@ -15,7 +18,7 @@ async function createDetector(): Promise<ObjectDetector> {
     baseOptions: { modelAssetPath: MODEL_PATH, delegate: "CPU" },
     runningMode: "IMAGE",
     categoryAllowlist: ["person"],
-    scoreThreshold: 0.55,
+    scoreThreshold: MIN_PERSON_SCORE,
   });
 }
 
@@ -24,7 +27,7 @@ const centerX = (box: Box) => box.x + box.width / 2;
 
 export async function locateMarketplaceSpeakerOverlay(
   image: HTMLImageElement
-): Promise<Box[]> {
+): Promise<Candidate[]> {
   const source = image.currentSrc;
   detectorPromise ??= createDetector().catch(error => {
     detectorPromise = undefined;
@@ -37,25 +40,36 @@ export async function locateMarketplaceSpeakerOverlay(
   }
 
   return detector.detect(image).detections
-    .map(({ boundingBox: b }) => {
+    .map(({ boundingBox: b, categories }) => {
       const x = clip(b.originX / naturalWidth);
       const y = clip(b.originY / naturalHeight);
       const right = clip((b.originX + b.width) / naturalWidth);
       const bottom = clip((b.originY + b.height) / naturalHeight);
-      return { x, y, width: right - x, height: bottom - y };
+      return {
+        box: { x, y, width: right - x, height: bottom - y },
+        score: categories[0]?.score ?? 0,
+      };
     })
-    .filter(box => box.width > 0 && box.height > 0);
+    .filter(({ box }) => box.width > 0 && box.height > 0);
 }
 
 export function matchMarketplaceSpeakerOverlay(
   people: readonly VerticalDramaDetectedShotPerson[],
-  boxes: readonly Box[]
+  detections: readonly Candidate[]
 ): Map<string, Box> | undefined {
-  if (!people.length || boxes.length !== people.length) return;
+  if (!people.length) return;
+  const preferred = detections.filter(({ score }) => score >= PREFERRED_PERSON_SCORE);
+  // Keep the preferred matches when an extra, weaker detection is present.
+  // Consider the lower band only if it supplies exactly the missing people.
+  const eligible =
+    preferred.length === people.length
+      ? preferred
+      : detections.filter(({ score }) => score >= MIN_PERSON_SCORE);
+  if (eligible.length !== people.length) return;
   const roster = [...people].sort(
     (a, b) => centerX(a.boundingBox) - centerX(b.boundingBox)
   );
-  const candidates = [...boxes].sort((a, b) => centerX(a) - centerX(b));
+  const candidates = eligible.map(({ box }) => box).sort((a, b) => centerX(a) - centerX(b));
 
   // The saved roster uses horizontal ordering. Use it only when there is
   // one clear candidate per person and both sets have distinct positions.

@@ -471,10 +471,13 @@ function ShotSpeakerBindingPanel(props: {
       });
     return () => { active = false; };
   }, [hasPeople, loadedFrame, props.imageUrl]);
-  const overlayBoxes =
+  const currentFrameBoxes =
     frameBoxes && loadedFrame?.url === props.imageUrl && frameBoxes.frame === loadedFrame
-      ? matchMarketplaceSpeakerOverlay(people, frameBoxes.boxes)
+      ? frameBoxes.boxes
       : undefined;
+  const overlayBoxes = currentFrameBoxes
+    ? matchMarketplaceSpeakerOverlay(people, currentFrameBoxes)
+    : undefined;
   const saved = props.bindings ?? {};
   const mappingChanged = speakers.some(
     name => (draft[name] ?? "") !== (saved[name] ?? "")
@@ -571,7 +574,8 @@ function ShotSpeakerBindingPanel(props: {
                   }}
                 />
                 {people.map((person, index) => {
-                  const box = overlayBoxes?.get(person.id) ?? person.boundingBox;
+                  const box = overlayBoxes?.get(person.id);
+                  if (!box) return null;
                   return (
                     <aside
                       key={person.id}
@@ -589,9 +593,13 @@ function ShotSpeakerBindingPanel(props: {
           </VStack>
           <VStack as="section" gap={3}>
             {people.length ? (
-              <VStack gap={2}>
-                <Text type="supporting" color="secondary">กรอบแสดงตำแหน่งที่ระบบตรวจจับอัตโนมัติ</Text>
-              </VStack>
+              <Text type="supporting" color="secondary" role="status">
+                {overlayBoxes
+                  ? "กรอบแสดงตำแหน่งที่ตรวจได้จากภาพ"
+                  : currentFrameBoxes
+                    ? "ยังยืนยันตำแหน่งกรอบจากภาพนี้ไม่ได้"
+                    : "กำลังหาตำแหน่งกรอบจากภาพ"}
+              </Text>
             ) : null}
             {people.length ? speakers.map(name => (
               <label key={name} className="block rounded-lg border border-slate-200 bg-white p-3">
