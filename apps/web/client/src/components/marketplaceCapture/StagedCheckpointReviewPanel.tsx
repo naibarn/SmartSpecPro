@@ -30,6 +30,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { validateMarketplaceShotMediaFile } from "@/lib/marketplaceShotMediaUpload";
+import {
+  locateMarketplaceSpeakerOverlay,
+  matchMarketplaceSpeakerOverlay,
+} from "@/services/marketplaceSpeakerOverlay";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharacterPickerDialog";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
@@ -448,6 +452,29 @@ function ShotSpeakerBindingPanel(props: {
   );
   useEffect(() => setDraft(props.bindings ?? {}), [props.bindings]);
   const people = props.people ?? [];
+  const [loadedFrame, setLoadedFrame] = useState<{
+    url: string;
+    image: HTMLImageElement;
+  }>();
+  const [frameBoxes, setFrameBoxes] = useState<{
+    frame: typeof loadedFrame;
+    boxes: Awaited<ReturnType<typeof locateMarketplaceSpeakerOverlay>>;
+  }>();
+  const hasPeople = people.length > 0;
+  useEffect(() => {
+    if (!hasPeople || !loadedFrame || loadedFrame.url !== props.imageUrl) return;
+    let active = true;
+    void locateMarketplaceSpeakerOverlay(loadedFrame.image)
+      .catch(() => [])
+      .then(boxes => {
+        if (active) setFrameBoxes({ frame: loadedFrame, boxes });
+      });
+    return () => { active = false; };
+  }, [hasPeople, loadedFrame, props.imageUrl]);
+  const overlayBoxes =
+    frameBoxes && loadedFrame?.url === props.imageUrl && frameBoxes.frame === loadedFrame
+      ? matchMarketplaceSpeakerOverlay(people, frameBoxes.boxes)
+      : undefined;
   const saved = props.bindings ?? {};
   const mappingChanged = speakers.some(
     name => (draft[name] ?? "") !== (saved[name] ?? "")
@@ -537,17 +564,25 @@ function ShotSpeakerBindingPanel(props: {
                   src={props.imageUrl}
                   alt={`Start frame ช็อตที่ ${props.shotId}`}
                   className="block h-auto w-full"
+                  onLoad={event => {
+                    if (props.imageUrl) {
+                      setLoadedFrame({ url: props.imageUrl, image: event.currentTarget });
+                    }
+                  }}
                 />
-                {people.map((person, index) => (
-                  <aside
-                    key={person.id}
-                    aria-hidden="true"
-                    className={`pointer-events-none absolute border-2 ${person.confidence < 0.65 ? "border-amber-400" : "border-cyan-400"}`}
-                    style={{ left: `${person.boundingBox.x * 100}%`, top: `${person.boundingBox.y * 100}%`, width: `${person.boundingBox.width * 100}%`, height: `${person.boundingBox.height * 100}%` }}
-                  >
-                    <strong className={`absolute -top-5 left-0 rounded px-1.5 text-xs font-bold text-white ${person.confidence < 0.65 ? "bg-amber-600" : "bg-cyan-600"}`}>{index + 1}</strong>
-                  </aside>
-                ))}
+                {people.map((person, index) => {
+                  const box = overlayBoxes?.get(person.id) ?? person.boundingBox;
+                  return (
+                    <aside
+                      key={person.id}
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute border-2 ${person.confidence < 0.65 ? "border-amber-400" : "border-cyan-400"}`}
+                      style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }}
+                    >
+                      <strong className={`absolute -top-5 left-0 rounded px-1.5 text-xs font-bold text-white ${person.confidence < 0.65 ? "bg-amber-600" : "bg-cyan-600"}`}>{index + 1}</strong>
+                    </aside>
+                  );
+                })}
               </section>
               <figcaption className="sr-only">กรอบหมายเลขแสดงตำแหน่งบุคคลที่ตรวจพบในภาพ</figcaption>
             </figure>
