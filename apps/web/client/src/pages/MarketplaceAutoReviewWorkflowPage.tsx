@@ -465,7 +465,6 @@ export default function MarketplaceAutoReviewWorkflowPage() {
             error={jobsQuery.error?.message ?? null}
             productId={productId}
             productName={productName}
-            showVideoPreview
             productOptions={productOptionsQuery.data ?? []}
             selectedProductFilter={selectedProductFilter}
             onProductFilterChange={setSelectedProductFilter}

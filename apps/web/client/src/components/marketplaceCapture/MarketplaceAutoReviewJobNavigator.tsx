@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -30,8 +30,6 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   selectedProductFilter?: string;
   onProductFilterChange?: (productId: string) => void;
   allProducts?: boolean;
-  /** Show merged video only when this navigator is used in the full workbench. */
-  showVideoPreview?: boolean;
   /** Use a larger product image in the full job-history listing. */
   largeProductThumbnails?: boolean;
   setupMode?: boolean;
@@ -300,7 +298,6 @@ export function MarketplaceAutoReviewJobNavigator({
   selectedProductFilter,
   onProductFilterChange,
   allProducts = false,
-  showVideoPreview = false,
   largeProductThumbnails = false,
   setupMode = false,
   hasMore = false,
@@ -314,6 +311,30 @@ export function MarketplaceAutoReviewJobNavigator({
 }: MarketplaceAutoReviewJobNavigatorProps) {
   const { i18n } = useTranslation();
   const isThaiLocale = (i18n.resolvedLanguage ?? i18n.language) === "th";
+  const navigatorRef = useRef<HTMLElement | null>(null);
+  const [navigatorWidth, setNavigatorWidth] = useState(0);
+
+  useEffect(() => {
+    const navigator = navigatorRef.current;
+    if (!navigator) return;
+
+    const updateWidth = () => {
+      setNavigatorWidth(navigator.getBoundingClientRect().width);
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (typeof width === "number") setNavigatorWidth(width);
+    });
+    observer.observe(navigator);
+    return () => observer.disconnect();
+  }, []);
+
+  // The merged video gets its own column only when the navigator has enough
+  // room. This keeps the 280px workbench rail compact while wide/single-column
+  // history layouts can show both the product image and video preview.
+  const canShowVideoPreview = navigatorWidth >= 360;
   // Two-step inline confirm — this codebase's convention for a destructive
   // row action (see the character/look delete buttons in the VD panels).
   // Deleting a job is irreversible: the run row cascades to its stages,
@@ -330,6 +351,7 @@ export function MarketplaceAutoReviewJobNavigator({
 
   return (
     <aside
+      ref={navigatorRef}
       className={`flex min-h-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10 ${className}`}
       aria-label={allProducts ? "Jobs ทั้งหมด" : "Jobs ของสินค้านี้"}
     >
@@ -430,7 +452,7 @@ export function MarketplaceAutoReviewJobNavigator({
             const videoPreviewUrl = text(run.videoPreviewUrl);
             const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
             const hasVideoPreview =
-              showVideoPreview && Boolean(videoPreviewUrl);
+              canShowVideoPreview && Boolean(videoPreviewUrl);
             const productThumbnailClassName = largeProductThumbnails
               ? "h-24 w-24 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
               : "h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover";
