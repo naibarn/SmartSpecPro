@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Development release 613 DEPLOYED_VERIFIED for smartaihub.app. Public health and the Workbench route returned HTTP 200. Web and Node worker both serve revision 72c4b898926102629ebee4bdaa81e9d3a4bbd040. Worker job 55e44e75-8760-497d-b979-43ca9eeaaa3a failed before provider submission because an advance queued at concept_story treated pending concept selection as STAGED_STORY_CONCEPT_SELECTION_REQUIRED and mapped it to image_generation. Queue admission now skips this state and already-queued generic advances leave the draft untouched. Targeted advance errors retain validation. Package profile passed 43/43 focused tests across queue admission, staged planning, durable initialization and the worker on the immutable source at 19:32 ICT after local resource admission. The affected run mar_896d582b929913d4d3bc05bb8fef06d3 reached storyboard_review with 5/5 prompts and 5/5 images. The historical failed row remains terminal.",
-      "checkpoint_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
-      "merged_main_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
+      "next_action": "Development release 614 DEPLOYED_VERIFIED on smartaihub.app for Marketplace queue concurrency. Web and Node worker serve revision 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7. The public health and Worker Jobs routes returned HTTP 200. The running worker logs a three-slot Marketplace limit. Package profile passed 146 focused Vitest checks at 19:47 ICT on the immutable release source. Integration profile ran the real canonical admission, Postgres pull worker and claim/settlement against a temporary PostgreSQL 17 instance with a simulated executor. At 19:47 ICT, 91 simultaneous submissions from 11 users in two tenants admitted 90 unique jobs, including 60 commands on one review. All 90 dispatches completed once across three competing pollers with a peak of three and zero same-review overlap. A repeated idempotency key returned its original job, and a 48-hour-old unstarted job executed normally. No external media provider was called during the load test. Release resource preflight reported 23485684 KB host memory available and 8010190424 effective user slice bytes.",
+      "checkpoint_sha": "230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7",
+      "merged_main_sha": "230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "marketplace-concept-selection-advance"
+      "session_id": "marketplace-auto-review-concurrent-queue"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 114,
-  "updated_at": "2026-11-20T12:34:22.454886+00:00",
+  "generation": 115,
+  "updated_at": "2026-11-20T12:49:50.702765+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Development release 613 DEPLOYED_VERIFIED for smartaihub.app. Public health and the Workbench route returned HTTP 200. Web and Node worker both serve revision 72c4b898926102629ebee4bdaa81e9d3a4bbd040. Worker job 55e44e75-8760-497d-b979-43ca9eeaaa3a failed before provider submission because an advance queued at concept_story treated pending concept selection as STAGED_STORY_CONCEPT_SELECTION_REQUIRED and mapped it to image_generation. Queue admission now skips this state and already-queued generic advances leave the draft untouched. Targeted advance errors retain validation. Package profile passed 43/43 focused tests across queue admission, staged planning, durable initialization and the worker on the immutable source at 19:32 ICT after local resource admission. The affected run mar_896d582b929913d4d3bc05bb8fef06d3 reached storyboard_review with 5/5 prompts and 5/5 images. The historical failed row remains terminal.",
-    "merged_main_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
+    "next_action": "Development release 614 DEPLOYED_VERIFIED on smartaihub.app for Marketplace queue concurrency. Web and Node worker serve revision 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7. The public health and Worker Jobs routes returned HTTP 200. The running worker logs a three-slot Marketplace limit. Package profile passed 146 focused Vitest checks at 19:47 ICT on the immutable release source. Integration profile ran the real canonical admission, Postgres pull worker and claim/settlement against a temporary PostgreSQL 17 instance with a simulated executor. At 19:47 ICT, 91 simultaneous submissions from 11 users in two tenants admitted 90 unique jobs, including 60 commands on one review. All 90 dispatches completed once across three competing pollers with a peak of three and zero same-review overlap. A repeated idempotency key returned its original job, and a 48-hour-old unstarted job executed normally. No external media provider was called during the load test. Release resource preflight reported 23485684 KB host memory available and 8010190424 effective user slice bytes.",
+    "merged_main_sha": "230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
