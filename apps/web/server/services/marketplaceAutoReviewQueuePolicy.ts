@@ -20,11 +20,9 @@ export async function hasMarketplaceAutoReviewExecutionSlot(
   tx: { execute: (query: ReturnType<typeof sql>) => PromiseLike<unknown> },
   job: { tenantId: string | null; inputJson: Record<string, unknown> }
 ): Promise<boolean> {
-  const [lock] = (await tx.execute(sql`
-    SELECT pg_try_advisory_xact_lock(hashtextextended('marketplace-auto-review:claim', 0)) AS "acquired"
-  `)) as Array<{ acquired: boolean }>;
-  if (!lock?.acquired) return false;
-
+  await tx.execute(sql`
+    SELECT pg_advisory_xact_lock(hashtextextended('marketplace-auto-review:claim', 0))
+  `);
   const activeJobs = (await tx.execute(activeMarketplaceAutoReviewJobs)) as Array<{
     tenantId: string | null;
     runId: string | null;
