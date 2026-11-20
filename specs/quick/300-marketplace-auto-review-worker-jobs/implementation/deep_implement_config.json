@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Development release 612 DEPLOYED_VERIFIED for smartaihub.app at 91c6f78fb5491af867d46f1d0e14f6adaeb3fca7. Public healthz and the Workbench route returned HTTP 200. Marketplace Generate Prompt now requests one camera preset and visual speaker analysis from the skill, then composes a single prompt from the approved action, verified speaker identities and exact numbered dialogue. It does not append free-form motion prose or invoke a second prompt optimizer. Focused Vitest package scope passed 36/36 on the clean canonical revision. Separately the exact user-supplied 1,050-character prompt was saved via the normal shot edit service for mar_14b9cbcc4a40e70abee195208d0db263 shot 2; read-back verified approved checkpoint hash and preserved image and speaker bindings. No video dispatch or spend was requested. The external rejection reason and acceptance of the new prompt remain unverified.",
-      "checkpoint_sha": "91c6f78fb5491af867d46f1d0e14f6adaeb3fca7",
-      "merged_main_sha": "91c6f78fb5491af867d46f1d0e14f6adaeb3fca7",
+      "next_action": "Development release 613 DEPLOYED_VERIFIED for smartaihub.app. Public health and the Workbench route returned HTTP 200. Web and Node worker both serve revision 72c4b898926102629ebee4bdaa81e9d3a4bbd040. Worker job 55e44e75-8760-497d-b979-43ca9eeaaa3a failed before provider submission because an advance queued at concept_story treated pending concept selection as STAGED_STORY_CONCEPT_SELECTION_REQUIRED and mapped it to image_generation. Queue admission now skips this state and already-queued generic advances leave the draft untouched. Targeted advance errors retain validation. Package profile passed 43/43 focused tests across queue admission, staged planning, durable initialization and the worker on the immutable source at 19:32 ICT after local resource admission. The affected run mar_896d582b929913d4d3bc05bb8fef06d3 reached storyboard_review with 5/5 prompts and 5/5 images. The historical failed row remains terminal.",
+      "checkpoint_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
+      "merged_main_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "marketplace-compact-video-prompts"
+      "session_id": "marketplace-concept-selection-advance"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 113,
-  "updated_at": "2026-11-20T05:46:01.444863+00:00",
+  "generation": 114,
+  "updated_at": "2026-11-20T12:34:22.454886+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Development release 612 DEPLOYED_VERIFIED for smartaihub.app at 91c6f78fb5491af867d46f1d0e14f6adaeb3fca7. Public healthz and the Workbench route returned HTTP 200. Marketplace Generate Prompt now requests one camera preset and visual speaker analysis from the skill, then composes a single prompt from the approved action, verified speaker identities and exact numbered dialogue. It does not append free-form motion prose or invoke a second prompt optimizer. Focused Vitest package scope passed 36/36 on the clean canonical revision. Separately the exact user-supplied 1,050-character prompt was saved via the normal shot edit service for mar_14b9cbcc4a40e70abee195208d0db263 shot 2; read-back verified approved checkpoint hash and preserved image and speaker bindings. No video dispatch or spend was requested. The external rejection reason and acceptance of the new prompt remain unverified.",
-    "merged_main_sha": "91c6f78fb5491af867d46f1d0e14f6adaeb3fca7",
+    "next_action": "Development release 613 DEPLOYED_VERIFIED for smartaihub.app. Public health and the Workbench route returned HTTP 200. Web and Node worker both serve revision 72c4b898926102629ebee4bdaa81e9d3a4bbd040. Worker job 55e44e75-8760-497d-b979-43ca9eeaaa3a failed before provider submission because an advance queued at concept_story treated pending concept selection as STAGED_STORY_CONCEPT_SELECTION_REQUIRED and mapped it to image_generation. Queue admission now skips this state and already-queued generic advances leave the draft untouched. Targeted advance errors retain validation. Package profile passed 43/43 focused tests across queue admission, staged planning, durable initialization and the worker on the immutable source at 19:32 ICT after local resource admission. The affected run mar_896d582b929913d4d3bc05bb8fef06d3 reached storyboard_review with 5/5 prompts and 5/5 images. The historical failed row remains terminal.",
+    "merged_main_sha": "72c4b898926102629ebee4bdaa81e9d3a4bbd040",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
