@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `108`
-- Updated (UTC): `2026-11-20T03:23:28.185004+00:00`
+- State generation: `109`
+- Updated (UTC): `2026-11-20T03:26:11.999673+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `8f9c2ea7335e5d65640f2548a7be2abeae3439d6`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Release generation 608 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app at application source SHA 8f9c2ea7335e5d65640f2548a7be2abeae3439d6; web and Node worker revisions match, release status is current canonical, and public /healthz and / return HTTP 200. Auto Review no longer renders manual person-box adjustment controls; a coordinate-refinement pass changes only detected boxes and preserves person roster, IDs, descriptions, confidence, and speaker mappings. Existing saved detection boxes are unchanged; rerun person detection on affected jobs. Authenticated UI UAT and fresh provider-backed redetection remain pending.
+- Next action: Release generation 608 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app at application source SHA 8f9c2ea7335e5d65640f2548a7be2abeae3439d6; web and Node worker revisions match and public /healthz and / return HTTP 200. Later canonical changes are handoff documentation only and do not modify the deployed application. Auto Review no longer renders manual person-box adjustment controls; a coordinate-refinement pass changes only detected boxes and preserves person roster, IDs, descriptions, confidence, and speaker mappings. Existing saved detection boxes are unchanged; rerun person detection on affected jobs. Authenticated UI UAT and fresh provider-backed redetection remain pending.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | codex-auto-review-person-box-alignment | /mnt/SmartSpecDev/projects/SmartSpecPro | 8f9c2ea7335e5d65640f2548a7be2abeae3439d6 | 8f9c2ea7335e5d65640f2548a7be2abeae3439d6 | Release generation 608 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app at application source SHA 8f9c2ea7335e5d65640f2548a7be2abeae3439d6; web and Node worker revisions match, release status is current canonical, and public /healthz and / return HTTP 200. Auto Review no longer renders manual person-box adjustment controls; a coordinate-refinement pass changes only detected boxes and preserves person roster, IDs, descriptions, confidence, and speaker mappings. Existing saved detection boxes are unchanged; rerun person detection on affected jobs. Authenticated UI UAT and fresh provider-backed redetection remain pending. |
+| section-03-proof-and-deployment | checkpointed | codex-auto-review-person-box-alignment | /mnt/SmartSpecDev/projects/SmartSpecPro | 8f9c2ea7335e5d65640f2548a7be2abeae3439d6 | 8f9c2ea7335e5d65640f2548a7be2abeae3439d6 | Release generation 608 is DEPLOYED_VERIFIED on legacy-debian-dev / smartaihub.app at application source SHA 8f9c2ea7335e5d65640f2548a7be2abeae3439d6; web and Node worker revisions match and public /healthz and / return HTTP 200. Later canonical changes are handoff documentation only and do not modify the deployed application. Auto Review no longer renders manual person-box adjustment controls; a coordinate-refinement pass changes only detected boxes and preserves person roster, IDs, descriptions, confidence, and speaker mappings. Existing saved detection boxes are unchanged; rerun person detection on affected jobs. Authenticated UI UAT and fresh provider-backed redetection remain pending. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
