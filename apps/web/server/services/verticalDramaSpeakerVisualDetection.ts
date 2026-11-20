@@ -277,7 +277,11 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
   >({
     model: params.model,
     systemPrompt: loadSkillSystemPrompt(),
-    userPromptText: `Shot number: ${params.shotNumber}. Detect every visible person in the attached approved image.`,
+    userPromptText: [
+      `Shot number: ${params.shotNumber}. Detect every visible person in the attached approved image.`,
+      "Bounding-box precision only: use normalized coordinates against the entire uncropped image, with the top-left corner as (0, 0). For each person, make a tight rectangle around that person's complete visible silhouette, from the top of the visible head or hair to the lowest visible body/clothing edge; include visible torso and limbs, not only the face or central body. Keep the rectangle aligned to that person's actual left, top, right, and bottom edges, exclude neighboring people and background, and do not add padding. If the person is clipped by the image edge, stop the box at that edge. Before returning JSON, check each box against the image and correct any box that misses part of its person or covers a neighboring person.",
+      "Keep the person detection, IDs, appearance descriptions, confidence, and ordering governed by the existing skill rules; refine only bounding_box geometry.",
+    ].join(" "),
     hasVision: true,
     images: [
       {
