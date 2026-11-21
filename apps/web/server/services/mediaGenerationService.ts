@@ -4,6 +4,13 @@
  * Uses rate limiting to prevent overwhelming external APIs
  */
 
+import { createHash } from "node:crypto";
+import {
+  assertR2StorageActive,
+  storagePresignGet,
+  storagePutIfAbsent,
+} from "../storage";
+import { validateLibraryUploadSignature } from "./libraryUploadPipeline";
 import {
   scheduleMediaWithLimiter,
   recordMediaUsage,
@@ -1824,6 +1831,76 @@ async function resolveProviderReferenceUrls(
     const ref = await createProviderManagedStorageDownloadRef(storageKey, viewer);
     return buildManagedStorageDownloadUrl(baseUrl!, ref.downloadRef, ref.fileName);
   }));
+}
+
+async function stageMarketplaceInlineImageReferences(
+  urls: string[] | undefined,
+  request: ImageGenerationRequest
+): Promise<string[] | undefined> {
+  const source = request.auditContext?.source;
+  if (
+    (source !== "marketplace_auto_review" && source !== "marketplace_auto_review_staged") ||
+    !urls?.some(url => /^data:/i.test(url))
+  ) return urls;
+
+  const { userId, tenantId } = resolveMediaRequestTenantContext(request);
+  if (!userId || !tenantId) {
+    throw new Error("ต้องระบุบัญชีเจ้าของภาพอ้างอิงก่อนสร้างภาพ");
+  }
+
+  const maxBytes = 10_000_000;
+  const maxBase64Length = 4 * Math.ceil(maxBytes / 3);
+  const staged = new Map<string, string>();
+  const resolved: string[] = [];
+  for (const [index, url] of urls.entries()) {
+    if (!/^data:/i.test(url)) {
+      resolved.push(url);
+      continue;
+    }
+    const existing = staged.get(url);
+    if (existing) {
+      resolved.push(existing);
+      continue;
+    }
+
+    const label = `ภาพอ้างอิงลำดับที่ ${index + 1}`;
+    const invalidImage = `${label} ต้องเป็นไฟล์ JPEG, PNG หรือ WebP ที่ถูกต้องและมีขนาดไม่เกิน 10 MB`;
+    if (url.length > maxBase64Length + 32) throw new Error(invalidImage);
+    const match = /^data:(image\/(png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(url);
+    if (!match) throw new Error(invalidImage);
+    const mime = match[1]!.toLowerCase();
+    const format = match[2]!.toLowerCase();
+    const extension = format === "jpeg" ? "jpg" : format;
+    const encoded = match[3]!;
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.length > maxBytes || bytes.toString("base64") !== encoded) {
+      throw new Error(invalidImage);
+    }
+    let sniffedMime: string | null;
+    try {
+      ({ sniffedMime } = validateLibraryUploadSignature(bytes, mime, extension));
+    } catch {
+      throw new Error(invalidImage);
+    }
+    if (sniffedMime !== mime) throw new Error(invalidImage);
+
+    const checksum = createHash("sha256").update(bytes).digest("hex");
+    const key = `marketplace-auto-review/references/${encodeURIComponent(tenantId)}/${userId}/${checksum}.${extension}`;
+    try {
+      await assertR2StorageActive();
+      await storagePutIfAbsent(key, bytes, mime);
+      // Canonical image jobs may wait before the worker downloads the reference.
+      const signed = await storagePresignGet(key, 24 * 60 * 60);
+      if (!signed || !isPublicHttpUrl(signed.url) || !signed.url.startsWith("https://")) {
+        throw new Error("Reference download URL unavailable");
+      }
+      staged.set(url, signed.url);
+      resolved.push(signed.url);
+    } catch {
+      throw new Error(`เตรียมลิงก์ดาวน์โหลดสำหรับ${label}ไม่สำเร็จ`);
+    }
+  }
+  return resolved;
 }
 
 /**
@@ -3683,10 +3760,9 @@ export class MediaGenerationService {
 
     // Add reference images if provided (1-5 images)
     const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
-      resolveReferenceImageUrlsForModel(
-      modelId,
-      request.referenceImageUrls,
-      publicUrl,
+      await stageMarketplaceInlineImageReferences(
+        resolveReferenceImageUrlsForModel(modelId, request.referenceImageUrls, publicUrl),
+        request,
       ),
       request,
       userToken,

@@ -12,6 +12,13 @@ vi.mock("./auditLogger", () => ({
   },
 }));
 
+vi.mock("../storage", async importOriginal => ({
+  ...await importOriginal<typeof import("../storage")>(),
+  assertR2StorageActive: vi.fn(async () => {}),
+  storagePutIfAbsent: vi.fn(),
+  storagePresignGet: vi.fn(),
+}));
+
 vi.mock("./modelRegistry", () => ({
   getModelById: vi.fn(),
   mapToApiModelId: vi.fn((modelId: string) => modelId),
@@ -47,6 +54,7 @@ vi.mock("./imagePromptSafetyService", () => ({
 
 import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
+import { storagePresignGet, storagePutIfAbsent } from "../storage";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { getModelById } from "./modelRegistry";
 import {
@@ -466,6 +474,47 @@ describe("MediaGenerationService retry behavior", () => {
     );
     const legacyPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
     expect(legacyPayload).toHaveProperty("negative_prompt", "legacy guard");
+  });
+
+  it("queues Marketplace images with an R2 link and preserves reference order and uploaded bytes", async () => {
+    const originalBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=",
+      "base64"
+    );
+    const inlineImage = `data:image/png;base64,${originalBytes.toString("base64")}`;
+    const publicUrl = "https://images.example.com/character.png";
+    const r2Url = "https://bucket.example.r2.cloudflarestorage.com/ref.png?signature=fixture";
+    vi.mocked(storagePutIfAbsent).mockResolvedValue({
+      key: "fixture-ref", url: "/api/storage/files/fixture-ref", created: true,
+    });
+    vi.mocked(storagePresignGet).mockResolvedValue({ key: "fixture-ref", url: r2Url });
+    fetchMock.mockResolvedValueOnce(Response.json(taskPayload));
+
+    await new MediaGenerationService("http://localhost:8000").generateImageAsync({
+      prompt: "Use these references in order.",
+      model: "seedream/5-5-image-to-image",
+      auditContext: { source: "marketplace_auto_review_staged", tenantId: "tenant-1", userId: 9 },
+      referenceImageUrls: [inlineImage, publicUrl, inlineImage],
+    }, "test-token");
+
+    expect(storagePutIfAbsent).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/^marketplace-auto-review\/references\/tenant-1\/9\/[a-f0-9]{64}\.png$/),
+      originalBytes,
+      "image/png",
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).reference_image_urls)
+      .toEqual([r2Url, publicUrl, r2Url]);
+  });
+
+  it("rejects a corrupt inline Marketplace reference before queue admission", async () => {
+    await expect(new MediaGenerationService("http://localhost:8000").generateImageAsync({
+      prompt: "Use this product reference.",
+      model: "seedream/5-5-image-to-image",
+      auditContext: { source: "marketplace_auto_review", tenantId: "tenant-1", userId: 9 },
+      referenceImageUrls: ["data:image/png;base64,aGVsbG8="],
+    }, "test-token")).rejects.toThrow("ภาพอ้างอิงลำดับที่ 1");
+    expect(storagePutIfAbsent).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
