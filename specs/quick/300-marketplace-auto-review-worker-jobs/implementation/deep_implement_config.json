@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Development release 616 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve ff83bda6024007f8ec8f8d548a0e8a678cab9654; public health and review route returned HTTP 200. Package profile passed 170 focused Vitest tests on the immutable source at 10:07 ICT on 2026-11-21. Build resource evidence was 23657544 KB host memory available and 7239456360 effective user slice bytes. The reported bulk job failed on shot 4 when the vision provider returned null for an optional detected person ID. The owner authorized a single prompt-only retry of the same five targets. Canonical job 63909964-fb37-47b0-a06b-e299a1ff62b8 succeeded at 10:11:57 ICT with real provider usage across all five shots and 5/5 approved prompt checkpoints. Read-only verification confirmed every saved prompt uses the approved action and identifies the adult as the sole speaker. Optional coordinate refinement fell back to first-pass boxes on array responses and did not block prompt approval. No video render was submitted.",
-      "checkpoint_sha": "ff83bda6024007f8ec8f8d548a0e8a678cab9654",
-      "merged_main_sha": "ff83bda6024007f8ec8f8d548a0e8a678cab9654",
+      "next_action": "Development release 617 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve cb1f4c102668e18a31b3f1d9d09232e5287cddfb; public health, Media History and affected Workbench returned HTTP 200. Package profile passed 30 focused Vitest checks at 18:43 ICT on the immutable source. Full related run passed 80 of 88; the same eight unrelated assertions failed on the prior immutable baseline. Build preflight showed 21202512 KB available host memory and 7282319552 effective user slice bytes. The authorized live comparison reused the original media task ffd9932c-ef0d-47c0-ae34-dd5a164a68ce, replacing only one of three references with a signed R2 URL. The R2 download was byte-identical to the original 20954-byte WebP. Canonical worker job 9cb930f1-9284-4e80-b153-8401f2b43a33 succeeded and KIE task 351f4e58bf4118d26fbe6c5924c9a094 produced a readable 1584x2816 PNG at 18:38 ICT, attached to shot 3 of mar_49191160f109e87a2cbff022e0cd8cd2. The provider adapter applied its existing provider-side rehosting for signed links. The deployed app now stages Marketplace inline image references to R2 before queue admission. No second paid provider invocation was made.",
+      "checkpoint_sha": "cb1f4c102668e18a31b3f1d9d09232e5287cddfb",
+      "merged_main_sha": "cb1f4c102668e18a31b3f1d9d09232e5287cddfb",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "marketplace-vision-null-person-id"
+      "session_id": "marketplace-r2-image-reference"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 117,
-  "updated_at": "2026-11-21T03:12:42.984608+00:00",
+  "generation": 118,
+  "updated_at": "2026-11-21T11:45:54.090323+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Development release 616 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve ff83bda6024007f8ec8f8d548a0e8a678cab9654; public health and review route returned HTTP 200. Package profile passed 170 focused Vitest tests on the immutable source at 10:07 ICT on 2026-11-21. Build resource evidence was 23657544 KB host memory available and 7239456360 effective user slice bytes. The reported bulk job failed on shot 4 when the vision provider returned null for an optional detected person ID. The owner authorized a single prompt-only retry of the same five targets. Canonical job 63909964-fb37-47b0-a06b-e299a1ff62b8 succeeded at 10:11:57 ICT with real provider usage across all five shots and 5/5 approved prompt checkpoints. Read-only verification confirmed every saved prompt uses the approved action and identifies the adult as the sole speaker. Optional coordinate refinement fell back to first-pass boxes on array responses and did not block prompt approval. No video render was submitted.",
-    "merged_main_sha": "ff83bda6024007f8ec8f8d548a0e8a678cab9654",
+    "next_action": "Development release 617 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve cb1f4c102668e18a31b3f1d9d09232e5287cddfb; public health, Media History and affected Workbench returned HTTP 200. Package profile passed 30 focused Vitest checks at 18:43 ICT on the immutable source. Full related run passed 80 of 88; the same eight unrelated assertions failed on the prior immutable baseline. Build preflight showed 21202512 KB available host memory and 7282319552 effective user slice bytes. The authorized live comparison reused the original media task ffd9932c-ef0d-47c0-ae34-dd5a164a68ce, replacing only one of three references with a signed R2 URL. The R2 download was byte-identical to the original 20954-byte WebP. Canonical worker job 9cb930f1-9284-4e80-b153-8401f2b43a33 succeeded and KIE task 351f4e58bf4118d26fbe6c5924c9a094 produced a readable 1584x2816 PNG at 18:38 ICT, attached to shot 3 of mar_49191160f109e87a2cbff022e0cd8cd2. The provider adapter applied its existing provider-side rehosting for signed links. The deployed app now stages Marketplace inline image references to R2 before queue admission. No second paid provider invocation was made.",
+    "merged_main_sha": "cb1f4c102668e18a31b3f1d9d09232e5287cddfb",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
