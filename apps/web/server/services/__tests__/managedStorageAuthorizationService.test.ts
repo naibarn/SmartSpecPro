@@ -43,6 +43,15 @@ describe("managedStorageAuthorizationService", () => {
     vi.clearAllMocks();
   });
 
+  it("allows a stored Marketplace reference only for its tenant and owner", async () => {
+    mocks.mockGetDb.mockResolvedValue(makeDb());
+    const key = `marketplace-auto-review/references/tenant-1/24/${"a".repeat(64)}.png`;
+    await expect(canReadManagedStorageKey(key, { tenantId: "tenant-1", userId: 24 })).resolves.toBe(true);
+    await expect(canReadManagedStorageKey(key, { tenantId: "tenant-1", userId: 25 })).resolves.toBe(false);
+    await expect(canReadManagedStorageKey(key, { tenantId: "tenant-2", userId: 24 })).resolves.toBe(false);
+    await expect(canReadManagedStorageKey(key, null)).resolves.toBe(false);
+  });
+
   it.each([
     ["logo", "logoUrl"],
     ["website-logo", "websiteLogoUrl"],

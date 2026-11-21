@@ -55,7 +55,10 @@ import {
   assertStagedProviderSpendAllowed,
   transitionStagedCheckpoint,
 } from "./marketplaceAutoReviewStagedCheckpointService";
-import { mediaGenerationService } from "./mediaGenerationService";
+import {
+  mediaGenerationService,
+  stageMarketplaceInlineImageReferences,
+} from "./mediaGenerationService";
 import {
   getTransientMediaPollRetryHint,
   getUnifiedMediaTask,
@@ -684,6 +687,7 @@ async function persistRun(params: {
   stageIndex?: number;
   resultJson?: Record<string, unknown>;
   completedAt?: Date | null;
+  expectedUpdatedAt?: Date;
 }) {
   const [next] = await params.db
     .update(marketplaceAutoReviewRuns)
@@ -700,8 +704,16 @@ async function persistRun(params: {
         : {}),
       updatedAt: new Date(),
     })
-    .where(eq(marketplaceAutoReviewRuns.id, params.run.id))
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, params.run.id),
+        params.expectedUpdatedAt
+          ? eq(marketplaceAutoReviewRuns.updatedAt, params.expectedUpdatedAt)
+          : undefined
+      )
+    )
     .returning();
+  if (!next && params.expectedUpdatedAt) throw new Error("staged_state_drift");
   if (!next) throw new Error(`STAGED_RUN_PERSIST_FAILED:${params.run.id}`);
   return next;
 }
@@ -785,12 +797,8 @@ async function consumeCheckpoint(params: {
   if (!guard.ok) throw new Error(guard.reasonCode);
   // Re-verify against the database's current state immediately before
   // spending. `params.checkpoint` (and `expected`, derived from it) reflects
-  // metadata read once at the top of this advance pass, and persistRun
-  // writes with no optimistic-concurrency check — so a concurrent prompt
-  // edit landing mid-pass could otherwise be silently overwritten here, and
-  // the stale pre-edit prompt would get dispatched and charged. Re-fetching
-  // the run and re-running the same guard against the fresh checkpoint
-  // closes that window right before the actual spend.
+  // metadata read once at the top of this advance pass. Recheck against
+  // the current checkpoint, then consume it using the same row version.
   const [freshRow] = await params.db
     .select()
     .from(marketplaceAutoReviewRuns)
@@ -806,7 +814,9 @@ async function consumeCheckpoint(params: {
         item => item.checkpointId === params.checkpoint.checkpointId
       )
     : undefined;
-  if (!freshCheckpoint) throw new Error("checkpoint_revision_mismatch");
+  if (!freshRow || !freshParsed?.success || !freshCheckpoint) {
+    throw new Error("checkpoint_revision_mismatch");
+  }
   const freshGuard = assertStagedProviderSpendAllowed(
     freshCheckpoint,
     expected
@@ -819,7 +829,7 @@ async function consumeCheckpoint(params: {
   });
   if (!transitioned.ok) throw new Error(transitioned.reasonCode);
   const next = appendSafeEvidence(
-    replaceCheckpoint(params.metadata, transitioned.checkpoint),
+    replaceCheckpoint(freshParsed.data, transitioned.checkpoint),
     buildStagedSafeEvidenceEvent({
       runId: params.run.id,
       operation: "checkpoint_consumed",
@@ -836,6 +846,7 @@ async function consumeCheckpoint(params: {
     db: params.db,
     run: params.run,
     metadata: next as unknown as Record<string, any>,
+    expectedUpdatedAt: freshRow.updatedAt,
   });
   return next;
 }
@@ -1587,6 +1598,7 @@ async function compileImagePromptCheckpoints(params: {
   auth: Auth;
 }) {
   let next = params.metadata;
+  let savedRun = params.run;
   const imageModel = requireStagedModel(params.metadata.imageModel, "image");
   // An awaiting checkpoint always requires an explicit user decision. This
   // worker only authors missing prompts; it never repairs approval state.
@@ -1599,7 +1611,13 @@ async function compileImagePromptCheckpoints(params: {
     // place. Preserve their existing prompt checkpoint instead of compiling
     // and re-spending the whole storyboard when the run-level story gate is
     // approved again.
-    if (shotState?.state !== "story_awaiting" && existingPrompt) continue;
+    if (
+      shotState?.state !== "story_awaiting" &&
+      text(shotState?.imagePrompt) &&
+      existingPrompt
+    ) {
+      continue;
+    }
 
     // This pass has one authoritative path: call the installed storyboard
     // skill once for each missing shot and surface any error to the worker.
@@ -1611,13 +1629,28 @@ async function compileImagePromptCheckpoints(params: {
       shotId: shot.shotId,
       publicUrl: params.runtime.publicUrl,
       tenantId: params.auth.tenantId,
-      requestIdempotencyKey: `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}`,
       stage: "image",
     });
+    const referenceHash = buildProductionStableHash(
+      refreshInput.referenceManifest
+    );
     let prompt: string;
     try {
       const refresh =
-        await refreshSequentialShotPromptWithSkillDirect(refreshInput);
+        await refreshSequentialShotPromptWithSkillDirect({
+          ...refreshInput,
+          requestIdempotencyKey: `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}:${referenceHash}`,
+          skillVisionUrls: await stageMarketplaceInlineImageReferences(
+            refreshInput.skillVisionUrls,
+            {
+              auditContext: {
+                source: "marketplace_auto_review_staged",
+                tenantId: refreshInput.tenantId,
+                userId: refreshInput.userId,
+              },
+            }
+          ) ?? [],
+        });
       prompt = refresh.startFrameImagePrompt.trim();
       if (!isCompleteStagedImagePrompt(prompt)) {
         throw new Error("incomplete_image_prompt");
@@ -1647,7 +1680,7 @@ async function compileImagePromptCheckpoints(params: {
     });
     next = replaceCheckpoint(next, checkpoint);
     next = updateShot(next, shot.shotId, {
-      state: "image_prompt_awaiting",
+      ...(shotState?.imageArtifactHash ? {} : { state: "image_prompt_awaiting" }),
       imagePromptHash: hash,
       imagePrompt: prompt,
     });
@@ -1677,10 +1710,11 @@ async function compileImagePromptCheckpoints(params: {
     // worker lease expires or the process restarts mid-storyboard, retries
     // can resume from the first missing shot instead of discarding all
     // prompts authored earlier in this pass.
-    await persistRun({
+    savedRun = await persistRun({
       db: params.db,
-      run: params.run,
+      run: savedRun,
       metadata: next as any,
+      expectedUpdatedAt: savedRun.updatedAt,
       status: "running",
       currentStage: "prompt_plan",
       stageIndex: 4,
@@ -1700,8 +1734,9 @@ async function compileImagePromptCheckpoints(params: {
   };
   await persistRun({
     db: params.db,
-    run: params.run,
+    run: savedRun,
     metadata: next as any,
+    expectedUpdatedAt: savedRun.updatedAt,
     status: "running",
     currentStage: "prompt_plan",
     stageIndex: 4,
@@ -2556,6 +2591,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
     throw new Error("STAGED_STORY_CONCEPT_SELECTION_REQUIRED");
   }
   let metadata = initialMetadata;
+  let currentRun = params.run;
   if (!StagedSequentialStoryboardMetadataV1Schema.safeParse(metadata).success) {
     throw new Error("staged_state_drift");
   }
@@ -2565,10 +2601,11 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   );
   if (autoApprovedImages) {
     metadata = autoApprovedImages as typeof metadata;
-    await persistRun({
+    currentRun = await persistRun({
       db: params.db,
-      run: params.run,
+      run: currentRun,
       metadata: metadata as any,
+      expectedUpdatedAt: currentRun.updatedAt,
       status: "running",
       currentStage: params.run.currentStage ?? "storyboard_review",
       stageIndex: params.run.stageIndex ?? 6,
@@ -2653,7 +2690,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
   ) {
     metadata = await compileImagePromptCheckpoints({
       db: params.db,
-      run: params.run,
+      run: currentRun,
       metadata,
       plan,
       runtime: params.runtime,

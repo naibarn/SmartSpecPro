@@ -67,6 +67,16 @@ export async function canReadManagedStorageKey(
     return false;
   }
 
+  const marketplaceReference = normalizedKey.match(
+    /^marketplace-auto-review\/references\/([^/]+)\/(\d+)\/[a-f0-9]{64}\.(?:png|jpg|webp)$/
+  );
+  if (marketplaceReference) {
+    return (
+      marketplaceReference[1] === viewer.tenantId &&
+      Number(marketplaceReference[2]) === viewer.userId
+    );
+  }
+
   if (normalizedKey.startsWith("vertical-drama-books/")) {
     const [ownedBookExport] = await db
       .select({ id: verticalDramaBookExportArtifacts.id })

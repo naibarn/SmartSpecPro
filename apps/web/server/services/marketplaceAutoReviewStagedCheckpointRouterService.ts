@@ -79,6 +79,7 @@ import {
   resolveShotCastSelectionFromMetadata,
 } from "./marketplaceAutoReviewStagedPipelineService";
 import { buildShotOrderedReferenceItems } from "../../shared/marketplaceAutoReview/shotCast";
+import { stageMarketplaceInlineImageReferences } from "./mediaGenerationService";
 
 export type StagedCheckpointAuth = { userId: number; tenantId?: string };
 export type StagedCheckpointRuntime = { publicUrl?: string | null };
@@ -2933,11 +2934,14 @@ export function buildStagedSingleShotRefreshInput(input: {
     shotId: input.shotId,
   });
   const activeManifestItems = customManifest.filter((item: any) => item.active);
+  const productVisible = isStagedProductVisibleInShot(
+    planShot,
+    plan.product.productName,
+  );
   const shotOrderedManifestItems = buildShotOrderedReferenceItems({
-    productItems: isStagedProductVisibleInShot(
-      planShot,
-      plan.product.productName,
-    ) ? activeManifestItems.filter((item: any) => item.role !== "character") : [],
+    productItems: productVisible
+      ? activeManifestItems.filter((item: any) => item.role !== "character")
+      : [],
     characterItems: activeManifestItems.filter(
       (item: any) => item.role === "character"
     ),
@@ -3059,10 +3063,7 @@ export function buildStagedSingleShotRefreshInput(input: {
     shotContract: {
       purpose: planShot.title,
       story_summary: planShot.storySummary,
-      product_in_shot: isStagedProductVisibleInShot(
-        planShot,
-        plan.product.productName,
-      ),
+      product_in_shot: productVisible,
       dialogue: planShot.dialogue,
       duration_seconds: planShot.durationSeconds,
       demonstration_type: classifyStagedDemonstrationType(planShot.dialogue),
@@ -3070,6 +3071,9 @@ export function buildStagedSingleShotRefreshInput(input: {
       guardian_required: false,
       visual_summary: [
         planShot.visualSummary,
+        input.stage !== "video" && productVisible
+          ? "For product appearance, inspect the current primary product reference @Image1. Its visible cap or pump, colors, materials, finish and label take precedence over any previous visual description or adjacent shot."
+          : null,
         planShot.cameraDirection
           ? `Camera/framing: ${planShot.cameraDirection}`
           : null,
@@ -3216,14 +3220,25 @@ async function generateCompleteStagedShotPrompt(input: {
         message: "MARKETPLACE_IMAGE_PROMPT_TENANT_REQUIRED",
       });
     }
-    const refresh = await refreshSequentialShotPromptWithSkillDirect(
-      buildStagedSingleShotRefreshInput({
-        ...input,
-        tenantId,
-        stage: "image",
-        requestIdempotencyKey: input.requestIdempotencyKey,
-      })
-    );
+    const refreshInput = buildStagedSingleShotRefreshInput({
+      ...input,
+      tenantId,
+      stage: "image",
+      requestIdempotencyKey: input.requestIdempotencyKey,
+    });
+    const refresh = await refreshSequentialShotPromptWithSkillDirect({
+      ...refreshInput,
+      skillVisionUrls: await stageMarketplaceInlineImageReferences(
+        refreshInput.skillVisionUrls,
+        {
+          auditContext: {
+            source: "marketplace_auto_review_staged",
+            tenantId,
+            userId: input.run.userId,
+          },
+        }
+      ) ?? [],
+    });
     const prompt = refresh.startFrameImagePrompt.trim();
     if (!isCompleteStagedImagePrompt(prompt)) {
       throw new TRPCError({
@@ -5221,6 +5236,96 @@ export async function updateStagedAutoReviewShotCast(input: {
   return { ok: true as const, shotId: input.shotId };
 }
 
+export function applyStagedReferenceManifestUpdate(
+  baseRecord: Record<string, any>,
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  updatedManifest: Array<{
+    role: string;
+    url: string;
+    active: boolean;
+  }>
+) {
+  // `castId`s are POSITIONAL over the character entries (`cast-1`..`cast-4`,
+  // minted by `deriveStagedCastFromManifest`). So the moment the character
+  // roster changes shape — someone added, removed, or reordered — every
+  // per-shot `castInShot`/`castLooks` that referenced a position now points at
+  // a DIFFERENT person. Dropping that per-shot state is the honest response:
+  // stale presence would silently put the wrong character in a frame, and a
+  // stale look would dress them in someone else's outfit
+  // (`planning/marketplace-four-character-cast/plan.md`).
+  const characterIdentity = (items: Array<{ role?: string; url?: string }>) =>
+    items
+      .filter(item => item.role === "character")
+      .map(item => String(item.url ?? ""))
+      .join("|");
+  const previousManifest = Array.isArray(baseRecord.customReferenceManifest)
+    ? (baseRecord.customReferenceManifest as Array<any>)
+    : [];
+  const rosterChanged =
+    characterIdentity(previousManifest) !== characterIdentity(updatedManifest);
+
+  const productReferences = (
+    items: Array<{ role?: string; url?: string; active?: boolean }>
+  ) =>
+    items
+      .filter(item => item?.role !== "character" && item?.active !== false)
+      .flatMap(item =>
+        item?.url?.trim() ? [{ role: item.role, url: item.url.trim() }] : []
+      );
+  const productReferencesChanged =
+    buildProductionStableHash(productReferences(previousManifest)) !==
+    buildProductionStableHash(productReferences(updatedManifest));
+  const plan = record(baseRecord.stagedPipeline).plan as
+    | StagedStoryArcPlan
+    | undefined;
+  const affectedShots = new Set<number>();
+  if (productReferencesChanged) {
+    for (const shot of metadata.stagedSequentialStoryboard.shots) {
+      const planShot = plan?.shots.find(item => item.shotId === shot.shotId);
+      if (
+        !plan ||
+        !planShot ||
+        isStagedProductVisibleInShot(planShot, plan.product.productName)
+      ) {
+        affectedShots.add(shot.shotId);
+      }
+    }
+  }
+
+  const staged = metadata.stagedSequentialStoryboard;
+  return {
+    ...baseRecord,
+    customReferenceManifest: updatedManifest,
+    stagedSequentialStoryboard: {
+      ...record(baseRecord.stagedSequentialStoryboard),
+      shots: staged.shots.map(shot => {
+        const next = { ...shot };
+        if (rosterChanged) {
+          delete next.castInShot;
+          delete next.castLooks;
+        }
+        if (affectedShots.has(shot.shotId)) {
+          next.imagePrompt = null;
+          next.imagePromptHash = null;
+        }
+        return next;
+      }),
+      reviewCheckpoints: staged.reviewCheckpoints.map(checkpoint =>
+        checkpoint.kind === "image_prompt" &&
+        checkpoint.shotId !== null &&
+        affectedShots.has(checkpoint.shotId) &&
+        checkpoint.state !== "superseded"
+          ? {
+              ...checkpoint,
+              state: "superseded",
+              rejectionReasonCode: "staged_product_reference_changed",
+            }
+          : checkpoint
+      ),
+    },
+  };
+}
+
 export async function updateStagedAutoReviewReferenceManifest(input: {
   runId: string;
   auth: StagedCheckpointAuth;
@@ -5324,61 +5429,42 @@ export async function updateStagedAutoReviewReferenceManifest(input: {
     );
   }
 
-  // `castId`s are POSITIONAL over the character entries (`cast-1`..`cast-4`,
-  // minted by `deriveStagedCastFromManifest`). So the moment the character
-  // roster changes shape — someone added, removed, or reordered — every
-  // per-shot `castInShot`/`castLooks` that referenced a position now points at
-  // a DIFFERENT person. Dropping that per-shot state is the honest response:
-  // stale presence would silently put the wrong character in a frame, and a
-  // stale look would dress them in someone else's outfit
-  // (`planning/marketplace-four-character-cast/plan.md`).
-  const characterIdentity = (items: Array<{ role?: string; url?: string }>) =>
-    items
-      .filter(item => item.role === "character")
-      .map(item => String(item.url ?? ""))
-      .join("|");
-  const previousManifest = Array.isArray(baseRecord.customReferenceManifest)
-    ? (baseRecord.customReferenceManifest as Array<any>)
-    : [];
-  const rosterChanged =
-    characterIdentity(previousManifest) !== characterIdentity(updatedManifest);
+  const urls = await stageMarketplaceInlineImageReferences(
+    updatedManifest.map(item => item.url),
+    {
+      auditContext: {
+        source: "marketplace_auto_review_staged",
+        tenantId: requireStagedTenantId(input.auth.tenantId, run.tenantId),
+        userId: run.userId,
+      },
+    },
+    "managed"
+  );
+  const nextRunMetadataJson = applyStagedReferenceManifestUpdate(
+    baseRecord,
+    metadata,
+    updatedManifest.map((item, index) => ({
+      ...item,
+      url: urls?.[index] ?? item.url,
+    }))
+  );
 
-  const withResetShotCast = (staged: Record<string, any>) => {
-    if (!rosterChanged || !Array.isArray(staged.shots)) return staged;
-    return {
-      ...staged,
-      shots: staged.shots.map((shot: any) => {
-        const next = { ...shot };
-        delete next.castInShot;
-        delete next.castLooks;
-        return next;
-      }),
-    };
-  };
-
-  const nextMetadata = {
-    ...metadata,
-    customReferenceManifest: updatedManifest,
-    stagedSequentialStoryboard: withResetShotCast({
-      ...metadata.stagedSequentialStoryboard,
-    }),
-  };
-
-  const nextRunMetadataJson = {
-    ...baseRecord,
-    customReferenceManifest: updatedManifest,
-    stagedSequentialStoryboard: withResetShotCast({
-      ...record(baseRecord.stagedSequentialStoryboard),
-    }),
-  };
-
-  await db
+  const [updated] = await db
     .update(marketplaceAutoReviewRuns)
     .set({
       metadataJson: nextRunMetadataJson,
       updatedAt: new Date(),
     })
-    .where(eq(marketplaceAutoReviewRuns.id, run.id));
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, run.id),
+        eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+      )
+    )
+    .returning({ id: marketplaceAutoReviewRuns.id });
+  if (!updated) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
 
   return getStagedAutoReviewCheckpointState(input.runId, input.auth);
 }

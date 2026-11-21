@@ -1833,9 +1833,10 @@ async function resolveProviderReferenceUrls(
   }));
 }
 
-async function stageMarketplaceInlineImageReferences(
+export async function stageMarketplaceInlineImageReferences(
   urls: string[] | undefined,
-  request: ImageGenerationRequest
+  request: Pick<ImageGenerationRequest, "auditContext">,
+  output: "signed" | "managed" = "signed"
 ): Promise<string[] | undefined> {
   const source = request.auditContext?.source;
   if (
@@ -1889,6 +1890,12 @@ async function stageMarketplaceInlineImageReferences(
     try {
       await assertR2StorageActive();
       await storagePutIfAbsent(key, bytes, mime);
+      if (output === "managed") {
+        const managedUrl = `/api/storage/files/${key}`;
+        staged.set(url, managedUrl);
+        resolved.push(managedUrl);
+        continue;
+      }
       // Canonical image jobs may wait before the worker downloads the reference.
       const signed = await storagePresignGet(key, 24 * 60 * 60);
       if (!signed || !isPublicHttpUrl(signed.url) || !signed.url.startsWith("https://")) {

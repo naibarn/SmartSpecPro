@@ -62,6 +62,7 @@ import {
   MEDIA_MODELS,
   MediaGenerationService,
   resolveReferenceUrl,
+  stageMarketplaceInlineImageReferences,
 } from "./mediaGenerationService";
 import {
   GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS,
@@ -515,6 +516,24 @@ describe("MediaGenerationService retry behavior", () => {
     }, "test-token")).rejects.toThrow("ภาพอ้างอิงลำดับที่ 1");
     expect(storagePutIfAbsent).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("stores Marketplace uploads as durable managed URLs for both product and character references", async () => {
+    const input = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=";
+    vi.mocked(storagePutIfAbsent).mockResolvedValue({
+      key: "fixture", url: "/api/storage/files/fixture", created: true,
+    });
+    const portraitUrl = "https://images.example.com/another-character.png";
+    const refs = await stageMarketplaceInlineImageReferences(
+      [input, portraitUrl, input],
+      { auditContext: { source: "marketplace_auto_review_staged", tenantId: "tenant-1", userId: 9 } },
+      "managed"
+    );
+
+    expect(refs?.[0]).toMatch(/^\/api\/storage\/files\/marketplace-auto-review\/references\/tenant-1\/9\/[a-f0-9]{64}\.png$/);
+    expect(refs).toEqual([refs?.[0], portraitUrl, refs?.[0]]);
+    expect(storagePutIfAbsent).toHaveBeenCalledTimes(1);
+    expect(storagePresignGet).not.toHaveBeenCalled();
   });
 
   it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
