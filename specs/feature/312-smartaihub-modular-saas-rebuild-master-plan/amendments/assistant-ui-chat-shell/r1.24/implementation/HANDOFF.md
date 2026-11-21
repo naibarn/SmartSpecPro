@@ -167,3 +167,11 @@ The owner reported that opening a generated `/runner/approve` URL showed “The 
 | `APPROVAL_FUNCTION_ACL` | `VERIFIED` — restricted owner, runtime EXECUTE only, temporary schema CREATE revoked |
 | `DEV_HEALTH` | `PASS` — Core and Chat livez return HTTP 200 |
 | `APPROVAL_BROWSER_UAT` | `UAT_PENDING` — owner must confirm approval from an authenticated browser session |
+
+## 2026-11-21 Task and Mission Control navigation on DEV
+
+- The shared top navigation opens `/task-control` and `/mission-control` from Chat and from existing preview bookmarks. The Chat sidebar opens the same destinations with the selected workspace. Both routes preserve their destination through sign-in. The explicit prototype URLs retain their demo label and sample records.
+- Task Control lists jobs attached to the selected authorized Mission. Mission Control reads the workspace Mission and Harness catalog. Execution links carry the exact Mission, conversation, Job, and Attempt to the read-only workbench. Core checks access on each request.
+- Platform `4600db10d8be7949b72e358597f463ba3a0845cd` deployed to `modular-debian-dev` at 21:26 ICT. The registered release receipt is `/home/dev/modular-development-releases/modular-debian-dev-4600db10d8be7949b72e358597f463ba3a0845cd-live-control-nav/release-manifest.json`. Public Shell and Chat asset bytes match that artifact.
+- The focused Shell and Chat checks passed 29 cases. Chromium clicked both headings on the deployed site at 1440×900, 820×1180, and 390×844 using intercepted session and API responses. It also verified the demo header exit and Mission → Task → Mission round trip. The public signed-out redirect preserved both destinations, and live Core rejected anonymous data requests with HTTP 401.
+- Authenticated owner UAT remains pending. Verify both destinations with the owner's normal session and a workspace containing real Missions and Jobs. This release verifies the navigation change and does not certify complete execution evidence or Harness parity.
