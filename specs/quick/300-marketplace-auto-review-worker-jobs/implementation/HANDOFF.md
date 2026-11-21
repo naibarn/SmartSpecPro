@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `116`
-- Updated (UTC): `2026-11-21T02:42:44.463613+00:00`
+- State generation: `117`
+- Updated (UTC): `2026-11-21T03:12:42.984608+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `71d1b1eceb72012e25e5f1637314f9cb810d9dc6`
+- Latest recorded merged Main SHA: `ff83bda6024007f8ec8f8d548a0e8a678cab9654`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Development release 615 is DEPLOYED_VERIFIED on legacy-debian-dev at smartaihub.app. Web and Node worker serve fix 71d1b1eceb72012e25e5f1637314f9cb810d9dc6. Public health, Worker Jobs and the affected run route returned HTTP 200. Package profile passed 47 tests in the three focused marketplace video prompt and worker job suites on the immutable source at 09:40 ICT on 2026-11-21. Build preflight recorded 20878920 KB host memory available and 9327554416 effective user slice bytes. The failed bulk attempt 0c6ff629-149d-4ba3-85cd-0d57a9219ffe rejected plain solo narration when a silent supporting cast member appeared in frame. Speaker inference now follows eligible lead cast. Fresh provider verification requires a new prompt-generation request, which uses credits.
+- Next action: Development release 616 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve ff83bda6024007f8ec8f8d548a0e8a678cab9654; public health and review route returned HTTP 200. Package profile passed 170 focused Vitest tests on the immutable source at 10:07 ICT on 2026-11-21. Build resource evidence was 23657544 KB host memory available and 7239456360 effective user slice bytes. The reported bulk job failed on shot 4 when the vision provider returned null for an optional detected person ID. The owner authorized a single prompt-only retry of the same five targets. Canonical job 63909964-fb37-47b0-a06b-e299a1ff62b8 succeeded at 10:11:57 ICT with real provider usage across all five shots and 5/5 approved prompt checkpoints. Read-only verification confirmed every saved prompt uses the approved action and identifies the adult as the sole speaker. Optional coordinate refinement fell back to first-pass boxes on array responses and did not block prompt approval. No video render was submitted.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | marketplace-solo-dialogue-support-cast | /mnt/SmartSpecDev/projects/SmartSpecPro | 71d1b1eceb72012e25e5f1637314f9cb810d9dc6 | 71d1b1eceb72012e25e5f1637314f9cb810d9dc6 | Development release 615 is DEPLOYED_VERIFIED on legacy-debian-dev at smartaihub.app. Web and Node worker serve fix 71d1b1eceb72012e25e5f1637314f9cb810d9dc6. Public health, Worker Jobs and the affected run route returned HTTP 200. Package profile passed 47 tests in the three focused marketplace video prompt and worker job suites on the immutable source at 09:40 ICT on 2026-11-21. Build preflight recorded 20878920 KB host memory available and 9327554416 effective user slice bytes. The failed bulk attempt 0c6ff629-149d-4ba3-85cd-0d57a9219ffe rejected plain solo narration when a silent supporting cast member appeared in frame. Speaker inference now follows eligible lead cast. Fresh provider verification requires a new prompt-generation request, which uses credits. |
+| section-03-proof-and-deployment | checkpointed | marketplace-vision-null-person-id | /mnt/SmartSpecDev/projects/SmartSpecPro | ff83bda6024007f8ec8f8d548a0e8a678cab9654 | ff83bda6024007f8ec8f8d548a0e8a678cab9654 | Development release 616 is DEPLOYED_VERIFIED on smartaihub.app. Web and Node worker serve ff83bda6024007f8ec8f8d548a0e8a678cab9654; public health and review route returned HTTP 200. Package profile passed 170 focused Vitest tests on the immutable source at 10:07 ICT on 2026-11-21. Build resource evidence was 23657544 KB host memory available and 7239456360 effective user slice bytes. The reported bulk job failed on shot 4 when the vision provider returned null for an optional detected person ID. The owner authorized a single prompt-only retry of the same five targets. Canonical job 63909964-fb37-47b0-a06b-e299a1ff62b8 succeeded at 10:11:57 ICT with real provider usage across all five shots and 5/5 approved prompt checkpoints. Read-only verification confirmed every saved prompt uses the approved action and identifies the adult as the sole speaker. Optional coordinate refinement fell back to first-pass boxes on array responses and did not block prompt approval. No video render was submitted. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -34,7 +34,6 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Authenticated browser visual confirmation of the width-based video preview and collapsed product Description panel remains pending.
 - Marketplace speaker overlay browser proof covers the affected job's five approved frames and deployed detector assets. Authenticated UI UAT as the owner of that job was not run.
 - Shot 2 serum video's exact prompt is saved and approved. Video rendering and external provider acceptance after release 612 were not exercised.
-- Provider-backed retry for run mar_6594ea945892a24b44d6e63af7826d34 remains unverified after release 615. The prior failed job remains terminal.
 
 ## Resume
 
