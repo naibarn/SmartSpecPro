@@ -23,11 +23,19 @@ type AuthenticatedMediaVideoProps = Omit<
   errorLabel?: string;
 };
 
-const IMAGE_RETRY_DELAYS_MS = [250, 750] as const;
+const IMAGE_RETRY_DELAYS_MS = [500, 1_500, 4_000] as const;
+const VIDEO_RETRY_DELAYS_MS = [500, 1_500, 4_000] as const;
+const VIDEO_STALL_RETRY_MS = 10_000;
 
-function addImageRetryParam(url: string, retryVersion: number): string {
-  if (retryVersion === 0 || !url.startsWith("/api/storage/files/")) return url;
-  return `${url}${url.includes("?") ? "&" : "?"}mediaRetry=${retryVersion}`;
+function addMediaRetryParam(url: string, retryVersion: number): string {
+  if (
+    retryVersion === 0 ||
+    !(url.startsWith("/api/storage/files/") || url.startsWith("/uploads/"))
+  ) {
+    return url;
+  }
+  const retryKey = `${Date.now()}-${retryVersion}`;
+  return `${url}${url.includes("?") ? "&" : "?"}mediaRetry=${retryKey}`;
 }
 
 export function getAuthenticatedMediaUrl(
@@ -159,7 +167,7 @@ export function AuthenticatedMediaImage({
   return (
     <img
       {...imageProps}
-      src={addImageRetryParam(resolvedSrc, retryVersion)}
+      src={addMediaRetryParam(resolvedSrc, retryVersion)}
       alt={alt}
       className={className}
       loading={loading}
@@ -175,18 +183,56 @@ export const AuthenticatedMediaVideo = forwardRef<
 >(function AuthenticatedMediaVideo(
   {
     src,
+    poster,
     className,
     fallback,
     loadingLabel = "กำลังโหลดวีดีโอ...",
     errorLabel = "ไม่พบวีดีโอ",
     onError,
+    onStalled,
+    onCanPlay,
+    onPlaying,
     ...videoProps
   },
   ref
 ) {
   const resolvedSrc = getAuthenticatedMediaUrl(src);
+  const resolvedPoster = getAuthenticatedMediaUrl(poster);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const loadError = Boolean(resolvedSrc && failedSrc === resolvedSrc);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimerRef = useRef<number | null>(null);
+  const stallTimerRef = useRef<number | null>(null);
+  const loadError = Boolean(
+    resolvedSrc && failedSrc === resolvedSrc && !isRetrying
+  );
+
+  useEffect(() => {
+    setFailedSrc(null);
+    setRetryAttempt(0);
+    setRetryVersion(0);
+    setIsRetrying(false);
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    if (stallTimerRef.current !== null) {
+      window.clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
+
+    return () => {
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      if (stallTimerRef.current !== null) {
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
+    };
+  }, [resolvedSrc, resolvedPoster]);
 
   const placeholder = fallback ?? (
     <div
@@ -199,21 +245,73 @@ export const AuthenticatedMediaVideo = forwardRef<
     </div>
   );
 
-  if (!resolvedSrc || loadError) return placeholder;
+  if (!resolvedSrc || loadError || isRetrying) return placeholder;
+
+  const retryVideo = () => {
+    if (retryTimerRef.current !== null) return;
+    if (retryAttempt < VIDEO_RETRY_DELAYS_MS.length) {
+      setIsRetrying(true);
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        setRetryAttempt(attempt => attempt + 1);
+        setRetryVersion(version => version + 1);
+        setIsRetrying(false);
+      }, VIDEO_RETRY_DELAYS_MS[retryAttempt]);
+      return;
+    }
+    setFailedSrc(resolvedSrc);
+  };
 
   const handleVideoError: VideoHTMLAttributes<HTMLVideoElement>["onError"] =
     event => {
-      setFailedSrc(resolvedSrc);
+      if (stallTimerRef.current !== null) {
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
       onError?.(event);
+      retryVideo();
+    };
+  const handleVideoStalled: VideoHTMLAttributes<HTMLVideoElement>["onStalled"] =
+    event => {
+      onStalled?.(event);
+      if (stallTimerRef.current !== null) return;
+      stallTimerRef.current = window.setTimeout(() => {
+        stallTimerRef.current = null;
+        retryVideo();
+      }, VIDEO_STALL_RETRY_MS);
+    };
+  const handleVideoCanPlay: VideoHTMLAttributes<HTMLVideoElement>["onCanPlay"] =
+    event => {
+      if (stallTimerRef.current !== null) {
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
+      onCanPlay?.(event);
+    };
+  const handleVideoPlaying: VideoHTMLAttributes<HTMLVideoElement>["onPlaying"] =
+    event => {
+      if (stallTimerRef.current !== null) {
+        window.clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
+      onPlaying?.(event);
     };
 
   return (
     <video
       {...videoProps}
       ref={ref}
-      src={resolvedSrc}
+      src={addMediaRetryParam(resolvedSrc, retryVersion)}
+      poster={
+        resolvedPoster
+          ? addMediaRetryParam(resolvedPoster, retryVersion)
+          : undefined
+      }
       className={className}
       onError={handleVideoError}
+      onStalled={handleVideoStalled}
+      onCanPlay={handleVideoCanPlay}
+      onPlaying={handleVideoPlaying}
     />
   );
 });

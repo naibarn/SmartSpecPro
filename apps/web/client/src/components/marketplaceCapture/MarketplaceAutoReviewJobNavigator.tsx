@@ -37,6 +37,8 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   loadingMore?: boolean;
   onOpenRun: (runId: string) => void;
   onCreateNew: () => void;
+  /** Refresh the source run data once after a media URL fails to load. */
+  onMediaLoadError?: () => void;
   onLoadMore?: () => void;
   /** Delete one job. Omit to hide the affordance entirely (read-only mounts).
    *  Dependent rows cascade server-side; already-generated media stays in the
@@ -304,6 +306,7 @@ export function MarketplaceAutoReviewJobNavigator({
   loadingMore = false,
   onOpenRun,
   onCreateNew,
+  onMediaLoadError,
   onLoadMore,
   onDeleteRun,
   deletingRunId = null,
@@ -312,7 +315,14 @@ export function MarketplaceAutoReviewJobNavigator({
   const { i18n } = useTranslation();
   const isThaiLocale = (i18n.resolvedLanguage ?? i18n.language) === "th";
   const navigatorRef = useRef<HTMLElement | null>(null);
+  const mediaRefreshRequestedRef = useRef(false);
   const [navigatorWidth, setNavigatorWidth] = useState(0);
+
+  const handleMediaLoadError = () => {
+    if (!onMediaLoadError || mediaRefreshRequestedRef.current) return;
+    mediaRefreshRequestedRef.current = true;
+    onMediaLoadError();
+  };
 
   useEffect(() => {
     const navigator = navigatorRef.current;
@@ -503,6 +513,7 @@ export function MarketplaceAutoReviewJobNavigator({
                                 ภาพสินค้าไม่พร้อม
                               </span>
                             }
+                            onError={handleMediaLoadError}
                           />
                         ) : null}
                         <span className="min-w-0 flex-1">
@@ -587,6 +598,8 @@ export function MarketplaceAutoReviewJobNavigator({
                             วิดีโอไม่พร้อมเล่น
                           </span>
                         }
+                        onError={handleMediaLoadError}
+                        onStalled={handleMediaLoadError}
                       />
                       <figcaption className="min-w-0 text-center">
                         <span className="block text-[10px] font-semibold text-slate-200">

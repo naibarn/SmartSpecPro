@@ -94,6 +94,7 @@ export default function MarketplaceAutoReviewJobsPage() {
         hasMore={jobsQuery.hasNextPage}
         loadingMore={jobsQuery.isFetchingNextPage}
         onLoadMore={() => void jobsQuery.fetchNextPage()}
+        onMediaLoadError={() => void jobsQuery.refetch()}
         onOpenRun={runId =>
           setLocation(`/marketplace/auto-review/${encodeURIComponent(runId)}`)
         }

@@ -80,11 +80,15 @@ describe("AuthenticatedMediaImage", () => {
 
     fireEvent.error(screen.getByAltText("Missing image"));
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(500);
     });
     fireEvent.error(screen.getByAltText("Missing image"));
     act(() => {
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(1_500);
+    });
+    fireEvent.error(screen.getByAltText("Missing image"));
+    act(() => {
+      vi.advanceTimersByTime(4_000);
     });
     fireEvent.error(screen.getByAltText("Missing image"));
     expect(
@@ -105,21 +109,38 @@ describe("AuthenticatedMediaImage", () => {
     expect(screen.getByText("กำลังโหลดภาพ...")).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(500);
     });
-    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
-      "src",
-      "/api/storage/files/intermittent.png?mediaRetry=1"
+    const firstRetrySrc = screen
+      .getByAltText("Intermittent image")
+      .getAttribute("src");
+    expect(firstRetrySrc).toMatch(
+      /\/api\/storage\/files\/intermittent\.png\?mediaRetry=\d+-1$/
     );
 
     fireEvent.error(screen.getByAltText("Intermittent image"));
     act(() => {
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(1_500);
     });
-    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
-      "src",
-      "/api/storage/files/intermittent.png?mediaRetry=2"
+    const secondRetrySrc = screen
+      .getByAltText("Intermittent image")
+      .getAttribute("src");
+    expect(secondRetrySrc).toMatch(
+      /\/api\/storage\/files\/intermittent\.png\?mediaRetry=\d+-2$/
     );
+    expect(secondRetrySrc).not.toBe(firstRetrySrc);
+
+    fireEvent.error(screen.getByAltText("Intermittent image"));
+    act(() => {
+      vi.advanceTimersByTime(4_000);
+    });
+    const thirdRetrySrc = screen
+      .getByAltText("Intermittent image")
+      .getAttribute("src");
+    expect(thirdRetrySrc).toMatch(
+      /\/api\/storage\/files\/intermittent\.png\?mediaRetry=\d+-3$/
+    );
+    expect(thirdRetrySrc).not.toBe(secondRetrySrc);
 
     fireEvent.error(screen.getByAltText("Intermittent image"));
     expect(
@@ -127,10 +148,9 @@ describe("AuthenticatedMediaImage", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "ลองโหลดใหม่" }));
-    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
-      "src",
-      "/api/storage/files/intermittent.png?mediaRetry=3"
-    );
+    expect(
+      screen.getByAltText("Intermittent image").getAttribute("src")
+    ).toMatch(/\/api\/storage\/files\/intermittent\.png\?mediaRetry=\d+-4$/);
   });
 
   it("keeps public external URLs as normal image sources", () => {
@@ -164,11 +184,15 @@ describe("AuthenticatedMediaImage", () => {
     );
     fireEvent.error(screen.getByAltText("Expired image"));
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(500);
     });
     fireEvent.error(screen.getByAltText("Expired image"));
     act(() => {
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(1_500);
+    });
+    fireEvent.error(screen.getByAltText("Expired image"));
+    act(() => {
+      vi.advanceTimersByTime(4_000);
     });
     fireEvent.error(screen.getByAltText("Expired image"));
     expect(screen.getByTitle("ไม่พบภาพ")).toBeInTheDocument();
@@ -204,6 +228,7 @@ describe("AuthenticatedMediaVideo", () => {
   });
 
   it("shows an explicit error state when video loading fails", () => {
+    vi.useFakeTimers();
     render(
       <AuthenticatedMediaVideo
         src="/api/storage/files/missing.mp4"
@@ -213,8 +238,63 @@ describe("AuthenticatedMediaVideo", () => {
     );
 
     fireEvent.error(screen.getByLabelText("Missing video"));
+    expect(screen.getByRole("status")).toHaveTextContent("กำลังโหลดวีดีโอ...");
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    const firstRetrySrc = screen
+      .getByLabelText("Missing video")
+      .getAttribute("src");
+    expect(firstRetrySrc).toMatch(
+      /\/api\/storage\/files\/missing\.mp4\?mediaRetry=\d+-1$/
+    );
+    fireEvent.error(screen.getByLabelText("Missing video"));
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+    fireEvent.error(screen.getByLabelText("Missing video"));
+    act(() => {
+      vi.advanceTimersByTime(4_000);
+    });
+    fireEvent.error(screen.getByLabelText("Missing video"));
     expect(screen.getByRole("status")).toHaveTextContent(
       "ไม่สามารถโหลดวีดีโอได้"
+    );
+  });
+
+  it("retries a stalled video after waiting, and cancels the retry when playback resumes", () => {
+    vi.useFakeTimers();
+    render(
+      <AuthenticatedMediaVideo
+        src="/api/storage/files/slow.mp4"
+        aria-label="Slow video"
+        controls
+      />
+    );
+
+    fireEvent.stalled(screen.getByLabelText("Slow video"));
+    act(() => {
+      vi.advanceTimersByTime(9_000);
+    });
+    fireEvent.canPlay(screen.getByLabelText("Slow video"));
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
+    expect(screen.getByLabelText("Slow video")).toHaveAttribute(
+      "src",
+      "/api/storage/files/slow.mp4"
+    );
+
+    fireEvent.stalled(screen.getByLabelText("Slow video"));
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("กำลังโหลดวีดีโอ...");
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByLabelText("Slow video").getAttribute("src")).toMatch(
+      /\/api\/storage\/files\/slow\.mp4\?mediaRetry=\d+-1$/
     );
   });
 });

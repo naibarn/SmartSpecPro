@@ -468,6 +468,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
             productOptions={productOptionsQuery.data ?? []}
             selectedProductFilter={selectedProductFilter}
             onProductFilterChange={setSelectedProductFilter}
+            onMediaLoadError={() => void jobsQuery.refetch()}
             onOpenRun={nextRunId =>
               setLocation(
                 `/marketplace/auto-review/${encodeURIComponent(nextRunId)}`

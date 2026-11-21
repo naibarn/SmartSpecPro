@@ -103,6 +103,36 @@ describe("MarketplaceAutoReviewJobNavigator", () => {
     expect(screen.getByText("สร้างภาพรายช็อต")).toBeTruthy();
     expect(screen.getByText("ขั้นตอน 5/11")).toBeTruthy();
   });
+
+  it("requests fresh run URLs once when a preview image fails", () => {
+    const onMediaLoadError = vi.fn();
+    render(
+      <MarketplaceAutoReviewJobNavigator
+        runs={[
+          {
+            id: "mar-media-1",
+            status: "completed",
+            productThumbnailUrl: "/api/storage/files/product-1.png",
+          },
+          {
+            id: "mar-media-2",
+            status: "completed",
+            productThumbnailUrl: "/api/storage/files/product-2.png",
+          },
+        ]}
+        allProducts
+        onMediaLoadError={onMediaLoadError}
+        onOpenRun={vi.fn()}
+        onCreateNew={vi.fn()}
+      />
+    );
+
+    screen
+      .getAllByAltText("ภาพสินค้า: Job Review")
+      .forEach(image => fireEvent.error(image));
+
+    expect(onMediaLoadError).toHaveBeenCalledTimes(1);
+  });
 });
 
 /**
