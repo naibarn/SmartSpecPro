@@ -19,7 +19,7 @@ const dependencies = vi.hoisted(() => ({
   framePeople: [
     { name: "Mali", position: "left", detected_person_id: "person-1" },
     { name: "Ton", position: "right", detected_person_id: "person-2" },
-  ],
+  ] as Array<{ name: string; position: string; detected_person_id?: string }>,
   positionSource: "image",
   cameraMotion: "locked",
   videoCalls: 0,
@@ -201,24 +201,46 @@ describe("Marketplace video prompt generation with real completeness validation"
 
   it("binds unlabeled solo narration to the adult lead when a child is also in the frame", async () => {
     const narration = "ผมเดินข้างลูกขณะที่เธอฝึกใช้รถด้วยตัวเอง";
-    const result = await generateMarketplaceAutoReviewVideoPrompt({
-      ...request,
-      cast: [
-        { ...request.cast[0], role: "support", ageRange: "10 years old", depictsMinor: true },
-        request.cast[1],
-      ],
-      shot: {
-        ...request.shot,
-        castInShot: ["cast-2", "cast-1"],
-        dialogue: narration,
-        dialogueTurns: undefined,
-      },
-    });
-    expect(result.prompt).toContain(`1. Ton: “${narration}”`);
-    expect(result.prompt).toContain("- Ton: person-2, viewer-right");
-    expect(result.prompt).not.toContain("- Mali: person-1");
-    expect(result.prompt.split(narration)).toHaveLength(2);
-    expect(result.prompt).toContain("Everyone else stays silent with mouths closed.");
+    const original = dependencies.framePeople;
+    dependencies.framePeople = [original[1], { ...original[0], detected_person_id: undefined }];
+    try {
+      const result = await generateMarketplaceAutoReviewVideoPrompt({
+        ...request,
+        cast: [
+          { ...request.cast[0], role: "support", ageRange: "10 years old", depictsMinor: true },
+          request.cast[1],
+        ],
+        shot: {
+          ...request.shot,
+          castInShot: ["cast-2", "cast-1"],
+          dialogue: narration,
+          dialogueTurns: undefined,
+        },
+      });
+      expect(result.prompt).toContain(`1. Ton: “${narration}”`);
+      expect(result.prompt).toContain("- Ton: person-2, viewer-right");
+      expect(result.prompt).not.toContain("- Mali: person-1");
+      expect(result.prompt.split(narration)).toHaveLength(2);
+      expect(result.prompt).toContain("Everyone else stays silent with mouths closed.");
+    } finally {
+      dependencies.framePeople = original;
+    }
+  });
+
+  it("requests a correction when an approved speaker has no ID and the position is ambiguous", async () => {
+    const original = dependencies.framePeople;
+    dependencies.framePeople = [
+      { ...original[0], position: "center", detected_person_id: undefined },
+      original[1],
+    ];
+    try {
+      await expect(generateMarketplaceAutoReviewVideoPrompt(request)).rejects.toThrow(
+        "MARKETPLACE_VIDEO_PROMPT_SPEAKER_VISUAL_MATCH_MISSING"
+      );
+      expect(dependencies.videoCalls).toBe(2);
+    } finally {
+      dependencies.framePeople = original;
+    }
   });
 
   it("rejects unlabeled speech when two eligible speakers are present", async () => {

@@ -92,6 +92,7 @@ import {
   syncStopFramesOntoMotionPromptClips,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
   generateVerticalDramaShotVideoPrompt,
+  generateVerticalDramaShotVideoPromptDirect,
   generateVerticalDramaShotVideoPromptSpeakerSwitch,
   buildNativeDialogueVerbatimBlock,
   appendMissingDialogueVerbatim,
@@ -1448,6 +1449,34 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
         originalUrl: "https://tempfile.aiquickdraw.com/images/chatgpt/reference.png",
       },
     } as any);
+  });
+
+  it("accepts a Marketplace vision result with a null ID for a silent person", async () => {
+    mockExecute.mockResolvedValueOnce(successResponse({
+      prompt: "locked",
+      frame_analysis: {
+        position_source: "image",
+        people: [
+          { name: "Ton", position: "right", detected_person_id: "person-2" },
+          { name: "Mali", position: "left", detected_person_id: null },
+        ],
+      },
+    }));
+
+    const result = await generateVerticalDramaShotVideoPromptDirect({
+      model: "openai/gpt-5.4-nano",
+      userId: 1,
+      tenantId: "tenant-1",
+      userPromptText: "Approved dialogue speaker: Ton",
+      images: [{ url: "https://example.test/approved-frame.png" }],
+      cameraPresetKeys: ["locked"],
+    });
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.data.frame_analysis?.people).toMatchObject([
+      { name: "Ton", detected_person_id: "person-2" },
+      { name: "Mali", detected_person_id: undefined },
+    ]);
   });
 
   it("durabilizes temporary provider reference URLs before sending the vision request", async () => {

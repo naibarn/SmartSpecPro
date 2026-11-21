@@ -1552,6 +1552,7 @@ export async function generateVerticalDramaShotVideoPromptDirect(input: {
     ? [
         skillPrompt,
         "MARKETPLACE COMPACT OUTPUT: For this call, the application writes the provider-facing prompt from the approved action, dialogue and camera preset. Apply the skill's visual analysis and safety rules. Return the required JSON with frame_analysis and set prompt to one camera preset key only. Omit generated dialogue, audio direction, motion prose and negative_prompt instructions. Use locked if the requested move would contradict the approved action or lose the subjects from the frame.",
+        "In frame_analysis.people, include only approved dialogue speakers that you can visually match. Omit non-speakers and unmatched people. Use the detected person ID when known, and omit the field when unknown.",
         `Allowed camera presets: ${input.cameraPresetKeys.join(", ")}.`,
       ].join("\n\n")
     : skillPrompt;
@@ -1703,7 +1704,9 @@ export const shotVideoPromptOutputSchema = z
               .object({
                 name: z.string(),
                 position: z.string(),
-                detected_person_id: z.string().optional(),
+                detected_person_id: z.string().nullish().transform(
+                  value => value ?? undefined
+                ),
                 view_role: z.string().optional(),
                 note: z.string().optional(),
                 action: z.string().optional(),
