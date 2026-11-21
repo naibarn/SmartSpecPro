@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `115`
-- Updated (UTC): `2026-11-20T12:49:50.702765+00:00`
+- State generation: `116`
+- Updated (UTC): `2026-11-21T02:42:44.463613+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7`
+- Latest recorded merged Main SHA: `71d1b1eceb72012e25e5f1637314f9cb810d9dc6`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Development release 614 DEPLOYED_VERIFIED on smartaihub.app for Marketplace queue concurrency. Web and Node worker serve revision 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7. The public health and Worker Jobs routes returned HTTP 200. The running worker logs a three-slot Marketplace limit. Package profile passed 146 focused Vitest checks at 19:47 ICT on the immutable release source. Integration profile ran the real canonical admission, Postgres pull worker and claim/settlement against a temporary PostgreSQL 17 instance with a simulated executor. At 19:47 ICT, 91 simultaneous submissions from 11 users in two tenants admitted 90 unique jobs, including 60 commands on one review. All 90 dispatches completed once across three competing pollers with a peak of three and zero same-review overlap. A repeated idempotency key returned its original job, and a 48-hour-old unstarted job executed normally. No external media provider was called during the load test. Release resource preflight reported 23485684 KB host memory available and 8010190424 effective user slice bytes.
+- Next action: Development release 615 is DEPLOYED_VERIFIED on legacy-debian-dev at smartaihub.app. Web and Node worker serve fix 71d1b1eceb72012e25e5f1637314f9cb810d9dc6. Public health, Worker Jobs and the affected run route returned HTTP 200. Package profile passed 47 tests in the three focused marketplace video prompt and worker job suites on the immutable source at 09:40 ICT on 2026-11-21. Build preflight recorded 20878920 KB host memory available and 9327554416 effective user slice bytes. The failed bulk attempt 0c6ff629-149d-4ba3-85cd-0d57a9219ffe rejected plain solo narration when a silent supporting cast member appeared in frame. Speaker inference now follows eligible lead cast. Fresh provider verification requires a new prompt-generation request, which uses credits.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | marketplace-auto-review-concurrent-queue | /mnt/SmartSpecDev/projects/SmartSpecPro | 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7 | 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7 | Development release 614 DEPLOYED_VERIFIED on smartaihub.app for Marketplace queue concurrency. Web and Node worker serve revision 230bb55fffd48fdbb5cf0dc0b412d8caae10a8a7. The public health and Worker Jobs routes returned HTTP 200. The running worker logs a three-slot Marketplace limit. Package profile passed 146 focused Vitest checks at 19:47 ICT on the immutable release source. Integration profile ran the real canonical admission, Postgres pull worker and claim/settlement against a temporary PostgreSQL 17 instance with a simulated executor. At 19:47 ICT, 91 simultaneous submissions from 11 users in two tenants admitted 90 unique jobs, including 60 commands on one review. All 90 dispatches completed once across three competing pollers with a peak of three and zero same-review overlap. A repeated idempotency key returned its original job, and a 48-hour-old unstarted job executed normally. No external media provider was called during the load test. Release resource preflight reported 23485684 KB host memory available and 8010190424 effective user slice bytes. |
+| section-03-proof-and-deployment | checkpointed | marketplace-solo-dialogue-support-cast | /mnt/SmartSpecDev/projects/SmartSpecPro | 71d1b1eceb72012e25e5f1637314f9cb810d9dc6 | 71d1b1eceb72012e25e5f1637314f9cb810d9dc6 | Development release 615 is DEPLOYED_VERIFIED on legacy-debian-dev at smartaihub.app. Web and Node worker serve fix 71d1b1eceb72012e25e5f1637314f9cb810d9dc6. Public health, Worker Jobs and the affected run route returned HTTP 200. Package profile passed 47 tests in the three focused marketplace video prompt and worker job suites on the immutable source at 09:40 ICT on 2026-11-21. Build preflight recorded 20878920 KB host memory available and 9327554416 effective user slice bytes. The failed bulk attempt 0c6ff629-149d-4ba3-85cd-0d57a9219ffe rejected plain solo narration when a silent supporting cast member appeared in frame. Speaker inference now follows eligible lead cast. Fresh provider verification requires a new prompt-generation request, which uses credits. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -34,6 +34,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Authenticated browser visual confirmation of the width-based video preview and collapsed product Description panel remains pending.
 - Marketplace speaker overlay browser proof covers the affected job's five approved frames and deployed detector assets. Authenticated UI UAT as the owner of that job was not run.
 - Shot 2 serum video's exact prompt is saved and approved. Video rendering and external provider acceptance after release 612 were not exercised.
+- Provider-backed retry for run mar_6594ea945892a24b44d6e63af7826d34 remains unverified after release 615. The prior failed job remains terminal.
 
 ## Resume
 
