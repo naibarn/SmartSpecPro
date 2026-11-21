@@ -295,17 +295,19 @@ function inferSingleShotDialogueSpeaker(
   shot: Pick<StagedStoryArcShot, "castInShot">,
   cast: readonly StagedCastMember[]
 ): string | undefined {
-  const defaultSpeaker = inferMarketplaceSingleSpeakerDialogueDefault(cast);
-  if (!defaultSpeaker) return undefined;
+  // The story planner emits plain narration when there is one eligible
+  // lead, even if silent supporting characters also appear in the frame.
+  const leads = selectStagedLeadCast([...cast]);
+  if (leads.length !== 1) return undefined;
+  const speaker = leads[0]!;
   const selectedCastIds = shot.castInShot ?? [];
-  const onlyCastId = cast[0]!.castId;
   if (
     selectedCastIds.length > 0 &&
-    (selectedCastIds.length !== 1 || selectedCastIds[0] !== onlyCastId)
+    !selectedCastIds.includes(speaker.castId)
   ) {
     return undefined;
   }
-  return defaultSpeaker;
+  return speaker.name.trim() || undefined;
 }
 
 async function matchMarketplaceAutoReviewShotSpeakers(input: {

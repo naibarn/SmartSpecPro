@@ -199,6 +199,54 @@ describe("Marketplace video prompt generation with real completeness validation"
     expect(result.prompt.match(/Yes, the coffee is ready\./g)).toHaveLength(1);
   });
 
+  it("binds unlabeled solo narration to the adult lead when a child is also in the frame", async () => {
+    const narration = "ผมเดินข้างลูกขณะที่เธอฝึกใช้รถด้วยตัวเอง";
+    const result = await generateMarketplaceAutoReviewVideoPrompt({
+      ...request,
+      cast: [
+        { ...request.cast[0], role: "support", ageRange: "10 years old", depictsMinor: true },
+        request.cast[1],
+      ],
+      shot: {
+        ...request.shot,
+        castInShot: ["cast-2", "cast-1"],
+        dialogue: narration,
+        dialogueTurns: undefined,
+      },
+    });
+    expect(result.prompt).toContain(`1. Ton: “${narration}”`);
+    expect(result.prompt).toContain("- Ton: person-2, viewer-right");
+    expect(result.prompt).not.toContain("- Mali: person-1");
+    expect(result.prompt.split(narration)).toHaveLength(2);
+    expect(result.prompt).toContain("Everyone else stays silent with mouths closed.");
+  });
+
+  it("rejects unlabeled speech when two eligible speakers are present", async () => {
+    await expect(generateMarketplaceAutoReviewVideoPrompt({
+      ...request,
+      shot: {
+        ...request.shot,
+        castInShot: ["cast-1", "cast-2"],
+        dialogue: "The coffee is ready.",
+      },
+    })).rejects.toThrow("MARKETPLACE_VIDEO_PROMPT_APPROVED_DIALOGUE_INVALID");
+    expect(dependencies.videoCalls).toBe(0);
+  });
+
+  it("does not infer narration for an adult who is absent from the shot", async () => {
+    await expect(generateMarketplaceAutoReviewVideoPrompt({
+      ...request,
+      cast: [{ ...request.cast[0], role: "support" }, request.cast[1]],
+      shot: {
+        ...request.shot,
+        castInShot: ["cast-1"],
+        dialogue: "The coffee is ready.",
+        dialogueTurns: undefined,
+      },
+    })).rejects.toThrow("MARKETPLACE_VIDEO_PROMPT_APPROVED_DIALOGUE_INVALID");
+    expect(dependencies.videoCalls).toBe(0);
+  });
+
   it("uses the saved manual speaker mapping even when it differs from AI matching", async () => {
     const result = await generateMarketplaceAutoReviewVideoPrompt({
       ...request,
