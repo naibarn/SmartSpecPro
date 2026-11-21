@@ -64,6 +64,13 @@ impl Default for ControlChannel {
 }
 
 impl ControlChannel {
+    pub(crate) fn with_next_sequence(next_sequence: u64) -> Self {
+        Self {
+            next_sequence,
+            ..Self::default()
+        }
+    }
+
     pub fn connect(&mut self) {
         self.state = ChannelState::Connecting;
     }

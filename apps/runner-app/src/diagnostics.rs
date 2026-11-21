@@ -40,6 +40,9 @@ const PAIRING_RELAY_POLL_INTERVAL: Duration = Duration::from_secs(15);
 const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
+const MODULAR_DEV_DISCOVERY_ORIGIN: &str = "https://aimarkethubs.com";
+const MODULAR_DEV_DISCOVERY_COMMAND: &str = "modular-dev-discovery";
+const MODULAR_DEV_DISCOVERY_INTERVAL: Duration = Duration::from_secs(30);
 const TASK_PROBE_EVIDENCE_FILE: &str = "tool-task-probe-evidence.json";
 const TASK_PROBE_EVIDENCE_TTL: Duration = Duration::from_secs(60 * 60);
 const TASK_PROBE_RENEW_BEFORE: Duration = Duration::from_secs(10 * 60);
@@ -1126,6 +1129,10 @@ fn connection_status_inner(
         .as_deref()
         .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
     let endpoint = ControlEndpoint::from_control_url(control_url)?;
+    let modular_discovery = command == MODULAR_DEV_DISCOVERY_COMMAND;
+    if modular_discovery {
+        validate_modular_dev_discovery_scope(config, &endpoint)?;
+    }
     let configured_token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
     let stored_connection = if configured_token.trim().is_empty() {
         crate::connection::load_or_refresh(config)
@@ -1194,6 +1201,18 @@ fn connection_status_inner(
     transport
         .refresh_credentials_if_changed()
         .map_err(|error| transport_error_code(error).to_owned())?;
+    if modular_discovery {
+        let (Some(session_id), Some(tenant_id)) = (runner_session_id, tenant_id) else {
+            return Err("RUNNER_MODULAR_DISCOVERY_CONNECTION_REQUIRED".into());
+        };
+        return publish_modular_dev_discovery(
+            config,
+            &endpoint,
+            &mut transport,
+            &session_id,
+            &tenant_id,
+        );
+    }
     let snapshot_credential_revision = transport.credential_revision;
     let Some((mut tools, browser_grant)) = scan_capability_tools(
         config,
@@ -1367,6 +1386,137 @@ fn connection_status_inner(
         "credentials": "accepted_from_environment_and_redacted"
     })
     .to_string())
+}
+
+fn validate_modular_dev_discovery_scope(
+    config: &RunnerConfig,
+    endpoint: &ControlEndpoint,
+) -> Result<(), String> {
+    if !cfg!(target_os = "linux")
+        || config.profile != crate::config::RunnerProfile::LocalDevice
+        || endpoint.https_url
+            != format!("{MODULAR_DEV_DISCOVERY_ORIGIN}/api/runners/{}/control", config.runner_id)
+        || config.job_id.is_some()
+        || config.attempt_id.is_some()
+        || config.lease_id.is_some()
+    {
+        return Err("RUNNER_MODULAR_DISCOVERY_SCOPE_INVALID".into());
+    }
+    Ok(())
+}
+
+fn publish_modular_dev_discovery(
+    config: &RunnerConfig,
+    endpoint: &ControlEndpoint,
+    transport: &mut impl ControlTransport,
+    session_id: &str,
+    tenant_id: &str,
+) -> Result<String, String> {
+    let root = Path::new(&config.data_root);
+    fs::create_dir_all(root).map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(root.join("modular-discovery-sequence.lock"))
+        .map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    fs2::FileExt::try_lock_exclusive(&lock).map_err(|_| "RUNNER_MODULAR_SEQUENCE_BUSY")?;
+    let sequence = reserve_modular_discovery_sequence(root, current_time_ms())?;
+
+    // PATH discovery does not run the tools or grant execution capabilities.
+    let tools = scan_environment(config.profile)
+        .into_iter()
+        .filter(|tool| tool.adapter_id.is_some() && tool.executable_path.is_some())
+        .collect::<Vec<_>>();
+    let mut snapshot = capability_snapshot(
+        config,
+        &tools,
+        Some(session_id),
+        Some(tenant_id),
+        None,
+        endpoint.control_plane_origin(),
+    );
+    let revision = format!("snapshot:{}:discovery:{sequence}", config.runner_id);
+    snapshot["revision"] = json!(revision);
+    snapshot["capabilitySnapshotId"] =
+        json!(format!("capability:{}:discovery:{sequence}", config.runner_id));
+    snapshot["capabilities"] = json!([]);
+    snapshot["capabilityInventory"] = json!([]);
+    snapshot["runWorkspaces"] = json!([]);
+
+    let mut channel = ControlChannel::with_next_sequence(sequence);
+    channel.connect();
+    channel.authenticated();
+    for payload in [
+        json!({ "type": "runner.capabilities.update", "snapshot": snapshot }),
+        json!({
+            "type": "runner.reconcile",
+            "capabilityRevision": revision,
+            "activeJobs": [],
+            "command": MODULAR_DEV_DISCOVERY_COMMAND
+        }),
+    ] {
+        let mut event = Envelope::new(
+            NodeKind::LocalDevice,
+            &config.runner_id,
+            None,
+            None,
+            None,
+            payload,
+        );
+        event.correlation_id = format!("runner:{}:discovery:{sequence}", config.runner_id);
+        let event = channel.next_event(event)?;
+        let ack = transport
+            .send_https(&endpoint.https_url, &event)
+            .map_err(|error| transport_error_code(error).to_owned())?;
+        if !matches!(ack, AckState::Applied | AckState::Duplicate) {
+            return Err("RUNNER_MODULAR_DISCOVERY_NOT_APPLIED".into());
+        }
+    }
+    Ok(json!({
+        "command": MODULAR_DEV_DISCOVERY_COMMAND,
+        "state": "observed",
+        "deliveryTransport": "https",
+        "capabilitySnapshotRevision": revision,
+        "harnessesDiscovered": tools.len(),
+        "dispatchReady": false,
+    })
+    .to_string())
+}
+
+// Reserve both event numbers before publication. The caller keeps the lock
+// through delivery so concurrent instances cannot send the pairs out of order.
+fn reserve_modular_discovery_sequence(root: &Path, now_ms: u64) -> Result<u64, String> {
+    use std::io::Write;
+
+    let state_path = root.join("modular-discovery-sequence");
+    let next = match fs::read_to_string(&state_path) {
+        Ok(value) => value
+            .trim()
+            .parse::<u64>()
+            .map_err(|_| "RUNNER_MODULAR_SEQUENCE_INVALID")?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => 1,
+        Err(_) => return Err("RUNNER_MODULAR_SEQUENCE_UNAVAILABLE".into()),
+    };
+    let start = next.max(now_ms);
+    let following = start
+        .checked_add(2)
+        .filter(|value| *value <= MAX_SAFE_JS_INTEGER)
+        .ok_or("RUNNER_MODULAR_SEQUENCE_INVALID")?;
+    let mut temporary =
+        tempfile::NamedTempFile::new_in(root).map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    writeln!(temporary, "{following}").map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    temporary
+        .persist(&state_path)
+        .map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    fs::File::open(root)
+        .and_then(|directory| directory.sync_all())
+        .map_err(|_| "RUNNER_MODULAR_SEQUENCE_UNAVAILABLE")?;
+    Ok(start)
 }
 
 fn delivery_transport_label(mode: TransportMode) -> &'static str {
@@ -3640,11 +3790,21 @@ where
     if config.profile != crate::config::RunnerProfile::LocalDevice {
         return Err("RUNNER_ENTRYPOINT_REQUIRES_LOCAL_DEVICE".into());
     }
-    crate::spec224_candidate::recover_pending(config)?;
-    if let Ok(current) = std::env::current_exe() {
-        cleanup_update_helpers(&current);
+    let modular_discovery = std::env::var("SAH_RUNNER_MODULAR_DEV_DISCOVERY").as_deref() == Ok("1");
+    if modular_discovery {
+        let control_url = config.control_url.as_deref().unwrap_or_default();
+        validate_modular_dev_discovery_scope(config, &ControlEndpoint::from_control_url(control_url)?)?;
+    } else {
+        crate::spec224_candidate::recover_pending(config)?;
+        if let Ok(current) = std::env::current_exe() {
+            cleanup_update_helpers(&current);
+        }
     }
-    let interval = refresh_interval_seconds()?;
+    let (command, interval) = if modular_discovery {
+        (MODULAR_DEV_DISCOVERY_COMMAND, MODULAR_DEV_DISCOVERY_INTERVAL)
+    } else {
+        ("run", refresh_interval_seconds()?)
+    };
     let mut consecutive_refresh_failures = 0_u32;
     CONTROL_RETRY_REQUESTED.store(false, Ordering::Release);
     loop {
@@ -3662,7 +3822,7 @@ where
                 eprintln!("runner pairing relay error: {error}");
             }
         }
-        let status = connection_status_inner(config, "run", stop, &mut || {
+        let status = connection_status_inner(config, command, stop, &mut || {
             consecutive_refresh_failures = 0;
             observer(None);
         });
@@ -3685,7 +3845,7 @@ where
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
             return Ok(());
         }
-        if check_updates {
+        if check_updates && !modular_discovery {
             match poll_and_apply_update(config) {
                 Ok(status) if status.contains("scheduled") => {
                     println!("{status}");
@@ -5589,6 +5749,87 @@ mod lifecycle_tests {
     use serde_json::json;
     use std::collections::VecDeque;
     use std::time::Duration;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn modular_discovery_is_bound_to_the_dev_runner_control_path() {
+        let target = "https://aimarkethubs.com/api/runners/runner-1/control";
+        let mut config = RunnerConfig::local("runner-1", "device-1", target);
+        let endpoint = ControlEndpoint::from_control_url(target).unwrap();
+        assert!(super::validate_modular_dev_discovery_scope(&config, &endpoint).is_ok());
+        for wrong in [
+            "https://smartaihub.app/api/runners/runner-1/control",
+            "https://aimarkethubs.com/api/runners/runner-2/control",
+        ] {
+            let endpoint = ControlEndpoint::from_control_url(wrong).unwrap();
+            assert!(super::validate_modular_dev_discovery_scope(&config, &endpoint).is_err());
+        }
+        config.lease_id = Some("test-lease".into());
+        assert!(super::validate_modular_dev_discovery_scope(&config, &endpoint).is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn modular_discovery_uses_durable_sequences_and_only_observation_events() {
+        #[derive(Default)]
+        struct DiscoveryTransport {
+            events: Vec<Envelope>,
+            fail_reconciliation: bool,
+        }
+
+        impl ControlTransport for DiscoveryTransport {
+            fn send_wss(&mut self, _: &str, _: &Envelope) -> Result<AckState, TransportError> {
+                panic!("discovery is HTTPS only");
+            }
+
+            fn send_https(&mut self, _: &str, event: &Envelope) -> Result<AckState, TransportError> {
+                self.events.push(event.clone());
+                if self.fail_reconciliation && event.payload["type"] == "runner.reconcile" {
+                    return Err(TransportError::HttpRejected(503));
+                }
+                Ok(AckState::Applied)
+            }
+        }
+
+        let root = tempfile::tempdir().unwrap();
+        let target = "https://aimarkethubs.com/api/runners/runner-1/control";
+        let mut config = RunnerConfig::local("runner-1", "device-1", target);
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let endpoint = ControlEndpoint::from_control_url(target).unwrap();
+        let mut transport = DiscoveryTransport {
+            fail_reconciliation: true,
+            ..Default::default()
+        };
+        assert!(super::publish_modular_dev_discovery(
+            &config, &endpoint, &mut transport, "session-1", "tenant-1",
+        )
+        .is_err());
+        transport.fail_reconciliation = false;
+        let status = super::publish_modular_dev_discovery(
+            &config, &endpoint, &mut transport, "session-1", "tenant-1",
+        )
+        .unwrap();
+        let status: serde_json::Value = serde_json::from_str(&status).unwrap();
+        assert_eq!(status["state"], "observed");
+        assert_eq!(status["dispatchReady"], false);
+        for pair in transport.events.chunks_exact(2) {
+            assert!(pair[0].sequence >= 1);
+            assert_eq!(pair[0].sequence + 1, pair[1].sequence);
+            assert_eq!(pair[0].payload["type"], "runner.capabilities.update");
+            assert_eq!(pair[1].payload["type"], "runner.reconcile");
+            assert_eq!(pair[0].payload["snapshot"]["capabilities"], json!([]));
+            assert_eq!(pair[0].payload["snapshot"]["capabilityInventory"], json!([]));
+            assert_eq!(pair[1].payload["activeJobs"], json!([]));
+            assert_eq!(
+                pair[0].payload["snapshot"]["revision"],
+                pair[1].payload["capabilityRevision"]
+            );
+        }
+        assert_eq!(transport.events.len(), 4);
+        assert!(transport.events.windows(2).all(|pair| pair[0].sequence < pair[1].sequence));
+        let final_sequence = transport.events.last().unwrap().sequence;
+        assert!(super::reserve_modular_discovery_sequence(root.path(), 1).unwrap() > final_sequence);
+    }
 
     #[test]
     fn task_probe_evidence_is_redacted_and_bound_to_runner_session() {
