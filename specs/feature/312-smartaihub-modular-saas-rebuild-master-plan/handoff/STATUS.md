@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 2 pass / 104 unresolved of 109
+- Requirements: 0 pass / 109 unresolved of 112
 - Next action: Provision/bind the approved least-privilege DEV migration identity and rotate the surfaced credential, then apply 0441 through the registered runner and complete the target-gated DEV release and authenticated runtime/UAT checks.
-- Manifest generation: 138
+- Manifest generation: 140
 
 ## Source-declared status and relationship claims
 

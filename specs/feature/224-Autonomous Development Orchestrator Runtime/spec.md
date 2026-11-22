@@ -8063,7 +8063,7 @@ Universal Assistant UX remains a control surface, not a second durable execution
 
 The implementation SHALL NOT assume that every Development Run requires a user-owned machine with Codex/Claude installed.
 
-Spec 224 SHALL support at least:
+Spec 224 SHALL support the following placement contracts. Each deployment certifies only the placements it enables, including the Modular Workers profile in §262.1:
 
 ```text
 LOCAL_RUNNER_HARNESS
@@ -8146,7 +8146,7 @@ large memory
 native toolchains
 ```
 
-SHALL be routed to Containers or Runner.
+SHALL be routed to an approved executor. The Modular Workers production profile in §262.1 uses an enrolled Runner for supported machine execution.
 
 ---
 
@@ -8197,7 +8197,7 @@ For a configured deployment, one canonical logical state store SHALL be declared
 
 # 265. Cloudflare Containers Role
 
-Cloudflare Containers SHALL be a first-class execution target for cloud-only software development when arbitrary Linux processes are required.
+Cloudflare Containers are an optional execution placement for cloud-only software development requiring arbitrary Linux processes. When enabled, the placement SHALL meet its own certification. The Modular Workers profile in §262.1 uses an enrolled Runner for supported machine execution.
 
 Illustrative cloud development workspace:
 
@@ -8596,7 +8596,7 @@ The Runtime SHALL preserve user agency while still supporting fully automatic de
 
 # 278. Cloud-Only Development Certification Scenario
 
-A cloud-only certification SHALL prove:
+Certification of the optional cloud-only machine execution profile SHALL prove:
 
 ```text
 1. User has no Runner connected.
@@ -9010,15 +9010,15 @@ The architecture SHALL NOT require LangGraph to remain forever.
 
 # 293. Cloudflare-Native Kernel Certification Gate
 
-Before declaring the Native Kernel Cloudflare-ready:
+Before declaring the Native Kernel Cloudflare-ready, verify the enabled placements and bindings. For Modular production the profile in §262.1 applies:
 
 ```text
 Cloudflare Worker control API PASS
-Workflows adapter PASS
+Workflows adapter PASS where used
 Durable Object coordination PASS where used
-Container workspace PASS
+Container workspace PASS where enabled / Enrolled Runner execution PASS for the Modular Workers profile
 R2 artifact/evidence PASS
-Browser Run verification PASS
+Browser Run verification PASS where enabled
 database/control-plane persistence PASS
 restart/redeploy PASS
 platform-update interruption recovery PASS
@@ -9202,12 +9202,12 @@ Revision 5 architecture is implementation-ready only when all prior gates remain
 - [ ] Cloudflare Worker is not misused as arbitrary build host.
 - [ ] Cloudflare Workflows adapter is defined.
 - [ ] Durable Object ownership/state boundary is defined.
-- [ ] Cloud Container workspace path is defined.
+- [ ] Cloud Container workspace path is defined for deployments that enable the Container placement.
 - [ ] Local Runner and cloud workspace share canonical execution contracts.
 - [ ] Browser Run path feeds trusted evidence.
 - [ ] `SoftwareProject`, `ProjectRevision`, `ProjectChangeRequest` are implemented.
 - [ ] Natural-language iterative project modification works.
-- [ ] Cloud-only black-box development certification passes.
+- [ ] Cloud-only black-box development certification passes for deployments that enable that profile.
 - [ ] Local Runner parity certification passes.
 - [ ] Hybrid failover respects security/data policy.
 - [ ] Failure injections 111–140 pass at required certification level.
@@ -17464,3 +17464,11 @@ not a DevelopmentRun, execution lease, harness session or authorization grant.
 The identity MUST be resolved against the authenticated owner, tenant and
 conversation on every read/write path; absent/legacy bindings remain absent and
 must not be guessed. Existing SPEC-224 live acceptance remains a separate gate.
+
+## 262.1 Modular Workers production profile — owner decision 2026-11-22
+
+- **REQ-224-WORKERS-CORE.** The same Hono Core SHALL run in local Workerd on `aimarkethubs.com` and Cloudflare Workers on `smartsihub.com`. Core, Shell and Chat SHALL retain separate builds. The default Modular production path SHALL boot and serve its enabled SPEC-224 workflows with zero Cloudflare Container bindings, images or services. The live development site and production use separate environment credentials, Runner enrollments and tenant scope.
+- **REQ-224-WORKERS-JOBS.** Workers SHALL own authorized conversation binding, Goal preparation and admission, Job coordination, status and receipt APIs. PostgreSQL through Hyperdrive in production SHALL preserve canonical DevelopmentRun, `worker_jobs`, outbox and Job event state. Cloudflare Queues MAY carry bounded job references for dispatch and retries. Duplicate delivery or a Worker restart SHALL preserve one canonical Job, current lease and attempt identity. Large evidence SHALL use the existing private artifact contract.
+- **REQ-224-WORKERS-RUNNER.** Git checkout, local source verification, Codex/Claude CLI, shell, dependency installation, and native builds/tests SHALL execute on an approved, separately enrolled Runner for this profile. The Worker SHALL verify source and readiness through the authenticated authority contract and handle claim, renewal and receipt authorization using the existing tenant, workspace and fencing rules. Filesystem paths, process spawning and toolchains are outside the Worker's request and queue runtime.
+- **REQ-224-WORKERS-AVAILABILITY.** Runner-independent APIs and cloud-native work SHALL remain usable while the Runner is offline. Runner-required jobs SHALL remain visibly waiting or capability-unavailable according to canonical admission policy. Jobs requiring isolation SHALL meet that workload's approved execution policy before dispatch. The optional Cloud Container placement has its own acceptance when enabled.
+- **REQ-224-WORKERS-ACCEPTANCE.** The Modular profile SHALL verify independent Worker builds and local Workerd operation without Container configuration, then a real authorized Goal through source verification, Runner dispatch, disconnect/reconnect, attempt evidence and settlement. Production certification additionally requires a production-equivalent binding smoke on separately authorized infrastructure, including Hyperdrive, Queue retry and receipt replay. A local Worker dry-run establishes bundle compatibility for the tested source.

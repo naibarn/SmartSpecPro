@@ -62,7 +62,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "847ed7baca5baf1c16817d65575fe0dea71f94dd",
-    "expected_spec_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0"
+    "expected_spec_digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce"
   },
   "continuation": {
     "next_action": "Authorized DBA provisions and binds smartspec_migrator_dev, rotates/revokes the exposed principal, then revalidates live target and 0439/0440 ledger hashes before registered 0441 migration. Verify schema/ACL readback, revoke transient grants, then exact-SHA deploy only through modular_debian_dev_release.py. Complete normal-MFA UAT and separately verify SPEC-277 owner runtime.",
@@ -121,13 +121,13 @@
     "rationale": "Canonical active SPEC; current owner clarification R1.6 controls shared smartspec identity/data, environment-tenant boundaries and supported development paths.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 138,
+  "generation": 140,
   "identity": {
     "canonical_path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-    "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+    "digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-15T10:26:22.294336Z",
+      "last_evidence_at": "2026-11-22T01:09:06.026196Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T14:22:39+07:00",
       "spec_last_changed_at": "2026-11-01T14:22:39+07:00"
@@ -2533,10 +2533,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-15T10:26:22.294336Z",
+    "reconciled_at": "2026-11-22T01:09:06.026196Z",
     "sources": [
       {
-        "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -2764,6 +2764,16 @@
         "digest": "bc58ced535d7a48b19e8bfdca0fff9027332c52ab1504e1c4ab2492a579740e3",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
+        "digest": "14b8ac879d83939bd053cd2b86cee8fe4ad6d8ab2a9dd802c28b0a9cf78699e4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.24/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "6d96a635d885160929a518e244ea31c7d85c27d9ebbdb653c1f6e16f0116e60a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.24/implementation/IMPLEMENTATION_TRACEABILITY.md"
       },
       {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
@@ -3201,7 +3211,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "source_digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
@@ -3518,14 +3528,14 @@
         "excerpt": "status: PARTIALLY_IMPLEMENTED",
         "line": 7,
         "source": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md",
-        "source_digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "source_digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce",
         "value": "PARTIALLY_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "fe4b5a1dd7e14f3902a629666697232780bb7426e8a60012768c516afb8c68b0",
+        "digest": "5829c8b4ce86253ea82b019cffee796afef317efcb8044390fe161f7fc0f16ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/spec.md"
       },
@@ -3755,6 +3765,16 @@
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.23/implementation/IMPLEMENTATION_TRACEABILITY.md"
       },
       {
+        "digest": "14b8ac879d83939bd053cd2b86cee8fe4ad6d8ab2a9dd802c28b0a9cf78699e4",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.24/implementation/HANDOFF.md"
+      },
+      {
+        "digest": "6d96a635d885160929a518e244ea31c7d85c27d9ebbdb653c1f6e16f0116e60a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/r1.24/implementation/IMPLEMENTATION_TRACEABILITY.md"
+      },
+      {
         "digest": "8a2564930bb8fa9f24955e69c476b96d6334b353659883c344b9d510a70aa0ee",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/amendments/assistant-ui-chat-shell/sections/index.md"
@@ -3885,12 +3905,12 @@
     "blocked_true_external": 2,
     "fail": 0,
     "not_applicable": 1,
-    "pass": 2,
-    "total": 109,
-    "unresolved": 104
+    "pass": 0,
+    "total": 112,
+    "unresolved": 109
   },
   "schema_version": 1,
-  "updated_at": "2026-11-15T14:48:00.827845Z",
+  "updated_at": "2026-11-22T01:10:49.198460Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3899,7 +3919,14 @@
       "Post-application PG15.17 fixture: validated Mission PK/unique/FKs/checks; SECURITY DEFINER owner/search_path/PUBLIC and runtime EXECUTE ACLs correct; runtime direct Job table reads denied; owner has only required narrow column reads; Task Control updatedAt repaired.",
       "Synthetic authenticated-runtime fixture passed idempotent Mission creation, lifecycle independence from succeeded Job, canonical Job/Run/Attempt/Event/Artifact correlation, cross-workspace and cross-environment denial, missing Agent identity behavior, and Task freshness equality.",
       "Removing required owner-role membership made exact 0441 preflight fail with MIGRATION_BOOTSTRAP_REQUIRED before DDL. Test-only Drizzle failure after CREATE TABLE rolled back table and ledger remained unchanged at three applied rows.",
-      "Credential incident: smartspec_dev remains unrotated and was not reused. No approved secret/remote DBA authority was available. No live DEV database mutation, candidate build, deployment, authenticated UAT or owner runtime verification occurred."
+      "Credential incident: smartspec_dev remains unrotated and was not reused. No approved secret/remote DBA authority was available. No live DEV database mutation, candidate build, deployment, authenticated UAT or owner runtime verification occurred.",
+      {
+        "kind": "MODULAR_WORKER_BASELINE_WITHOUT_CONTAINERS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-workers-profile-20261122.md",
+        "scope": "Platform source. Separate Core, Shell and Chat dry-run builds, disposable Workerd liveness and 41 focused tests. Full Modular Goal and production bindings are pending.",
+        "source_sha": "4600db10d8be7949b72e358597f463ba3a0845cd",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [

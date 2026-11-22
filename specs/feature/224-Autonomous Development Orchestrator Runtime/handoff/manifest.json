@@ -1139,13 +1139,13 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "1319db65fc3af252f96957c9d7846d94dfca2073",
-    "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
+    "expected_spec_digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4"
   },
   "continuation": {
-    "next_action": "Implement authenticated Modular Hono conversation binding and preparation against the canonical SPEC-224 authority. Enforce separate Chat-workspace and Runner checkout identity. Enable dispatch only after real Harness readiness and Goal Grant checks pass, then run one DEV Goal through canonical DevelopmentRun, worker_jobs and outbox.",
+    "next_action": "Implement authenticated conversation binding and Goal preparation in Hono for the Modular Workers profile in SPEC-224 §262.1. Verify source through the existing authority and readiness through a separately enrolled Runner. Continue with canonical DevelopmentRun, worker_jobs, outbox, and receipt integration without a Container dependency.",
     "next_ready_workunit": "SPEC224_MODULAR_CONVERSATION_BINDING_AND_PREPARE",
     "reactivation_predicate": "The Modular Hono preparation route verifies tenant membership, the bound Runner workspace and source facts against the authority, and obtains current Harness execution readiness. One owner-approved Goal can then create a single durable Run/Job.",
-    "resume_point": "SmartSpecPro f72ac0e64c004846ef83b996fba20d3228b1b2eb is integrated. The dedicated Modular DEV Runner is active with ACKed discovery and a matched local source. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md for exact verification, boundaries, rollback and the Hono integration resume steps.",
+    "resume_point": "SmartSpecPro f72ac0e64c004846ef83b996fba20d3228b1b2eb is integrated. The dedicated Modular DEV Runner is active with ACKed discovery and a matched local source. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md for exact verification, boundaries, rollback and the Hono integration resume steps. Worker profile and baseline verification: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-workers-profile-20261122.md.",
     "waiting_predicate": "Core currently accepts signed Runner inventory and heartbeats. The Modular goal path awaits authorized conversation binding, preparation and dispatch integration. Owner MFA is required only for browser acceptance."
   },
   "continuation_assessment": {
@@ -1520,13 +1520,13 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 300,
+  "generation": 302,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
+    "digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-29T16:43:52.766793Z",
+      "last_evidence_at": "2026-11-22T01:10:17.884566Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -4146,10 +4146,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-29T16:43:52.766793Z",
+    "reconciled_at": "2026-11-22T01:10:17.884566Z",
     "sources": [
       {
-        "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
+        "digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -4253,7 +4253,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
+        "source_digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
@@ -4323,14 +4323,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
+        "source_digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
+        "digest": "22b9baf5c13412d3009a2307bda6a614cbed429231470215eea50b2f1759bee4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -4396,11 +4396,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1305,
-    "unresolved": 1304
+    "total": 1311,
+    "unresolved": 1310
   },
   "schema_version": 1,
-  "updated_at": "2026-11-21T14:58:36.443859Z",
+  "updated_at": "2026-11-22T01:10:49.089314Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -5045,6 +5045,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md",
         "scope": "Signed Runner inventory and heartbeat persistence, restart sequence, and local SPEC-293 source check. Modular Hono preparation, dispatch, and owner UAT are pending.",
         "source_sha": "f72ac0e64c004846ef83b996fba20d3228b1b2eb",
+        "status": "PASS"
+      },
+      {
+        "kind": "MODULAR_WORKER_BASELINE_WITHOUT_CONTAINERS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-workers-profile-20261122.md",
+        "scope": "Platform source. Separate Core, Shell and Chat dry-run builds, disposable Workerd liveness and 41 focused tests. Full Modular Goal and production bindings are pending.",
+        "source_sha": "4600db10d8be7949b72e358597f463ba3a0845cd",
         "status": "PASS"
       }
     ],
