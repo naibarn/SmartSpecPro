@@ -1126,14 +1126,15 @@
       "class": "AUTHORITY",
       "classification": "RECOVERABLE_RUNTIME",
       "evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-source-authority-preflight-deployment-20261105.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md"
       ],
       "evidence_freshness": "FRESH",
       "id": "R14_MODULAR_CORE_SOURCE_AUTHORITY",
-      "next_action": "Register or provision a separate trusted Runner/workspace authority for smartaihub-platform, verify its current source SHA/fingerprint/dirty paths, and bind the conversation to that workspace before one retry.",
+      "next_action": "Implement authenticated Modular Hono conversation binding and preparation against the canonical SPEC-224 authority. Enforce separate Chat-workspace and Runner checkout identity. Enable dispatch only after real Harness readiness and Goal Grant checks pass, then run one DEV Goal through canonical DevelopmentRun, worker_jobs and outbox.",
       "owner": "SmartAIHub Modular Core Runner/workspace configuration",
-      "reactivation_predicate": "The registered Modular Core Runner reports the exact repository source facts used by the execution authority, is trusted and online, and the conversation binding matches that Runner/workspace.",
-      "root_cause": "The current smartaihub.app execution authority resolves to the SmartSpecPro repository while the selected Modular Core Goal source is smartaihub-platform. The new preflight rejects the mismatch before staging or Goal creation; the existing legacy Runner must not be retargeted."
+      "reactivation_predicate": "The Modular Hono preparation route verifies tenant membership, the bound Runner workspace and source facts against the authority, and obtains current Harness execution readiness. One owner-approved Goal can then create a single durable Run/Job.",
+      "root_cause": "The dedicated Runner now publishes fresh HTTPS observations and the local source facts match the Modular Core checkout. The Hono runtime has no SPEC-224 conversation admission or canonical dispatch path; the source match is not evaluated during browser preparation yet."
     }
   ],
   "concurrency": {
@@ -1141,11 +1142,11 @@
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Provision/register a separate trusted Runner and source authority for the Modular Core smartaihub-platform workspace, then bind the conversation and verify the preparation source-authority banner passes before one Goal submission. Do not retry against or retarget the legacy SmartSpecPro Runner.",
-    "next_ready_workunit": "SPEC224_CANONICAL_USAGE_RECEIPT_AND_CREDIT_SETTLEMENT",
-    "reactivation_predicate": "A trusted Runner is registered to the Modular Core project and its smartaihub-platform workspace; the reported SHA, fingerprint, and dirty paths match that workspace authority; the conversation is bound to that workspace; preparation reports source authority ready; then one Goal creates a durable Run/Job.",
-    "resume_point": "Integrated SHA 1319db65fc3af252f96957c9d7846d94dfca2073; legacy-debian-dev generation 367 is DEPLOYED_VERIFIED and HEALTHY. Focused Goal/source-authority checks pass (104/104 tests), and Task Control now blocks the submit action before Goal creation when source authority fails. No authenticated Goal, live Codex output, Runner receipt, or settlement is claimed. Modular Core execution still awaits a separately registered trusted Runner/workspace authority matching smartaihub-platform.",
-    "waiting_predicate": "Wait for a separate trusted Core Runner/workspace authority to be registered and source-matched. Bind the conversation to that Core workspace, prepare the plan, confirm source authority passes, then submit once and inspect the same Run/Job in Task Control and Mission Control."
+    "next_action": "Implement authenticated Modular Hono conversation binding and preparation against the canonical SPEC-224 authority. Enforce separate Chat-workspace and Runner checkout identity. Enable dispatch only after real Harness readiness and Goal Grant checks pass, then run one DEV Goal through canonical DevelopmentRun, worker_jobs and outbox.",
+    "next_ready_workunit": "SPEC224_MODULAR_CONVERSATION_BINDING_AND_PREPARE",
+    "reactivation_predicate": "The Modular Hono preparation route verifies tenant membership, the bound Runner workspace and source facts against the authority, and obtains current Harness execution readiness. One owner-approved Goal can then create a single durable Run/Job.",
+    "resume_point": "SmartSpecPro f72ac0e64c004846ef83b996fba20d3228b1b2eb is integrated. The dedicated Modular DEV Runner is active with ACKed discovery and a matched local source. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md for exact verification, boundaries, rollback and the Hono integration resume steps.",
+    "waiting_predicate": "Core currently accepts signed Runner inventory and heartbeats. The Modular goal path awaits authorized conversation binding, preparation and dispatch integration. Owner MFA is required only for browser acceptance."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1495,6 +1496,13 @@
         "scope": "legacy-debian-dev / smartaihub.app, generation 367, release smartspec-web-1319db65fc3af252f96957c9d7846d94dfca2073-72ac83622d36, artifact sha256:27a74792a11e94dd40d06ccdd8ac0c477047ee5f9198c720d384e8d7a51ef59e; web and Node Worker report exact SHA and HEALTHY; public API health/login and exact Goal source-authority asset verified HTTP 200/content hash.",
         "source_sha": "1319db65fc3af252f96957c9d7846d94dfca2073",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_MODULAR_DEV_RUNNER_DISCOVERY_DEPLOYED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md",
+        "scope": "Dedicated modular-debian-dev Runner binary deployed and signed HTTPS control ACKs verified against aimarkethubs.com.",
+        "source_sha": "f72ac0e64c004846ef83b996fba20d3228b1b2eb",
+        "status": "PASS"
       }
     ],
     "required": true,
@@ -1512,7 +1520,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 299,
+  "generation": 300,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1544,7 +1552,8 @@
       "2dd6eeefb985b9f59bc98907dd83c1bdda731163",
       "2f8f731fb8421e8c9a266c0857481862fdd4a6b3",
       "4d3a468f44d596ca67d9b6c286fa1f31b3f131a2",
-      "d3b047b6360c4081797d75597063e5885ff73099"
+      "d3b047b6360c4081797d75597063e5885ff73099",
+      "f72ac0e64c004846ef83b996fba20d3228b1b2eb"
     ],
     "mapping": [
       {
@@ -4391,7 +4400,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-04T23:48:30.313411Z",
+  "updated_at": "2026-11-21T14:58:36.443859Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -5029,6 +5038,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-source-authority-preparation-guard-20261105.md",
         "scope": "Exact integrated SHA 1319db65; three focused Vitest files, 104/104 tests passed, including preparation authority match/mismatch and submit-time source-authority race.",
         "source_sha": "1319db65fc3af252f96957c9d7846d94dfca2073",
+        "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_MODULAR_DEV_RUNNER_DISCOVERY_AND_SOURCE_MATCH",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-modular-dev-runner-source-20261121.md",
+        "scope": "Signed Runner inventory and heartbeat persistence, restart sequence, and local SPEC-293 source check. Modular Hono preparation, dispatch, and owner UAT are pending.",
+        "source_sha": "f72ac0e64c004846ef83b996fba20d3228b1b2eb",
         "status": "PASS"
       }
     ],
