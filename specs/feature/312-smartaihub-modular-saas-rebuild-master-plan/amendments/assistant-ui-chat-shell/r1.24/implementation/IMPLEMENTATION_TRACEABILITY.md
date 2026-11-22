@@ -123,3 +123,12 @@ This is the latest authoritative execution status. Prior blocked reports remain 
 | Explicit and idempotent Mission attachment | DEV migration 0452 reuses the existing Mission and Job link tables. The Core DEV database role verified attachment, retry, rejected scope and unchanged Job and Attempt records in a rolled-back transaction. The Core route tests verify same-origin and workspace authorization. |
 | Preserve the execution deep link | Shell tests and Chromium with intercepted data verify that attaching an existing Job keeps its Job and Attempt IDs and allows return to the same Mission after refresh. Opening pages sends no mutation request. |
 | DEV release and acceptance | Platform `d12c1c563d0100d4bda426d0243b23eb6bf2c6c3` is serving on `modular-debian-dev`. Live asset parity and component health passed. Owner browser UAT remains pending. See the [handoff](HANDOFF.md). |
+
+### 2026-11-22 Attempt execution route and audit details
+
+| Requirement | Evidence |
+|---|---|
+| Identify how a Job ran | Scoped migration 0453 adds the persisted execution route to the Task projection. The DEV Core role returned OpenRouter for both succeeded Jobs in Chat #304. Native Harness correlation requires a Runner session that matches Job, Attempt number and lease generation. |
+| Preserve historical Attempt provenance | The exact execution endpoint checks Job, Mission, conversation and workspace before matching a recorded Attempt. Core and Shell tests cover a historical selection and deny an unknown Attempt. Browser fixtures confirm a historical Attempt keeps its own route, outcome and artifacts after refresh. |
+| Explain independent lifecycle states | Mission Control displays open state and count of linked Jobs. Task Control labels Job status independently from the selected Attempt outcome. Job event cursor is identified as Job-level evidence. |
+| Verify DEV deployment | Platform `77621786ed680e95f5bb0c7ef9e77583bff1f9dc` passed component health and public asset parity. Owner MFA browser UAT and native execution proof in this workspace remain pending. See the [handoff](HANDOFF.md). |
