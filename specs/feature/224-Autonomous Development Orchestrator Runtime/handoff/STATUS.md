@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1310 unresolved of 1311
 - Next action: Provision or register a separate trusted Runner/workspace authority for the Modular Core repository smartaihub-platform, confirm its exact source snapshot, and bind the conversation to it before submitting another Goal. Do not retry against the legacy SmartSpecPro Runner.
-- Manifest generation: 302
+- Manifest generation: 303
 
 ## Source-declared status and relationship claims
 

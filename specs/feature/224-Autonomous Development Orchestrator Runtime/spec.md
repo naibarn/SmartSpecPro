@@ -9222,7 +9222,7 @@ Revision 5 architecture is implementation-ready only when all prior gates remain
 
 # 301. Revision 5 Final End-to-End Certification Scenario
 
-Final certification SHALL prove all of the following in one program:
+Deployments that enable the optional cloud-only machine execution profile SHALL certify the following scenario. The Modular Workers production profile uses its own end-to-end acceptance in §262.1:
 
 ```text
 1. User creates a new project using natural language only.
