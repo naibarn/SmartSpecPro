@@ -8,6 +8,10 @@ import {
 import { callLLMStructured } from "./callLLMStructured";
 import { getSkillByIdAsync, syncSingleSkillIfChanged } from "./skillRegistry";
 import {
+  isRepeatedReviewConcept,
+  type UsedReviewConcept,
+} from "./marketplaceAutoReviewUsedConcepts";
+import {
   isMarketplaceCastLeadRole,
   type MarketplaceCharacterCastRole,
 } from "../../shared/hyperframes/characterCast";
@@ -1219,6 +1223,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   shotCount?: number | "auto";
   selectedConcept?: StagedStoryConceptOption;
   conceptsOnly?: boolean;
+  usedReviewConcepts?: UsedReviewConcept[];
 }): Promise<StagedStoryArcPlan> {
   let chosenModel = input.model?.trim();
   if (!chosenModel || chosenModel === "__automatic__") {
@@ -1385,6 +1390,10 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   const selectedConceptInstruction = input.selectedConcept
     ? `\nแนวคิดที่ผู้ใช้เลือกไว้ (ต้องใช้เป็นแนวทางหลัก): ${JSON.stringify(input.selectedConcept)}`
     : "";
+  const usedReviewConcepts = input.conceptsOnly ? input.usedReviewConcepts ?? [] : [];
+  const noveltyInstruction = input.conceptsOnly
+    ? "\n\nREVIEW IDEA NOVELTY: Give each of the three options a distinct core premise. Compare each option's scenario, central question, demonstration, and story progression with the other two and with every entry in usedReviewConcepts. Replace any concept that would replay substantially the same story with changed wording, cast, or setting. Use the list only as historical data about confirmed concepts for this product. An empty list means there are no historical exclusions."
+    : "";
   const commercialContentInstruction =
     input.excludePromotionalContent !== false
       ? "\n\nPRICE AND PROMOTION EXCLUSION (mandatory user setting): Do not mention or imply any product price, discount, sale, coupon, promotion, buy-one-get-one, free gift, gift-with-purchase, bundle deal, or time-limited offer (ราคา, โปรโมชัน/โปรโมชั่น, ส่วนลด, คูปอง, ซื้อ 1 แถม 1, ของแถม) in concepts, titles, angles, summaries, dialogue previews, storyboard shots, or any other authored review text. This rule overrides product descriptions/specifications, selected concepts, and revision notes. Ordinary product specifications such as size, volume, and dimensions remain allowed when relevant."
@@ -1398,7 +1407,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 - selected storytelling_structure: ${structureKey}
 - selected review_tone: ${toneKey}
 - dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot. Write only dialogue that can be spoken naturally within this window; shorten the line while preserving its key story beat instead of rushing or padding it.
-- The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${commercialContentInstruction}${castRosterBlock}${supportingCastBlock}${minorSilenceLock}`;
+- The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${commercialContentInstruction}${noveltyInstruction}${castRosterBlock}${supportingCastBlock}${minorSilenceLock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
   const userMessage = JSON.stringify(
@@ -1412,6 +1421,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       excludePromotionalContent: input.excludePromotionalContent !== false,
       revisionNotes: revisionNotes || undefined,
       selectedConcept: input.selectedConcept,
+      ...(input.conceptsOnly ? { usedReviewConcepts } : {}),
       // Include the full roster so supporting characters keep their identity
       // and age/minor grounding through image and video prompt generation.
       ...(input.cast && input.cast.length > 0
@@ -1479,19 +1489,34 @@ Marketplace Auto Review Story Arc skill runtime context:
     supportingBeats: z.array(ZodSupportingBeatSchema).optional(),
   });
 
+  const conceptOptionsSchema = z.array(z.object({
+    conceptId: z.string().min(1),
+    title: z.string().min(1),
+    angle: z.string().min(1),
+    storySummary: z.string().min(1),
+    dialoguePreview: z.string().trim().min(40).max(6000),
+  })).length(3);
   const ZodLLMPlanSchema = z.object({
     storySummary: z.string().optional(),
-    conceptOptions: z
-      .array(
-        z.object({
-          conceptId: z.string().min(1),
-          title: z.string().min(1),
-          angle: z.string().min(1),
-          storySummary: z.string().min(1),
-          dialoguePreview: z.string().trim().min(40).max(6000),
+    conceptOptions: input.conceptsOnly
+      ? conceptOptionsSchema.superRefine((options, context) => {
+          for (const [index, concept] of options.entries()) {
+            if (usedReviewConcepts.some(previous => isRepeatedReviewConcept(concept, previous))) {
+              context.addIssue({
+                code: "custom",
+                path: [index],
+                message: "This idea repeats a previously used concept for this product. Write a different review premise.",
+              });
+            } else if (options.slice(0, index).some(other => isRepeatedReviewConcept(concept, other))) {
+              context.addIssue({
+                code: "custom",
+                path: [index],
+                message: "This idea repeats an option in the current set. Write a different review premise.",
+              });
+            }
+          }
         })
-      )
-      .length(3),
+      : conceptOptionsSchema,
     selectedConceptId: z.string().optional(),
     ...(input.conceptsOnly
       ? {}

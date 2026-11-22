@@ -35,6 +35,10 @@ import {
   type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
+  findConfirmedStagedReviewConcept,
+  rememberUsedReviewConcept,
+} from "./marketplaceAutoReviewUsedConcepts";
+import {
   buildCheckpointApprovalMutation,
   mutateStagedCheckpointMetadata,
   projectStagedCheckpoints,
@@ -4126,10 +4130,9 @@ export async function redraftStagedAutoReviewPlan(input: {
   if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
-  const current = ((metadata as any).stagedPipeline?.plan ?? null) as Record<
-    string,
-    any
-  > | null;
+  const current = ((metadata as any).stagedPipeline?.plan ?? null) as
+    | (StagedStoryArcPlan & { state?: string })
+    | null;
   if (!current || current.state === "superseded") {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -4226,7 +4229,7 @@ export async function redraftStagedAutoReviewPlan(input: {
     previousStorySummary: input.notes?.trim()
       ? input.notes.trim().slice(0, 500)
       : null,
-    selectedConcept: input.selectedConcept,
+    selectedConcept: input.selectedConcept ?? findConfirmedStagedReviewConcept(current),
   });
   const storyCheckpoint = buildStagedCheckpoint({
     checkpointId: `story-plan:${input.runId}:r${nextPlan.planRevision}:redraft`,
@@ -4244,8 +4247,8 @@ export async function redraftStagedAutoReviewPlan(input: {
     idempotencyKey: resultIdempotencyKey,
     auth: input.auth,
     mutate(currentMetadata) {
-      const currentPlan = ((currentMetadata as any).stagedPipeline?.plan ??
-        null) as Record<string, any> | null;
+      const currentPipeline = record((currentMetadata as any).stagedPipeline);
+      const currentPlan = (currentPipeline.plan ?? null) as typeof current;
       if (!currentPlan || currentPlan.state === "superseded") {
         throw new TRPCError({
           code: "CONFLICT",
@@ -4265,7 +4268,11 @@ export async function redraftStagedAutoReviewPlan(input: {
             redraftCount: currentRedraftCount + 1,
           },
           stagedPipeline: {
-            ...((currentMetadata as any).stagedPipeline ?? {}),
+            ...currentPipeline,
+            usedReviewConcepts: rememberUsedReviewConcept(
+              currentPipeline.usedReviewConcepts,
+              findConfirmedStagedReviewConcept(currentPlan)
+            ),
             plan: nextPlan,
             planView: buildStagedPlanView(nextPlan),
             tasks: {},

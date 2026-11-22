@@ -29,6 +29,11 @@ import {
   type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
+  findConfirmedStagedReviewConcept,
+  loadUsedReviewConcepts,
+  rememberUsedReviewConcept,
+} from "./marketplaceAutoReviewUsedConcepts";
+import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
   isCompleteStagedImagePrompt,
@@ -1263,7 +1268,7 @@ export function planAndMetadataFromRun(run: MarketplaceAutoReviewRun): {
 // `redraftStagedMarketplaceAutoReviewRun`.
 export async function buildStagedPlanAndMetadataForInit(
   run: MarketplaceAutoReviewRun,
-  options?: { revision?: number; previousStorySummary?: string | null }
+  options?: { revision?: number; previousStorySummary?: string | null; db?: Db }
 ): Promise<{
   plan: StagedStoryArcPlan;
   metadata: StagedSequentialStoryboardMetadataV1 & Record<string, any>;
@@ -1296,6 +1301,9 @@ export async function buildStagedPlanAndMetadataForInit(
     productImageUrls: base.productImageUrls ?? [],
   });
   const languagePlan = requireStagedLanguagePlanFromMetadata(base);
+  const usedReviewConcepts = options?.db
+    ? await loadUsedReviewConcepts(options.db, run)
+    : [];
   const plan = await generateStagedStoryArcPlanWithLLM({
     runId: run.id,
     userId: run.userId ?? undefined,
@@ -1314,6 +1322,7 @@ export async function buildStagedPlanAndMetadataForInit(
     shotCount,
     model: storyPlanningModel,
     conceptsOnly: true,
+    usedReviewConcepts,
   });
   const metadata = buildFreshStagedMetadataFromPlan({
     run,
@@ -1332,6 +1341,7 @@ function stagedMetadataForPlan(input: {
   redraftCount: number;
   reviewTone?: string;
   storytellingStructure?: string;
+  previousPlan: StagedStoryArcPlan;
 }) {
   const storyCheckpoint = buildStagedCheckpoint({
     checkpointId: `story-plan:${input.run.id}:r${input.plan.planRevision}`,
@@ -1358,6 +1368,10 @@ function stagedMetadataForPlan(input: {
     concept: buildLegacyConcept(input.plan),
     stagedPipeline: {
       ...record(input.base.stagedPipeline),
+      usedReviewConcepts: rememberUsedReviewConcept(
+        record(input.base.stagedPipeline).usedReviewConcepts,
+        findConfirmedStagedReviewConcept(input.previousPlan)
+      ),
       plan: input.plan,
       planView: buildStagedPlanView(input.plan),
       tasks: {},
@@ -1473,7 +1487,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     userId: params.run.userId ?? undefined,
     tenantId: params.run.tenantId ?? undefined,
     shotCount,
-    selectedConcept: params.selectedConcept,
+    selectedConcept: params.selectedConcept ?? findConfirmedStagedReviewConcept(current),
     model: storyPlanningModel,
   });
   const currentRedraftCount = record(base.planReview).redraftCount;
@@ -1484,6 +1498,7 @@ export async function redraftStagedMarketplaceAutoReviewRun(params: {
     run: params.run,
     base,
     plan: nextPlan,
+    previousPlan: current,
     redraftCount: currentRedraftCount + 1,
     reviewTone,
     storytellingStructure,
@@ -1532,7 +1547,8 @@ export async function initializeStagedMarketplaceAutoReviewRun(params: {
   // or shotCount="auto" (shot count itself is LLM judgment). A skill error
   // fails initialization; deterministic story content is never substituted.
   const { plan, metadata } = await buildStagedPlanAndMetadataForInit(
-    params.run
+    params.run,
+    { db: params.db }
   );
   const anchorsForAdherence = record(
     record(params.run.metadataJson).referenceAnchors
