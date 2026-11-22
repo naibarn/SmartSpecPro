@@ -3060,6 +3060,13 @@
       "when": 1795000000000,
       "tag": "0450_modular_runner_system_admin_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 451,
+      "version": "7",
+      "when": 1795300000000,
+      "tag": "0451_modular_harness_projection_job_tenant_read",
+      "breakpoints": true
     }
   ]
 }
