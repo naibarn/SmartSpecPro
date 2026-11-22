@@ -4,7 +4,37 @@ import { describe, expect, it, vi } from "vitest";
 import { MarketplaceAutoReviewJobNavigator } from "../MarketplaceAutoReviewJobNavigator";
 
 describe("MarketplaceAutoReviewJobNavigator", () => {
-  it("lists every job and opens the selected run", () => {
+  it("opens each job in a new tab and starts full-history thumbnails immediately", () => {
+    render(
+      <MarketplaceAutoReviewJobNavigator
+        runs={[
+          {
+            id: "mar-late-job",
+            status: "completed",
+            productThumbnailUrl: "/api/storage/files/product-late.webp",
+          },
+        ]}
+        allProducts
+        largeProductThumbnails
+        openRunsInNewTab
+        onOpenRun={vi.fn()}
+        onCreateNew={vi.fn()}
+      />
+    );
+
+    const jobLink = screen.getByRole("link", { name: /Job Review/ });
+    expect(jobLink).toHaveAttribute(
+      "href",
+      "/marketplace/auto-review/mar-late-job"
+    );
+    expect(jobLink).toHaveAttribute("target", "_blank");
+    expect(jobLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(
+      screen.getByAltText("ภาพสินค้า: Job Review")
+    ).toHaveAttribute("loading", "eager");
+  });
+
+  it("lists every job and marks the selected run", () => {
     const onOpenRun = vi.fn();
     const runs = [
       {
@@ -36,17 +66,20 @@ describe("MarketplaceAutoReviewJobNavigator", () => {
     );
 
     expect(screen.getByText("2 งาน")).toBeTruthy();
-    expect(screen.getByText("Job Review #1")).toBeTruthy();
-    expect(screen.getByText("Job Review #2")).toBeTruthy();
+    expect(screen.getAllByText("Job Review")).toHaveLength(2);
     expect(screen.getByText("ล่าสุด")).toBeTruthy();
     expect(screen.getByText("รอตรวจ/ยืนยัน")).toBeTruthy();
     expect(screen.getByText("Legacy")).toBeTruthy();
-    expect(screen.getByRole("button", { current: "page" })).toHaveAttribute(
-      "aria-current",
-      "page"
+    expect(
+      screen.getByRole("link", { current: "page" })
+    ).toHaveAttribute("href", "/marketplace/auto-review/mar-new");
+    expect(
+      screen.getByRole("link", { name: /mar-old/ })
+    ).toHaveAttribute(
+      "href",
+      "/marketplace/auto-review/mar-old"
     );
-
-    fireEvent.click(screen.getByText("Job Review #2"));
+    fireEvent.click(screen.getByRole("link", { name: /mar-old/ }));
     expect(onOpenRun).toHaveBeenCalledWith("mar-old");
   });
 
@@ -133,6 +166,41 @@ describe("MarketplaceAutoReviewJobNavigator", () => {
 
     expect(onMediaLoadError).toHaveBeenCalledTimes(1);
   });
+
+  it("does not fetch video metadata until a preview is played", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(private readonly callback: ResizeObserverCallback) {}
+        observe() {
+          this.callback(
+            [{ contentRect: { width: 500 } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver
+          );
+        }
+        disconnect() {}
+      }
+    );
+
+    render(
+      <MarketplaceAutoReviewJobNavigator
+        runs={[
+          {
+            id: "mar-video",
+            status: "completed",
+            videoPreviewUrl: "/api/storage/files/preview.mp4",
+          },
+        ]}
+        onOpenRun={vi.fn()}
+        onCreateNew={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByLabelText("ตัวอย่างวิดีโอที่รวมแล้ว: Job Review")
+    ).toHaveAttribute("preload", "none");
+    vi.unstubAllGlobals();
+  });
 });
 
 /**
@@ -184,12 +252,13 @@ describe("MarketplaceAutoReviewJobNavigator — delete", () => {
     expect(onDeleteRun).toHaveBeenCalledWith("mar-a");
   });
 
-  it("does NOT open the run when the delete button is clicked", () => {
+  it("keeps the delete action separate from the new-tab job link", () => {
     const onOpenRun = vi.fn();
     render(
       <MarketplaceAutoReviewJobNavigator
         runs={RUNS}
         productId="product_1"
+        openRunsInNewTab
         onOpenRun={onOpenRun}
         onCreateNew={vi.fn()}
         onDeleteRun={vi.fn()}
@@ -197,6 +266,11 @@ describe("MarketplaceAutoReviewJobNavigator — delete", () => {
     );
     fireEvent.click(screen.getByTestId("job-delete-mar-a"));
     expect(onOpenRun).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: /mar-a/ })).toHaveAttribute(
+      "target",
+      "_blank"
+    );
+    expect(screen.getByText("ลบงานนี้?")).toBeTruthy();
   });
 
   it("can be cancelled, leaving the job untouched", () => {
@@ -211,7 +285,7 @@ describe("MarketplaceAutoReviewJobNavigator — delete", () => {
       />
     );
     fireEvent.click(screen.getByTestId("job-delete-mar-a"));
-    fireEvent.click(screen.getByLabelText("ยกเลิกการลบ Job Review #1"));
+    fireEvent.click(screen.getByLabelText("ยกเลิกการลบ Job Review"));
     expect(screen.queryByText("ลบงานนี้?")).toBeNull();
     expect(onDeleteRun).not.toHaveBeenCalled();
   });

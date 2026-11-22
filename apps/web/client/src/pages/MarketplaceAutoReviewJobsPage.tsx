@@ -90,6 +90,7 @@ export default function MarketplaceAutoReviewJobsPage() {
         error={jobsQuery.error?.message ?? null}
         allProducts
         largeProductThumbnails
+        openRunsInNewTab
         productOptions={productsQuery.data ?? []}
         hasMore={jobsQuery.hasNextPage}
         loadingMore={jobsQuery.isFetchingNextPage}

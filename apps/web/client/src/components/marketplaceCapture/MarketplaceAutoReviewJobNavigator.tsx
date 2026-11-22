@@ -36,6 +36,8 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   hasMore?: boolean;
   loadingMore?: boolean;
   onOpenRun: (runId: string) => void;
+  /** Open job links in a separate tab, preserving the current navigator state. */
+  openRunsInNewTab?: boolean;
   onCreateNew: () => void;
   /** Refresh the source run data once after a media URL fails to load. */
   onMediaLoadError?: () => void;
@@ -305,6 +307,7 @@ export function MarketplaceAutoReviewJobNavigator({
   hasMore = false,
   loadingMore = false,
   onOpenRun,
+  openRunsInNewTab = false,
   onCreateNew,
   onMediaLoadError,
   onLoadMore,
@@ -416,7 +419,9 @@ export function MarketplaceAutoReviewJobNavigator({
           </label>
         ) : null}
         <p className="mt-2 text-[10px] text-slate-500">
-          กดการ์ดงานเพื่อเปิด Job Workbench
+          {isThaiLocale
+            ? `กดการ์ดงานเพื่อเปิด Job Workbench${openRunsInNewTab ? " ในแท็บใหม่" : ""}`
+            : `Select a job to open its workbench${openRunsInNewTab ? " in a new tab" : ""}`}
         </p>
       </header>
 
@@ -488,15 +493,29 @@ export function MarketplaceAutoReviewJobNavigator({
                       : ""
                   }
                 >
-                  <button
-                    type="button"
-                    className={`w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
+                  <a
+                    href={`/marketplace/auto-review/${encodeURIComponent(runId)}`}
+                    target={openRunsInNewTab ? "_blank" : undefined}
+                    rel={openRunsInNewTab ? "noopener noreferrer" : undefined}
+                    className={`block w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
                       selected
                         ? "border-violet-300 bg-violet-500/20"
                         : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.08]"
                     }`}
                     aria-current={selected ? "page" : undefined}
-                    onClick={() => onOpenRun(runId)}
+                    onClick={event => {
+                      if (
+                        !openRunsInNewTab &&
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      ) {
+                        event.preventDefault();
+                        onOpenRun(runId);
+                      }
+                    }}
                   >
                     <span className="flex items-start justify-between gap-2">
                       <span className="flex min-w-0 flex-1 items-start gap-3">
@@ -504,7 +523,7 @@ export function MarketplaceAutoReviewJobNavigator({
                           <AuthenticatedMediaImage
                             src={productThumbnailUrl}
                             alt={`ภาพสินค้า: ${productLabel}`}
-                            loading="lazy"
+                            loading={largeProductThumbnails ? "eager" : "lazy"}
                             className={productThumbnailClassName}
                             fallback={
                               <span
@@ -581,7 +600,7 @@ export function MarketplaceAutoReviewJobNavigator({
                     <span className="block truncate text-[10px] text-slate-500">
                       อัปเดต {formatDate(run.updatedAt ?? run.createdAt)}
                     </span>
-                  </button>
+                  </a>
                   {hasVideoPreview ? (
                     <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
                       <AuthenticatedMediaVideo
@@ -590,7 +609,7 @@ export function MarketplaceAutoReviewJobNavigator({
                         controls
                         muted
                         playsInline
-                        preload="metadata"
+                        preload="none"
                         aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${jobTitle(run)}`}
                         className="aspect-[9/16] h-36 w-20 shrink-0 rounded-md bg-black object-contain"
                         fallback={
