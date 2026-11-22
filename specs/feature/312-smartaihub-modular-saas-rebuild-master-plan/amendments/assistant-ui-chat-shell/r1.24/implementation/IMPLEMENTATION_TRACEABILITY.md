@@ -114,3 +114,12 @@ This is the latest authoritative execution status. Prior blocked reports remain 
 | Explicit Mission registration and Job association | The Chat inspector exposes the create and opt-in controls. The API test verifies the selected Mission ID reaches canonical turn admission. Chromium proves read-only navigation and the explicit create action with intercepted fixtures. Owner browser UAT remains pending. |
 | Workspace-scoped Harness registry | DEV migration 0451 restores its tenant join with a column-level grant to the function owner. The tested personal workspace returns an empty authorized catalog. Anonymous requests return 401. |
 | Immutable DEV delivery | Platform `c1fa8eb7b99f8ca9e5c89399b7e5559a67e54a46` is serving from the registered controller. Public Shell and Chat bytes match the artifact. See the [handoff](HANDOFF.md) for the release receipt and verification scope. |
+
+### 2026-11-22 Attach existing Jobs in Mission Control
+
+| Requirement | Evidence |
+|---|---|
+| Find recorded work before a Mission exists | Mission Control reads the same scoped conversation Job projection as Task Control. DEV Chat #304 returned two succeeded Jobs with exact Attempt IDs and artifact references. |
+| Explicit and idempotent Mission attachment | DEV migration 0452 reuses the existing Mission and Job link tables. The Core DEV database role verified attachment, retry, rejected scope and unchanged Job and Attempt records in a rolled-back transaction. The Core route tests verify same-origin and workspace authorization. |
+| Preserve the execution deep link | Shell tests and Chromium with intercepted data verify that attaching an existing Job keeps its Job and Attempt IDs and allows return to the same Mission after refresh. Opening pages sends no mutation request. |
+| DEV release and acceptance | Platform `d12c1c563d0100d4bda426d0243b23eb6bf2c6c3` is serving on `modular-debian-dev`. Live asset parity and component health passed. Owner browser UAT remains pending. See the [handoff](HANDOFF.md). |
