@@ -69,6 +69,7 @@ export const GetAutoStoryboardReviewPlanInputSchema =
   ProductIdInputSchema.extend({
     includeTemplates: z.boolean().optional().default(false),
     overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+    stagedShotCount: z.number().int().min(2).max(18).optional(),
     workflowMode: z.enum(["standard", "job_workbench"]).optional(),
   }).strict();
 

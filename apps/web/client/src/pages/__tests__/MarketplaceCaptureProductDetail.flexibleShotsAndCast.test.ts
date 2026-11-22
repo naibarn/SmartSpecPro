@@ -28,6 +28,13 @@ function sourceBetween(start: string, end: string) {
 }
 
 describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wiring (W3)", () => {
+  it("defaults the presenter to uploaded references and labels the in-clip character choice", () => {
+    expect(source).toContain(
+      'useState<AutoReviewCharacterMode>("uploaded_reference")'
+    );
+    expect(source).toContain('label: "เลือกตัวละครในคลิป"');
+  });
+
   it("declares the cast/shot-count derived state before the product loading guards", () => {
     const productGuardIndexes = [
       source.indexOf("if (product.isLoading) return"),
@@ -129,6 +136,7 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
       "const autoStoryboardPlan ="
     );
     expect(planQuery).toContain("overrides: autoStoryboardOverridesWithCast");
+    expect(planQuery).toContain("stagedShotCount: autoReviewStagedShotCount");
     const planMatch = sourceBetween(
       "function autoStoryboardPlanMatchesOverrides(",
       "function categoryPathParts("
@@ -148,17 +156,18 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
     expect(hyperframesStartFn).not.toContain("overrides: autoStoryboardOverrides,");
   });
 
-  it("threads autoReviewStagedShotCount into buildAutoReviewReferenceAnchors as `shotCount`, omitted when untouched", () => {
+  it("defaults Auto Storyboard Review to five shots and sends that count", () => {
+    expect(source).toContain(
+      'const [autoReviewStagedShotCount, setAutoReviewStagedShotCount] = useState<\n    "auto" | number | undefined\n  >(5);'
+    );
     const buildAnchorsFn = sourceBetween(
       "const buildAutoReviewReferenceAnchors = useCallback(",
       "async function startAutoStoryboardReview"
     );
-    expect(buildAnchorsFn).toContain(
-      "...(autoReviewStagedShotCount !== undefined\n          ? { shotCount: autoReviewStagedShotCount }\n          : {}),"
-    );
+    expect(buildAnchorsFn).toContain("shotCount: autoReviewStagedShotCount ?? 5,");
   });
 
-  it("wires stagedShotCount/onStagedShotCountChange into AutoStoryboardAdvancedOverrides and resets it alongside shotDurationSeconds", () => {
+  it("wires stagedShotCount/onStagedShotCountChange into AutoStoryboardAdvancedOverrides and resets it to five", () => {
     const advancedOverridesMount = sourceBetween(
       "<AutoStoryboardAdvancedOverrides",
       "visionQaModelOptions={autoReviewVisionQaModelOptions}"
@@ -172,7 +181,7 @@ describe("MarketplaceCaptureProductDetail flexible-shots-and-creation-casting wi
 
     const resetHandlers =
       source.match(
-        /setAutoStoryboardOverrides\(retainAutoStoryboardModelOverrides\);\s*setAutoReviewShotDurationSeconds\(undefined\);\s*setAutoReviewStagedShotCount\(undefined\);/g
+        /setAutoStoryboardOverrides\(retainAutoStoryboardModelOverrides\);\s*setAutoReviewShotDurationSeconds\(undefined\);\s*setAutoReviewStagedShotCount\(5\);/g
       ) ?? [];
     expect(resetHandlers.length).toBe(2);
   });

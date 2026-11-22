@@ -1171,6 +1171,7 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   auth: HyperframesAuthContext;
   includeTemplates?: boolean;
   overrides?: Record<string, unknown>;
+  stagedShotCount?: number;
   workflowMode?: "standard" | "job_workbench";
 }) {
   // Feature 136 (section 05 §5.7) — the `WithEvidence` variant shares 100%
@@ -1183,6 +1184,7 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
       productId: input.productId,
       auth: input.auth,
       overrides: input.overrides,
+      stagedShotCount: input.stagedShotCount,
       workflowMode: input.workflowMode,
     });
   return {

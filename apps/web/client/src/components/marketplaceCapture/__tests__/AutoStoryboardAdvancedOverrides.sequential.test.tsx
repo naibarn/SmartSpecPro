@@ -90,7 +90,8 @@ describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Featur
     const onChange = vi.fn();
     const { rerender } = render(
       <AutoStoryboardAdvancedOverrides
-        plan={readyPlan()}
+        plan={readyPlan({ frameStrategy: "storyboard_3x3_split" })}
+        defaultFrameStrategy="storyboard_3x3_split"
         open
         value={{}}
         onChange={onChange}
@@ -109,7 +110,7 @@ describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Featur
       "sequential_shot_storyboard",
     ]);
     expect(
-      screen.getByText("9 ภาพต่อเนื่อง (Sequential) — 1 prompt ต่อ 1 ภาพ")
+      screen.getByText("สร้างภาพแยกแต่ละช็อต")
     ).toBeTruthy();
 
     fireEvent.change(frames, { target: { value: "sequential_shot_storyboard" } });
@@ -154,7 +155,7 @@ describe("AutoStoryboardAdvancedOverrides — sequential strategy option (Featur
       />
     );
     expect(
-      screen.getByText("Sequential 9 images — one prompt per image")
+      screen.getByText("Create a separate image for each shot")
     ).toBeTruthy();
   });
 

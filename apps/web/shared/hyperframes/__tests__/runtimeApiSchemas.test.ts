@@ -31,6 +31,21 @@ describe("HyperFrames runtime API schemas", () => {
     });
   });
 
+  it("accepts an optional bounded staged shot count for plan estimates", () => {
+    expect(
+      GetAutoStoryboardReviewPlanInputSchema.parse({
+        productId: "product_1",
+        stagedShotCount: 5,
+      }).stagedShotCount
+    ).toBe(5);
+    expect(() =>
+      GetAutoStoryboardReviewPlanInputSchema.parse({
+        productId: "product_1",
+        stagedShotCount: 19,
+      })
+    ).toThrow();
+  });
+
   it("allows optional plan overrides while keeping template and engine backend-selected", () => {
     const input = GetAutoStoryboardReviewPlanInputSchema.parse({
       productId: "product_1",

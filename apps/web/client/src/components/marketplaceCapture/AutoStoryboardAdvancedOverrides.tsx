@@ -59,10 +59,8 @@ interface AutoStoryboardAdvancedOverridesProps {
    * `shotDurationSeconds` above: NOT folded into `value`/`onChange`'s
    * `HyperframesAutoPlanOverrideInput` (whose own `.strict()` `shotCount`
    * field is legacy-only, hard-capped 7-9, and feeds a completely different
-   * machinery). `undefined` (both here and at the caller) omits the field
-   * entirely — the run-start mutation's `referenceAnchors` gets no
-   * `shotCount` key at all, matching today's implicit 9-shot default
-   * byte-for-byte.
+   * machinery). `undefined` (both here and at the caller) uses the five-shot
+   * default for the UI and run-start request.
    */
   stagedShotCount?: "auto" | number;
   onStagedShotCountChange?: (value: "auto" | number | undefined) => void;
@@ -364,10 +362,10 @@ export function AutoStoryboardAdvancedOverrides({
     ...Array.from({ length: 17 }, (_, index) => index + 2).map(count => ({
       value: String(count),
       label:
-        count === 9
+        count === 5
           ? thai
-            ? "9 ช็อต (ค่าเริ่มต้น)"
-            : "9 shots (default)"
+            ? "5 ช็อต (ค่าเริ่มต้น)"
+            : "5 shots (default)"
           : thai
             ? `${count} ช็อต`
             : `${count} shots`,
@@ -660,16 +658,12 @@ export function AutoStoryboardAdvancedOverrides({
                   value={
                     stagedShotCount !== undefined
                       ? String(stagedShotCount)
-                      : "9"
+                      : "5"
                   }
                   onChange={event => {
                     const raw = event.target.value;
                     onStagedShotCountChange(
-                      raw === "9"
-                        ? undefined
-                        : raw === "auto"
-                          ? "auto"
-                          : Number(raw)
+                      raw === "auto" ? "auto" : Number(raw)
                     );
                   }}
                 >
@@ -684,8 +678,8 @@ export function AutoStoryboardAdvancedOverrides({
                   className="text-xs leading-5 text-slate-500 dark:text-slate-400"
                 >
                   {thai
-                    ? "ค่าเริ่มต้นคือ 9 ช็อต เลือกได้ตั้งแต่ 2–18 ช็อต; โหมดอัตโนมัติให้ AI เลือกภายในช่วงนี้ โดยอิงความยาวต่อช็อต"
-                    : "The default is 9 shots. Choose 2–18, or let AI choose within that range using the selected duration as its pacing guide."}
+                    ? "ค่าเริ่มต้นคือ 5 ช็อต เลือกได้ตั้งแต่ 2–18 ช็อต; โหมดอัตโนมัติให้ AI เลือกภายในช่วงนี้ โดยอิงความยาวต่อช็อต"
+                    : "The default is 5 shots. Choose 2–18, or let AI choose within that range using the selected duration as its pacing guide."}
                 </p>
               </label>
             ) : null}

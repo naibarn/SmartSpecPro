@@ -616,7 +616,7 @@ describe("AutoStoryboardAdvancedOverrides", () => {
       expect(select.value).toBe("9");
     });
 
-    it("emits 'auto', numbers, and undefined (for the default 9) through onStagedShotCountChange", () => {
+    it("emits 'auto' and explicit numbers through onStagedShotCountChange", () => {
       const onStagedShotCountChange = vi.fn();
       render(
         <AutoStoryboardAdvancedOverrides
@@ -639,7 +639,7 @@ describe("AutoStoryboardAdvancedOverrides", () => {
       expect(onStagedShotCountChange).toHaveBeenLastCalledWith(15);
 
       fireEvent.change(select, { target: { value: "9" } });
-      expect(onStagedShotCountChange).toHaveBeenLastCalledWith(undefined);
+      expect(onStagedShotCountChange).toHaveBeenLastCalledWith(9);
     });
   });
 });

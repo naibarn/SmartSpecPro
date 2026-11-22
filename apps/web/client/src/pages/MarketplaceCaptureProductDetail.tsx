@@ -2756,13 +2756,11 @@ export default function MarketplaceCaptureProductDetail() {
     useState<number | undefined>(undefined);
   // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
   // flexible-shots-and-creation-casting/plan.md, W1/W3) — STAGED pipeline's
-  // flexible shot count. Same "own state, merged into
-  // buildAutoReviewReferenceAnchors() as shotCount, omitted when untouched"
-  // precedent as `autoReviewShotDurationSeconds` above. `undefined` keeps
-  // today's implicit 9-shot default byte-for-byte.
+  // flexible shot count. Five shots is the common Auto Storyboard Review
+  // default; send it explicitly so the plan and run use the same count.
   const [autoReviewStagedShotCount, setAutoReviewStagedShotCount] = useState<
     "auto" | number | undefined
-  >(undefined);
+  >(5);
   const [autoReviewLanguagePlan, setAutoReviewLanguagePlan] = useState({
     summaryLanguage: "th" as "th" | "en",
     dialogueLanguage: "th" as "th" | "en",
@@ -2840,7 +2838,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [environmentAnchor, setEnvironmentAnchor] =
     useState<UploadedReferenceAnchor | null>(null);
   const [autoReviewCharacterMode, setAutoReviewCharacterMode] =
-    useState<AutoReviewCharacterMode>("hands_only");
+    useState<AutoReviewCharacterMode>("uploaded_reference");
   // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
   // flexible-shots-and-creation-casting/plan.md, W3) — creation-time drama
   // cast, picked via the SAME `MarketplaceDramaCharacterPickerDialog` the
@@ -3351,6 +3349,9 @@ export default function MarketplaceCaptureProductDetail() {
       {
         productId,
         overrides: autoStoryboardOverridesWithCast,
+        ...(typeof autoReviewStagedShotCount === "number"
+          ? { stagedShotCount: autoReviewStagedShotCount }
+          : {}),
         ...(isAutoReviewJobSetupRoute
           ? { workflowMode: "job_workbench" as const }
           : {}),
@@ -5753,11 +5754,9 @@ export default function MarketplaceCaptureProductDetail() {
           : {}),
         // Marketplace flexible-shots-and-creation-casting (planning/
         // marketplace-flexible-shots-and-creation-casting/plan.md, W1/W3) —
-        // STAGED-only. Omitted entirely when the user never touches the
-        // shot-count selector, matching today's implicit 9-shot default.
-        ...(autoReviewStagedShotCount !== undefined
-          ? { shotCount: autoReviewStagedShotCount }
-          : {}),
+        // STAGED-only. Keep five shots as the default; "auto" remains a
+        // separate planner-selected option.
+        shotCount: autoReviewStagedShotCount ?? 5,
         // Story/skill LLM. Omitted when left on "แนะนำ (อัตโนมัติ)", which is
         // what lets the server resolve from the curated recommended set.
         ...(typeof autoStoryboardOverrides.storyPlanningModel === "string" &&
@@ -7023,7 +7022,7 @@ export default function MarketplaceCaptureProductDetail() {
               onResetToAuto={() => {
                 setAutoStoryboardOverrides(retainAutoStoryboardModelOverrides);
                 setAutoReviewShotDurationSeconds(undefined);
-                setAutoReviewStagedShotCount(undefined);
+                setAutoReviewStagedShotCount(5);
                 setShowAutoStoryboardAdvanced(false);
               }}
               qualityModeControl={
@@ -7126,7 +7125,7 @@ export default function MarketplaceCaptureProductDetail() {
               onResetToAuto={() => {
                 setAutoStoryboardOverrides(retainAutoStoryboardModelOverrides);
                 setAutoReviewShotDurationSeconds(undefined);
-                setAutoReviewStagedShotCount(undefined);
+                setAutoReviewStagedShotCount(5);
                 setShowAutoStoryboardAdvanced(false);
               }}
               imageModelOptions={autoReviewImageModelOptions.map(option => ({

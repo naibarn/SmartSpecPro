@@ -122,13 +122,13 @@ export function AutoStoryboardReviewPlanSummary({
       ? thai
         ? "AI เลือก 2–18"
         : "AI-selected 2–18"
-      : String(stagedShotCount ?? 9);
+      : String(stagedShotCount ?? 5);
   const frameStrategyLabel =
     frameStrategy === "sequential_shot_storyboard" &&
     onStagedShotCountChange
       ? thai
-        ? `${selectedShotCountLabel} ภาพต่อเนื่อง (Sequential)`
-        : `Sequential ${selectedShotCountLabel} images`
+        ? `${selectedShotCountLabel} ช็อต · สร้างภาพแยกแต่ละช็อต`
+        : `${selectedShotCountLabel} shots · Create a separate image for each shot`
       : frameStrategy && frameStrategy !== "auto"
         ? copy.frameStrategyLabels[frameStrategy]
         : copy.autoSelected;
@@ -142,10 +142,10 @@ export function AutoStoryboardReviewPlanSummary({
     ...Array.from({ length: 17 }, (_, index) => index + 2).map(count => ({
       value: String(count),
       label:
-        count === 9
+        count === 5
           ? thai
-            ? "9 ช็อต (ค่าเริ่มต้น)"
-            : "9 shots (default)"
+            ? "5 ช็อต (ค่าเริ่มต้น)"
+            : "5 shots (default)"
           : thai
             ? `${count} ช็อต`
             : `${count} shots`,
@@ -284,14 +284,10 @@ export function AutoStoryboardReviewPlanSummary({
                     : "Choose 2–18 shots, or let AI decide from the story."
                 }
                 options={shotCountOptions}
-                value={String(stagedShotCount ?? 9)}
+                value={String(stagedShotCount ?? 5)}
                 onChange={value =>
                   onStagedShotCountChange(
-                    value === "auto"
-                      ? "auto"
-                      : value === "9"
-                        ? undefined
-                        : Number(value)
+                    value === "auto" ? "auto" : Number(value)
                   )
                 }
                 presentation="adaptive"

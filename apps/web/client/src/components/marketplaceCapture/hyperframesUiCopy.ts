@@ -107,19 +107,19 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Manual render controls ยังพร้อมใช้เป็น retry หรือ fallback",
         snapshotComparison: "Snapshot comparison",
         noSnapshots: "ยังไม่มี snapshot",
-        // Feature 136 (section 11, §6.10) — sequential 9-image storyboard UI.
+        // Feature 136 (section 11, §6.10) — one image per storyboard shot.
         frameStrategyLabels: {
           storyboard_3x3_split: "ตาราง storyboard 3x3",
           video_shot_start_stop: "เฟรมเริ่ม/จบแต่ละช็อต",
-          sequential_shot_storyboard: "9 ภาพต่อเนื่อง (Sequential)",
+          sequential_shot_storyboard: "สร้างภาพแยกแต่ละช็อต",
         } as Record<
           "storyboard_3x3_split" | "video_shot_start_stop" | "sequential_shot_storyboard",
           string
         >,
         sequentialStrategyOptionLabel:
-          "9 ภาพต่อเนื่อง (Sequential) — 1 prompt ต่อ 1 ภาพ",
+          "สร้างภาพแยกแต่ละช็อต",
         sequentialStrategyOptionDescription:
-          "สร้างภาพแยก 9 ภาพเป็นเรื่องเดียวต่อเนื่อง เน้นสินค้าตรงทุกมุม",
+          "สร้างภาพแยกหนึ่งภาพต่อหนึ่งช็อตให้เป็นเรื่องเดียวต่อเนื่อง และรักษาสินค้าให้ตรงกันทุกมุม",
         // Frame-strategy card promotion — top-level card copy. The card
         // mirrors `frameStrategyOptions` in AutoStoryboardAdvancedOverrides.tsx
         // (reuses `frameStrategyLabels` above for option labels and
@@ -513,19 +513,19 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Manual render controls are available as retry or fallback.",
         snapshotComparison: "Snapshot comparison",
         noSnapshots: "No snapshots yet.",
-        // Feature 136 (section 11, §6.10) — sequential 9-image storyboard UI.
+        // Feature 136 (section 11, §6.10) — one image per storyboard shot.
         frameStrategyLabels: {
           storyboard_3x3_split: "3x3 storyboard grid",
           video_shot_start_stop: "Start/stop frame pairs",
-          sequential_shot_storyboard: "Sequential 9 images",
+          sequential_shot_storyboard: "Create a separate image for each shot",
         } as Record<
           "storyboard_3x3_split" | "video_shot_start_stop" | "sequential_shot_storyboard",
           string
         >,
         sequentialStrategyOptionLabel:
-          "Sequential 9 images — one prompt per image",
+          "Create a separate image for each shot",
         sequentialStrategyOptionDescription:
-          "Nine separate images telling one continuous story, product-accurate from every angle",
+          "Generate one image per shot as a continuous story, preserving product consistency across angles.",
         // Frame-strategy card promotion — top-level card copy. The card
         // mirrors `frameStrategyOptions` in AutoStoryboardAdvancedOverrides.tsx
         // (reuses `frameStrategyLabels` above for option labels and

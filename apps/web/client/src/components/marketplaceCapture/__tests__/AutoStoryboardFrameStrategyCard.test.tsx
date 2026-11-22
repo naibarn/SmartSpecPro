@@ -65,7 +65,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("button", {
-        name: /Sequential 9 images — one prompt per image/i,
+        name: /Create a separate image for each shot/i,
       })
     ).toBeTruthy();
   });
@@ -74,7 +74,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     render(
       <AutoStoryboardFrameStrategyCard
         enabled
-        plan={readyPlan()}
+        plan={readyPlan({ frameStrategy: "storyboard_3x3_split" })}
         value={{}}
         onChange={vi.fn()}
       />
@@ -87,7 +87,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
       screen.getByRole("button", { name: /start\/stop frame pairs/i })
     ).toHaveAttribute("aria-pressed", "false");
     expect(
-      screen.getByRole("button", { name: /Sequential 9 images/i })
+      screen.getByRole("button", { name: /Create a separate image for each shot/i })
     ).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -108,7 +108,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
       screen.getByRole("button", { name: /3x3 storyboard grid/i })
     ).toHaveAttribute("aria-pressed", "false");
     expect(
-      screen.getByRole("button", { name: /Sequential 9 images/i })
+      screen.getByRole("button", { name: /Create a separate image for each shot/i })
     ).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -123,7 +123,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: /Sequential 9 images/i })
+      screen.getByRole("button", { name: /Create a separate image for each shot/i })
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: /3x3 storyboard grid/i })
@@ -135,7 +135,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     render(
       <AutoStoryboardFrameStrategyCard
         enabled
-        plan={readyPlan()}
+        plan={readyPlan({ frameStrategy: "storyboard_3x3_split" })}
         value={{}}
         onChange={onChange}
       />
@@ -143,7 +143,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /Sequential 9 images — one prompt per image/i,
+        name: /Create a separate image for each shot/i,
       })
     );
     expect(onChange).toHaveBeenCalledWith({
@@ -213,7 +213,7 @@ describe("AutoStoryboardFrameStrategyCard", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("button", {
-        name: /9 ภาพต่อเนื่อง \(Sequential\) — 1 prompt ต่อ 1 ภาพ/i,
+        name: /สร้างภาพแยกแต่ละช็อต/i,
       })
     ).toBeTruthy();
   });

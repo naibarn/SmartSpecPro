@@ -29,7 +29,7 @@
  * portraits, never generate anything.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   Select,
@@ -230,6 +230,17 @@ export function MarketplaceDramaCharacterPickerDialog({
     { seriesId },
     { enabled: open && Boolean(seriesId) }
   );
+  const portraitRefreshRequestedRef = useRef(false);
+  useEffect(() => {
+    portraitRefreshRequestedRef.current = false;
+  }, [open, seriesId]);
+
+  const refreshPortraitUrls = () => {
+    if (!open || portraitRefreshRequestedRef.current) return;
+    portraitRefreshRequestedRef.current = true;
+    void charactersQuery.refetch();
+  };
+
   const charactersData = charactersQuery.data as
     | DramaCharactersForPickerResponse
     | undefined;
@@ -491,6 +502,8 @@ export function MarketplaceDramaCharacterPickerDialog({
                               <AuthenticatedMediaImage
                                 src={effectivePortraitUrl}
                                 alt={`${character.name} — ${look?.variantLabel || "ภาพต้นแบบ"}`}
+                                loading="eager"
+                                onError={refreshPortraitUrls}
                                 className={
                                   character.looks.length > 0
                                     ? "h-14 w-12 shrink-0 rounded-md object-cover"
@@ -554,6 +567,8 @@ export function MarketplaceDramaCharacterPickerDialog({
                                       <AuthenticatedMediaImage
                                         src={character.portraitUrl}
                                         alt=""
+                                        loading="eager"
+                                        onError={refreshPortraitUrls}
                                         className="h-12 w-9 shrink-0 rounded object-cover object-top"
                                       />
                                     ) : (
@@ -576,6 +591,8 @@ export function MarketplaceDramaCharacterPickerDialog({
                                         <AuthenticatedMediaImage
                                           src={lookOption.portraitUrl}
                                           alt=""
+                                          loading="eager"
+                                          onError={refreshPortraitUrls}
                                           className="h-12 w-9 shrink-0 rounded object-cover object-top"
                                         />
                                       ) : (

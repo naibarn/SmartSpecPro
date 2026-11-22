@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 // Marketplace two-character-conversation feature (planning/marketplace-two-
@@ -68,6 +69,22 @@ const charactersFixture = {
   ],
 };
 
+const refetchCharacters = vi.fn();
+
+// Radix Select uses pointer capture; jsdom does not implement those methods.
+if (!HTMLElement.prototype.hasPointerCapture) {
+  HTMLElement.prototype.hasPointerCapture = () => false;
+}
+if (!HTMLElement.prototype.setPointerCapture) {
+  HTMLElement.prototype.setPointerCapture = () => undefined;
+}
+if (!HTMLElement.prototype.releasePointerCapture) {
+  HTMLElement.prototype.releasePointerCapture = () => undefined;
+}
+if (!HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = () => undefined;
+}
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     verticalDramaSeries: {
@@ -85,6 +102,7 @@ vi.mock("@/lib/trpc", () => ({
           data: input.seriesId ? charactersFixture : undefined,
           isLoading: false,
           isError: false,
+          refetch: refetchCharacters,
         }),
       },
     },
@@ -94,6 +112,63 @@ vi.mock("@/lib/trpc", () => ({
 import { MarketplaceDramaCharacterPickerDialog } from "../MarketplaceDramaCharacterPickerDialog";
 
 describe("MarketplaceDramaCharacterPickerDialog", () => {
+  it("eagerly loads portraits in the scrollable roster", async () => {
+    render(
+      <MarketplaceDramaCharacterPickerDialog
+        open
+        onOpenChange={vi.fn()}
+        maxSelectable={2}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    const portraits = await screen.findAllByAltText(/— ภาพต้นแบบ/);
+    expect(portraits.length).toBeGreaterThan(0);
+    portraits.forEach(portrait => {
+      expect(portrait).toHaveAttribute("loading", "eager");
+    });
+  });
+
+  it("eagerly loads portrait options when a look menu opens", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    render(
+      <MarketplaceDramaCharacterPickerDialog
+        open
+        onOpenChange={vi.fn()}
+        maxSelectable={2}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    await screen.findByText("ไอริณ");
+    await user.click(screen.getByTestId("picker-look-1"));
+    const options = await screen.findAllByRole("option");
+    const optionPortraits = options.flatMap(option =>
+      Array.from(option.querySelectorAll("img"))
+    );
+    expect(optionPortraits.length).toBeGreaterThan(0);
+    optionPortraits.forEach(portrait => {
+      expect(portrait).toHaveAttribute("loading", "eager");
+    });
+  });
+
+  it("refreshes portrait URLs once when a roster image fails", async () => {
+    refetchCharacters.mockClear();
+    render(
+      <MarketplaceDramaCharacterPickerDialog
+        open
+        onOpenChange={vi.fn()}
+        maxSelectable={2}
+        onConfirm={vi.fn()}
+      />
+    );
+
+    const portraits = await screen.findAllByAltText(/— ภาพต้นแบบ/);
+    expect(portraits.length).toBeGreaterThan(0);
+    portraits.forEach(portrait => fireEvent.error(portrait));
+    expect(refetchCharacters).toHaveBeenCalledTimes(1);
+  });
+
   it("auto-selects the only series, renders its characters, and confirms host/guest roles in pick order", async () => {
     const onConfirm = vi.fn();
     render(
@@ -193,6 +268,7 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
   });
 
   it("picking a look writes the base character's name but the look's own portrait/asset id", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onConfirm = vi.fn();
     render(
       <MarketplaceDramaCharacterPickerDialog
@@ -204,9 +280,8 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
     );
 
     await waitFor(() => expect(screen.getByText("ไอริณ")).toBeTruthy());
-    fireEvent.change(screen.getByLabelText("เลือกลุคของ ไอริณ"), {
-      target: { value: "0" },
-    });
+    await user.click(screen.getByTestId("picker-look-1"));
+    await user.click(await screen.findByRole("option", { name: "ชุดทำงาน" }));
     fireEvent.click(screen.getByLabelText("เลือก ไอริณ"));
     fireEvent.click(
       screen.getByRole("button", { name: "เพิ่มตัวละคร (1)" })
@@ -224,6 +299,7 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
      over — a character that plainly had looks read as broken
      (`planning/marketplace-four-character-cast/plan.md`). */
   it("lets the look be changed AFTER the character is already selected", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onConfirm = vi.fn();
     render(
       <MarketplaceDramaCharacterPickerDialog
@@ -239,7 +315,8 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
     fireEvent.click(screen.getByLabelText("เลือก ไอริณ"));
     const lookSelect = screen.getByLabelText("เลือกลุคของ ไอริณ");
     expect((lookSelect as HTMLSelectElement).disabled).toBe(false);
-    fireEvent.change(lookSelect, { target: { value: "0" } });
+    await user.click(lookSelect);
+    await user.click(await screen.findByRole("option", { name: "ชุดทำงาน" }));
     fireEvent.click(screen.getByRole("button", { name: "เพิ่มตัวละคร (1)" }));
 
     expect(onConfirm.mock.calls[0][0][0]).toMatchObject({
@@ -251,6 +328,7 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
   });
 
   it("switching back to the base portrait after selecting a look clears the variant label", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onConfirm = vi.fn();
     render(
       <MarketplaceDramaCharacterPickerDialog
@@ -263,9 +341,10 @@ describe("MarketplaceDramaCharacterPickerDialog", () => {
 
     await waitFor(() => expect(screen.getByText("ไอริณ")).toBeTruthy());
     fireEvent.click(screen.getByLabelText("เลือก ไอริณ"));
-    const lookSelect = screen.getByLabelText("เลือกลุคของ ไอริณ");
-    fireEvent.change(lookSelect, { target: { value: "0" } });
-    fireEvent.change(lookSelect, { target: { value: "" } });
+    await user.click(screen.getByTestId("picker-look-1"));
+    await user.click(await screen.findByRole("option", { name: "ชุดทำงาน" }));
+    await user.click(screen.getByTestId("picker-look-1"));
+    await user.click(await screen.findByRole("option", { name: "ภาพต้นแบบ" }));
     fireEvent.click(screen.getByRole("button", { name: "เพิ่มตัวละคร (1)" }));
 
     const confirmed = onConfirm.mock.calls[0][0][0];

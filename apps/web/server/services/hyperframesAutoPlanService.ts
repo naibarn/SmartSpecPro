@@ -400,6 +400,7 @@ export function buildHyperframesAutoPlanFromState(input: {
   productBundle?: unknown;
   activeRun?: Record<string, unknown> | null;
   overrides?: Record<string, unknown> | null;
+  stagedShotCount?: number;
   accessInput?: Partial<HyperframesAccessInput>;
   access?: ReturnType<typeof resolveHyperframesFeatureAccess>;
   sequentialStoryboardEnabled?: boolean;
@@ -483,6 +484,15 @@ export function buildHyperframesAutoPlanFromState(input: {
     warnings.push(buildBlocker("sequential_storyboard_disabled", "warning"));
   }
   const tenantId = input.auth.tenantId ?? "default";
+  const selectedStagedShotCount = input.stagedShotCount;
+  const imageJobCount =
+    defaults.frameStrategy === "sequential_shot_storyboard" &&
+    typeof selectedStagedShotCount === "number" &&
+    Number.isInteger(selectedStagedShotCount) &&
+    selectedStagedShotCount >= 2 &&
+    selectedStagedShotCount <= 18
+      ? selectedStagedShotCount
+      : resolveHyperframesAutoPlanImageJobCount(defaults);
   const creditEstimate = buildHyperframesCreditEstimate({
     tenantId,
     userId: input.auth.userId,
@@ -493,11 +503,11 @@ export function buildHyperframesAutoPlanFromState(input: {
     platformPreset: defaults.platformPreset,
     quotaDecision: access.creditAndQuota.quotaDecision,
     workerComplexityMultiplier: autoPlanWorkerComplexityMultiplier(defaults),
-    // Feature 136 (section 10, §5.4) — reads the locally merged,
-    // section-01-sanitized `defaults` (not `autoDefaults`), so a flag-off
-    // sequential request (already stripped by
-    // `sanitizeSequentialStoryboardOverrides` above) resolves to 1.
-    imageJobCount: resolveHyperframesAutoPlanImageJobCount(defaults),
+    // Use the selected staged count for sequential plans when present; a
+    // missing selection preserves the historical strategy estimate. Resolve
+    // from sanitized defaults so a flag-off sequential request still becomes
+    // a one-image grid plan.
+    imageJobCount,
   });
   return buildHyperframesAutoStoryboardReviewPlan({
     productId: input.productId,
@@ -520,6 +530,7 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
   productId: string;
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
+  stagedShotCount?: number;
   accessInput?: Partial<HyperframesAccessInput>;
   workflowMode?: "standard" | "job_workbench";
 }): Promise<{
@@ -608,6 +619,7 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
     productBundle,
     activeRun: activeRun as Record<string, unknown> | null,
     overrides: workflowOverrides,
+    stagedShotCount: input.stagedShotCount,
     accessInput: input.accessInput,
     access,
     sequentialStoryboardEnabled:
@@ -628,6 +640,7 @@ export async function getHyperframesAutoStoryboardReviewPlan(input: {
   productId: string;
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
+  stagedShotCount?: number;
   accessInput?: Partial<HyperframesAccessInput>;
   workflowMode?: "standard" | "job_workbench";
 }): Promise<HyperframesAutoStoryboardReviewPlan> {
@@ -726,6 +739,7 @@ export async function getHyperframesAutoStoryboardReviewPlanWithEvidence(input: 
   productId: string;
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
+  stagedShotCount?: number;
   accessInput?: Partial<HyperframesAccessInput>;
   workflowMode?: "standard" | "job_workbench";
 }): Promise<{

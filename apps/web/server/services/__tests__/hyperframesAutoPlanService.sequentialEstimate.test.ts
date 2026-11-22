@@ -123,8 +123,22 @@ describe("imageJobCount on the plan (Feature 136 §5.4)", () => {
     expect(plan.creditEstimate?.imageJobCount).toBe(9);
   });
 
+  it("uses the staged shot selection for sequential image-job estimates", () => {
+    const plan = buildHyperframesAutoPlanFromState({
+      ...baseInput(),
+      sequentialStoryboardEnabled: true,
+      stagedShotCount: 5,
+      overrides: { frameStrategy: "sequential_shot_storyboard" },
+    });
+
+    expect(plan.creditEstimate?.imageJobCount).toBe(5);
+  });
+
   it("default (3x3) plan has no imageJobCount key", () => {
-    const plan = buildHyperframesAutoPlanFromState(baseInput());
+    const plan = buildHyperframesAutoPlanFromState({
+      ...baseInput(),
+      overrides: { frameStrategy: "storyboard_3x3_split" },
+    });
     expect(
       Object.prototype.hasOwnProperty.call(
         plan.creditEstimate ?? {},
@@ -189,7 +203,10 @@ describe("imageJobCount on the plan (Feature 136 §5.4)", () => {
   });
 
   it("HAZARD guard: sequential vs grid credits at preview scale are >= (not necessarily >, both ceil to the same integer), while the multiplier itself does differ", () => {
-    const gridPlan = buildHyperframesAutoPlanFromState(baseInput());
+    const gridPlan = buildHyperframesAutoPlanFromState({
+      ...baseInput(),
+      overrides: { frameStrategy: "storyboard_3x3_split" },
+    });
     const sequentialPlan = buildHyperframesAutoPlanFromState({
       ...baseInput(),
       sequentialStoryboardEnabled: true,

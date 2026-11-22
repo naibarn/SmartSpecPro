@@ -71,7 +71,7 @@ describe("AutoStoryboardReviewPlanSummary — strategy card (Feature 136 §5.3)"
         locale="en"
       />
     );
-    expect(screen.getByText("Sequential 9 images")).toBeTruthy();
+    expect(screen.getByText("Create a separate image for each shot")).toBeTruthy();
   });
 
   it("renders the sequential strategy label in Thai", () => {
@@ -84,6 +84,22 @@ describe("AutoStoryboardReviewPlanSummary — strategy card (Feature 136 §5.3)"
       />
     );
     expect(screen.getByText("เฟรม")).toBeTruthy();
-    expect(screen.getByText("9 ภาพต่อเนื่อง (Sequential)")).toBeTruthy();
+    expect(screen.getByText("สร้างภาพแยกแต่ละช็อต")).toBeTruthy();
+  });
+
+  it("defaults the visible sequential shot-count control to five", () => {
+    render(
+      <AutoStoryboardReviewPlanSummary
+        plan={planWithStrategy("sequential_shot_storyboard")}
+        onStart={vi.fn()}
+        onUseStandard={vi.fn()}
+        onStagedShotCountChange={vi.fn()}
+        onShotDurationSecondsChange={vi.fn()}
+        locale="en"
+      />
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Shot count" })
+    ).toHaveTextContent("5 shots");
   });
 });

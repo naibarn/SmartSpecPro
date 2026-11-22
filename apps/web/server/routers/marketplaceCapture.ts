@@ -1185,6 +1185,7 @@ export const marketplaceCaptureRouter = router({
         productId: input.productId,
         includeTemplates: input.includeTemplates,
         overrides: input.overrides,
+        stagedShotCount: input.stagedShotCount,
         workflowMode: input.workflowMode,
         auth: authFromCtx(ctx),
       })
