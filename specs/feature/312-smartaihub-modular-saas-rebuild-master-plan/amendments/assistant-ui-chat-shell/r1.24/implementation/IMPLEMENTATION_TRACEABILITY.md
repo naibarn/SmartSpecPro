@@ -132,3 +132,16 @@ This is the latest authoritative execution status. Prior blocked reports remain 
 | Preserve historical Attempt provenance | The exact execution endpoint checks Job, Mission, conversation and workspace before matching a recorded Attempt. Core and Shell tests cover a historical selection and deny an unknown Attempt. Browser fixtures confirm a historical Attempt keeps its own route, outcome and artifacts after refresh. |
 | Explain independent lifecycle states | Mission Control displays open state and count of linked Jobs. Task Control labels Job status independently from the selected Attempt outcome. Job event cursor is identified as Job-level evidence. |
 | Verify DEV deployment | Platform `77621786ed680e95f5bb0c7ef9e77583bff1f9dc` passed component health and public asset parity. Owner MFA browser UAT and native execution proof in this workspace remain pending. See the [handoff](HANDOFF.md). |
+
+### 2026-11-22 Unified Workspace correction
+
+| Scenario | Evidence | Acceptance status |
+|---|---|---|
+| A. Ordinary Chat | Chat tests cover admission without a Mission ID, including discussion opened from a Mission. | Automated pass. Authenticated browser and provider UAT pending. |
+| B. Named Mission and first Task | Core tests cover scoped creation and the canonical turn path. The deployed UI with intercepted fixture API responses opens the explicit first-Task composer and shows its resulting Task in Mission Control. | Automated and fixture browser pass. Authenticated browser and provider UAT pending. |
+| C. Existing Mission to exact Task and back | Fixture browser verifies that the Job and Attempt deep link, historical Attempt evidence and return link keep their scope. | Navigation pass. Native Codex submission remains open. |
+| D. Empty Mission | Browser test shows the first-Task action on an empty selected Mission at desktop, tablet and mobile sizes. | Fixture browser pass. |
+| E. Unregistered Harness | Browser test shows the empty registry while keeping the first-Task action available. | Fixture browser pass. |
+| F. Concurrent Harness work | The live view reads authorized registrations and splits recorded groups. Execution routes and evidence follow the selected Attempt. | Multi-Harness runtime verification pending actual authorized records. |
+
+Platform `5fcd67722a6ae4237fd27a90f19e601945030225` passed DEV release health, public asset parity and responsive browser checks using intercepted API responses. SPEC-312 and native SPEC-224 acceptance remain open. See the [handoff](HANDOFF.md) for the exact release, database receipt and screenshots.
