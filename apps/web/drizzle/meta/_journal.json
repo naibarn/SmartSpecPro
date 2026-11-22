@@ -3067,6 +3067,13 @@
       "when": 1795300000000,
       "tag": "0451_modular_harness_projection_job_tenant_read",
       "breakpoints": true
+    },
+    {
+      "idx": 452,
+      "version": "7",
+      "when": 1795310000000,
+      "tag": "0452_modular_chat_attach_existing_mission_job",
+      "breakpoints": true
     }
   ]
 }
