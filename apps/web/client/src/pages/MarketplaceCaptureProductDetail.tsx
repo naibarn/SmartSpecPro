@@ -462,12 +462,12 @@ const AUTO_REVIEW_CHARACTER_MODES: Array<
   },
   {
     id: "uploaded_reference",
-    label: "อัปโหลด reference",
+    label: "อัปโหลดภาพ / ดึงตัวละครจากซีรีส์",
     // Names the Drama Series path explicitly: the cast picker lives inside
     // this mode only, so a user hunting for it has no other signpost
     // (`planning/marketplace-four-character-cast/plan.md`).
     description:
-      "ล็อกหน้าหรือตัวแบบจากภาพ/character sheet หรือเลือกนักแสดงจาก Drama Series",
+      "อัปโหลดภาพอ้างอิงเพื่อกำหนดหน้าตา หรือดึงตัวละครที่บันทึกไว้จาก Drama Series",
   },
   {
     id: "product_only",
@@ -6381,11 +6381,13 @@ export default function MarketplaceCaptureProductDetail() {
           (`planning/marketplace-four-character-cast/plan.md`). */}
       {tenantFeatureFlags.verticalDramaSeries && !autoReviewModeUsesCast ? (
         <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-600">
-          🎬 นักแสดงจาก Drama Series ใช้ได้เฉพาะโหมด "อัปโหลด reference" เท่านั้น —
+          🎬 นักแสดงจาก Drama Series ใช้ได้เฉพาะโหมด
+          "อัปโหลดภาพ / ดึงตัวละครจากซีรีส์" เท่านั้น —
           เพราะตัวละครที่เลือกคือ identity จากภาพจริง ส่วนโหมดนี้กำหนดตัวละครจากตัวเลือก
           หรือไม่ใช้คนเลย
           {autoReviewCharacterCast.length > 0
-            ? ` (ตัวละคร ${autoReviewCharacterCast.length} คนที่เลือกไว้ยังถูกเก็บไว้ สลับไปโหมด "อัปโหลด reference" เมื่อไรก็ใช้ได้ทันที)`
+            ? ` (ตัวละคร ${autoReviewCharacterCast.length} คนที่เลือกไว้ยังถูกเก็บไว้ ` +
+              `สลับไปโหมด "อัปโหลดภาพ / ดึงตัวละครจากซีรีส์" เมื่อไรก็ใช้ได้ทันที)`
             : ""}
         </p>
       ) : null}
@@ -6581,7 +6583,7 @@ export default function MarketplaceCaptureProductDetail() {
             disabled={autoReviewCharacterCast.length >= MARKETPLACE_CHARACTER_CAST_MAX}
             className="w-full rounded-lg border border-violet-300 bg-white px-3 py-2 text-xs font-semibold text-violet-800 shadow-2xs transition hover:border-violet-400 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            🎬 เลือกจาก Drama Series
+            🎬 ดึงตัวละครจากซีรีส์
           </button>
           {/* Cast-first: the story LLM call happens the moment the run starts,
               so any cast change after that costs a second generation. Say so
