@@ -105,3 +105,12 @@ This is the latest authoritative execution status. Prior blocked reports remain 
 - **Postconditions:** approval function is owned by `modular_chat_mission_owner`, calls `assert_modular_runner_pairing_access`, grants execution to `modular_core_auth_dev`, denies PUBLIC execution, and leaves no schema CREATE privilege on the restricted owner. No production or legacy service was changed.
 - **Verification:** `runnerSystemAdminApprovalMigration.test.ts` passed 3/3; public `/livez` and `/api/chat/livez` returned 200; live catalog/ACL checks passed. No repository-wide typecheck was run.
 - **Acceptance:** authenticated approval click-through after this fix remains `UAT_PENDING`; overall SPEC-312 remains open. Use a fresh pairing link if the prior code expired.
+
+### 2026-11-22 DEV verification for Chat Jobs and Missions
+
+| Requirement | Evidence |
+|---|---|
+| Live Task navigation for Chat Jobs | Conversation #304 returns the original succeeded Job, exact Attempt and one artifact reference through the DEV Core projection. Contextual top and sidebar links and the recent conversation list pass Shell and Chat tests. |
+| Explicit Mission registration and Job association | The Chat inspector exposes the create and opt-in controls. The API test verifies the selected Mission ID reaches canonical turn admission. Chromium proves read-only navigation and the explicit create action with intercepted fixtures. Owner browser UAT remains pending. |
+| Workspace-scoped Harness registry | DEV migration 0451 restores its tenant join with a column-level grant to the function owner. The tested personal workspace returns an empty authorized catalog. Anonymous requests return 401. |
+| Immutable DEV delivery | Platform `c1fa8eb7b99f8ca9e5c89399b7e5559a67e54a46` is serving from the registered controller. Public Shell and Chat bytes match the artifact. See the [handoff](HANDOFF.md) for the release receipt and verification scope. |
