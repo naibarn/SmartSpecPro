@@ -3074,6 +3074,13 @@
       "when": 1795310000000,
       "tag": "0452_modular_chat_attach_existing_mission_job",
       "breakpoints": true
+    },
+    {
+      "idx": 453,
+      "version": "7",
+      "when": 1795320000000,
+      "tag": "0453_modular_chat_execution_provenance",
+      "breakpoints": true
     }
   ]
 }
