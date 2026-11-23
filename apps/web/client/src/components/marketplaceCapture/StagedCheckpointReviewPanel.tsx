@@ -38,6 +38,7 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharacterPickerDialog";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
+import { StagedSocialCaptionComposer } from "./StagedSocialCaptionComposer";
 import {
   StagedStoryConceptPicker,
   type StagedStoryConceptOption,
@@ -3226,6 +3227,11 @@ export function StagedCheckpointReviewPanel(props: {
                 ) : null}
               </Banner>
             ) : null}
+            <StagedSocialCaptionComposer
+              runId={props.runId}
+              state={props.state}
+              onRefresh={props.onRefresh}
+            />
             {props.state.correctionRequired ? (
               <div
                 className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
