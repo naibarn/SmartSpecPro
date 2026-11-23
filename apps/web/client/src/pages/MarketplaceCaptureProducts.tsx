@@ -246,7 +246,6 @@ export default function MarketplaceCaptureProducts() {
   const products = trpc.marketplaceCapture.listProducts.useInfiniteQuery(
     {
       limit: 24,
-      cursor: null,
       ownerOnly,
       platform,
       query: query.trim() || undefined,
@@ -254,7 +253,10 @@ export default function MarketplaceCaptureProducts() {
       sortMode,
     },
     {
-      initialCursor: null,
+      // tRPC removes `cursor` from the infinite-query key and omits a null
+      // pageParam. A truthy zero cursor makes the first request use the
+      // paginated response shape, including nextCursor.
+      initialCursor: "0",
       getNextPageParam: (lastPage: any) => Array.isArray(lastPage) ? undefined : lastPage.nextCursor ?? undefined,
       refetchOnWindowFocus: false,
       staleTime: 30_000,
