@@ -629,7 +629,7 @@ export function MarketplaceDramaCharacterPickerDialog({
           </button>
           <button
             type="button"
-            className="rounded bg-violet-700 px-3 py-2.5 text-sm font-semibold text-white shadow-2xs transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 rounded-lg border border-violet-800 bg-violet-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:shadow-none disabled:opacity-100"
             disabled={selections.length === 0}
             onClick={handleConfirm}
           >
