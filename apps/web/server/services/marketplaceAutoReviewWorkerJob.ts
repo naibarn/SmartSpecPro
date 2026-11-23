@@ -454,7 +454,7 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         };
         const reasonCode =
           typeof correction.reasonCode === "string" &&
-          /^[A-Z0-9_]+$/.test(correction.reasonCode)
+          /^[A-Za-z0-9_]+$/.test(correction.reasonCode)
             ? correction.reasonCode
             : "MARKETPLACE_AUTO_REVIEW_CORRECTION_REQUIRED";
         const stageKey =
