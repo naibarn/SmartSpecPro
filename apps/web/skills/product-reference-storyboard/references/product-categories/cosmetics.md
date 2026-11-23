@@ -18,6 +18,7 @@ Use vanity, bathroom, hand application, texture, swatch, routine, gift, or hero 
 ## Frame-Level Requirements
 
 - Put the category-specific lock facts in the shared PRODUCT VERIFY block; use only a short product-use cue inside product-visible frames.
+- Keep handheld formats such as serum/dropper bottles, tubes, compacts, and lipsticks at plausible hand-held size and naturally smaller than a person's face in shared lifestyle frames. Follow the actual reference and product type for larger packages; make labels visible by moving closer or cropping tighter, never by enlarging the package.
 - Wide, overview, result, confirmation, and CTA frames must show enough of the full silhouette to verify product class, countable parts, material, scale, and colorway.
 - Detail close-ups may crop tighter, but they must still show adjacent geometry or context that proves the product did not change.
 - Environment references may influence setting and light only; they must not provide a replacement product from this category.
