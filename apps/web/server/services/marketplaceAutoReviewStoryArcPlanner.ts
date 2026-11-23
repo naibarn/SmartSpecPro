@@ -19,6 +19,10 @@ import {
   castIdForCharacterIndex,
   type ShotCastLook,
 } from "../../shared/marketplaceAutoReview/shotCast";
+import {
+  normalizeStagedDialogueTranscript,
+  normalizeStagedSpeakerLine,
+} from "../../shared/marketplaceAutoReview/stagedDialogue";
 
 function clean(value: string | null | undefined): string {
   return value?.trim() ?? "";
@@ -134,13 +138,14 @@ export function removeStagedMinorDialogueLines(
   dialogue: string,
   cast: readonly StagedCastMember[] | null | undefined
 ): string {
+  const normalizedDialogue = normalizeStagedDialogueTranscript(dialogue);
   const minorNames = new Set(
     (cast ?? [])
       .filter(isStagedCastMemberMinor)
       .map(member => normalizeStagedCastName(member.name))
   );
-  if (minorNames.size === 0) return dialogue;
-  return dialogue
+  if (minorNames.size === 0) return normalizedDialogue;
+  return normalizedDialogue
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
@@ -455,13 +460,18 @@ export function resolveStagedConversationMode(
 export function renderStagedDialogueFromTurns(
   turns: StagedDialogueTurn[]
 ): string {
-  return turns.map(turn => `${turn.speakerName}: ${turn.line}`).join("\n");
+  return turns
+    .map(
+      turn =>
+        `${turn.speakerName}: ${normalizeStagedSpeakerLine(turn.speakerName, turn.line)}`
+    )
+    .join("\n");
 }
 
 function parseSpeakerNamedDialogue(
   dialogue: string
 ): Array<{ speakerName: string; line: string }> | undefined {
-  const lines = dialogue
+  const lines = normalizeStagedDialogueTranscript(dialogue)
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean);
@@ -601,6 +611,7 @@ export function buildStagedImagePrompt(input: {
   castLooks?: Record<string, ShotCastLook> | null;
 }): string {
   const thai = input.plan.languagePlan?.promptLanguage === "th";
+  const dialogue = normalizeStagedDialogueTranscript(input.shot.dialogue);
 
   const activeItems = (input.customManifest || []).filter(
     item => item && typeof item.url === "string" && item.url.trim() && item.active !== false
@@ -741,11 +752,11 @@ export function buildStagedImagePrompt(input: {
         ? "จัดองค์ประกอบภาพให้เห็นสินค้าและการกระทำหลักชัดเจน ใช้มุมกล้องและระยะภาพที่สอดคล้องกับทิศทางภาพ พร้อมโฟกัสสินค้าคมชัด"
         : "จัดองค์ประกอบตามการกระทำหลักของช็อต โดยคงพร็อพให้เป็นของทั่วไปและไม่ให้สินค้าจริงเข้าฉาก",
       `แสดงการกระทำนี้กำลังเกิดขึ้นจริง ณ จังหวะต้นของภาพ: ${input.shot.movementDirection || input.shot.visualSummary}. ให้มือและท่าทางทำสิ่งที่บทพูดระบุโดยตรง ห้ามแทนด้วยการนั่งคุยหรือวางสินค้าไว้ข้างหน้าเฉย ๆ`,
-      ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${input.shot.dialogue}`)
+      ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${dialogue}`)
         ? ["การดูแลเส้นผมต้องดูเป็นกิจวัตรจริงและสุภาพ: เห็นเฉพาะศีรษะ/เส้นผมกับมือที่กำลังทำงาน เสื้อผ้าทึบแสงปกปิดไหล่และลำตัว ไม่มีภาพเปลือยหรือท่าทางเชิงยั่วยุ"]
         : []),
       "ใช้แสงและฉากสมจริงแบบภาพโฆษณาสินค้า โดยรักษาความต่อเนื่องของสี แสง และสถานที่ตลอด storyboard",
-      `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${input.shot.dialogue}`,
+      `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${dialogue}`,
       ...refLines,
       ...conversationLines,
       "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
@@ -806,11 +817,11 @@ export function buildStagedImagePrompt(input: {
       ? "Compose a clear product-focused frame with the shot's main action visible; choose camera distance and angle to support the visual direction, with sharp focus on the product."
       : "Compose the frame around the shot's main action. Keep any prop generic as described and leave the specific product out of frame.",
     `Show this exact action visibly in progress at the start-frame moment: ${input.shot.movementDirection || input.shot.visualSummary}. Hands and body posture must perform what the dialogue says; do not replace it with people sitting and talking or a product merely placed beside them.`,
-    ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${input.shot.dialogue}`)
+    ...(/ผม|หนังศีรษะ|สระผม|แชมพู|เซรั่ม|เส้นผม|hair|scalp|shampoo|serum/i.test(`${input.shot.visualSummary} ${input.shot.movementDirection ?? ""} ${dialogue}`)
       ? ["For hair-care actions, show a natural, modest routine: focus on the head/hair and working hands; wear opaque clothing that covers shoulders and torso; no nudity or suggestive posing."]
       : []),
     "Use realistic commercial-product lighting and a believable setting; keep location, color, and lighting continuity consistent across the storyboard.",
-    `This shot's dialogue (the image MUST reflect this emotion/situation): ${input.shot.dialogue}`,
+    `This shot's dialogue (the image MUST reflect this emotion/situation): ${dialogue}`,
     ...refLinesEng,
     ...conversationLinesEng,
     "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
@@ -1339,7 +1350,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nRoster facts: host/guest roles and cast IDs are user-selected. For each shot, provide "dialogueTurns" as an ordered array of {castId, line} entries and "castInShot" with the cast IDs of people visible in that shot. Every castId must match this roster exactly; the server builds "dialogue" from the turns after validation.`
+          )}\n\nRoster facts: host/guest roles and cast IDs are user-selected. For each shot, provide "dialogueTurns" as an ordered array of {castId, line} entries and "castInShot" with the cast IDs of people visible in that shot. Every castId must match this roster exactly; the server builds "dialogue" from the turns after validation. Each "line" must contain only the spoken words, never the speaker name or a "Name:" prefix.`
       : activeCast.length === 1
         ? // Gap fix (flexible-shots/creation-casting audit 2026-07-30): a SOLO
           // named cast member (e.g. one Drama Series character picked at
@@ -1695,7 +1706,7 @@ Marketplace Auto Review Story Arc skill runtime context:
             return [{
               castId: member.castId,
               speakerName: member.name,
-              line: clean(turn.line),
+              line: normalizeStagedSpeakerLine(member.name, clean(turn.line)),
             } satisfies StagedDialogueTurn];
           });
           if (resolvedTurns.some(turn => !turn.line)) {

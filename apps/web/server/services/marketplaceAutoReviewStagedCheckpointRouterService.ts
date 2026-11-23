@@ -34,6 +34,7 @@ import {
   type StagedStoryArcPlan,
   type StagedStoryConceptOption,
 } from "./marketplaceAutoReviewStoryArcPlanner";
+import { normalizeStagedDialogueTranscript } from "../../shared/marketplaceAutoReview/stagedDialogue";
 import {
   findConfirmedStagedReviewConcept,
   rememberUsedReviewConcept,
@@ -830,7 +831,7 @@ export async function getStagedAutoReviewCheckpointState(
       revision: shot.revision,
       state: shot.state,
       storySummary: shot.storySummary,
-      dialogue: shot.dialogue,
+      dialogue: normalizeStagedDialogueTranscript(shot.dialogue),
       title: detail.title ?? null,
       visualSummary: detail.visualSummary ?? null,
       approvedShotAction: shot.approvedShotAction ?? null,
@@ -3466,7 +3467,7 @@ export function buildStagedSingleShotRefreshInput(input: {
       purpose: planShot.title,
       story_summary: planShot.storySummary,
       product_in_shot: productVisible,
-      dialogue: planShot.dialogue,
+      dialogue: normalizeStagedDialogueTranscript(planShot.dialogue),
       duration_seconds: planShot.durationSeconds,
       demonstration_type: classifyStagedDemonstrationType(planShot.dialogue),
       depicts_minor: false,

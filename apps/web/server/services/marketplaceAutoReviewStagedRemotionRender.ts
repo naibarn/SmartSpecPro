@@ -52,6 +52,10 @@ import {
   type RemotionTemplateConfig,
 } from "../../shared/remotion/layerTemplateSchemas";
 import type { HyperframesFinalCompositeSubtitlePresetSchema } from "../../shared/hyperframes/runtimeApiSchemas";
+import {
+  normalizeStagedDialogueTranscript,
+  normalizeStagedSpeakerLine,
+} from "../../shared/marketplaceAutoReview/stagedDialogue";
 import { z } from "zod";
 
 export class StagedRemotionRenderError extends Error {
@@ -181,8 +185,11 @@ export function buildStagedCaptionLines(input: {
 
     const segments: string[] =
       shot.dialogueTurns && shot.dialogueTurns.length > 0
-        ? shot.dialogueTurns.map(turn => `${turn.speakerName}: ${turn.line}`)
-        : String(shot.dialogue ?? "")
+        ? shot.dialogueTurns.map(
+            turn =>
+              `${turn.speakerName}: ${normalizeStagedSpeakerLine(turn.speakerName, turn.line)}`
+          )
+        : normalizeStagedDialogueTranscript(String(shot.dialogue ?? ""))
             .split(/\n+/)
             .map(part => part.trim())
             .filter(Boolean);
