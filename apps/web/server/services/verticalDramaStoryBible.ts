@@ -2689,6 +2689,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   modelFallbackPolicy?: "recommended";
   /** Bound planning retries; managed vision-image download recovery remains allowed. */
   singleAttempt?: boolean;
+  /** Keep vision-grounded tasks from making a final text-only recovery call. */
+  disableTextFallback?: boolean;
   timeoutMs?: number;
   disableProviderFallbacks?: boolean;
   /** Observe every successful provider response, including schema-repair attempts. */
@@ -2926,7 +2928,11 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           if (isProviderUnavailableError(fallbackErr)) throw fallbackErr;
         }
       }
-      if (args.hasVision && images.length > 0) {
+      if (
+        args.hasVision &&
+        images.length > 0 &&
+        !args.disableTextFallback
+      ) {
         const result = await runVisionAwareJsonAttempt<T>({
           model: fallbackModel ?? args.model,
           systemPrompt: args.systemPrompt,

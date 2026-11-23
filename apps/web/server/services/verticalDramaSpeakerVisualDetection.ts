@@ -363,11 +363,12 @@ export async function detectVerticalDramaShotPeopleDirect(params: {
       tenantId: params.tenantId,
       publicUrl: params.publicUrl,
       schema: outputSchema,
-      firstAttemptMaxTokens: 1400,
-      retryMaxTokens: 1400,
-      singleAttempt: true,
+      firstAttemptMaxTokens: 1800,
+      retryMaxTokens: 2400,
+      maxSchemaRetries: 1,
       disableModelFallback: true,
       disableProviderFallbacks: true,
+      disableTextFallback: true,
       onUsage,
     });
   } catch (error) {
