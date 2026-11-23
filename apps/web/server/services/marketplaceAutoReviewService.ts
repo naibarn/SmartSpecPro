@@ -37437,7 +37437,11 @@ export async function advanceMarketplaceAutoReviewRun(
         cleanText(metadata.planningArchitecture)
       )
     ) {
-      return advanceMarketplaceAutoReviewStagedArchitecture({
+      // Keep the durable run lease until staged work has fully settled. A bare
+      // `return promise` executes this `finally` before the promise resolves,
+      // allowing another worker to claim the same run while it is still being
+      // mutated.
+      return await advanceMarketplaceAutoReviewStagedArchitecture({
         db,
         run,
         auth,
