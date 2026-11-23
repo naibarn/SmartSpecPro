@@ -7412,6 +7412,38 @@ export default function MarketplaceCaptureProductDetail() {
             <LocaleToggle className="shrink-0" />
           </div>
 
+          <section
+            className="sticky top-2 z-30 flex flex-col gap-3 rounded-xl border border-sky-200 bg-white/95 p-3 shadow-md backdrop-blur sm:flex-row sm:items-center sm:justify-between xl:hidden"
+            aria-label={
+              isThaiLocale
+                ? "เข้าถึงการตั้งค่ารีวิววิดีโอ"
+                : "Quick access to video review settings"
+            }
+          >
+            <header className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">
+                {isThaiLocale ? "ตั้งค่ารีวิววิดีโอ" : "Set up video review"}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                {isThaiLocale
+                  ? "ตั้งค่างานและตรวจขั้นตอนใน Job Workbench"
+                  : "Configure and review the workflow in Job Workbench"}
+              </p>
+            </header>
+            <Link
+              href={`/marketplace/auto-review/new/${encodeURIComponent(productId)}`}
+              className="shrink-0"
+            >
+              <Button
+                type="button"
+                className="min-h-11 w-full bg-slate-900 text-white shadow-sm hover:bg-slate-800 focus-visible:ring-sky-300 sm:w-auto"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {isThaiLocale ? "ตั้งค่ารีวิววิดีโอ" : "Set up video review"}
+              </Button>
+            </Link>
+          </section>
+
           {!isAutoReviewJobSetupRoute ? (
             <section
               className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10"
