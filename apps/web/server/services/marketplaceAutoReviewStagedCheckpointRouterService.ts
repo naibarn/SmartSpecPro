@@ -60,6 +60,10 @@ import {
   type MarketplaceVideoPromptSkillRun,
 } from "./marketplaceAutoReviewVideoPromptSkillRunner";
 import {
+  generateMarketplaceSocialCaption,
+  MARKETPLACE_SOCIAL_CAPTION_SKILL,
+} from "./marketplaceAutoReviewSocialCaptionSkillRunner";
+import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
   refreshSequentialShotPromptWithSkillDirect,
   type SequentialStoryboardLanguage,
@@ -517,6 +521,42 @@ function safeArtifactUrl(value: unknown): string | null {
   )
     return url;
   return null;
+}
+
+function stagedSocialCaptionProjection(value: unknown) {
+  const caption = record(value);
+  const text = stagedTextOrEmpty(caption.caption).slice(0, 2000);
+  const hashtags = Array.isArray(caption.hashtags)
+    ? caption.hashtags
+        .filter((item: unknown): item is string => typeof item === "string")
+        .map((item: string) => item.trim().replace(/^#+/, "").slice(0, 60))
+        .filter((item: string) => item && /^[\p{L}\p{M}\p{N}_]+$/u.test(item))
+        .filter(
+          (item: string, index: number, all: string[]) =>
+            all.indexOf(item) === index
+        )
+        .slice(0, 5)
+    : [];
+  const sourceType =
+    caption.sourceType === "product" || caption.sourceType === "shot"
+      ? caption.sourceType
+      : null;
+  if (!text || hashtags.length === 0 || !sourceType) return null;
+  return {
+    caption: text,
+    hashtags,
+    sourceType,
+    referenceIndex:
+      Number.isInteger(caption.referenceIndex) && caption.referenceIndex > 0
+        ? caption.referenceIndex
+        : null,
+    shotId:
+      Number.isInteger(caption.shotId) && caption.shotId > 0
+        ? caption.shotId
+        : null,
+    sourceLabel: stagedTextOrEmpty(caption.sourceLabel).slice(0, 240),
+    generatedAt: stagedTextOrEmpty(caption.generatedAt).slice(0, 64),
+  };
 }
 
 function requireStagedImageArtifactHash(shot: {
@@ -1043,10 +1083,226 @@ export async function getStagedAutoReviewCheckpointState(
       (stagedPipeline as Record<string, any> | null)?.correctionRequired ??
       null,
     storyPlan: stagedPipeline?.planView ?? null,
+    socialCaption: stagedSocialCaptionProjection(stagedPipeline?.socialCaption),
     shots: stagedShots,
     checkpoints: projectStagedCheckpoints(
       metadata.stagedSequentialStoryboard.reviewCheckpoints
     ),
+  };
+}
+
+export async function generateStagedAutoReviewSocialCaption(input: {
+  runId: string;
+  sourceType: "product" | "shot";
+  referenceIndex?: number;
+  shotId?: number;
+  expectedStateDigest?: string;
+  expectedSourceHash?: string;
+  idempotencyKey: string;
+  auth: StagedCheckpointAuth;
+  runtime?: StagedCheckpointRuntime;
+  workerExecution?: boolean;
+  onProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message: string;
+  }) => Promise<void>;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  if (input.idempotencyKey.trim().length < 8) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid idempotency key",
+    });
+  }
+  const sourceRef: StagedSocialCaptionSourceRef | null =
+    input.sourceType === "product" &&
+    Number.isSafeInteger(input.referenceIndex) &&
+    input.referenceIndex! > 0 &&
+    input.shotId === undefined
+      ? { sourceType: "product", referenceIndex: input.referenceIndex! }
+      : input.sourceType === "shot" &&
+          Number.isSafeInteger(input.shotId) &&
+          input.shotId! > 0 &&
+          input.referenceIndex === undefined
+        ? { sourceType: "shot", shotId: input.shotId! }
+        : null;
+  if (!sourceRef) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_caption_source_invalid",
+    });
+  }
+
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedMetadataPersisted(run);
+  const metadata = parseStagedMetadata(run);
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
+  const sourceContext = resolveStagedSocialCaptionContext(
+    run,
+    metadata,
+    sourceRef
+  );
+
+  if (!input.workerExecution) {
+    if (
+      !input.expectedStateDigest ||
+      stagedMetadataStateDigest(metadata) !== input.expectedStateDigest
+    ) {
+      throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+    }
+    const existingJob =
+      await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+        db,
+        tenantId,
+        input.idempotencyKey
+      );
+    if (existingJob) {
+      if (
+        existingJob.jobType !== "marketplace.auto_review.execute" ||
+        record(existingJob.inputJson).operation !==
+          "staged_social_caption_generation"
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "idempotency_conflict",
+        });
+      }
+      return {
+        runId: run.id,
+        workerJobId: existingJob.id,
+        operation: "staged_social_caption_generation",
+        status: existingJob.status,
+      };
+    }
+    const queued = await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: run.userId,
+      runId: run.id,
+      operation: {
+        operation: "staged_social_caption_generation",
+        runId: run.id,
+        sourceType: sourceRef.sourceType,
+        ...(sourceRef.sourceType === "product"
+          ? { referenceIndex: sourceRef.referenceIndex }
+          : { shotId: sourceRef.shotId }),
+        expectedSourceHash: sourceContext.sourceHash,
+        requestIdempotencyKey: input.idempotencyKey,
+      },
+      idempotencyKey: input.idempotencyKey,
+      priority: 35,
+    });
+    return {
+      runId: run.id,
+      workerJobId: queued.jobId,
+      operation: "staged_social_caption_generation",
+      status: "queued",
+    };
+  }
+
+  if (
+    !input.expectedSourceHash ||
+    sourceContext.sourceHash !== input.expectedSourceHash
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const existingCaption = record(
+    record(run.metadataJson).stagedPipeline
+  ).socialCaption;
+  if (
+    existingCaption?.requestIdempotencyKey === input.idempotencyKey &&
+    existingCaption?.sourceHash === input.expectedSourceHash
+  ) {
+    return {
+      runId: run.id,
+      operation: "staged_social_caption_generation",
+      status: "completed",
+    };
+  }
+
+  const generated = await generateMarketplaceSocialCaption({
+    userId: run.userId,
+    tenantId,
+    publicUrl: input.runtime?.publicUrl,
+    runId: run.id,
+    requestIdempotencyKey: input.idempotencyKey,
+    language: sourceContext.language,
+    product: sourceContext.product,
+    source: sourceContext.source,
+    onProgress: input.onProgress,
+  });
+
+  await db.transaction(async tx => {
+    const [lockedRun] = await tx
+      .select()
+      .from(marketplaceAutoReviewRuns)
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, input.runId),
+          eq(marketplaceAutoReviewRuns.userId, input.auth.userId),
+          tenantAccessClause(input.auth)
+        )
+      )
+      .for("update")
+      .limit(1);
+    if (!lockedRun) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Auto review run not found",
+      });
+    }
+    const currentMetadata = parseStagedMetadata(lockedRun);
+    const currentContext = resolveStagedSocialCaptionContext(
+      lockedRun,
+      currentMetadata,
+      sourceRef
+    );
+    if (currentContext.sourceHash !== input.expectedSourceHash) {
+      throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+    }
+    const raw = record(lockedRun.metadataJson);
+    const pipeline = record(raw.stagedPipeline);
+    const generatedAt = new Date().toISOString();
+    const nextMetadata = {
+      ...raw,
+      stagedPipeline: {
+        ...pipeline,
+        socialCaption: {
+          caption: generated.caption,
+          hashtags: generated.hashtags,
+          sourceType: sourceRef.sourceType,
+          ...(sourceRef.sourceType === "product"
+            ? { referenceIndex: sourceRef.referenceIndex }
+            : { shotId: sourceRef.shotId }),
+          sourceLabel: sourceContext.source.label,
+          sourceHash: input.expectedSourceHash,
+          requestIdempotencyKey: input.idempotencyKey,
+          skill: MARKETPLACE_SOCIAL_CAPTION_SKILL,
+          generatedAt,
+          creditsUsed: generated.creditsUsed,
+        },
+      },
+    };
+    await tx
+      .update(marketplaceAutoReviewRuns)
+      .set({ metadataJson: nextMetadata, updatedAt: new Date() })
+      .where(eq(marketplaceAutoReviewRuns.id, lockedRun.id));
+  });
+  await input.onProgress?.({
+    progress: 100,
+    stage: MARKETPLACE_SOCIAL_CAPTION_SKILL,
+    message: "บันทึก Caption และ Hashtag เรียบร้อยแล้ว",
+  });
+  return {
+    runId: run.id,
+    operation: "staged_social_caption_generation",
+    status: "completed",
   };
 }
 
@@ -2620,6 +2876,148 @@ function requireStagedReferenceManifest(
     }
     return item;
   });
+}
+
+type StagedSocialCaptionSourceRef =
+  | { sourceType: "product"; referenceIndex: number; shotId?: never }
+  | { sourceType: "shot"; shotId: number; referenceIndex?: never };
+
+function boundedCaptionFacts(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") return value.trim().slice(0, 1000);
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 30).map(item => boundedCaptionFacts(item, depth + 1));
+  }
+  if (value && typeof value === "object" && depth < 3) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .slice(0, 40)
+        .map(([key, item]) => [
+          key.slice(0, 100),
+          boundedCaptionFacts(item, depth + 1),
+        ])
+    );
+  }
+  return undefined;
+}
+
+function resolveStagedSocialCaptionContext(
+  run: StagedCheckpointRun,
+  _metadata: ReturnType<typeof parseStagedMetadata>,
+  sourceRef: StagedSocialCaptionSourceRef
+) {
+  const base = record(run.metadataJson);
+  const pipeline = record(base.stagedPipeline);
+  const plan = record(pipeline.plan);
+  const product = record(plan.product);
+  const productName = stagedTextOrEmpty(product.productName).slice(0, 240);
+  if (!productName) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_caption_product_info_missing",
+    });
+  }
+  const productInfo = {
+    productName,
+    description: stagedTextOrEmpty(product.description).slice(0, 3000),
+    specs: boundedCaptionFacts(product.specs) as
+      Record<string, unknown> | undefined,
+  };
+  const languagePlan = record(plan.languagePlan);
+  const language = languagePlan.summaryLanguage === "en" ? "en" : "th";
+
+  let source: {
+    type: "product" | "shot";
+    label: string;
+    imageUrl: string;
+    shotId?: number;
+    shotContext?: string;
+  };
+  let sourceEvidence: Record<string, unknown>;
+  if (sourceRef.sourceType === "product") {
+    const item = requireStagedReferenceManifest(base).find(
+      entry => entry.index === sourceRef.referenceIndex
+    );
+    const imageUrl =
+      item?.active === true && item.role !== "character"
+        ? safeArtifactUrl(item.url)
+        : null;
+    if (!item || !imageUrl) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_caption_product_image_unavailable",
+      });
+    }
+    const imageLabel = stagedTextOrEmpty(item.label).slice(0, 180);
+    source = {
+      type: "product",
+      label: imageLabel || `รูปสินค้า ${sourceRef.referenceIndex}`,
+      imageUrl,
+    };
+    sourceEvidence = {
+      type: "product",
+      referenceIndex: item.index,
+      imageUrl,
+      role: item.role,
+      label: imageLabel,
+    };
+  } else {
+    const shot = _metadata.stagedSequentialStoryboard.shots.find(
+      item => item.shotId === sourceRef.shotId
+    );
+    const imageUrl = shot ? safeArtifactUrl(shot.imageArtifactUrl) : null;
+    const imageHash = shot?.imageArtifactHash?.trim();
+    if (!shot || !imageUrl || !imageHash) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `staged_caption_shot_image_unavailable:shot-${sourceRef.shotId}`,
+      });
+    }
+    const planShot = Array.isArray(plan.shots)
+      ? record(plan.shots[sourceRef.shotId - 1])
+      : {};
+    const shotContext = [
+      stagedTextOrEmpty(planShot.title),
+      stagedTextOrEmpty(planShot.visualSummary),
+      shot.storySummary,
+      shot.dialogue,
+    ]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 2400);
+    source = {
+      type: "shot",
+      label: `Shot ${sourceRef.shotId} · ภาพเริ่มต้น`,
+      imageUrl,
+      shotId: sourceRef.shotId,
+      shotContext,
+    };
+    sourceEvidence = {
+      type: "shot",
+      shotId: sourceRef.shotId,
+      imageUrl,
+      imageHash,
+      shotContext,
+    };
+  }
+
+  const sourceHash = createHash("sha256")
+    .update(
+      JSON.stringify({
+        product: productInfo,
+        language,
+        source: sourceEvidence,
+      })
+    )
+    .digest("hex");
+  return { sourceHash, source, product: productInfo, language };
 }
 
 function buildStagedShotSpeakerReferences(input: {

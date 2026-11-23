@@ -176,6 +176,15 @@ export type StagedReviewState = {
     progress?: number | null;
     createdAt?: string | null;
   }>;
+  socialCaption?: {
+    caption: string;
+    hashtags: string[];
+    sourceType: "product" | "shot";
+    referenceIndex?: number | null;
+    shotId?: number | null;
+    sourceLabel?: string;
+    generatedAt?: string;
+  } | null;
   languagePlan?: {
     summaryLanguage: "th" | "en";
     dialogueLanguage: "th" | "en";
@@ -2345,6 +2354,7 @@ export function StagedCheckpointReviewPanel(props: {
     staged_story_redraft: "ร่างแนวเรื่องใหม่",
     plan_redraft: "ร่างแนวเรื่องใหม่",
     staged_prompt_generation: "สร้าง Prompt รายช็อต",
+    staged_social_caption_generation: "สร้าง Caption สำหรับโพสต์",
     staged_person_detection: "ตรวจจับคนในภาพรายช็อต",
     sequential_shot_prompt_generation: "สร้าง Prompt รายช็อต",
     sequential_shot_regeneration: "สร้างภาพรายช็อต",

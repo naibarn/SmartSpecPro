@@ -91,6 +91,7 @@ import {
   editStagedAutoReviewFinalAssembly,
   editStagedAutoReviewShot,
   detectStagedAutoReviewShotPeople,
+  generateStagedAutoReviewSocialCaption,
   generateStagedAutoReviewShotPrompt,
   getStagedAutoReviewCheckpointState,
   startStagedAutoReviewBulkGeneration,
@@ -1899,6 +1900,39 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       detectStagedAutoReviewShotPeople({
+        ...input,
+        auth: authFromCtx(ctx),
+        runtime: { publicUrl: ctx.publicUrl },
+      })
+    ),
+
+  generateStagedAutoReviewSocialCaption: protectedProcedure
+    .input(
+      z
+        .object({
+          runId: z.string().min(1).max(64),
+          sourceType: z.enum(["product", "shot"]),
+          referenceIndex: z.number().int().min(1).max(100).optional(),
+          shotId: z.number().int().min(1).max(30).optional(),
+          expectedStateDigest: z.string().min(1).max(256),
+          idempotencyKey: z.string().min(8).max(200),
+        })
+        .strict()
+        .refine(
+          input =>
+            input.sourceType === "product"
+              ? input.referenceIndex !== undefined && input.shotId === undefined
+              : input.shotId !== undefined &&
+                input.referenceIndex === undefined,
+          {
+            message:
+              "Caption source must identify one product image or one shot",
+          }
+        )
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      generateStagedAutoReviewSocialCaption({
         ...input,
         auth: authFromCtx(ctx),
         runtime: { publicUrl: ctx.publicUrl },

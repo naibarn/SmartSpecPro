@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { putMarketplaceShotMediaToR2 } from "@/lib/marketplaceShotMediaUpload";
+import { StagedSocialCaptionComposer } from "./StagedSocialCaptionComposer";
 import {
   StagedCheckpointReviewPanel,
   type ReferenceManifestItem,
@@ -819,6 +820,11 @@ export function StagedCheckpointReviewSurface(props: {
   };
   return (
     <div className={props.className}>
+      <StagedSocialCaptionComposer
+        runId={runId}
+        state={state}
+        onRefresh={stateQuery.refetch}
+      />
       <StagedCheckpointReviewPanel
         runId={runId}
         state={state}

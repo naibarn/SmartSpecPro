@@ -85,6 +85,17 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
+        operation: z.literal("staged_social_caption_generation"),
+        runId: runIdSchema,
+        sourceType: z.enum(["product", "shot"]),
+        referenceIndex: z.number().int().min(1).max(100).optional(),
+        shotId: z.number().int().min(1).max(30).optional(),
+        expectedSourceHash: z.string().trim().min(1).max(256),
+        requestIdempotencyKey: operationIdempotencySchema,
+      })
+      .strict(),
+    z
+      .object({
         operation: z.literal("staged_person_detection"),
         runId: runIdSchema,
         shotId: z.number().int().min(1).max(30),
@@ -541,6 +552,32 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         idempotencyKey: input.job.requestIdempotencyKey,
         instruction: input.job.instruction,
         model: input.job.model,
+        auth,
+        runtime: { publicUrl: runtime.publicUrl },
+        workerExecution: true,
+        onProgress: input.reportProgress,
+      });
+    }
+    case "staged_social_caption_generation": {
+      const { generateStagedAutoReviewSocialCaption } =
+        await import("./marketplaceAutoReviewStagedCheckpointRouterService");
+      const runtimeModule =
+        await import("./marketplaceAutoReviewWorkerRuntime");
+      const runtime =
+        await runtimeModule.createMarketplaceAutoReviewWorkerRuntime({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          runId: input.job.runId,
+          jobId: input.jobId,
+          schedulerSource: "worker_jobs:staged_social_caption_generation",
+        });
+      return generateStagedAutoReviewSocialCaption({
+        runId: input.job.runId,
+        sourceType: input.job.sourceType,
+        referenceIndex: input.job.referenceIndex,
+        shotId: input.job.shotId,
+        expectedSourceHash: input.job.expectedSourceHash,
+        idempotencyKey: input.job.requestIdempotencyKey,
         auth,
         runtime: { publicUrl: runtime.publicUrl },
         workerExecution: true,
