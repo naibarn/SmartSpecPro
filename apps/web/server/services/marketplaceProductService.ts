@@ -697,15 +697,18 @@ async function replaceAffiliateLinksForUser(
       eq(marketplaceProductAffiliateLinks.userId, userId),
     ));
     if (normalizedUrls.length > 0) {
-      await tx.insert(marketplaceProductAffiliateLinks).values(normalizedUrls.map((affiliateUrl) => ({
-        id: createMarketplaceId("mpal"),
-        productId,
-        userId,
-        tenantId: tenantId ?? null,
-        affiliateUrl,
-        createdAt: now,
-        updatedAt: now,
-      })));
+      await tx.insert(marketplaceProductAffiliateLinks).values(normalizedUrls.map((affiliateUrl, index) => {
+        const createdAt = new Date(now.getTime() + index);
+        return {
+          id: createMarketplaceId("mpal"),
+          productId,
+          userId,
+          tenantId: tenantId ?? null,
+          affiliateUrl,
+          createdAt,
+          updatedAt: createdAt,
+        };
+      }));
     }
   });
   return normalizedUrls;
