@@ -1393,8 +1393,10 @@ export interface ImageGenerationRequest {
   extraParams?: Record<string, any>;
   /** Tenant public URL for resolving relative reference URLs */
   publicUrl?: string;
-  /** Reference images for style transfer or img2img (1-5 URLs) */
+  /** Reference images for style transfer or img2img */
   referenceImageUrls?: string[];
+  /** Server-only: caller validated this reference set and its order. */
+  preserveReferenceOrder?: boolean;
   /** Reference style URL for style transfer */
   referenceStyleUrl?: string;
   /** Optional audit metadata for end-to-end traceability */
@@ -3768,7 +3770,12 @@ export class MediaGenerationService {
     // Add reference images if provided (1-5 images)
     const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
       await stageMarketplaceInlineImageReferences(
-        resolveReferenceImageUrlsForModel(modelId, request.referenceImageUrls, publicUrl),
+        resolveReferenceImageUrlsForModel(
+          modelId,
+          request.referenceImageUrls,
+          publicUrl,
+          request.preserveReferenceOrder === true,
+        ),
         request,
       ),
       request,

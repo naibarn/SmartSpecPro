@@ -1417,8 +1417,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
   requestIdempotencyKey: string;
   modelId: string;
   aspectRatio: MarketplaceSocialPostAspectRatio;
-  characterReferenceIndex: number;
-  productReferenceIndex: number;
   variants: MarketplaceSocialImageVariant[];
   auth: StagedCheckpointAuth;
   runtime?: StagedCheckpointRuntime;
@@ -1459,13 +1457,7 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
       message: "staged_social_image_variants_invalid",
     });
   }
-  if (
-    !Number.isSafeInteger(input.characterReferenceIndex) ||
-    input.characterReferenceIndex < 1 ||
-    !Number.isSafeInteger(input.productReferenceIndex) ||
-    input.productReferenceIndex < 1 ||
-    !input.modelId.trim()
-  ) {
+  if (!input.modelId.trim()) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "staged_social_image_selection_invalid",
@@ -1479,10 +1471,15 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
   const context = resolveStagedSocialPostImagesContext({
     run,
     metadata,
-    characterReferenceIndex: input.characterReferenceIndex,
-    productReferenceIndex: input.productReferenceIndex,
     modelId: input.modelId,
     aspectRatio: input.aspectRatio,
+  });
+  await resolveMarketplaceSocialPostImageModel({
+    modelId: input.modelId,
+    aspectRatio: input.aspectRatio,
+    requiredReferenceCount: Math.max(
+      ...Object.values(context.sources).map(source => source.references.length)
+    ),
   });
   if (
     input.expectedRequestHash &&
@@ -1505,10 +1502,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
     ) {
       throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
     }
-    await resolveMarketplaceSocialPostImageModel({
-      modelId: input.modelId,
-      aspectRatio: input.aspectRatio,
-    });
     const currentImages = record(
       record(record(record(run.metadataJson).stagedPipeline).socialCaption)
         .postImages
@@ -1552,8 +1545,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
       const lockedContext = resolveStagedSocialPostImagesContext({
         run: lockedRun,
         metadata: lockedMetadata,
-        characterReferenceIndex: input.characterReferenceIndex,
-        productReferenceIndex: input.productReferenceIndex,
         modelId: input.modelId,
         aspectRatio: input.aspectRatio,
       });
@@ -1599,10 +1590,7 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
         if (
           previousImages.requestHash !== requestHash ||
           previousImages.modelId !== input.modelId ||
-          previousImages.aspectRatio !== input.aspectRatio ||
-          previousImages.characterReferenceIndex !==
-            input.characterReferenceIndex ||
-          previousImages.productReferenceIndex !== input.productReferenceIndex
+          previousImages.aspectRatio !== input.aspectRatio
         ) {
           throw new TRPCError({
             code: "CONFLICT",
@@ -1691,8 +1679,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
         requestHash: lockedContext.requestHash,
         modelId: input.modelId,
         aspectRatio: input.aspectRatio,
-        characterReferenceIndex: input.characterReferenceIndex,
-        productReferenceIndex: input.productReferenceIndex,
         status: "queued",
         createdAt: sameBatch
           ? stagedTextOrEmpty(previousImages.createdAt) || now
@@ -1726,8 +1712,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
             requestIdempotencyKey: input.requestIdempotencyKey,
             modelId: input.modelId,
             aspectRatio: input.aspectRatio,
-            characterReferenceIndex: input.characterReferenceIndex,
-            productReferenceIndex: input.productReferenceIndex,
             variants,
           },
           idempotencyKey: input.requestIdempotencyKey,
@@ -1753,9 +1737,7 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
     postImages.batchId !== input.batchId ||
     postImages.requestHash !== requestHash ||
     postImages.modelId !== input.modelId ||
-    postImages.aspectRatio !== input.aspectRatio ||
-    postImages.characterReferenceIndex !== input.characterReferenceIndex ||
-    postImages.productReferenceIndex !== input.productReferenceIndex
+    postImages.aspectRatio !== input.aspectRatio
   ) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
@@ -1787,8 +1769,6 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
       const currentContext = resolveStagedSocialPostImagesContext({
         run: lockedRun,
         metadata: lockedMetadata,
-        characterReferenceIndex: input.characterReferenceIndex,
-        productReferenceIndex: input.productReferenceIndex,
         modelId: input.modelId,
         aspectRatio: input.aspectRatio,
       });
@@ -1881,7 +1861,7 @@ export async function generateStagedAutoReviewSocialPostImages(input: {
         language: context.language,
         caption: context.caption,
         product: context.product,
-        source: context.sources[variant],
+        sources: context.sources[variant].references,
         onProgress: async progress => {
           const variantProgress = Math.max(
             0,
@@ -3706,7 +3686,8 @@ type StagedSocialPostImagesContext = {
     MarketplaceSocialImageVariant,
     {
       label: string;
-      imageUrl: string;
+      imageUrls: string[];
+      references: Array<{ label: string; imageUrl: string }>;
       context?: string;
     }
   >;
@@ -3715,8 +3696,6 @@ type StagedSocialPostImagesContext = {
 function resolveStagedSocialPostImagesContext(input: {
   run: StagedCheckpointRun;
   metadata: ReturnType<typeof parseStagedMetadata>;
-  characterReferenceIndex: number;
-  productReferenceIndex: number;
   modelId: string;
   aspectRatio: MarketplaceSocialPostAspectRatio;
 }): StagedSocialPostImagesContext {
@@ -3753,57 +3732,93 @@ function resolveStagedSocialPostImagesContext(input: {
   ) {
     throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
   }
-  const manifest = requireStagedReferenceManifest(
-    record(input.run.metadataJson)
-  );
-  const character = manifest.find(
-    item =>
-      item.index === input.characterReferenceIndex &&
-      item.active === true &&
-      item.role === "character"
-  );
-  const productReference = manifest.find(
-    item =>
-      item.index === input.productReferenceIndex &&
-      item.active === true &&
-      item.role !== "character"
-  );
-  const characterUrl = character ? safeArtifactUrl(character.url) : null;
-  const productUrl = productReference
-    ? safeArtifactUrl(productReference.url)
-    : null;
-  if (!character || !characterUrl) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_social_character_reference_unavailable",
-    });
+  let manifest: Array<Record<string, any>> = [];
+  try {
+    manifest = requireStagedReferenceManifest(record(input.run.metadataJson));
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      error.message !== "STAGED_REFERENCE_MANIFEST_REQUIRED"
+    ) {
+      throw error;
+    }
   }
-  if (!productReference || !productUrl) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "staged_social_product_reference_unavailable",
-    });
-  }
-  const characterLabel =
-    stagedTextOrEmpty(character.characterName) ||
-    stagedTextOrEmpty(character.label) ||
-    `ตัวละคร ${character.index}`;
-  const productLabel =
-    stagedTextOrEmpty(productReference.label) ||
-    `รูปสินค้า ${productReference.index}`;
-  const refFingerprint = (item: Record<string, any>, imageUrl: string) => ({
-    index: item.index,
-    role: item.role,
-    label: stagedTextOrEmpty(item.label),
-    characterName: stagedTextOrEmpty(item.characterName),
-    imageUrl,
+  const referenceItems = (role: "character" | "product") =>
+    manifest
+      .filter(
+        item =>
+          item.active &&
+          (role === "character"
+            ? item.role === "character"
+            : item.role === "product")
+      )
+      .map(item => {
+        const imageUrl = safeArtifactUrl(item.url);
+        if (!imageUrl) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `staged_social_${role}_reference_unavailable`,
+          });
+        }
+        return {
+          item,
+          imageUrl,
+          label:
+            (role === "character"
+              ? stagedTextOrEmpty(item.characterName)
+              : "") ||
+            stagedTextOrEmpty(item.label) ||
+            `${role === "character" ? "ตัวละคร" : "รูปสินค้า"} ${item.index}`,
+        };
+      });
+  const refFingerprint = (
+    reference: ReturnType<typeof referenceItems>[number]
+  ) => ({
+    index: reference.item.index,
+    role: reference.item.role,
+    label: stagedTextOrEmpty(reference.item.label),
+    characterName: stagedTextOrEmpty(reference.item.characterName),
+    imageUrl: reference.imageUrl,
     checksum: stagedTextOrEmpty(
-      item.checksum ?? item.contentHash ?? item.sha256 ?? item.imageHash
+      reference.item.checksum ??
+        reference.item.contentHash ??
+        reference.item.sha256 ??
+        reference.item.imageHash
     ),
-    portraitAssetId: stagedTextOrEmpty(item.portraitAssetId),
-    vdCharacterId: stagedTextOrEmpty(item.vdCharacterId),
-    variantLabel: stagedTextOrEmpty(item.variantLabel),
+    portraitAssetId: stagedTextOrEmpty(reference.item.portraitAssetId),
+    vdCharacterId: stagedTextOrEmpty(reference.item.vdCharacterId),
+    variantLabel: stagedTextOrEmpty(reference.item.variantLabel),
   });
+  const characterReferences = referenceItems("character");
+  const productReferences = referenceItems("product");
+  const captionSourceContext = captionSource.source;
+  const captionSourceImage = {
+    label: captionSourceContext.label,
+    imageUrl: captionSourceContext.imageUrl,
+    context: captionSourceContext.shotContext,
+  };
+  const characterSources = characterReferences.length
+    ? characterReferences.map(reference => ({
+        label: reference.label,
+        imageUrl: reference.imageUrl,
+      }))
+    : [
+        {
+          ...captionSourceImage,
+          label: `${captionSourceImage.label} · ใช้แทนภาพตัวละครอ้างอิง`,
+        },
+      ];
+  const productSources = productReferences.length
+    ? productReferences.map(reference => ({
+        label: reference.label,
+        imageUrl: reference.imageUrl,
+      }))
+    : [
+        {
+          ...captionSourceImage,
+          label: `${captionSourceImage.label} · ใช้แทนภาพสินค้าอ้างอิง`,
+        },
+      ];
   const requestHash = buildProductionStableHash({
     caption,
     hashtags: Array.isArray(socialCaption.hashtags)
@@ -3815,12 +3830,13 @@ function resolveStagedSocialPostImagesContext(input: {
     captionSourceHash: captionSource.sourceHash,
     product: captionSource.product,
     language: captionSource.language,
-    characterReference: refFingerprint(character, characterUrl),
-    productReference: refFingerprint(productReference, productUrl),
+    characterReferences: characterReferences.map(refFingerprint),
+    productReferences: productReferences.map(refFingerprint),
+    characterFallbackUsed: characterReferences.length === 0,
+    productFallbackUsed: productReferences.length === 0,
     imageModelId: input.modelId.trim(),
     aspectRatio: input.aspectRatio,
   });
-  const captionSourceContext = captionSource.source;
   return {
     requestHash,
     caption,
@@ -3829,16 +3845,19 @@ function resolveStagedSocialPostImagesContext(input: {
     sources: {
       caption_source: {
         label: captionSourceContext.label,
-        imageUrl: captionSourceContext.imageUrl,
+        imageUrls: [captionSourceContext.imageUrl],
+        references: [captionSourceImage],
         context: captionSourceContext.shotContext,
       },
       character_reference: {
-        label: characterLabel,
-        imageUrl: characterUrl,
+        label: characterSources.map(source => source.label).join(", "),
+        imageUrls: characterSources.map(source => source.imageUrl),
+        references: characterSources,
       },
       product_reference: {
-        label: productLabel,
-        imageUrl: productUrl,
+        label: productSources.map(source => source.label).join(", "),
+        imageUrls: productSources.map(source => source.imageUrl),
+        references: productSources,
       },
     },
   };
@@ -3847,8 +3866,6 @@ function resolveStagedSocialPostImagesContext(input: {
 export function resolveStagedSocialPostImagesContextForTest(input: {
   run: StagedCheckpointRun;
   metadata: ReturnType<typeof parseStagedMetadata>;
-  characterReferenceIndex: number;
-  productReferenceIndex: number;
   modelId: string;
   aspectRatio: MarketplaceSocialPostAspectRatio;
 }) {

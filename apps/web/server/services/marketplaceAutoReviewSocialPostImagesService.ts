@@ -43,11 +43,11 @@ export type GenerateMarketplaceSocialPostImageInput = {
     description?: string | null;
     specs?: Record<string, unknown>;
   };
-  source: {
+  sources: Array<{
     label: string;
     imageUrl: string;
     context?: string;
-  };
+  }>;
   onProgress?: (progress: {
     progress: number;
     stage: string;
@@ -106,6 +106,7 @@ function supportedAspectRatios(input: {
 export async function resolveMarketplaceSocialPostImageModel(input: {
   modelId: string;
   aspectRatio: MarketplaceSocialPostAspectRatio;
+  requiredReferenceCount?: number;
 }) {
   const selection = await resolveEnabledMediaModelSelection({
     mediaType: "image",
@@ -118,10 +119,23 @@ export async function resolveMarketplaceSocialPostImageModel(input: {
   }
 
   const pricing = await resolveAdBannerImageModelPricing(input.modelId);
-  if (pricing.modelId !== input.modelId || pricing.maxReferenceImages < 1) {
+  const maxReferenceImages = Number(pricing.maxReferenceImages);
+  const requiredReferenceCount = Number(input.requiredReferenceCount ?? 1);
+  if (
+    pricing.modelId !== input.modelId ||
+    !Number.isSafeInteger(maxReferenceImages) ||
+    maxReferenceImages < 1
+  ) {
     throw new Error(
       "MARKETPLACE_SOCIAL_POST_IMAGE_MODEL_NEEDS_REFERENCE_SUPPORT"
     );
+  }
+  if (
+    !Number.isSafeInteger(requiredReferenceCount) ||
+    requiredReferenceCount < 1 ||
+    requiredReferenceCount > maxReferenceImages
+  ) {
+    throw new Error("MARKETPLACE_SOCIAL_POST_IMAGE_REFERENCE_LIMIT");
   }
   const [row] = await db
     .select({
@@ -211,6 +225,7 @@ export async function generateMarketplaceSocialPostImage(
   const model = await resolveMarketplaceSocialPostImageModel({
     modelId: input.modelId,
     aspectRatio: input.aspectRatio,
+    requiredReferenceCount: input.sources.length,
   });
   if (
     model.creditCost > 0 &&
@@ -261,7 +276,7 @@ export async function generateMarketplaceSocialPostImage(
       language: input.language,
       caption: input.caption,
       product: input.product,
-      source: input.source,
+      sources: input.sources,
       aspectRatio: input.aspectRatio,
     });
     promptCreditsUsed = prompt.creditsUsed;
@@ -286,7 +301,8 @@ export async function generateMarketplaceSocialPostImage(
         numImages: 1,
         aspectRatio: model.aspectRatio,
         outputFormat: "png",
-        referenceImageUrls: [input.source.imageUrl],
+        referenceImageUrls: input.sources.map(source => source.imageUrl),
+        preserveReferenceOrder: true,
         publicUrl: input.publicUrl ?? undefined,
         controlPlaneOperationKey: mediaRequestKey,
         extraParams: {

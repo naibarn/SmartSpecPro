@@ -44,8 +44,12 @@ describe("Marketplace Auto Review worker job admission", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     createControlPlaneJobMock.mockResolvedValue({ jobId: "worker-job-1" });
-    workerRuntimeMocks.createRuntime.mockResolvedValue({ publicUrl: "https://app.test" });
-    workerRuntimeMocks.advanceRun.mockResolvedValue({ runId: "run-auto-review-1" });
+    workerRuntimeMocks.createRuntime.mockResolvedValue({
+      publicUrl: "https://app.test",
+    });
+    workerRuntimeMocks.advanceRun.mockResolvedValue({
+      runId: "run-auto-review-1",
+    });
     workerRuntimeMocks.generateSocialPostImages.mockResolvedValue({
       status: "completed",
     });
@@ -60,8 +64,6 @@ describe("Marketplace Auto Review worker job admission", () => {
       requestIdempotencyKey: "social-image-request-1",
       modelId: "image-model-a",
       aspectRatio: "4:5" as const,
-      characterReferenceIndex: 3,
-      productReferenceIndex: 1,
       variants: [
         "caption_source" as const,
         "character_reference" as const,
@@ -106,10 +108,17 @@ describe("Marketplace Auto Review worker job admission", () => {
         workerExecution: true,
       })
     );
+    expect(
+      workerRuntimeMocks.generateSocialPostImages.mock.calls[0][0]
+    ).not.toHaveProperty("characterReferenceIndex");
+    expect(
+      workerRuntimeMocks.generateSocialPostImages.mock.calls[0][0]
+    ).not.toHaveProperty("productReferenceIndex");
   });
 
   it("accepts dialogue previews when a staged story concept is selected", () => {
-    const dialoguePreview = "พิมพ์ชนก: วันนี้ลองใช้แล้วรู้สึกสบายผิวขึ้นมาก ธีร์: ดีเลย เล่าให้ฟังหน่อยว่าใช้ยังไง";
+    const dialoguePreview =
+      "พิมพ์ชนก: วันนี้ลองใช้แล้วรู้สึกสบายผิวขึ้นมาก ธีร์: ดีเลย เล่าให้ฟังหน่อยว่าใช้ยังไง";
 
     const parsed = marketplaceAutoReviewWorkerInputSchema.parse({
       operation: "staged_story_redraft",

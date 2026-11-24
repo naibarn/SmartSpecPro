@@ -1972,8 +1972,6 @@ export const marketplaceCaptureRouter = router({
           requestIdempotencyKey: z.string().min(8).max(200),
           modelId: z.string().trim().min(1).max(200),
           aspectRatio: z.enum(["4:5", "9:16"]),
-          characterReferenceIndex: z.number().int().min(1).max(100),
-          productReferenceIndex: z.number().int().min(1).max(100),
           variants: z
             .array(
               z.enum([

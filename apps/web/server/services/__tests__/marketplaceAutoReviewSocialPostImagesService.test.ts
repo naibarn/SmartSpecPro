@@ -71,10 +71,16 @@ const params = {
     description: "Light moisturizer",
     specs: { size: "30 ml" },
   },
-  source: {
-    label: "Daily Cream main image",
-    imageUrl: "https://media.example.test/product.jpg",
-  },
+  sources: [
+    {
+      label: "Daily Cream main image",
+      imageUrl: "https://media.example.test/product.jpg",
+    },
+    {
+      label: "Daily Cream detail image",
+      imageUrl: "https://media.example.test/product-detail.jpg",
+    },
+  ],
 };
 
 describe("marketplace social post image generation billing", () => {
@@ -129,7 +135,7 @@ describe("marketplace social post image generation billing", () => {
     });
   });
 
-  it("reserves the chosen image model cost and sends one reference with the saved caption", async () => {
+  it("reserves the chosen image model cost and sends every job reference with the saved caption", async () => {
     const result = await generateMarketplaceSocialPostImage(params);
 
     expect(result).toMatchObject({
@@ -154,7 +160,7 @@ describe("marketplace social post image generation billing", () => {
       expect.objectContaining({
         caption: params.caption,
         variant: "product_reference",
-        source: params.source,
+        sources: params.sources,
       })
     );
     expect(mocks.generateImageAsync).toHaveBeenCalledWith(
@@ -163,7 +169,8 @@ describe("marketplace social post image generation billing", () => {
         strictModelSelection: true,
         numImages: 1,
         aspectRatio: "4:5",
-        referenceImageUrls: [params.source.imageUrl],
+        referenceImageUrls: params.sources.map(source => source.imageUrl),
+        preserveReferenceOrder: true,
         prompt: expect.stringContaining("Portrait studio photograph"),
         extraParams: expect.objectContaining({
           __auto_review_run_id: "mar_run_1",
@@ -209,6 +216,21 @@ describe("marketplace social post image generation billing", () => {
     await expect(generateMarketplaceSocialPostImage(params)).rejects.toThrow(
       "MARKETPLACE_SOCIAL_POST_IMAGE_ASPECT_RATIO_UNSUPPORTED"
     );
+    expect(mocks.deductCredits).not.toHaveBeenCalled();
+  });
+
+  it("rejects a model that cannot accept every job reference before charging", async () => {
+    mocks.resolveAdBannerImageModelPricing.mockResolvedValueOnce({
+      modelId: "image-model-a",
+      creditCost: 30,
+      maxReferenceImages: 1,
+      configJson: null,
+    });
+
+    await expect(generateMarketplaceSocialPostImage(params)).rejects.toThrow(
+      "MARKETPLACE_SOCIAL_POST_IMAGE_REFERENCE_LIMIT"
+    );
+    expect(mocks.hasEnoughCredits).not.toHaveBeenCalled();
     expect(mocks.deductCredits).not.toHaveBeenCalled();
   });
 

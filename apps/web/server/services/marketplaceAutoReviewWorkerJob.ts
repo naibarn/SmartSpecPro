@@ -103,8 +103,6 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
         requestIdempotencyKey: operationIdempotencySchema,
         modelId: z.string().trim().min(1).max(200),
         aspectRatio: z.enum(["4:5", "9:16"]),
-        characterReferenceIndex: z.number().int().min(1).max(100),
-        productReferenceIndex: z.number().int().min(1).max(100),
         variants: z
           .array(
             z.enum([
@@ -630,8 +628,6 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         requestIdempotencyKey: input.job.requestIdempotencyKey,
         modelId: input.job.modelId,
         aspectRatio: input.job.aspectRatio,
-        characterReferenceIndex: input.job.characterReferenceIndex,
-        productReferenceIndex: input.job.productReferenceIndex,
         variants: input.job.variants,
         auth,
         runtime: { publicUrl: runtime.publicUrl },

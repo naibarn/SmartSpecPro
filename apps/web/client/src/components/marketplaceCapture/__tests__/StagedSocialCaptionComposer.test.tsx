@@ -102,6 +102,21 @@ function stateFixture(overrides: Record<string, unknown> = {}) {
         url: "/api/storage/files/character-1.jpg",
         active: true,
       },
+      {
+        index: 3,
+        role: "character",
+        characterName: "Ani",
+        label: "Ani portrait",
+        url: "/api/storage/files/character-2.jpg",
+        active: true,
+      },
+      {
+        index: 4,
+        role: "product",
+        label: "Daily Cream detail",
+        url: "/api/storage/files/product-2.jpg",
+        active: true,
+      },
     ],
     ...overrides,
     socialCaption: {
@@ -120,11 +135,75 @@ describe("StagedSocialCaptionComposer social post images", () => {
     mocks.fetchAuthenticatedMedia.mockResolvedValue(new Blob(["image"]));
   });
 
-  it("queues three variants with a separate image model and selected references", async () => {
+  it("queues three variants using job references without asking the user to select them", async () => {
     render(
       <StagedSocialCaptionComposer
         runId="run-social-1"
         state={stateFixture() as any}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const generateButton = screen.getByRole("button", {
+      name: "สร้างภาพโพสต์ 3 ภาพ",
+    });
+    await waitFor(() =>
+      expect(generateButton).not.toHaveAttribute("aria-disabled", "true")
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "ภาพตัวละครอ้างอิง" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "ภาพสินค้าอ้างอิง" })
+    ).not.toBeInTheDocument();
+    fireEvent.click(generateButton);
+
+    expect(mocks.generatePostImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-social-1",
+        expectedStateDigest: "state-digest-1",
+        modelId: "image-model-a",
+        aspectRatio: "4:5",
+        variants: [
+          "caption_source",
+          "character_reference",
+          "product_reference",
+        ],
+      })
+    );
+    expect(mocks.generatePostImages.mock.calls[0][0]).not.toHaveProperty(
+      "characterReferenceIndex"
+    );
+    expect(mocks.generatePostImages.mock.calls[0][0]).not.toHaveProperty(
+      "productReferenceIndex"
+    );
+  });
+
+  it("clearly explains that Caption is required before images can be generated", () => {
+    render(
+      <StagedSocialCaptionComposer
+        runId="run-social-1"
+        state={stateFixture({ socialCaption: { caption: "" } }) as any}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("ยังขาด Caption")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "กรุณากด “สร้าง Caption และ Hashtag” ด้านบนก่อน แล้วจึงสร้างภาพโพสต์ 3 ภาพได้"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "สร้างภาพโพสต์ 3 ภาพ" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("does not block image creation when a job has no separate character or product refs", async () => {
+    render(
+      <StagedSocialCaptionComposer
+        runId="run-social-1"
+        state={stateFixture({ referenceManifest: [] }) as any}
         onRefresh={vi.fn()}
       />
     );
@@ -140,11 +219,6 @@ describe("StagedSocialCaptionComposer social post images", () => {
     expect(mocks.generatePostImages).toHaveBeenCalledWith(
       expect.objectContaining({
         runId: "run-social-1",
-        expectedStateDigest: "state-digest-1",
-        modelId: "image-model-a",
-        aspectRatio: "4:5",
-        characterReferenceIndex: 2,
-        productReferenceIndex: 1,
         variants: [
           "caption_source",
           "character_reference",
@@ -162,8 +236,6 @@ describe("StagedSocialCaptionComposer social post images", () => {
           requestHash: "hash-1",
           modelId: "image-model-a",
           aspectRatio: "4:5",
-          characterReferenceIndex: 2,
-          productReferenceIndex: 1,
           status: "completed",
           variants: {
             caption_source: {
@@ -220,8 +292,6 @@ describe("StagedSocialCaptionComposer social post images", () => {
                 requestHash: "hash-1",
                 modelId: "image-model-a",
                 aspectRatio: "9:16",
-                characterReferenceIndex: 2,
-                productReferenceIndex: 1,
                 status: "partial",
                 variants: {
                   caption_source: {
@@ -256,8 +326,6 @@ describe("StagedSocialCaptionComposer social post images", () => {
         expectedRequestHash: "hash-1",
         modelId: "image-model-a",
         aspectRatio: "9:16",
-        characterReferenceIndex: 2,
-        productReferenceIndex: 1,
         variants: ["character_reference"],
       })
     );
@@ -281,8 +349,6 @@ describe("StagedSocialCaptionComposer social post images", () => {
                 requestHash: "hash-crashed",
                 modelId: "image-model-a",
                 aspectRatio: "4:5",
-                characterReferenceIndex: 2,
-                productReferenceIndex: 1,
                 status: "partial",
                 variants: {
                   caption_source: {

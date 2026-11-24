@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
 import { Card } from "@astryxdesign/core/Card";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -89,9 +90,6 @@ export function StagedSocialCaptionComposer(props: {
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<
     "4:5" | "9:16"
   >("4:5");
-  const [selectedCharacterReference, setSelectedCharacterReference] =
-    useState("");
-  const [selectedProductReference, setSelectedProductReference] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const sourceOptions = useMemo(
     () => captionSourceOptions(props.state ?? undefined),
@@ -101,37 +99,23 @@ export function StagedSocialCaptionComposer(props: {
     option => option.value === selectedSource
   );
   const caption = props.state?.socialCaption?.caption ?? "";
+  const hasCaption = caption.trim().length > 0;
+  const referenceManifest = props.state?.referenceManifest ?? [];
+  const characterReferenceCount = referenceManifest.filter(
+    item => item.active && item.role === "character" && item.url.trim()
+  ).length;
+  const productReferenceCount = referenceManifest.filter(
+    item => item.active && item.role === "product" && item.url.trim()
+  ).length;
+  const requiredReferenceCount = Math.max(
+    1,
+    characterReferenceCount,
+    productReferenceCount
+  );
   const hashtags = (props.state?.socialCaption?.hashtags ?? [])
     .slice(0, 5)
     .map(tag => `#${tag.replace(/^#+/, "")}`)
     .join(" ");
-  const characterReferenceOptions = useMemo(
-    () =>
-      (props.state?.referenceManifest ?? [])
-        .filter(
-          item => item.active && item.role === "character" && item.url.trim()
-        )
-        .map(item => ({
-          value: String(item.index),
-          label:
-            item.characterName?.trim() ||
-            item.label?.trim() ||
-            `ตัวละคร ${item.index}`,
-        })),
-    [props.state?.referenceManifest]
-  );
-  const productReferenceOptions = useMemo(
-    () =>
-      (props.state?.referenceManifest ?? [])
-        .filter(
-          item => item.active && item.role !== "character" && item.url.trim()
-        )
-        .map(item => ({
-          value: String(item.index),
-          label: item.label?.trim() || `รูปสินค้า ${item.index}`,
-        })),
-    [props.state?.referenceManifest]
-  );
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = useMemo(
     () =>
@@ -142,9 +126,12 @@ export function StagedSocialCaptionComposer(props: {
               (ratio): ratio is string => typeof ratio === "string"
             )
           : [];
-        return maxReferences > 0 && ratios.includes(selectedAspectRatio);
+        return (
+          maxReferences >= requiredReferenceCount &&
+          ratios.includes(selectedAspectRatio)
+        );
       }),
-    [imageModelsQuery.data?.models, selectedAspectRatio]
+    [imageModelsQuery.data?.models, requiredReferenceCount, selectedAspectRatio]
   );
   const postImages = props.state?.socialCaption?.postImages ?? null;
   const latestPostImagesJob = (props.state?.workerOperations ?? []).find(
@@ -234,9 +221,11 @@ export function StagedSocialCaptionComposer(props: {
                 : message.includes("MODEL_UNAVAILABLE") ||
                     message.includes("ASPECT_RATIO_UNSUPPORTED")
                   ? "โมเดลภาพนี้ไม่พร้อมใช้กับอัตราส่วนที่เลือก กรุณาเลือกโมเดลหรืออัตราส่วนใหม่"
-                  : message.includes("in_progress")
-                    ? "กำลังสร้างภาพชุดนี้อยู่"
-                    : "ส่งงานสร้างภาพโพสต์ไม่สำเร็จ กรุณาลองอีกครั้ง"
+                  : message.includes("REFERENCE_LIMIT")
+                    ? "โมเดลที่เลือกไม่รองรับภาพอ้างอิงครบตาม job กรุณาเลือกโมเดลที่รองรับภาพอ้างอิงได้มากขึ้น"
+                    : message.includes("in_progress")
+                      ? "กำลังสร้างภาพชุดนี้อยู่"
+                      : "ส่งงานสร้างภาพโพสต์ไม่สำเร็จ กรุณาลองอีกครั้ง"
           );
         },
       }
@@ -272,54 +261,6 @@ export function StagedSocialCaptionComposer(props: {
     setSelectedImageModel(imageModels[0]?.modelId ?? "");
   }, [imageModels, selectedImageModel]);
 
-  useEffect(() => {
-    const savedIndex =
-      props.state?.socialCaption?.postImages?.characterReferenceIndex;
-    if (
-      selectedCharacterReference &&
-      characterReferenceOptions.some(
-        option => option.value === selectedCharacterReference
-      )
-    ) {
-      return;
-    }
-    setSelectedCharacterReference(
-      characterReferenceOptions.some(
-        option => option.value === String(savedIndex)
-      )
-        ? String(savedIndex)
-        : (characterReferenceOptions[0]?.value ?? "")
-    );
-  }, [
-    characterReferenceOptions,
-    props.state?.socialCaption?.postImages?.characterReferenceIndex,
-    selectedCharacterReference,
-  ]);
-
-  useEffect(() => {
-    const savedIndex =
-      props.state?.socialCaption?.postImages?.productReferenceIndex;
-    if (
-      selectedProductReference &&
-      productReferenceOptions.some(
-        option => option.value === selectedProductReference
-      )
-    ) {
-      return;
-    }
-    setSelectedProductReference(
-      productReferenceOptions.some(
-        option => option.value === String(savedIndex)
-      )
-        ? String(savedIndex)
-        : (productReferenceOptions[0]?.value ?? "")
-    );
-  }, [
-    productReferenceOptions,
-    props.state?.socialCaption?.postImages?.productReferenceIndex,
-    selectedProductReference,
-  ]);
-
   if (!props.state) return null;
 
   const generateCaption = () => {
@@ -342,21 +283,9 @@ export function StagedSocialCaptionComposer(props: {
     variants?: SocialImageVariant[];
     modelId?: string;
     aspectRatio?: "4:5" | "9:16";
-    characterReferenceIndex?: number;
-    productReferenceIndex?: number;
   }) => {
     const modelId = options?.modelId ?? selectedImageModel;
-    const characterReferenceIndex =
-      options?.characterReferenceIndex ?? Number(selectedCharacterReference);
-    const productReferenceIndex =
-      options?.productReferenceIndex ?? Number(selectedProductReference);
-    if (
-      !caption ||
-      !props.state?.stateDigest ||
-      !modelId ||
-      !characterReferenceIndex ||
-      !productReferenceIndex
-    ) {
+    if (!hasCaption || !props.state?.stateDigest || !modelId) {
       return;
     }
     setActionError(null);
@@ -370,8 +299,6 @@ export function StagedSocialCaptionComposer(props: {
       requestIdempotencyKey: crypto.randomUUID(),
       modelId,
       aspectRatio: options?.aspectRatio ?? selectedAspectRatio,
-      characterReferenceIndex,
-      productReferenceIndex,
       variants: options?.variants ?? [
         "caption_source",
         "character_reference",
@@ -511,13 +438,17 @@ export function StagedSocialCaptionComposer(props: {
           <Heading level={4}>ภาพสำหรับโพสต์ Facebook · 3 ภาพ</Heading>
           <Text type="supporting" color="secondary">
             ภาพแรกใช้ภาพต้นทางที่เลือกสร้าง Caption
-            ส่วนอีกสองภาพใช้ตัวละครและสินค้าที่เลือก ระบบสร้างเป็นภาพแนวตั้ง
-            และคิดเครดิต prompt ตามการใช้งานจริงพร้อมเครดิตภาพตามโมเดล
+            ส่วนอีกสองภาพดึงตัวละครและสินค้าทั้งหมดที่อ้างอิงใน job
+            นี้ให้อัตโนมัติ ระบบสร้างเป็นภาพแนวตั้ง และคิดเครดิต prompt
+            ตามการใช้งานจริงพร้อมเครดิตภาพตามโมเดล
           </Text>
-          {!caption ? (
-            <Text type="supporting" color="secondary">
-              สร้าง Caption ก่อน แล้วจึงสร้างภาพโพสต์ทั้ง 3 แบบได้
-            </Text>
+          {!hasCaption ? (
+            <Banner
+              status="warning"
+              title="ยังขาด Caption"
+              description="กรุณากด “สร้าง Caption และ Hashtag” ด้านบนก่อน แล้วจึงสร้างภาพโพสต์ 3 ภาพได้"
+              collapsible={false}
+            />
           ) : null}
           <Selector
             label="อัตราส่วนภาพโพสต์"
@@ -542,7 +473,7 @@ export function StagedSocialCaptionComposer(props: {
             emptyText={
               imageModelsQuery.isLoading
                 ? "กำลังโหลดโมเดลภาพ"
-                : "ไม่มีโมเดลที่รองรับภาพอ้างอิงและแนวตั้ง"
+                : `ไม่มีโมเดลที่รองรับภาพอ้างอิงครบ ${requiredReferenceCount} ภาพและอัตราส่วนแนวตั้ง`
             }
             isLoading={imageModelsQuery.isLoading}
             isDisabled={activePostImageJob || imageModels.length === 0}
@@ -550,40 +481,9 @@ export function StagedSocialCaptionComposer(props: {
             searchPlaceholder="ค้นหาโมเดลสร้างภาพ"
             width="100%"
           />
-          <Selector
-            label="ภาพตัวละครอ้างอิง"
-            options={characterReferenceOptions}
-            value={selectedCharacterReference}
-            onChange={setSelectedCharacterReference}
-            placeholder="เลือกภาพตัวละคร"
-            emptyText="ยังไม่มีภาพตัวละครอ้างอิง"
-            isDisabled={
-              activePostImageJob || characterReferenceOptions.length === 0
-            }
-            width="100%"
-          />
-          <Selector
-            label="ภาพสินค้าอ้างอิง"
-            options={productReferenceOptions}
-            value={selectedProductReference}
-            onChange={setSelectedProductReference}
-            placeholder="เลือกภาพสินค้า"
-            emptyText="ยังไม่มีภาพสินค้าอ้างอิง"
-            isDisabled={
-              activePostImageJob || productReferenceOptions.length === 0
-            }
-            width="100%"
-          />
           {imageModelsQuery.isError ? (
             <Text type="supporting" color="primary">
               โหลดรายการโมเดลภาพไม่สำเร็จ กรุณาลองรีเฟรชหน้า
-            </Text>
-          ) : null}
-          {characterReferenceOptions.length === 0 ||
-          productReferenceOptions.length === 0 ? (
-            <Text type="supporting" color="secondary">
-              ต้องมีภาพตัวละครและภาพสินค้าอ้างอิงก่อน จึงจะสร้างภาพโพสต์ครบทั้ง
-              3 แบบได้
             </Text>
           ) : null}
           <HStack hAlign="end" wrap="wrap">
@@ -596,11 +496,7 @@ export function StagedSocialCaptionComposer(props: {
               variant="secondary"
               isLoading={postImagesMutation.isPending || activePostImageJob}
               isDisabled={
-                !caption ||
-                !props.state.stateDigest ||
-                !selectedImageModel ||
-                !selectedCharacterReference ||
-                !selectedProductReference
+                !hasCaption || !props.state.stateDigest || !selectedImageModel
               }
               onClick={() => generateSocialPostImages()}
             />
@@ -687,10 +583,7 @@ export function StagedSocialCaptionComposer(props: {
                           variant="secondary"
                           isLoading={postImagesMutation.isPending}
                           isDisabled={
-                            !postImages.requestHash ||
-                            !postImages.modelId ||
-                            !postImages.characterReferenceIndex ||
-                            !postImages.productReferenceIndex
+                            !postImages.requestHash || !postImages.modelId
                           }
                           onClick={() =>
                             generateSocialPostImages({
@@ -699,10 +592,6 @@ export function StagedSocialCaptionComposer(props: {
                               variants: [variant.key],
                               modelId: postImages.modelId,
                               aspectRatio: postImages.aspectRatio,
-                              characterReferenceIndex:
-                                postImages.characterReferenceIndex ?? undefined,
-                              productReferenceIndex:
-                                postImages.productReferenceIndex ?? undefined,
                             })
                           }
                         />

@@ -56,7 +56,7 @@ describe("social commerce post image prompt skill", () => {
     expect(skill).toContain("name: social-commerce-post-image-prompt");
     expect(skill).toContain('"imagePrompt"');
     expect(skill).toContain('"negativePrompt"');
-    expect(skill).toContain("supplies exactly one reference image");
+    expect(skill).toContain("supplies every active reference image");
     expect(skill).toContain("preserve the exact product shape");
     expect(skill).toContain("preserve the referenced character identity");
     expect(skill).toContain("Product claims must come from");
@@ -120,14 +120,20 @@ describe("marketplace social image prompt runner billing", () => {
       description: "Light moisturizer",
       specs: { size: "30 ml" },
     },
-    source: {
-      label: "Mali reference portrait",
-      imageUrl: "https://media.example.test/character.jpg",
-    },
+    sources: [
+      {
+        label: "Mali reference portrait",
+        imageUrl: "https://media.example.test/character.jpg",
+      },
+      {
+        label: "Ani reference portrait",
+        imageUrl: "https://media.example.test/character-2.jpg",
+      },
+    ],
     aspectRatio: "4:5" as const,
   };
 
-  it("sends exactly the selected reference and caption, then bills actual usage idempotently per variant", async () => {
+  it("sends all job references and the caption, then bills actual usage idempotently per variant", async () => {
     const result = await generateMarketplaceSocialImagePrompt(input);
 
     expect(result).toMatchObject({
@@ -139,12 +145,14 @@ describe("marketplace social image prompt runner billing", () => {
     });
     const call = mocks.executeVisionAwareJsonCallWithRetry.mock.calls[0][0];
     expect(call.images).toEqual([
-      expect.objectContaining({ url: input.source.imageUrl }),
+      expect.objectContaining({ url: input.sources[0].imageUrl }),
+      expect.objectContaining({ url: input.sources[1].imageUrl }),
     ]);
     expect(call.hasVision).toBe(true);
     expect(call.disableTextFallback).toBe(true);
     expect(call.disableProviderFallbacks).toBe(true);
     expect(call.userPromptText).toContain(input.caption);
+    expect(call.userPromptText).toContain("Ani reference portrait");
     expect(call.userPromptText).toContain("character_reference");
     expect(call.userPromptText).toContain("4:5");
     expect(mocks.calculateCreditsForLLMDynamic).toHaveBeenCalledWith(

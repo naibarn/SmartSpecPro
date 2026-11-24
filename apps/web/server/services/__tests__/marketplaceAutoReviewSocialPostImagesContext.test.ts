@@ -24,6 +24,21 @@ function makeContext() {
         active: true,
         url: "/api/storage/files/product-1.jpg",
       },
+      {
+        index: 11,
+        role: "character",
+        label: "Ani",
+        characterName: "Ani",
+        active: true,
+        url: "/api/storage/files/character-2.jpg",
+      },
+      {
+        index: 21,
+        role: "product",
+        label: "Daily Cream detail",
+        active: true,
+        url: "/api/storage/files/product-2.jpg",
+      },
     ],
     stagedSequentialStoryboard: {
       shots: [
@@ -78,13 +93,11 @@ function makeContext() {
 }
 
 describe("staged social post image context and projection", () => {
-  it("uses the saved shot for the caption source and selected character/product references", () => {
+  it("uses the saved shot and every active character/product reference from the job", () => {
     const { run, metadata } = makeContext();
     const context = resolveStagedSocialPostImagesContextForTest({
       run,
       metadata,
-      characterReferenceIndex: 10,
-      productReferenceIndex: 20,
       modelId: "image-model-a",
       aspectRatio: "4:5",
     });
@@ -95,16 +108,22 @@ describe("staged social post image context and projection", () => {
       sources: {
         caption_source: {
           label: "Shot 1 · ภาพเริ่มต้น",
-          imageUrl: "/api/storage/files/shot-1.jpg",
+          imageUrls: ["/api/storage/files/shot-1.jpg"],
           context: expect.stringContaining("Morning routine"),
         },
         character_reference: {
-          label: "Mali",
-          imageUrl: "/api/storage/files/character-1.jpg",
+          label: "Mali, Ani",
+          imageUrls: [
+            "/api/storage/files/character-1.jpg",
+            "/api/storage/files/character-2.jpg",
+          ],
         },
         product_reference: {
-          label: "Daily Cream",
-          imageUrl: "/api/storage/files/product-1.jpg",
+          label: "Daily Cream, Daily Cream detail",
+          imageUrls: [
+            "/api/storage/files/product-1.jpg",
+            "/api/storage/files/product-2.jpg",
+          ],
         },
       },
     });
@@ -116,8 +135,6 @@ describe("staged social post image context and projection", () => {
       resolveStagedSocialPostImagesContextForTest({
         run,
         metadata,
-        characterReferenceIndex: 10,
-        productReferenceIndex: 20,
         modelId: "image-model-a",
         aspectRatio: "4:5",
       }).requestHash;
@@ -131,14 +148,62 @@ describe("staged social post image context and projection", () => {
     metadata.customReferenceManifest[0].url =
       "/api/storage/files/character-2.jpg";
     const updatedCharacter = getHash();
+    metadata.customReferenceManifest[2].url =
+      "/api/storage/files/character-3.jpg";
+    const updatedSecondCharacter = getHash();
     metadata.customReferenceManifest[1].url =
       "/api/storage/files/product-2.jpg";
     const updatedProduct = getHash();
+    metadata.customReferenceManifest[3].url =
+      "/api/storage/files/product-3.jpg";
+    const updatedSecondProduct = getHash();
 
     expect(updatedCaption).not.toBe(original);
     expect(updatedCharacterName).not.toBe(original);
     expect(updatedCharacter).not.toBe(updatedCharacterName);
-    expect(updatedProduct).not.toBe(updatedCharacter);
+    expect(updatedSecondCharacter).not.toBe(updatedCharacter);
+    expect(updatedProduct).not.toBe(updatedSecondCharacter);
+    expect(updatedSecondProduct).not.toBe(updatedProduct);
+  });
+
+  it("uses the caption source when the job has no character or product references", () => {
+    const { run, metadata } = makeContext();
+    metadata.customReferenceManifest.forEach(item => {
+      item.active = false;
+    });
+
+    const context = resolveStagedSocialPostImagesContextForTest({
+      run,
+      metadata,
+      modelId: "image-model-a",
+      aspectRatio: "4:5",
+    });
+
+    expect(context.sources.character_reference.imageUrls).toEqual([
+      "/api/storage/files/shot-1.jpg",
+    ]);
+    expect(context.sources.product_reference.imageUrls).toEqual([
+      "/api/storage/files/shot-1.jpg",
+    ]);
+  });
+
+  it("does not require a reference manifest when the caption source is a shot", () => {
+    const { run, metadata } = makeContext();
+    metadata.customReferenceManifest = [];
+
+    const context = resolveStagedSocialPostImagesContextForTest({
+      run,
+      metadata,
+      modelId: "image-model-a",
+      aspectRatio: "4:5",
+    });
+
+    expect(context.sources.character_reference.imageUrls).toEqual([
+      "/api/storage/files/shot-1.jpg",
+    ]);
+    expect(context.sources.product_reference.imageUrls).toEqual([
+      "/api/storage/files/shot-1.jpg",
+    ]);
   });
 
   it("rejects a saved caption whose source fingerprint has changed", () => {
@@ -150,8 +215,6 @@ describe("staged social post image context and projection", () => {
       resolveStagedSocialPostImagesContextForTest({
         run,
         metadata,
-        characterReferenceIndex: 10,
-        productReferenceIndex: 20,
         modelId: "image-model-a",
         aspectRatio: "4:5",
       })
