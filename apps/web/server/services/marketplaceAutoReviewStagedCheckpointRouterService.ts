@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
@@ -9,7 +9,11 @@ import {
 } from "./marketplaceAutoReviewStagedRemotionRender";
 
 import { getDb } from "../db";
-import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
+import {
+  marketplaceAutoReviewRuns,
+  marketplaceProductAffiliateLinks,
+  workerJobs,
+} from "../../drizzle/schema";
 import {
   enqueueMarketplaceAutoReviewWorkerJob,
   enqueueMarketplaceAutoReviewWorkerJobInTransaction,
@@ -873,6 +877,34 @@ export async function getStagedAutoReviewCheckpointState(
     run.metadataJson && typeof run.metadataJson === "object"
       ? (run.metadataJson as Record<string, any>).stagedPipeline
       : null;
+  const affiliateLinkRows = await db
+    .select({ affiliateUrl: marketplaceProductAffiliateLinks.affiliateUrl })
+    .from(marketplaceProductAffiliateLinks)
+    .where(
+      and(
+        eq(marketplaceProductAffiliateLinks.productId, run.productId),
+        eq(marketplaceProductAffiliateLinks.userId, auth.userId)
+      )
+    )
+    .orderBy(
+      asc(marketplaceProductAffiliateLinks.createdAt),
+      asc(marketplaceProductAffiliateLinks.id)
+    );
+  const affiliateUrls: string[] = [];
+  for (const row of affiliateLinkRows) {
+    const affiliateUrl = row.affiliateUrl?.trim();
+    if (!affiliateUrl || affiliateUrls.includes(affiliateUrl)) continue;
+    try {
+      const parsedUrl = new URL(affiliateUrl);
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    affiliateUrls.push(affiliateUrl);
+    if (affiliateUrls.length === 10) break;
+  }
   // The rendered MP4 exists as soon as the worker job completes and publishes
   // its artifact. `metadata.renderUrl` is only written LATER, by Library
   // finalization, which enforces separate compliance gates (warning-overlay
@@ -1105,6 +1137,7 @@ export async function getStagedAutoReviewCheckpointState(
     planReview: metadata.planReview,
     creativeQc: (metadata as any).creativeQc ?? null,
     workerOperations,
+    affiliateUrls,
     audioPlan:
       stagedPipeline?.audioPlan && typeof stagedPipeline.audioPlan === "object"
         ? buildStagedAudioPlan(stagedPipeline.audioPlan as any)

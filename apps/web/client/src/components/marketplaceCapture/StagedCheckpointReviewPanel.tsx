@@ -207,6 +207,7 @@ export type StagedReviewState = {
       >;
     } | null;
   } | null;
+  affiliateUrls?: string[];
   languagePlan?: {
     summaryLanguage: "th" | "en";
     dialogueLanguage: "th" | "en";

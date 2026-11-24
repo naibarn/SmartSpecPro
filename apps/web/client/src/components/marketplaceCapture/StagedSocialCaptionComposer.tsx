@@ -5,6 +5,7 @@ import { Card } from "@astryxdesign/core/Card";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Link } from "@astryxdesign/core/Link";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
@@ -52,6 +53,33 @@ const ACTIVE_JOB_STATUSES = new Set([
   "waiting_external",
   "retry_scheduled",
 ]);
+
+function AffiliateLinkRow(props: { url: string; index: number }) {
+  const clipboard = useClipboard({ announce: "คัดลอกลิงก์ Affiliate แล้ว" });
+
+  return (
+    <HStack hAlign="between" vAlign="center" wrap="wrap">
+      <HStack vAlign="center" wrap="wrap" gap={2}>
+        <Link
+          href={props.url}
+          target="_blank"
+          color="accent"
+          type="supporting"
+        >
+          Affiliate link {props.index + 1}
+        </Link>
+        <Text type="supporting" color="secondary" maxLines={1}>
+          {props.url}
+        </Text>
+      </HStack>
+      <Button
+        label={clipboard.isCopied ? "คัดลอกแล้ว" : "คัดลอก"}
+        variant="secondary"
+        onClick={() => void clipboard.copy(props.url)}
+      />
+    </HStack>
+  );
+}
 
 function captionSourceOptions(
   state: StagedReviewState | undefined
@@ -131,6 +159,7 @@ export function StagedSocialCaptionComposer(props: {
     .slice(0, 5)
     .map(tag => `#${tag.replace(/^#+/, "")}`)
     .join(" ");
+  const affiliateUrls = props.state.affiliateUrls ?? [];
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = useMemo(
     () =>
@@ -440,6 +469,22 @@ export function StagedSocialCaptionComposer(props: {
             placeholder="Hashtag ที่ Skill สร้างจะแสดงที่นี่"
             onChange={() => undefined}
           />
+        </VStack>
+        <VStack gap={2}>
+          <Text type="label">Affiliate links</Text>
+          {affiliateUrls.length > 0 ? (
+            affiliateUrls.map((url, index) => (
+              <AffiliateLinkRow
+                key={`${url}-${index}`}
+                url={url}
+                index={index}
+              />
+            ))
+          ) : (
+            <Text type="supporting" color="secondary">
+              ยังไม่มีลิงก์ Affiliate ที่บันทึกไว้สำหรับสินค้านี้
+            </Text>
+          )}
         </VStack>
         {props.state.socialCaption?.sourceLabel ? (
           <Text type="supporting" color="secondary">
