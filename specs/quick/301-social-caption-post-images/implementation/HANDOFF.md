@@ -3,27 +3,28 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `8`
-- Updated (UTC): `2026-11-24T02:19:27.478131+00:00`
+- State generation: `11`
+- Updated (UTC): `2026-11-24T02:20:55.745588+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/301-social-caption-post-images/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `NOT_VERIFIED`
+- Latest recorded merged Main SHA: `6cf61678b5ed6147e7f7367cb2150f7ac05b758b`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-caption-gallery-ui`
-- Next action: Focused composer checks passed; promote this feature checkpoint, then record its verified canonical SHA.
+- Next action: Implementation checkpoint 6cf61678b is canonical; run responsive/browser lightbox and download UAT when a development preview is available.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-social-image-prompt-and-models | in_progress | — | — | — | — | Focused prompt and model checks passed; promote this feature checkpoint, then record its verified canonical SHA. |
-| section-02-worker-billing-and-storage | in_progress | — | — | — | — | Focused worker, billing, and context checks passed; promote this feature checkpoint, then record its verified canonical SHA. |
-| section-03-caption-gallery-ui | in_progress | — | — | — | — | Focused composer checks passed; promote this feature checkpoint, then record its verified canonical SHA. |
+| section-01-social-image-prompt-and-models | checkpointed | — | — | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | Implementation checkpoint 6cf61678b is canonical; run any later acceptance checks from the latest main source. |
+| section-02-worker-billing-and-storage | checkpointed | — | — | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | Implementation checkpoint 6cf61678b is canonical; keep the pre-existing router-service test failure out of this feature slice. |
+| section-03-caption-gallery-ui | checkpointed | — | — | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | 6cf61678b5ed6147e7f7367cb2150f7ac05b758b | Implementation checkpoint 6cf61678b is canonical; run responsive/browser lightbox and download UAT when a development preview is available. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
 - Pre-existing broader router-service test failure: buildStagedStoryArcPlan is not a function; this export is absent on baseline main and is outside this image feature.
+- Responsive/browser UAT (390x844, 768x1024, 1440x900), keyboard lightbox behavior, and browser console verification remain pending; implementation is integrated and focused tests pass.
 
 ## Resume
 
