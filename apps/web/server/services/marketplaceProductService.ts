@@ -2483,6 +2483,26 @@ export async function updateMarketplaceProductDetails(
   };
 }
 
+export async function updateMarketplaceProductAffiliateLinks(
+  productId: string,
+  affiliateUrls: string[],
+  auth: { userId: number; tenantId?: string },
+) {
+  await getMarketplaceProductWithAccess(productId, auth);
+  const normalizedAffiliateUrls = normalizeAffiliateUrls(affiliateUrls);
+  const savedAffiliateUrls = await replaceAffiliateLinksForUser(
+    productId,
+    auth.userId,
+    auth.tenantId,
+    normalizedAffiliateUrls,
+  );
+  return {
+    productId,
+    affiliateUrls: savedAffiliateUrls,
+    affiliateUrl: savedAffiliateUrls[0] ?? null,
+  };
+}
+
 export async function createManualMarketplaceProduct(
   input: ManualMarketplaceProductInput,
   auth: { userId: number; tenantId?: string },

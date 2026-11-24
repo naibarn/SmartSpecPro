@@ -2611,6 +2611,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [libraryPageIndex, setLibraryPageIndex] = useState(0);
   const [libraryPanelItems, setLibraryPanelItems] = useState<any[]>([]);
   const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [affiliateLinksDraft, setAffiliateLinksDraft] = useState("");
   const [productEditForm, setProductEditForm] = useState<ProductEditForm>({
     productName: "",
     descriptionText: "",
@@ -3598,6 +3599,17 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  const updateProductAffiliateLinksMutation =
+    trpc.marketplaceCapture.updateProductAffiliateLinks.useMutation({
+      onSuccess: async () => {
+        await Promise.all([
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+          utils.marketplaceCapture.listProducts.invalidate(),
+        ]);
+        toast.success("Affiliate links saved");
+      },
+      onError: error => toast.error(error.message),
+    });
   const enhanceProductDescriptionMutation =
     trpc.marketplaceCapture.enhanceProductDescription.useMutation({
       onSuccess: async result => {
@@ -4009,6 +4021,16 @@ export default function MarketplaceCaptureProductDetail() {
     : compactText(item.affiliateUrl)
       ? [compactText(item.affiliateUrl)]
       : [];
+  const currentAffiliateLinksText = itemAffiliateUrls.join("\n");
+  const affiliateLinksDraftEntries = affiliateLinksDraft
+    .split(/\r?\n/)
+    .map(affiliateUrl => affiliateUrl.trim())
+    .filter(Boolean);
+  const hasAffiliateLinksDraftChanges =
+    affiliateLinksDraftEntries.join("\n") !== currentAffiliateLinksText;
+  useEffect(() => {
+    setAffiliateLinksDraft(currentAffiliateLinksText);
+  }, [currentAffiliateLinksText, productId]);
   const itemDescription = asRecord(item.descriptionJson);
   const itemSpecs = asRecord(item.specsJson);
   const itemPlatformRaw = asRecord(item.platformRawJson);
@@ -4155,6 +4177,16 @@ export default function MarketplaceCaptureProductDetail() {
     updateProductDetailsMutation.mutate({
       productId,
       data: { ...productEditForm, affiliateUrls },
+    });
+  }
+  function saveAffiliateLinks() {
+    if (affiliateLinksDraftEntries.length > 10) {
+      toast.error("You can add up to 10 affiliate links per product");
+      return;
+    }
+    updateProductAffiliateLinksMutation.mutate({
+      productId,
+      affiliateUrls: affiliateLinksDraftEntries,
     });
   }
   const baseImages = (productData?.images ?? []) as any[];
@@ -7888,7 +7920,7 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
-                  Affiliate links ({itemAffiliateUrls.length}/10)
+                  Affiliate links ({affiliateLinksDraftEntries.length}/10)
                 </dt>
                 <dd>
                   {isEditingProduct ? (
@@ -7930,23 +7962,61 @@ export default function MarketplaceCaptureProductDetail() {
                       </button>
                     </div>
                   ) : (
-                    itemAffiliateUrls.length > 0 ? (
-                      <ul className="mt-1 space-y-1">
-                        {itemAffiliateUrls.map((affiliateUrl, index) => (
-                          <li key={`${affiliateUrl}-${index}`} className="flex flex-wrap items-center gap-2">
-                            <a
-                              className="max-w-xl truncate text-emerald-700 underline"
-                              href={affiliateUrl}
-                              target="_blank"
-                              rel="noreferrer"
+                    <div className="mt-1 flex flex-col gap-2">
+                      <textarea
+                        className="min-h-28 w-full rounded-md border px-2 py-1 font-mono text-xs"
+                        maxLength={40960}
+                        placeholder="One http/https affiliate URL per line (up to 10)"
+                        value={affiliateLinksDraft}
+                        onChange={event => setAffiliateLinksDraft(event.target.value)}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">
+                          One link per line. These links are private to your account.
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            updateProductAffiliateLinksMutation.isPending ||
+                            !hasAffiliateLinksDraftChanges
+                          }
+                          onClick={saveAffiliateLinks}
+                        >
+                          {updateProductAffiliateLinksMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          Save affiliate links
+                        </Button>
+                      </div>
+                      {itemAffiliateUrls.length > 0 ? (
+                        <ul className="space-y-1">
+                          {itemAffiliateUrls.map((affiliateUrl, index) => (
+                            <li
+                              key={`${affiliateUrl}-${index}`}
+                              className="flex flex-wrap items-center gap-2"
                             >
-                              Affiliate link {index + 1}
-                            </a>
-                            <span className="max-w-xl truncate text-xs text-slate-500">{affiliateUrl}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : "-"
+                              <a
+                                className="max-w-xl truncate text-emerald-700 underline"
+                                href={affiliateUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Affiliate link {index + 1}
+                              </a>
+                              <span className="max-w-xl truncate text-xs text-slate-500">
+                                {affiliateUrl}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-xs text-slate-500">
+                          No affiliate links saved for your account.
+                        </span>
+                      )}
+                    </div>
                   )}
                 </dd>
               </div>

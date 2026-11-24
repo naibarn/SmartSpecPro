@@ -57,6 +57,7 @@ import {
   searchSimilarMarketplaceProductsByImage,
   setMarketplaceProductHeroImage,
   updateMarketplaceProductDetails,
+  updateMarketplaceProductAffiliateLinks,
 } from "../services/marketplaceProductService";
 import {
   submitStagedAutoReviewFinalRender,
@@ -291,6 +292,12 @@ export function decodeVisualSearchImageForTest(input: {
   return decodeVisualSearchImage(input);
 }
 
+const marketplaceAffiliateUrlsSchema = z.array(
+  z.string().trim().max(4096).url().refine((value) => /^https?:\/\//i.test(value), {
+    message: "Affiliate links must use http or https",
+  })
+).max(10);
+
 const editableProductDetailsSchema = z.object({
   productName: z.string().trim().min(1).max(500),
   descriptionText: z.string().max(80_000).optional().nullable(),
@@ -313,11 +320,7 @@ const editableProductDetailsSchema = z.object({
     .nullable(),
   reviewCountText: z.string().trim().max(128).optional().nullable(),
   affiliateUrl: z.string().trim().max(4096).optional().nullable(),
-  affiliateUrls: z.array(
-    z.string().trim().max(4096).url().refine((value) => /^https?:\/\//i.test(value), {
-      message: "Affiliate links must use http or https",
-    })
-  ).max(10).optional(),
+  affiliateUrls: marketplaceAffiliateUrlsSchema.optional(),
 });
 
 const manualProductSchema = editableProductDetailsSchema.extend({
@@ -880,6 +883,19 @@ export const marketplaceCaptureRouter = router({
         input.productId,
         input.data,
         authFromCtx(ctx)
+      )
+    ),
+
+  updateProductAffiliateLinks: protectedProcedure
+    .input(z.object({
+      productId: z.string().min(1).max(64),
+      affiliateUrls: marketplaceAffiliateUrlsSchema,
+    }))
+    .mutation(async ({ input, ctx }) =>
+      updateMarketplaceProductAffiliateLinks(
+        input.productId,
+        input.affiliateUrls,
+        authFromCtx(ctx),
       )
     ),
 
