@@ -30,10 +30,17 @@ vi.mock("@/lib/trpc", () => ({
           data: {
             models: [
               {
+                modelId: "image-model-limited",
+                name: "Limited Image Model",
+                provider: "provider-a",
+                maxReferenceImages: 4,
+                aspectRatios: ["4:5", "9:16"],
+              },
+              {
                 modelId: "image-model-a",
                 name: "Portrait Image Model",
                 provider: "provider-a",
-                maxReferenceImages: 4,
+                maxReferenceImages: 5,
                 aspectRatios: ["4:5", "9:16"],
               },
             ],
@@ -265,7 +272,7 @@ describe("StagedSocialCaptionComposer social post images", () => {
       />
     );
 
-    const image = screen.getByAltText("ภาพจากต้นทางของ Caption · Shot 1");
+    const image = screen.getByAltText("โฆษณาเล่าเรื่องจากภาพต้นทาง · Shot 1");
     expect(image).toHaveAttribute("role", "button");
     expect(image).toHaveAttribute("data-gallery-index", "0");
     fireEvent.click(screen.getAllByRole("button", { name: "ขยายภาพ" })[0]);

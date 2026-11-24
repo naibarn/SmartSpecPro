@@ -37,9 +37,9 @@ const SOCIAL_IMAGE_VARIANTS: Array<{
   key: SocialImageVariant;
   label: string;
 }> = [
-  { key: "caption_source", label: "ภาพจากต้นทางของ Caption" },
-  { key: "character_reference", label: "ภาพจากตัวละครอ้างอิง" },
-  { key: "product_reference", label: "ภาพจากสินค้าอ้างอิง" },
+  { key: "caption_source", label: "โฆษณาเล่าเรื่องจากภาพต้นทาง" },
+  { key: "character_reference", label: "โฆษณาเน้นตัวละครพร้อมสินค้า" },
+  { key: "product_reference", label: "โฆษณาเน้นสินค้าพร้อมตัวละคร" },
 ];
 
 const ACTIVE_JOB_STATUSES = new Set([
@@ -101,17 +101,32 @@ export function StagedSocialCaptionComposer(props: {
   const caption = props.state?.socialCaption?.caption ?? "";
   const hasCaption = caption.trim().length > 0;
   const referenceManifest = props.state?.referenceManifest ?? [];
-  const characterReferenceCount = referenceManifest.filter(
-    item => item.active && item.role === "character" && item.url.trim()
-  ).length;
-  const productReferenceCount = referenceManifest.filter(
-    item => item.active && item.role === "product" && item.url.trim()
-  ).length;
-  const requiredReferenceCount = Math.max(
-    1,
-    characterReferenceCount,
-    productReferenceCount
-  );
+  const savedCaption = props.state?.socialCaption;
+  const captionSourceImageUrl =
+    savedCaption?.sourceType === "product"
+      ? referenceManifest.find(
+          item =>
+            item.active &&
+            item.role !== "character" &&
+            item.index === savedCaption.referenceIndex
+        )?.url
+      : savedCaption?.sourceType === "shot"
+        ? props.state?.shots.find(shot => shot.shotId === savedCaption.shotId)
+            ?.imageArtifactUrl
+        : "";
+  const requiredReferenceCount =
+    new Set(
+      [
+        captionSourceImageUrl,
+        ...referenceManifest
+          .filter(
+            item =>
+              item.active &&
+              (item.role === "character" || item.role === "product")
+          )
+          .map(item => item.url),
+      ].filter((url): url is string => Boolean(url?.trim()))
+    ).size || 1;
   const hashtags = (props.state?.socialCaption?.hashtags ?? [])
     .slice(0, 5)
     .map(tag => `#${tag.replace(/^#+/, "")}`)
@@ -437,9 +452,9 @@ export function StagedSocialCaptionComposer(props: {
         <VStack gap={3}>
           <Heading level={4}>ภาพสำหรับโพสต์ Facebook · 3 ภาพ</Heading>
           <Text type="supporting" color="secondary">
-            ภาพแรกใช้ภาพต้นทางที่เลือกสร้าง Caption
-            ส่วนอีกสองภาพดึงตัวละครและสินค้าทั้งหมดที่อ้างอิงใน job
-            นี้ให้อัตโนมัติ ระบบสร้างเป็นภาพแนวตั้ง และคิดเครดิต prompt
+            ทั้งสามภาพใช้ Caption ภาพต้นทาง ตัวละคร และสินค้าจาก job
+            ร่วมกันเป็นภาพโฆษณาใหม่ โดยปรับองค์ประกอบให้ต่างกันอัตโนมัติ
+            ระบบสร้างเป็นภาพแนวตั้ง และคิดเครดิต prompt
             ตามการใช้งานจริงพร้อมเครดิตภาพตามโมเดล
           </Text>
           {!hasCaption ? (

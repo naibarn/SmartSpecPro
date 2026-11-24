@@ -93,7 +93,50 @@ function makeContext() {
 }
 
 describe("staged social post image context and projection", () => {
-  it("uses the saved shot and every active character/product reference from the job", () => {
+  it("returns saved generated post images as part of the Caption projection", async () => {
+    const projector = (
+      await import("../marketplaceAutoReviewStagedCheckpointRouterService")
+    ).projectStagedSocialCaptionForTest;
+    expect(projector).toBeTypeOf("function");
+    if (typeof projector !== "function") return;
+
+    expect(
+      projector({
+        caption: "ดูแลผมทุกวัน",
+        hashtags: ["ดูแลผม"],
+        sourceType: "shot",
+        shotId: 1,
+        postImages: {
+          batchId: "batch-1",
+          requestHash: "request-hash",
+          modelId: "image-model-a",
+          aspectRatio: "9:16",
+          status: "completed",
+          variants: {
+            caption_source: {
+              status: "completed",
+              imageStorageKey: "marketplace-auto-review/tenant/run/caption.png",
+              sourceLabel: "Shot 1",
+            },
+          },
+        },
+      })
+    ).toMatchObject({
+      caption: "ดูแลผมทุกวัน",
+      postImages: {
+        batchId: "batch-1",
+        variants: {
+          caption_source: {
+            status: "completed",
+            imageUrl:
+              "/api/storage/files/marketplace-auto-review/tenant/run/caption.png",
+          },
+        },
+      },
+    });
+  });
+
+  it("combines the saved caption source, every character, and every product reference in all three ads", () => {
     const { run, metadata } = makeContext();
     const context = resolveStagedSocialPostImagesContextForTest({
       run,
@@ -107,20 +150,35 @@ describe("staged social post image context and projection", () => {
       language: "th",
       sources: {
         caption_source: {
-          label: "Shot 1 · ภาพเริ่มต้น",
-          imageUrls: ["/api/storage/files/shot-1.jpg"],
+          label:
+            "Shot 1 · ภาพเริ่มต้น, Mali, Ani, Daily Cream, Daily Cream detail",
+          imageUrls: [
+            "/api/storage/files/shot-1.jpg",
+            "/api/storage/files/character-1.jpg",
+            "/api/storage/files/character-2.jpg",
+            "/api/storage/files/product-1.jpg",
+            "/api/storage/files/product-2.jpg",
+          ],
           context: expect.stringContaining("Morning routine"),
         },
         character_reference: {
-          label: "Mali, Ani",
+          label:
+            "Shot 1 · ภาพเริ่มต้น, Mali, Ani, Daily Cream, Daily Cream detail",
           imageUrls: [
+            "/api/storage/files/shot-1.jpg",
             "/api/storage/files/character-1.jpg",
             "/api/storage/files/character-2.jpg",
+            "/api/storage/files/product-1.jpg",
+            "/api/storage/files/product-2.jpg",
           ],
         },
         product_reference: {
-          label: "Daily Cream, Daily Cream detail",
+          label:
+            "Shot 1 · ภาพเริ่มต้น, Mali, Ani, Daily Cream, Daily Cream detail",
           imageUrls: [
+            "/api/storage/files/shot-1.jpg",
+            "/api/storage/files/character-1.jpg",
+            "/api/storage/files/character-2.jpg",
             "/api/storage/files/product-1.jpg",
             "/api/storage/files/product-2.jpg",
           ],
@@ -179,12 +237,15 @@ describe("staged social post image context and projection", () => {
       aspectRatio: "4:5",
     });
 
-    expect(context.sources.character_reference.imageUrls).toEqual([
+    expect(context.sources.caption_source.imageUrls).toEqual([
       "/api/storage/files/shot-1.jpg",
     ]);
-    expect(context.sources.product_reference.imageUrls).toEqual([
-      "/api/storage/files/shot-1.jpg",
-    ]);
+    expect(context.sources.character_reference.imageUrls).toEqual(
+      context.sources.caption_source.imageUrls
+    );
+    expect(context.sources.product_reference.imageUrls).toEqual(
+      context.sources.caption_source.imageUrls
+    );
   });
 
   it("does not require a reference manifest when the caption source is a shot", () => {

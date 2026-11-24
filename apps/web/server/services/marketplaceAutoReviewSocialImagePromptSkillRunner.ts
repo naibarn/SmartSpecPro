@@ -258,10 +258,19 @@ export async function generateMarketplaceSocialImagePrompt(
   if (images.length === 0) {
     throw new Error("MARKETPLACE_SOCIAL_IMAGE_REFERENCE_REQUIRED");
   }
+  const compositionDirection = {
+    caption_source:
+      "Use the selected caption-source image as story context, while showing the referenced character and product together in the ad scene.",
+    character_reference:
+      "Give the referenced character the strongest visual emphasis, naturally interacting with the referenced product, which must remain clearly visible.",
+    product_reference:
+      "Give the exact referenced product the strongest visual emphasis, with the referenced character naturally using or presenting it in the same scene.",
+  }[input.variant];
   const userPromptText = JSON.stringify({
     language: input.language,
     platform: "Facebook, Instagram, TikTok",
     variant: input.variant,
+    compositionDirection,
     caption: input.caption.trim().slice(0, 2000),
     product: {
       name: input.product.productName.trim().slice(0, 240),
@@ -299,7 +308,7 @@ export async function generateMarketplaceSocialImagePrompt(
       z.infer<typeof socialImagePromptSchema>
     >({
       model: model.modelId,
-      systemPrompt: `${loadSocialImagePromptSkill()}\n\nReturn only the schema-valid JSON object required by this runtime. Every provided image is a reference image, numbered in the order listed in sourceImages. Use all images as evidence for the requested role, preserve relevant visual identity or product fidelity, and do not add text, prices, claims, badges, or watermarks.`,
+      systemPrompt: `${loadSocialImagePromptSkill()}\n\nReturn only the schema-valid JSON object required by this runtime. Every provided image is a reference image, numbered in the order listed in sourceImages. Use all images together in one cohesive scene: integrate the product with the referenced character, preserve relevant visual identity or product fidelity, and do not separate them into different scenes or collage panels. The variant changes visual emphasis, not which references are used. Do not add text, prices, claims, badges, or watermarks.`,
       userPromptText,
       hasVision: true,
       images,

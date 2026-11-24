@@ -565,7 +565,12 @@ function stagedSocialCaptionProjection(value: unknown) {
         : null,
     sourceLabel: stagedTextOrEmpty(caption.sourceLabel).slice(0, 240),
     generatedAt: stagedTextOrEmpty(caption.generatedAt).slice(0, 64),
+    postImages: stagedSocialPostImagesProjection(caption.postImages),
   };
+}
+
+export function projectStagedSocialCaptionForTest(value: unknown) {
+  return stagedSocialCaptionProjection(value);
 }
 
 const STAGED_SOCIAL_IMAGE_VARIANTS = [
@@ -3819,6 +3824,22 @@ function resolveStagedSocialPostImagesContext(input: {
           label: `${captionSourceImage.label} · ใช้แทนภาพสินค้าอ้างอิง`,
         },
       ];
+  const combinedReferences = new Map<
+    string,
+    { label: string; imageUrl: string; context?: string }
+  >();
+  for (const source of [
+    captionSourceImage,
+    ...characterSources,
+    ...productSources,
+  ]) {
+    const imageUrl = source.imageUrl.trim();
+    if (!imageUrl || combinedReferences.has(imageUrl)) continue;
+    combinedReferences.set(imageUrl, { ...source, imageUrl });
+  }
+  const adReferences = [...combinedReferences.values()];
+  const adReferenceLabel = adReferences.map(source => source.label).join(", ");
+  const adImageUrls = adReferences.map(source => source.imageUrl);
   const requestHash = buildProductionStableHash({
     caption,
     hashtags: Array.isArray(socialCaption.hashtags)
@@ -3844,20 +3865,20 @@ function resolveStagedSocialPostImagesContext(input: {
     product: captionSource.product,
     sources: {
       caption_source: {
-        label: captionSourceContext.label,
-        imageUrls: [captionSourceContext.imageUrl],
-        references: [captionSourceImage],
+        label: adReferenceLabel,
+        imageUrls: adImageUrls,
+        references: adReferences,
         context: captionSourceContext.shotContext,
       },
       character_reference: {
-        label: characterSources.map(source => source.label).join(", "),
-        imageUrls: characterSources.map(source => source.imageUrl),
-        references: characterSources,
+        label: adReferenceLabel,
+        imageUrls: adImageUrls,
+        references: adReferences,
       },
       product_reference: {
-        label: productSources.map(source => source.label).join(", "),
-        imageUrls: productSources.map(source => source.imageUrl),
-        references: productSources,
+        label: adReferenceLabel,
+        imageUrls: adImageUrls,
+        references: adReferences,
       },
     },
   };

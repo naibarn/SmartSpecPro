@@ -56,9 +56,12 @@ describe("social commerce post image prompt skill", () => {
     expect(skill).toContain("name: social-commerce-post-image-prompt");
     expect(skill).toContain('"imagePrompt"');
     expect(skill).toContain('"negativePrompt"');
-    expect(skill).toContain("supplies every active reference image");
-    expect(skill).toContain("preserve the exact product shape");
-    expect(skill).toContain("preserve the referenced character identity");
+    expect(skill).toContain(
+      "same complete reference set for all three variants"
+    );
+    expect(skill).toContain("one cohesive scene");
+    expect(skill).toContain("Preserve the exact product shape");
+    expect(skill).toContain("Preserve each referenced character's identity");
     expect(skill).toContain("Product claims must come from");
     expect(readFileSync(runtimeSkillPath, "utf8")).toBe(skill);
   });
@@ -155,6 +158,15 @@ describe("marketplace social image prompt runner billing", () => {
     expect(call.userPromptText).toContain("Ani reference portrait");
     expect(call.userPromptText).toContain("character_reference");
     expect(call.userPromptText).toContain("4:5");
+    expect(JSON.parse(call.userPromptText)).toMatchObject({
+      compositionDirection: expect.stringContaining(
+        "naturally interacting with the referenced product"
+      ),
+    });
+    expect(call.systemPrompt).toContain("one cohesive scene");
+    expect(call.systemPrompt).toContain(
+      "integrate the product with the referenced character"
+    );
     expect(mocks.calculateCreditsForLLMDynamic).toHaveBeenCalledWith(
       120,
       45,
