@@ -21179,6 +21179,23 @@ function serializeRun(
 
   if (!includeHeavyMetadata) {
     const metadata = asRecord(run.metadataJson);
+    const characterSeriesIds = Array.from(
+      new Set(
+        (Array.isArray(metadata.customReferenceManifest)
+          ? metadata.customReferenceManifest
+          : []
+        )
+          .map(entry => asRecord(entry))
+          .filter(
+            entry =>
+              entry.role === "character" &&
+              cleanText(entry.vdCharacterId) &&
+              cleanText(entry.vdSeriesId)
+          )
+          .map(entry => cleanText(entry.vdSeriesId))
+          .filter(Boolean)
+      )
+    );
     const hyperframesAutoPreviewSummary =
       summarizeHyperframesPreviewMarkerForUi(metadata.hyperframesAutoPreview);
     const stagedProgress = summarizeStagedAutoReviewProgress(metadata);
@@ -21191,6 +21208,7 @@ function serializeRun(
           metadata.planningArchitectureVersion ?? null,
         resolvedAudioStrategy: metadata.resolvedAudioStrategy ?? null,
         referenceAnchors: metadata.referenceAnchors ?? null,
+        ...(characterSeriesIds.length > 0 ? { characterSeriesIds } : {}),
         imageAttemptReviews: summarizeImageAttemptReviewsForUi(metadata),
         storyboardGridUrl: metadata.storyboardGridUrl ?? null,
         storyboardFrameUrls: metadata.storyboardFrameUrls ?? [],

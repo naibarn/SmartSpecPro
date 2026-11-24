@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  CircleCheck,
   ExternalLink,
   Loader2,
   Plus,
@@ -15,6 +16,7 @@ import {
 import {
   AuthenticatedMediaImage,
   AuthenticatedMediaVideo,
+  getAuthenticatedMediaUrl,
 } from "@/components/media/AuthenticatedMediaImage";
 
 export type MarketplaceAutoReviewJobSummary = Record<string, any>;
@@ -291,6 +293,212 @@ function jobTitle(run: MarketplaceAutoReviewJobSummary): string {
   );
 }
 
+type AutoVideoPosterState = { cacheKey: string; posterUrl: string };
+const autoVideoPosterCache = new Map<string, string>();
+const AUTO_VIDEO_POSTER_CACHE_LIMIT = 80;
+
+function rememberAutoVideoPoster(cacheKey: string, posterUrl: string) {
+  autoVideoPosterCache.delete(cacheKey);
+  autoVideoPosterCache.set(cacheKey, posterUrl);
+  if (autoVideoPosterCache.size > AUTO_VIDEO_POSTER_CACHE_LIMIT) {
+    const oldestKey = autoVideoPosterCache.keys().next().value;
+    if (oldestKey) autoVideoPosterCache.delete(oldestKey);
+  }
+}
+
+function useAutoVideoPoster(
+  cacheKey: string,
+  src: string,
+  existingPosterUrl: string
+) {
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(
+    null
+  );
+  const [nearViewport, setNearViewport] = useState(false);
+  const [generatedPoster, setGeneratedPoster] =
+    useState<AutoVideoPosterState | null>(null);
+
+  useEffect(() => {
+    setNearViewport(false);
+    if (!videoElement || !src || existingPosterUrl) return;
+
+    const cachedPoster = autoVideoPosterCache.get(cacheKey);
+    if (cachedPoster) {
+      setGeneratedPoster({ cacheKey, posterUrl: cachedPoster });
+      setNearViewport(true);
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(videoElement);
+    return () => observer.disconnect();
+  }, [cacheKey, existingPosterUrl, src, videoElement]);
+
+  useEffect(() => {
+    if (!nearViewport || !src || existingPosterUrl) return;
+    const cachedPoster = autoVideoPosterCache.get(cacheKey);
+    if (cachedPoster) {
+      setGeneratedPoster({ cacheKey, posterUrl: cachedPoster });
+      return;
+    }
+
+    const resolvedSrc = getAuthenticatedMediaUrl(src);
+    if (!resolvedSrc) return;
+
+    let cancelled = false;
+    let captured = false;
+    let targetTime = 0.1;
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    const releaseVideo = () => {
+      video.removeAttribute("src");
+      video.load();
+    };
+    const captureFrame = () => {
+      if (
+        cancelled ||
+        captured ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        video.videoWidth <= 0 ||
+        video.videoHeight <= 0
+      ) {
+        return;
+      }
+      captured = true;
+      const scale = Math.min(
+        1,
+        240 / video.videoWidth,
+        432 / video.videoHeight
+      );
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      try {
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const posterUrl = canvas.toDataURL("image/webp", 0.75);
+        if (posterUrl.startsWith("data:image/")) {
+          rememberAutoVideoPoster(cacheKey, posterUrl);
+          setGeneratedPoster({ cacheKey, posterUrl });
+        }
+      } catch {
+        // Some external video hosts disallow canvas extraction; the card's
+        // completed-video label remains visible when no frame can be captured.
+      } finally {
+        releaseVideo();
+      }
+    };
+    const captureLoadedFrameIfAtTarget = () => {
+      if (video.currentTime + 0.01 >= targetTime) captureFrame();
+    };
+    const seekToPosterFrame = () => {
+      targetTime = Number.isFinite(video.duration)
+        ? Math.min(0.1, Math.max(0, video.duration / 2))
+        : 0.1;
+      try {
+        video.currentTime = targetTime;
+      } catch {
+        captureFrame();
+      }
+    };
+    video.addEventListener("loadedmetadata", seekToPosterFrame, { once: true });
+    video.addEventListener("loadeddata", captureLoadedFrameIfAtTarget, {
+      once: true,
+    });
+    video.addEventListener("seeked", captureFrame, { once: true });
+    video.addEventListener("error", releaseVideo, { once: true });
+    video.src = resolvedSrc;
+    video.load();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", seekToPosterFrame);
+      video.removeEventListener("loadeddata", captureLoadedFrameIfAtTarget);
+      video.removeEventListener("seeked", captureFrame);
+      video.removeEventListener("error", releaseVideo);
+      releaseVideo();
+    };
+  }, [cacheKey, existingPosterUrl, nearViewport, src]);
+
+  const generatedPosterUrl =
+    generatedPoster?.cacheKey === cacheKey ? generatedPoster.posterUrl : "";
+  return {
+    ref: setVideoElement,
+    posterUrl: existingPosterUrl || generatedPosterUrl || undefined,
+  };
+}
+
+function MarketplaceAutoReviewVideoPreview({
+  runId,
+  updatedAt,
+  src,
+  posterUrl,
+  title,
+  onMediaLoadError,
+}: {
+  runId: string;
+  updatedAt: unknown;
+  src: string;
+  posterUrl: string;
+  title: string;
+  onMediaLoadError: () => void;
+}) {
+  const updatedAtKey = updatedAt instanceof Date
+    ? updatedAt.toISOString()
+    : String(updatedAt ?? "");
+  const thumbnail = useAutoVideoPoster(
+    `${runId}:${updatedAtKey}:${src}`,
+    src,
+    posterUrl
+  );
+
+  return (
+    <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
+      <AuthenticatedMediaVideo
+        ref={thumbnail.ref}
+        src={src}
+        poster={thumbnail.posterUrl}
+        controls
+        muted
+        playsInline
+        preload="none"
+        aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${title}`}
+        className="aspect-[9/16] h-36 w-20 shrink-0 rounded-md bg-black object-contain"
+        fallback={
+          <span className="flex aspect-[9/16] h-36 w-20 shrink-0 items-center justify-center rounded-md bg-black px-2 text-center text-[10px] text-slate-300">
+            วิดีโอไม่พร้อมเล่น
+          </span>
+        }
+        onError={onMediaLoadError}
+        onStalled={onMediaLoadError}
+      />
+      <figcaption className="min-w-0 text-center">
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300">
+          <CircleCheck className="h-3 w-3" aria-hidden="true" />
+          มีวิดีโอรวมแล้ว
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
 export function MarketplaceAutoReviewJobNavigator({
   runs,
   selectedRunId,
@@ -466,6 +674,14 @@ export function MarketplaceAutoReviewJobNavigator({
             const productThumbnailUrl = text(run.productThumbnailUrl);
             const videoPreviewUrl = text(run.videoPreviewUrl);
             const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
+            const characterSeriesNames = Array.isArray(
+              run.characterSeriesNames
+            )
+              ? run.characterSeriesNames.filter(
+                  (name: unknown): name is string =>
+                    typeof name === "string" && Boolean(name.trim())
+                )
+              : [];
             const hasVideoPreview =
               canShowVideoPreview && Boolean(videoPreviewUrl);
             const productThumbnailClassName = largeProductThumbnails
@@ -561,6 +777,14 @@ export function MarketplaceAutoReviewJobNavigator({
                               </span>
                             </span>
                           ) : null}
+                          {characterSeriesNames.length > 0 ? (
+                            <span
+                              className="mt-1 block truncate text-[10px] text-violet-300"
+                              title={characterSeriesNames.join(" · ")}
+                            >
+                              ซีรีส์: {characterSeriesNames.join(" · ")}
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                       <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
@@ -602,30 +826,14 @@ export function MarketplaceAutoReviewJobNavigator({
                     </span>
                   </a>
                   {hasVideoPreview ? (
-                    <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
-                      <AuthenticatedMediaVideo
-                        src={videoPreviewUrl}
-                        poster={videoPreviewPosterUrl || undefined}
-                        controls
-                        muted
-                        playsInline
-                        preload="none"
-                        aria-label={`ตัวอย่างวิดีโอที่รวมแล้ว: ${jobTitle(run)}`}
-                        className="aspect-[9/16] h-36 w-20 shrink-0 rounded-md bg-black object-contain"
-                        fallback={
-                          <span className="flex aspect-[9/16] h-36 w-20 shrink-0 items-center justify-center rounded-md bg-black px-2 text-center text-[10px] text-slate-300">
-                            วิดีโอไม่พร้อมเล่น
-                          </span>
-                        }
-                        onError={handleMediaLoadError}
-                        onStalled={handleMediaLoadError}
-                      />
-                      <figcaption className="min-w-0 text-center">
-                        <span className="block text-[10px] font-semibold text-slate-200">
-                          วิดีโอที่รวมแล้ว
-                        </span>
-                      </figcaption>
-                    </figure>
+                    <MarketplaceAutoReviewVideoPreview
+                      runId={runId}
+                      updatedAt={run.updatedAt ?? run.createdAt}
+                      src={videoPreviewUrl}
+                      posterUrl={videoPreviewPosterUrl}
+                      title={jobTitle(run)}
+                      onMediaLoadError={handleMediaLoadError}
+                    />
                   ) : null}
                 </div>
                 {/* Delete — sits OUTSIDE the card button (buttons can't nest)

@@ -5,6 +5,7 @@ import {
   marketplaceCaptureAssets,
   marketplaceProductImages,
   marketplaceProducts,
+  verticalDramaSeries,
   workerArtifacts,
   workerJobs,
 } from "../../drizzle/schema";
@@ -103,6 +104,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       productThumbnailUrl: string | null;
       videoPreviewUrl: string | null;
       videoPreviewPosterUrl: string | null;
+      characterSeriesNames: string[];
     }
   >
 > {
@@ -111,6 +113,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     productThumbnailUrl: null,
     videoPreviewUrl: null,
     videoPreviewPosterUrl: null,
+    characterSeriesNames: [],
   }));
   if (runs.length === 0) return result;
 
@@ -138,6 +141,26 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       runs.map(run => String(run.renderJobId ?? "").trim()).filter(Boolean)
     )
   );
+  const characterSeriesIdsByRunId = new Map(
+    runs.map(run => {
+      const ids = record(run.metadataJson).characterSeriesIds;
+      const seriesIds = Array.isArray(ids)
+        ? ids
+            .filter(
+              (id): id is string =>
+                typeof id === "string" && Boolean(id.trim())
+            )
+            .map(id => id.trim())
+        : [];
+      return [String(run.id ?? "").trim(), seriesIds] as const;
+    })
+  );
+  const characterSeriesIds = Array.from(
+    new Set(Array.from(characterSeriesIdsByRunId.values()).flat())
+  );
+  const numericCharacterSeriesIds = characterSeriesIds
+    .map(id => Number(id))
+    .filter(id => Number.isSafeInteger(id) && id > 0);
 
   const productRows = productIds.length
     ? await db
@@ -154,6 +177,25 @@ export async function attachMarketplaceAutoReviewJobPreviews<
           )
         )
     : [];
+
+  const characterSeriesRows = numericCharacterSeriesIds.length
+    ? await db
+        .select({
+          id: verticalDramaSeries.id,
+          title: verticalDramaSeries.title,
+        })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            inArray(verticalDramaSeries.id, numericCharacterSeriesIds),
+            eq(verticalDramaSeries.userId, auth.userId),
+            eq(verticalDramaSeries.tenantId, tenantId)
+          )
+        )
+    : [];
+  const characterSeriesTitleById = new Map(
+    characterSeriesRows.map(series => [String(series.id), series.title.trim()])
+  );
 
   const imageRows = productIds.length
     ? await db
@@ -386,6 +428,11 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     return {
       ...run,
       productThumbnailUrl: productById.get(productId) ?? null,
+      characterSeriesNames: (characterSeriesIdsByRunId.get(
+        String(run.id ?? "").trim()
+      ) ?? [])
+        .map(id => characterSeriesTitleById.get(id))
+        .filter((title): title is string => Boolean(title)),
       videoPreviewUrl: libraryItem
         ? libraryMediaUrl(videoSource, mediaMetadata, "source_key")
         : null,
