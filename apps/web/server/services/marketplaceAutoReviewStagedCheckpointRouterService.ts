@@ -65,6 +65,14 @@ import {
   MARKETPLACE_SOCIAL_CAPTION_SKILL,
 } from "./marketplaceAutoReviewSocialCaptionSkillRunner";
 import {
+  generateMarketplaceSocialPostImage,
+  MarketplaceSocialPostImageFailure,
+  resolveMarketplaceSocialPostImageModel,
+  type MarketplaceSocialPostAspectRatio,
+  type MarketplaceSocialPostImageResult,
+} from "./marketplaceAutoReviewSocialPostImagesService";
+import type { MarketplaceSocialImageVariant } from "./marketplaceAutoReviewSocialImagePromptSkillRunner";
+import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
   refreshSequentialShotPromptWithSkillDirect,
   type SequentialStoryboardLanguage,
@@ -558,6 +566,100 @@ function stagedSocialCaptionProjection(value: unknown) {
     sourceLabel: stagedTextOrEmpty(caption.sourceLabel).slice(0, 240),
     generatedAt: stagedTextOrEmpty(caption.generatedAt).slice(0, 64),
   };
+}
+
+const STAGED_SOCIAL_IMAGE_VARIANTS = [
+  "caption_source",
+  "character_reference",
+  "product_reference",
+] as const satisfies readonly MarketplaceSocialImageVariant[];
+const ACTIVE_STAGED_SOCIAL_IMAGE_JOB_STATUSES = new Set([
+  "pending",
+  "queued",
+  "leased",
+  "claimed",
+  "preparing",
+  "running",
+  "waiting_external",
+  "retry_scheduled",
+]);
+
+function storedSocialPostImageUrl(value: unknown): string | null {
+  const key = stagedTextOrEmpty(value).replace(/^\/+/, "");
+  if (
+    !key.startsWith("marketplace-auto-review/") ||
+    key.split("/").some(segment => segment === ".." || !segment)
+  ) {
+    return null;
+  }
+  return `/api/storage/files/${key.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function stagedSocialPostImagesProjection(value: unknown) {
+  const postImages = record(value);
+  if (!stagedTextOrEmpty(postImages.batchId)) return null;
+  const variants = record(postImages.variants);
+  return {
+    batchId: stagedTextOrEmpty(postImages.batchId).slice(0, 100),
+    requestHash: stagedTextOrEmpty(postImages.requestHash).slice(0, 256),
+    modelId: stagedTextOrEmpty(postImages.modelId).slice(0, 200),
+    aspectRatio:
+      postImages.aspectRatio === "9:16" ? ("9:16" as const) : ("4:5" as const),
+    characterReferenceIndex:
+      Number.isInteger(postImages.characterReferenceIndex) &&
+      postImages.characterReferenceIndex > 0
+        ? postImages.characterReferenceIndex
+        : null,
+    productReferenceIndex:
+      Number.isInteger(postImages.productReferenceIndex) &&
+      postImages.productReferenceIndex > 0
+        ? postImages.productReferenceIndex
+        : null,
+    status: ["queued", "running", "partial", "failed", "completed"].includes(
+      String(postImages.status)
+    )
+      ? String(postImages.status)
+      : "failed",
+    createdAt: stagedTextOrEmpty(postImages.createdAt).slice(0, 64),
+    updatedAt: stagedTextOrEmpty(postImages.updatedAt).slice(0, 64),
+    variants: Object.fromEntries(
+      STAGED_SOCIAL_IMAGE_VARIANTS.map(variant => {
+        const entry = record(variants[variant]);
+        const status = ["pending", "running", "completed", "failed"].includes(
+          String(entry.status)
+        )
+          ? String(entry.status)
+          : "pending";
+        const imageUrl = storedSocialPostImageUrl(entry.imageStorageKey);
+        return [
+          variant,
+          {
+            status,
+            imageUrl: status === "completed" ? imageUrl : null,
+            sourceLabel: stagedTextOrEmpty(entry.sourceLabel).slice(0, 240),
+            progress: Number.isFinite(Number(entry.progress))
+              ? Math.max(0, Math.min(100, Number(entry.progress)))
+              : null,
+            promptCreditsUsed:
+              Number.isFinite(Number(entry.promptCreditsUsed)) &&
+              Number(entry.promptCreditsUsed) >= 0
+                ? Number(entry.promptCreditsUsed)
+                : null,
+            imageCreditsUsed:
+              Number.isFinite(Number(entry.imageCreditsUsed)) &&
+              Number(entry.imageCreditsUsed) >= 0
+                ? Number(entry.imageCreditsUsed)
+                : null,
+            createdAt: stagedTextOrEmpty(entry.createdAt).slice(0, 64),
+          },
+        ];
+      })
+    ),
+  };
+}
+
+export function projectStagedSocialPostImagesForTest(value: unknown) {
+  return stagedSocialPostImagesProjection(value);
 }
 
 function requireStagedImageArtifactHash(shot: {
@@ -1304,6 +1406,568 @@ export async function generateStagedAutoReviewSocialCaption(input: {
     runId: run.id,
     operation: "staged_social_caption_generation",
     status: "completed",
+  };
+}
+
+export async function generateStagedAutoReviewSocialPostImages(input: {
+  runId: string;
+  batchId: string;
+  expectedStateDigest?: string;
+  expectedRequestHash?: string;
+  requestIdempotencyKey: string;
+  modelId: string;
+  aspectRatio: MarketplaceSocialPostAspectRatio;
+  characterReferenceIndex: number;
+  productReferenceIndex: number;
+  variants: MarketplaceSocialImageVariant[];
+  auth: StagedCheckpointAuth;
+  runtime?: StagedCheckpointRuntime;
+  workerExecution?: boolean;
+  onProgress?: (progress: {
+    progress: number;
+    stage: string;
+    message: string;
+  }) => Promise<void>;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  if (
+    input.requestIdempotencyKey.trim().length < 8 ||
+    input.batchId.trim().length < 1
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid request key",
+    });
+  }
+  const requestedVariants = new Set(input.variants);
+  const variants = STAGED_SOCIAL_IMAGE_VARIANTS.filter(variant =>
+    requestedVariants.has(variant)
+  );
+  if (
+    variants.length === 0 ||
+    variants.length !== input.variants.length ||
+    new Set(variants).size !== variants.length
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_social_image_variants_invalid",
+    });
+  }
+  if (
+    !Number.isSafeInteger(input.characterReferenceIndex) ||
+    input.characterReferenceIndex < 1 ||
+    !Number.isSafeInteger(input.productReferenceIndex) ||
+    input.productReferenceIndex < 1 ||
+    !input.modelId.trim()
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_social_image_selection_invalid",
+    });
+  }
+
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedMetadataPersisted(run);
+  const metadata = parseStagedMetadata(run);
+  const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
+  const context = resolveStagedSocialPostImagesContext({
+    run,
+    metadata,
+    characterReferenceIndex: input.characterReferenceIndex,
+    productReferenceIndex: input.productReferenceIndex,
+    modelId: input.modelId,
+    aspectRatio: input.aspectRatio,
+  });
+  if (
+    input.expectedRequestHash &&
+    context.requestHash !== input.expectedRequestHash
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const requestHash = context.requestHash;
+  if (input.workerExecution && !input.expectedRequestHash) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_social_image_request_hash_required",
+    });
+  }
+
+  if (!input.workerExecution) {
+    if (
+      !input.expectedStateDigest ||
+      stagedMetadataStateDigest(metadata) !== input.expectedStateDigest
+    ) {
+      throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+    }
+    await resolveMarketplaceSocialPostImageModel({
+      modelId: input.modelId,
+      aspectRatio: input.aspectRatio,
+    });
+    const currentImages = record(
+      record(record(record(run.metadataJson).stagedPipeline).socialCaption)
+        .postImages
+    );
+    const isRetry = currentImages.batchId === input.batchId;
+    if (!isRetry && variants.length !== STAGED_SOCIAL_IMAGE_VARIANTS.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "staged_social_image_initial_batch_requires_three_variants",
+      });
+    }
+
+    return db.transaction(async tx => {
+      const [lockedRun] = await tx
+        .select()
+        .from(marketplaceAutoReviewRuns)
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, input.runId),
+            eq(marketplaceAutoReviewRuns.userId, input.auth.userId),
+            tenantAccessClause(input.auth)
+          )
+        )
+        .for("update")
+        .limit(1);
+      if (!lockedRun) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Auto review run not found",
+        });
+      }
+      const lockedMetadata = parseStagedMetadata(lockedRun);
+      if (
+        stagedMetadataStateDigest(lockedMetadata) !== input.expectedStateDigest
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "staged_state_drift",
+        });
+      }
+      const lockedContext = resolveStagedSocialPostImagesContext({
+        run: lockedRun,
+        metadata: lockedMetadata,
+        characterReferenceIndex: input.characterReferenceIndex,
+        productReferenceIndex: input.productReferenceIndex,
+        modelId: input.modelId,
+        aspectRatio: input.aspectRatio,
+      });
+      if (lockedContext.requestHash !== requestHash) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "staged_state_drift",
+        });
+      }
+      const existingJob =
+        await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+          tx,
+          tenantId,
+          input.requestIdempotencyKey
+        );
+      if (existingJob) {
+        if (
+          existingJob.jobType !== "marketplace.auto_review.execute" ||
+          record(existingJob.inputJson).operation !==
+            "staged_social_post_images_generation"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "idempotency_conflict",
+          });
+        }
+        return {
+          runId: lockedRun.id,
+          batchId: input.batchId,
+          workerJobId: existingJob.id,
+          operation: "staged_social_post_images_generation",
+          status: existingJob.status,
+          requestHash,
+        };
+      }
+
+      const raw = record(lockedRun.metadataJson);
+      const pipeline = record(raw.stagedPipeline);
+      const socialCaption = record(pipeline.socialCaption);
+      const previousImages = record(socialCaption.postImages);
+      const sameBatch = previousImages.batchId === input.batchId;
+      if (sameBatch) {
+        if (
+          previousImages.requestHash !== requestHash ||
+          previousImages.modelId !== input.modelId ||
+          previousImages.aspectRatio !== input.aspectRatio ||
+          previousImages.characterReferenceIndex !==
+            input.characterReferenceIndex ||
+          previousImages.productReferenceIndex !== input.productReferenceIndex
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "staged_state_drift",
+          });
+        }
+        const previousVariants = record(previousImages.variants);
+        const hasPendingVariant = STAGED_SOCIAL_IMAGE_VARIANTS.some(variant =>
+          ["pending", "running"].includes(
+            stagedTextOrEmpty(record(previousVariants[variant]).status)
+          )
+        );
+        if (hasPendingVariant) {
+          const previousRequestKey = stagedTextOrEmpty(
+            previousImages.lastRequestIdempotencyKey
+          );
+          const previousJob = previousRequestKey
+            ? await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+                tx,
+                tenantId,
+                previousRequestKey
+              )
+            : null;
+          if (
+            previousJob &&
+            ACTIVE_STAGED_SOCIAL_IMAGE_JOB_STATUSES.has(previousJob.status)
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "staged_social_images_in_progress",
+            });
+          }
+        }
+        if (
+          variants.some(
+            variant =>
+              record(previousVariants[variant]).status === "completed" &&
+              storedSocialPostImageUrl(
+                record(previousVariants[variant]).imageStorageKey
+              )
+          )
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "staged_social_image_variant_already_completed",
+          });
+        }
+      } else if (
+        variants.length !== STAGED_SOCIAL_IMAGE_VARIANTS.length ||
+        STAGED_SOCIAL_IMAGE_VARIANTS.some(
+          variant => !variants.includes(variant)
+        )
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "staged_social_image_initial_batch_requires_three_variants",
+        });
+      }
+
+      const now = new Date().toISOString();
+      const variantStates = sameBatch
+        ? { ...record(previousImages.variants) }
+        : Object.fromEntries(
+            STAGED_SOCIAL_IMAGE_VARIANTS.map(variant => [
+              variant,
+              {
+                status: "pending",
+                sourceLabel: lockedContext.sources[variant].label,
+                progress: 0,
+              },
+            ])
+          );
+      for (const variant of variants) {
+        variantStates[variant] = {
+          ...record(variantStates[variant]),
+          status: "pending",
+          sourceLabel: lockedContext.sources[variant].label,
+          progress: 0,
+          errorCode: undefined,
+          updatedAt: now,
+        };
+      }
+      const postImages = {
+        ...(sameBatch ? previousImages : {}),
+        batchId: input.batchId,
+        requestHash: lockedContext.requestHash,
+        modelId: input.modelId,
+        aspectRatio: input.aspectRatio,
+        characterReferenceIndex: input.characterReferenceIndex,
+        productReferenceIndex: input.productReferenceIndex,
+        status: "queued",
+        createdAt: sameBatch
+          ? stagedTextOrEmpty(previousImages.createdAt) || now
+          : now,
+        updatedAt: now,
+        lastRequestIdempotencyKey: input.requestIdempotencyKey,
+        variants: variantStates,
+      };
+      const nextMetadata = {
+        ...raw,
+        stagedPipeline: {
+          ...pipeline,
+          socialCaption: { ...socialCaption, postImages },
+        },
+      };
+      await tx
+        .update(marketplaceAutoReviewRuns)
+        .set({ metadataJson: nextMetadata, updatedAt: new Date() })
+        .where(eq(marketplaceAutoReviewRuns.id, lockedRun.id));
+      const queued = await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+        query: tx,
+        admission: {
+          tenantId,
+          userId: lockedRun.userId,
+          runId: lockedRun.id,
+          operation: {
+            operation: "staged_social_post_images_generation",
+            runId: lockedRun.id,
+            batchId: input.batchId,
+            expectedRequestHash: lockedContext.requestHash,
+            requestIdempotencyKey: input.requestIdempotencyKey,
+            modelId: input.modelId,
+            aspectRatio: input.aspectRatio,
+            characterReferenceIndex: input.characterReferenceIndex,
+            productReferenceIndex: input.productReferenceIndex,
+            variants,
+          },
+          idempotencyKey: input.requestIdempotencyKey,
+          priority: 35,
+        },
+      });
+      return {
+        runId: lockedRun.id,
+        batchId: input.batchId,
+        workerJobId: queued.jobId,
+        operation: "staged_social_post_images_generation",
+        status: "queued" as const,
+        requestHash: lockedContext.requestHash,
+      };
+    });
+  }
+
+  const postImages = record(
+    record(record(record(run.metadataJson).stagedPipeline).socialCaption)
+      .postImages
+  );
+  if (
+    postImages.batchId !== input.batchId ||
+    postImages.requestHash !== requestHash ||
+    postImages.modelId !== input.modelId ||
+    postImages.aspectRatio !== input.aspectRatio ||
+    postImages.characterReferenceIndex !== input.characterReferenceIndex ||
+    postImages.productReferenceIndex !== input.productReferenceIndex
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+
+  const persistVariant = async (
+    variant: MarketplaceSocialImageVariant,
+    patch: Record<string, unknown>
+  ) =>
+    db.transaction(async tx => {
+      const [lockedRun] = await tx
+        .select()
+        .from(marketplaceAutoReviewRuns)
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.id, input.runId),
+            eq(marketplaceAutoReviewRuns.userId, input.auth.userId),
+            tenantAccessClause(input.auth)
+          )
+        )
+        .for("update")
+        .limit(1);
+      if (!lockedRun) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Auto review run not found",
+        });
+      }
+      const lockedMetadata = parseStagedMetadata(lockedRun);
+      const currentContext = resolveStagedSocialPostImagesContext({
+        run: lockedRun,
+        metadata: lockedMetadata,
+        characterReferenceIndex: input.characterReferenceIndex,
+        productReferenceIndex: input.productReferenceIndex,
+        modelId: input.modelId,
+        aspectRatio: input.aspectRatio,
+      });
+      const raw = record(lockedRun.metadataJson);
+      const pipeline = record(raw.stagedPipeline);
+      const socialCaption = record(pipeline.socialCaption);
+      const currentImages = record(socialCaption.postImages);
+      if (
+        currentContext.requestHash !== requestHash ||
+        currentImages.batchId !== input.batchId ||
+        currentImages.requestHash !== requestHash
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "staged_state_drift",
+        });
+      }
+      const currentVariants = record(currentImages.variants);
+      const nextVariants = {
+        ...currentVariants,
+        [variant]: {
+          ...record(currentVariants[variant]),
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      const statuses = STAGED_SOCIAL_IMAGE_VARIANTS.map(item =>
+        stagedTextOrEmpty(record(nextVariants[item]).status)
+      );
+      const groupStatus = statuses.every(status => status === "completed")
+        ? "completed"
+        : statuses.some(status => status === "running")
+          ? "running"
+          : statuses.some(status => status === "pending")
+            ? "queued"
+            : statuses.some(status => status === "completed")
+              ? "partial"
+              : "failed";
+      const nextPostImages = {
+        ...currentImages,
+        status: groupStatus,
+        updatedAt: new Date().toISOString(),
+        variants: nextVariants,
+      };
+      await tx
+        .update(marketplaceAutoReviewRuns)
+        .set({
+          metadataJson: {
+            ...raw,
+            stagedPipeline: {
+              ...pipeline,
+              socialCaption: { ...socialCaption, postImages: nextPostImages },
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(marketplaceAutoReviewRuns.id, lockedRun.id));
+      return nextPostImages;
+    });
+
+  const finalVariantStates = { ...record(postImages.variants) };
+  for (const [index, variant] of variants.entries()) {
+    const previousVariant = record(record(postImages.variants)[variant]);
+    if (
+      previousVariant.status === "completed" &&
+      storedSocialPostImageUrl(previousVariant.imageStorageKey)
+    ) {
+      finalVariantStates[variant] = previousVariant;
+      continue;
+    }
+    await persistVariant(variant, {
+      status: "running",
+      progress: 0,
+      sourceLabel: context.sources[variant].label,
+      attemptKey: input.requestIdempotencyKey,
+      errorCode: undefined,
+    });
+    let generated: MarketplaceSocialPostImageResult;
+    try {
+      generated = await generateMarketplaceSocialPostImage({
+        userId: run.userId,
+        tenantId,
+        publicUrl: input.runtime?.publicUrl,
+        runId: run.id,
+        batchId: input.batchId,
+        requestIdempotencyKey: input.requestIdempotencyKey,
+        modelId: input.modelId,
+        aspectRatio: input.aspectRatio,
+        variant,
+        language: context.language,
+        caption: context.caption,
+        product: context.product,
+        source: context.sources[variant],
+        onProgress: async progress => {
+          const variantProgress = Math.max(
+            0,
+            Math.min(100, Math.round(Number(progress.progress) || 0))
+          );
+          await persistVariant(variant, {
+            status: "running",
+            progress: variantProgress,
+          });
+          const overallProgress = Math.round(
+            ((index + variantProgress / 100) / variants.length) * 100
+          );
+          await input.onProgress?.({
+            progress: overallProgress,
+            stage: progress.stage,
+            message: progress.message,
+          });
+        },
+      });
+    } catch (error) {
+      const rawCode =
+        error instanceof Error
+          ? error.message
+          : "SOCIAL_POST_IMAGE_GENERATION_FAILED";
+      const errorCode = /^[A-Z0-9_:-]{1,160}$/.test(rawCode)
+        ? rawCode
+        : "SOCIAL_POST_IMAGE_GENERATION_FAILED";
+      await persistVariant(variant, {
+        status: "failed",
+        progress: 100,
+        ...(error instanceof MarketplaceSocialPostImageFailure
+          ? {
+              promptCreditsUsed: error.promptCreditsUsed,
+              imageCreditsUsed: error.imageCreditsUsed,
+              totalCreditsUsed:
+                error.promptCreditsUsed + error.imageCreditsUsed,
+            }
+          : {}),
+        errorCode,
+      });
+      finalVariantStates[variant] = { ...previousVariant, status: "failed" };
+      continue;
+    }
+    await persistVariant(variant, {
+      status: "completed",
+      progress: 100,
+      imageStorageKey: generated.imageStorageKey,
+      taskId: generated.taskId,
+      modelId: generated.modelId,
+      aspectRatio: generated.aspectRatio,
+      imageCreditsUsed: generated.imageCreditsUsed,
+      promptCreditsUsed: generated.promptCreditsUsed,
+      totalCreditsUsed:
+        generated.imageCreditsUsed + generated.promptCreditsUsed,
+      imagePrompt: generated.imagePrompt,
+      negativePrompt: generated.negativePrompt,
+      promptModel: generated.promptModel,
+      promptProvider: generated.promptProvider,
+      sourceLabel: context.sources[variant].label,
+      errorCode: undefined,
+    });
+    finalVariantStates[variant] = {
+      ...previousVariant,
+      status: "completed",
+      imageStorageKey: generated.imageStorageKey,
+    };
+  }
+  const completedCount = STAGED_SOCIAL_IMAGE_VARIANTS.filter(
+    variant =>
+      record(finalVariantStates[variant]).status === "completed" &&
+      storedSocialPostImageUrl(
+        record(finalVariantStates[variant]).imageStorageKey
+      )
+  ).length;
+  return {
+    runId: run.id,
+    batchId: input.batchId,
+    operation: "staged_social_post_images_generation",
+    status:
+      completedCount === STAGED_SOCIAL_IMAGE_VARIANTS.length
+        ? "completed"
+        : completedCount > 0
+          ? "partial"
+          : "failed",
+    completedCount,
+    totalCount: STAGED_SOCIAL_IMAGE_VARIANTS.length,
   };
 }
 
@@ -3019,6 +3683,176 @@ function resolveStagedSocialCaptionContext(
     )
     .digest("hex");
   return { sourceHash, source, product: productInfo, language };
+}
+
+export function resolveStagedSocialCaptionContextForTest(
+  run: StagedCheckpointRun,
+  metadata: ReturnType<typeof parseStagedMetadata>,
+  sourceRef: StagedSocialCaptionSourceRef
+) {
+  return resolveStagedSocialCaptionContext(run, metadata, sourceRef);
+}
+
+type StagedSocialPostImagesContext = {
+  requestHash: string;
+  caption: string;
+  language: "th" | "en";
+  product: {
+    productName: string;
+    description?: string | null;
+    specs?: Record<string, unknown>;
+  };
+  sources: Record<
+    MarketplaceSocialImageVariant,
+    {
+      label: string;
+      imageUrl: string;
+      context?: string;
+    }
+  >;
+};
+
+function resolveStagedSocialPostImagesContext(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  characterReferenceIndex: number;
+  productReferenceIndex: number;
+  modelId: string;
+  aspectRatio: MarketplaceSocialPostAspectRatio;
+}): StagedSocialPostImagesContext {
+  const pipeline = record(record(input.run.metadataJson).stagedPipeline);
+  const socialCaption = record(pipeline.socialCaption);
+  const caption = stagedTextOrEmpty(socialCaption.caption).slice(0, 2000);
+  const captionSourceRef: StagedSocialCaptionSourceRef | null =
+    socialCaption.sourceType === "product" &&
+    Number.isSafeInteger(socialCaption.referenceIndex) &&
+    socialCaption.referenceIndex > 0
+      ? {
+          sourceType: "product",
+          referenceIndex: socialCaption.referenceIndex,
+        }
+      : socialCaption.sourceType === "shot" &&
+          Number.isSafeInteger(socialCaption.shotId) &&
+          socialCaption.shotId > 0
+        ? { sourceType: "shot", shotId: socialCaption.shotId }
+        : null;
+  if (!caption || !captionSourceRef) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_social_caption_required",
+    });
+  }
+  const captionSource = resolveStagedSocialCaptionContext(
+    input.run,
+    input.metadata,
+    captionSourceRef
+  );
+  if (
+    !stagedTextOrEmpty(socialCaption.sourceHash) ||
+    socialCaption.sourceHash !== captionSource.sourceHash
+  ) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const manifest = requireStagedReferenceManifest(
+    record(input.run.metadataJson)
+  );
+  const character = manifest.find(
+    item =>
+      item.index === input.characterReferenceIndex &&
+      item.active === true &&
+      item.role === "character"
+  );
+  const productReference = manifest.find(
+    item =>
+      item.index === input.productReferenceIndex &&
+      item.active === true &&
+      item.role !== "character"
+  );
+  const characterUrl = character ? safeArtifactUrl(character.url) : null;
+  const productUrl = productReference
+    ? safeArtifactUrl(productReference.url)
+    : null;
+  if (!character || !characterUrl) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_social_character_reference_unavailable",
+    });
+  }
+  if (!productReference || !productUrl) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_social_product_reference_unavailable",
+    });
+  }
+  const characterLabel =
+    stagedTextOrEmpty(character.characterName) ||
+    stagedTextOrEmpty(character.label) ||
+    `ตัวละคร ${character.index}`;
+  const productLabel =
+    stagedTextOrEmpty(productReference.label) ||
+    `รูปสินค้า ${productReference.index}`;
+  const refFingerprint = (item: Record<string, any>, imageUrl: string) => ({
+    index: item.index,
+    role: item.role,
+    label: stagedTextOrEmpty(item.label),
+    characterName: stagedTextOrEmpty(item.characterName),
+    imageUrl,
+    checksum: stagedTextOrEmpty(
+      item.checksum ?? item.contentHash ?? item.sha256 ?? item.imageHash
+    ),
+    portraitAssetId: stagedTextOrEmpty(item.portraitAssetId),
+    vdCharacterId: stagedTextOrEmpty(item.vdCharacterId),
+    variantLabel: stagedTextOrEmpty(item.variantLabel),
+  });
+  const requestHash = buildProductionStableHash({
+    caption,
+    hashtags: Array.isArray(socialCaption.hashtags)
+      ? socialCaption.hashtags
+      : [],
+    captionRequestIdempotencyKey: stagedTextOrEmpty(
+      socialCaption.requestIdempotencyKey
+    ),
+    captionSourceHash: captionSource.sourceHash,
+    product: captionSource.product,
+    language: captionSource.language,
+    characterReference: refFingerprint(character, characterUrl),
+    productReference: refFingerprint(productReference, productUrl),
+    imageModelId: input.modelId.trim(),
+    aspectRatio: input.aspectRatio,
+  });
+  const captionSourceContext = captionSource.source;
+  return {
+    requestHash,
+    caption,
+    language: captionSource.language,
+    product: captionSource.product,
+    sources: {
+      caption_source: {
+        label: captionSourceContext.label,
+        imageUrl: captionSourceContext.imageUrl,
+        context: captionSourceContext.shotContext,
+      },
+      character_reference: {
+        label: characterLabel,
+        imageUrl: characterUrl,
+      },
+      product_reference: {
+        label: productLabel,
+        imageUrl: productUrl,
+      },
+    },
+  };
+}
+
+export function resolveStagedSocialPostImagesContextForTest(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  characterReferenceIndex: number;
+  productReferenceIndex: number;
+  modelId: string;
+  aspectRatio: MarketplaceSocialPostAspectRatio;
+}) {
+  return resolveStagedSocialPostImagesContext(input);
 }
 
 function buildStagedShotSpeakerReferences(input: {

@@ -9,6 +9,7 @@ const { createControlPlaneJobMock, createCanonicalJobInTransactionMock } =
 const workerRuntimeMocks = vi.hoisted(() => ({
   advanceRun: vi.fn(),
   createRuntime: vi.fn(),
+  generateSocialPostImages: vi.fn(),
 }));
 
 vi.mock("../jobControlPlaneGateway", () => ({
@@ -27,6 +28,11 @@ vi.mock("../marketplaceAutoReviewWorkerRuntime", () => ({
   createMarketplaceAutoReviewWorkerRuntime: workerRuntimeMocks.createRuntime,
 }));
 
+vi.mock("../marketplaceAutoReviewStagedCheckpointRouterService", () => ({
+  generateStagedAutoReviewSocialPostImages:
+    workerRuntimeMocks.generateSocialPostImages,
+}));
+
 import { validateJobDefinition } from "../jobCanonicalization";
 import {
   enqueueMarketplaceAutoReviewWorkerJob,
@@ -40,6 +46,66 @@ describe("Marketplace Auto Review worker job admission", () => {
     createControlPlaneJobMock.mockResolvedValue({ jobId: "worker-job-1" });
     workerRuntimeMocks.createRuntime.mockResolvedValue({ publicUrl: "https://app.test" });
     workerRuntimeMocks.advanceRun.mockResolvedValue({ runId: "run-auto-review-1" });
+    workerRuntimeMocks.generateSocialPostImages.mockResolvedValue({
+      status: "completed",
+    });
+  });
+
+  it("queues and executes one worker operation for selected social post image variants", async () => {
+    const operation = {
+      operation: "staged_social_post_images_generation" as const,
+      runId: "run-social-post-images",
+      batchId: "social-batch-1",
+      expectedRequestHash: "social-request-hash",
+      requestIdempotencyKey: "social-image-request-1",
+      modelId: "image-model-a",
+      aspectRatio: "4:5" as const,
+      characterReferenceIndex: 3,
+      productReferenceIndex: 1,
+      variants: [
+        "caption_source" as const,
+        "character_reference" as const,
+        "product_reference" as const,
+      ],
+    };
+    await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      runId: operation.runId,
+      idempotencyKey: operation.requestIdempotencyKey,
+      operation,
+    });
+    const [{ definition }] = createControlPlaneJobMock.mock.calls[0];
+    expect(definition.input).toMatchObject(operation);
+    expect(() => validateJobDefinition(definition)).not.toThrow();
+
+    await executeMarketplaceAutoReviewWorkerJob({
+      job: marketplaceAutoReviewWorkerInputSchema.parse(operation),
+      tenantId: "tenant-marketplace",
+      userId: 42,
+      jobId: "worker-social-post-images",
+      reportProgress: vi.fn(),
+    });
+
+    expect(workerRuntimeMocks.createRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        tenantId: "tenant-marketplace",
+        runId: operation.runId,
+        jobId: "worker-social-post-images",
+        schedulerSource: "worker_jobs:staged_social_post_images_generation",
+      })
+    );
+    expect(workerRuntimeMocks.generateSocialPostImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: operation.runId,
+        batchId: operation.batchId,
+        expectedRequestHash: operation.expectedRequestHash,
+        modelId: operation.modelId,
+        variants: operation.variants,
+        workerExecution: true,
+      })
+    );
   });
 
   it("accepts dialogue previews when a staged story concept is selected", () => {

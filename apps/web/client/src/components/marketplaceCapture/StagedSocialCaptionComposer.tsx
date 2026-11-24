@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
+import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Selector } from "@astryxdesign/core/Selector";
@@ -8,7 +9,13 @@ import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { VStack } from "@astryxdesign/core/VStack";
 import { useClipboard } from "@astryxdesign/core/hooks";
+import { useLightbox } from "@astryxdesign/core/Lightbox";
 import { trpc } from "@/lib/trpc";
+import {
+  AuthenticatedMediaImage,
+  fetchAuthenticatedMedia,
+  getAuthenticatedMediaUrl,
+} from "@/components/media/AuthenticatedMediaImage";
 import type {
   ReferenceManifestItem,
   StagedReviewState,
@@ -21,6 +28,18 @@ type CaptionSourceOption = {
   referenceIndex?: number;
   shotId?: number;
 };
+
+type SocialImageVariant =
+  "caption_source" | "character_reference" | "product_reference";
+
+const SOCIAL_IMAGE_VARIANTS: Array<{
+  key: SocialImageVariant;
+  label: string;
+}> = [
+  { key: "caption_source", label: "ภาพจากต้นทางของ Caption" },
+  { key: "character_reference", label: "ภาพจากตัวละครอ้างอิง" },
+  { key: "product_reference", label: "ภาพจากสินค้าอ้างอิง" },
+];
 
 const ACTIVE_JOB_STATUSES = new Set([
   "pending",
@@ -66,6 +85,13 @@ export function StagedSocialCaptionComposer(props: {
   onRefresh: () => void | Promise<unknown>;
 }) {
   const [selectedSource, setSelectedSource] = useState("");
+  const [selectedImageModel, setSelectedImageModel] = useState("");
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState<
+    "4:5" | "9:16"
+  >("4:5");
+  const [selectedCharacterReference, setSelectedCharacterReference] =
+    useState("");
+  const [selectedProductReference, setSelectedProductReference] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const sourceOptions = useMemo(
     () => captionSourceOptions(props.state ?? undefined),
@@ -79,6 +105,60 @@ export function StagedSocialCaptionComposer(props: {
     .slice(0, 5)
     .map(tag => `#${tag.replace(/^#+/, "")}`)
     .join(" ");
+  const characterReferenceOptions = useMemo(
+    () =>
+      (props.state?.referenceManifest ?? [])
+        .filter(
+          item => item.active && item.role === "character" && item.url.trim()
+        )
+        .map(item => ({
+          value: String(item.index),
+          label:
+            item.characterName?.trim() ||
+            item.label?.trim() ||
+            `ตัวละคร ${item.index}`,
+        })),
+    [props.state?.referenceManifest]
+  );
+  const productReferenceOptions = useMemo(
+    () =>
+      (props.state?.referenceManifest ?? [])
+        .filter(
+          item => item.active && item.role !== "character" && item.url.trim()
+        )
+        .map(item => ({
+          value: String(item.index),
+          label: item.label?.trim() || `รูปสินค้า ${item.index}`,
+        })),
+    [props.state?.referenceManifest]
+  );
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
+  const imageModels = useMemo(
+    () =>
+      (imageModelsQuery.data?.models ?? []).filter(model => {
+        const maxReferences = Number(model.maxReferenceImages ?? 0);
+        const ratios = Array.isArray(model.aspectRatios)
+          ? model.aspectRatios.filter(
+              (ratio): ratio is string => typeof ratio === "string"
+            )
+          : [];
+        return maxReferences > 0 && ratios.includes(selectedAspectRatio);
+      }),
+    [imageModelsQuery.data?.models, selectedAspectRatio]
+  );
+  const postImages = props.state?.socialCaption?.postImages ?? null;
+  const latestPostImagesJob = (props.state?.workerOperations ?? []).find(
+    operation => operation.operation === "staged_social_post_images_generation"
+  );
+  const activePostImageJob =
+    (props.state?.workerOperations ?? []).some(
+      operation =>
+        operation.operation === "staged_social_post_images_generation" &&
+        ACTIVE_JOB_STATUSES.has(operation.status)
+    ) ||
+    (["queued", "running"].includes(postImages?.status ?? "") &&
+      (!latestPostImagesJob ||
+        ACTIVE_JOB_STATUSES.has(latestPostImagesJob.status)));
   const activeCaptionJob = (props.state?.workerOperations ?? []).some(
     operation =>
       operation.operation === "staged_social_caption_generation" &&
@@ -89,6 +169,34 @@ export function StagedSocialCaptionComposer(props: {
   );
   const captionClipboard = useClipboard({ announce: "คัดลอก Caption แล้ว" });
   const hashtagClipboard = useClipboard({ announce: "คัดลอก Hashtag แล้ว" });
+  const galleryImages = useMemo(
+    () =>
+      SOCIAL_IMAGE_VARIANTS.flatMap(variant => {
+        const image = postImages?.variants[variant.key];
+        return image?.status === "completed" && image.imageUrl
+          ? [
+              {
+                key: variant.key,
+                label: variant.label,
+                src: image.imageUrl,
+                alt: `${variant.label} · ${image.sourceLabel || ""}`.trim(),
+              },
+            ]
+          : [];
+      }),
+    [postImages]
+  );
+  const lightbox = useLightbox({
+    media:
+      galleryImages.length > 0
+        ? galleryImages.map(image => ({
+            src: getAuthenticatedMediaUrl(image.src) ?? image.src,
+            alt: image.alt,
+            caption: image.label,
+          }))
+        : [{ src: "", alt: "ภาพสำหรับโพสต์" }],
+    hasZoom: true,
+  });
   const mutation =
     trpc.marketplaceCapture.generateStagedAutoReviewSocialCaption.useMutation({
       onSuccess: async () => {
@@ -109,6 +217,30 @@ export function StagedSocialCaptionComposer(props: {
         );
       },
     });
+  const postImagesMutation =
+    trpc.marketplaceCapture.generateStagedAutoReviewSocialPostImages.useMutation(
+      {
+        onSuccess: async () => {
+          setActionError(null);
+          await props.onRefresh();
+        },
+        onError: (error: { message: string }) => {
+          const message = error.message;
+          setActionError(
+            message === "staged_state_drift"
+              ? "Caption หรือภาพอ้างอิงเปลี่ยนระหว่างส่งงาน กรุณารีเฟรชแล้วลองใหม่"
+              : message.includes("INSUFFICIENT_CREDITS")
+                ? "เครดิตไม่เพียงพอสำหรับสร้างภาพโพสต์"
+                : message.includes("MODEL_UNAVAILABLE") ||
+                    message.includes("ASPECT_RATIO_UNSUPPORTED")
+                  ? "โมเดลภาพนี้ไม่พร้อมใช้กับอัตราส่วนที่เลือก กรุณาเลือกโมเดลหรืออัตราส่วนใหม่"
+                  : message.includes("in_progress")
+                    ? "กำลังสร้างภาพชุดนี้อยู่"
+                    : "ส่งงานสร้างภาพโพสต์ไม่สำเร็จ กรุณาลองอีกครั้ง"
+          );
+        },
+      }
+    );
 
   useEffect(() => {
     if (
@@ -130,6 +262,64 @@ export function StagedSocialCaptionComposer(props: {
     );
   }, [props.state?.socialCaption, selectedSource, sourceOptions]);
 
+  useEffect(() => {
+    if (
+      selectedImageModel &&
+      imageModels.some(model => model.modelId === selectedImageModel)
+    ) {
+      return;
+    }
+    setSelectedImageModel(imageModels[0]?.modelId ?? "");
+  }, [imageModels, selectedImageModel]);
+
+  useEffect(() => {
+    const savedIndex =
+      props.state?.socialCaption?.postImages?.characterReferenceIndex;
+    if (
+      selectedCharacterReference &&
+      characterReferenceOptions.some(
+        option => option.value === selectedCharacterReference
+      )
+    ) {
+      return;
+    }
+    setSelectedCharacterReference(
+      characterReferenceOptions.some(
+        option => option.value === String(savedIndex)
+      )
+        ? String(savedIndex)
+        : (characterReferenceOptions[0]?.value ?? "")
+    );
+  }, [
+    characterReferenceOptions,
+    props.state?.socialCaption?.postImages?.characterReferenceIndex,
+    selectedCharacterReference,
+  ]);
+
+  useEffect(() => {
+    const savedIndex =
+      props.state?.socialCaption?.postImages?.productReferenceIndex;
+    if (
+      selectedProductReference &&
+      productReferenceOptions.some(
+        option => option.value === selectedProductReference
+      )
+    ) {
+      return;
+    }
+    setSelectedProductReference(
+      productReferenceOptions.some(
+        option => option.value === String(savedIndex)
+      )
+        ? String(savedIndex)
+        : (productReferenceOptions[0]?.value ?? "")
+    );
+  }, [
+    productReferenceOptions,
+    props.state?.socialCaption?.postImages?.productReferenceIndex,
+    selectedProductReference,
+  ]);
+
   if (!props.state) return null;
 
   const generateCaption = () => {
@@ -144,6 +334,69 @@ export function StagedSocialCaptionComposer(props: {
       expectedStateDigest: props.state.stateDigest,
       idempotencyKey: crypto.randomUUID(),
     });
+  };
+
+  const generateSocialPostImages = (options?: {
+    batchId?: string;
+    expectedRequestHash?: string;
+    variants?: SocialImageVariant[];
+    modelId?: string;
+    aspectRatio?: "4:5" | "9:16";
+    characterReferenceIndex?: number;
+    productReferenceIndex?: number;
+  }) => {
+    const modelId = options?.modelId ?? selectedImageModel;
+    const characterReferenceIndex =
+      options?.characterReferenceIndex ?? Number(selectedCharacterReference);
+    const productReferenceIndex =
+      options?.productReferenceIndex ?? Number(selectedProductReference);
+    if (
+      !caption ||
+      !props.state?.stateDigest ||
+      !modelId ||
+      !characterReferenceIndex ||
+      !productReferenceIndex
+    ) {
+      return;
+    }
+    setActionError(null);
+    postImagesMutation.mutate({
+      runId: props.runId,
+      batchId: options?.batchId ?? crypto.randomUUID(),
+      expectedStateDigest: props.state.stateDigest,
+      ...(options?.expectedRequestHash
+        ? { expectedRequestHash: options.expectedRequestHash }
+        : {}),
+      requestIdempotencyKey: crypto.randomUUID(),
+      modelId,
+      aspectRatio: options?.aspectRatio ?? selectedAspectRatio,
+      characterReferenceIndex,
+      productReferenceIndex,
+      variants: options?.variants ?? [
+        "caption_source",
+        "character_reference",
+        "product_reference",
+      ],
+    });
+  };
+
+  const downloadSocialImage = async (
+    imageUrl: string,
+    variant: SocialImageVariant
+  ) => {
+    try {
+      const blob = await fetchAuthenticatedMedia(imageUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `smartaihub-social-${variant.replaceAll("_", "-")}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch {
+      setActionError("ดาวน์โหลดภาพไม่สำเร็จ กรุณาลองอีกครั้ง");
+    }
   };
 
   return (
@@ -254,6 +507,214 @@ export function StagedSocialCaptionComposer(props: {
               : ""}
           </Text>
         ) : null}
+        <VStack gap={3}>
+          <Heading level={4}>ภาพสำหรับโพสต์ Facebook · 3 ภาพ</Heading>
+          <Text type="supporting" color="secondary">
+            ภาพแรกใช้ภาพต้นทางที่เลือกสร้าง Caption
+            ส่วนอีกสองภาพใช้ตัวละครและสินค้าที่เลือก ระบบสร้างเป็นภาพแนวตั้ง
+            และคิดเครดิต prompt ตามการใช้งานจริงพร้อมเครดิตภาพตามโมเดล
+          </Text>
+          {!caption ? (
+            <Text type="supporting" color="secondary">
+              สร้าง Caption ก่อน แล้วจึงสร้างภาพโพสต์ทั้ง 3 แบบได้
+            </Text>
+          ) : null}
+          <Selector
+            label="อัตราส่วนภาพโพสต์"
+            options={[
+              { value: "4:5", label: "4:5 · แนวตั้งสำหรับฟีด" },
+              { value: "9:16", label: "9:16 · แนวตั้งเต็มจอ" },
+            ]}
+            value={selectedAspectRatio}
+            onChange={value => setSelectedAspectRatio(value as "4:5" | "9:16")}
+            isDisabled={activePostImageJob}
+            width="100%"
+          />
+          <Selector
+            label="โมเดล AI สร้างภาพโพสต์"
+            options={imageModels.map(model => ({
+              value: model.modelId,
+              label: `${model.name} · ${model.provider}`,
+            }))}
+            value={selectedImageModel}
+            onChange={setSelectedImageModel}
+            placeholder="เลือกโมเดลสร้างภาพโพสต์"
+            emptyText={
+              imageModelsQuery.isLoading
+                ? "กำลังโหลดโมเดลภาพ"
+                : "ไม่มีโมเดลที่รองรับภาพอ้างอิงและแนวตั้ง"
+            }
+            isLoading={imageModelsQuery.isLoading}
+            isDisabled={activePostImageJob || imageModels.length === 0}
+            hasSearch={imageModels.length > 8}
+            searchPlaceholder="ค้นหาโมเดลสร้างภาพ"
+            width="100%"
+          />
+          <Selector
+            label="ภาพตัวละครอ้างอิง"
+            options={characterReferenceOptions}
+            value={selectedCharacterReference}
+            onChange={setSelectedCharacterReference}
+            placeholder="เลือกภาพตัวละคร"
+            emptyText="ยังไม่มีภาพตัวละครอ้างอิง"
+            isDisabled={
+              activePostImageJob || characterReferenceOptions.length === 0
+            }
+            width="100%"
+          />
+          <Selector
+            label="ภาพสินค้าอ้างอิง"
+            options={productReferenceOptions}
+            value={selectedProductReference}
+            onChange={setSelectedProductReference}
+            placeholder="เลือกภาพสินค้า"
+            emptyText="ยังไม่มีภาพสินค้าอ้างอิง"
+            isDisabled={
+              activePostImageJob || productReferenceOptions.length === 0
+            }
+            width="100%"
+          />
+          {imageModelsQuery.isError ? (
+            <Text type="supporting" color="primary">
+              โหลดรายการโมเดลภาพไม่สำเร็จ กรุณาลองรีเฟรชหน้า
+            </Text>
+          ) : null}
+          {characterReferenceOptions.length === 0 ||
+          productReferenceOptions.length === 0 ? (
+            <Text type="supporting" color="secondary">
+              ต้องมีภาพตัวละครและภาพสินค้าอ้างอิงก่อน จึงจะสร้างภาพโพสต์ครบทั้ง
+              3 แบบได้
+            </Text>
+          ) : null}
+          <HStack hAlign="end" wrap="wrap">
+            <Button
+              label={
+                postImages
+                  ? "สร้างภาพโพสต์ชุดใหม่ 3 ภาพ"
+                  : "สร้างภาพโพสต์ 3 ภาพ"
+              }
+              variant="secondary"
+              isLoading={postImagesMutation.isPending || activePostImageJob}
+              isDisabled={
+                !caption ||
+                !props.state.stateDigest ||
+                !selectedImageModel ||
+                !selectedCharacterReference ||
+                !selectedProductReference
+              }
+              onClick={() => generateSocialPostImages()}
+            />
+          </HStack>
+          {activePostImageJob ? (
+            <Text type="supporting" color="secondary">
+              กำลังสร้างภาพโพสต์ — แต่ละภาพจะแสดงทันทีเมื่อสร้างและบันทึกสำเร็จ
+            </Text>
+          ) : null}
+          {postImages ? (
+            <Grid columns={{ minWidth: 240, max: 3 }} gap={3}>
+              {SOCIAL_IMAGE_VARIANTS.map(variant => {
+                const image = postImages.variants[variant.key];
+                const galleryIndex = galleryImages.findIndex(
+                  galleryImage => galleryImage.key === variant.key
+                );
+                const previousPostImageJobIsTerminal = Boolean(
+                  latestPostImagesJob &&
+                  !ACTIVE_JOB_STATUSES.has(latestPostImagesJob.status)
+                );
+                const canRetry =
+                  image?.status === "failed" ||
+                  ((image?.status === "pending" ||
+                    image?.status === "running") &&
+                    previousPostImageJobIsTerminal);
+                return (
+                  <Card key={variant.key} variant="muted">
+                    <VStack gap={2}>
+                      <Heading level={5}>{variant.label}</Heading>
+                      {image?.status === "completed" && image.imageUrl ? (
+                        <>
+                          <AuthenticatedMediaImage
+                            src={image.imageUrl}
+                            alt={`${variant.label} · ${image.sourceLabel}`}
+                            {...(galleryIndex >= 0
+                              ? lightbox.getTriggerProps(galleryIndex)
+                              : {})}
+                            style={{
+                              aspectRatio:
+                                postImages.aspectRatio === "9:16"
+                                  ? "9 / 16"
+                                  : "4 / 5",
+                              borderRadius: "var(--radius-md)",
+                              cursor: "zoom-in",
+                              objectFit: "contain",
+                              width: "100%",
+                            }}
+                          />
+                          <Button
+                            label="ขยายภาพ"
+                            variant="secondary"
+                            onClick={() => lightbox.open(galleryIndex)}
+                          />
+                        </>
+                      ) : (
+                        <Text type="supporting" color="secondary">
+                          {image?.status === "running" ||
+                          image?.status === "pending"
+                            ? canRetry
+                              ? "งานก่อนหน้าหยุดก่อนสร้างภาพนี้ สามารถลองใหม่ได้"
+                              : image.status === "running" &&
+                                  image.progress !== null
+                                ? `กำลังสร้างภาพนี้ (${image.progress}%)`
+                                : "กำลังสร้างภาพนี้"
+                            : canRetry
+                              ? "สร้างภาพนี้ไม่สำเร็จ สามารถลองใหม่ได้"
+                              : "รอสร้างภาพ"}
+                        </Text>
+                      )}
+                      {image?.status === "completed" && image.imageUrl ? (
+                        <Button
+                          label="ดาวน์โหลดภาพ"
+                          variant="secondary"
+                          onClick={() =>
+                            void downloadSocialImage(
+                              image.imageUrl!,
+                              variant.key
+                            )
+                          }
+                        />
+                      ) : canRetry && !activePostImageJob ? (
+                        <Button
+                          label="ลองสร้างภาพนี้ใหม่"
+                          variant="secondary"
+                          isLoading={postImagesMutation.isPending}
+                          isDisabled={
+                            !postImages.requestHash ||
+                            !postImages.modelId ||
+                            !postImages.characterReferenceIndex ||
+                            !postImages.productReferenceIndex
+                          }
+                          onClick={() =>
+                            generateSocialPostImages({
+                              batchId: postImages.batchId,
+                              expectedRequestHash: postImages.requestHash,
+                              variants: [variant.key],
+                              modelId: postImages.modelId,
+                              aspectRatio: postImages.aspectRatio,
+                              characterReferenceIndex:
+                                postImages.characterReferenceIndex ?? undefined,
+                              productReferenceIndex:
+                                postImages.productReferenceIndex ?? undefined,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </VStack>
+                  </Card>
+                );
+              })}
+            </Grid>
+          ) : null}
+          {lightbox.element}
+        </VStack>
       </VStack>
     </Card>
   );

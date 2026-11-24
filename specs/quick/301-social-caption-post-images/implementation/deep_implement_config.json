@@ -1,0 +1,46 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/301-social-caption-post-images/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/301-social-caption-post-images/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-social-image-prompt-and-models",
+    "section-02-worker-billing-and-storage",
+    "section-03-caption-gallery-ui"
+  ],
+  "sections_state": {
+    "section-01-social-image-prompt-and-models": {
+      "status": "in_progress",
+      "next_action": "Focused prompt and model checks passed; promote this feature checkpoint, then record its verified canonical SHA."
+    },
+    "section-02-worker-billing-and-storage": {
+      "status": "in_progress",
+      "next_action": "Focused worker, billing, and context checks passed; promote this feature checkpoint, then record its verified canonical SHA."
+    },
+    "section-03-caption-gallery-ui": {
+      "status": "in_progress",
+      "next_action": "Focused composer checks passed; promote this feature checkpoint, then record its verified canonical SHA."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-11-24T01:19:01.615654+00:00",
+  "generation": 8,
+  "updated_at": "2026-11-24T02:19:27.478131+00:00",
+  "progress": {
+    "active_section": "section-03-caption-gallery-ui",
+    "next_action": "Focused composer checks passed; promote this feature checkpoint, then record its verified canonical SHA.",
+    "gaps": [
+      "Pre-existing broader router-service test failure: buildStagedStoryArcPlan is not a function; this export is absent on baseline main and is outside this image feature."
+    ]
+  }
+}

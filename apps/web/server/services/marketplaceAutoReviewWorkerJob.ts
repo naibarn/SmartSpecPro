@@ -96,6 +96,32 @@ export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
       .strict(),
     z
       .object({
+        operation: z.literal("staged_social_post_images_generation"),
+        runId: runIdSchema,
+        batchId: z.string().trim().min(1).max(100),
+        expectedRequestHash: z.string().trim().min(1).max(256),
+        requestIdempotencyKey: operationIdempotencySchema,
+        modelId: z.string().trim().min(1).max(200),
+        aspectRatio: z.enum(["4:5", "9:16"]),
+        characterReferenceIndex: z.number().int().min(1).max(100),
+        productReferenceIndex: z.number().int().min(1).max(100),
+        variants: z
+          .array(
+            z.enum([
+              "caption_source",
+              "character_reference",
+              "product_reference",
+            ])
+          )
+          .min(1)
+          .max(3)
+          .refine(variants => new Set(variants).size === variants.length, {
+            message: "variants must be unique",
+          }),
+      })
+      .strict(),
+    z
+      .object({
         operation: z.literal("staged_person_detection"),
         runId: runIdSchema,
         shotId: z.number().int().min(1).max(30),
@@ -578,6 +604,35 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         shotId: input.job.shotId,
         expectedSourceHash: input.job.expectedSourceHash,
         idempotencyKey: input.job.requestIdempotencyKey,
+        auth,
+        runtime: { publicUrl: runtime.publicUrl },
+        workerExecution: true,
+        onProgress: input.reportProgress,
+      });
+    }
+    case "staged_social_post_images_generation": {
+      const { generateStagedAutoReviewSocialPostImages } =
+        await import("./marketplaceAutoReviewStagedCheckpointRouterService");
+      const runtimeModule =
+        await import("./marketplaceAutoReviewWorkerRuntime");
+      const runtime =
+        await runtimeModule.createMarketplaceAutoReviewWorkerRuntime({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          runId: input.job.runId,
+          jobId: input.jobId,
+          schedulerSource: "worker_jobs:staged_social_post_images_generation",
+        });
+      return generateStagedAutoReviewSocialPostImages({
+        runId: input.job.runId,
+        batchId: input.job.batchId,
+        expectedRequestHash: input.job.expectedRequestHash,
+        requestIdempotencyKey: input.job.requestIdempotencyKey,
+        modelId: input.job.modelId,
+        aspectRatio: input.job.aspectRatio,
+        characterReferenceIndex: input.job.characterReferenceIndex,
+        productReferenceIndex: input.job.productReferenceIndex,
+        variants: input.job.variants,
         auth,
         runtime: { publicUrl: runtime.publicUrl },
         workerExecution: true,

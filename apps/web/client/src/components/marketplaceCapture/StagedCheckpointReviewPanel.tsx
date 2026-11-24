@@ -185,6 +185,27 @@ export type StagedReviewState = {
     shotId?: number | null;
     sourceLabel?: string;
     generatedAt?: string;
+    postImages?: {
+      batchId: string;
+      requestHash: string;
+      modelId: string;
+      aspectRatio: "4:5" | "9:16";
+      characterReferenceIndex: number | null;
+      productReferenceIndex: number | null;
+      status: "queued" | "running" | "partial" | "failed" | "completed";
+      variants: Record<
+        "caption_source" | "character_reference" | "product_reference",
+        {
+          status: "pending" | "running" | "completed" | "failed";
+          imageUrl: string | null;
+          sourceLabel: string;
+          progress: number | null;
+          promptCreditsUsed: number | null;
+          imageCreditsUsed: number | null;
+          createdAt: string;
+        }
+      >;
+    } | null;
   } | null;
   languagePlan?: {
     summaryLanguage: "th" | "en";
@@ -2356,6 +2377,7 @@ export function StagedCheckpointReviewPanel(props: {
     plan_redraft: "ร่างแนวเรื่องใหม่",
     staged_prompt_generation: "สร้าง Prompt รายช็อต",
     staged_social_caption_generation: "สร้าง Caption สำหรับโพสต์",
+    staged_social_post_images_generation: "สร้างภาพโพสต์โซเชียล 3 ภาพ",
     staged_person_detection: "ตรวจจับคนในภาพรายช็อต",
     sequential_shot_prompt_generation: "สร้าง Prompt รายช็อต",
     sequential_shot_regeneration: "สร้างภาพรายช็อต",

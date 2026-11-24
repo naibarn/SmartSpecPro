@@ -92,6 +92,7 @@ import {
   editStagedAutoReviewShot,
   detectStagedAutoReviewShotPeople,
   generateStagedAutoReviewSocialCaption,
+  generateStagedAutoReviewSocialPostImages,
   generateStagedAutoReviewShotPrompt,
   getStagedAutoReviewCheckpointState,
   startStagedAutoReviewBulkGeneration,
@@ -1933,6 +1934,44 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       generateStagedAutoReviewSocialCaption({
+        ...input,
+        auth: authFromCtx(ctx),
+        runtime: { publicUrl: ctx.publicUrl },
+      })
+    ),
+
+  generateStagedAutoReviewSocialPostImages: protectedProcedure
+    .input(
+      z
+        .object({
+          runId: z.string().min(1).max(64),
+          batchId: z.string().trim().min(1).max(100),
+          expectedStateDigest: z.string().min(1).max(256),
+          expectedRequestHash: z.string().trim().min(1).max(256).optional(),
+          requestIdempotencyKey: z.string().min(8).max(200),
+          modelId: z.string().trim().min(1).max(200),
+          aspectRatio: z.enum(["4:5", "9:16"]),
+          characterReferenceIndex: z.number().int().min(1).max(100),
+          productReferenceIndex: z.number().int().min(1).max(100),
+          variants: z
+            .array(
+              z.enum([
+                "caption_source",
+                "character_reference",
+                "product_reference",
+              ])
+            )
+            .min(1)
+            .max(3)
+            .refine(values => new Set(values).size === values.length, {
+              message: "variants must be unique",
+            }),
+        })
+        .strict()
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      generateStagedAutoReviewSocialPostImages({
         ...input,
         auth: authFromCtx(ctx),
         runtime: { publicUrl: ctx.publicUrl },
