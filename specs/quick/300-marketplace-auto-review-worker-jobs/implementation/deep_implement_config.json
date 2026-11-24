@@ -26,9 +26,9 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Release 625 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve cb74a3b2f27c4457482c66d6340628a9e697118e, public /healthz and /worker-jobs return HTTP 200. Root cause was staged advance returning an un-awaited Promise, releasing the run lease before work finished. A new user-authorized Auto Review attempt is still needed to confirm live execution; do not replay job 15893f34-cac1-4ac4-baae-25b2c95f6c84.",
-      "checkpoint_sha": "cb74a3b2f27c4457482c66d6340628a9e697118e",
-      "merged_main_sha": "cb74a3b2f27c4457482c66d6340628a9e697118e",
+      "next_action": "Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger.",
+      "checkpoint_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
+      "merged_main_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
       "session_id": "marketplace-confirmed-review-concepts"
     }
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 124,
-  "updated_at": "2026-11-23T01:48:13.896006+00:00",
+  "generation": 126,
+  "updated_at": "2026-11-24T12:34:02.339723+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Release 625 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve cb74a3b2f27c4457482c66d6340628a9e697118e, public /healthz and /worker-jobs return HTTP 200. Root cause was staged advance returning an un-awaited Promise, releasing the run lease before work finished. A new user-authorized Auto Review attempt is still needed to confirm live execution; do not replay job 15893f34-cac1-4ac4-baae-25b2c95f6c84.",
-    "merged_main_sha": "cb74a3b2f27c4457482c66d6340628a9e697118e",
+    "next_action": "Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger.",
+    "merged_main_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
@@ -62,7 +62,8 @@
       "Shot 2 serum video's exact prompt is saved and approved. Video rendering and external provider acceptance after release 612 were not exercised.",
       "Job 54f7d3b3-d1a1-48d1-afe6-715a11858284 is terminal; its run remains at image_generation with staged_state_drift and needs an explicit user retry. No provider-backed retry was triggered.",
       "Provider-backed retry of run mar_93276922dc460d6ccf2452ef1d95d19a remains pending explicit user action; no paid generation was triggered.",
-      "Job 15893f34-cac1-4ac4-baae-25b2c95f6c84 for run mar_a3b5df48f9b0f962a1b0b94fd3805d40 remains terminal after the early lease-release race. Fix is integrated and deployed; a fresh user-started attempt is required to verify runtime stability. No replay or media generation was triggered by the fix."
+      "Job 15893f34-cac1-4ac4-baae-25b2c95f6c84 for run mar_a3b5df48f9b0f962a1b0b94fd3805d40 remains terminal after the early lease-release race. Fix is integrated and deployed; a fresh user-started attempt is required to verify runtime stability. No replay or media generation was triggered by the fix.",
+      "Provider-backed retry for run mar_db6cb761ab854aecc3189333dcc083c8 / failed worker job e768624d-d6dd-4156-93e4-7a6bedc02dfe is not yet verified; a user-initiated retry is required to incur any possible generation credits."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
