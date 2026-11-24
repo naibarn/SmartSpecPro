@@ -35,6 +35,7 @@ type MarketplaceProductEditableFields = {
   ratingScore?: string | number | null;
   reviewCountText?: string | null;
   affiliateUrl?: string | null;
+  affiliateUrls?: string[];
 };
 
 type ManualMarketplaceProductInput = MarketplaceProductEditableFields & {
@@ -622,7 +623,7 @@ async function getMarketplaceProductForUpdate(productId: string, auth: { userId:
   return shared ? { product: shared.product, accessType: "group" as const, permission: shared.permission } : null;
 }
 
-async function getAffiliateLinksForViewer(productIds: string[], userId: number): Promise<Map<string, string | null>> {
+async function getAffiliateLinksForViewer(productIds: string[], userId: number): Promise<Map<string, string[]>> {
   if (productIds.length === 0) return new Map();
   const db = getDb();
   const rows = await db.select({
@@ -633,8 +634,17 @@ async function getAffiliateLinksForViewer(productIds: string[], userId: number):
     .where(and(
       eq(marketplaceProductAffiliateLinks.userId, userId),
       inArray(marketplaceProductAffiliateLinks.productId, productIds),
-    ));
-  return new Map(rows.map((row) => [row.productId, row.affiliateUrl]));
+    ))
+    .orderBy(asc(marketplaceProductAffiliateLinks.createdAt), asc(marketplaceProductAffiliateLinks.id));
+  const linksByProduct = new Map<string, string[]>();
+  for (const row of rows) {
+    const affiliateUrl = row.affiliateUrl?.trim();
+    if (!affiliateUrl) continue;
+    const links = linksByProduct.get(row.productId) ?? [];
+    if (!links.includes(affiliateUrl)) links.push(affiliateUrl);
+    linksByProduct.set(row.productId, links);
+  }
+  return linksByProduct;
 }
 
 async function upsertAffiliateLinkForUser(
@@ -646,8 +656,21 @@ async function upsertAffiliateLinkForUser(
   if (affiliateUrl === undefined) return;
   const db = getDb();
   const now = new Date();
-  await db.insert(marketplaceProductAffiliateLinks)
-    .values({
+  const [existing] = await db.select({ id: marketplaceProductAffiliateLinks.id })
+    .from(marketplaceProductAffiliateLinks)
+    .where(and(
+      eq(marketplaceProductAffiliateLinks.productId, productId),
+      eq(marketplaceProductAffiliateLinks.userId, userId),
+    ))
+    .orderBy(asc(marketplaceProductAffiliateLinks.createdAt), asc(marketplaceProductAffiliateLinks.id))
+    .limit(1);
+  if (existing) {
+    await db.update(marketplaceProductAffiliateLinks)
+      .set({ affiliateUrl, tenantId: tenantId ?? null, updatedAt: now })
+      .where(eq(marketplaceProductAffiliateLinks.id, existing.id));
+    return;
+  }
+  await db.insert(marketplaceProductAffiliateLinks).values({
       id: createMarketplaceId("mpal"),
       productId,
       userId,
@@ -655,11 +678,50 @@ async function upsertAffiliateLinkForUser(
       affiliateUrl,
       createdAt: now,
       updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [marketplaceProductAffiliateLinks.productId, marketplaceProductAffiliateLinks.userId],
-      set: { affiliateUrl, updatedAt: now },
     });
+}
+
+async function replaceAffiliateLinksForUser(
+  productId: string,
+  userId: number,
+  tenantId: string | null | undefined,
+  affiliateUrls: string[],
+): Promise<string[]> {
+  const normalizedUrls = normalizeAffiliateUrls(affiliateUrls);
+
+  const db = getDb();
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx.delete(marketplaceProductAffiliateLinks).where(and(
+      eq(marketplaceProductAffiliateLinks.productId, productId),
+      eq(marketplaceProductAffiliateLinks.userId, userId),
+    ));
+    if (normalizedUrls.length > 0) {
+      await tx.insert(marketplaceProductAffiliateLinks).values(normalizedUrls.map((affiliateUrl) => ({
+        id: createMarketplaceId("mpal"),
+        productId,
+        userId,
+        tenantId: tenantId ?? null,
+        affiliateUrl,
+        createdAt: now,
+        updatedAt: now,
+      })));
+    }
+  });
+  return normalizedUrls;
+}
+
+function normalizeAffiliateUrls(affiliateUrls: string[]): string[] {
+  if (affiliateUrls.length > 10) throw new Error("You can save up to 10 affiliate links per product");
+  const normalizedUrls: string[] = [];
+  for (const value of affiliateUrls) {
+    const raw = value.trim();
+    if (!raw) continue;
+    const normalized = normalizeOptionalHttpUrl(raw);
+    if (!normalized) throw new Error("Affiliate links must use valid http or https URLs");
+    if (!normalizedUrls.includes(normalized)) normalizedUrls.push(normalized);
+  }
+  return normalizedUrls;
 }
 
 async function getShareSetting(platform: MarketplacePlatform, auth: { userId: number; tenantId?: string }) {
@@ -1669,7 +1731,8 @@ export async function listMarketplaceProductsWithAccess(
   const supportingInsights = await supportingInsightsForProducts(trimmed, auth);
   const items = trimmed.map((product) => ({
     ...product,
-    affiliateUrl: affiliateLinks.get(product.id) ?? null,
+    affiliateUrls: affiliateLinks.get(product.id) ?? [],
+    affiliateUrl: affiliateLinks.get(product.id)?.[0] ?? null,
     imageUrl: productImages.get(product.id)?.imageUrl ?? null,
     imageUrls: productImages.get(product.id)?.imageUrls ?? [],
     health: buildProductHealth(product, snapshots.get(product.id) ?? []),
@@ -2136,13 +2199,16 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
   }
 
   if (!product) throw new Error("Product not found");
-  const [affiliateLink] = await db.select({ affiliateUrl: marketplaceProductAffiliateLinks.affiliateUrl })
+  const affiliateLinks = await db.select({ affiliateUrl: marketplaceProductAffiliateLinks.affiliateUrl })
     .from(marketplaceProductAffiliateLinks)
     .where(and(
       eq(marketplaceProductAffiliateLinks.productId, productId),
       eq(marketplaceProductAffiliateLinks.userId, auth.userId),
     ))
-    .limit(1);
+    .orderBy(asc(marketplaceProductAffiliateLinks.createdAt), asc(marketplaceProductAffiliateLinks.id));
+  const affiliateUrls = affiliateLinks
+    .map((link) => link.affiliateUrl?.trim() ?? "")
+    .filter((affiliateUrl, index, urls) => Boolean(affiliateUrl) && urls.indexOf(affiliateUrl) === index);
   const [images, history, shares] = await Promise.all([
     db.select().from(marketplaceProductImages)
       .where(eq(marketplaceProductImages.productId, productId))
@@ -2176,7 +2242,13 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
     return all.findIndex((candidate) => marketplaceProductImageDedupKey(candidate) === key) === index;
   });
   return {
-    product: { ...product, affiliateUrl: affiliateLink?.affiliateUrl ?? null, accessType, groupShare },
+    product: {
+      ...product,
+      affiliateUrls,
+      affiliateUrl: affiliateUrls[0] ?? null,
+      accessType,
+      groupShare,
+    },
     images: orderedImages.map((image) => ({
       ...image,
       url: resolvedImages.find((resolved) => resolved.id === image.id)?.url
@@ -2346,6 +2418,9 @@ export async function updateMarketplaceProductDetails(
   const db = getDb();
   const bundle = await getMarketplaceProductWithAccess(productId, auth);
   assertMarketplaceProductWriteAccess(bundle);
+  const normalizedAffiliateUrls = input.affiliateUrls === undefined
+    ? undefined
+    : normalizeAffiliateUrls(input.affiliateUrls);
   const currentDescription = bundle.product.descriptionJson && typeof bundle.product.descriptionJson === "object"
     ? bundle.product.descriptionJson as Record<string, unknown>
     : {};
@@ -2387,9 +2462,22 @@ export async function updateMarketplaceProductDetails(
       marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
     ))
     .returning();
-  await upsertAffiliateLinkForUser(productId, auth.userId, auth.tenantId, input.affiliateUrl);
-  const resolvedAffiliateUrl = input.affiliateUrl !== undefined ? input.affiliateUrl : bundle.product.affiliateUrl;
-  return { product: { ...product, affiliateUrl: resolvedAffiliateUrl }, updatedAt };
+  const affiliateUrls = normalizedAffiliateUrls !== undefined
+    ? await replaceAffiliateLinksForUser(productId, auth.userId, auth.tenantId, normalizedAffiliateUrls)
+    : undefined;
+  if (affiliateUrls === undefined) {
+    await upsertAffiliateLinkForUser(productId, auth.userId, auth.tenantId, input.affiliateUrl);
+  }
+  const resolvedAffiliateUrls = affiliateUrls ?? bundle.product.affiliateUrls ??
+    (bundle.product.affiliateUrl ? [bundle.product.affiliateUrl] : []);
+  return {
+    product: {
+      ...product,
+      affiliateUrls: resolvedAffiliateUrls,
+      affiliateUrl: resolvedAffiliateUrls[0] ?? null,
+    },
+    updatedAt,
+  };
 }
 
 export async function createManualMarketplaceProduct(
@@ -2397,6 +2485,9 @@ export async function createManualMarketplaceProduct(
   auth: { userId: number; tenantId?: string },
 ) {
   const db = getDb();
+  const normalizedAffiliateUrls = input.affiliateUrls === undefined
+    ? undefined
+    : normalizeAffiliateUrls(input.affiliateUrls);
   const productId = createMarketplaceId("mp");
   const update = editableProductUpdate(input);
   const productPageUrl = normalizeOptionalHttpUrl(input.productPageUrl);
@@ -2438,7 +2529,11 @@ export async function createManualMarketplaceProduct(
     createdAt: now,
     updatedAt: now,
   });
-  await upsertAffiliateLinkForUser(productId, auth.userId, auth.tenantId, input.affiliateUrl);
+  if (normalizedAffiliateUrls !== undefined) {
+    await replaceAffiliateLinksForUser(productId, auth.userId, auth.tenantId, normalizedAffiliateUrls);
+  } else {
+    await upsertAffiliateLinkForUser(productId, auth.userId, auth.tenantId, input.affiliateUrl);
+  }
   await applyConfiguredShares(productId, input.platform, auth);
   return { productId, productUrl: `/marketplace-capture/products/${productId}` };
 }

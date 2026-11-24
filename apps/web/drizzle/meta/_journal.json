@@ -3088,6 +3088,13 @@
       "when": 1795330000000,
       "tag": "0454_modular_chat_task_message_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 455,
+      "version": "7",
+      "when": 1795486841693,
+      "tag": "0455_marketplace_product_multi_affiliate_links",
+      "breakpoints": true
     }
   ]
 }

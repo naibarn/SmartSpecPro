@@ -24724,9 +24724,10 @@ export const marketplaceProductAffiliateLinks = pgTable(
       .notNull(),
   },
   t => [
-    uniqueIndex("idx_marketplace_product_affiliate_links_unique").on(
+    index("idx_marketplace_product_affiliate_links_product_user_created").on(
       t.productId,
-      t.userId
+      t.userId,
+      t.createdAt
     ),
     index("idx_marketplace_product_affiliate_links_user").on(
       t.userId,

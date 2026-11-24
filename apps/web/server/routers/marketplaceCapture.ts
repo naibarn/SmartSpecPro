@@ -313,6 +313,11 @@ const editableProductDetailsSchema = z.object({
     .nullable(),
   reviewCountText: z.string().trim().max(128).optional().nullable(),
   affiliateUrl: z.string().trim().max(4096).optional().nullable(),
+  affiliateUrls: z.array(
+    z.string().trim().max(4096).url().refine((value) => /^https?:\/\//i.test(value), {
+      message: "Affiliate links must use http or https",
+    })
+  ).max(10).optional(),
 });
 
 const manualProductSchema = editableProductDetailsSchema.extend({

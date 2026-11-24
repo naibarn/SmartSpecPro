@@ -4004,6 +4004,11 @@ export default function MarketplaceCaptureProductDetail() {
       onSettled: () => setDialogueSavingShotId(null),
     });
   const item = (productItem ?? {}) as Record<string, unknown>;
+  const itemAffiliateUrls = Array.isArray(item.affiliateUrls)
+    ? item.affiliateUrls.map(compactText).filter(Boolean)
+    : compactText(item.affiliateUrl)
+      ? [compactText(item.affiliateUrl)]
+      : [];
   const itemDescription = asRecord(item.descriptionJson);
   const itemSpecs = asRecord(item.specsJson);
   const itemPlatformRaw = asRecord(item.platformRawJson);
@@ -4111,11 +4116,12 @@ export default function MarketplaceCaptureProductDetail() {
         : "auto",
       ratingScore: compactDisplayValue(item.ratingScore),
       reviewCountText: compactText(item.reviewCountText),
-      affiliateUrl: compactText(item.affiliateUrl),
+      affiliateUrl: itemAffiliateUrls.join("\n"),
     }),
     [
       capturedCategoryText,
       item.affiliateUrl,
+      item.affiliateUrls,
       item.commissionRatePercent,
       item.descriptionText,
       item.priceCurrent,
@@ -4138,7 +4144,18 @@ export default function MarketplaceCaptureProductDetail() {
     setProductEditForm(current => ({ ...current, [key]: value }));
   }
   function saveProductEdits() {
-    updateProductDetailsMutation.mutate({ productId, data: productEditForm });
+    const affiliateUrls = productEditForm.affiliateUrl
+      .split(/\r?\n/)
+      .map(affiliateUrl => affiliateUrl.trim())
+      .filter(Boolean);
+    if (affiliateUrls.length > 10) {
+      toast.error("You can add up to 10 affiliate links per product");
+      return;
+    }
+    updateProductDetailsMutation.mutate({
+      productId,
+      data: { ...productEditForm, affiliateUrls },
+    });
   }
   const baseImages = (productData?.images ?? []) as any[];
   const images = useMemo(() => {
@@ -7732,16 +7749,19 @@ export default function MarketplaceCaptureProductDetail() {
                 </a>
               ) : null}
             </div>
-            {item.affiliateUrl ? (
+            {itemAffiliateUrls.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                <a
-                  className="max-w-xl truncate text-emerald-700 underline"
-                  href={compactText(item.affiliateUrl)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Affiliate link
-                </a>
+                {itemAffiliateUrls.map((affiliateUrl, index) => (
+                  <a
+                    key={`${affiliateUrl}-${index}`}
+                    className="max-w-xl truncate text-emerald-700 underline"
+                    href={affiliateUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Affiliate link {index + 1}
+                  </a>
+                ))}
                 <button
                   className="inline-flex items-center rounded border bg-white px-2 py-1 text-xs"
                   type="button"
@@ -7868,13 +7888,15 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
-                  Affiliate link
+                  Affiliate links ({itemAffiliateUrls.length}/10)
                 </dt>
-                <dd className={isEditingProduct ? undefined : "truncate"}>
+                <dd>
                   {isEditingProduct ? (
                     <div className="mt-1 flex flex-col gap-1">
                       <textarea
-                        className="min-h-16 w-full rounded-md border px-2 py-1 font-mono text-xs"
+                        className="min-h-28 w-full rounded-md border px-2 py-1 font-mono text-xs"
+                        maxLength={40960}
+                        placeholder="One http/https affiliate URL per line (up to 10)"
                         value={productEditForm.affiliateUrl}
                         onChange={event =>
                           updateProductEditField(
@@ -7883,6 +7905,11 @@ export default function MarketplaceCaptureProductDetail() {
                           )
                         }
                       />
+                      <span className="text-xs text-slate-500">
+                        {productEditForm.affiliateUrl
+                          .split(/\r?\n/)
+                          .filter(affiliateUrl => affiliateUrl.trim()).length} / 10 links
+                      </span>
                       <button
                         className="inline-flex w-fit items-center rounded border bg-white px-2 py-1 text-xs"
                         type="button"
@@ -7903,7 +7930,23 @@ export default function MarketplaceCaptureProductDetail() {
                       </button>
                     </div>
                   ) : (
-                    compactText(item.affiliateUrl) || "-"
+                    itemAffiliateUrls.length > 0 ? (
+                      <ul className="mt-1 space-y-1">
+                        {itemAffiliateUrls.map((affiliateUrl, index) => (
+                          <li key={`${affiliateUrl}-${index}`} className="flex flex-wrap items-center gap-2">
+                            <a
+                              className="max-w-xl truncate text-emerald-700 underline"
+                              href={affiliateUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Affiliate link {index + 1}
+                            </a>
+                            <span className="max-w-xl truncate text-xs text-slate-500">{affiliateUrl}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : "-"
                   )}
                 </dd>
               </div>
