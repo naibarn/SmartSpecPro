@@ -3000,6 +3000,12 @@ export type SequentialSingleShotRefreshInput = {
   userId: number;
   runId?: string | null;
   model?: string | null;
+  /** Stable admission key for strict Marketplace single-shot execution. */
+  requestIdempotencyKey?: string | null;
+  /** Additional runtime validation feedback for one bounded recovery call. */
+  recoveryInstruction?: string | null;
+  /** Restrict strict Marketplace authoring to the requested prompt artifact. */
+  promptTarget?: "image" | "both";
   publicUrl?: string | null;
   originSurface?: "marketplace_capture" | "media_studio" | null;
 
@@ -3678,6 +3684,14 @@ export async function refreshSequentialShotPromptWithSkillDirect(
     runtimeContract: buildSequentialSingleShotRefreshContract(input),
     productCategory: input.productCategory,
   });
+  const systemPrompt = [
+    systemPromptBase,
+    input.recoveryInstruction?.trim()
+      ? `## Recovery Validation Requirements\n${input.recoveryInstruction.trim()}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const userPrompt = buildCustomSkillUserPrompt(
     {
       single_shot_mode: true,
@@ -3689,7 +3703,7 @@ export async function refreshSequentialShotPromptWithSkillDirect(
   const result = await executeWithFallback({
     model: policy.modelId,
     messages: buildSequentialStoryboardVisionMessages({
-      systemPrompt: systemPromptBase,
+      systemPrompt,
       userPrompt,
       referenceImages: providerReferenceImages,
     }),

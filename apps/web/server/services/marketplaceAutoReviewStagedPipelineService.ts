@@ -1650,12 +1650,22 @@ async function compileImagePromptCheckpoints(params: {
     const referenceHash = buildProductionStableHash(
       refreshInput.referenceManifest
     );
-    let prompt: string;
-    try {
-      const refresh =
-        await refreshSequentialShotPromptWithSkillDirect({
+    const requestIdempotencyKey = `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}:${referenceHash}`;
+    const recoveryInstruction = [
+      "The previous response did not pass the image-prompt validator. Regenerate the prompt from the supplied shot contract and references.",
+      "Return ONLY a valid JSON object with exactly one key: start_frame_image_prompt.",
+      "The prompt must be at least 80 characters and remain within the image prompt length limit.",
+      "Explicitly include a vertical or 9:16 composition, a reference or @ImageN cue, camera/framing/composition or lighting/focus direction, and a clear no text/captions/subtitles instruction.",
+      "Do not include markdown, commentary, video prompts, camera beats, or other keys.",
+    ].join(" ");
+    let prompt = "";
+    let lastPromptError: unknown = null;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        const refresh = await refreshSequentialShotPromptWithSkillDirect({
           ...refreshInput,
-          requestIdempotencyKey: `marketplace-auto-review:${params.run.id}:image-prompt:shot-${shot.shotId}:r${params.plan.planRevision}:${referenceHash}`,
+          requestIdempotencyKey,
+          ...(attempt > 1 ? { recoveryInstruction } : {}),
           skillVisionUrls: await stageMarketplaceInlineImageReferences(
             refreshInput.skillVisionUrls,
             {
@@ -1667,13 +1677,32 @@ async function compileImagePromptCheckpoints(params: {
             }
           ) ?? [],
         });
-      prompt = refresh.startFrameImagePrompt.trim();
-      if (!isCompleteStagedImagePrompt(prompt)) {
-        throw new Error("incomplete_image_prompt");
+        const candidate = refresh.startFrameImagePrompt.trim();
+        if (!isCompleteStagedImagePrompt(candidate)) {
+          throw new Error("incomplete_image_prompt");
+        }
+        prompt = candidate;
+        break;
+      } catch (error) {
+        lastPromptError = error;
+        const retryable = isRetryableStagedImagePromptError(error);
+        console.warn(
+          "[advanceStagedMarketplaceAutoReviewRun] image prompt attempt failed",
+          {
+            runId: params.run.id,
+            shotId: shot.shotId,
+            attempt,
+            failureKind: stagedImagePromptFailureKind(error),
+            retrying: attempt === 1 && retryable,
+          }
+        );
+        if (attempt === 2 || !retryable) break;
       }
-    } catch {
+    }
+    if (!prompt) {
       throw new Error(
-        `MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED:shot:${shot.shotId}`
+        `MARKETPLACE_IMAGE_PROMPT_GENERATION_FAILED:shot:${shot.shotId}`,
+        { cause: lastPromptError ?? undefined }
       );
     }
     const hash = buildStagedImagePromptContentHash({
@@ -1776,6 +1805,40 @@ async function compileImagePromptCheckpoints(params: {
     },
   });
   return next;
+}
+
+function isRetryableStagedImagePromptError(error: unknown): boolean {
+  const failureKind = stagedImagePromptFailureKind(error);
+  return failureKind === "invalid_prompt_output" || failureKind === "provider_transient";
+}
+
+function stagedImagePromptFailureKind(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (
+    /incomplete_image_prompt|MARKETPLACE_SINGLE_SHOT_SKILL_(?:OUTPUT_INVALID|INVALID_JSON|EMPTY_OUTPUT)/i.test(
+      message
+    )
+  ) {
+    return "invalid_prompt_output";
+  }
+  if (/reference|image.*download|download.*image|PUBLIC_APP_URL/i.test(message)) {
+    return "reference_unavailable";
+  }
+  if (
+    /HTTP\s*(?:408|425|429|5\d\d)|\b(?:408|425|429|5\d\d)\s+(?:status|response)|timeout|timed out|ECONNRESET|ECONNREFUSED|fetch failed|network|rate limit|temporarily unavailable|overloaded/i.test(
+      message
+    )
+  ) {
+    return "provider_transient";
+  }
+  if (/credit|budget/i.test(message)) return "credit_or_budget";
+  if (/unauthorized|forbidden|not configured|not found|tenant.*(?:required|mismatch|scope)/i.test(message)) {
+    return "configuration_or_access";
+  }
+  if (/HTTP\s*4\d\d|\b4\d\d\s+(?:status|response)|bad request|invalid request/i.test(message)) {
+    return "provider_request_rejected";
+  }
+  return "skill_call_failed";
 }
 
 async function handleImageProvider(params: {
