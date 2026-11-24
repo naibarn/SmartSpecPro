@@ -71,6 +71,13 @@
       "when": 1793310000001,
       "tag": "0424_vertical_drama_book_studio",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795486841694,
+      "tag": "0425_marketplace_product_multi_affiliate_links",
+      "breakpoints": true
     }
   ]
 }
