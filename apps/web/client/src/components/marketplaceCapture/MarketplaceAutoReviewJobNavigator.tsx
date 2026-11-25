@@ -32,6 +32,8 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   selectedProductFilter?: string;
   onProductFilterChange?: (productId: string) => void;
   allProducts?: boolean;
+  /** Use the light Marketplace treatment for the full job-history page. */
+  appearance?: "dark" | "light";
   /** Use a larger product image in the full job-history listing. */
   largeProductThumbnails?: boolean;
   setupMode?: boolean;
@@ -451,6 +453,7 @@ function MarketplaceAutoReviewVideoPreview({
   src,
   posterUrl,
   title,
+  appearance,
   onMediaLoadError,
 }: {
   runId: string;
@@ -458,6 +461,7 @@ function MarketplaceAutoReviewVideoPreview({
   src: string;
   posterUrl: string;
   title: string;
+  appearance: "dark" | "light";
   onMediaLoadError: () => void;
 }) {
   const updatedAtKey = updatedAt instanceof Date
@@ -470,7 +474,9 @@ function MarketplaceAutoReviewVideoPreview({
   );
 
   return (
-    <figure className="flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] p-2 sm:flex-col sm:justify-start">
+    <figure
+      className={`flex min-w-0 flex-row items-center justify-center gap-2 rounded-lg border p-2 sm:flex-col sm:justify-start ${appearance === "light" ? "border-slate-200 bg-slate-50" : "border-white/10 bg-white/[0.04]"}`}
+    >
       <AuthenticatedMediaVideo
         ref={thumbnail.ref}
         src={src}
@@ -490,7 +496,9 @@ function MarketplaceAutoReviewVideoPreview({
         onStalled={onMediaLoadError}
       />
       <figcaption className="min-w-0 text-center">
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-300">
+        <span
+          className={`inline-flex items-center gap-1 text-[10px] font-semibold ${appearance === "light" ? "text-emerald-700" : "text-emerald-300"}`}
+        >
           <CircleCheck className="h-3 w-3" aria-hidden="true" />
           มีวิดีโอรวมแล้ว
         </span>
@@ -510,6 +518,7 @@ export function MarketplaceAutoReviewJobNavigator({
   selectedProductFilter,
   onProductFilterChange,
   allProducts = false,
+  appearance = "dark",
   largeProductThumbnails = false,
   setupMode = false,
   hasMore = false,
@@ -525,6 +534,7 @@ export function MarketplaceAutoReviewJobNavigator({
 }: MarketplaceAutoReviewJobNavigatorProps) {
   const { i18n } = useTranslation();
   const isThaiLocale = (i18n.resolvedLanguage ?? i18n.language) === "th";
+  const isLight = appearance === "light";
   const navigatorRef = useRef<HTMLElement | null>(null);
   const mediaRefreshRequestedRef = useRef(false);
   const [navigatorWidth, setNavigatorWidth] = useState(0);
@@ -573,30 +583,40 @@ export function MarketplaceAutoReviewJobNavigator({
   return (
     <aside
       ref={navigatorRef}
-      className={`flex min-h-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10 ${className}`}
+      className={`flex min-h-[26rem] flex-col overflow-hidden rounded-2xl border ${isLight ? "border-slate-200 bg-white text-slate-900 shadow-sm" : "border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10"} ${className}`}
       aria-label={allProducts ? "Jobs ทั้งหมด" : "Jobs ของสินค้านี้"}
     >
-      <header className="border-b border-white/10 p-4">
+      <header
+        className={`border-b p-4 ${isLight ? "border-slate-200" : "border-white/10"}`}
+      >
         <div className="flex items-start justify-between gap-3">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">
+          <span
+            className={`inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] ${isLight ? "text-violet-700" : "text-violet-300"}`}
+          >
             <Sparkles className="h-4 w-4" /> Jobs
           </span>
-          <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-slate-300">
+          <span
+            className={`rounded-full border px-2 py-1 text-[11px] ${isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-white/10 text-slate-300"}`}
+          >
             {visibleRuns.length} งาน
           </span>
         </div>
         <h2 className="mt-2 text-base font-semibold">
           {allProducts ? "งาน Review ทั้งหมด" : "งาน Review ของสินค้า"}
         </h2>
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
+        <p
+          className={`mt-1 line-clamp-2 text-xs leading-5 ${isLight ? "text-slate-600" : "text-slate-400"}`}
+        >
           {allProducts
             ? "งานทั้งหมดเรียงจากล่าสุด ใช้ตัวกรองด้านบนเพื่อค้นหา แล้วกดงานเพื่อเปิดรายละเอียด"
             : "เลือกงานเพื่อเปิดรายละเอียด หรือกรองสินค้าเพื่อค้นหางานอื่น"}
         </p>
         {productId ? (
-          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+          <div
+            className={`mt-2 rounded-lg border px-2.5 py-2 ${isLight ? "border-slate-200 bg-slate-50" : "border-white/10 bg-white/5"}`}
+          >
             <p
-              className="truncate text-xs font-medium text-slate-200"
+              className={`truncate text-xs font-medium ${isLight ? "text-slate-800" : "text-slate-200"}`}
               title={productName || productId}
             >
               สินค้า: {productName || "ไม่พบชื่อสินค้า"}
@@ -607,11 +627,13 @@ export function MarketplaceAutoReviewJobNavigator({
           </div>
         ) : null}
         {onProductFilterChange && productOptions ? (
-          <label className="mt-3 block text-[11px] font-medium text-slate-300">
+          <label
+            className={`mt-3 block text-[11px] font-medium ${isLight ? "text-slate-700" : "text-slate-300"}`}
+          >
             กรองรายการงานตามสินค้า
             <select
               aria-label="กรองรายการงานตามสินค้า"
-              className="mt-1.5 min-h-10 w-full rounded-lg border border-white/15 bg-slate-900 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className={`mt-1.5 min-h-10 w-full rounded-lg border px-2.5 text-xs focus:outline-none focus:ring-2 ${isLight ? "border-slate-300 bg-white text-slate-900 focus:ring-violet-400" : "border-white/15 bg-slate-900 text-white focus:ring-sky-400"}`}
               value={selectedProductFilter ?? "__all_products__"}
               onChange={event => onProductFilterChange(event.target.value)}
             >
@@ -638,20 +660,24 @@ export function MarketplaceAutoReviewJobNavigator({
         aria-label="รายการ Job Review"
       >
         {loading && visibleRuns.length === 0 ? (
-          <p className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+          <p
+            className={`flex items-center gap-2 rounded-lg border p-3 text-xs ${isLight ? "border-slate-200 bg-slate-50 text-slate-600" : "border-white/10 bg-white/5 text-slate-300"}`}
+          >
             <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดรายการงาน…
           </p>
         ) : null}
         {error && visibleRuns.length === 0 ? (
           <p
-            className="rounded-lg border border-red-300/30 bg-red-500/10 p-4 text-xs leading-5 text-red-200"
+            className={`rounded-lg border p-4 text-xs leading-5 ${isLight ? "border-red-200 bg-red-50 text-red-700" : "border-red-300/30 bg-red-500/10 text-red-200"}`}
             role="alert"
           >
             โหลดรายการ Job ไม่สำเร็จ: {error}
           </p>
         ) : null}
         {!loading && !error && visibleRuns.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-white/15 bg-white/5 p-4 text-center text-xs leading-5 text-slate-400">
+          <p
+            className={`rounded-lg border border-dashed p-4 text-center text-xs leading-5 ${isLight ? "border-slate-300 bg-slate-50 text-slate-500" : "border-white/15 bg-white/5 text-slate-400"}`}
+          >
             {allProducts
               ? "ไม่พบ Job Review ที่ตรงกับตัวกรอง"
               : "ยังไม่มี Job Review สำหรับสินค้านี้"}
@@ -684,12 +710,8 @@ export function MarketplaceAutoReviewJobNavigator({
               : [];
             const hasVideoPreview =
               canShowVideoPreview && Boolean(videoPreviewUrl);
-            const productThumbnailClassName = largeProductThumbnails
-              ? "h-24 w-24 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover"
-              : "h-16 w-16 shrink-0 rounded-md border border-white/10 bg-white/10 object-cover";
-            const productThumbnailFallbackClassName = largeProductThumbnails
-              ? "flex h-24 w-24 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400"
-              : "flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10 px-1 text-center text-[9px] text-slate-400";
+            const productThumbnailClassName = `shrink-0 rounded-md border object-cover ${largeProductThumbnails ? "h-24 w-24" : "h-16 w-16"} ${isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/10"}`;
+            const productThumbnailFallbackClassName = `flex shrink-0 items-center justify-center rounded-md border px-1 text-center text-[9px] ${largeProductThumbnails ? "h-24 w-24" : "h-16 w-16"} ${isLight ? "border-slate-200 bg-slate-100 text-slate-500" : "border-white/10 bg-white/10 text-slate-400"}`;
             const deleteActionPosition = hasVideoPreview
               ? "right-2 top-2 sm:right-[8.5rem]"
               : "right-2 top-2";
@@ -715,8 +737,12 @@ export function MarketplaceAutoReviewJobNavigator({
                     rel={openRunsInNewTab ? "noopener noreferrer" : undefined}
                     className={`block w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
                       selected
-                        ? "border-violet-300 bg-violet-500/20"
-                        : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.08]"
+                        ? isLight
+                          ? "border-violet-300 bg-violet-50"
+                          : "border-violet-300 bg-violet-500/20"
+                        : isLight
+                          ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.08]"
                     }`}
                     aria-current={selected ? "page" : undefined}
                     onClick={event => {
@@ -753,16 +779,22 @@ export function MarketplaceAutoReviewJobNavigator({
                         ) : null}
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
-                            <span className="block truncate text-sm font-semibold text-white">
+                            <span
+                              className={`block truncate text-sm font-semibold ${isLight ? "text-slate-950" : "text-white"}`}
+                            >
                               {jobTitle(run)}
                             </span>
                             {index === 0 ? (
-                              <span className="shrink-0 rounded-full bg-violet-400/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
+                              <span
+                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${isLight ? "bg-violet-100 text-violet-800" : "bg-violet-400/20 text-violet-200"}`}
+                              >
                                 ล่าสุด
                               </span>
                             ) : null}
                           </span>
-                          <span className="mt-1 block truncate text-[11px] text-slate-400">
+                          <span
+                            className={`mt-1 block truncate text-[11px] ${isLight ? "text-slate-500" : "text-slate-400"}`}
+                          >
                             {shortRunId(runId)}
                           </span>
                           {allProducts && run.productId ? (
@@ -779,7 +811,7 @@ export function MarketplaceAutoReviewJobNavigator({
                           ) : null}
                           {characterSeriesNames.length > 0 ? (
                             <span
-                              className="mt-1 block truncate text-[10px] text-violet-300"
+                              className={`mt-1 block truncate text-[10px] ${isLight ? "text-violet-700" : "text-violet-300"}`}
                               title={characterSeriesNames.join(" · ")}
                             >
                               ซีรีส์: {characterSeriesNames.join(" · ")}
@@ -798,20 +830,28 @@ export function MarketplaceAutoReviewJobNavigator({
                         />
                         {status.label}
                       </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-400">
+                      <span
+                        className={`rounded-full border px-2 py-1 ${isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-white/5 text-slate-400"}`}
+                      >
                         {staged ? "Staged" : "Legacy"}
                       </span>
                       {progress ? (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-400">
+                        <span
+                          className={`rounded-full border px-2 py-1 ${isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-white/5 text-slate-400"}`}
+                        >
                           {progress}
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-2 block truncate text-xs text-slate-300">
+                    <span
+                      className={`mt-2 block truncate text-xs ${isLight ? "text-slate-700" : "text-slate-300"}`}
+                    >
                       {stagedStageLabel(run)}
                     </span>
                     {mediaProgress ? (
-                      <span className="mt-1 block truncate text-[11px] text-sky-300">
+                      <span
+                        className={`mt-1 block truncate text-[11px] ${isLight ? "text-sky-700" : "text-sky-300"}`}
+                      >
                         Prompt ภาพ {mediaProgress.imagePromptsReady}/
                         {mediaProgress.total} · ภาพ{" "}
                         {mediaProgress.imageArtifactsReady}/
@@ -832,6 +872,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       src={videoPreviewUrl}
                       posterUrl={videoPreviewPosterUrl}
                       title={jobTitle(run)}
+                      appearance={appearance}
                       onMediaLoadError={handleMediaLoadError}
                     />
                   ) : null}
@@ -843,14 +884,16 @@ export function MarketplaceAutoReviewJobNavigator({
                 {onDeleteRun ? (
                   confirmingDeleteRunId === runId ? (
                     <span
-                      className={`absolute ${deleteActionPosition} z-20 flex items-center gap-1 rounded-md border border-white/20 bg-slate-900/95 px-1 py-0.5 shadow-lg`}
+                      className={`absolute ${deleteActionPosition} z-20 flex items-center gap-1 rounded-md border px-1 py-0.5 shadow-lg ${isLight ? "border-slate-200 bg-white" : "border-white/20 bg-slate-900/95"}`}
                     >
-                      <span className="px-1 text-[10px] text-slate-200">
+                      <span
+                        className={`px-1 text-[10px] ${isLight ? "text-slate-700" : "text-slate-200"}`}
+                      >
                         ลบงานนี้?
                       </span>
                       <button
                         type="button"
-                        className="rounded p-1 text-slate-300 hover:text-white"
+                        className={`rounded p-1 ${isLight ? "text-slate-500 hover:text-slate-900" : "text-slate-300 hover:text-white"}`}
                         aria-label={`ยกเลิกการลบ ${jobTitle(run)}`}
                         onClick={() => setConfirmingDeleteRunId(null)}
                       >
@@ -881,7 +924,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       // ALWAYS visible, never hover-only: an affordance the
                       // user cannot see is one they will report as missing —
                       // the same mistake the look selector made earlier today.
-                      className={`absolute ${deleteButtonPosition} z-10 rounded-md border border-white/10 bg-slate-900/70 p-1 text-slate-400 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-60`}
+                      className={`absolute ${deleteButtonPosition} z-10 rounded-md border p-1 transition disabled:opacity-60 ${isLight ? "border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600" : "border-white/10 bg-slate-900/70 text-slate-400 hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300"}`}
                       aria-label={`ลบ ${jobTitle(run)}`}
                       title="ลบงานนี้"
                       data-testid={`job-delete-${runId}`}
@@ -901,12 +944,14 @@ export function MarketplaceAutoReviewJobNavigator({
         </ul>
       </nav>
 
-      <footer className="border-t border-white/10 p-3">
+      <footer
+        className={`border-t p-3 ${isLight ? "border-slate-200" : "border-white/10"}`}
+      >
         {hasMore ? (
           <button
             type="button"
             disabled={loadingMore}
-            className="mb-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className={`mb-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-60 ${isLight ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-50" : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"}`}
             onClick={onLoadMore}
           >
             {loadingMore ? (
@@ -921,7 +966,9 @@ export function MarketplaceAutoReviewJobNavigator({
           type="button"
           className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
             setupMode
-              ? "bg-white/20 text-white hover:bg-white/25"
+              ? isLight
+                ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                : "bg-white/20 text-white hover:bg-white/25"
               : "!bg-violet-700 !text-white hover:!bg-violet-800"
           }`}
           onClick={onCreateNew}

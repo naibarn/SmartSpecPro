@@ -154,6 +154,7 @@ export default function MarketplaceAutoReviewJobsPage() {
         loading={jobsQuery.isLoading}
         error={jobsQuery.error?.message ?? null}
         allProducts
+        appearance="light"
         largeProductThumbnails
         openRunsInNewTab
         productOptions={productsQuery.data ?? []}
