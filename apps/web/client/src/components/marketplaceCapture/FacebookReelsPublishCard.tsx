@@ -68,15 +68,11 @@ export function FacebookReelsPublishCard(props: {
   const [pageId, setPageId] = useState("");
   const [format, setFormat] = useState<"reel" | "photo">("reel");
   const [photoVariant, setPhotoVariant] = useState("caption_source");
-  const [caption, setCaption] = useState(props.initialCaption ?? "");
-  const [hashtags, setHashtags] = useState((props.initialHashtags ?? []).map(tag => `#${tag.replace(/^#+/, "")}`).join(" "));
   const [affiliateMode, setAffiliateMode] = useState<AffiliateMode>("description");
   const [aiGenerated, setAiGenerated] = useState(false);
   const [commercialDisclosure, setCommercialDisclosure] = useState("");
   const [allowNoAffiliate, setAllowNoAffiliate] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [seededRun, setSeededRun] = useState("");
-  const [seededReadinessRun, setSeededReadinessRun] = useState("");
   const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, { retry: false });
   const history = trpc.marketplaceAutoReviewReels.history.useQuery({ runId: props.runId }, {
     retry: false,
@@ -111,11 +107,15 @@ export function FacebookReelsPublishCard(props: {
     onError: () => setError("ตรวจสถานะ Photo Post กับ Facebook ไม่สำเร็จ กรุณาลองใหม่ภายหลัง"),
   });
 
+  const caption = props.initialCaption?.trim()
+    ? props.initialCaption
+    : readiness.data?.savedCaption ?? photoReadiness.data?.savedCaption ?? props.initialCaption ?? "";
+  const sourceHashtags = props.initialHashtags?.length
+    ? props.initialHashtags
+    : readiness.data?.savedHashtags ?? photoReadiness.data?.savedHashtags ?? props.initialHashtags ?? [];
+  const hashtags = sourceHashtags.map(tag => `#${tag.replace(/^#+/, "")}`).join(" ");
+
   useEffect(() => {
-    if (seededRun === props.runId) return;
-    setSeededRun(props.runId);
-    setCaption(props.initialCaption ?? "");
-    setHashtags((props.initialHashtags ?? []).map(tag => `#${tag.replace(/^#+/, "")}`).join(" "));
     setPageId("");
     setFormat("reel");
     setPhotoVariant("caption_source");
@@ -124,7 +124,7 @@ export function FacebookReelsPublishCard(props: {
     setAiGenerated(false);
     setCommercialDisclosure("");
     setError(null);
-  }, [props.runId, props.initialCaption, props.initialHashtags, seededRun]);
+  }, [props.runId]);
 
   useEffect(() => {
     const firstReady = photoReadiness.data?.imageVariants.find(image => image.status === "completed");
@@ -132,20 +132,6 @@ export function FacebookReelsPublishCard(props: {
       setPhotoVariant(firstReady.variant);
     }
   }, [photoReadiness.data, photoVariant]);
-
-  useEffect(() => {
-    const savedContent = readiness.data && "savedCaption" in readiness.data
-      ? readiness.data
-      : photoReadiness.data && "savedCaption" in photoReadiness.data
-        ? photoReadiness.data
-        : null;
-    if (seededReadinessRun === props.runId || !savedContent) return;
-    setSeededReadinessRun(props.runId);
-    if (typeof savedContent.savedCaption === "string") setCaption(savedContent.savedCaption);
-    if ("savedHashtags" in savedContent && Array.isArray(savedContent.savedHashtags)) {
-      setHashtags(savedContent.savedHashtags.join(" "));
-    }
-  }, [props.runId, readiness.data, photoReadiness.data, seededReadinessRun]);
 
   const pages = readiness.data?.pages ?? [];
   const selectedPage = pages.find(page => String(page.id) === pageId);
@@ -225,11 +211,15 @@ export function FacebookReelsPublishCard(props: {
               isDisabled={!(photoReadiness.data?.pages.length)}
               width="100%"
             />
-            <TextArea label="Caption สำหรับ Photo Post" value={caption} onChange={setCaption} rows={4} maxLength={2000} width="100%" />
-            <TextArea label="Hashtag" value={hashtags} onChange={setHashtags} rows={2} width="100%" />
+            <VStack gap={1}>
+              <Heading level={4}>เนื้อหาจาก Caption สำหรับโพสต์โซเชียล</Heading>
+              <Text>Caption · {caption.trim() ? "Available" : "Not configured"}</Text>
+              <Text>Hashtag · {parsedHashtags.length ? "Available" : "Not configured"}</Text>
+              <Text type="supporting" color="secondary">ใช้ Caption และ Hashtag ที่บันทึกไว้ใน Auto Review โดยแก้ไขได้จากส่วน Caption สำหรับโพสต์โซเชียล</Text>
+            </VStack>
             {invalidHashtags ? <Text>ใช้ hashtag สูงสุด 20 รายการ โดยคั่นแต่ละรายการด้วยช่องว่าง</Text> : null}
             <Selector
-              label="ตำแหน่ง Affiliate link"
+              label="ตำแหน่ง Affiliate Link เดิม"
               value={affiliateMode}
               onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
               options={[
@@ -240,11 +230,9 @@ export function FacebookReelsPublishCard(props: {
               ]}
               width="100%"
             />
-            <Text type="supporting" color="secondary">Affiliate Link: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ต้องทดสอบการกดลิงก์และ Affiliate Attribution จริง ระบบคง URL tracking เดิมไว้</Text>
+            <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
             <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="ระบุข้อความเปิดเผยที่เหมาะสมกับโพสต์" />
-            <Heading level={4}>ตัวอย่างข้อความ</Heading>
-            <Text>{[caption, parsedHashtags.join(" "), commercialDisclosure].filter(Boolean).join("\n\n") || "ยังไม่มีข้อความ"}</Text>
             <Banner title="ภาพนี้สร้างด้วย AI" collapsible={false}><Text>กรุณาตรวจและเปิดเผยตามข้อกำหนดของ Facebook ก่อนเผยแพร่ การเผยแพร่ภาพผ่าน API นี้ไม่มีช่องส่งค่า is_ai_generated โดยเฉพาะ</Text></Banner>
             {photoHistoryHasUncertain ? <Banner title="ต้องตรวจสอบสถานะก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจประวัติด้านล่างก่อนสร้างโพสต์ใหม่</Text></Banner> : null}
             {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
@@ -303,7 +291,7 @@ export function FacebookReelsPublishCard(props: {
         </HStack>
         <Heading level={3}>เผยแพร่ Facebook Reel</Heading>
         <Text type="supporting" color="secondary">
-          ใช้วิดีโอสุดท้ายที่ผ่านการตรวจและบันทึกใน Library แล้ว ตรวจข้อความและการเปิดเผยข้อมูลก่อนส่งเผยแพร่
+          ใช้วิดีโอสุดท้ายที่ผ่านการตรวจและบันทึกใน Library แล้ว ระบบใช้ Caption และ Hashtag จากส่วน Caption สำหรับโพสต์โซเชียล
         </Text>
         {readiness.isLoading ? <Text>กำลังตรวจความพร้อมเผยแพร่</Text> : null}
         {readiness.isError ? (
@@ -327,11 +315,14 @@ export function FacebookReelsPublishCard(props: {
           isDisabled={!pages.length}
           width="100%"
         />
-        <TextArea label="Caption สำหรับ Reel" value={caption} onChange={setCaption} rows={4} maxLength={2000} width="100%" />
-        <TextArea label="Hashtag" value={hashtags} onChange={setHashtags} rows={2} width="100%" />
-        {invalidHashtags ? <Text>ใช้ hashtag สูงสุด 20 รายการ โดยคั่นแต่ละรายการด้วยช่องว่าง</Text> : null}
+        <VStack gap={1}>
+          <Heading level={4}>เนื้อหาจาก Caption สำหรับโพสต์โซเชียล</Heading>
+          <Text>Caption · {caption.trim() ? "Available" : "Not configured"}</Text>
+          <Text>Hashtag · {parsedHashtags.length ? "Available" : "Not configured"}</Text>
+          <Text type="supporting" color="secondary">ใช้ Caption และ Hashtag ที่บันทึกไว้ใน Auto Review โดยแก้ไขได้จากส่วน Caption สำหรับโพสต์โซเชียล</Text>
+        </VStack>
         <Selector
-          label="วิธีใส่ Affiliate link"
+          label="ตำแหน่ง Affiliate Link เดิม"
           value={affiliateMode}
           onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
           options={[
@@ -343,7 +334,7 @@ export function FacebookReelsPublishCard(props: {
           width="100%"
         />
         <Text type="supporting" color="secondary">
-          URL ในคำอธิบายยังไม่ได้รับการยืนยันว่าคลิกได้หรือระบุยอดขายได้ การใส่ URL ในความคิดเห็นแรกยังรอตรวจสิทธิ์ Meta
+          Affiliate Link: {readiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ใช้ URL ที่บันทึกไว้และคง tracking เดิม การคลิกและ Affiliate Attribution ต้องตรวจสอบกับ Meta อีกครั้ง
         </Text>
         {affiliateMode === "manual_native" ? (
           <Banner title="ดำเนินการติดแท็กสินค้าใน Facebook ด้วยตนเอง" collapsible={false}>
@@ -364,9 +355,6 @@ export function FacebookReelsPublishCard(props: {
         />
         <CheckboxInput label="วิดีโอนี้สร้างหรือดัดแปลงด้วย AI" value={aiGenerated} onChange={setAiGenerated} />
         <Text type="supporting" color="secondary">การระบุ AI แยกจากการเปิดเผยความสัมพันธ์เชิงพาณิชย์</Text>
-        <Heading level={4}>ตัวอย่างข้อความ</Heading>
-        <Text>{[caption, parsedHashtags.join(" "), commercialDisclosure].filter(Boolean).join("\n\n") || "ยังไม่มีข้อความ"}</Text>
-        {affiliateMode === "description" && readiness.data?.hasAffiliateLink ? <Text>ระบบจะเพิ่ม Affiliate URL ที่บันทึกไว้พร้อม tracking เดิมในคำอธิบาย</Text> : null}
         {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
         <HStack hAlign="end">
           <Button label={affiliateMode === "manual_native" ? "เตรียมส่งต่อให้ติดแท็กใน Facebook" : "เผยแพร่ Reel"} variant="primary" isLoading={publish.isPending} isDisabled={!canPublish && !canPrepareManualHandoff} onClick={submit} />
