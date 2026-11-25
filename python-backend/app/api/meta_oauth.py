@@ -27,7 +27,6 @@ router = APIRouter(prefix="/api/oauth/meta", tags=["meta-oauth"])
 META_OAUTH_SCOPES = [
     "pages_show_list",
     "pages_manage_metadata",
-    "pages_messaging",
     "pages_read_engagement",
     "pages_manage_posts",
     "pages_manage_engagement",

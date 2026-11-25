@@ -40,6 +40,8 @@ async def test_authorize_builds_facebook_oauth_url_and_stores_state(monkeypatch:
 
     assert result["authorization_url"].startswith("https://www.facebook.com/v25.0/dialog/oauth")
     assert "pages_manage_engagement" in result["authorization_url"]
+    assert "pages_messaging" not in result["authorization_url"]
+    assert "pages_manage_posts" in result["authorization_url"]
     put_value.assert_awaited_once()
     assert put_value.await_args.args[0] == "meta_oauth_state"
     assert put_value.await_args.args[3] == 600
