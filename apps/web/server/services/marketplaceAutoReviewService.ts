@@ -34316,6 +34316,7 @@ async function addRenderResultToLibrary(params: {
   plan: AutoReviewPlan;
   jobId: string;
   sourceUrl: string;
+  librarySourceUrl?: string;
   finalizedMetadata: RunMetadata;
 }) {
   const [existing] = await params.db
@@ -34378,7 +34379,7 @@ async function addRenderResultToLibrary(params: {
       visibility: "private",
       projectId: params.run.productionRunId,
       metadata,
-      sourceUrl: params.sourceUrl,
+      sourceUrl: params.librarySourceUrl ?? params.sourceUrl,
       thumbnailUrl:
         params.finalizedMetadata && typeof params.finalizedMetadata === "object"
           ? (params.finalizedMetadata.startFrameUrls?.[0] ??
@@ -36184,6 +36185,26 @@ function stagedRenderSnapshotMatchesCurrent(metadata: RunMetadata): boolean {
   }
 }
 
+function stagedRenderLibrarySourceUrl(
+  workerOutputUrl: string,
+  absoluteOutputUrl: string,
+): string {
+  // Worker App publishes private artifacts through the authenticated storage
+  // route. Keep that managed path for Library ingestion so it can resolve the
+  // existing storage key directly instead of downloading the route as an
+  // unauthenticated external URL (which returns 404).
+  return workerOutputUrl.startsWith("/api/storage/files/")
+    ? workerOutputUrl
+    : absoluteOutputUrl;
+}
+
+export function stagedRenderLibrarySourceUrlForTest(
+  workerOutputUrl: string,
+  absoluteOutputUrl: string,
+): string {
+  return stagedRenderLibrarySourceUrl(workerOutputUrl, absoluteOutputUrl);
+}
+
 export function buildStagedRemotionFinalRenderManifestForTest(
   metadata: RunMetadata
 ) {
@@ -36794,6 +36815,10 @@ async function reconcileStagedRemotionFinalRender(params: {
     plan: params.plan,
     jobId,
     sourceUrl: absoluteOutputUrl,
+    librarySourceUrl: stagedRenderLibrarySourceUrl(
+      outputUrl,
+      absoluteOutputUrl,
+    ),
     finalizedMetadata: preLibraryFinalizedMetadata,
   });
   const libraryItemId = libraryResult.libraryItemId;

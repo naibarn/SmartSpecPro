@@ -314,7 +314,7 @@ describe("marketplaceAutoReviewJob", () => {
       orderBy: () => chain,
       limit: async () => {
         limitCall += 1;
-        return limitCall === 4 ? [stagedRun] : [];
+        return limitCall === 5 ? [stagedRun] : [];
       },
     };
 
@@ -329,6 +329,67 @@ describe("marketplaceAutoReviewJob", () => {
           disabled: false,
           runtimeDeferred: false,
         }),
+      });
+
+      expect(enqueueWorkerJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "tenant-1",
+          userId: 1,
+          runId: stagedRun.id,
+          operation: expect.objectContaining({
+            operation: "advance_run",
+            runId: stagedRun.id,
+            reconcileOnly: true,
+          }),
+          idempotencyKey: expect.stringContaining(":render-reconcile:v1:"),
+        })
+      );
+      const admission = enqueueWorkerJob.mock.calls[0]?.[0];
+      expect(admission?.operation).not.toHaveProperty("targetShotIds");
+    } finally {
+      enqueueWorkerJob.mockRestore();
+    }
+  });
+
+  it("bridges final Remotion render reconciliation during worker queue-only ticks", async () => {
+    const enqueueWorkerJob = vi.spyOn(
+      marketplaceAutoReviewWorkerJob,
+      "enqueueMarketplaceAutoReviewWorkerJob"
+    );
+    let limitCall = 0;
+    const stagedRun = {
+      id: "mar_staged_render_bridge_run",
+      userId: 1,
+      tenantId: "tenant-1",
+      status: "waiting_provider",
+      currentStage: "render",
+      resultLibraryItemId: null,
+      updatedAt: new Date("2026-11-25T12:00:00.000Z"),
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        initializationControl: { status: "completed" },
+        renderEngine: "remotion_queue",
+        renderJobId: "render-worker-bridge-1",
+        stagedPipeline: { tasks: {} },
+      },
+    };
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => {
+        limitCall += 1;
+        return limitCall === 5 ? [stagedRun] : [];
+      },
+    };
+
+    try {
+      await runMarketplaceAutoReviewJob({
+        db: {
+          select: () => chain,
+          update: () => ({ set: () => ({ where: async () => undefined }) }),
+        },
+        queueBridgeOnly: true,
       });
 
       expect(enqueueWorkerJob).toHaveBeenCalledWith(

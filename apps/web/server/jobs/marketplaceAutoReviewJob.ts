@@ -173,6 +173,65 @@ function stagedFinalRenderJobId(metadataValue: unknown): string | null {
   return renderEngine === "remotion_queue" && renderJobId ? renderJobId : null;
 }
 
+async function enqueueStagedFinalRenderReconciliation(
+  db: any,
+  run: {
+    id: string;
+    tenantId: string | null;
+    userId: number;
+    resultLibraryItemId: number | null;
+    metadataJson: unknown;
+  },
+  now: Date,
+): Promise<"queued" | "active" | "not_applicable"> {
+  const tenantId = String(run.tenantId ?? "").trim();
+  const metadata =
+    run.metadataJson && typeof run.metadataJson === "object" && !Array.isArray(run.metadataJson)
+      ? run.metadataJson as Record<string, any>
+      : {};
+  const renderJobId = stagedFinalRenderJobId(metadata);
+  if (!tenantId || !renderJobId || run.resultLibraryItemId || stagedProviderPollTargets(metadata).length > 0) {
+    return "not_applicable";
+  }
+
+  const admission = buildStagedRenderReconcileAdmission({ runId: run.id, renderJobId, now });
+  const [activeAdvanceJob] = await db
+    .select({ id: workerJobs.id })
+    .from(workerJobs)
+    .where(
+      and(
+        eq(workerJobs.tenantId, tenantId),
+        eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+        inArray(workerJobs.status, [
+          "pending",
+          "queued",
+          "leased",
+          "claimed",
+          "preparing",
+          "running",
+          "waiting_external",
+          "retry_scheduled",
+        ] as any),
+        sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+        sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+      )
+    )
+    .limit(1);
+  if (!activeAdvanceJob) {
+    await enqueueMarketplaceAutoReviewWorkerJob({
+      tenantId,
+      userId: run.userId,
+      runId: run.id,
+      ...admission,
+    });
+  }
+  await db
+    .update(marketplaceAutoReviewRuns)
+    .set({ updatedAt: new Date() })
+    .where(eq(marketplaceAutoReviewRuns.id, run.id));
+  return activeAdvanceJob ? "active" : "queued";
+}
+
 const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
 const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -758,47 +817,12 @@ export async function runMarketplaceAutoReviewJob(
           // this only schedules that read/reconcile pass for affected shots.
           const pollTargets = stagedProviderPollTargets(metadata);
           if (pollTargets.length === 0) {
-            const renderJobId = stagedFinalRenderJobId(metadata);
-            if (renderJobId && !run.resultLibraryItemId) {
-              const admission = buildStagedRenderReconcileAdmission({
-                runId: run.id,
-                renderJobId,
-                now,
-              });
-              const [activeAdvanceJob] = await db
-                .select({ id: workerJobs.id })
-                .from(workerJobs)
-                .where(
-                  and(
-                    eq(workerJobs.tenantId, tenantId),
-                    eq(workerJobs.jobType, "marketplace.auto_review.execute"),
-                    inArray(workerJobs.status, [
-                      "pending",
-                      "queued",
-                      "leased",
-                      "claimed",
-                      "preparing",
-                      "running",
-                      "waiting_external",
-                      "retry_scheduled",
-                    ] as any),
-                    sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
-                    sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
-                  )
-                )
-                .limit(1);
-              if (!activeAdvanceJob) {
-                await enqueueMarketplaceAutoReviewWorkerJob({
-                  tenantId,
-                  userId: run.userId,
-                  runId: run.id,
-                  ...admission,
-                });
-              }
-              await db
-                .update(marketplaceAutoReviewRuns)
-                .set({ updatedAt: new Date() })
-                .where(eq(marketplaceAutoReviewRuns.id, run.id));
+            const renderReconciliation = await enqueueStagedFinalRenderReconciliation(
+              db,
+              run,
+              now,
+            );
+            if (renderReconciliation !== "not_applicable") {
               skippedRuns += 1;
               continue;
             }
