@@ -4586,6 +4586,17 @@ async function generateCompleteStagedShotPrompt(input: {
       (total, attempt) => total + attempt.estimatedCredits,
       0
     );
+    if (generation.providerRecovery === "empty_response") {
+      console.info(
+        "[marketplaceAutoReview] image prompt recovered after empty provider response",
+        {
+          runId: input.run.id,
+          shotId: input.shotId,
+          attempts: 2,
+          estimatedCredits,
+        }
+      );
+    }
     if (generation.validationIssues.length > 0) {
       console.error(
         "[marketplaceAutoReview] image prompt failed validation after bounded recovery",

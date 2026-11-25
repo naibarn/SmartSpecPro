@@ -22,7 +22,9 @@ type GenerateWithRecovery = <
   generate: (attempt: GenerateAttemptInput) => Promise<T>;
 }) => Promise<{
   attemptResults: T[];
+  recoveryIssues: ImagePromptValidationIssue[];
   validationIssues: ImagePromptValidationIssue[];
+  providerRecovery: "empty_response" | null;
 }>;
 
 type GetValidationIssues = (value: unknown) => ImagePromptValidationIssue[];
@@ -92,6 +94,51 @@ describe("staged image prompt recovery", () => {
     expect(result.attemptResults).toHaveLength(2);
     expect(result.recoveryIssues).toContain("vertical_format_missing");
     expect(result.validationIssues).toEqual([]);
+    expect(result.providerRecovery).toBeNull();
+  });
+
+  it("retries an empty provider response once with a distinct billing key", async () => {
+    const calls: GenerateAttemptInput[] = [];
+    const result = await generateWithRecovery({
+      requestIdempotencyKey: "image-prompt-empty-response",
+      async generate(attempt) {
+        calls.push(attempt);
+        if (attempt.attempt === 1) {
+          throw new Error(
+            "MARKETPLACE_SINGLE_SHOT_SKILL_FAILED:All providers failed after 1 attempt(s): attempt 1 openrouter(openai/gpt-5.6-luna): empty_response - Provider returned HTTP 200 with no assistant text"
+          );
+        }
+        return {
+          startFrameImagePrompt:
+            "Create one vertical 9:16 image. Use @Image1 as the exact product reference. Camera framing and lighting keep the product clear. Do not add text, captions, or subtitles.",
+          estimatedCredits: 3,
+        };
+      },
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[1].requestIdempotencyKey).toBe(
+      "image-prompt-empty-response:image-provider-empty-retry-1"
+    );
+    expect(calls[1].recoveryInstruction).toContain("no assistant text");
+    expect(result.attemptResults).toHaveLength(1);
+    expect(result.validationIssues).toEqual([]);
+    expect(result.providerRecovery).toBe("empty_response");
+  });
+
+  it("does not retry provider errors unrelated to empty output", async () => {
+    const calls: GenerateAttemptInput[] = [];
+    await expect(
+      generateWithRecovery({
+        requestIdempotencyKey: "image-prompt-config-error",
+        async generate(attempt) {
+          calls.push(attempt);
+          throw new Error("MARKETPLACE_SKILL_PROVIDER_NOT_CONFIGURED");
+        },
+      })
+    ).rejects.toThrow("MARKETPLACE_SKILL_PROVIDER_NOT_CONFIGURED");
+
+    expect(calls).toHaveLength(1);
   });
 
   it("does not retry a valid prompt and never exceeds two attempts", async () => {

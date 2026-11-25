@@ -106,15 +106,41 @@ export async function generateStagedImagePromptWithRecovery<
   attemptResults: T[];
   recoveryIssues: StagedImagePromptValidationIssue[];
   validationIssues: StagedImagePromptValidationIssue[];
+  providerRecovery: "empty_response" | null;
 }> {
   const baseKey = input.requestIdempotencyKey.trim();
   if (!baseKey) {
     throw new Error("STAGED_IMAGE_PROMPT_IDEMPOTENCY_KEY_REQUIRED");
   }
-  const first = await input.generate({
-    attempt: 1,
-    requestIdempotencyKey: baseKey,
-  });
+  let first: T;
+  try {
+    first = await input.generate({
+      attempt: 1,
+      requestIdempotencyKey: baseKey,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/(?:empty[_ ]response|no (?:final )?assistant text)/i.test(message)) {
+      throw error;
+    }
+    const recovered = await input.generate({
+      attempt: 2,
+      requestIdempotencyKey: `${baseKey}:image-provider-empty-retry-1`,
+      recoveryInstruction: [
+        "The previous provider response contained no assistant text.",
+        "Regenerate the complete start_frame_image_prompt for this shot using the supplied shot contract and image references.",
+        "Return only the requested valid JSON object; do not include commentary or markdown.",
+      ].join(" "),
+    });
+    return {
+      attemptResults: [recovered],
+      recoveryIssues: [],
+      validationIssues: getStagedImagePromptValidationIssues(
+        recovered.startFrameImagePrompt
+      ),
+      providerRecovery: "empty_response",
+    };
+  }
   const firstIssues = getStagedImagePromptValidationIssues(
     first.startFrameImagePrompt
   );
@@ -123,6 +149,7 @@ export async function generateStagedImagePromptWithRecovery<
       attemptResults: [first],
       recoveryIssues: [],
       validationIssues: [],
+      providerRecovery: null,
     };
   }
 
@@ -137,6 +164,7 @@ export async function generateStagedImagePromptWithRecovery<
     validationIssues: getStagedImagePromptValidationIssues(
       second.startFrameImagePrompt
     ),
+    providerRecovery: null,
   };
 }
 
