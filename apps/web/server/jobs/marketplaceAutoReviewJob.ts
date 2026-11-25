@@ -19,6 +19,7 @@ import {
   findMarketplaceAutoReviewWorkerJobByIdempotencyKey,
   marketplaceAutoReviewOperationFromLegacyJobType,
 } from "../services/marketplaceAutoReviewWorkerJob";
+import { reconcileStagedAutoReviewAutomation } from "../services/marketplaceAutoReviewAutomation";
 import {
   runHyperframesRenderWorkerOnce,
   type HyperframesWorkerRunOptions,
@@ -343,7 +344,36 @@ export async function runMarketplaceAutoReviewJob(
       )
       .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
       .limit(runLimit);
-    const runs = [...pollableStagedRuns, ...otherActiveRuns].slice(0, runLimit);
+    const automaticStagedRuns = await db
+      .select()
+      .from(marketplaceAutoReviewRuns)
+      .where(
+        and(
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture'`,
+            "staged_two_skill_v2"
+          ),
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->'stagedPipeline'->'autoContinuation'->>'status'`,
+            "running"
+          )
+        )
+      )
+      .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
+      .limit(runLimit);
+    const selectedRuns = new Map(pollableStagedRuns.map(run => [run.id, run]));
+    const remainingCandidates = [
+      ...automaticStagedRuns,
+      ...otherActiveRuns,
+    ].sort(
+      (left, right) =>
+        new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime()
+    );
+    for (const run of remainingCandidates) {
+      if (selectedRuns.size >= runLimit) break;
+      if (!selectedRuns.has(run.id)) selectedRuns.set(run.id, run);
+    }
+    const runs = Array.from(selectedRuns.values()).slice(0, runLimit);
 
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
@@ -653,12 +683,26 @@ export async function runMarketplaceAutoReviewJob(
           skippedRuns += 1;
           continue;
         } else if (metadata.planningArchitecture === "staged_two_skill_v2") {
+          await reconcileStagedAutoReviewAutomation({
+            db,
+            runId: run.id,
+            userId: run.userId,
+            tenantId,
+          });
           // User decisions stay user-triggered, but an already-submitted media
           // task needs a durable poll even when its review page is closed. The
           // provider result is reconciled by the normal staged advance path;
           // this only schedules that read/reconcile pass for affected shots.
           const pollTargets = stagedProviderPollTargets(metadata);
           if (pollTargets.length === 0) {
+            if (
+              metadata.stagedPipeline?.autoContinuation?.status === "running"
+            ) {
+              await db
+                .update(marketplaceAutoReviewRuns)
+                .set({ updatedAt: new Date() })
+                .where(eq(marketplaceAutoReviewRuns.id, run.id));
+            }
             skippedRuns += 1;
             continue;
           }

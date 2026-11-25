@@ -2373,6 +2373,13 @@ export const marketplaceCaptureRouter = router({
             dialoguePreview: z.string().trim().min(40).max(6000),
           })
           .optional(),
+        autoContinuation: z
+          .object({
+            imageModel: z.string().trim().min(1).max(200),
+            promptModel: z.string().trim().min(1).max(128).optional(),
+          })
+          .strict()
+          .optional(),
       })
     )
     .output(z.any())

@@ -1,0 +1,707 @@
+import { and, desc, eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
+
+import { getDb } from "../db";
+import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
+import { StagedSequentialStoryboardMetadataV1Schema } from "@shared/marketplaceAutoReview/stagedContracts";
+import {
+  buildStagedApprovalExpectation,
+  stagedMetadataStateDigest,
+} from "./marketplaceAutoReviewStagedCheckpointOperations";
+import {
+  approveStagedAutoReviewCheckpoint,
+  detectStagedAutoReviewShotPeople,
+  startStagedAutoReviewBulkGeneration,
+} from "./marketplaceAutoReviewStagedCheckpointRouterService";
+import { findMarketplaceAutoReviewWorkerJobByIdempotencyKey } from "./marketplaceAutoReviewWorkerJob";
+
+const ACTIVE_WORKER_STATUSES = [
+  "pending",
+  "queued",
+  "leased",
+  "claimed",
+  "preparing",
+  "running",
+  "waiting_external",
+  "retry_scheduled",
+  "uploading",
+  "publishing",
+  "indexing",
+] as const;
+
+const TASK_IN_FLIGHT_STATUSES = new Set([
+  "pending",
+  "queued",
+  "processing",
+  "submitted",
+  "retry_scheduled",
+]);
+
+type AutoContinuationStage =
+  | "story_draft"
+  | "image_prompts"
+  | "images"
+  | "speaker_matching"
+  | "video_prompts"
+  | "complete";
+
+type AutoContinuationStatus = "running" | "paused_error" | "completed";
+
+type AutoContinuation = {
+  schemaVersion: 1;
+  status: AutoContinuationStatus;
+  stage: AutoContinuationStage;
+  planRevision: number;
+  imageModel: string;
+  promptModel?: string;
+  workerJobIds?: Record<string, unknown>;
+  startedAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  failedAt?: string;
+  errorCode?: string;
+};
+
+type RunRow = typeof marketplaceAutoReviewRuns.$inferSelect;
+
+function record(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function continuationFromRun(run: RunRow): AutoContinuation | null {
+  const value = record(
+    record(run.metadataJson).stagedPipeline
+  ).autoContinuation;
+  const continuation = record(value);
+  if (
+    continuation.schemaVersion !== 1 ||
+    !["running", "paused_error", "completed"].includes(
+      String(continuation.status)
+    ) ||
+    ![
+      "story_draft",
+      "image_prompts",
+      "images",
+      "speaker_matching",
+      "video_prompts",
+      "complete",
+    ].includes(String(continuation.stage))
+  ) {
+    return null;
+  }
+  return continuation as AutoContinuation;
+}
+
+function continuationKey(runId: string, revision: number, step: string) {
+  const stepDigest = createHash("sha256")
+    .update(step)
+    .digest("hex")
+    .slice(0, 32);
+  const stepName = step.startsWith("speaker-")
+    ? `speaker-${step.split("-")[1]}`
+    : step;
+  return `mar:${runId}:r${revision}:${stepName}:${stepDigest}`;
+}
+
+function isActiveJob(status: unknown): boolean {
+  return ACTIVE_WORKER_STATUSES.includes(
+    status as (typeof ACTIVE_WORKER_STATUSES)[number]
+  );
+}
+
+function isFailedJob(status: unknown): boolean {
+  return ["failed", "cancelled", "canceled", "expired"].includes(
+    String(status)
+  );
+}
+
+function isSucceededJob(status: unknown): boolean {
+  return status === "succeeded" || status === "completed";
+}
+
+async function getJobById(db: any, tenantId: string, jobId: string) {
+  if (!jobId) return null;
+  const [job] = await db
+    .select({ id: workerJobs.id, status: workerJobs.status })
+    .from(workerJobs)
+    .where(and(eq(workerJobs.id, jobId), eq(workerJobs.tenantId, tenantId)))
+    .limit(1);
+  return job ?? null;
+}
+
+async function getJobByKey(db: any, tenantId: string, idempotencyKey: string) {
+  return findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+    db,
+    tenantId,
+    idempotencyKey
+  );
+}
+
+async function updateContinuation(
+  db: any,
+  input: { runId: string; userId: number; tenantId: string },
+  update: (current: AutoContinuation) => Partial<AutoContinuation>
+): Promise<boolean> {
+  const [run] = await db
+    .select()
+    .from(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, input.runId),
+        eq(marketplaceAutoReviewRuns.userId, input.userId),
+        eq(marketplaceAutoReviewRuns.tenantId, input.tenantId)
+      )
+    )
+    .limit(1);
+  if (!run) return false;
+  const metadata = record(run.metadataJson);
+  const pipeline = record(metadata.stagedPipeline);
+  const current = continuationFromRun(run);
+  if (!current || current.status !== "running") return false;
+  const changed = update(current);
+  const nextContinuation: AutoContinuation = {
+    ...current,
+    ...changed,
+    workerJobIds: {
+      ...record(current.workerJobIds),
+      ...record(changed.workerJobIds),
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  const [saved] = await db
+    .update(marketplaceAutoReviewRuns)
+    .set({
+      metadataJson: {
+        ...metadata,
+        stagedPipeline: {
+          ...pipeline,
+          autoContinuation: nextContinuation,
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, input.runId),
+        eq(marketplaceAutoReviewRuns.userId, input.userId),
+        eq(marketplaceAutoReviewRuns.tenantId, input.tenantId),
+        eq(marketplaceAutoReviewRuns.updatedAt, run.updatedAt)
+      )
+    )
+    .returning({ id: marketplaceAutoReviewRuns.id });
+  return Boolean(saved);
+}
+
+async function pauseContinuation(
+  db: any,
+  input: { runId: string; userId: number; tenantId: string },
+  errorCode: string
+) {
+  await updateContinuation(db, input, () => ({
+    status: "paused_error",
+    errorCode: /^[A-Za-z0-9_]{1,80}$/.test(errorCode)
+      ? errorCode
+      : "automatic_step_failed",
+    failedAt: new Date().toISOString(),
+  }));
+}
+
+function allPromptsReady(
+  shots: Array<Record<string, any>>,
+  checkpoints: Array<Record<string, any>>,
+  stage: "image" | "video"
+): boolean {
+  const kind = stage === "image" ? "image_prompt" : "video_prompt";
+  const promptKey = stage === "image" ? "imagePrompt" : "videoPrompt";
+  const hashKey = stage === "image" ? "imagePromptHash" : "videoPromptHash";
+  return (
+    shots.length > 0 &&
+    shots.every(shot => {
+      const checkpoint = checkpoints.find(
+        item =>
+          item.kind === kind &&
+          Number(item.shotId) === Number(shot.shotId) &&
+          item.state === "approved"
+      );
+      return Boolean(
+        text(shot[promptKey]) &&
+        text(shot[hashKey]) &&
+        checkpoint?.contentHash === shot[hashKey]
+      );
+    })
+  );
+}
+
+function dialogueSpeakers(dialogue: unknown): string[] {
+  return Array.from(
+    new Set(
+      text(dialogue)
+        .split(/\r?\n/)
+        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
+        .filter((speaker): speaker is string => Boolean(speaker))
+    )
+  );
+}
+
+function completeSpeakerBindings(shot: Record<string, any>): boolean {
+  const speakers = dialogueSpeakers(shot.dialogue);
+  if (speakers.length === 0) return true;
+  const bindings = record(shot.speakerVisualBindings);
+  const values = speakers.map(speaker => text(bindings[speaker]));
+  return Boolean(
+    shot.speakerVisualBindingsImageHash === shot.imageArtifactHash &&
+    values.every(Boolean) &&
+    new Set(values).size === values.length
+  );
+}
+
+function imageResultApproved(
+  shot: Record<string, any>,
+  checkpoints: Array<Record<string, any>>
+): boolean {
+  const checkpoint = checkpoints.find(
+    item =>
+      item.kind === "image_result" &&
+      Number(item.shotId) === Number(shot.shotId) &&
+      item.state === "approved"
+  );
+  return Boolean(
+    text(shot.imageArtifactHash) &&
+    text(shot.imageArtifactUrl) &&
+    checkpoint?.contentHash === shot.imageArtifactHash
+  );
+}
+
+async function hasActiveAdvanceJob(
+  db: any,
+  tenantId: string,
+  runId: string
+): Promise<boolean> {
+  const jobs = await db
+    .select({ status: workerJobs.status })
+    .from(workerJobs)
+    .where(
+      and(
+        eq(workerJobs.tenantId, tenantId),
+        eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+        sql`${workerJobs.inputJson}->>'runId' = ${runId}`,
+        sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+      )
+    )
+    .orderBy(desc(workerJobs.createdAt))
+    .limit(12);
+  return jobs.some(job => isActiveJob(job.status));
+}
+
+async function hasActivePersonDetection(
+  db: any,
+  tenantId: string,
+  runId: string,
+  shotId: number
+): Promise<boolean> {
+  const jobs = await db
+    .select({ inputJson: workerJobs.inputJson, status: workerJobs.status })
+    .from(workerJobs)
+    .where(
+      and(
+        eq(workerJobs.tenantId, tenantId),
+        eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+        sql`${workerJobs.inputJson}->>'runId' = ${runId}`,
+        sql`${workerJobs.inputJson}->>'operation' = ${"staged_person_detection"}`
+      )
+    )
+    .orderBy(desc(workerJobs.createdAt))
+    .limit(32);
+  return jobs.some(
+    job =>
+      Number(
+        record(record(job.inputJson).operationInput ?? job.inputJson).shotId
+      ) === shotId && isActiveJob(job.status)
+  );
+}
+
+function imageTaskStates(
+  metadata: Record<string, any>,
+  shots: Array<Record<string, any>>
+) {
+  const tasks = record(record(metadata.stagedPipeline).tasks);
+  return shots.map(shot => ({
+    shot,
+    task: record(tasks[`image:${shot.shotId}`]),
+  }));
+}
+
+/**
+ * Advance the opt-in Auto Review continuation by one durable checkpoint.
+ * Each expensive action uses the existing worker_jobs admission and a stable
+ * idempotency key; the periodic Auto Review recovery job resumes waiting runs.
+ */
+export async function reconcileStagedAutoReviewAutomation(input: {
+  runId: string;
+  userId: number;
+  tenantId: string;
+  db?: any;
+}): Promise<void> {
+  const db = input.db ?? (await getDb());
+  if (!db) return;
+  const [run] = await db
+    .select()
+    .from(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, input.runId),
+        eq(marketplaceAutoReviewRuns.userId, input.userId),
+        eq(marketplaceAutoReviewRuns.tenantId, input.tenantId)
+      )
+    )
+    .limit(1);
+  if (!run) return;
+  const automation = continuationFromRun(run);
+  if (!automation || automation.status !== "running") return;
+
+  const rawMetadata = record(run.metadataJson);
+  const parsed =
+    StagedSequentialStoryboardMetadataV1Schema.safeParse(rawMetadata);
+  if (!parsed.success) {
+    await pauseContinuation(db, input, "staged_metadata_unavailable");
+    return;
+  }
+  const metadata = parsed.data;
+  const pipeline = record(rawMetadata.stagedPipeline);
+  const plan = record(pipeline.plan);
+  const shots = metadata.stagedSequentialStoryboard.shots as Array<
+    Record<string, any>
+  >;
+  const checkpoints = metadata.stagedSequentialStoryboard
+    .reviewCheckpoints as Array<Record<string, any>>;
+  if (
+    automation.stage !== "story_draft" &&
+    metadata.stagedSequentialStoryboard.planRevision !== automation.planRevision
+  ) {
+    await pauseContinuation(db, input, "automatic_plan_changed");
+    return;
+  }
+
+  try {
+    if (automation.stage === "story_draft") {
+      const storyJobId = text(record(automation.workerJobIds).storyDraft);
+      const storyJob = await getJobById(db, input.tenantId, storyJobId);
+      if (!storyJob) {
+        await pauseContinuation(db, input, "story_draft_job_missing");
+        return;
+      }
+      if (isActiveJob(storyJob.status)) return;
+      if (isFailedJob(storyJob.status)) {
+        await pauseContinuation(db, input, "story_draft_failed");
+        return;
+      }
+      if (!isSucceededJob(storyJob.status)) return;
+      if (
+        shots.length === 0 ||
+        !text(plan.selectedConceptId) ||
+        !Array.isArray(plan.shots) ||
+        shots.length !== plan.shots.length
+      ) {
+        await pauseContinuation(db, input, "story_draft_incomplete");
+        return;
+      }
+      const storyCheckpoint = checkpoints.find(
+        item => item.kind === "story_plan"
+      );
+      if (!storyCheckpoint) {
+        await pauseContinuation(db, input, "story_checkpoint_missing");
+        return;
+      }
+      if (storyCheckpoint.state === "awaiting") {
+        const model = text(storyCheckpoint.approvedModel);
+        const provider = text(storyCheckpoint.approvedProvider);
+        const safetyVerdict = text(storyCheckpoint.approvedSafetyVerdict);
+        const referenceManifestHash = text(
+          storyCheckpoint.approvedReferenceManifestHash
+        );
+        const estimatedCredits = Number(storyCheckpoint.estimatedCredits);
+        if (
+          !model ||
+          !provider ||
+          !safetyVerdict ||
+          !referenceManifestHash ||
+          !Number.isFinite(estimatedCredits)
+        ) {
+          await pauseContinuation(db, input, "story_approval_data_missing");
+          return;
+        }
+        await approveStagedAutoReviewCheckpoint({
+          runId: input.runId,
+          checkpointId: String(storyCheckpoint.checkpointId),
+          expectedStateDigest: stagedMetadataStateDigest(metadata),
+          idempotencyKey: continuationKey(
+            input.runId,
+            automation.planRevision,
+            "approve-story"
+          ),
+          expected: buildStagedApprovalExpectation({
+            revision: Number(storyCheckpoint.revision),
+            contentHash: String(storyCheckpoint.contentHash),
+            model,
+            provider,
+            safetyVerdict,
+            referenceManifestHash,
+            estimatedCredits,
+          }),
+          auth: { userId: input.userId, tenantId: input.tenantId },
+        });
+      } else if (storyCheckpoint.state !== "approved") {
+        await pauseContinuation(db, input, "story_checkpoint_not_approvable");
+        return;
+      }
+      await updateContinuation(db, input, () => ({ stage: "image_prompts" }));
+      return;
+    }
+
+    if (automation.stage === "image_prompts") {
+      if (allPromptsReady(shots, checkpoints, "image")) {
+        await updateContinuation(db, input, () => ({ stage: "images" }));
+        return;
+      }
+      const key = continuationKey(
+        input.runId,
+        automation.planRevision,
+        "image-prompts"
+      );
+      const existing = await getJobByKey(db, input.tenantId, key);
+      if (existing) {
+        if (isFailedJob(existing.status)) {
+          await pauseContinuation(db, input, "image_prompt_generation_failed");
+          return;
+        }
+        if (isActiveJob(existing.status)) return;
+        if (isSucceededJob(existing.status)) {
+          await pauseContinuation(db, input, "image_prompts_incomplete");
+          return;
+        }
+      }
+      const result = await startStagedAutoReviewBulkGeneration({
+        runId: input.runId,
+        expectedStateDigest: stagedMetadataStateDigest(metadata),
+        idempotencyKey: key,
+        targets: shots.map(shot => ({
+          shotId: Number(shot.shotId),
+          stage: "image" as const,
+          promptOnly: true,
+          refreshPrompt: true,
+          ...(automation.promptModel
+            ? { promptModel: automation.promptModel }
+            : {}),
+        })),
+        auth: { userId: input.userId, tenantId: input.tenantId },
+      });
+      await updateContinuation(db, input, current => ({
+        workerJobIds: {
+          ...record(current.workerJobIds),
+          imagePrompts: result.workerJobId,
+        },
+      }));
+      return;
+    }
+
+    if (automation.stage === "images") {
+      const imagesReady = shots.every(shot =>
+        imageResultApproved(shot, checkpoints)
+      );
+      if (imagesReady) {
+        await updateContinuation(db, input, () => ({
+          stage: "speaker_matching",
+        }));
+        return;
+      }
+      const taskStates = imageTaskStates(rawMetadata, shots);
+      if (
+        taskStates.some(({ task }) =>
+          ["failed", "cancelled", "canceled", "expired"].includes(
+            text(task.status)
+          )
+        )
+      ) {
+        await pauseContinuation(db, input, "image_generation_failed");
+        return;
+      }
+      const key = continuationKey(
+        input.runId,
+        automation.planRevision,
+        "images"
+      );
+      const imageJob = await getJobByKey(db, input.tenantId, key);
+      if (imageJob && isFailedJob(imageJob.status)) {
+        await pauseContinuation(db, input, "image_generation_failed");
+        return;
+      }
+      if (imageJob && isActiveJob(imageJob.status)) return;
+      if (
+        taskStates.some(({ task }) =>
+          TASK_IN_FLIGHT_STATUSES.has(text(task.status))
+        )
+      ) {
+        return;
+      }
+      if (await hasActiveAdvanceJob(db, input.tenantId, input.runId)) return;
+      if (
+        (imageJob && isSucceededJob(imageJob.status)) ||
+        taskStates.some(({ task }) => text(task.status) === "completed")
+      ) {
+        await pauseContinuation(db, input, "image_results_incomplete");
+        return;
+      }
+      const result = await startStagedAutoReviewBulkGeneration({
+        runId: input.runId,
+        expectedStateDigest: stagedMetadataStateDigest(metadata),
+        idempotencyKey: key,
+        targets: shots.map(shot => ({
+          shotId: Number(shot.shotId),
+          stage: "image" as const,
+          model: automation.imageModel,
+        })),
+        auth: { userId: input.userId, tenantId: input.tenantId },
+      });
+      await updateContinuation(db, input, current => ({
+        workerJobIds: {
+          ...record(current.workerJobIds),
+          images: result.workerJobId,
+        },
+      }));
+      return;
+    }
+
+    if (automation.stage === "speaker_matching") {
+      const targetShots = shots.filter(
+        shot => dialogueSpeakers(shot.dialogue).length > 0
+      );
+      const incompleteShots = targetShots.filter(
+        shot => !completeSpeakerBindings(shot)
+      );
+      if (incompleteShots.length === 0) {
+        await updateContinuation(db, input, () => ({ stage: "video_prompts" }));
+        return;
+      }
+      const matchingJobIds = record(
+        record(automation.workerJobIds).matchingByShot
+      );
+      const nextMatchingJobIds = { ...matchingJobIds };
+      for (const shot of incompleteShots) {
+        const shotId = Number(shot.shotId);
+        const imageHash = text(shot.imageArtifactHash);
+        if (!imageHash || !imageResultApproved(shot, checkpoints)) {
+          await pauseContinuation(db, input, "speaker_match_image_unavailable");
+          return;
+        }
+        const detection = record(
+          record(pipeline.promptGeneration)[`person_detection:${shotId}`]
+        );
+        if (text(detection.sourceImageHash) === imageHash) {
+          const existingId = text(matchingJobIds[String(shotId)]);
+          const existingJob = await getJobById(db, input.tenantId, existingId);
+          if (existingJob && isActiveJob(existingJob.status)) return;
+          if (existingJob && isFailedJob(existingJob.status)) {
+            await pauseContinuation(db, input, "speaker_matching_failed");
+            return;
+          }
+          await pauseContinuation(db, input, "speaker_matching_incomplete");
+          return;
+        }
+        if (
+          await hasActivePersonDetection(
+            db,
+            input.tenantId,
+            input.runId,
+            shotId
+          )
+        ) {
+          return;
+        }
+        const key = continuationKey(
+          input.runId,
+          automation.planRevision,
+          `speaker-${shotId}-${imageHash}`
+        );
+        const result = await detectStagedAutoReviewShotPeople({
+          runId: input.runId,
+          shotId,
+          expectedImageArtifactHash: imageHash,
+          idempotencyKey: key,
+          auth: { userId: input.userId, tenantId: input.tenantId },
+        });
+        nextMatchingJobIds[String(shotId)] = result.workerJobId;
+        await updateContinuation(db, input, current => ({
+          workerJobIds: {
+            ...record(current.workerJobIds),
+            matchingByShot: nextMatchingJobIds,
+          },
+        }));
+      }
+      return;
+    }
+
+    if (automation.stage === "video_prompts") {
+      if (allPromptsReady(shots, checkpoints, "video")) {
+        await updateContinuation(db, input, () => ({
+          status: "completed",
+          stage: "complete",
+          completedAt: new Date().toISOString(),
+        }));
+        return;
+      }
+      const key = continuationKey(
+        input.runId,
+        automation.planRevision,
+        "video-prompts"
+      );
+      const existing = await getJobByKey(db, input.tenantId, key);
+      if (existing) {
+        if (isFailedJob(existing.status)) {
+          await pauseContinuation(db, input, "video_prompt_generation_failed");
+          return;
+        }
+        if (isActiveJob(existing.status)) return;
+        if (isSucceededJob(existing.status)) {
+          await pauseContinuation(db, input, "video_prompts_incomplete");
+          return;
+        }
+      }
+      const result = await startStagedAutoReviewBulkGeneration({
+        runId: input.runId,
+        expectedStateDigest: stagedMetadataStateDigest(metadata),
+        idempotencyKey: key,
+        targets: shots.map(shot => ({
+          shotId: Number(shot.shotId),
+          stage: "video" as const,
+          promptOnly: true,
+          refreshPrompt: true,
+          ...(automation.promptModel
+            ? { promptModel: automation.promptModel }
+            : {}),
+        })),
+        auth: { userId: input.userId, tenantId: input.tenantId },
+      });
+      await updateContinuation(db, input, current => ({
+        workerJobIds: {
+          ...record(current.workerJobIds),
+          videoPrompts: result.workerJobId,
+        },
+      }));
+      return;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const errorCode = message.includes("staged_state_drift")
+      ? "automatic_state_changed"
+      : message.includes("MODEL_REQUIRED") || message.includes("model")
+        ? "automatic_model_unavailable"
+        : "automatic_step_failed";
+    await pauseContinuation(db, input, errorCode);
+  }
+}

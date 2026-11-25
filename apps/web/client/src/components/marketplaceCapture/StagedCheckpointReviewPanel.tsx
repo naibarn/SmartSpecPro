@@ -139,6 +139,17 @@ export type StagedReviewState = {
   stateDigest: string;
   planRevision: number;
   planReview: { status: string; redraftCount?: number };
+  autoContinuation?: {
+    status: "running" | "paused_error" | "completed";
+    stage:
+      | "story_draft"
+      | "image_prompts"
+      | "images"
+      | "speaker_matching"
+      | "video_prompts"
+      | "complete";
+    errorCode?: string;
+  } | null;
   creativeQc?: {
     required?: boolean;
     status?: string;
@@ -401,6 +412,9 @@ export type StagedCheckpointRetry = {
   notes?: string;
   model?: string;
   selectedConcept?: StagedStoryConceptOption;
+  autoContinue?: boolean;
+  imageModel?: string;
+  promptModel?: string;
   // When true, the server both resets the checkpoint AND immediately
   // approves + resubmits generation in the same click — no separate
   // "confirm" step. Only set this for actions recovering/regenerating an
@@ -2385,9 +2399,52 @@ export function StagedCheckpointReviewPanel(props: {
     sequential_image_edit_reconciliation: "ตรวจผลภาพที่สร้าง",
     staged_bulk_generation: "เตรียม Prompt สำหรับสร้างสื่อทุกช็อต",
   };
+  const autoContinuation = props.state?.autoContinuation;
+  const autoContinuationStageLabel = autoContinuation
+    ? {
+        story_draft: "รอร่างเนื้อเรื่องให้ครบ",
+        image_prompts: "สร้าง Prompt ภาพทุกช็อต",
+        images: "สร้างภาพทุกช็อต",
+        speaker_matching: "จับคู่ผู้พูดกับคนในภาพ",
+        video_prompts: "สร้าง Prompt วิดีโอทุกช็อต",
+        complete: "เสร็จถึงขั้น Prompt วิดีโอ",
+      }[autoContinuation.stage]
+    : null;
 
   return (
     <>
+      {autoContinuation ? (
+        <section
+          className={`mt-4 rounded-lg border p-3 ${
+            autoContinuation.status === "paused_error"
+              ? "border-amber-300 bg-amber-50 text-amber-950"
+              : autoContinuation.status === "completed"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                : "border-sky-300 bg-sky-50 text-sky-950"
+          }`}
+          aria-label="ความคืบหน้าการทำงานอัตโนมัติ"
+        >
+          <p
+            role={
+              autoContinuation.status === "paused_error" ? "alert" : "status"
+            }
+            aria-live="polite"
+            className="text-sm font-semibold"
+          >
+            {autoContinuation.status === "paused_error"
+              ? `หยุดอัตโนมัติที่ ${autoContinuationStageLabel} (${autoContinuation.errorCode ?? "automatic_step_failed"})`
+              : autoContinuation.status === "completed"
+                ? "ทำงานอัตโนมัติครบถึง Prompt วิดีโอทุกช็อตแล้ว"
+                : `กำลังทำงานอัตโนมัติ · ${autoContinuationStageLabel}`}
+          </p>
+          {autoContinuation.status === "paused_error" ? (
+            <p className="mt-1 text-xs">
+              ตรวจรายละเอียดในคิวงาน
+              แล้วทำขั้นตอนที่เหลือต่อด้วยปุ่มทีละขั้นด้านล่าง
+            </p>
+          ) : null}
+        </section>
+      ) : null}
       {storyCheckpoint?.state === "awaiting" &&
       props.state?.storyPlan?.conceptOptions?.length ? (
         <section
@@ -2429,12 +2486,20 @@ export function StagedCheckpointReviewPanel(props: {
             expectedShotCount={expectedStoryShotCount}
             generatedShotCount={generatedStoryShotCount}
             generationStatus={storyGenerationStatus}
+            canAutoContinue={selectedImageModelAvailable}
             disabled={!storyEditAvailable || props.pending}
-            onApply={selectedConcept =>
+            onApply={(selectedConcept, autoContinue) =>
               props.onRetry({
                 stage: "story",
                 selectedConcept,
                 model: selectedModel,
+                ...(autoContinue
+                  ? {
+                      autoContinue: true,
+                      imageModel: selectedImageModel,
+                      ...(promptModel ? { promptModel } : {}),
+                    }
+                  : {}),
               })
             }
           />

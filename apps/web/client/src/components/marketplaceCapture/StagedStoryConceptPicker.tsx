@@ -1,4 +1,10 @@
 import { useEffect, useId, useState } from "react";
+import { Button as AstryxButton } from "@astryxdesign/core/Button";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -19,7 +25,8 @@ export function StagedStoryConceptPicker(props: {
   generatedShotCount?: number;
   generationStatus?: "idle" | "generating" | "complete" | "failed";
   disabled?: boolean;
-  onApply: (option: StagedStoryConceptOption) => void;
+  canAutoContinue?: boolean;
+  onApply: (option: StagedStoryConceptOption, autoContinue: boolean) => void;
 }) {
   const groupId = useId();
   const firstConceptId = props.options[0]?.conceptId ?? "";
@@ -29,6 +36,9 @@ export function StagedStoryConceptPicker(props: {
     ? props.selectedConceptId!
     : firstConceptId;
   const [chosenConceptId, setChosenConceptId] = useState(defaultConceptId);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [pendingConcept, setPendingConcept] =
+    useState<StagedStoryConceptOption | null>(null);
 
   useEffect(() => {
     setChosenConceptId(defaultConceptId);
@@ -168,7 +178,10 @@ export function StagedStoryConceptPicker(props: {
             type="button"
             size="sm"
             disabled={props.disabled || props.generationStatus === "generating"}
-            onClick={() => props.onApply(chosenConcept)}
+            onClick={() => {
+              setPendingConcept(chosenConcept);
+              setConfirmationOpen(true);
+            }}
           >
             {props.generationStatus === "generating"
               ? "กำลังรอ Storyboard..."
@@ -179,6 +192,69 @@ export function StagedStoryConceptPicker(props: {
           </p>
         </footer>
       ) : null}
+
+      <Dialog
+        isOpen={confirmationOpen}
+        onOpenChange={setConfirmationOpen}
+        purpose="info"
+        width={520}
+      >
+        <Layout
+          header={
+            <DialogHeader
+              title="ทำขั้นตอนที่เหลืออัตโนมัติหรือไม่?"
+              subtitle="ระบบจะเริ่มร่าง Storyboard ตามแนวคิดที่เลือก"
+              onOpenChange={setConfirmationOpen}
+            />
+          }
+          content={
+            <LayoutContent>
+              <VStack gap={3}>
+                <Text type="body">
+                  โหมดอัตโนมัติจะยืนยันเนื้อเรื่องเมื่อร่างครบ สร้าง Prompt
+                  ภาพทุกช็อต สร้างภาพทุกช็อต จับคู่ผู้พูดกับคนในภาพ แล้วสร้าง
+                  Prompt วิดีโอทุกช็อต ระบบจะหยุดเมื่อขั้นตอนไหนผิดพลาด
+                  เพื่อให้คุณทำต่อทีละขั้นได้
+                </Text>
+                <Text type="supporting" color="secondary">
+                  การสร้างภาพอาจใช้เครดิตตามโมเดลภาพที่เลือก
+                  ระบบจะยังไม่สร้างวิดีโอ
+                  {props.canAutoContinue === false
+                    ? " · กำลังโหลดโมเดลภาพ"
+                    : ""}
+                </Text>
+              </VStack>
+            </LayoutContent>
+          }
+          footer={
+            <LayoutFooter>
+              <HStack gap={2} hAlign="end">
+                <AstryxButton
+                  label="ทำทีละขั้น"
+                  variant="secondary"
+                  onClick={() => {
+                    setConfirmationOpen(false);
+                    if (pendingConcept) props.onApply(pendingConcept, false);
+                  }}
+                />
+                <AstryxButton
+                  label="อัตโนมัติจนถึง Prompt วิดีโอ"
+                  variant="primary"
+                  isDisabled={
+                    props.disabled ||
+                    props.canAutoContinue === false ||
+                    !pendingConcept
+                  }
+                  onClick={() => {
+                    setConfirmationOpen(false);
+                    if (pendingConcept) props.onApply(pendingConcept, true);
+                  }}
+                />
+              </HStack>
+            </LayoutFooter>
+          }
+        />
+      </Dialog>
     </section>
   );
 }

@@ -488,6 +488,10 @@ export function StagedCheckpointReviewSurface(props: {
   const onRetry = (input: StagedCheckpointRetry) => {
     if (!requireStateDigest()) return;
     if (input.stage === "story") {
+      if (input.autoContinue && !input.imageModel) {
+        setActionError("โมเดลภาพยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่");
+        return;
+      }
       redraftMutation.mutate({
         runId,
         expectedStateDigest: stateDigest,
@@ -495,6 +499,16 @@ export function StagedCheckpointReviewSurface(props: {
         notes: input.notes || undefined,
         model: input.model || undefined,
         selectedConcept: input.selectedConcept,
+        ...(input.autoContinue && input.imageModel
+          ? {
+              autoContinuation: {
+                imageModel: input.imageModel,
+                ...(input.promptModel
+                  ? { promptModel: input.promptModel }
+                  : {}),
+              },
+            }
+          : {}),
       });
     } else if (input.stage === "audio") {
       retryAudioMutation.mutate({

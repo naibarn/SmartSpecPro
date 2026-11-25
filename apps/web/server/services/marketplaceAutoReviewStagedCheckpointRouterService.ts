@@ -1118,6 +1118,28 @@ export async function getStagedAutoReviewCheckpointState(
         job.createdAt instanceof Date ? job.createdAt.toISOString() : null,
     };
   });
+  const automation = record(stagedPipeline?.autoContinuation);
+  const autoContinuation =
+    ["running", "paused_error", "completed"].includes(
+      String(automation.status)
+    ) &&
+    [
+      "story_draft",
+      "image_prompts",
+      "images",
+      "speaker_matching",
+      "video_prompts",
+      "complete",
+    ].includes(String(automation.stage))
+      ? {
+          status: automation.status,
+          stage: automation.stage,
+          ...(typeof automation.errorCode === "string" &&
+          /^[A-Za-z0-9_]{1,80}$/.test(automation.errorCode)
+            ? { errorCode: automation.errorCode }
+            : {}),
+        }
+      : null;
 
   return {
     runId: run.id,
@@ -1135,6 +1157,7 @@ export async function getStagedAutoReviewCheckpointState(
     stateDigest: stagedMetadataStateDigest(metadata),
     metadataInitializationPending: !persisted,
     planReview: metadata.planReview,
+    autoContinuation,
     creativeQc: (metadata as any).creativeQc ?? null,
     workerOperations,
     affiliateUrls,
@@ -5401,6 +5424,7 @@ export async function redraftStagedAutoReviewPlan(input: {
   notes?: string;
   model?: string;
   selectedConcept?: StagedStoryConceptOption;
+  autoContinuation?: { imageModel: string; promptModel?: string };
   auth: StagedCheckpointAuth;
   /** Set only by the canonical worker executor after durable admission. */
   workerExecution?: boolean;
@@ -5467,6 +5491,126 @@ export async function redraftStagedAutoReviewPlan(input: {
   }
 
   if (!input.workerExecution) {
+    if (input.autoContinuation) {
+      return db.transaction(async tx => {
+        const [currentRun] = await tx
+          .select()
+          .from(marketplaceAutoReviewRuns)
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.id, input.runId),
+              eq(marketplaceAutoReviewRuns.userId, input.auth.userId),
+              tenantAccessClause(input.auth)
+            )
+          )
+          .limit(1);
+        if (!currentRun) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Auto review run not found",
+          });
+        }
+        assertStagedRunMutable(currentRun);
+        assertStagedMetadataPersisted(currentRun);
+        const currentMetadata = parseStagedMetadata(currentRun);
+        if (
+          stagedMetadataStateDigest(currentMetadata) !==
+          input.expectedStateDigest
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "staged_state_drift",
+          });
+        }
+        const existing = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
+          tx,
+          tenantId,
+          input.idempotencyKey
+        );
+        if (existing) {
+          return {
+            runId: currentRun.id,
+            operation: operationFromWorkerJob(existing, currentRun),
+            status: existing.status,
+            workerJobId: existing.id,
+          };
+        }
+
+        const now = new Date().toISOString();
+        const automation = {
+          schemaVersion: 1,
+          status: "running" as const,
+          stage: "story_draft" as const,
+          planRevision: currentMetadata.planReview.planRevision + 1,
+          imageModel: input.autoContinuation.imageModel.trim(),
+          ...(input.autoContinuation.promptModel?.trim()
+            ? { promptModel: input.autoContinuation.promptModel.trim() }
+            : {}),
+          workerJobIds: {},
+          startedAt: now,
+          updatedAt: now,
+        };
+        const queued = await enqueueMarketplaceAutoReviewWorkerJobInTransaction({
+          query: tx,
+          admission: {
+            tenantId,
+            userId: currentRun.userId,
+            runId: currentRun.id,
+            operation: {
+              operation: "staged_story_redraft",
+              runId: currentRun.id,
+              expectedStateDigest: input.expectedStateDigest,
+              requestIdempotencyKey: input.idempotencyKey,
+              notes: input.notes?.trim().slice(0, 1200),
+              model: input.model,
+              selectedConcept: input.selectedConcept,
+            },
+            idempotencyKey: input.idempotencyKey,
+            priority: 35,
+          },
+        });
+        const currentPipeline = record(
+          (currentMetadata as any).stagedPipeline
+        );
+        const nextMetadata = {
+          ...currentMetadata,
+          stagedPipeline: {
+            ...currentPipeline,
+            autoContinuation: {
+              ...automation,
+              workerJobIds: { storyDraft: queued.jobId },
+            },
+          },
+        };
+        const [updated] = await tx
+          .update(marketplaceAutoReviewRuns)
+          .set({
+            metadataJson: nextMetadata as Record<string, any>,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.id, currentRun.id),
+              eq(marketplaceAutoReviewRuns.userId, input.auth.userId),
+              eq(marketplaceAutoReviewRuns.updatedAt, currentRun.updatedAt),
+              tenantAccessClause(input.auth)
+            )
+          )
+          .returning({ id: marketplaceAutoReviewRuns.id });
+        if (!updated) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "staged_state_drift",
+          });
+        }
+        return {
+          runId: currentRun.id,
+          workerJobId: queued.jobId,
+          operation: "staged_story_redraft",
+          status: "queued" as const,
+        };
+      });
+    }
     const queued = await enqueueMarketplaceAutoReviewWorkerJob({
       tenantId,
       userId: input.auth.userId,
