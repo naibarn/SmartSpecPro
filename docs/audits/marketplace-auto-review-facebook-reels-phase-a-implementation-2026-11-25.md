@@ -44,7 +44,7 @@ Schedule/Auto Post ยังเป็นระยะถัดไป; ไม่�
 ## Addendum — Facebook Photo Post
 
 วันที่: 25 พฤศจิกายน 2026
-Source: `6f9f5471771ac4d17030be6a10cc08953a7fb33f` (รวมบน `origin/main`; includes follow-up fix to seed Photo Post caption/hashtags from Photo readiness when Reel readiness is unavailable)
+Source: `ac8ea55a520c1ce2dc9af1804c5a0255aac0f524` (รวมบน `origin/main`; includes Photo-readiness caption fallback and preflight validation of final composed caption length)
 DEV target: `legacy-debian-dev` — `https://smartaihub.app`
 
 - เพิ่มตัวเลือก Facebook Reel / Facebook Photo Post ใน panel ที่ยุบและขยายได้ โดย Reel ยังคงเป็นค่าเริ่มต้น.
@@ -52,6 +52,6 @@ DEV target: `legacy-debian-dev` — `https://smartaihub.app`
 - เพิ่ม Photo Post intent/job/history แยกจาก Reel; ตรวจ tenant, user, run, private storage key, PNG bytes, checksum และขนาดก่อน upload. หนึ่ง run/Page มีได้หนึ่ง intent; ผลลัพธ์ที่ไม่แน่ชัดห้าม retry อัตโนมัติและแจ้งให้ตรวจ Page ก่อนส่งซ้ำ.
 - Affiliate first comment ยังคงปิดจนกว่าจะยืนยันสิทธิ์ Meta; manual native tagging เป็น handoff เท่านั้น. UI แจ้งให้ตรวจการเปิดเผยภาพ AI ตามข้อกำหนด Facebook; [Page Photos API](https://developers.facebook.com/docs/graph-api/reference/page/photos/) ไม่ระบุ field `is_ai_generated` สำหรับการสร้าง Page Photo โดยตรง.
 - Migration `0457_social_posts_marketplace_photo_intent_unique` apply แล้วที่ฐาน dev `smartspec`; ledger row 437 ตรงกับ SQL hash และ catalog ตรวจพบ index ใหม่. Catalog ยังคงมี drift นอกขอบเขต 1 รายการ: `worker_jobs_modular_chat_scope_status_idx`.
-- Tests: Facebook publishing UI/service และ Reel regression `21/21`; Python Meta photo transport/API `31/31`. ไม่รัน repository-wide TypeScript typecheck.
-- Build จาก source SHA ข้างต้น ผ่าน. Release `smartspec-web-6f9f5471771ac4d17030be6a10cc08953a7fb33f-a370825dfad9`, artifact digest `sha256:8ca3a6a9ded6958b42c5e821848ab2ff00cc7122f896a7eef75cdf7664b7ada3`; `smartspec-web.service` และ `smartspec-node-worker.service` healthy, runtime SHA ตรงกัน. Public `/` และ `/healthz` ตอบ 200; unauthenticated Photo readiness ถูกปฏิเสธ 401.
+- Tests: Facebook publishing UI/service และ Reel regression `22/22`; Python Meta photo transport/API `31/31`. ไม่รัน repository-wide TypeScript typecheck.
+- Build จาก source SHA ข้างต้น ผ่าน. Release `smartspec-web-ac8ea55a520c1ce2dc9af1804c5a0255aac0f524-58c20bd3b26b`, artifact digest `sha256:7a4e1fb281be495345926e4d7a87afac8a94660f7b05b0bede30c3ef077fc054`; `smartspec-web.service` และ `smartspec-node-worker.service` healthy, runtime SHA ตรงกัน. Public `/` และ `/healthz` ตอบ 200; unauthenticated Photo readiness ถูกปฏิเสธ 401.
 - ไม่มีการ publish ไป Facebook จริง. สถานะ Meta configuration ใน DEV ยังคงเป็น external blocker ตามรายการด้านบน: ต้องเปิด Meta Channels และเชื่อม test Page ที่มีสิทธิ์ `CREATE_CONTENT` ก่อนจึงจะรับรอง live publishing ได้.
