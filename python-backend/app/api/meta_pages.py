@@ -22,7 +22,7 @@ async def _verify_internal_token(
     x_internal_token: Optional[str] = Header(None),
     x_proxy_token: Optional[str] = Header(None),
 ) -> None:
-    expected = getattr(settings, "SMARTSPEC_PROXY_TOKEN", None) or getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None)
+    expected = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None) or getattr(settings, "SMARTSPEC_PROXY_TOKEN", None)
     if not expected:
         raise HTTPException(status_code=500, detail="Internal token not configured")
     token = x_internal_token or x_proxy_token
