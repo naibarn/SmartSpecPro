@@ -5,14 +5,16 @@ from __future__ import annotations
 import secrets
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.services.social.exceptions import MetaApiError, SocialProviderApiError, TikTokApiError, YouTubeApiError
+from app.services.social.exceptions import MetaApiError, PermissionDeniedError, SocialProviderApiError, TikTokApiError, TokenExpiredError, YouTubeApiError
 from app.services.social.publish_service import publish_social_content
+from app.services.social.meta_graph_client import MetaGraphClient
 
 router = APIRouter(prefix="/api/internal/social", tags=["social-publish"])
+REELS_MAX_BYTES = 1024 * 1024 * 1024
 
 
 async def _verify_internal_token(
@@ -50,6 +52,101 @@ class PublishSocialRequest(BaseModel):
     scheduled_publish_time: int | None = Field(default=None, ge=0)
     publish_at: str | None = Field(default=None, max_length=64)
     video_metadata: VideoMetadata | None = None
+
+
+class ReelConnection(BaseModel):
+    page_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+$")
+    access_token: str = Field(min_length=1, max_length=8192)
+
+
+class ReelVideo(ReelConnection):
+    video_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+$")
+
+
+class ReelFinish(ReelVideo):
+    description: str = Field(max_length=5000)
+    is_ai_generated: bool
+
+
+def _raise_reels_meta_error(exc: Exception, generic_message: str) -> HTTPException:
+    if isinstance(exc, TokenExpiredError):
+        return HTTPException(status_code=401, detail="META_TOKEN_INVALID")
+    if isinstance(exc, PermissionDeniedError):
+        return HTTPException(status_code=403, detail="META_PERMISSION_MISSING")
+    return HTTPException(status_code=502, detail=generic_message)
+
+
+@router.post("/reels/start")
+async def start_reel(request: ReelConnection, _auth: None = Depends(_verify_internal_token)) -> dict[str, Any]:
+    async with MetaGraphClient(request.access_token, page_id=request.page_id) as client:
+        try:
+            return await client.start_reel_upload()
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta Reels session could not be confirmed") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta Reels session could not be confirmed") from exc
+
+
+@router.post("/reels/status")
+async def reel_status(request: ReelVideo, _auth: None = Depends(_verify_internal_token)) -> dict[str, Any]:
+    async with MetaGraphClient(request.access_token, page_id=request.page_id) as client:
+        try:
+            return await client.get_reel_status(request.video_id)
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta Reels status is unavailable") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta Reels status is unavailable") from exc
+
+
+@router.post("/reels/finish")
+async def finish_reel(request: ReelFinish, _auth: None = Depends(_verify_internal_token)) -> dict[str, Any]:
+    async with MetaGraphClient(request.access_token, page_id=request.page_id) as client:
+        try:
+            return await client.finish_reel_upload(video_id=request.video_id, description=request.description,
+                                                   is_ai_generated=request.is_ai_generated)
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta Reels publication could not be confirmed; reconcile status before retry") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta Reels publication could not be confirmed; reconcile status before retry") from exc
+
+
+@router.post("/reels/upload")
+async def upload_reel(
+    request: Request,
+    x_meta_access_token: str = Header(..., min_length=1, max_length=8192),
+    x_meta_video_id: str = Header(..., pattern=r"^\d+$", max_length=255),
+    x_meta_upload_url: str = Header(..., max_length=2048),
+    x_meta_file_size: int = Header(..., gt=0, le=REELS_MAX_BYTES),
+    x_meta_offset: int = Header(..., ge=0),
+    content_length: int = Header(..., gt=0, le=REELS_MAX_BYTES),
+    _auth: None = Depends(_verify_internal_token),
+) -> dict[str, Any]:
+    if x_meta_offset >= x_meta_file_size or content_length != x_meta_file_size - x_meta_offset:
+        raise HTTPException(status_code=400, detail="Invalid upload length or offset")
+    try:
+        MetaGraphClient._validate_reel_upload_url(x_meta_upload_url, x_meta_video_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid Meta upload session") from exc
+
+    async def bounded_body():
+        total = 0
+        async for chunk in request.stream():
+            total += len(chunk)
+            if total > content_length:
+                raise ValueError("Upload exceeds declared length")
+            if chunk:
+                yield chunk
+        if total != content_length:
+            raise ValueError("Upload is shorter than declared length")
+
+    async with MetaGraphClient(x_meta_access_token) as client:
+        try:
+            return await client.upload_reel_binary(video_id=x_meta_video_id, upload_url=x_meta_upload_url,
+                                                   content=bounded_body(), file_size=x_meta_file_size, offset=x_meta_offset)
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta Reels upload could not be confirmed; reconcile status before retry") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta Reels upload could not be confirmed; reconcile status before retry") from exc
 
 
 def _map_error(exc: Exception) -> HTTPException:

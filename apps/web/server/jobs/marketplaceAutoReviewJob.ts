@@ -136,6 +136,43 @@ export function buildStagedProviderPollAdmission(input: {
   };
 }
 
+export function buildStagedRenderReconcileAdmission(input: {
+  runId: string;
+  renderJobId: string;
+  now: Date;
+}) {
+  // Render reconciliation uses its own deterministic bucket and deliberately
+  // omits targetShotIds. Supplying shot targets would make the staged service
+  // treat the submitted final render as superseded.
+  const pollIntervalMs = 60_000;
+  const pollBucket = Math.floor(input.now.getTime() / pollIntervalMs);
+  const fingerprint = createHash("sha256")
+    .update(`${input.runId}:${input.renderJobId}`)
+    .digest("hex")
+    .slice(0, 16);
+  const operationId = `staged_render_reconcile:v1:${pollBucket}:${fingerprint}`;
+  return {
+    operation: {
+      operation: "advance_run" as const,
+      runId: input.runId,
+      reconcileOnly: true,
+      operationId,
+    },
+    idempotencyKey: `marketplace-auto-review:${input.runId}:render-reconcile:v1:${fingerprint}:${pollBucket}`,
+    priority: 45,
+  };
+}
+
+function stagedFinalRenderJobId(metadataValue: unknown): string | null {
+  const metadata =
+    metadataValue && typeof metadataValue === "object" && !Array.isArray(metadataValue)
+      ? (metadataValue as Record<string, any>)
+      : {};
+  const renderEngine = typeof metadata.renderEngine === "string" ? metadata.renderEngine : "";
+  const renderJobId = typeof metadata.renderJobId === "string" ? metadata.renderJobId.trim() : "";
+  return renderEngine === "remotion_queue" && renderJobId ? renderJobId : null;
+}
+
 const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
 const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -695,6 +732,50 @@ export async function runMarketplaceAutoReviewJob(
           // this only schedules that read/reconcile pass for affected shots.
           const pollTargets = stagedProviderPollTargets(metadata);
           if (pollTargets.length === 0) {
+            const renderJobId = stagedFinalRenderJobId(metadata);
+            if (renderJobId && !run.resultLibraryItemId) {
+              const admission = buildStagedRenderReconcileAdmission({
+                runId: run.id,
+                renderJobId,
+                now,
+              });
+              const [activeAdvanceJob] = await db
+                .select({ id: workerJobs.id })
+                .from(workerJobs)
+                .where(
+                  and(
+                    eq(workerJobs.tenantId, tenantId),
+                    eq(workerJobs.jobType, "marketplace.auto_review.execute"),
+                    inArray(workerJobs.status, [
+                      "pending",
+                      "queued",
+                      "leased",
+                      "claimed",
+                      "preparing",
+                      "running",
+                      "waiting_external",
+                      "retry_scheduled",
+                    ] as any),
+                    sql`${workerJobs.inputJson}->>'runId' = ${run.id}`,
+                    sql`${workerJobs.inputJson}->>'operation' = ${"advance_run"}`
+                  )
+                )
+                .limit(1);
+              if (!activeAdvanceJob) {
+                await enqueueMarketplaceAutoReviewWorkerJob({
+                  tenantId,
+                  userId: run.userId,
+                  runId: run.id,
+                  ...admission,
+                });
+              }
+              await db
+                .update(marketplaceAutoReviewRuns)
+                .set({ updatedAt: new Date() })
+                .where(eq(marketplaceAutoReviewRuns.id, run.id));
+              skippedRuns += 1;
+              continue;
+            }
             if (
               metadata.stagedPipeline?.autoContinuation?.status === "running"
             ) {

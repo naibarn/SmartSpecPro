@@ -1197,6 +1197,41 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, reporter, lease }) => {
+    const input = marketplaceAutoReviewReelsWorkerInputSchema.safeParse(context.input);
+    if (
+      !input.success ||
+      !Number.isSafeInteger(context.requestedByUserId) ||
+      Number(context.requestedByUserId) <= 0 ||
+      !context.tenantId
+    ) throw new Error("MARKETPLACE_AUTO_REVIEW_REELS_JOB_INPUT_INVALID");
+    await reporter.progress(lease, { progress: 1, stage: "preflight" });
+    const result = await withLeaseHeartbeat(lease, reporter, () =>
+      executeMarketplaceAutoReviewReelsPublish({
+        tenantId: context.tenantId,
+        userId: Number(context.requestedByUserId),
+        postId: input.data.postId,
+        runId: input.data.runId,
+        intentHash: input.data.intentHash,
+        reportProgress: progress => reporter.progress(lease, progress),
+      }),
+    );
+    await reporter.assertActive(lease);
+    return {
+      output: {
+        postId: input.data.postId,
+        runId: input.data.runId,
+        publicationStatus: result.status,
+        providerPostId: "providerPostId" in result ? result.providerPostId ?? null : null,
+      },
+    };
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "vertical_drama.episode_stage",
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),

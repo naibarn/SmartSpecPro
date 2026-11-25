@@ -117,6 +117,7 @@ import { oneDriveRouter } from "./routers/oneDrive";
 import { metaChannelsRouter } from "./routers/metaChannels";
 import { uploadPostRouter } from "./routers/uploadPost";
 import { socialPublishingRouter } from "./routers/socialPublishing";
+import { marketplaceAutoReviewReelsRouter } from "./routers/marketplaceAutoReviewReels";
 import { socialModerationRouter } from "./routers/socialModeration";
 import { socialAutomationRouter } from "./routers/socialAutomation";
 import { searchRouter } from "./routers/search";
@@ -3357,6 +3358,7 @@ type AppRouterShape = {
   metaChannels: typeof metaChannelsRouter;
   uploadPost: typeof uploadPostRouter;
   socialPublishing: typeof socialPublishingRouter;
+  marketplaceAutoReviewReels: typeof marketplaceAutoReviewReelsRouter;
   contentComposer: typeof contentComposerRouter;
   socialModeration: typeof socialModerationRouter;
   socialInbox: typeof socialInboxRouter;
@@ -3546,6 +3548,7 @@ const appRouterInternal = router<AppRouterShape>({
   metaChannels: metaChannelsRouter,
   uploadPost: uploadPostRouter,
   socialPublishing: socialPublishingRouter,
+  marketplaceAutoReviewReels: marketplaceAutoReviewReelsRouter,
   contentComposer: contentComposerRouter,
   socialModeration: socialModerationRouter,
   socialInbox: socialInboxRouter,

@@ -98,6 +98,9 @@ interface PublishingPostContext {
     encryptedPageAccessToken: string | null;
     tokenExpiresAt: Date | null;
     connectionTokenExpiresAt: Date | null;
+    pageMetadata?: Record<string, unknown> | null;
+    grantedScopes?: string[] | null;
+    connectionMetadata?: Record<string, unknown> | null;
   };
 }
 
@@ -224,6 +227,9 @@ function resolvePagePublishingReadiness(context: {
   encryptedPageAccessToken: string | null;
   tokenExpiresAt: Date | null;
   connectionTokenExpiresAt: Date | null;
+  pageMetadata?: Record<string, unknown> | null;
+  grantedScopes?: string[] | null;
+  connectionMetadata?: Record<string, unknown> | null;
 }): SocialPublishingReadiness {
   if (context.status !== "active") {
     return {
@@ -252,6 +258,30 @@ function resolvePagePublishingReadiness(context: {
         ? "Facebook Page access is missing. Reconnect the Page before auto-posting."
         : `${context.provider} access token is missing. Reconnect the account before auto-posting.`,
     };
+  }
+
+  if (context.provider === "meta") {
+    const pageMetadata = context.pageMetadata ?? {};
+    const connectionMetadata = context.connectionMetadata ?? {};
+    if (
+      connectionMetadata.permissionVerificationStatus !== "verified" ||
+      !(context.grantedScopes ?? []).includes("pages_manage_posts") ||
+      !(context.grantedScopes ?? []).includes("pages_read_engagement") ||
+      !(context.grantedScopes ?? []).includes("pages_show_list")
+    ) {
+      return {
+        ready: false,
+        code: "missing_page_access",
+        message: "Reconnect Meta and grant Pages publishing permission. Current permissions have not been verified.",
+      };
+    }
+    if (pageMetadata.canCreateContent !== true) {
+      return {
+        ready: false,
+        code: "missing_page_access",
+        message: "This Facebook Page does not grant the CREATE_CONTENT task. Choose another Page or update Page access.",
+      };
+    }
   }
 
   const tokenExpiresAt = context.provider === "meta"
@@ -327,7 +357,10 @@ async function loadPostContext(
       encryptedRefreshToken: socialProviderConnections.encryptedRefreshToken,
       encryptedPageAccessToken: socialPages.encryptedPageAccessToken,
       tokenExpiresAt: socialPages.tokenExpiresAt,
+      pageMetadata: socialPages.metadata,
       connectionTokenExpiresAt: socialProviderConnections.tokenExpiresAt,
+      grantedScopes: socialProviderConnections.grantedScopes,
+      connectionMetadata: socialProviderConnections.metadata,
     })
     .from(socialPosts)
     .innerJoin(socialPages, eq(socialPosts.pageId, socialPages.id))
@@ -381,6 +414,9 @@ async function loadPostContext(
       encryptedPageAccessToken: row.encryptedPageAccessToken,
       tokenExpiresAt: row.tokenExpiresAt,
       connectionTokenExpiresAt: row.connectionTokenExpiresAt,
+      pageMetadata: row.pageMetadata,
+      grantedScopes: row.grantedScopes,
+      connectionMetadata: row.connectionMetadata,
     },
   };
 }
@@ -407,6 +443,9 @@ export async function listPublishingPages(tenantId: string, userId: number): Pro
       encryptedPageAccessToken: socialPages.encryptedPageAccessToken,
       tokenExpiresAt: socialPages.tokenExpiresAt,
       connectionTokenExpiresAt: socialProviderConnections.tokenExpiresAt,
+      pageMetadata: socialPages.metadata,
+      grantedScopes: socialProviderConnections.grantedScopes,
+      connectionMetadata: socialProviderConnections.metadata,
     })
     .from(socialPages)
     .innerJoin(socialProviderConnections, eq(socialPages.connectionId, socialProviderConnections.id))

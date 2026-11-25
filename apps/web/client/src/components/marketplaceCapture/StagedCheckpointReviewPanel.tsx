@@ -39,6 +39,7 @@ import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharact
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
 import { StagedSocialCaptionComposer } from "./StagedSocialCaptionComposer";
+import { FacebookReelsPublishCard } from "./FacebookReelsPublishCard";
 import {
   StagedStoryConceptPicker,
   type StagedStoryConceptOption,
@@ -3319,6 +3320,11 @@ export function StagedCheckpointReviewPanel(props: {
               runId={props.runId}
               state={props.state}
               onRefresh={props.onRefresh}
+            />
+            <FacebookReelsPublishCard
+              runId={props.runId}
+              initialCaption={props.state.socialCaption?.caption ?? ""}
+              initialHashtags={props.state.socialCaption?.hashtags ?? []}
             />
             {props.state.correctionRequired ? (
               <div

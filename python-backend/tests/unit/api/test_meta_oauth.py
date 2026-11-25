@@ -121,6 +121,11 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
     )
     monkeypatch.setattr(
         meta_oauth,
+        "_fetch_meta_permissions",
+        AsyncMock(return_value=["pages_show_list", "pages_manage_posts", "pages_read_engagement"]),
+    )
+    monkeypatch.setattr(
+        meta_oauth,
         "_fetch_meta_pages",
         AsyncMock(
             return_value=[
@@ -129,6 +134,7 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
                     "name": "Demo Page",
                     "category": "Business",
                     "access_token": "page-access-token",
+                    "tasks": ["CREATE_CONTENT", "MODERATE"],
                 }
             ]
         ),
@@ -148,6 +154,8 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
             "pageName": "Demo Page",
             "pageCategory": "Business",
             "status": "active",
+            "canCreateContent": True,
+            "missingRequiredScopes": [],
         }
     ]
     db.commit.assert_awaited_once()
@@ -158,28 +166,37 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.asyncio
-async def test_status_returns_not_connected_when_missing() -> None:
+async def test_status_returns_not_connected_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     db = AsyncMock()
     db.execute = AsyncMock(return_value=_make_result(fetchone_value=None))
+    monkeypatch.setattr(meta_oauth, "_load_meta_config", AsyncMock(return_value={
+        "metaAppId": "", "metaAppSecret": "", "metaRedirectUri": "", "metaGraphApiVersion": "v27.0",
+    }))
 
     result = await meta_oauth.status("tenant-1", 42, db=db)
 
-    assert result == {"status": "not_connected"}
+    assert result["status"] == "not_connected"
+    assert result["configuration"]["appIdConfigured"] is False
 
 
 @pytest.mark.asyncio
-async def test_status_returns_masked_connection_info() -> None:
+async def test_status_returns_masked_connection_info(monkeypatch: pytest.MonkeyPatch) -> None:
     db = AsyncMock()
     page_rows = [
-        (11, "page-123", "Demo Page", "Business", "active", True, True, False, "draft_only", 0.95, datetime(2026, 1, 1, tzinfo=UTC)),
+        (11, "page-123", "Demo Page", "Business", "active", True, True, False, "draft_only", 0.95, datetime(2026, 1, 1, tzinfo=UTC), {"providerPage": {"tasks": ["CREATE_CONTENT"]}, "canCreateContent": True}, "encrypted-page-token"),
     ]
     db.execute.side_effect = [
-        _make_result(fetchone_value=(7, "meta-user-1", "active", "encrypted-token", datetime(2026, 1, 1, tzinfo=UTC))),
+        _make_result(fetchone_value=(7, "meta-user-1", "active", "encrypted-token", datetime(2026, 1, 1, tzinfo=UTC), ["pages_show_list", "pages_manage_posts", "pages_read_engagement"])),
         SimpleNamespace(fetchall=lambda: page_rows),
     ]
+    monkeypatch.setattr(meta_oauth, "_load_meta_config", AsyncMock(return_value={
+        "metaAppId": "app-id", "metaAppSecret": "secret", "metaRedirectUri": "https://example.com/auth/callback/meta", "metaGraphApiVersion": "v27.0",
+    }))
 
     result = await meta_oauth.status("tenant-1", 42, db=db)
 
     assert result["status"] == "connected"
     assert result["connection"]["tokenMasked"] == "***"
     assert result["connection"]["pages"][0]["pageName"] == "Demo Page"
+    assert result["connection"]["grantedScopes"] == ["pages_show_list", "pages_manage_posts", "pages_read_engagement"]
+    assert result["connection"]["pages"][0]["canCreateContent"] is True

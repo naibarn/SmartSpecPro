@@ -6,6 +6,7 @@ import * as marketplaceAutoReviewWorkerJob from "../../services/marketplaceAutoR
 
 import {
   buildStagedProviderPollAdmission,
+  buildStagedRenderReconcileAdmission,
   isMarketplaceAutoReviewAdvanceOutboxJobType,
   runMarketplaceAutoReviewJob,
 } from "../marketplaceAutoReviewJob";
@@ -74,6 +75,33 @@ describe("marketplaceAutoReviewJob", () => {
     expect(nextBucket.operation.operationId).not.toBe(
       first.operation.operationId
     );
+  });
+
+  it("admits final render reconciliation without shot targets", () => {
+    const first = buildStagedRenderReconcileAdmission({
+      runId: "mar_staged_render_run",
+      renderJobId: "render-worker-1",
+      now: new Date("2026-11-25T12:00:00.000Z"),
+    });
+    const laterInBucket = buildStagedRenderReconcileAdmission({
+      runId: "mar_staged_render_run",
+      renderJobId: "render-worker-1",
+      now: new Date("2026-11-25T12:00:30.000Z"),
+    });
+    const nextBucket = buildStagedRenderReconcileAdmission({
+      runId: "mar_staged_render_run",
+      renderJobId: "render-worker-1",
+      now: new Date("2026-11-25T12:01:00.000Z"),
+    });
+
+    expect(first).toEqual(laterInBucket);
+    expect(first.operation).toEqual(expect.objectContaining({
+      operation: "advance_run",
+      runId: "mar_staged_render_run",
+      reconcileOnly: true,
+    }));
+    expect(first.operation).not.toHaveProperty("targetShotIds");
+    expect(nextBucket.idempotencyKey).not.toBe(first.idempotencyKey);
   });
 
   it("keeps a new media task on the fast poll cadence beside an old task", () => {
@@ -252,6 +280,72 @@ describe("marketplaceAutoReviewJob", () => {
       expect(enqueueWorkerJob).toHaveBeenCalledWith(
         expect.not.objectContaining({ scheduledAt: expect.anything() })
       );
+    } finally {
+      enqueueWorkerJob.mockRestore();
+    }
+  });
+
+  it("queues final Remotion render reconciliation with no shot targets", async () => {
+    const enqueueWorkerJob = vi.spyOn(
+      marketplaceAutoReviewWorkerJob,
+      "enqueueMarketplaceAutoReviewWorkerJob"
+    );
+    let limitCall = 0;
+    const stagedRun = {
+      id: "mar_staged_render_run",
+      userId: 1,
+      tenantId: "tenant-1",
+      status: "waiting_provider",
+      currentStage: "render",
+      resultLibraryItemId: null,
+      updatedAt: new Date("2026-11-25T12:00:00.000Z"),
+      metadataJson: {
+        planningArchitecture: "staged_two_skill_v2",
+        initializationControl: { status: "completed" },
+        renderEngine: "remotion_queue",
+        renderJobId: "render-worker-1",
+        stagedRenderManifestHash: "manifest-hash",
+        stagedPipeline: { tasks: {} },
+      },
+    };
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => {
+        limitCall += 1;
+        return limitCall === 1 ? [] : limitCall === 2 ? [stagedRun] : [];
+      },
+    };
+
+    try {
+      await runMarketplaceAutoReviewJob({
+        db: {
+          select: () => chain,
+          update: () => ({ set: () => ({ where: async () => undefined }) }),
+        },
+        runHyperframesWorker: async () => ({
+          processed: 0,
+          disabled: false,
+          runtimeDeferred: false,
+        }),
+      });
+
+      expect(enqueueWorkerJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "tenant-1",
+          userId: 1,
+          runId: stagedRun.id,
+          operation: expect.objectContaining({
+            operation: "advance_run",
+            runId: stagedRun.id,
+            reconcileOnly: true,
+          }),
+          idempotencyKey: expect.stringContaining(":render-reconcile:v1:"),
+        })
+      );
+      const admission = enqueueWorkerJob.mock.calls[0]?.[0];
+      expect(admission?.operation).not.toHaveProperty("targetShotIds");
     } finally {
       enqueueWorkerJob.mockRestore();
     }

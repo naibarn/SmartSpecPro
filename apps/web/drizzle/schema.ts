@@ -24007,6 +24007,9 @@ export const socialPosts = pgTable(
   t => [
     index("idx_social_posts_tenant_status").on(t.tenantId, t.status),
     index("idx_social_posts_page_scheduled").on(t.pageId, t.scheduledAt),
+    uniqueIndex("social_posts_marketplace_reels_intent_unique")
+      .on(t.tenantId, t.pageId, sql`${t.metadata}->>'intentHash'`)
+      .where(sql`${t.metadata}->>'source' = 'marketplace_auto_review_reels' AND ${t.metadata}->>'intentHash' IS NOT NULL`),
   ]
 );
 

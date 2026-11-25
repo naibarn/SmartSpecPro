@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.smartspecweb_crypto import encrypt_smartspecweb
+from app.core.smartspecweb_crypto import decrypt_smartspecweb, encrypt_smartspecweb
 from app.core.system_settings_loader import get_category_settings
 from app.services.postgres_ephemeral_store import put_value, take_value
 
@@ -31,8 +31,8 @@ META_OAUTH_SCOPES = [
     "pages_read_engagement",
     "pages_manage_posts",
     "pages_manage_engagement",
-    "business_management",
 ]
+META_REELS_REQUIRED_SCOPES = ["pages_show_list", "pages_manage_posts", "pages_read_engagement"]
 
 
 async def _verify_internal_token(
@@ -84,6 +84,10 @@ async def _resolve_meta_config(db: AsyncSession) -> dict[str, str]:
     cfg = await _load_meta_config(db)
     if not cfg.get("metaAppId") or not cfg.get("metaAppSecret"):
         raise HTTPException(status_code=503, detail="Meta OAuth is not configured")
+    if not cfg.get("metaRedirectUri", "").startswith("https://"):
+        raise HTTPException(status_code=503, detail="Meta OAuth callback must use HTTPS")
+    if not cfg.get("metaGraphApiVersion", "").startswith("v"):
+        raise HTTPException(status_code=503, detail="Meta Graph API version is not configured")
     return cfg
 
 
@@ -172,6 +176,21 @@ async def _fetch_meta_profile(cfg: dict[str, str], access_token: str) -> dict[st
         }
 
 
+async def _fetch_meta_permissions(cfg: dict[str, str], access_token: str) -> list[str]:
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(
+            f"https://graph.facebook.com/{cfg['metaGraphApiVersion'].strip('/')}/me/permissions",
+            params={"access_token": access_token},
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return sorted({
+            str(item.get("permission"))
+            for item in payload.get("data", [])
+            if isinstance(item, dict) and item.get("status") == "granted" and item.get("permission")
+        })
+
+
 async def _fetch_meta_pages(cfg: dict[str, str], access_token: str) -> list[dict[str, str]]:
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.get(
@@ -197,6 +216,7 @@ async def callback(
     access_token = token_data["access_token"]
     expires_in = int(token_data.get("expires_in") or 0)
     profile = await _fetch_meta_profile(cfg, access_token)
+    granted_scopes = await _fetch_meta_permissions(cfg, access_token)
     pages = await _fetch_meta_pages(cfg, access_token)
 
     encrypted_token = encrypt_smartspecweb(access_token)
@@ -236,10 +256,15 @@ async def callback(
             ),
             {
                 "provider_user_id": profile["id"],
-                "granted_scopes": META_OAUTH_SCOPES,
+                "granted_scopes": granted_scopes,
                 "encrypted_access_token": encrypted_token,
                 "token_expires_at": token_expires_at,
-                "metadata": {"metaProfile": profile, "oauthStateTenantId": tenant_id},
+                "metadata": {
+                    "metaProfile": profile,
+                    "oauthStateTenantId": tenant_id,
+                    "permissionVerificationStatus": "verified",
+                    "permissionsVerifiedAt": datetime.now(UTC).isoformat(),
+                },
                 "id": connection_id,
             },
         )
@@ -262,10 +287,15 @@ async def callback(
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "provider_user_id": profile["id"],
-                "granted_scopes": META_OAUTH_SCOPES,
+                "granted_scopes": granted_scopes,
                 "encrypted_access_token": encrypted_token,
                 "token_expires_at": token_expires_at,
-                "metadata": {"metaProfile": profile, "oauthStateTenantId": tenant_id},
+                "metadata": {
+                    "metaProfile": profile,
+                    "oauthStateTenantId": tenant_id,
+                    "permissionVerificationStatus": "verified",
+                    "permissionsVerifiedAt": datetime.now(UTC).isoformat(),
+                },
             },
         )
         connection_id = int(inserted.scalar_one())
@@ -278,6 +308,13 @@ async def callback(
         encrypted_page_token = encrypt_smartspecweb(str(page.get("access_token") or ""))
         page_name = str(page.get("name") or "")
         page_category = str(page.get("category") or "")
+        page_tasks = sorted({str(task) for task in page.get("tasks", []) if isinstance(task, str)})
+        page_can_create_content = "CREATE_CONTENT" in page_tasks
+        page_metadata = {
+            "providerPage": {"id": page_id, "tasks": page_tasks},
+            "permissionsVerifiedAt": datetime.now(UTC).isoformat(),
+            "canCreateContent": page_can_create_content,
+        }
 
         existing_page = await db.execute(
             text(
@@ -303,6 +340,7 @@ async def callback(
                         status = 'active',
                         "encryptedPageAccessToken" = :encrypted_page_token,
                         "tokenExpiresAt" = NULL,
+                        metadata = :metadata,
                         "updatedAt" = NOW()
                     WHERE id = :id
                     """
@@ -312,6 +350,7 @@ async def callback(
                     "page_name": page_name,
                     "page_category": page_category,
                     "encrypted_page_token": encrypted_page_token,
+                    "metadata": page_metadata,
                     "id": social_page_id,
                 },
             )
@@ -326,7 +365,7 @@ async def callback(
                       "aiActionMode", "autoSendConfidenceThreshold", metadata, "createdAt", "updatedAt"
                     ) VALUES (
                       :tenant_id, :connection_id, :provider_page_id, :page_name, :page_category,
-                      'active', :encrypted_page_token, true, true, false,
+                      'active', :encrypted_page_token, true, :selected_for_publishing, false,
                       'draft_only', 0.95, :metadata, NOW(), NOW()
                     )
                     RETURNING id
@@ -339,7 +378,8 @@ async def callback(
                     "page_name": page_name,
                     "page_category": page_category,
                     "encrypted_page_token": encrypted_page_token,
-                    "metadata": {"providerPage": page},
+                    "selected_for_publishing": page_can_create_content,
+                    "metadata": page_metadata,
                 },
             )
             social_page_id = int(inserted_page.scalar_one())
@@ -351,6 +391,8 @@ async def callback(
                 "pageName": page_name,
                 "pageCategory": page_category,
                 "status": "active",
+                "canCreateContent": page_can_create_content,
+                "missingRequiredScopes": [scope for scope in META_REELS_REQUIRED_SCOPES if scope not in granted_scopes],
             }
         )
 
@@ -376,7 +418,7 @@ async def status(
     conn = await db.execute(
         text(
             """
-            SELECT id, "providerUserId", status, "encryptedAccessToken", "tokenExpiresAt"
+            SELECT id, "providerUserId", status, "encryptedAccessToken", "tokenExpiresAt", "grantedScopes"
             FROM social_provider_connections
             WHERE "tenantId" = :tenant_id AND "userId" = :user_id AND provider = 'meta'
             ORDER BY id DESC
@@ -387,12 +429,21 @@ async def status(
     )
     row = conn.fetchone()
     if not row:
-        return {"status": "not_connected"}
+        config = await _load_meta_config(db)
+        return {
+            "status": "not_connected",
+            "configuration": {
+                "appIdConfigured": bool(config.get("metaAppId")),
+                "appSecretConfigured": bool(config.get("metaAppSecret")),
+                "callbackConfigured": bool(config.get("metaRedirectUri", "").startswith("https://")),
+                "graphApiVersion": config.get("metaGraphApiVersion"),
+            },
+        }
 
     pages = await db.execute(
         text(
             """
-            SELECT id, "providerPageId", "pageName", "pageCategory", status, "selectedForInbox", "selectedForPublishing", "selectedForModeration", "aiActionMode", "autoSendConfidenceThreshold", "tokenExpiresAt"
+            SELECT id, "providerPageId", "pageName", "pageCategory", status, "selectedForInbox", "selectedForPublishing", "selectedForModeration", "aiActionMode", "autoSendConfidenceThreshold", "tokenExpiresAt", metadata, "encryptedPageAccessToken"
             FROM social_pages
             WHERE "connectionId" = :connection_id
             ORDER BY "createdAt" DESC, id DESC
@@ -401,6 +452,53 @@ async def status(
         {"connection_id": row[0]},
     )
     page_rows = pages.fetchall()
+    token_validity = "unknown"
+    try:
+        access_token = decrypt_smartspecweb(str(row[3] or ""))
+        cfg = await _load_meta_config(db)
+        if access_token:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                check = await client.get(
+                    f"https://graph.facebook.com/{cfg['metaGraphApiVersion'].strip('/')}/me",
+                    params={"fields": "id", "access_token": access_token},
+                )
+            token_validity = "valid" if check.is_success else "invalid"
+    except Exception:
+        token_validity = "unknown"
+        cfg = await _load_meta_config(db)
+    granted_scopes = list(row[5] or [])
+    page_summaries: list[dict[str, object]] = []
+    for page_row in page_rows:
+        page_metadata = page_row[11] if isinstance(page_row[11], dict) else {}
+        page_token_validity = "unknown"
+        try:
+            page_token = decrypt_smartspecweb(str(page_row[12] or ""))
+            if page_token:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    page_check = await client.get(
+                        f"https://graph.facebook.com/{cfg['metaGraphApiVersion'].strip('/')}/{page_row[1]}",
+                        params={"fields": "id", "access_token": page_token},
+                    )
+                page_token_validity = "valid" if page_check.is_success else "invalid"
+        except Exception:
+            page_token_validity = "unknown"
+        page_summaries.append({
+            "pageId": int(page_row[0]),
+            "providerPageId": page_row[1],
+            "pageName": page_row[2],
+            "pageCategory": page_row[3],
+            "status": page_row[4],
+            "selectedForInbox": bool(page_row[5]),
+            "selectedForPublishing": bool(page_row[6]),
+            "selectedForModeration": bool(page_row[7]),
+            "aiActionMode": page_row[8],
+            "autoSendConfidenceThreshold": float(page_row[9] or 0.95),
+            "tokenExpiresAt": page_row[10].isoformat() if page_row[10] else None,
+            "pageTasks": page_metadata.get("providerPage", {}).get("tasks", []),
+            "canCreateContent": bool(page_metadata.get("canCreateContent")),
+            "pagePermissionsVerified": bool(page_metadata.get("permissionsVerifiedAt")),
+            "pageTokenValidity": page_token_validity,
+        })
     return {
         "status": "connected",
         "connection": {
@@ -409,21 +507,16 @@ async def status(
             "connectionStatus": row[2],
             "tokenMasked": "***",
             "tokenExpiresAt": row[4].isoformat() if row[4] else None,
-            "pages": [
-                {
-                    "pageId": int(p[0]),
-                    "providerPageId": p[1],
-                    "pageName": p[2],
-                    "pageCategory": p[3],
-                    "status": p[4],
-                    "selectedForInbox": bool(p[5]),
-                    "selectedForPublishing": bool(p[6]),
-                    "selectedForModeration": bool(p[7]),
-                    "aiActionMode": p[8],
-                    "autoSendConfidenceThreshold": float(p[9] or 0.95),
-                    "tokenExpiresAt": p[10].isoformat() if p[10] else None,
-                }
-                for p in page_rows
-            ],
+            "tokenValidity": token_validity,
+            "grantedScopes": granted_scopes,
+            "requiredReelsScopes": META_REELS_REQUIRED_SCOPES,
+            "missingReelsScopes": [scope for scope in META_REELS_REQUIRED_SCOPES if scope not in granted_scopes],
+            "configuration": {
+                "appIdConfigured": bool(cfg.get("metaAppId")),
+                "appSecretConfigured": bool(cfg.get("metaAppSecret")),
+                "callbackConfigured": bool(cfg.get("metaRedirectUri", "").startswith("https://")),
+                "graphApiVersion": cfg.get("metaGraphApiVersion"),
+            },
+            "pages": page_summaries,
         },
     }

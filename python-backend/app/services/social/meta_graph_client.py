@@ -4,6 +4,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from collections.abc import AsyncIterable
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -14,6 +15,10 @@ from .base_provider import SocialProviderClient
 from .exceptions import MetaApiError, PermissionDeniedError, RateLimitExceededError, TokenExpiredError
 
 logger = structlog.get_logger(__name__)
+
+# Reels is independently pinned: changing the existing feed client's configured
+# version would silently change other Meta integrations.
+REELS_GRAPH_API_VERSION = "v27.0"
 
 
 def scrub_access_tokens(value: Any) -> Any:
@@ -139,9 +144,11 @@ class MetaGraphClient(SocialProviderClient):
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        retry_transient: bool = True,
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         client = self._get_client()
-        url = self._build_url(path)
+        url = f"{base_url.rstrip('/')}/{path.lstrip('/')}" if base_url else self._build_url(path)
         merged_params = self._build_params(params)
 
         last_error: Exception | None = None
@@ -158,20 +165,21 @@ class MetaGraphClient(SocialProviderClient):
                     url,
                     params=merged_params,
                     json=json_body,
+                    follow_redirects=False,
                 )
             except httpx.RequestError as exc:
                 safe_url = scrub_access_tokens(str(exc.request.url)) if getattr(exc, "request", None) else scrub_access_tokens(url)
-                self._logger.warning("meta_request_error", method=method, url=safe_url, error=str(exc))
+                self._logger.warning("meta_request_error", method=method, url=safe_url, error=exc.__class__.__name__)
                 raise MetaApiError(f"Meta request failed: {exc.__class__.__name__}") from exc
 
-            if response.status_code < 400:
+            if response.status_code < 300:
                 try:
                     payload = response.json()
                     return payload if isinstance(payload, dict) else {"data": payload}
                 except Exception:
                     return {"ok": True}
 
-            retry_plan = self._retry_plan(response.status_code, attempt, response)
+            retry_plan = self._retry_plan(response.status_code, attempt, response) if retry_transient else None
             if retry_plan is None or attempt >= retry_plan.attempts:
                 raise self._parse_error(response)
 
@@ -213,6 +221,98 @@ class MetaGraphClient(SocialProviderClient):
             payload["published"] = False
             payload["scheduled_publish_time"] = int(scheduled_at)
         return await self._request("POST", self._path_for_page("feed"), json_body=payload)
+
+    @staticmethod
+    def _reels_video_id(video_id: str) -> str:
+        # Provider identifiers are numeric; reject paths and query strings before
+        # building a token-bearing URL.
+        if not isinstance(video_id, str) or not video_id.isascii() or not video_id.isdigit():
+            raise ValueError("Invalid Meta Reels video ID")
+        return video_id
+
+    @property
+    def _reels_base_url(self) -> str:
+        return f"https://graph.facebook.com/{REELS_GRAPH_API_VERSION}"
+
+    async def start_reel_upload(self) -> dict[str, Any]:
+        """Create an upload session. Persist the response before uploading.
+
+        A timeout may mean Meta created a session; the caller must treat it as
+        uncertain rather than automatically creating another one.
+        """
+        result = await self._request(
+            "POST", self._path_for_page("video_reels"),
+            json_body={"upload_phase": "start"}, retry_transient=False,
+            base_url=self._reels_base_url,
+        )
+        video_id = result.get("video_id")
+        upload_url = result.get("upload_url")
+        if not isinstance(video_id, str) or not isinstance(upload_url, str):
+            raise MetaApiError("Meta did not return a valid Reels upload session")
+        self._validate_reel_upload_url(upload_url, video_id)
+        return result
+
+    @classmethod
+    def _validate_reel_upload_url(cls, upload_url: str, video_id: str) -> None:
+        cls._reels_video_id(video_id)
+        parsed = urlsplit(upload_url)
+        valid_paths = {f"/video-upload/{video_id}", f"/video-upload/{REELS_GRAPH_API_VERSION}/{video_id}"}
+        if (parsed.scheme != "https" or parsed.netloc != "rupload.facebook.com"
+                or parsed.path not in valid_paths or parsed.query or parsed.fragment):
+            raise ValueError("Invalid Meta Reels upload URL")
+
+    async def upload_reel_binary(
+        self, *, video_id: str, upload_url: str, content: AsyncIterable[bytes],
+        file_size: int, offset: int = 0,
+    ) -> dict[str, Any]:
+        """Stream bytes starting at offset; resume only from Meta's status offset."""
+        self._validate_reel_upload_url(upload_url, video_id)
+        if (not isinstance(file_size, int) or isinstance(file_size, bool)
+                or not isinstance(offset, int) or isinstance(offset, bool)
+                or file_size <= 0 or not 0 <= offset < file_size):
+            raise ValueError("Invalid Reels upload size or offset")
+        try:
+            response = await self._get_client().request(
+                "POST", upload_url,
+                headers={"Authorization": f"OAuth {self.access_token}", "offset": str(offset),
+                         "file_size": str(file_size), "Content-Type": "application/octet-stream",
+                         "Content-Length": str(file_size - offset)},
+                content=content, follow_redirects=False,
+            )
+        except httpx.RequestError as exc:
+            # Do not log request headers or response bodies: they may contain credentials.
+            raise MetaApiError(f"Meta upload failed: {exc.__class__.__name__}") from exc
+        if response.status_code >= 300:
+            raise self._parse_error(response)
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise MetaApiError("Meta returned an invalid upload response") from exc
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            raise MetaApiError("Meta did not confirm the Reels upload")
+        return payload
+
+    async def get_reel_status(self, video_id: str) -> dict[str, Any]:
+        """Fetch provider status, including bytes_transfered for safe resumption."""
+        return await self._request(
+            "GET", self._reels_video_id(video_id), params={"fields": "status"},
+            base_url=self._reels_base_url,
+        )
+
+    async def finish_reel_upload(
+        self, *, video_id: str, description: str, is_ai_generated: bool,
+    ) -> dict[str, Any]:
+        """Request public publication once; reconcile provider status on ambiguity."""
+        result = await self._request(
+            "POST", self._path_for_page("video_reels"),
+            json_body={"upload_phase": "finish", "video_id": self._reels_video_id(video_id),
+                       "video_state": "PUBLISHED", "description": description,
+                       "is_ai_generated": is_ai_generated},
+            retry_transient=False, base_url=self._reels_base_url,
+        )
+        if result.get("success") is not True:
+            raise MetaApiError("Meta did not confirm the Reels publication request")
+        return result
 
     async def get_comments(self, object_id: str, limit: int = 25, after: str | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"limit": limit}

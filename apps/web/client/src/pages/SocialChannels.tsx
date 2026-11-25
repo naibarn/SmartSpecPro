@@ -22,6 +22,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { SocialPageShell } from "@/components/social/SocialPageShell";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 
 type MetaPage = {
   pageId: number;
@@ -35,11 +38,22 @@ type MetaPage = {
   aiActionMode: "off" | "draft_only" | "approval_required" | "auto_send";
   autoSendConfidenceThreshold: number;
   tokenExpiresAt: string | null;
+  canCreateContent?: boolean;
+  pageTasks?: string[];
+  pageTokenValidity?: "valid" | "invalid" | "unknown";
+};
+
+type MetaConfigurationDiagnostics = {
+  appIdConfigured: boolean;
+  appSecretConfigured: boolean;
+  callbackConfigured: boolean;
+  graphApiVersion?: string | null;
 };
 
 type ConnectionResponse =
   | {
       status: "not_connected";
+      configuration?: MetaConfigurationDiagnostics;
     }
   | {
       status: "connected";
@@ -49,6 +63,11 @@ type ConnectionResponse =
         connectionStatus: string;
         tokenMasked: string;
         tokenExpiresAt: string | null;
+        tokenValidity?: "valid" | "invalid" | "unknown";
+        grantedScopes?: string[];
+        missingReelsScopes?: string[];
+        requiredReelsScopes?: string[];
+        configuration?: MetaConfigurationDiagnostics;
         pages: MetaPage[];
       };
     };
@@ -155,6 +174,9 @@ function PageSettingsCard({
             </div>
             <p className="mt-1 text-sm text-slate-500">
               {page.pageCategory || t("channels.page.uncategorized")} · ID {page.providerPageId}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Publishing access: {page.pageTokenValidity ?? "unknown"} · CREATE_CONTENT: {page.canCreateContent ? "yes" : "not verified"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -600,6 +622,16 @@ export default function SocialChannels() {
             </div>
           </DashboardCard>
         ) : connection?.status !== "connected" ? (
+          <>
+          {connection?.configuration ? (
+            <DashboardCard>
+              <VStack gap={1}>
+                <Heading level={5}>Meta App setup</Heading>
+                <Text>ต้องตั้งค่า META_APP_ID, META_APP_SECRET และ META_REDIRECT_URI แบบ HTTPS ใน system settings หมวด OAuth หรือ environment config</Text>
+                <Text>App ID: {connection.configuration.appIdConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · App Secret: {connection.configuration.appSecretConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · Callback HTTPS: {connection.configuration.callbackConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · Graph API {connection.configuration.graphApiVersion || "ไม่ทราบเวอร์ชัน"}</Text>
+              </VStack>
+            </DashboardCard>
+          ) : null}
           <DashboardCard className="border-slate-200/80 bg-white/80 shadow-lg shadow-slate-200/60 backdrop-blur">
             <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -617,8 +649,19 @@ export default function SocialChannels() {
               </Button>
             </div>
           </DashboardCard>
+          </>
         ) : (
           <>
+            {connection.connection.configuration ? (
+              <DashboardCard>
+                <VStack gap={1}>
+                  <Heading level={5}>Meta connection diagnostics</Heading>
+                  <Text>Token: {connection.connection.tokenValidity ?? "unknown"} · Granted permissions: {(connection.connection.grantedScopes ?? []).join(", ") || "none"} · Graph API {connection.connection.configuration.graphApiVersion || "unknown"}</Text>
+                  {(connection.connection.missingReelsScopes ?? []).length ? <Text>Reels needs these permissions: {connection.connection.missingReelsScopes?.join(", ")}. Reconnect Meta to grant them.</Text> : null}
+                  {connection.connection.tokenValidity === "invalid" ? <Text>Meta rejected the stored token. Reconnect before publishing.</Text> : null}
+                </VStack>
+              </DashboardCard>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <DashboardCard className="border-slate-200/80 bg-white/80 shadow-sm backdrop-blur">
                 <div className="p-5">

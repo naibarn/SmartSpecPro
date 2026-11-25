@@ -49,6 +49,100 @@ async def test_create_post_includes_scheduled_publish_time() -> None:
     assert client.request.await_args.kwargs["json"]["link"] == "https://example.com"
     assert client.request.await_args.kwargs["json"]["scheduled_publish_time"] == int(scheduled_at.timestamp())
     assert client.request.await_args.kwargs["json"]["published"] is False
+    assert client.request.await_args.args[1].endswith("/123/feed")
+
+
+@pytest.mark.asyncio
+async def test_reels_lifecycle_uses_pinned_version_and_preserves_provider_receipts() -> None:
+    client = AsyncMock()
+    upload_url = "https://rupload.facebook.com/video-upload/v27.0/456"
+    client.request.side_effect = [
+        make_response(200, {"video_id": "456", "upload_url": upload_url}),
+        make_response(200, {"success": True}),
+        make_response(200, {"status": {"uploading_phase": {"bytes_transfered": 3}}}),
+        make_response(200, {"success": True, "post_id": "789"}),
+    ]
+    api = MetaGraphClient("secret-token", page_id="123", client=client, api_version="v25.0")
+
+    async def content():
+        yield b"def"
+
+    session = await api.start_reel_upload()
+    await api.upload_reel_binary(video_id=session["video_id"], upload_url=session["upload_url"],
+                                 content=content(), file_size=6, offset=3)
+    status = await api.get_reel_status("456")
+    receipt = await api.finish_reel_upload(video_id="456", description="Caption #tag", is_ai_generated=True)
+
+    start, upload, poll, finish = client.request.await_args_list
+    assert start.args == ("POST", "https://graph.facebook.com/v27.0/123/video_reels")
+    assert start.kwargs["json"] == {"upload_phase": "start"}
+    assert upload.args == ("POST", upload_url)
+    assert upload.kwargs["headers"] == {"Authorization": "OAuth secret-token", "offset": "3", "file_size": "6",
+                                        "Content-Type": "application/octet-stream", "Content-Length": "3"}
+    assert upload.kwargs["follow_redirects"] is False
+    assert b"".join([chunk async for chunk in upload.kwargs["content"]]) == b"def"
+    assert poll.args == ("GET", "https://graph.facebook.com/v27.0/456")
+    assert poll.kwargs["params"]["fields"] == "status"
+    assert status["status"]["uploading_phase"]["bytes_transfered"] == 3
+    assert finish.kwargs["json"] == {"upload_phase": "finish", "video_id": "456", "video_state": "PUBLISHED",
+                                      "description": "Caption #tag", "is_ai_generated": True}
+    assert receipt == {"success": True, "post_id": "789"}
+    assert "permalink" not in receipt
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("url", ["https://evil.test/video-upload/456", "http://rupload.facebook.com/video-upload/456",
+                                 "https://rupload.facebook.com/video-upload/123", "https://rupload.facebook.com/video-upload/456?x=1",
+                                 "https://rupload.facebook.com@evil.test/video-upload/456"])
+async def test_reels_rejects_untrusted_upload_url_without_sending_token(url: str) -> None:
+    client = AsyncMock()
+    api = MetaGraphClient("secret-token", page_id="123", client=client)
+
+    async def content():
+        yield b"bytes"
+
+    with pytest.raises(ValueError):
+        await api.upload_reel_binary(video_id="456", upload_url=url, content=content(), file_size=5)
+    client.request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["start", "finish", "upload"])
+async def test_reels_side_effects_are_not_retried_on_transient_errors(method: str) -> None:
+    client = AsyncMock()
+    client.request.return_value = make_response(503, {"error": {"message": "unavailable"}})
+    api = MetaGraphClient("secret-token", page_id="123", client=client)
+
+    async def content():
+        yield b"x"
+
+    with pytest.raises(MetaApiError):
+        if method == "start":
+            await api.start_reel_upload()
+        elif method == "finish":
+            await api.finish_reel_upload(video_id="456", description="", is_ai_generated=False)
+        else:
+            await api.upload_reel_binary(video_id="456", upload_url="https://rupload.facebook.com/video-upload/456",
+                                         content=content(), file_size=1)
+    assert client.request.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_reels_requires_explicit_provider_success_for_finish() -> None:
+    client = AsyncMock()
+    client.request.return_value = make_response(200, {})
+    api = MetaGraphClient("secret-token", page_id="123", client=client)
+    with pytest.raises(MetaApiError):
+        await api.finish_reel_upload(video_id="456", description="", is_ai_generated=False)
+
+
+@pytest.mark.asyncio
+async def test_reels_start_rejects_missing_session() -> None:
+    client = AsyncMock()
+    client.request.return_value = make_response(200, {"video_id": "456"})
+    api = MetaGraphClient("secret-token", page_id="123", client=client)
+    with pytest.raises(MetaApiError):
+        await api.start_reel_upload()
 
 
 @pytest.mark.asyncio

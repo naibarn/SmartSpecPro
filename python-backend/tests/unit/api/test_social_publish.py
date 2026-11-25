@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 
 from app.api import social_publish
 
@@ -54,3 +55,59 @@ async def test_verify_internal_token_requires_header(monkeypatch: pytest.MonkeyP
         await social_publish._verify_internal_token(x_internal_token=None, x_proxy_token=None)
 
     assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_reels_internal_endpoints_stream_and_validate_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(social_publish.settings, "SMARTSPEC_PROXY_TOKEN", "internal-token", raising=False)
+    calls = []
+
+    class FakeMetaClient:
+        _validate_reel_upload_url = staticmethod(social_publish.MetaGraphClient._validate_reel_upload_url)
+
+        def __init__(self, access_token, *, page_id=None):
+            self.access_token, self.page_id = access_token, page_id
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def start_reel_upload(self):
+            return {"video_id": "456", "upload_url": "https://rupload.facebook.com/video-upload/456"}
+
+        async def get_reel_status(self, video_id):
+            return {"status": {"uploading_phase": {"bytes_transfered": 2}}}
+
+        async def finish_reel_upload(self, **kwargs):
+            calls.append(kwargs)
+            return {"success": True}
+
+        async def upload_reel_binary(self, **kwargs):
+            calls.append(b"".join([chunk async for chunk in kwargs["content"]]))
+            return {"success": True}
+
+    monkeypatch.setattr(social_publish, "MetaGraphClient", FakeMetaClient)
+    app = FastAPI()
+    app.include_router(social_publish.router)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        base = "/api/internal/social/reels/"
+        payload = {"page_id": "123", "access_token": "page-secret"}
+        assert (await client.post(base + "start", json=payload)).status_code == 401
+        auth = {"x-internal-token": "internal-token"}
+        assert (await client.post(base + "start", json=payload, headers=auth)).json()["video_id"] == "456"
+        video = {**payload, "video_id": "456"}
+        assert (await client.post(base + "status", json=video, headers=auth)).json()["status"]["uploading_phase"]["bytes_transfered"] == 2
+        finish = await client.post(base + "finish", json={**video, "description": "#demo", "is_ai_generated": True}, headers=auth)
+        assert finish.json() == {"success": True}
+        headers = {**auth, "x-meta-access-token": "page-secret", "x-meta-video-id": "456",
+                   "x-meta-upload-url": "https://rupload.facebook.com/video-upload/456", "x-meta-file-size": "5",
+                   "x-meta-offset": "2", "content-length": "3"}
+        assert (await client.post(base + "upload", content=b"abc", headers=headers)).json() == {"success": True}
+        headers["x-meta-upload-url"] = "https://evil.test/video-upload/456"
+        assert (await client.post(base + "upload", content=b"abc", headers=headers)).status_code == 400
+        headers["x-meta-upload-url"] = "https://rupload.facebook.com/video-upload/456"
+        headers["x-meta-file-size"] = str(social_publish.REELS_MAX_BYTES + 1)
+        assert (await client.post(base + "upload", content=b"abc", headers=headers)).status_code == 422
+    assert calls == [{"video_id": "456", "description": "#demo", "is_ai_generated": True}, b"abc"]
