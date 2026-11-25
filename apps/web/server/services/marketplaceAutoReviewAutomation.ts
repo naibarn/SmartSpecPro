@@ -4,12 +4,10 @@ import { createHash } from "node:crypto";
 import { getDb } from "../db";
 import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
 import { StagedSequentialStoryboardMetadataV1Schema } from "@shared/marketplaceAutoReview/stagedContracts";
-import {
-  buildStagedApprovalExpectation,
-  stagedMetadataStateDigest,
-} from "./marketplaceAutoReviewStagedCheckpointOperations";
+import { stagedMetadataStateDigest } from "./marketplaceAutoReviewStagedCheckpointOperations";
 import {
   approveStagedAutoReviewCheckpoint,
+  buildStagedApprovalExpectation,
   detectStagedAutoReviewShotPeople,
   startStagedAutoReviewBulkGeneration,
 } from "./marketplaceAutoReviewStagedCheckpointRouterService";
