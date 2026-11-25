@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import {
   libraryItems,
   marketplaceCaptureAssets,
+  marketplaceAutoReviewRuns,
   marketplaceProductImages,
   marketplaceProducts,
   verticalDramaSeries,
@@ -441,4 +442,58 @@ export async function attachMarketplaceAutoReviewJobPreviews<
         : null,
     };
   });
+}
+
+export async function listMarketplaceAutoReviewRunSeries(auth: PreviewAuth) {
+  const tenantId = auth.tenantId?.trim();
+  if (!tenantId) return [];
+
+  const db = await getDb();
+  if (!db) return [];
+
+  const runs = await db
+    .select({ metadataJson: marketplaceAutoReviewRuns.metadataJson })
+    .from(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.userId, auth.userId),
+        eq(marketplaceAutoReviewRuns.tenantId, tenantId)
+      )
+    );
+  const seriesIds = Array.from(
+    new Set(
+      runs.flatMap(run => {
+        const references = record(run.metadataJson).customReferenceManifest;
+        return Array.isArray(references)
+          ? references
+              .map(reference => record(reference))
+              .filter(reference => reference.role === "character")
+              .map(reference => reference.vdSeriesId)
+              .filter(
+                (id): id is string =>
+                  typeof id === "string" && Boolean(id.trim())
+              )
+          : [];
+      })
+    )
+  )
+    .map(id => Number(id))
+    .filter(id => Number.isSafeInteger(id) && id > 0);
+  if (seriesIds.length === 0) return [];
+
+  const series = await db
+    .select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        inArray(verticalDramaSeries.id, seriesIds),
+        eq(verticalDramaSeries.userId, auth.userId),
+        eq(verticalDramaSeries.tenantId, tenantId)
+      )
+    )
+    .orderBy(asc(verticalDramaSeries.title), asc(verticalDramaSeries.id));
+  return series.map(item => ({
+    seriesId: String(item.id),
+    seriesName: item.title.trim(),
+  }));
 }

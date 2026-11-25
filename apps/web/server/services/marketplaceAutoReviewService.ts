@@ -23953,6 +23953,7 @@ export async function selectMarketplaceAutoReviewSequentialShotAlternate(
 export async function listMarketplaceAutoReviewRuns(
   input: {
     productId?: string;
+    seriesId?: string;
     limit?: number;
     cursor?: number;
     summary?: boolean;
@@ -23975,6 +23976,20 @@ export async function listMarketplaceAutoReviewRuns(
         tenantAccessClause(auth),
         input.productId
           ? eq(marketplaceAutoReviewRuns.productId, input.productId)
+          : undefined,
+        input.seriesId
+          ? sql`EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(${marketplaceAutoReviewRuns.metadataJson}->'customReferenceManifest') = 'array'
+                    THEN ${marketplaceAutoReviewRuns.metadataJson}->'customReferenceManifest'
+                  ELSE '[]'::jsonb
+                END
+              ) AS character_ref(value)
+              WHERE character_ref.value->>'role' = 'character'
+                AND character_ref.value->>'vdSeriesId' = ${input.seriesId}
+            )`
           : undefined
       )
     )

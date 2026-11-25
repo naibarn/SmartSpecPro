@@ -31,7 +31,10 @@ import {
   storageStreamFile,
 } from "../storage";
 import { STAGED_OVERLAY_ANCHORS } from "../services/marketplaceAutoReviewStagedRemotionRender";
-import { attachMarketplaceAutoReviewJobPreviews } from "../services/marketplaceAutoReviewJobPreviewService";
+import {
+  attachMarketplaceAutoReviewJobPreviews,
+  listMarketplaceAutoReviewRunSeries,
+} from "../services/marketplaceAutoReviewJobPreviewService";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
 import {
   getMarketplaceCaptureForUser,
@@ -1496,6 +1499,7 @@ export const marketplaceCaptureRouter = router({
       z
         .object({
           productId: z.string().min(1).max(64).optional(),
+          seriesId: z.string().regex(/^\d+$/).max(20).optional(),
           limit: z.number().int().min(1).max(50).optional().default(10),
           cursor: z.number().int().min(0).max(1_000_000).optional().default(0),
           summary: z.boolean().optional().default(false),
@@ -1526,6 +1530,20 @@ export const marketplaceCaptureRouter = router({
       const auth = authFromCtx(ctx);
       return listMarketplaceAutoReviewRunProducts(auth);
     }),
+
+  listAutoReviewRunSeries: protectedProcedure
+    .input(z.void())
+    .output(
+      z.array(
+        z.object({
+          seriesId: z.string(),
+          seriesName: z.string(),
+        })
+      )
+    )
+    .query(async ({ ctx }) =>
+      listMarketplaceAutoReviewRunSeries(authFromCtx(ctx))
+    ),
 
   advanceAutoReviewRun: protectedProcedure
     .input(z.object({ runId: z.string().min(1).max(64) }))

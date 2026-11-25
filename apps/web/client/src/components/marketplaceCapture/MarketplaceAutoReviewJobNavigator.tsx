@@ -590,7 +590,7 @@ export function MarketplaceAutoReviewJobNavigator({
         </h2>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
           {allProducts
-            ? "งานทั้งหมดเรียงจากล่าสุด เลือกสินค้าเพื่อกรอง แล้วกดงานเพื่อเปิดรายละเอียด"
+            ? "งานทั้งหมดเรียงจากล่าสุด ใช้ตัวกรองด้านบนเพื่อค้นหา แล้วกดงานเพื่อเปิดรายละเอียด"
             : "เลือกงานเพื่อเปิดรายละเอียด หรือกรองสินค้าเพื่อค้นหางานอื่น"}
         </p>
         {productId ? (
@@ -653,7 +653,7 @@ export function MarketplaceAutoReviewJobNavigator({
         {!loading && !error && visibleRuns.length === 0 ? (
           <p className="rounded-lg border border-dashed border-white/15 bg-white/5 p-4 text-center text-xs leading-5 text-slate-400">
             {allProducts
-              ? "ยังไม่มี Job Review"
+              ? "ไม่พบ Job Review ที่ตรงกับตัวกรอง"
               : "ยังไม่มี Job Review สำหรับสินค้านี้"}
           </p>
         ) : null}
@@ -858,7 +858,7 @@ export function MarketplaceAutoReviewJobNavigator({
                       </button>
                       <button
                         type="button"
-                        disabled={deletingRunId === runId}
+                        disabled={Boolean(deletingRunId)}
                         className="rounded bg-red-500/90 p-1 text-white hover:bg-red-500 disabled:opacity-60"
                         aria-label={`ยืนยันลบ ${jobTitle(run)}`}
                         data-testid={`job-delete-confirm-${runId}`}
@@ -877,7 +877,7 @@ export function MarketplaceAutoReviewJobNavigator({
                   ) : (
                     <button
                       type="button"
-                      disabled={deletingRunId === runId}
+                      disabled={Boolean(deletingRunId)}
                       // ALWAYS visible, never hover-only: an affordance the
                       // user cannot see is one they will report as missing —
                       // the same mistake the look selector made earlier today.
