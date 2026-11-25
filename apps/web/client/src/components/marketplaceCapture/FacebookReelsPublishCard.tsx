@@ -202,10 +202,28 @@ export function FacebookReelsPublishCard(props: {
               </Banner>
             ) : null}
             {readyPhotoVariants.length ? (
-              <RadioList label="เลือกรูปสำหรับ Facebook Photo Post" value={photoVariant} onChange={setPhotoVariant} orientation="vertical">
+              <RadioList
+                label="เลือกรูปสำหรับ Facebook Photo Post"
+                value={photoVariant}
+                onChange={setPhotoVariant}
+                orientation="horizontal"
+                controlStyle={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, calc(var(--spacing-12) * 4.5)), calc(var(--spacing-12) * 4.5)))",
+                }}
+              >
                 {readyPhotoVariants.map(image => (
-                  <RadioListItem key={image.variant} value={image.variant} label={PHOTO_VARIANT_LABELS[image.variant] ?? image.sourceLabel} description={
-                    <AuthenticatedMediaImage src={image.imageUrl!} alt={image.sourceLabel} style={{ aspectRatio: "4 / 5", borderRadius: "var(--radius-md)", objectFit: "contain", width: "100%" }} />
+                  <RadioListItem key={image.variant} value={image.variant} align="first-line" label={PHOTO_VARIANT_LABELS[image.variant] ?? image.sourceLabel} description={
+                    <AuthenticatedMediaImage
+                      src={image.imageUrl!}
+                      alt={image.sourceLabel}
+                      style={{
+                        aspectRatio: "4 / 5",
+                        borderRadius: "var(--radius-md)",
+                        objectFit: "contain",
+                        width: "min(100%, calc(var(--spacing-12) * 3.5))",
+                      }}
+                    />
                   } />
                 ))}
               </RadioList>
