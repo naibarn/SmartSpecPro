@@ -33,7 +33,7 @@ const COPY = {
   en: {
     title: "Meta / Facebook Pages",
     description:
-      "Connect Facebook Pages for publishing, comments, inbox events, and page management. Complete every step below before asking users to connect a Page.",
+      "Configure SmartAIHub's shared Meta app once. Each user connects their own Facebook account and manages only the Pages they are authorized to access in Social Channels.",
     ready: "Meta configuration is saved",
     incomplete: "Meta configuration is incomplete",
     readyDescription: "Credentials and webhook verification token are stored securely. Run the test after every credential change.",
@@ -85,7 +85,7 @@ const COPY = {
       },
       {
         title: "Save, enable, test, and connect",
-        body: "Click Save all OAuth settings, then Test Meta configuration. In Admin → Tenants → Feature Flags, enable Meta Channels for the tenant. Finally open Social Channels, choose Connect Meta, approve access, and select the Pages to manage.",
+        body: "As the platform administrator, save and test this shared Meta app once. Enable Meta Channels for the tenant in Admin → Tenants → Feature Flags. Then each user opens Social Channels, connects their own Facebook account, approves access, and selects Pages they are authorized to manage.",
       },
     ],
     warningTitle: "Production checklist",
@@ -97,7 +97,7 @@ const COPY = {
   th: {
     title: "Meta / Facebook Pages",
     description:
-      "เชื่อมต่อ Facebook Pages เพื่อเผยแพร่โพสต์ จัดการความคิดเห็น รับเหตุการณ์จาก inbox และบริหารเพจ ต้องทำทุกขั้นตอนด้านล่างให้ครบก่อนให้ผู้ใช้เชื่อมต่อเพจ",
+      "ผู้ดูแลแพลตฟอร์มตั้งค่า Meta App กลางของ SmartAIHub เพียงครั้งเดียว จากนั้นผู้ใช้แต่ละคนเชื่อมบัญชี Facebook ของตนเองและจัดการเฉพาะเพจที่มีสิทธิ์ใน Social Channels",
     ready: "บันทึกการตั้งค่า Meta แล้ว",
     incomplete: "การตั้งค่า Meta ยังไม่ครบ",
     readyDescription: "ระบบเก็บ credentials และ webhook verify token แบบปลอดภัยแล้ว ควรทดสอบใหม่ทุกครั้งที่เปลี่ยนค่า",
@@ -149,7 +149,7 @@ const COPY = {
       },
       {
         title: "บันทึก เปิดใช้ ทดสอบ และเชื่อมต่อ",
-        body: "กดบันทึก OAuth ทั้งหมด แล้วทดสอบ Meta จากนั้นไป Admin → Tenants → Feature Flags เปิด Meta Channels ให้ tenant สุดท้ายไป Social Channels กด Connect Meta อนุมัติสิทธิ์ และเลือก Pages ที่ต้องการจัดการ",
+        body: "ในฐานะผู้ดูแลแพลตฟอร์ม ให้บันทึกและทดสอบ Meta App กลางนี้เพียงครั้งเดียว แล้วเปิด Meta Channels ให้ tenant ที่ Admin → Tenants → Feature Flags จากนั้นผู้ใช้แต่ละคนไป Social Channels เพื่อเชื่อมบัญชี Facebook ของตน อนุมัติสิทธิ์ และเลือกเพจที่ตนมีสิทธิ์จัดการ",
       },
     ],
     warningTitle: "เช็กลิสต์ก่อนใช้งานจริง",

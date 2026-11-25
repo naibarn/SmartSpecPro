@@ -626,8 +626,8 @@ export default function SocialChannels() {
           {connection?.configuration ? (
             <DashboardCard>
               <VStack gap={1}>
-                <Heading level={5}>Meta App setup</Heading>
-                <Text>ต้องตั้งค่า META_APP_ID, META_APP_SECRET และ META_REDIRECT_URI แบบ HTTPS ใน system settings หมวด OAuth หรือ environment config</Text>
+                <Heading level={5}>{t("channels.platformSetup.title")}</Heading>
+                <Text>{t("channels.platformSetup.description")}</Text>
                 <Text>App ID: {connection.configuration.appIdConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · App Secret: {connection.configuration.appSecretConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · Callback HTTPS: {connection.configuration.callbackConfigured ? "พร้อม" : "ยังไม่ได้ตั้งค่า"} · Graph API {connection.configuration.graphApiVersion || "ไม่ทราบเวอร์ชัน"}</Text>
               </VStack>
             </DashboardCard>
