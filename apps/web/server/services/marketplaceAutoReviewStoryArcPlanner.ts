@@ -542,6 +542,149 @@ export type StagedStoryArcShot = {
   supportingBeats?: StagedSupportingBeat[];
 };
 
+export type StagedDialogueQcIssue =
+  | "none"
+  | "awkward_wording"
+  | "written_or_promotional"
+  | "weak_response";
+
+export type StagedDialogueQcReview = {
+  shotId: number;
+  verdict: "natural" | "revised";
+  issue: StagedDialogueQcIssue;
+  dialogue?: string;
+  dialogueTurns?: Array<{ castId: string; line: string }>;
+};
+
+/**
+ * Apply the dialogue editor's result without allowing it to alter story beats,
+ * speaker identities, shot timing, or any other authored shot fields.
+ */
+export function applyStagedDialogueQcReviews(
+  shots: StagedStoryArcShot[],
+  reviews: StagedDialogueQcReview[],
+  conversationMode: StagedConversationMode
+): StagedStoryArcShot[] {
+  const shotIds = shots.map(shot => shot.shotId);
+  const reviewIds = reviews.map(review => review.shotId);
+  if (
+    reviews.length !== shots.length ||
+    new Set(reviewIds).size !== reviewIds.length ||
+    shotIds.some(shotId => !reviewIds.includes(shotId)) ||
+    reviewIds.some(shotId => !shotIds.includes(shotId))
+  ) {
+    throw new Error("STAGED_DIALOGUE_QC_REVIEW_SET_INVALID");
+  }
+
+  const reviewByShotId = new Map<number, StagedDialogueQcReview>();
+  for (const review of reviews) {
+    reviewByShotId.set(review.shotId, review);
+  }
+  return shots.map(shot => {
+    const review = reviewByShotId.get(shot.shotId)!;
+    if (review.verdict === "natural") {
+      if (
+        review.issue !== "none" ||
+        review.dialogue !== undefined ||
+        review.dialogueTurns !== undefined
+      ) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_NATURAL_REVIEW_HAS_REVISION:shot-${shot.shotId}`
+        );
+      }
+      return shot;
+    }
+
+    if (review.issue === "none") {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_REVISION_REASON_REQUIRED:shot-${shot.shotId}`
+      );
+    }
+
+    if (conversationMode === "two_person_conversation") {
+      const originalTurns = shot.dialogueTurns;
+      const revisedTurns = review.dialogueTurns;
+      if (
+        !originalTurns ||
+        !revisedTurns ||
+        revisedTurns.length !== originalTurns.length ||
+        review.dialogue !== undefined
+      ) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_REVISED_TEXT_REQUIRED:shot-${shot.shotId}`
+        );
+      }
+      if (
+        revisedTurns.some(
+          (turn, index) => turn.castId !== originalTurns[index]?.castId
+        )
+      ) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_SPEAKER_ORDER_CHANGED:shot-${shot.shotId}`
+        );
+      }
+      const dialogueTurns = originalTurns.map((turn, index) => {
+        const line = normalizeStagedSpeakerLine(
+          turn.speakerName,
+          clean(revisedTurns[index].line)
+        );
+        if (!line || line.length > 320) {
+          throw new Error(
+            `STAGED_DIALOGUE_QC_REVISED_LINE_INVALID:shot-${shot.shotId}`
+          );
+        }
+        return { ...turn, line };
+      });
+      const dialogue = renderStagedDialogueFromTurns(dialogueTurns);
+      if (dialogue.length > 320) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_REVISED_TEXT_TOO_LONG:shot-${shot.shotId}`
+        );
+      }
+      return { ...shot, dialogue, dialogueTurns };
+    }
+
+    if (review.dialogueTurns !== undefined) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_SPEAKER_MODE_CHANGED:shot-${shot.shotId}`
+      );
+    }
+    const dialogue = normalizeStagedDialogueTranscript(clean(review.dialogue));
+    if (!dialogue || dialogue.length > 320) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_REVISED_TEXT_REQUIRED:shot-${shot.shotId}`
+      );
+    }
+    return { ...shot, dialogue };
+  });
+}
+
+export function buildStagedDialogueNaturalnessQcSystemPrompt(
+  language: "th" | "en"
+): string {
+  if (language === "th") {
+    return [
+      "คุณเป็นบรรณาธิการบทพูดภาษาไทยสำหรับเรื่องสั้นและวิดีโอรีวิว ตรวจบทพูดทุกช็อตจากสถานการณ์และบริบทที่ให้มา แล้วแก้เฉพาะช็อตที่ฟังไม่เหมือนคนไทยพูดกันจริง",
+      "บทพูดที่ผ่านต้องพูดออกเสียงได้ลื่น เป็นภาษาพูดที่เหมาะกับตัวละครและสถานการณ์ แต่ละคนต้องตอบรับสิ่งที่อีกคนพูดหรือทำ ห้ามให้ตัวละครพูดสรุปภาพที่คนดูเห็นอยู่แล้ว และอย่าเพิ่มความยาวจนพูดไม่ทันเวลาของช็อต",
+      "ให้แก้เมื่อพบสำนวนภาษาเขียน/แปลตรงตัว คำจับคู่กันไม่เป็นธรรมชาติ ประโยคบรรยายความรู้ หรือภาษาขายของ เช่น ‘ควรแยกดูแล...ให้ตรงจุด’ ให้ใช้คำที่คนพูดจริงตามบริบท เช่น พูดถึงความมันที่ ‘โคนผม’ เมื่อหมายถึงรากผม แทนการใช้คำที่ฟังเหมือนข้อความบนฉลาก",
+      "ตัวอย่างสำนวนแข็ง: ‘ถ้าเริ่มมันเร็ว ควรแยกดูแลหนังศีรษะกับเส้นผมให้ตรงจุด’ ปรับเป็นบทสนทนาที่ตอบกับสถานการณ์จริง เช่น ‘โคนผมมันเร็วเหรอ? งั้นลองเริ่มดูแลตรงโคนก่อนนะ’ อย่าคัดลอกตัวอย่างนี้หากไม่เข้ากับฉาก",
+      "แก้ให้น้อยที่สุด รักษาใจความ อารมณ์ ความสัมพันธ์ ข้อเท็จจริงของสินค้า และลำดับผู้พูด ห้ามเพิ่มคุณสมบัติหรือผลลัพธ์ของสินค้า ราคา โปรโมชัน หรือคำกล่าวอ้างใหม่ ห้ามเปลี่ยนภาษาที่เลือก",
+      "ตอบ JSON ตาม schema เท่านั้น โดยให้รีวิวครบทุก shotId: ใช้ verdict natural และ issue none เมื่อบทพูดเป็นธรรมชาติแล้ว; ใช้ verdict revised พร้อม issue ที่ตรงสาเหตุและข้อความแก้ไขเมื่อจำเป็น; issue ใช้ได้เฉพาะ none, awkward_wording, written_or_promotional, weak_response; อย่าเขียนทับบทที่เป็นธรรมชาติอยู่แล้ว",
+      "สำหรับบทพูดสองคน ให้คืน dialogueTurns ทุกครั้งที่มีการแก้ โดยใช้ castId เดิมทุกตัว เรียงผู้พูดและจำนวนเทิร์นเดิม ห้ามเปลี่ยนชื่อหรือสลับผู้พูด; ส่งเฉพาะคำพูดใน line ไม่ใส่ชื่อผู้พูด",
+      "สำหรับบทพูดคนเดียว ให้คืน dialogue ที่แก้แล้วเมื่อจำเป็น ห้ามเปลี่ยนข้อเท็จจริงหรือเพิ่มเนื้อหาใหม่",
+    ].join("\n\n");
+  }
+  return [
+    "You are a dialogue editor for short stories and product-review videos. Review every shot in context and revise only dialogue that does not sound like something a person would naturally say in that exact situation.",
+    "Accepted dialogue must be easy to say aloud, fit the character and situation, and respond to the previous line or action. Do not make a character narrate what viewers can already see or make a line too long to speak within its shot duration.",
+    "Revise stiff written language, literal translations, unnatural collocations, generic advice, or promotional copy. Keep the voice conversational and specific to the moment.",
+    "Make the smallest change that improves naturalness. Preserve meaning, emotion, relationships, product facts, and speaker order. Do not add product features, outcomes, prices, promotions, or other claims. Keep the selected language.",
+    "Return JSON matching the schema and review every shotId: use verdict natural with issue none when the dialogue already sounds natural; use verdict revised with the matching issue and corrected text when needed. Allowed issue values are none, awkward_wording, written_or_promotional, and weak_response. Do not rewrite dialogue that is already natural.",
+    "For two-person dialogue, return dialogueTurns for every revised shot using the exact original castIds, turn count, and speaker order. Each line contains only spoken words, never a speaker name.",
+    "For solo dialogue, return the revised dialogue string only when needed. Do not change facts or add new content.",
+  ].join("\n\n");
+}
+
 export function isStagedProductVisibleInShot(
   shot: Pick<StagedStoryArcShot, "productInShot" | "visualSummary" | "movementDirection">,
   productName?: string | null,
@@ -1337,6 +1480,12 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
   // so an English script never gets a Thai role note spliced into it.
   const rosterLanguage: "th" | "en" =
     input.languagePlan?.summaryLanguage === "en" ? "en" : "th";
+  const dialogueLanguage: "th" | "en" =
+    input.languagePlan?.dialogueLanguage === "en" ? "en" : "th";
+  const dialogueStyleDirection =
+    dialogueLanguage === "th"
+      ? "บทพูดภาษาไทยต้องฟังเหมือนคนคุยกันจริง ใช้คำพูดติดปากตามสถานการณ์ ไม่ใช้สำนวนภาษาเขียน ภาษาฉลากสินค้า หรือประโยคแนะนำแบบโฆษณา ให้แต่ละประโยคตอบกับสิ่งที่อีกคนพูดหรือทำ"
+      : "Dialogue must sound like spontaneous conversation in the selected scene, not written copy, label language, or generic advertising advice. Each line should respond to what the other person said or did.";
 
   const castRosterBlock =
     conversationMode === "two_person_conversation"
@@ -1418,6 +1567,7 @@ Marketplace Auto Review Story Arc skill runtime context:
 - selected storytelling_structure: ${structureKey}
 - selected review_tone: ${toneKey}
 - dialogue duration target: ${dialogueWindowMinSeconds}-${shotDurationSeconds} seconds per shot. Write only dialogue that can be spoken naturally within this window; shorten the line while preserving its key story beat instead of rushing or padding it.
+- dialogue naturalness: ${dialogueStyleDirection}
 - The loaded skill owns concept selection, Auto tone/structure resolution, dialogue, visual action, product timing, and other creative decisions. ${structureDirection}. ${toneDirection}. Keep every shot purposeful and action-led; show a visible gesture, reaction, or product-use action that matches its dialogue rather than repeating static talking-head scenes. Persuade through relevant evidence, demonstration, and honest product fit; avoid hard-selling and unsupported outcomes. Apply any explicit user selections as facts and return only the requested structured output.${selectedConceptInstruction}${commercialContentInstruction}${noveltyInstruction}${castRosterBlock}${supportingCastBlock}${minorSilenceLock}`;
   const systemPrompt = `${skillInstructions}\n\n${runtimeInstructions}`;
 
@@ -1812,7 +1962,97 @@ Marketplace Auto Review Story Arc skill runtime context:
         cast: input.cast,
       });
 
-      const normalizedDialogue = enforcedShots
+      const dialogueQcReviewSchema = z.object({
+        shotId: z.number().int().min(1),
+        verdict: z.enum(["natural", "revised"]),
+        issue: z.enum([
+          "none",
+          "awkward_wording",
+          "written_or_promotional",
+          "weak_response",
+        ]),
+        dialogue: z.string().trim().min(1).max(320).optional(),
+        dialogueTurns: z.array(
+          z.object({
+            castId: z.string().trim().min(1).max(80),
+            line: z.string().trim().min(1).max(320),
+          }).strict()
+        ).min(2).max(18).optional(),
+      }).strict();
+      const dialogueQcResponseSchema = z.object({
+        reviews: z.array(dialogueQcReviewSchema).length(enforcedShots.length),
+      }).strict();
+      const dialogueQcRes = await callLLMStructured({
+        systemPrompt:
+          buildStagedDialogueNaturalnessQcSystemPrompt(dialogueLanguage),
+        userMessage: JSON.stringify({
+          dialogueLanguage,
+          conversationMode,
+          cast: activeCast.map(member => ({
+            castId: member.castId,
+            name: member.name,
+            role: member.role,
+          })),
+          shots: enforcedShots.map(shot => ({
+            shotId: shot.shotId,
+            durationSeconds: shot.durationSeconds,
+            title: shot.title,
+            storySummary: shot.storySummary,
+            visualSummary: shot.visualSummary,
+            dialogue: shot.dialogue,
+            ...(shot.dialogueTurns
+              ? {
+                  dialogueTurns: shot.dialogueTurns.map(turn => ({
+                    castId: turn.castId,
+                    speakerName: turn.speakerName,
+                    line: turn.line,
+                  })),
+                }
+              : {}),
+          })),
+        }),
+        model: chosenModel,
+        zodSchema: dialogueQcResponseSchema,
+        userId,
+        tenantId,
+        maxRetries: 0,
+        repairCompleteJson: true,
+        disableProviderFallbacks: true,
+        maxTokens: 4000,
+        billingDescription: `Staged Story Arc dialogue naturalness QC (${chosenModel})`,
+        billingMetadata: {
+          workflow: "marketplace_auto_review_story_arc",
+          stage: "dialogue_naturalness_qc",
+          runId: input.runId,
+          planRevision,
+        },
+      });
+      const dialogueQcModel = clean(dialogueQcRes.modelId);
+      const dialogueQcProvider = clean(dialogueQcRes.providerName);
+      if (!dialogueQcModel || !dialogueQcProvider) {
+        throw new Error("STAGED_DIALOGUE_QC_PROVIDER_PROVENANCE_MISSING");
+      }
+      const qualityCheckedShots = applyStagedDialogueQcReviews(
+        enforcedShots,
+        dialogueQcRes.data.reviews,
+        conversationMode
+      );
+      const revisedDialogueCount = dialogueQcRes.data.reviews.filter(
+        review => review.verdict === "revised"
+      ).length;
+      console.info(
+        "[generateStagedStoryArcPlanWithLLM] dialogue naturalness QC completed",
+        {
+          runId: input.runId,
+          shotCount: qualityCheckedShots.length,
+          revisedDialogueCount,
+          dialogueLanguage,
+          model: dialogueQcModel,
+          provider: dialogueQcProvider,
+        }
+      );
+
+      const normalizedDialogue = qualityCheckedShots
         .map(shot => clean(shot.dialogue)
           .replace(/^[^:：]{1,40}[:：]\s*/gm, "")
           .replace(/[\s\p{P}\p{S}]/gu, "")
@@ -1822,7 +2062,7 @@ Marketplace Auto Review Story Arc skill runtime context:
         throw new Error("STAGED_STORY_PLAN_REPEATED_DIALOGUE");
       }
       if (
-        enforcedShots.some(shot =>
+        qualityCheckedShots.some(shot =>
           /เล่าให้ฟังหน่อยว่าเรื่อง|เบื่อและหงุดหงิดไหมกับปัญหาเดิม|ช็อตนี้พามาดูจุดชวนหัวเสีย|เผยสินค้า/.test(
             shot.dialogue
           )
@@ -1835,7 +2075,7 @@ Marketplace Auto Review Story Arc skill runtime context:
       // shot contract (ids 1..N unique ascending, duration in range) before
       // trusting the LLM output. Fixed count -> exact match; auto -> range.
       const contract = validateStagedShotContract(
-        enforcedShots.map(shot => ({
+        qualityCheckedShots.map(shot => ({
           shotId: shot.shotId,
           durationSeconds: shot.durationSeconds,
         })),
@@ -1854,7 +2094,7 @@ Marketplace Auto Review Story Arc skill runtime context:
           selectedConceptId,
           conceptOptions,
           storySummary,
-          shots: enforcedShots.map(s => `${s.shotId}:${s.title}:${s.dialogue}`),
+          shots: qualityCheckedShots.map(s => `${s.shotId}:${s.title}:${s.dialogue}`),
         });
 
         return {
@@ -1874,14 +2114,14 @@ Marketplace Auto Review Story Arc skill runtime context:
               .filter(Boolean)
               .slice(0, 5),
           },
-          shots: enforcedShots,
+          shots: qualityCheckedShots,
           referenceManifestHash,
           storyPlanHash,
           source: "llm_story_arc",
           authoring: {
             model: authoringModel,
             provider: authoringProvider,
-            creditsUsed: llmRes.creditsUsed,
+            creditsUsed: llmRes.creditsUsed + dialogueQcRes.creditsUsed,
           },
           languagePlan: input.languagePlan,
           ...(input.cast && input.cast.length > 0
