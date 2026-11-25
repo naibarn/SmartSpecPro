@@ -34713,6 +34713,7 @@ function assertPublishableRenderArtifact(input: {
   url: string;
   plan: AutoReviewPlan;
   metadata: RunMetadata;
+  allowPendingLibraryLink?: boolean;
 }) {
   const url = cleanText(input.url);
   if (!url) throw new Error("Render artifact URL is missing");
@@ -34817,7 +34818,10 @@ function assertPublishableRenderArtifact(input: {
   // gate still runs before rendering starts; finalization packages already
   // approved clips and must not re-apply a missing reference requirement for
   // work that has already completed.
-  assertMarketplaceAutoReviewGovernanceReady(input.metadata, "finalize");
+  assertMarketplaceAutoReviewGovernanceReady(
+    input.metadata,
+    input.allowPendingLibraryLink ? "render" : "finalize"
+  );
 }
 
 function buildRenderFinalizationMetadata(params: {
@@ -34833,6 +34837,7 @@ function buildRenderFinalizationMetadata(params: {
     url: params.resultUrl,
     plan: params.plan,
     metadata: params.metadata,
+    allowPendingLibraryLink: params.allowPendingLibraryLink,
   });
   const libraryItemId = params.libraryItemId ?? null;
   if (!libraryItemId && params.allowPendingLibraryLink !== true) {
