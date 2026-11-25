@@ -11,7 +11,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import JSON, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -252,6 +252,9 @@ async def callback(
                     "updatedAt" = NOW()
                 WHERE id = :id
                 """
+            ).bindparams(
+                bindparam("granted_scopes", type_=JSON),
+                bindparam("metadata", type_=JSON),
             ),
             {
                 "provider_user_id": profile["id"],
@@ -281,6 +284,9 @@ async def callback(
                 )
                 RETURNING id
                 """
+            ).bindparams(
+                bindparam("granted_scopes", type_=JSON),
+                bindparam("metadata", type_=JSON),
             ),
             {
                 "tenant_id": tenant_id,
@@ -343,7 +349,7 @@ async def callback(
                         "updatedAt" = NOW()
                     WHERE id = :id
                     """
-                ),
+                ).bindparams(bindparam("metadata", type_=JSON)),
                 {
                     "connection_id": connection_id,
                     "page_name": page_name,
@@ -369,7 +375,7 @@ async def callback(
                     )
                     RETURNING id
                     """
-                ),
+                ).bindparams(bindparam("metadata", type_=JSON)),
                 {
                     "tenant_id": tenant_id,
                     "connection_id": connection_id,

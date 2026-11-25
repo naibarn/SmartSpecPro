@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.dialects.postgresql.asyncpg import PGDialect_asyncpg
 
 from app.api import meta_oauth
 
@@ -81,7 +83,10 @@ async def test_callback_rejects_expired_state(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("reconnect", [False, True])
+async def test_callback_upserts_connection_and_pages(
+    monkeypatch: pytest.MonkeyPatch, reconnect: bool
+) -> None:
     monkeypatch.setattr(
         meta_oauth,
         "take_value",
@@ -91,9 +96,9 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
     db = AsyncMock()
     db.execute = AsyncMock(
         side_effect=[
-          _make_result(fetchone_value=None),  # existing connection lookup
+          _make_result(fetchone_value=(7,) if reconnect else None),  # existing connection lookup
           _make_result(scalar_one_value=7),    # inserted connection id
-          _make_result(fetchone_value=None),   # existing page lookup
+          _make_result(fetchone_value=(11,) if reconnect else None),  # existing page lookup
           _make_result(scalar_one_value=11),   # inserted page id
         ]
     )
@@ -162,7 +167,18 @@ async def test_callback_upserts_connection_and_pages(monkeypatch: pytest.MonkeyP
     ]
     db.commit.assert_awaited_once()
 
-    connection_params = db.execute.await_args_list[1].args[1]
+    connection_stmt, connection_params = db.execute.await_args_list[1].args
+    page_stmt, page_params = db.execute.await_args_list[3].args
+    dialect = PGDialect_asyncpg()
+    # asyncpg needs JSON parameters encoded as text on both insert and reconnect.
+    for stmt, params, names in [
+        (connection_stmt, connection_params, ("granted_scopes", "metadata")),
+        (page_stmt, page_params, ("metadata",)),
+    ]:
+        processors = stmt.compile(dialect=dialect)._bind_processors
+        for name in names:
+            assert json.loads(processors[name](params[name])) == params[name]
+
     assert connection_params["provider_user_id"] == "meta-user-1"
     assert connection_params["token_expires_at"] is not None
 
