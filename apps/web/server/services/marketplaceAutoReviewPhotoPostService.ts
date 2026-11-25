@@ -285,7 +285,9 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   if (snapshot.affiliateMode === "description" && !pkg.affiliateUrl) fail("AFFILIATE_LINK_MISSING", "No canonical affiliate URL is stored for this product");
   if (snapshot.affiliateMode === "first_comment") fail("FIRST_COMMENT_NOT_ENABLED", "Affiliate first-comment publishing is not enabled until the connected app's permission is confirmed");
   if (snapshot.affiliateMode === "none" && !snapshot.allowNoAffiliate) fail("NO_AFFILIATE_CONFIRMATION_REQUIRED", "Explicitly confirm publishing without the affiliate link");
-  if (!snapshot.commercialDisclosure.trim()) fail("COMMERCIAL_DISCLOSURE_REQUIRED", "Add the required commercial disclosure to the photo caption");
+  if (snapshot.affiliateMode !== "none" && !snapshot.commercialDisclosure) {
+    fail("COMMERCIAL_DISCLOSURE_REQUIRED", "Add the required commercial disclosure to the photo caption");
+  }
 
   const affiliateUrl = ["description", "manual_native"].includes(snapshot.affiliateMode) ? pkg.affiliateUrl : null;
   const publishCaption = assertFacebookPhotoPostCaptionLength(composeFacebookPhotoPostCaption({ caption: snapshot.caption, hashtags: snapshot.hashtags, commercialDisclosure: snapshot.commercialDisclosure, affiliateUrl: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null }));
@@ -354,7 +356,7 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     imageContentType: inspected.contentType,
     photoPublicationStatus: snapshot.affiliateMode === "manual_native" ? "needs_user_action" : "queued",
     affiliateLinkStatus: affiliateUrl ? (snapshot.affiliateMode === "manual_native" ? "manual_handoff" : "pending") : "none",
-    commercialDisclosureStatus: "included_in_caption",
+    commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_caption" : "not_provided",
     attributionVerificationStatus: "unverified",
     reconciliation: { state: "not_started" },
     ...(snapshot.affiliateMode === "manual_native" ? { manualHandoff: { state: "prepared", selectedPhotoVariant: snapshot.variant, imageUrl: image.imageUrl, affiliateUrl: pkg.affiliateUrl, instructions: "เปิดภาพและข้อความตัวอย่างใน Auto Review แล้วนำไปเผยแพร่ใน Facebook Page โดยใช้ native product tag และ commercial partnership disclosure ของ Facebook" } } : {}),

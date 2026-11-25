@@ -167,7 +167,7 @@ export function FacebookReelsPublishCard(props: {
   const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
-    commercialDisclosure.trim() && commercialDisclosure.length <= 500 && !invalidHashtags &&
+    (affiliateMode === "none" || disclosureReady) && commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && affiliateMode !== "first_comment" && !photoHistoryHasUncertain &&
     !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
@@ -262,6 +262,11 @@ export function FacebookReelsPublishCard(props: {
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
             <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="ระบุข้อความเปิดเผยที่เหมาะสมกับโพสต์" />
+            <Text type="supporting" color="secondary">
+              {affiliateMode === "none"
+                ? "เว้นว่างได้เมื่อโพสต์ไม่มีผู้สนับสนุนหรือความสัมพันธ์เชิงพาณิชย์"
+                : "กรอกข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ก่อนเผยแพร่แบบ Affiliate"}
+            </Text>
             <Banner title="ภาพนี้สร้างด้วย AI" collapsible={false}><Text>กรุณาตรวจและเปิดเผยตามข้อกำหนดของ Facebook ก่อนเผยแพร่ การเผยแพร่ภาพผ่าน API นี้ไม่มีช่องส่งค่า is_ai_generated โดยเฉพาะ</Text></Banner>
             {photoHistoryHasUncertain ? <Banner title="ต้องตรวจสอบสถานะก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจประวัติด้านล่างก่อนสร้างโพสต์ใหม่</Text></Banner> : null}
             {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}

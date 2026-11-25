@@ -218,6 +218,24 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" })).toBeChecked();
   });
 
+  it("enables Photo Post without disclosure after confirming no affiliate link", () => {
+    render(<FacebookReelsPublishCard runId="run-1" initialHashtags={["ออยล์เซรั่ม"]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
+    const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
+    expect(publish).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "none" } });
+    expect(publish).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" }));
+
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
+    expect(mocks.photoMutate).toHaveBeenCalledWith(expect.objectContaining({
+      snapshot: expect.objectContaining({ affiliateMode: "none", allowNoAffiliate: true, commercialDisclosure: "" }),
+    }));
+  });
+
   it("refreshes Photo Post choices on tab entry and when the gallery changes", () => {
     const { rerender } = render(<FacebookReelsPublishCard runId="run-1" photoImagesRevision="queued" />);
     expect(mocks.refetchPhotos).not.toHaveBeenCalled();
