@@ -52,7 +52,7 @@ import {
 import {
   buildStagedImagePromptContentHash,
   buildStagedVideoPromptContentHash,
-  isCompleteStagedImagePrompt,
+  generateStagedImagePromptWithRecovery,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 import {
   detectMarketplaceAutoReviewShotPeople,
@@ -4557,37 +4557,73 @@ async function generateCompleteStagedShotPrompt(input: {
       stage: "image",
       requestIdempotencyKey: input.requestIdempotencyKey,
     });
-    const refresh = await refreshSequentialShotPromptWithSkillDirect({
-      ...refreshInput,
-      skillVisionUrls: await stageMarketplaceInlineImageReferences(
-        refreshInput.skillVisionUrls,
-        {
-          auditContext: {
-            source: "marketplace_auto_review_staged",
-            tenantId,
-            userId: input.run.userId,
-          },
-        }
-      ) ?? [],
+    const skillVisionUrls = await stageMarketplaceInlineImageReferences(
+      refreshInput.skillVisionUrls,
+      {
+        auditContext: {
+          source: "marketplace_auto_review_staged",
+          tenantId,
+          userId: input.run.userId,
+        },
+      }
+    ) ?? [];
+    const generation = await generateStagedImagePromptWithRecovery({
+      requestIdempotencyKey: input.requestIdempotencyKey,
+      generate: attempt =>
+        refreshSequentialShotPromptWithSkillDirect({
+          ...refreshInput,
+          skillVisionUrls,
+          requestIdempotencyKey: attempt.requestIdempotencyKey,
+          ...(attempt.recoveryInstruction
+            ? { recoveryInstruction: attempt.recoveryInstruction }
+            : {}),
+        }),
     });
+    const refresh =
+      generation.attemptResults[generation.attemptResults.length - 1]!;
     const prompt = refresh.startFrameImagePrompt.trim();
-    if (!isCompleteStagedImagePrompt(prompt)) {
+    const estimatedCredits = generation.attemptResults.reduce(
+      (total, attempt) => total + attempt.estimatedCredits,
+      0
+    );
+    if (generation.validationIssues.length > 0) {
+      console.error(
+        "[marketplaceAutoReview] image prompt failed validation after bounded recovery",
+        {
+          runId: input.run.id,
+          shotId: input.shotId,
+          attempts: generation.attemptResults.length,
+          validationIssues: generation.validationIssues,
+        }
+      );
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: `MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}`,
+        message: `MARKETPLACE_IMAGE_PROMPT_SKILL_OUTPUT_INCOMPLETE:shot-${input.shotId}:attempts-${generation.attemptResults.length}:requirements-${generation.validationIssues.join(",")}`,
       });
+    }
+    if (generation.recoveryIssues.length > 0) {
+      console.info(
+        "[marketplaceAutoReview] image prompt recovered after validation retry",
+        {
+          runId: input.run.id,
+          shotId: input.shotId,
+          attempts: generation.attemptResults.length,
+          recoveredIssues: generation.recoveryIssues,
+          estimatedCredits,
+        }
+      );
     }
     return {
       prompt,
       model: refresh.model,
       provider: refresh.provider,
-      estimatedCredits: refresh.estimatedCredits,
+      estimatedCredits,
       skillRuns: [
         {
           skill: "product-review-sequential-storyboard",
           model: refresh.model,
           provider: refresh.provider,
-          estimatedCredits: refresh.estimatedCredits,
+          estimatedCredits,
         },
       ],
     };

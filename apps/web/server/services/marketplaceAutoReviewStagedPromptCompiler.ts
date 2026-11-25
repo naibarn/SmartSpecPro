@@ -26,18 +26,118 @@ const STAGED_ACCEPTED_IMAGE_PATTERN =
 const STAGED_VIDEO_MOTION_PATTERN =
   /camera|motion|movement|action|กล้อง|เคลื่อนไหว|การเคลื่อนไหว|การกระทำ/i;
 
-export function isCompleteStagedImagePrompt(value: unknown): value is string {
-  if (typeof value !== "string") return false;
+export type StagedImagePromptValidationIssue =
+  | "prompt_missing"
+  | "prompt_too_short"
+  | "prompt_too_long"
+  | "vertical_format_missing"
+  | "reference_lock_missing"
+  | "composition_missing"
+  | "no_text_directive_missing";
+
+export function getStagedImagePromptValidationIssues(
+  value: unknown
+): StagedImagePromptValidationIssue[] {
+  if (typeof value !== "string" || !value.trim()) return ["prompt_missing"];
   const prompt = value.trim();
-  return (
-    prompt.length >= STAGED_IMAGE_PROMPT_MIN_CHARS &&
-    prompt.length <=
-      PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS &&
-    STAGED_VERTICAL_FORMAT_PATTERN.test(prompt) &&
-    STAGED_REFERENCE_LOCK_PATTERN.test(prompt) &&
-    STAGED_IMAGE_COMPOSITION_PATTERN.test(prompt) &&
-    STAGED_NO_TEXT_PATTERN.test(prompt)
+  const issues: StagedImagePromptValidationIssue[] = [];
+  if (prompt.length < STAGED_IMAGE_PROMPT_MIN_CHARS) {
+    issues.push("prompt_too_short");
+  }
+  if (
+    prompt.length > PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS
+  ) {
+    issues.push("prompt_too_long");
+  }
+  if (!STAGED_VERTICAL_FORMAT_PATTERN.test(prompt)) {
+    issues.push("vertical_format_missing");
+  }
+  if (!STAGED_REFERENCE_LOCK_PATTERN.test(prompt)) {
+    issues.push("reference_lock_missing");
+  }
+  if (!STAGED_IMAGE_COMPOSITION_PATTERN.test(prompt)) {
+    issues.push("composition_missing");
+  }
+  if (!STAGED_NO_TEXT_PATTERN.test(prompt)) {
+    issues.push("no_text_directive_missing");
+  }
+  return issues;
+}
+
+export function isCompleteStagedImagePrompt(value: unknown): value is string {
+  return getStagedImagePromptValidationIssues(value).length === 0;
+}
+
+export function buildStagedImagePromptRecoveryInstruction(
+  issues: readonly StagedImagePromptValidationIssue[]
+): string {
+  const requirements: Record<StagedImagePromptValidationIssue, string> = {
+    prompt_missing: "Write a complete image prompt from the supplied shot contract.",
+    prompt_too_short: `Make the prompt at least ${STAGED_IMAGE_PROMPT_MIN_CHARS} characters and describe the shot clearly.`,
+    prompt_too_long: `Keep the prompt within ${PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS} characters.`,
+    vertical_format_missing: "Explicitly specify a vertical 9:16 image.",
+    reference_lock_missing:
+      "Explicitly bind the relevant @ImageN reference(s) to product or character identity; do not invent reference details.",
+    composition_missing:
+      "Describe camera framing or composition and lighting or focus.",
+    no_text_directive_missing:
+      "Explicitly say: Do not add text, captions, or subtitles.",
+  };
+  const missingRequirements = [...new Set(issues)].map(
+    issue => `- ${requirements[issue]}`
   );
+  return [
+    "Regenerate the complete start_frame_image_prompt for this shot. The previous prompt failed these checks; satisfy every listed requirement while preserving the shot contract and product facts:",
+    ...missingRequirements,
+    "Return the complete valid JSON object again; do not return a checklist or explanation.",
+  ].join("\n");
+}
+
+export async function generateStagedImagePromptWithRecovery<
+  T extends { startFrameImagePrompt: string },
+>(input: {
+  requestIdempotencyKey: string;
+  generate: (attempt: {
+    attempt: 1 | 2;
+    requestIdempotencyKey: string;
+    recoveryInstruction?: string;
+  }) => Promise<T>;
+}): Promise<{
+  attemptResults: T[];
+  recoveryIssues: StagedImagePromptValidationIssue[];
+  validationIssues: StagedImagePromptValidationIssue[];
+}> {
+  const baseKey = input.requestIdempotencyKey.trim();
+  if (!baseKey) {
+    throw new Error("STAGED_IMAGE_PROMPT_IDEMPOTENCY_KEY_REQUIRED");
+  }
+  const first = await input.generate({
+    attempt: 1,
+    requestIdempotencyKey: baseKey,
+  });
+  const firstIssues = getStagedImagePromptValidationIssues(
+    first.startFrameImagePrompt
+  );
+  if (firstIssues.length === 0) {
+    return {
+      attemptResults: [first],
+      recoveryIssues: [],
+      validationIssues: [],
+    };
+  }
+
+  const second = await input.generate({
+    attempt: 2,
+    requestIdempotencyKey: `${baseKey}:image-validation-retry-1`,
+    recoveryInstruction: buildStagedImagePromptRecoveryInstruction(firstIssues),
+  });
+  return {
+    attemptResults: [first, second],
+    recoveryIssues: firstIssues,
+    validationIssues: getStagedImagePromptValidationIssues(
+      second.startFrameImagePrompt
+    ),
+  };
 }
 
 export function isCompleteStagedVideoPrompt(
