@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import secrets
 from typing import Any, Literal, Optional
 
@@ -67,6 +69,12 @@ class ReelVideo(ReelConnection):
 class ReelFinish(ReelVideo):
     description: str = Field(max_length=5000)
     is_ai_generated: bool
+
+
+class PhotoStatus(BaseModel):
+    page_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+$")
+    access_token: str = Field(min_length=1, max_length=8192)
+    photo_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+$")
 
 
 def _raise_reels_meta_error(exc: Exception, generic_message: str) -> HTTPException:
@@ -158,7 +166,7 @@ async def publish_page_photo(
     x_meta_file_name: str = Header(..., min_length=1, max_length=255),
     x_meta_content_type: str = Header(..., min_length=1, max_length=100),
     x_meta_file_size: int = Header(..., gt=0, le=PHOTO_MAX_UPLOAD_BYTES),
-    x_meta_caption: str = Header(..., max_length=2000),
+    x_meta_caption_base64: str = Header(..., min_length=1, max_length=11000),
     content_length: int = Header(..., gt=0, le=PHOTO_MAX_UPLOAD_BYTES),
     _auth: None = Depends(_verify_internal_token),
 ) -> dict[str, Any]:
@@ -166,6 +174,12 @@ async def publish_page_photo(
         raise HTTPException(status_code=400, detail="Invalid photo upload length")
     if x_meta_content_type not in PHOTO_CONTENT_TYPES:
         raise HTTPException(status_code=415, detail="Unsupported photo content type")
+    try:
+        caption = base64.b64decode(x_meta_caption_base64, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid photo caption encoding") from exc
+    if len(caption) > 2000:
+        raise HTTPException(status_code=400, detail="Photo caption is too long")
     content = bytearray()
     async for chunk in request.stream():
         content.extend(chunk)
@@ -177,7 +191,7 @@ async def publish_page_photo(
     async with MetaGraphClient(x_meta_access_token, page_id=x_meta_page_id) as client:
         try:
             return await client.publish_page_photo(
-                message=x_meta_caption,
+                message=caption,
                 content=bytes(content),
                 filename=x_meta_file_name,
                 content_type=x_meta_content_type,
@@ -186,6 +200,17 @@ async def publish_page_photo(
             raise _raise_reels_meta_error(exc, "Meta photo publication could not be confirmed; check the Page before retry") from exc
         except (MetaApiError, ValueError) as exc:
             raise HTTPException(status_code=502, detail="Meta photo publication could not be confirmed; check the Page before retry") from exc
+
+
+@router.post("/photos/status")
+async def get_page_photo_status(request: PhotoStatus, _auth: None = Depends(_verify_internal_token)) -> dict[str, Any]:
+    async with MetaGraphClient(request.access_token, page_id=request.page_id) as client:
+        try:
+            return await client.get_page_photo_status(request.photo_id)
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta photo status could not be verified") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta photo status could not be verified") from exc
 
 
 def _map_error(exc: Exception) -> HTTPException:

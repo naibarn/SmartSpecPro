@@ -278,6 +278,17 @@ class MetaGraphClient(SocialProviderClient):
             raise MetaApiError("Meta did not return a photo publication ID")
         return payload
 
+    async def get_page_photo_status(self, photo_id: str) -> dict[str, Any]:
+        """Read a saved photo receipt and its published Page story identifier."""
+        if not isinstance(photo_id, str) or not photo_id.isascii() or not photo_id.isdigit():
+            raise ValueError("Invalid Meta photo ID")
+        return await self._request(
+            "GET",
+            photo_id,
+            params={"fields": "id,page_story_id,link,created_time"},
+            base_url=f"https://graph.facebook.com/{PHOTO_GRAPH_API_VERSION}",
+        )
+
     @staticmethod
     def _reels_video_id(video_id: str) -> str:
         # Provider identifiers are numeric; reject paths and query strings before

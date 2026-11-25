@@ -132,6 +132,10 @@ async def test_photo_publish_internal_endpoint_streams_binary_and_requires_inter
             calls.append((self.page_id, self.access_token, kwargs))
             return {"id": "photo-123", "post_id": "page-post-456"}
 
+        async def get_page_photo_status(self, photo_id):
+            calls.append((self.page_id, self.access_token, photo_id))
+            return {"id": photo_id, "page_story_id": "page-story-456", "link": "https://www.facebook.com/photo/456"}
+
     monkeypatch.setattr(social_publish, "MetaGraphClient", FakeMetaClient)
     app = FastAPI()
     app.include_router(social_publish.router)
@@ -142,7 +146,7 @@ async def test_photo_publish_internal_endpoint_streams_binary_and_requires_inter
         "x-meta-file-name": "review.png",
         "x-meta-content-type": "image/png",
         "x-meta-file-size": "15",
-        "x-meta-caption": "Review #care",
+        "x-meta-caption-base64": "UmV2aWV3ICNjYXJl",
         "content-type": "image/png",
     }
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
@@ -154,10 +158,15 @@ async def test_photo_publish_internal_endpoint_streams_binary_and_requires_inter
         published = await client.post("/api/internal/social/photos/publish", content=b"png-image-bytes", headers=headers)
         assert published.status_code == 200
         assert published.json() == {"id": "photo-123", "post_id": "page-post-456"}
+        status = await client.post("/api/internal/social/photos/status", json={
+            "page_id": "123", "access_token": "page-secret", "photo_id": "456",
+        }, headers={"x-internal-token": "internal-token"})
+        assert status.status_code == 200
+        assert status.json()["page_story_id"] == "page-story-456"
 
     assert calls == [("123", "page-secret", {
         "message": "Review #care",
         "content": b"png-image-bytes",
         "filename": "review.png",
         "content_type": "image/png",
-    })]
+    }), ("123", "page-secret", "456")]

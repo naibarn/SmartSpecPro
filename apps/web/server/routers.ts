@@ -118,6 +118,7 @@ import { metaChannelsRouter } from "./routers/metaChannels";
 import { uploadPostRouter } from "./routers/uploadPost";
 import { socialPublishingRouter } from "./routers/socialPublishing";
 import { marketplaceAutoReviewReelsRouter } from "./routers/marketplaceAutoReviewReels";
+import { marketplaceAutoReviewPhotoPostsRouter } from "./routers/marketplaceAutoReviewPhotoPosts";
 import { socialModerationRouter } from "./routers/socialModeration";
 import { socialAutomationRouter } from "./routers/socialAutomation";
 import { searchRouter } from "./routers/search";
@@ -3359,6 +3360,7 @@ type AppRouterShape = {
   uploadPost: typeof uploadPostRouter;
   socialPublishing: typeof socialPublishingRouter;
   marketplaceAutoReviewReels: typeof marketplaceAutoReviewReelsRouter;
+  marketplaceAutoReviewPhotoPosts: typeof marketplaceAutoReviewPhotoPostsRouter;
   contentComposer: typeof contentComposerRouter;
   socialModeration: typeof socialModerationRouter;
   socialInbox: typeof socialInboxRouter;
@@ -3549,6 +3551,7 @@ const appRouterInternal = router<AppRouterShape>({
   uploadPost: uploadPostRouter,
   socialPublishing: socialPublishingRouter,
   marketplaceAutoReviewReels: marketplaceAutoReviewReelsRouter,
+  marketplaceAutoReviewPhotoPosts: marketplaceAutoReviewPhotoPostsRouter,
   contentComposer: contentComposerRouter,
   socialModeration: socialModerationRouter,
   socialInbox: socialInboxRouter,

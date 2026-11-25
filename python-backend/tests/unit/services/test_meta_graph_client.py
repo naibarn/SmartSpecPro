@@ -108,6 +108,35 @@ async def test_publish_page_photo_does_not_retry_ambiguous_timeout() -> None:
 
 
 @pytest.mark.asyncio
+async def test_read_page_photo_status_uses_pinned_graph_version_and_published_story_fields() -> None:
+    client = AsyncMock()
+    client.request.return_value = make_response(200, {
+        "id": "photo-123",
+        "page_story_id": "page-story-456",
+        "link": "https://www.facebook.com/example/photos/456",
+    })
+    api = MetaGraphClient("private-token", client=client, api_version="v25.0")
+
+    result = await api.get_page_photo_status("123")
+
+    assert result["page_story_id"] == "page-story-456"
+    assert client.request.await_args.args == ("GET", "https://graph.facebook.com/v27.0/123")
+    assert client.request.await_args.kwargs["params"]["fields"] == "id,page_story_id,link,created_time"
+    assert client.request.await_args.kwargs["params"]["access_token"] == "private-token"
+
+
+@pytest.mark.asyncio
+async def test_read_page_photo_status_rejects_non_provider_ids_before_request() -> None:
+    client = AsyncMock()
+    api = MetaGraphClient("private-token", client=client)
+
+    with pytest.raises(ValueError):
+        await api.get_page_photo_status("123/comments")
+
+    client.request.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_reels_lifecycle_uses_pinned_version_and_preserves_provider_receipts() -> None:
     client = AsyncMock()
     upload_url = "https://rupload.facebook.com/video-upload/v27.0/456"
