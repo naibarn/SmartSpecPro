@@ -53,7 +53,13 @@ vi.mock("@/lib/trpc", () => ({
 vi.mock("@astryxdesign/core/Banner", () => ({ Banner: ({ title, children }: any) => <section><strong>{title}</strong>{children}</section> }));
 vi.mock("@astryxdesign/core/Button", () => ({ Button: ({ label, isDisabled, isLoading, onClick }: any) => <button disabled={isDisabled || isLoading} onClick={onClick}>{label}</button> }));
 vi.mock("@astryxdesign/core/Card", () => ({ Card: ({ children }: any) => <section>{children}</section> }));
-vi.mock("@astryxdesign/core/Collapsible", () => ({ Collapsible: ({ trigger, children }: any) => <section><button>{trigger}</button>{children}</section> }));
+vi.mock("@astryxdesign/core/Collapsible", async () => {
+  const React = await import("react");
+  return { Collapsible: ({ trigger, children, defaultIsOpen = true }: any) => {
+    const [open, setOpen] = React.useState(defaultIsOpen);
+    return <section><button aria-expanded={open} onClick={() => setOpen(!open)}>{trigger}</button>{open ? children : null}</section>;
+  } };
+});
 vi.mock("@astryxdesign/core/CheckboxInput", () => ({ CheckboxInput: ({ label, value, onChange }: any) => <label><input type="checkbox" checked={value} onChange={event => onChange(event.target.checked)} />{label}</label> }));
 vi.mock("@astryxdesign/core/Heading", () => ({ Heading: ({ children }: any) => <h3>{children}</h3> }));
 vi.mock("@astryxdesign/core/HStack", () => ({ HStack: ({ children }: any) => <section>{children}</section> }));
@@ -178,6 +184,9 @@ describe("FacebookReelsPublishCard", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
     expect(screen.getByRole("img", { name: "Character image" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Caption image" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Product image" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
     fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
@@ -189,10 +198,35 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getAllByRole("radio").filter((radio: HTMLElement) => (radio as HTMLInputElement).checked)).toHaveLength(1);
   });
 
+  it("keeps the Photo Post draft and selected image while collapsing the panel and switching formats", () => {
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
+    fireEvent.change(screen.getByLabelText("Caption สำหรับ Photo Post"), { target: { value: "Draft photo caption" } });
+    const disclosure = screen.getByRole("button", { name: "เผยแพร่บน Facebook · Marketplace Auto Review" });
+    fireEvent.click(disclosure);
+    expect(screen.queryByLabelText("Caption สำหรับ Photo Post")).not.toBeInTheDocument();
+    fireEvent.click(disclosure);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Reel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    expect(screen.getByLabelText("Caption สำหรับ Photo Post")).toHaveValue("Draft photo caption");
+    expect(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" })).toBeChecked();
+  });
+
   it("keeps Photo Post disabled when no generated image is completed", () => {
     mocks.photoReadiness.imageVariants = [{ variant: "caption_source", status: "pending", imageUrl: null, sourceLabel: "Caption image" }];
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
     expect(screen.getByRole("button", { name: "เผยแพร่ Photo Post" })).toBeDisabled();
+  });
+
+  it("seeds saved caption and hashtags from Photo readiness when Reel readiness is unavailable", () => {
+    mocks.readiness = null;
+    mocks.photoReadiness.savedCaption = "Photo saved caption";
+    mocks.photoReadiness.savedHashtags = ["#photo", "#review"];
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    expect(screen.getByLabelText("Caption สำหรับ Photo Post")).toHaveValue("Photo saved caption");
+    expect(screen.getByLabelText("Hashtag")).toHaveValue("#photo #review");
   });
 });

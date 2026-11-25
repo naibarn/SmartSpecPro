@@ -134,13 +134,18 @@ export function FacebookReelsPublishCard(props: {
   }, [photoReadiness.data, photoVariant]);
 
   useEffect(() => {
-    if (seededReadinessRun === props.runId || !readiness.data || !("savedCaption" in readiness.data)) return;
+    const savedContent = readiness.data && "savedCaption" in readiness.data
+      ? readiness.data
+      : photoReadiness.data && "savedCaption" in photoReadiness.data
+        ? photoReadiness.data
+        : null;
+    if (seededReadinessRun === props.runId || !savedContent) return;
     setSeededReadinessRun(props.runId);
-    if (typeof readiness.data.savedCaption === "string") setCaption(readiness.data.savedCaption);
-    if ("savedHashtags" in readiness.data && Array.isArray(readiness.data.savedHashtags)) {
-      setHashtags(readiness.data.savedHashtags.join(" "));
+    if (typeof savedContent.savedCaption === "string") setCaption(savedContent.savedCaption);
+    if ("savedHashtags" in savedContent && Array.isArray(savedContent.savedHashtags)) {
+      setHashtags(savedContent.savedHashtags.join(" "));
     }
-  }, [props.runId, readiness.data, seededReadinessRun]);
+  }, [props.runId, readiness.data, photoReadiness.data, seededReadinessRun]);
 
   const pages = readiness.data?.pages ?? [];
   const selectedPage = pages.find(page => String(page.id) === pageId);
