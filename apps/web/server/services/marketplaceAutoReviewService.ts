@@ -34340,6 +34340,7 @@ async function addRenderResultToLibrary(params: {
       jobId: params.jobId,
       resultUrl: params.sourceUrl,
       libraryItemId: existing.id,
+      allowPendingLibraryLink: true,
     });
     const persistedFinalizedMetadata =
       await persistMarketplaceAutoReviewFinalArtifacts({
@@ -34406,6 +34407,7 @@ async function addRenderResultToLibrary(params: {
     jobId: params.jobId,
     resultUrl: params.sourceUrl,
     libraryItemId: created.item.id,
+    allowPendingLibraryLink: true,
   });
   const finalMetadata = await persistMarketplaceAutoReviewFinalArtifacts({
     db: params.db,

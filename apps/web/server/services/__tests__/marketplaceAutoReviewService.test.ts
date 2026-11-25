@@ -7919,6 +7919,30 @@ describe("marketplace auto review audio/video planning", () => {
     expect(() =>
       assertMarketplaceAutoReviewGovernanceReadyForTest(finalized, "finalize")
     ).toThrow(/publishable package library linkage is missing/i);
+
+    const linked = buildMarketplaceAutoReviewRenderFinalizationMetadataForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "full_video",
+      } as any,
+      plan: { ...basePlan, shots: [baseShot] } as any,
+      metadata: readyRenderGateMetadata({
+        publishableAssetPackage: {
+          status: "blocked",
+          packageId: "pending-library-link",
+          evidenceRefs: [],
+        },
+      }) as any,
+      jobId: "render_1",
+      resultUrl: "https://cdn.example.test/final.mp4",
+      libraryItemId: 7,
+      allowPendingLibraryLink: true,
+    });
+    expect(linked.publishableAssetPackage.libraryItemId).toBe(7);
+    expect(() =>
+      assertMarketplaceAutoReviewGovernanceReadyForTest(linked, "finalize")
+    ).not.toThrow();
   });
 
   it("blocks render finalization until the rendered artifact has probe evidence", () => {
