@@ -23,6 +23,7 @@ import { publishFacebookPagePhoto, readFacebookPagePhoto } from "./facebookPhoto
 export const MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE = "social.facebook.photo.publish";
 const PHOTO_POST_CONTRACT_VERSION = "feature-187-v1";
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const MAX_PHOTO_CAPTION_LENGTH = 2000;
 const PHOTO_VARIANTS = ["caption_source", "character_reference", "product_reference"] as const;
 const affiliateModeSchema = z.enum(["description", "first_comment", "manual_native", "none"]);
 
@@ -97,6 +98,11 @@ export function composeFacebookPhotoPostCaption(input: {
   return [input.caption, input.hashtags.join(" "), input.commercialDisclosure, input.affiliateUrl]
     .filter(Boolean)
     .join("\n\n");
+}
+
+export function assertFacebookPhotoPostCaptionLength(caption: string): string {
+  if (caption.length > MAX_PHOTO_CAPTION_LENGTH) fail("PHOTO_CAPTION_TOO_LONG", "The final caption, hashtags, disclosure, and Affiliate URL must fit within 2,000 characters", "BAD_REQUEST");
+  return caption;
 }
 
 export function hashFacebookPhotoPostIntent(value: unknown): string {
@@ -276,6 +282,7 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   if (!snapshot.commercialDisclosure.trim()) fail("COMMERCIAL_DISCLOSURE_REQUIRED", "Add the required commercial disclosure to the photo caption");
 
   const affiliateUrl = ["description", "manual_native"].includes(snapshot.affiliateMode) ? pkg.affiliateUrl : null;
+  const publishCaption = assertFacebookPhotoPostCaptionLength(composeFacebookPhotoPostCaption({ caption: snapshot.caption, hashtags: snapshot.hashtags, commercialDisclosure: snapshot.commercialDisclosure, affiliateUrl: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null }));
   const canonical = {
     tenantId: input.tenantId,
     userId: input.userId,
@@ -326,7 +333,6 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   const queueRepair = Boolean(existing && oldState === "queued" && !existingMetadata.publishingWorkerJobId);
   if (existing && !safeRetry && !queueRepair) return { postId: existing.id, status: oldState, intentHash };
   const publishAttempt = safeRetry ? Math.min(10, Math.max(1, Number(existingMetadata.publishAttempt ?? 1) + 1)) : Math.max(1, Number(existingMetadata.publishAttempt ?? 1));
-  const caption = composeFacebookPhotoPostCaption({ caption: snapshot.caption, hashtags: snapshot.hashtags, commercialDisclosure: snapshot.commercialDisclosure, affiliateUrl: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null });
   const newMetadata: JsonRecord = {
     source,
     autoReviewRunId: pkg.run.id,
@@ -349,10 +355,10 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   };
   let post: { id: number } | undefined;
   if (existing) {
-    [post] = await db.update(socialPosts).set({ status: "draft", contentText: caption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, errorMessage: null, metadata: newMetadata, updatedAt: new Date() }).where(eq(socialPosts.id, existing.id)).returning({ id: socialPosts.id });
+    [post] = await db.update(socialPosts).set({ status: "draft", contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, errorMessage: null, metadata: newMetadata, updatedAt: new Date() }).where(eq(socialPosts.id, existing.id)).returning({ id: socialPosts.id });
   } else {
     try {
-      [post] = await db.insert(socialPosts).values({ tenantId: input.tenantId, pageId: input.pageId, status: "draft", contentText: caption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, mediaRefs: null, createdByUserId: input.userId, metadata: newMetadata }).returning({ id: socialPosts.id });
+      [post] = await db.insert(socialPosts).values({ tenantId: input.tenantId, pageId: input.pageId, status: "draft", contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, mediaRefs: null, createdByUserId: input.userId, metadata: newMetadata }).returning({ id: socialPosts.id });
     } catch (error) {
       if ((error as { code?: unknown })?.code !== "23505") throw error;
       const [concurrent] = await db.select({ id: socialPosts.id, metadata: socialPosts.metadata }).from(socialPosts).where(whereIntent).limit(1);
@@ -469,6 +475,11 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
   }
   await input.reportProgress?.({ progress: 25, stage: "token_check" });
   const caption = composeFacebookPhotoPostCaption({ caption: String(snapshot.caption ?? ""), hashtags: Array.isArray(snapshot.hashtags) ? snapshot.hashtags.map(String) : [], commercialDisclosure: String(snapshot.commercialDisclosure ?? ""), affiliateUrl: typeof snapshot.affiliateUrl === "string" ? snapshot.affiliateUrl : null });
+  if (caption.length > MAX_PHOTO_CAPTION_LENGTH) {
+    await patchMetadata({ failureCode: "PHOTO_CAPTION_TOO_LONG", reconciliation: { state: "not_started", checkedAt: new Date().toISOString() } }, "failed");
+    await db.update(socialPosts).set({ status: "failed", errorMessage: "The final Photo Post caption exceeds Meta's character limit. Shorten it and submit again.", updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+    return { status: "failed" };
+  }
   await patchMetadata({ photoPublishRequestedAt: new Date().toISOString(), mediaPreflight: { status: "passed", contentType: inspected.contentType, sizeBytes: inspected.size, checksum: inspected.checksum, width: inspected.width, height: inspected.height }, reconciliation: { state: "publish_requested", checkedAt: new Date().toISOString() } }, "publish_requested");
   try {
     const receipt = await publishFacebookPagePhoto({ pageId: row.page.providerPageId, accessToken, caption, filename: `${input.runId}-${snapshot.selectedVariant}.png`, contentType: inspected.contentType, fileSize: inspected.size, body: inspected.bytes });

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import {
   composeFacebookPhotoPostCaption,
+  assertFacebookPhotoPostCaptionLength,
   hashFacebookPhotoPostIntent,
   hasMarketplaceAutoReviewPhotoPostExternalAttempt,
   assertMarketplaceAutoReviewPhotoRunOwnership,
@@ -96,6 +97,17 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
       affiliateUrl,
     });
     expect(caption).toBe(`Review caption\n\n#review #dailydeal\n\nมีลิงก์ Affiliate\n\n${affiliateUrl}`);
+  });
+
+  it("rejects a final caption that exceeds the Meta limit after disclosures and the Affiliate URL are appended", () => {
+    expect(assertFacebookPhotoPostCaptionLength("x".repeat(2000))).toHaveLength(2000);
+    const oversized = composeFacebookPhotoPostCaption({
+      caption: "x".repeat(1990),
+      hashtags: ["#review"],
+      commercialDisclosure: "Affiliate disclosure",
+      affiliateUrl: "https://shop.example/item?aff=1",
+    });
+    expect(() => assertFacebookPhotoPostCaptionLength(oversized)).toThrow("PHOTO_CAPTION_TOO_LONG");
   });
 
   it("keeps image variant and media kind in the deduplicated publication intent", () => {
