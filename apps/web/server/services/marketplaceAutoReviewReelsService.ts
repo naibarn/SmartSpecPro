@@ -9,6 +9,7 @@ import { pipeline } from "node:stream/promises";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { AUTO_REVIEW_PUBLISH_HASHTAG, AUTO_REVIEW_PUBLISH_MAX_HASHTAGS } from "../../shared/marketplaceAutoReview/publishingHashtags";
 
 import {
   libraryItems,
@@ -45,7 +46,7 @@ export type ReelsPublishState = "queued" | "preflight" | "needs_connection" | "t
 
 const publishSnapshotSchema = z.object({
   caption: z.string().trim().max(2000),
-  hashtags: z.array(z.string().trim().regex(/^#[\p{L}\p{N}_]{1,80}$/u)).max(20),
+  hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
   aiGenerated: z.boolean(),
   commercialDisclosure: z.string().trim().max(500),

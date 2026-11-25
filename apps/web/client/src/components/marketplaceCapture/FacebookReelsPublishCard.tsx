@@ -12,6 +12,7 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { VStack } from "@astryxdesign/core/VStack";
+import { AUTO_REVIEW_PUBLISH_HASHTAG, AUTO_REVIEW_PUBLISH_MAX_HASHTAGS } from "@shared/marketplaceAutoReview/publishingHashtags";
 
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
@@ -145,7 +146,8 @@ export function FacebookReelsPublishCard(props: {
   const pages = readiness.data?.pages ?? [];
   const selectedPage = pages.find(page => String(page.id) === pageId);
   const parsedHashtags = useMemo(() => normalizedHashtags(hashtags), [hashtags]);
-  const invalidHashtags = parsedHashtags.length > 20 || parsedHashtags.some(tag => !/^#[\p{L}\p{N}_]{1,80}$/u.test(tag));
+  const tooManyHashtags = parsedHashtags.length > AUTO_REVIEW_PUBLISH_MAX_HASHTAGS;
+  const invalidHashtags = tooManyHashtags || parsedHashtags.some(tag => !AUTO_REVIEW_PUBLISH_HASHTAG.test(tag));
   const activePublication = (history.data ?? []).some(item => IN_PROGRESS.has(String(item.status)) || String(item.status) === "needs_user_action");
   const noLinkConfirmed = affiliateMode !== "none" || allowNoAffiliate;
   const disclosureReady = Boolean(commercialDisclosure.trim());
@@ -244,7 +246,7 @@ export function FacebookReelsPublishCard(props: {
               <Text>Hashtag · {parsedHashtags.length ? "Available" : "Not configured"}</Text>
               <Text type="supporting" color="secondary">ใช้ Caption และ Hashtag ที่บันทึกไว้ใน Auto Review โดยแก้ไขได้จากส่วน Caption สำหรับโพสต์โซเชียล</Text>
             </VStack>
-            {invalidHashtags ? <Text>ใช้ hashtag สูงสุด 20 รายการ โดยคั่นแต่ละรายการด้วยช่องว่าง</Text> : null}
+            {invalidHashtags ? <Text>{tooManyHashtags ? "ใช้แฮชแท็กได้ไม่เกิน 20 รายการ" : "มีแฮชแท็กที่ใช้ไม่ได้ กรุณาตรวจในส่วน Caption สำหรับโพสต์โซเชียล แต่ละแท็กใช้ได้ไม่เกิน 80 ตัวอักษร และใช้ตัวอักษร ตัวเลข หรือขีดล่าง"}</Text> : null}
             <Selector
               label="ตำแหน่ง Affiliate Link เดิม"
               value={affiliateMode}

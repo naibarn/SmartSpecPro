@@ -183,7 +183,7 @@ describe("FacebookReelsPublishCard", () => {
   });
 
   it("lets the user select exactly one generated image and publishes it as a Photo Post", () => {
-    render(<FacebookReelsPublishCard runId="run-1" />);
+    render(<FacebookReelsPublishCard runId="run-1" initialHashtags={["บํารุงผม", "ออยล์เซรั่ม", "จัดทรงผม"]} />);
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
     expect(screen.queryByLabelText("Caption สำหรับ Photo Post")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Hashtag")).not.toBeInTheDocument();
@@ -194,10 +194,12 @@ describe("FacebookReelsPublishCard", () => {
     fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
-    fireEvent.click(screen.getByRole("button", { name: "เผยแพร่ Photo Post" }));
+    const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
     expect(mocks.photoMutate).toHaveBeenCalledWith({
       runId: "run-1", pageId: 12,
-      snapshot: { variant: "product_reference", caption: "Saved caption", hashtags: ["#saved"], affiliateMode: "description", commercialDisclosure: "โฆษณา" },
+      snapshot: { variant: "product_reference", caption: "Saved caption", hashtags: ["#บํารุงผม", "#ออยล์เซรั่ม", "#จัดทรงผม"], affiliateMode: "description", commercialDisclosure: "โฆษณา" },
     });
     expect(screen.getAllByRole("radio").filter((radio: HTMLElement) => (radio as HTMLInputElement).checked)).toHaveLength(1);
   });

@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { AUTO_REVIEW_PUBLISH_HASHTAG, AUTO_REVIEW_PUBLISH_MAX_HASHTAGS } from "../../shared/marketplaceAutoReview/publishingHashtags";
 
 import {
   marketplaceAutoReviewRuns,
@@ -33,7 +34,7 @@ export type PhotoPublishState = "queued" | "preflight" | "token_check" | "publis
 const snapshotSchema = z.object({
   variant: z.enum(PHOTO_VARIANTS),
   caption: z.string().trim().max(2000),
-  hashtags: z.array(z.string().trim().regex(/^#[\p{L}\p{N}_]{1,80}$/u)).max(20),
+  hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
   commercialDisclosure: z.string().trim().max(500),
   allowNoAffiliate: z.boolean().optional(),
