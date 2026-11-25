@@ -6,7 +6,8 @@
 
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { runtimeFeatureFlags } from "../../drizzle/schema";
+import { runtimeFeatureFlags, tenants } from "../../drizzle/schema";
+import { FEATURE_FLAG_DEFAULTS } from "../../shared/featureFlags";
 
 const PLAYWRIGHT_BACKED_FLAGS = new Set([
   "browserTool",
@@ -119,14 +120,32 @@ export async function getTenantFeatureFlag(
     return false;
   }
 
-  const row = (await getDb().select({ value: runtimeFeatureFlags.value })
+  const db = await getDb();
+  const tenant = (await db.select({ featureFlags: tenants.featureFlags })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1))[0];
+  const tenantFlags = tenant?.featureFlags as Record<string, unknown> | null | undefined;
+  const configuredTenantValue = tenantFlags?.[flagName];
+  if (typeof configuredTenantValue === "boolean") return configuredTenantValue;
+
+  const row = (await db.select({ value: runtimeFeatureFlags.value })
     .from(runtimeFeatureFlags)
     .where(eq(runtimeFeatureFlags.scopeKey, `tenant:${tenantId}:${flagName}`))
     .limit(1))[0];
   if (row) return row.value === true;
 
-  // Fall back to global flag
-  return getFeatureFlag(flagName);
+  const globalOverride = (await db.select({ value: runtimeFeatureFlags.value })
+    .from(runtimeFeatureFlags)
+    .where(eq(runtimeFeatureFlags.scopeKey, `global:${flagName}`))
+    .limit(1))[0];
+  if (globalOverride) return globalOverride.value === true;
+
+  const envValue = process.env[flagName];
+  if (envValue !== undefined) return envValue !== "false";
+
+  const defaultValue = FEATURE_FLAG_DEFAULTS[flagName as keyof typeof FEATURE_FLAG_DEFAULTS];
+  return typeof defaultValue === "boolean" ? defaultValue : false;
 }
 
 /**
