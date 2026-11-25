@@ -199,16 +199,21 @@ function projectPhotoVariants(metadata: unknown, tenantId: string, runId: string
 
 export async function getMarketplaceAutoReviewPhotoPostReadiness(input: { tenantId: string; userId: number; runId: string }) {
   const db = await resolveDb();
-  const pkg = await loadPhotoPackage({ db, ...input }).catch(error => ({ error: error instanceof TRPCError ? error.message : "Photo publishing readiness could not be determined" }));
-  if ("error" in pkg) return { ready: false, reason: pkg.error, pages: [], imageVariants: [] };
+  const pkg = await loadPhotoPackage({ db, ...input }).catch(error => ({
+    error: error instanceof TRPCError ? error.message : "Photo publishing readiness could not be determined",
+    canListPages: error instanceof TRPCError && error.code === "PRECONDITION_FAILED",
+  }));
+  if ("error" in pkg && !pkg.canListPages) return { ready: false, reason: pkg.error, pages: [], imageVariants: [] };
+  const pages = (await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId))
+    .filter(page => page.provider === "meta");
+  if ("error" in pkg) return { ready: false, reason: pkg.error, pages, imageVariants: [] };
   const imageVariants = projectPhotoVariants(pkg.runMetadata, input.tenantId, pkg.run.id);
-  const pages = await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId);
   const hasImage = imageVariants.some(image => image.status === "completed");
-  const hasPage = pages.some(page => page.provider === "meta" && page.publishingReady);
+  const hasPage = pages.some(page => page.publishingReady);
   return {
     ready: hasImage && hasPage,
     reason: !hasImage ? "Generate at least one completed Auto Review social image" : !hasPage ? "Connect a Facebook Page and enable publishing in Social Channels" : null,
-    pages: pages.filter(page => page.provider === "meta"),
+    pages,
     imageVariants,
     savedCaption: pkg.caption,
     savedHashtags: pkg.hashtags,

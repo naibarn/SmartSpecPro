@@ -163,7 +163,13 @@ async function loadAuthoritativePackage(input: {
   const mediaQa = record(runMetadata.finalMediaQaEnvelope);
   const probe = record(runMetadata.renderArtifactProbe);
   const packageEvidence = record(runMetadata.publishableAssetPackage);
-  if (renderQa.status !== "passed" || mediaQa.status !== "passed" || probe.status !== "passed" || packageEvidence.status !== "passed") {
+  if (renderQa.status !== "passed" || mediaQa.status !== "passed" || probe.status !== "passed" ||
+    packageEvidence.status !== "ready_private_library_asset" ||
+    packageEvidence.runId !== run.id ||
+    packageEvidence.libraryItemId !== run.resultLibraryItemId ||
+    !nonemptyString(packageEvidence.packageId) ||
+    !Array.isArray(packageEvidence.evidenceRefs) ||
+    !packageEvidence.evidenceRefs.some(nonemptyString)) {
     fail("FINAL_ARTIFACT_QA_UNVERIFIED", "Final render, media, probe, or package evidence is missing");
   }
 
@@ -197,13 +203,19 @@ export async function getMarketplaceAutoReviewReelsReadiness(input: {
   runId: string;
 }) {
   const db = await resolveDb();
-  const pkg = await loadAuthoritativePackage({ db, ...input }).catch(error => ({ error: error instanceof TRPCError ? error.message : "Publishing readiness could not be determined" }));
-  if ("error" in pkg) return { ready: false, reason: pkg.error, pages: [] };
-  const pages = await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId);
+  const pkg = await loadAuthoritativePackage({ db, ...input }).catch(error => ({
+    error: error instanceof TRPCError ? error.message : "Publishing readiness could not be determined",
+    canListPages: error instanceof TRPCError && error.code === "PRECONDITION_FAILED",
+  }));
+  if ("error" in pkg && !pkg.canListPages) return { ready: false, reason: pkg.error, pages: [] };
+  const pages = (await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId))
+    .filter(page => page.provider === "meta");
+  if ("error" in pkg) return { ready: false, reason: pkg.error, pages };
+  const hasPage = pages.some(page => page.publishingReady);
   return {
-    ready: pages.some(page => page.provider === "meta" && page.publishingReady),
-    reason: pages.some(page => page.provider === "meta" && page.publishingReady) ? null : "Connect a Facebook Page and enable publishing in Social Channels",
-    pages: pages.filter(page => page.provider === "meta"),
+    ready: hasPage,
+    reason: hasPage ? null : "Connect a Facebook Page and enable publishing in Social Channels",
+    pages,
     savedCaption: pkg.caption,
     savedHashtags: pkg.hashtags,
     hasAffiliateLink: Boolean(pkg.affiliateUrl),
