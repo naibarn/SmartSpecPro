@@ -1814,11 +1814,12 @@ function isRetryableStagedImagePromptError(error: unknown): boolean {
 
 function stagedImagePromptFailureKind(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  if (
+  const invalidPromptOutput =
     /incomplete_image_prompt|MARKETPLACE_SINGLE_SHOT_SKILL_(?:OUTPUT_INVALID|INVALID_JSON|EMPTY_OUTPUT)/i.test(
       message
-    )
-  ) {
+    ) ||
+    /empty_response|empty response|no (?:final )?assistant text/i.test(message);
+  if (invalidPromptOutput) {
     return "invalid_prompt_output";
   }
   if (/reference|image.*download|download.*image|PUBLIC_APP_URL/i.test(message)) {
@@ -1839,6 +1840,12 @@ function stagedImagePromptFailureKind(error: unknown): string {
     return "provider_request_rejected";
   }
   return "skill_call_failed";
+}
+
+export function isRetryableStagedImagePromptErrorForTest(
+  error: unknown
+): boolean {
+  return isRetryableStagedImagePromptError(error);
 }
 
 async function handleImageProvider(params: {
