@@ -11,10 +11,11 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.services.social.exceptions import MetaApiError, PermissionDeniedError, SocialProviderApiError, TikTokApiError, TokenExpiredError, YouTubeApiError
 from app.services.social.publish_service import publish_social_content
-from app.services.social.meta_graph_client import MetaGraphClient
+from app.services.social.meta_graph_client import MetaGraphClient, PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES
 
 router = APIRouter(prefix="/api/internal/social", tags=["social-publish"])
 REELS_MAX_BYTES = 1024 * 1024 * 1024
+PHOTO_MAX_UPLOAD_BYTES = PHOTO_MAX_BYTES
 
 
 async def _verify_internal_token(
@@ -147,6 +148,44 @@ async def upload_reel(
             raise _raise_reels_meta_error(exc, "Meta Reels upload could not be confirmed; reconcile status before retry") from exc
         except (MetaApiError, ValueError) as exc:
             raise HTTPException(status_code=502, detail="Meta Reels upload could not be confirmed; reconcile status before retry") from exc
+
+
+@router.post("/photos/publish")
+async def publish_page_photo(
+    request: Request,
+    x_meta_access_token: str = Header(..., min_length=1, max_length=8192),
+    x_meta_page_id: str = Header(..., pattern=r"^\d+$", max_length=255),
+    x_meta_file_name: str = Header(..., min_length=1, max_length=255),
+    x_meta_content_type: str = Header(..., min_length=1, max_length=100),
+    x_meta_file_size: int = Header(..., gt=0, le=PHOTO_MAX_UPLOAD_BYTES),
+    x_meta_caption: str = Header(..., max_length=2000),
+    content_length: int = Header(..., gt=0, le=PHOTO_MAX_UPLOAD_BYTES),
+    _auth: None = Depends(_verify_internal_token),
+) -> dict[str, Any]:
+    if content_length != x_meta_file_size:
+        raise HTTPException(status_code=400, detail="Invalid photo upload length")
+    if x_meta_content_type not in PHOTO_CONTENT_TYPES:
+        raise HTTPException(status_code=415, detail="Unsupported photo content type")
+    content = bytearray()
+    async for chunk in request.stream():
+        content.extend(chunk)
+        if len(content) > content_length or len(content) > PHOTO_MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Photo upload exceeds declared size")
+    if len(content) != content_length:
+        raise HTTPException(status_code=400, detail="Photo upload is shorter than declared size")
+
+    async with MetaGraphClient(x_meta_access_token, page_id=x_meta_page_id) as client:
+        try:
+            return await client.publish_page_photo(
+                message=x_meta_caption,
+                content=bytes(content),
+                filename=x_meta_file_name,
+                content_type=x_meta_content_type,
+            )
+        except (TokenExpiredError, PermissionDeniedError) as exc:
+            raise _raise_reels_meta_error(exc, "Meta photo publication could not be confirmed; check the Page before retry") from exc
+        except (MetaApiError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Meta photo publication could not be confirmed; check the Page before retry") from exc
 
 
 def _map_error(exc: Exception) -> HTTPException:

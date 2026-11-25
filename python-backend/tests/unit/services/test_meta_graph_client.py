@@ -53,6 +53,61 @@ async def test_create_post_includes_scheduled_publish_time() -> None:
 
 
 @pytest.mark.asyncio
+async def test_publish_page_photo_streams_private_binary_once_to_pinned_photos_edge() -> None:
+    observed: list[httpx.Request] = []
+    png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        observed.append(request)
+        body = await request.aread()
+        assert b'name="source"; filename="marketplace-review.png"' in body
+        assert b'Content-Type: image/png' in body
+        assert png in body
+        assert b'name="caption"' in body and b"Review text #care" in body
+        assert b'name="published"' in body and b"true" in body
+        assert b'name="access_token"' in body and b"private-token" in body
+        assert "access_token" not in str(request.url)
+        return httpx.Response(200, json={"id": "photo-123", "post_id": "page-post-456"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    async with MetaGraphClient("private-token", page_id="123", client=client, api_version="v25.0") as api:
+        receipt = await api.publish_page_photo(
+            message="Review text #care",
+            content=png,
+            filename="review.png",
+            content_type="image/png",
+        )
+
+    assert receipt == {"id": "photo-123", "post_id": "page-post-456"}
+    assert len(observed) == 1
+    assert observed[0].method == "POST"
+    assert observed[0].url.path == "/v27.0/123/photos"
+
+
+@pytest.mark.asyncio
+async def test_publish_page_photo_does_not_retry_ambiguous_timeout() -> None:
+    calls = 0
+    png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        raise httpx.ConnectTimeout("ambiguous request")
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    async with MetaGraphClient("private-token", page_id="123", client=client) as api:
+        with pytest.raises(MetaApiError):
+            await api.publish_page_photo(
+                message="Review",
+                content=png,
+                filename="review.png",
+                content_type="image/png",
+            )
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
 async def test_reels_lifecycle_uses_pinned_version_and_preserves_provider_receipts() -> None:
     client = AsyncMock()
     upload_url = "https://rupload.facebook.com/video-upload/v27.0/456"

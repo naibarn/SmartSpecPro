@@ -111,3 +111,53 @@ async def test_reels_internal_endpoints_stream_and_validate_upload(monkeypatch: 
         headers["x-meta-file-size"] = str(social_publish.REELS_MAX_BYTES + 1)
         assert (await client.post(base + "upload", content=b"abc", headers=headers)).status_code == 422
     assert calls == [{"video_id": "456", "description": "#demo", "is_ai_generated": True}, b"abc"]
+
+
+@pytest.mark.asyncio
+async def test_photo_publish_internal_endpoint_streams_binary_and_requires_internal_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(social_publish.settings, "SMARTSPEC_PROXY_TOKEN", "internal-token", raising=False)
+    calls = []
+
+    class FakeMetaClient:
+        def __init__(self, access_token, *, page_id=None):
+            self.access_token, self.page_id = access_token, page_id
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def publish_page_photo(self, **kwargs):
+            calls.append((self.page_id, self.access_token, kwargs))
+            return {"id": "photo-123", "post_id": "page-post-456"}
+
+    monkeypatch.setattr(social_publish, "MetaGraphClient", FakeMetaClient)
+    app = FastAPI()
+    app.include_router(social_publish.router)
+    headers = {
+        "x-internal-token": "internal-token",
+        "x-meta-access-token": "page-secret",
+        "x-meta-page-id": "123",
+        "x-meta-file-name": "review.png",
+        "x-meta-content-type": "image/png",
+        "x-meta-file-size": "15",
+        "x-meta-caption": "Review #care",
+        "content-type": "image/png",
+    }
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        unauthorized = await client.post("/api/internal/social/photos/publish", content=b"png-image-bytes", headers={
+            key: value for key, value in headers.items() if key != "x-internal-token"
+        })
+        assert unauthorized.status_code == 401
+
+        published = await client.post("/api/internal/social/photos/publish", content=b"png-image-bytes", headers=headers)
+        assert published.status_code == 200
+        assert published.json() == {"id": "photo-123", "post_id": "page-post-456"}
+
+    assert calls == [("123", "page-secret", {
+        "message": "Review #care",
+        "content": b"png-image-bytes",
+        "filename": "review.png",
+        "content_type": "image/png",
+    })]

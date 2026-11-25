@@ -19,6 +19,15 @@ logger = structlog.get_logger(__name__)
 # Reels is independently pinned: changing the existing feed client's configured
 # version would silently change other Meta integrations.
 REELS_GRAPH_API_VERSION = "v27.0"
+PHOTO_GRAPH_API_VERSION = "v27.0"
+PHOTO_MAX_BYTES = 10 * 1024 * 1024
+PHOTO_CONTENT_TYPES = {
+    "image/jpeg": (b"\xff\xd8\xff", ".jpg"),
+    "image/png": (b"\x89PNG\r\n\x1a\n", ".png"),
+    "image/bmp": (b"BM", ".bmp"),
+    "image/gif": (b"GIF87a", ".gif"),
+    "image/tiff": (b"II*\x00", ".tif"),
+}
 
 
 def scrub_access_tokens(value: Any) -> Any:
@@ -221,6 +230,53 @@ class MetaGraphClient(SocialProviderClient):
             payload["published"] = False
             payload["scheduled_publish_time"] = int(scheduled_at)
         return await self._request("POST", self._path_for_page("feed"), json_body=payload)
+
+    async def publish_page_photo(
+        self, *, message: str, content: bytes, filename: str, content_type: str,
+    ) -> dict[str, Any]:
+        """Publish one Page photo from server-held bytes without retrying the side effect."""
+        if not self.page_id or not self.page_id.isascii() or not self.page_id.isdigit():
+            raise ValueError("Invalid Meta Page ID")
+        if content_type not in PHOTO_CONTENT_TYPES:
+            raise ValueError("Unsupported Facebook Page photo content type")
+        signature, extension = PHOTO_CONTENT_TYPES[content_type]
+        if not isinstance(content, bytes) or not 0 < len(content) <= PHOTO_MAX_BYTES:
+            raise ValueError("Invalid Facebook Page photo size")
+        if not content.startswith(signature):
+            raise ValueError("Facebook Page photo content does not match its MIME type")
+        if content_type == "image/png":
+            if len(content) < 24 or content[12:16] != b"IHDR":
+                raise ValueError("Invalid PNG image header")
+            width = int.from_bytes(content[16:20], "big")
+            height = int.from_bytes(content[20:24], "big")
+            if width <= 0 or height <= 0:
+                raise ValueError("Invalid PNG dimensions")
+        if not isinstance(message, str) or len(message) > 2000:
+            raise ValueError("Invalid Facebook Page photo caption")
+        if not isinstance(filename, str) or not filename or len(filename) > 255 or any(char in filename for char in "\\/\r\n"):
+            raise ValueError("Invalid Facebook Page photo filename")
+        safe_filename = f"marketplace-review{extension}"
+        url = f"https://graph.facebook.com/{PHOTO_GRAPH_API_VERSION}/{self.page_id}/photos"
+        try:
+            response = await self._get_client().request(
+                "POST",
+                url,
+                data={"access_token": self.access_token, "caption": message, "published": "true"},
+                files={"source": (safe_filename, content, content_type)},
+                follow_redirects=False,
+            )
+        except httpx.RequestError as exc:
+            # A timeout may occur after Facebook creates the post. Never retry here.
+            raise MetaApiError(f"Meta photo publish outcome is uncertain: {exc.__class__.__name__}") from exc
+        if response.status_code >= 300:
+            raise self._parse_error(response)
+        try:
+            payload = response.json()
+        except Exception as exc:
+            raise MetaApiError("Meta returned an invalid photo publication receipt") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("id"), str) or not payload["id"].strip():
+            raise MetaApiError("Meta did not return a photo publication ID")
+        return payload
 
     @staticmethod
     def _reels_video_id(video_id: str) -> str:
