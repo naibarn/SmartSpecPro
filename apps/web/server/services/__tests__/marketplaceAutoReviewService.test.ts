@@ -7896,6 +7896,29 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it("defers only the library-link gate until a private library item exists", () => {
+    const linkedSeed = buildMarketplaceAutoReviewRenderFinalizationMetadataForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "full_video",
+      } as any,
+      plan: { ...basePlan, shots: [baseShot] } as any,
+      metadata: readyRenderGateMetadata() as any,
+      jobId: "render_1",
+      resultUrl: "https://cdn.example.test/final.mp4",
+      libraryItemId: 7,
+    });
+    const pendingMetadata = {
+      ...linkedSeed,
+      publishableAssetPackage: {
+        ...linkedSeed.publishableAssetPackage,
+        libraryItemId: null,
+        libraryItemRef: null,
+        evidenceRefs: linkedSeed.publishableAssetPackage.evidenceRefs.filter(
+          (ref: string) => !ref.startsWith("libraryItem:")
+        ),
+      },
+    } as any;
     const finalized = buildMarketplaceAutoReviewRenderFinalizationMetadataForTest({
       run: {
         id: "mar_1",
@@ -7903,13 +7926,7 @@ describe("marketplace auto review audio/video planning", () => {
         outputMode: "full_video",
       } as any,
       plan: { ...basePlan, shots: [baseShot] } as any,
-      metadata: readyRenderGateMetadata({
-        publishableAssetPackage: {
-          status: "blocked",
-          packageId: "pending-library-link",
-          evidenceRefs: [],
-        },
-      }) as any,
+      metadata: pendingMetadata,
       jobId: "render_1",
       resultUrl: "https://cdn.example.test/final.mp4",
       allowPendingLibraryLink: true,
@@ -7919,6 +7936,11 @@ describe("marketplace auto review audio/video planning", () => {
     expect(() =>
       assertMarketplaceAutoReviewGovernanceReadyForTest(finalized, "finalize")
     ).toThrow(/publishable package library linkage is missing/i);
+    expect(() =>
+      assertMarketplaceAutoReviewGovernanceReadyForTest(finalized, "finalize", {
+        allowPendingLibraryLink: true,
+      })
+    ).not.toThrow();
 
     const linked = buildMarketplaceAutoReviewRenderFinalizationMetadataForTest({
       run: {
@@ -7927,13 +7949,7 @@ describe("marketplace auto review audio/video planning", () => {
         outputMode: "full_video",
       } as any,
       plan: { ...basePlan, shots: [baseShot] } as any,
-      metadata: readyRenderGateMetadata({
-        publishableAssetPackage: {
-          status: "blocked",
-          packageId: "pending-library-link",
-          evidenceRefs: [],
-        },
-      }) as any,
+      metadata: pendingMetadata,
       jobId: "render_1",
       resultUrl: "https://cdn.example.test/final.mp4",
       libraryItemId: 7,

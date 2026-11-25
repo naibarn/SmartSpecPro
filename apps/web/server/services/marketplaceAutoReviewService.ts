@@ -7220,7 +7220,8 @@ function blockedClaimEvidenceCount(metadata: RunMetadata): number {
 
 function collectMarketplaceAutoReviewGovernanceBlockers(
   metadata: RunMetadata,
-  phase: MarketplaceAutoReviewGovernancePhase
+  phase: MarketplaceAutoReviewGovernancePhase,
+  options: { allowPendingLibraryLink?: boolean } = {}
 ): string[] {
   const blockers: string[] = [];
   const productPack = asRecord(metadata.productReferenceAssetPack);
@@ -7508,7 +7509,8 @@ function collectMarketplaceAutoReviewGovernanceBlockers(
   if (phase === "finalize" && metadata.publishableAssetPackage) {
     const packageProofBlockers = publishablePackageProofBlockers(
       asRecord(metadata.publishableAssetPackage),
-      metadata
+      metadata,
+      options
     );
     if (packageProofBlockers.length > 0) {
       blockers.push(
@@ -7522,11 +7524,13 @@ function collectMarketplaceAutoReviewGovernanceBlockers(
 
 function assertMarketplaceAutoReviewGovernanceReady(
   metadata: RunMetadata,
-  phase: MarketplaceAutoReviewGovernancePhase
+  phase: MarketplaceAutoReviewGovernancePhase,
+  options: { allowPendingLibraryLink?: boolean } = {}
 ): void {
   const blockers = collectMarketplaceAutoReviewGovernanceBlockers(
     metadata,
-    phase
+    phase,
+    options
   );
   if (blockers.length > 0) {
     throw new Error(
@@ -7537,9 +7541,10 @@ function assertMarketplaceAutoReviewGovernanceReady(
 
 export function assertMarketplaceAutoReviewGovernanceReadyForTest(
   metadata: RunMetadata,
-  phase: MarketplaceAutoReviewGovernancePhase
+  phase: MarketplaceAutoReviewGovernancePhase,
+  options: { allowPendingLibraryLink?: boolean } = {}
 ): void {
-  assertMarketplaceAutoReviewGovernanceReady(metadata, phase);
+  assertMarketplaceAutoReviewGovernanceReady(metadata, phase, options);
 }
 
 function stableDateText(value: unknown): string {
@@ -33960,7 +33965,8 @@ function buildMarketplaceAutoReviewQaArtifactManifest(params: {
 
 function publishablePackageProofBlockers(
   pkg: Record<string, unknown>,
-  metadata: RunMetadata
+  metadata: RunMetadata,
+  options: { allowPendingLibraryLink?: boolean } = {}
 ): string[] {
   const blockers: string[] = [];
   const evidenceRefs = usableAuditRefs(pkg.evidenceRefs);
@@ -34000,12 +34006,12 @@ function publishablePackageProofBlockers(
   if (!cleanText(pkg.metadataManifestRef) || !cleanText(pkg.checksum)) {
     blockers.push("publishable package manifest/checksum proof is missing");
   }
-  if (!libraryItemId) {
+  if (!libraryItemId && options.allowPendingLibraryLink !== true) {
     blockers.push("publishable package library linkage is missing");
-  } else if (
+  } else if (libraryItemId && (
     cleanText(pkg.libraryItemRef) !== libraryItemRef ||
     !evidenceRefs.includes(libraryItemRef)
-  ) {
+  )) {
     blockers.push(
       "publishable package evidence refs missing library linkage proof"
     );
@@ -34820,10 +34826,9 @@ function assertPublishableRenderArtifact(input: {
   // gate still runs before rendering starts; finalization packages already
   // approved clips and must not re-apply a missing reference requirement for
   // work that has already completed.
-  assertMarketplaceAutoReviewGovernanceReady(
-    input.metadata,
-    input.allowPendingLibraryLink ? "render" : "finalize"
-  );
+  assertMarketplaceAutoReviewGovernanceReady(input.metadata, "finalize", {
+    allowPendingLibraryLink: input.allowPendingLibraryLink,
+  });
 }
 
 function buildRenderFinalizationMetadata(params: {
