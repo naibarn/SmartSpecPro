@@ -556,6 +556,71 @@ export type StagedDialogueQcReview = {
   dialogueTurns?: Array<{ castId: string; line: string }>;
 };
 
+const stagedDialogueQcIssueSchema = z.enum([
+  "none",
+  "awkward_wording",
+  "written_or_promotional",
+  "weak_response",
+]);
+
+const stagedDialogueQcReviewSchema = z
+  .object({
+    shotId: z.number().int().min(1),
+    verdict: z.enum(["natural", "revised"]),
+    issue: stagedDialogueQcIssueSchema,
+    dialogue: z.string().trim().min(1).max(320).optional(),
+    dialogueTurns: z
+      .array(
+        z
+          .object({
+            castId: z.string().trim().min(1).max(80),
+            line: z.string().trim().min(1).max(320),
+          })
+          .strict()
+      )
+      .min(2)
+      .max(18)
+      .optional(),
+  })
+  .strict();
+
+const stagedDialogueQcShotCandidateSchema = z
+  .object({
+    shotId: z.number().int().min(1),
+    issue: stagedDialogueQcIssueSchema.optional(),
+    dialogue: z.string().trim().min(1).max(320).nullable().optional(),
+    dialogueTurns: z
+      .array(
+        z
+          .object({
+            castId: z.string().trim().min(1).max(80).optional(),
+            line: z.string().trim().min(1).max(320),
+          })
+          .passthrough()
+      )
+      .min(2)
+      .max(18)
+      .optional(),
+  })
+  .passthrough();
+
+function buildStagedDialogueQcResponseSchema(shotCount: number) {
+  return z.union([
+    z
+      .object({
+        reviews: z.array(stagedDialogueQcReviewSchema).length(shotCount),
+      })
+      .strict(),
+    z
+      .object({
+        // Some model/provider combinations echo the input's `shots` envelope.
+        // Keep accepting that shape, then project only dialogue fields below.
+        shots: z.array(stagedDialogueQcShotCandidateSchema).length(shotCount),
+      })
+      .strict(),
+  ]);
+}
+
 /**
  * Apply the dialogue editor's result without allowing it to alter story beats,
  * speaker identities, shot timing, or any other authored shot fields.
@@ -659,6 +724,164 @@ export function applyStagedDialogueQcReviews(
   });
 }
 
+/**
+ * Normalize both the intended `{ reviews: [...] }` contract and the full-shot
+ * `{ shots: [...] }` shape sometimes returned by models. In the latter case,
+ * only dialogue is projected into a review; titles, story beats, visuals,
+ * timing, and cast assignments always remain sourced from the approved plan.
+ */
+export function normalizeStagedDialogueQcResponse(
+  response: unknown,
+  shots: StagedStoryArcShot[],
+  conversationMode: StagedConversationMode,
+  cast: StagedCastMember[]
+): StagedDialogueQcReview[] {
+  const parsed = buildStagedDialogueQcResponseSchema(shots.length).safeParse(
+    response
+  );
+  if (!parsed.success) {
+    throw new Error(
+      `STAGED_DIALOGUE_QC_RESPONSE_ENVELOPE_INVALID:${parsed.error.message}`
+    );
+  }
+  if ("reviews" in parsed.data) return parsed.data.reviews;
+
+  const candidateByShotId = new Map<
+    number,
+    z.infer<typeof stagedDialogueQcShotCandidateSchema>
+  >();
+  for (const candidate of parsed.data.shots) {
+    if (candidateByShotId.has(candidate.shotId)) {
+      throw new Error("STAGED_DIALOGUE_QC_RESPONSE_SHOT_SET_INVALID");
+    }
+    candidateByShotId.set(candidate.shotId, candidate);
+  }
+  if (
+    candidateByShotId.size !== shots.length ||
+    shots.some(shot => !candidateByShotId.has(shot.shotId))
+  ) {
+    throw new Error("STAGED_DIALOGUE_QC_RESPONSE_SHOT_SET_INVALID");
+  }
+
+  const inferredIssue = (
+    issue: StagedDialogueQcIssue | undefined
+  ): Exclude<StagedDialogueQcIssue, "none"> =>
+    issue && issue !== "none" ? issue : "awkward_wording";
+
+  return shots.map(shot => {
+    const candidate = candidateByShotId.get(shot.shotId)!;
+    if (conversationMode === "solo") {
+      const dialogue = normalizeStagedDialogueTranscript(
+        candidate.dialogue ?? ""
+      );
+      if (!dialogue) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_RESPONSE_DIALOGUE_MISSING:shot-${shot.shotId}`
+        );
+      }
+      if (dialogue === normalizeStagedDialogueTranscript(shot.dialogue)) {
+        return { shotId: shot.shotId, verdict: "natural", issue: "none" };
+      }
+      return {
+        shotId: shot.shotId,
+        verdict: "revised",
+        issue: inferredIssue(candidate.issue),
+        dialogue,
+      };
+    }
+
+    const originalTurns = shot.dialogueTurns;
+    if (!originalTurns?.length) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_RESPONSE_TURNS_MISSING:shot-${shot.shotId}`
+      );
+    }
+    const candidateTurns = candidate.dialogueTurns?.map((turn, index) => {
+      const originalTurn = originalTurns[index];
+      if (
+        !originalTurn ||
+        candidate.dialogueTurns?.length !== originalTurns.length ||
+        (turn.castId && turn.castId !== originalTurn.castId)
+      ) {
+        throw new Error(
+          `STAGED_DIALOGUE_QC_SPEAKER_ORDER_CHANGED:shot-${shot.shotId}`
+        );
+      }
+      return { castId: originalTurn.castId, line: turn.line.trim() };
+    });
+    const transcriptTurns = candidate.dialogue
+      ? parseStagedDialogueTurns(candidate.dialogue, cast)
+      : undefined;
+    if (
+      candidate.dialogue &&
+      !transcriptTurns &&
+      candidate.dialogue !== shot.dialogue
+    ) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_TRANSCRIPT_INVALID:shot-${shot.shotId}`
+      );
+    }
+    if (
+      transcriptTurns &&
+      transcriptTurns.some(
+        (turn, index) => turn.castId !== originalTurns[index]?.castId
+      )
+    ) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_SPEAKER_ORDER_CHANGED:shot-${shot.shotId}`
+      );
+    }
+    const candidateTurnsChanged =
+      candidateTurns?.some(
+        (turn, index) => turn.line !== originalTurns[index]?.line
+      ) ?? false;
+    const transcriptTurnsChanged =
+      transcriptTurns?.some(
+        (turn, index) => turn.line !== originalTurns[index]?.line
+      ) ?? false;
+    if (
+      candidateTurnsChanged &&
+      transcriptTurnsChanged &&
+      candidateTurns?.some(
+        (turn, index) => turn.line !== transcriptTurns[index]?.line
+      )
+    ) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_RESPONSE_DIALOGUE_CONFLICT:shot-${shot.shotId}`
+      );
+    }
+    const revisedTurns =
+      transcriptTurnsChanged && transcriptTurns
+        ? transcriptTurns.map((turn, index) => ({
+            castId: originalTurns[index].castId,
+            line: turn.line,
+          }))
+        : (candidateTurns ??
+          transcriptTurns?.map((turn, index) => ({
+            castId: originalTurns[index].castId,
+            line: turn.line,
+          })));
+    if (!revisedTurns || revisedTurns.length !== originalTurns.length) {
+      throw new Error(
+        `STAGED_DIALOGUE_QC_RESPONSE_TURNS_MISSING:shot-${shot.shotId}`
+      );
+    }
+    if (
+      revisedTurns.every(
+        (turn, index) => turn.line === originalTurns[index].line
+      )
+    ) {
+      return { shotId: shot.shotId, verdict: "natural", issue: "none" };
+    }
+    return {
+      shotId: shot.shotId,
+      verdict: "revised",
+      issue: inferredIssue(candidate.issue),
+      dialogueTurns: revisedTurns,
+    };
+  });
+}
+
 export function buildStagedDialogueNaturalnessQcSystemPrompt(
   language: "th" | "en"
 ): string {
@@ -670,6 +893,7 @@ export function buildStagedDialogueNaturalnessQcSystemPrompt(
       "ตัวอย่างสำนวนแข็ง: ‘ถ้าเริ่มมันเร็ว ควรแยกดูแลหนังศีรษะกับเส้นผมให้ตรงจุด’ ปรับเป็นบทสนทนาที่ตอบกับสถานการณ์จริง เช่น ‘โคนผมมันเร็วเหรอ? งั้นลองเริ่มดูแลตรงโคนก่อนนะ’ อย่าคัดลอกตัวอย่างนี้หากไม่เข้ากับฉาก",
       "แก้ให้น้อยที่สุด รักษาใจความ อารมณ์ ความสัมพันธ์ ข้อเท็จจริงของสินค้า และลำดับผู้พูด ห้ามเพิ่มคุณสมบัติหรือผลลัพธ์ของสินค้า ราคา โปรโมชัน หรือคำกล่าวอ้างใหม่ ห้ามเปลี่ยนภาษาที่เลือก",
       "ตอบ JSON ตาม schema เท่านั้น โดยให้รีวิวครบทุก shotId: ใช้ verdict natural และ issue none เมื่อบทพูดเป็นธรรมชาติแล้ว; ใช้ verdict revised พร้อม issue ที่ตรงสาเหตุและข้อความแก้ไขเมื่อจำเป็น; issue ใช้ได้เฉพาะ none, awkward_wording, written_or_promotional, weak_response; อย่าเขียนทับบทที่เป็นธรรมชาติอยู่แล้ว",
+      'รูปแบบคำตอบต้องเป็น object ที่มี key "reviews" เท่านั้น เช่น {"reviews":[{"shotId":1,"verdict":"natural","issue":"none"}]}; ห้ามคืน key "shots" หรือคัดลอกข้อมูลช็อตทั้งก้อน',
       "สำหรับบทพูดสองคน ให้คืน dialogueTurns ทุกครั้งที่มีการแก้ โดยใช้ castId เดิมทุกตัว เรียงผู้พูดและจำนวนเทิร์นเดิม ห้ามเปลี่ยนชื่อหรือสลับผู้พูด; ส่งเฉพาะคำพูดใน line ไม่ใส่ชื่อผู้พูด",
       "สำหรับบทพูดคนเดียว ให้คืน dialogue ที่แก้แล้วเมื่อจำเป็น ห้ามเปลี่ยนข้อเท็จจริงหรือเพิ่มเนื้อหาใหม่",
     ].join("\n\n");
@@ -680,6 +904,7 @@ export function buildStagedDialogueNaturalnessQcSystemPrompt(
     "Revise stiff written language, literal translations, unnatural collocations, generic advice, or promotional copy. Keep the voice conversational and specific to the moment.",
     "Make the smallest change that improves naturalness. Preserve meaning, emotion, relationships, product facts, and speaker order. Do not add product features, outcomes, prices, promotions, or other claims. Keep the selected language.",
     "Return JSON matching the schema and review every shotId: use verdict natural with issue none when the dialogue already sounds natural; use verdict revised with the matching issue and corrected text when needed. Allowed issue values are none, awkward_wording, written_or_promotional, and weak_response. Do not rewrite dialogue that is already natural.",
+    'Return exactly an object with a "reviews" key, for example {"reviews":[{"shotId":1,"verdict":"natural","issue":"none"}]}. Never return a "shots" key or copy complete shot objects.',
     "For two-person dialogue, return dialogueTurns for every revised shot using the exact original castIds, turn count, and speaker order. Each line contains only spoken words, never a speaker name.",
     "For solo dialogue, return the revised dialogue string only when needed. Do not change facts or add new content.",
   ].join("\n\n");
@@ -1962,26 +2187,8 @@ Marketplace Auto Review Story Arc skill runtime context:
         cast: input.cast,
       });
 
-      const dialogueQcReviewSchema = z.object({
-        shotId: z.number().int().min(1),
-        verdict: z.enum(["natural", "revised"]),
-        issue: z.enum([
-          "none",
-          "awkward_wording",
-          "written_or_promotional",
-          "weak_response",
-        ]),
-        dialogue: z.string().trim().min(1).max(320).optional(),
-        dialogueTurns: z.array(
-          z.object({
-            castId: z.string().trim().min(1).max(80),
-            line: z.string().trim().min(1).max(320),
-          }).strict()
-        ).min(2).max(18).optional(),
-      }).strict();
-      const dialogueQcResponseSchema = z.object({
-        reviews: z.array(dialogueQcReviewSchema).length(enforcedShots.length),
-      }).strict();
+      const dialogueQcResponseSchema =
+        buildStagedDialogueQcResponseSchema(enforcedShots.length);
       const dialogueQcRes = await callLLMStructured({
         systemPrompt:
           buildStagedDialogueNaturalnessQcSystemPrompt(dialogueLanguage),
@@ -1993,7 +2200,7 @@ Marketplace Auto Review Story Arc skill runtime context:
             name: member.name,
             role: member.role,
           })),
-          shots: enforcedShots.map(shot => ({
+          shotsToReview: enforcedShots.map(shot => ({
             shotId: shot.shotId,
             durationSeconds: shot.durationSeconds,
             title: shot.title,
@@ -2015,7 +2222,7 @@ Marketplace Auto Review Story Arc skill runtime context:
         zodSchema: dialogueQcResponseSchema,
         userId,
         tenantId,
-        maxRetries: 0,
+        maxRetries: 1,
         repairCompleteJson: true,
         disableProviderFallbacks: true,
         maxTokens: 4000,
@@ -2032,12 +2239,18 @@ Marketplace Auto Review Story Arc skill runtime context:
       if (!dialogueQcModel || !dialogueQcProvider) {
         throw new Error("STAGED_DIALOGUE_QC_PROVIDER_PROVENANCE_MISSING");
       }
+      const dialogueQcReviews = normalizeStagedDialogueQcResponse(
+        dialogueQcRes.data,
+        enforcedShots,
+        conversationMode,
+        activeCast
+      );
       const qualityCheckedShots = applyStagedDialogueQcReviews(
         enforcedShots,
-        dialogueQcRes.data.reviews,
+        dialogueQcReviews,
         conversationMode
       );
-      const revisedDialogueCount = dialogueQcRes.data.reviews.filter(
+      const revisedDialogueCount = dialogueQcReviews.filter(
         review => review.verdict === "revised"
       ).length;
       console.info(
