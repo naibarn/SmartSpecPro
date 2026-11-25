@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import {
   composeFacebookReelsDescription,
   hashFacebookReelsContentSnapshot,
@@ -7,6 +8,10 @@ import {
 } from "../marketplaceAutoReviewReelsService";
 
 describe("Marketplace Auto Review Facebook Reels contract", () => {
+  it("registers the publisher in the canonical worker executor registry", () => {
+    expect(defaultJobExecutorRegistry.resolve("social.facebook.reels.publish", "feature-186-v1")).toBeDefined();
+  });
+
   it("preserves the complete canonical affiliate URL and edited text in the publish snapshot", () => {
     const affiliateUrl = "https://shop.example/item?aff_id=ab%2Fcd&campaign=x%20y&sub=1";
     const description = composeFacebookReelsDescription({

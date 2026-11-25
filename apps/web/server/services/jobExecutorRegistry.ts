@@ -59,6 +59,11 @@ import {
   MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE,
   marketplaceAutoReviewWorkerInputSchema,
 } from "./marketplaceAutoReviewWorkerJob";
+import {
+  executeMarketplaceAutoReviewReelsPublish,
+  MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
+  marketplaceAutoReviewReelsWorkerInputSchema,
+} from "./marketplaceAutoReviewReelsService";
 
 export type JobExecutorRegistration = {
   jobType: string;
