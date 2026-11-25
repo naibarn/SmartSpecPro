@@ -398,7 +398,33 @@ export async function runMarketplaceAutoReviewJob(
       )
       .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
       .limit(runLimit);
-    const selectedRuns = new Map(pollableStagedRuns.map(run => [run.id, run]));
+    const stagedFinalRenderRuns = await db
+      .select()
+      .from(marketplaceAutoReviewRuns)
+      .where(
+        and(
+          activeRunFilter,
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture'`,
+            "staged_two_skill_v2"
+          ),
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->>'renderEngine'`,
+            "remotion_queue"
+          ),
+          eq(
+            sql`"marketplace_auto_review_runs"."metadataJson"->'initializationControl'->>'status'`,
+            "completed"
+          ),
+          sql`NULLIF("marketplace_auto_review_runs"."metadataJson"->>'renderJobId', '') IS NOT NULL`,
+          isNull(marketplaceAutoReviewRuns.resultLibraryItemId)
+        )
+      )
+      .orderBy(asc(marketplaceAutoReviewRuns.updatedAt))
+      .limit(stagedPollRunLimit);
+    const selectedRuns = new Map(
+      [...stagedFinalRenderRuns, ...pollableStagedRuns].map(run => [run.id, run])
+    );
     const remainingCandidates = [
       ...automaticStagedRuns,
       ...otherActiveRuns,

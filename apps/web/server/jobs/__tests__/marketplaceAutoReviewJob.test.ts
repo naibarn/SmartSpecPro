@@ -314,7 +314,7 @@ describe("marketplaceAutoReviewJob", () => {
       orderBy: () => chain,
       limit: async () => {
         limitCall += 1;
-        return limitCall === 1 ? [] : limitCall === 2 ? [stagedRun] : [];
+        return limitCall === 4 ? [stagedRun] : [];
       },
     };
 
