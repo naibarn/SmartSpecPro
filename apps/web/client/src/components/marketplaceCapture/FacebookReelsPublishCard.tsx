@@ -64,6 +64,7 @@ export function FacebookReelsPublishCard(props: {
   runId: string;
   initialCaption?: string;
   initialHashtags?: string[];
+  photoImagesRevision?: string;
 }) {
   const [pageId, setPageId] = useState("");
   const [format, setFormat] = useState<"reel" | "photo">("reel");
@@ -94,6 +95,14 @@ export function FacebookReelsPublishCard(props: {
     onError: () => setError("ส่งงาน resume ไม่สำเร็จ กรุณาตรวจสถานะกับ Facebook ก่อนลองใหม่"),
   });
   const photoReadiness = trpc.marketplaceAutoReviewPhotoPosts.readiness.useQuery({ runId: props.runId }, { retry: false });
+  const { refetch: refetchPhotoReadiness } = photoReadiness;
+  const photoImagesRevision = props.photoImagesRevision;
+
+  // The gallery follows the generation job separately from the publishing query.
+  useEffect(() => {
+    if (format === "photo") void refetchPhotoReadiness();
+  }, [format, photoImagesRevision, refetchPhotoReadiness]);
+
   const photoHistory = trpc.marketplaceAutoReviewPhotoPosts.history.useQuery({ runId: props.runId }, {
     retry: false,
     refetchInterval: query => (query.state.data ?? []).some(item => PHOTO_IN_PROGRESS.has(String(item.status))) ? 5_000 : false,
@@ -155,7 +164,7 @@ export function FacebookReelsPublishCard(props: {
   const selectedPhotoPage = (photoReadiness.data?.pages ?? []).find(page => String(page.id) === pageId);
   const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
   const photoCanPublish = Boolean(
-    photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
+    !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
     commercialDisclosure.trim() && commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && affiliateMode !== "first_comment" && !photoHistoryHasUncertain &&
@@ -182,10 +191,10 @@ export function FacebookReelsPublishCard(props: {
               <Button label="Facebook Photo Post" variant="primary" onClick={() => setFormat("photo")} />
             </HStack>
             <Text type="supporting" color="secondary">เลือกรูปที่สร้างไว้แล้วเพียง 1 ภาพ ระบบไม่สร้างภาพหรือเรนเดอร์วิดีโอซ้ำ</Text>
-            {photoReadiness.isLoading ? <Text>กำลังตรวจรูปและความพร้อมเผยแพร่</Text> : null}
+            {photoReadiness.isFetching ? <Text>กำลังตรวจรูปและความพร้อมเผยแพร่</Text> : null}
             {photoReadiness.isError ? <Banner title="ตรวจความพร้อม Photo Post ไม่สำเร็จ" collapsible={false}><Text>กรุณาลองโหลดส่วนนี้ใหม่ก่อนเผยแพร่</Text></Banner> : null}
             {photoReadiness.data && !photoReadiness.data.featureEnabled ? <Banner title="ยังไม่ได้เปิด Meta Channels" collapsible={false}><Text>เปิดใช้ Meta Channels สำหรับ Workspace นี้ก่อนเผยแพร่</Text><Link href="/social/channels">ไปที่ Social Channels</Link></Banner> : null}
-            {photoReadiness.data && !readyPhotoVariants.length ? <Banner title="ยังไม่มีรูปที่พร้อมเผยแพร่" collapsible={false}><Text>{photoReadiness.data.reason || "สร้างภาพรีวิวสินค้าให้เสร็จก่อน"}</Text></Banner> : null}
+            {photoReadiness.data && !photoReadiness.isFetching && !readyPhotoVariants.length ? <Banner title="ยังไม่มีรูปที่พร้อมเผยแพร่" collapsible={false}><Text>{photoReadiness.data.reason || "สร้างภาพรีวิวสินค้าให้เสร็จก่อน"}</Text></Banner> : null}
             {photoReadiness.data && readyPhotoVariants.length && !photoReadiness.data.pages.some(page => page.publishingReady) ? (
               <Banner title="ยังไม่พร้อมเผยแพร่" collapsible={false}>
                 <Text>Facebook Page ยังไม่เชื่อมต่อหรือยังไม่มีสิทธิ์เผยแพร่ กรุณาเชื่อมต่อ Meta App และเลือก Page ก่อน</Text>

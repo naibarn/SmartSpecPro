@@ -1413,6 +1413,14 @@ export function StagedCheckpointReviewPanel(props: {
   const castSeriesId = characterManifest.find(
     item => item.vdSeriesId
   )?.vdSeriesId;
+  const postImages = props.state?.socialCaption?.postImages;
+  const photoImagesRevision = postImages
+    ? JSON.stringify([
+        postImages.batchId,
+        postImages.requestHash,
+        ...Object.values(postImages.variants).map(image => [image.status, image.imageUrl]),
+      ])
+    : undefined;
   const dramaLookQuery =
     trpc.marketplaceCapture.listDramaCharactersForPicker.useQuery(
       { seriesId: castSeriesId ?? "" },
@@ -3325,6 +3333,7 @@ export function StagedCheckpointReviewPanel(props: {
               runId={props.runId}
               initialCaption={props.state.socialCaption?.caption ?? ""}
               initialHashtags={props.state.socialCaption?.hashtags ?? []}
+              photoImagesRevision={photoImagesRevision}
             />
             {props.state.correctionRequired ? (
               <div

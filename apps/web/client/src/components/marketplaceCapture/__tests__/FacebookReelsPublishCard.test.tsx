@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   history: [] as any[],
   historyError: false,
   photoMutate: vi.fn(),
+  refetchPhotos: vi.fn(),
   photoReadiness: {
     ready: true,
     featureEnabled: true,
@@ -42,7 +43,7 @@ vi.mock("@/lib/trpc", () => ({
       resume: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
     },
     marketplaceAutoReviewPhotoPosts: {
-      readiness: { useQuery: () => ({ data: mocks.photoReadiness, isLoading: false, isError: false }) },
+      readiness: { useQuery: () => ({ data: mocks.photoReadiness, isLoading: false, isError: false, refetch: mocks.refetchPhotos }) },
       history: { useQuery: () => ({ data: mocks.photoHistory, isLoading: false, isError: false, refetch: mocks.refetch }) },
       publish: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
       reconcile: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
@@ -89,6 +90,7 @@ describe("FacebookReelsPublishCard", () => {
     mocks.history = [];
     mocks.historyError = false;
     mocks.photoMutate.mockReset();
+    mocks.refetchPhotos.mockReset();
     mocks.photoHistory = [];
     mocks.readiness = {
       ready: true,
@@ -212,6 +214,18 @@ describe("FacebookReelsPublishCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
     expect(screen.queryByLabelText("Caption สำหรับ Photo Post")).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" })).toBeChecked();
+  });
+
+  it("refreshes Photo Post choices on tab entry and when the gallery changes", () => {
+    const { rerender } = render(<FacebookReelsPublishCard runId="run-1" photoImagesRevision="queued" />);
+    expect(mocks.refetchPhotos).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    expect(mocks.refetchPhotos).toHaveBeenCalledTimes(1);
+
+    rerender(<FacebookReelsPublishCard runId="run-1" photoImagesRevision="completed" />);
+    expect(mocks.refetchPhotos).toHaveBeenCalledTimes(2);
+    rerender(<FacebookReelsPublishCard runId="run-1" photoImagesRevision="completed" />);
+    expect(mocks.refetchPhotos).toHaveBeenCalledTimes(2);
   });
 
   it("keeps Photo Post disabled when no generated image is completed", () => {
