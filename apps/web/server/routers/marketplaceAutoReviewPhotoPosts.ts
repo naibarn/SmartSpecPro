@@ -32,7 +32,7 @@ const publishSnapshotSchema = z.object({
   caption: z.string().trim().max(2000),
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: z.enum(["description", "first_comment", "manual_native", "none"]),
-  commercialDisclosure: z.string().trim().max(500),
+  commercialDisclosure: z.string().trim().max(500).default(""),
   allowNoAffiliate: z.boolean().optional(),
 }).strict();
 

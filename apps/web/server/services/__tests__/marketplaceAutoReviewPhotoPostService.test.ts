@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { Readable } from "node:stream";
+import { describe, expect, it, vi } from "vitest";
 
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 import {
@@ -10,7 +11,20 @@ import {
   inspectMarketplaceAutoReviewPhotoImage,
   marketplaceAutoReviewPhotoPostWorkerInputSchema,
   resolveMarketplaceAutoReviewPhotoVariant,
+  startMarketplaceAutoReviewPhotoPost,
 } from "../marketplaceAutoReviewPhotoPostService";
+
+const { getDb, listPublishingPages, storageStreamFile } = vi.hoisted(() => ({
+  getDb: vi.fn(),
+  listPublishingPages: vi.fn(),
+  storageStreamFile: vi.fn(),
+}));
+vi.mock("../../db", async importOriginal => ({ ...await importOriginal<typeof import("../../db")>(), getDb }));
+vi.mock("../../storage", async importOriginal => ({ ...await importOriginal<typeof import("../../storage")>(), storageStreamFile }));
+vi.mock("../socialPublishingService", async importOriginal => ({
+  ...await importOriginal<typeof import("../socialPublishingService")>(),
+  listPublishingPages,
+}));
 
 const TENANT_ID = "tenant-1";
 const RUN_ID = "mar_run-1";
@@ -21,6 +35,7 @@ function runMetadata(overrides: Record<string, unknown> = {}) {
   return {
     stagedPipeline: {
       socialCaption: {
+        caption: "Review caption",
         postImages: {
           variants: {
             caption_source: {
@@ -72,6 +87,46 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
     expect(resolveMarketplaceAutoReviewPhotoVariant(runMetadata(), { tenantId: TENANT_ID, runId: RUN_ID, variant: "caption_source" }).variant).toBe("caption_source");
     expect(() => assertMarketplaceAutoReviewPhotoRunOwnership(run, { tenantId: "tenant-2", userId: 41 })).toThrow("PHOTO_RUN_SCOPE_MISMATCH");
     expect(() => assertMarketplaceAutoReviewPhotoRunOwnership(run, { tenantId: TENANT_ID, userId: 42 })).toThrow("PHOTO_RUN_SCOPE_MISMATCH");
+  });
+
+  it.each([true, false])("admits the selected Meta Page only when publishing readiness is %s", async publishingReady => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    storageStreamFile.mockClear().mockResolvedValue({
+      totalLength: image.length, contentType: "image/png", stream: Readable.from([image]),
+    });
+    listPublishingPages.mockResolvedValue([{ id: 7, provider: "meta", publishingReady }]);
+    const results = [
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, productId: "product-1", metadataJson: runMetadata() }],
+      [{ id: "product-1" }],
+      [{ affiliateUrl: "https://shop.example/item" }],
+      [{ id: 12, metadata: { photoPublicationStatus: "queued", publishingWorkerJobId: "worker-1" } }],
+      [],
+    ];
+    getDb.mockResolvedValue({ select: () => {
+      const rows = results.shift();
+      return { from: () => ({ where: () => ({
+        limit: () => Promise.resolve(rows),
+        orderBy: () => ({ limit: () => Promise.resolve(rows) }),
+      }) }) };
+    } });
+
+    const result = startMarketplaceAutoReviewPhotoPost({
+      tenantId: TENANT_ID, userId: 41, runId: RUN_ID, pageId: 7,
+      snapshot: {
+        variant: "caption_source", caption: "Review caption", hashtags: ["#review"],
+        affiliateMode: "description", commercialDisclosure: "",
+      },
+    });
+    if (publishingReady) {
+      await expect(result).resolves.toMatchObject({ postId: 12, status: "queued" });
+      expect(storageStreamFile).toHaveBeenCalledWith(IMAGE_KEY);
+    } else {
+      await expect(result).rejects.toThrow("FACEBOOK_PAGE_NOT_READY");
+      expect(storageStreamFile).not.toHaveBeenCalled();
+    }
+    expect(listPublishingPages).toHaveBeenLastCalledWith(TENANT_ID, 41);
   });
 
   it("verifies PNG bytes, dimensions and checksum before upload", async () => {

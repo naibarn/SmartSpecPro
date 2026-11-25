@@ -29,7 +29,7 @@ const snapshotSchema = z.object({
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: z.enum(["description", "first_comment", "manual_native", "none"]),
   aiGenerated: z.boolean(),
-  commercialDisclosure: z.string().trim().max(500),
+  commercialDisclosure: z.string().trim().max(500).default(""),
   allowNoAffiliate: z.boolean().optional(),
 }).strict();
 

@@ -49,6 +49,17 @@ function normalizedHashtags(value: string): string[] {
   return value.split(/\s+/).filter(Boolean).map(tag => `#${tag.replace(/^#+/, "")}`);
 }
 
+function publishErrorMessage(message: string): string {
+  switch (message.split(":")[0]) {
+    case "FACEBOOK_PAGE_NOT_READY":
+      return "เพจที่เลือกยังเผยแพร่ไม่ได้ กรุณาตรวจสิทธิ์เผยแพร่ของเพจใน Social Channels หรือเลือกเพจอื่น";
+    case "PHOTO_CAPTION_TOO_LONG":
+      return "ข้อความรวมเกิน 2,000 ตัวอักษร กรุณาย่อ Caption หรือ Hashtag แล้วลองอีกครั้ง";
+    default:
+      return "ส่งงานเผยแพร่ไม่สำเร็จ กรุณาตรวจประวัติด้านล่างก่อนลองอีกครั้ง";
+  }
+}
+
 function safeFacebookPermalink(value: unknown): string | null {
   if (typeof value !== "string") return null;
   try {
@@ -85,7 +96,7 @@ export function FacebookReelsPublishCard(props: {
       setError(null);
       await history.refetch();
     },
-    onError: () => setError("ส่งงานเผยแพร่ไม่สำเร็จ กรุณาตรวจการเชื่อมต่อและสถานะด้านล่างก่อนลองอีกครั้ง"),
+    onError: error => setError(publishErrorMessage(error.message)),
   });
   const reconcile = trpc.marketplaceAutoReviewReels.reconcile.useMutation({
     onSuccess: async () => { await history.refetch(); },
@@ -110,7 +121,7 @@ export function FacebookReelsPublishCard(props: {
   });
   const publishPhoto = trpc.marketplaceAutoReviewPhotoPosts.publish.useMutation({
     onSuccess: async () => { setError(null); await photoHistory.refetch(); },
-    onError: () => setError("ส่งงาน Photo Post ไม่สำเร็จ กรุณาตรวจการเชื่อมต่อและสถานะด้านล่างก่อนลองอีกครั้ง"),
+    onError: error => setError(publishErrorMessage(error.message)),
   });
   const reconcilePhoto = trpc.marketplaceAutoReviewPhotoPosts.reconcile.useMutation({
     onSuccess: async () => { await photoHistory.refetch(); },
@@ -150,16 +161,15 @@ export function FacebookReelsPublishCard(props: {
   const invalidHashtags = tooManyHashtags || parsedHashtags.some(tag => !AUTO_REVIEW_PUBLISH_HASHTAG.test(tag));
   const activePublication = (history.data ?? []).some(item => IN_PROGRESS.has(String(item.status)) || String(item.status) === "needs_user_action");
   const noLinkConfirmed = affiliateMode !== "none" || allowNoAffiliate;
-  const disclosureReady = Boolean(commercialDisclosure.trim());
   const canPublish = Boolean(
     readiness.data?.ready && selectedPage?.publishingReady && caption.trim() &&
     caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "none") &&
-    noLinkConfirmed && disclosureReady && !activePublication && !history.isLoading && !history.isError && !publish.isPending
+    noLinkConfirmed && !activePublication && !history.isLoading && !history.isError && !publish.isPending
   );
   const canPrepareManualHandoff = Boolean(
     affiliateMode === "manual_native" && readiness.data?.ready && selectedPage?.publishingReady &&
-    caption.trim() && caption.length <= 2000 && commercialDisclosure.trim() && !invalidHashtags &&
+    caption.trim() && caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
     !activePublication && !history.isLoading && !history.isError && !publish.isPending
   );
   const readyPhotoVariants = photoReadiness.data?.imageVariants.filter(image => image.status === "completed" && image.imageUrl) ?? [];
@@ -167,7 +177,7 @@ export function FacebookReelsPublishCard(props: {
   const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
-    (affiliateMode === "none" || disclosureReady) && commercialDisclosure.length <= 500 && !invalidHashtags &&
+    commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && affiliateMode !== "first_comment" && !photoHistoryHasUncertain &&
     !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
@@ -261,12 +271,7 @@ export function FacebookReelsPublishCard(props: {
             />
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
-            <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="ระบุข้อความเปิดเผยที่เหมาะสมกับโพสต์" />
-            <Text type="supporting" color="secondary">
-              {affiliateMode === "none"
-                ? "เว้นว่างได้เมื่อโพสต์ไม่มีผู้สนับสนุนหรือความสัมพันธ์เชิงพาณิชย์"
-                : "กรอกข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ก่อนเผยแพร่แบบ Affiliate"}
-            </Text>
+            <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="เว้นว่างได้ หากระบุไว้ใน Caption แล้วหรือไม่มีข้อความเพิ่มเติม" />
             <Banner title="ภาพนี้สร้างด้วย AI" collapsible={false}><Text>กรุณาตรวจและเปิดเผยตามข้อกำหนดของ Facebook ก่อนเผยแพร่ การเผยแพร่ภาพผ่าน API นี้ไม่มีช่องส่งค่า is_ai_generated โดยเฉพาะ</Text></Banner>
             {photoHistoryHasUncertain ? <Banner title="ต้องตรวจสอบสถานะก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจประวัติด้านล่างก่อนสร้างโพสต์ใหม่</Text></Banner> : null}
             {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
@@ -379,13 +384,13 @@ export function FacebookReelsPublishCard(props: {
           <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} />
         ) : null}
         <TextArea
-          label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"
+          label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"
           value={commercialDisclosure}
           onChange={setCommercialDisclosure}
           rows={2}
           maxLength={500}
           width="100%"
-          placeholder="ระบุข้อความเปิดเผยที่เหมาะสมกับโพสต์"
+          placeholder="เว้นว่างได้ หากระบุไว้ใน Caption แล้วหรือไม่มีข้อความเพิ่มเติม"
         />
         <CheckboxInput label="วิดีโอนี้สร้างหรือดัดแปลงด้วย AI" value={aiGenerated} onChange={setAiGenerated} />
         <Text type="supporting" color="secondary">การระบุ AI แยกจากการเปิดเผยความสัมพันธ์เชิงพาณิชย์</Text>

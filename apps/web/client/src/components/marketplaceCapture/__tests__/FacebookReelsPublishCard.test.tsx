@@ -121,7 +121,7 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.queryByLabelText("Caption สำหรับ Reel")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Hashtag")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "Affiliate disclosure" } });
+    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "Affiliate disclosure" } });
     fireEvent.click(screen.getByLabelText("วิดีโอนี้สร้างหรือดัดแปลงด้วย AI"));
     fireEvent.click(screen.getByRole("button", { name: "เผยแพร่ Reel" }));
     expect(mocks.mutate).toHaveBeenCalledWith({
@@ -134,7 +134,6 @@ describe("FacebookReelsPublishCard", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "none" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
     const publish = screen.getByRole("button", { name: "เผยแพร่ Reel" });
     expect(publish).toBeDisabled();
     fireEvent.click(screen.getByLabelText("ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link"));
@@ -147,7 +146,7 @@ describe("FacebookReelsPublishCard", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "manual_native" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
+    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "โฆษณา" } });
     const handoff = screen.getByRole("button", { name: "เตรียมส่งต่อให้ติดแท็กใน Facebook" });
     expect(handoff).toBeEnabled();
     fireEvent.click(handoff);
@@ -160,7 +159,7 @@ describe("FacebookReelsPublishCard", () => {
     mocks.history = [{ id: 7, status: "needs_user_action", affiliateLinkStatus: "pending", commercialDisclosureStatus: "included", attributionVerificationStatus: "unverified", providerPostId: null, permalink: null, errorMessage: null }];
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "Affiliate disclosure" } });
+    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "Affiliate disclosure" } });
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
     expect(screen.getByText(/Facebook อาจได้รับคำขอแล้ว/)).toBeInTheDocument();
     expect(mocks.mutate).not.toHaveBeenCalled();
@@ -170,7 +169,7 @@ describe("FacebookReelsPublishCard", () => {
     mocks.historyError = true;
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "Affiliate disclosure" } });
+    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "Affiliate disclosure" } });
     expect(screen.getByRole("option", { name: /ความคิดเห็นแรก/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
   });
@@ -193,13 +192,12 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
     const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
     expect(publish).toBeEnabled();
     fireEvent.click(publish);
     expect(mocks.photoMutate).toHaveBeenCalledWith({
       runId: "run-1", pageId: 12,
-      snapshot: { variant: "product_reference", caption: "Saved caption", hashtags: ["#บํารุงผม", "#ออยล์เซรั่ม", "#จัดทรงผม"], affiliateMode: "description", commercialDisclosure: "โฆษณา" },
+      snapshot: { variant: "product_reference", caption: "Saved caption", hashtags: ["#บํารุงผม", "#ออยล์เซรั่ม", "#จัดทรงผม"], affiliateMode: "description", commercialDisclosure: "" },
     });
     expect(screen.getAllByRole("radio").filter((radio: HTMLElement) => (radio as HTMLInputElement).checked)).toHaveLength(1);
   });
@@ -223,7 +221,7 @@ describe("FacebookReelsPublishCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
-    expect(publish).toBeDisabled();
+    expect(publish).toBeEnabled();
 
     fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "none" } });
     expect(publish).toBeDisabled();
@@ -264,7 +262,7 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.queryByLabelText("Caption สำหรับ Photo Post")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Hashtag")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
-    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์"), { target: { value: "โฆษณา" } });
+    fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "โฆษณา" } });
     fireEvent.click(screen.getByRole("button", { name: "เผยแพร่ Photo Post" }));
     expect(mocks.photoMutate).toHaveBeenCalledWith(expect.objectContaining({ snapshot: expect.objectContaining({ caption: "Photo saved caption", hashtags: ["#photo", "#review"] }) }));
   });

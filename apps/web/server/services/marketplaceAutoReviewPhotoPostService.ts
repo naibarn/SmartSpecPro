@@ -18,7 +18,6 @@ import { getDb, type DrizzleDB } from "../db";
 import { storageStreamFile } from "../storage";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { verifyPageAccess } from "./socialAccessService";
 import { publishFacebookPagePhoto, readFacebookPagePhoto } from "./facebookPhotoPublishGateway";
 
 export const MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE = "social.facebook.photo.publish";
@@ -36,7 +35,7 @@ const snapshotSchema = z.object({
   caption: z.string().trim().max(2000),
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
-  commercialDisclosure: z.string().trim().max(500),
+  commercialDisclosure: z.string().trim().max(500).default(""),
   allowNoAffiliate: z.boolean().optional(),
 }).strict();
 
@@ -265,8 +264,6 @@ async function verifySelectedPage(input: { tenantId: string; userId: number; pag
   const pages = await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId);
   const selected = pages.find(page => page.id === input.pageId);
   if (!selected?.publishingReady || selected.provider !== "meta") fail("FACEBOOK_PAGE_NOT_READY", selected?.publishingIssue ?? "Select an active Facebook Page with verified publishing permission");
-  const page = await verifyPageAccess(input.pageId, input.userId, input.tenantId, input.tenantId);
-  if (page.provider !== "meta" || page.status !== "active" || !page.selectedForPublishing || !page.encryptedPageAccessToken) fail("FACEBOOK_PAGE_NOT_READY", "Select an active Facebook Page with publishing enabled");
 }
 
 export async function startMarketplaceAutoReviewPhotoPost(input: {
@@ -285,9 +282,6 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   if (snapshot.affiliateMode === "description" && !pkg.affiliateUrl) fail("AFFILIATE_LINK_MISSING", "No canonical affiliate URL is stored for this product");
   if (snapshot.affiliateMode === "first_comment") fail("FIRST_COMMENT_NOT_ENABLED", "Affiliate first-comment publishing is not enabled until the connected app's permission is confirmed");
   if (snapshot.affiliateMode === "none" && !snapshot.allowNoAffiliate) fail("NO_AFFILIATE_CONFIRMATION_REQUIRED", "Explicitly confirm publishing without the affiliate link");
-  if (snapshot.affiliateMode !== "none" && !snapshot.commercialDisclosure) {
-    fail("COMMERCIAL_DISCLOSURE_REQUIRED", "Add the required commercial disclosure to the photo caption");
-  }
 
   const affiliateUrl = ["description", "manual_native"].includes(snapshot.affiliateMode) ? pkg.affiliateUrl : null;
   const publishCaption = assertFacebookPhotoPostCaptionLength(composeFacebookPhotoPostCaption({ caption: snapshot.caption, hashtags: snapshot.hashtags, commercialDisclosure: snapshot.commercialDisclosure, affiliateUrl: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null }));

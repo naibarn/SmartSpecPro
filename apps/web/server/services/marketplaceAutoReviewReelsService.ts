@@ -25,7 +25,6 @@ import {
 } from "../../drizzle/schema";
 import { getDb, type DrizzleDB } from "../db";
 import { decrypt } from "./crypto";
-import { verifyPageAccess } from "./socialAccessService";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import {
   finishFacebookReelUpload,
@@ -49,7 +48,7 @@ const publishSnapshotSchema = z.object({
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
   aiGenerated: z.boolean(),
-  commercialDisclosure: z.string().trim().max(500),
+  commercialDisclosure: z.string().trim().max(500).default(""),
   allowNoAffiliate: z.boolean().optional(),
 }).strict();
 
@@ -237,18 +236,12 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   const { listPublishingPages } = await import("./socialPublishingService");
   const selectedPageReadiness = (await listPublishingPages(input.tenantId, input.userId))
     .find(page => page.id === input.pageId);
-  if (!selectedPageReadiness?.publishingReady) {
+  if (!selectedPageReadiness?.publishingReady || selectedPageReadiness.provider !== "meta") {
     fail("FACEBOOK_PAGE_NOT_READY", selectedPageReadiness?.publishingIssue ?? "Select an active Facebook Page with verified publishing permission");
   }
-  await verifyPageAccess(input.pageId, input.userId, input.tenantId, input.tenantId).then(page => {
-    if (page.provider !== "meta" || page.status !== "active" || !page.selectedForPublishing || !page.encryptedPageAccessToken) {
-      fail("FACEBOOK_PAGE_NOT_READY", "Select an active Facebook Page with publishing enabled");
-    }
-  });
   if (snapshot.affiliateMode === "description" && !pkg.affiliateUrl) fail("AFFILIATE_LINK_MISSING", "No canonical affiliate URL is stored for this product");
   if (snapshot.affiliateMode === "first_comment") fail("FIRST_COMMENT_NOT_ENABLED", "Affiliate first-comment publishing is not enabled until the connected app's permission is confirmed");
   if (snapshot.affiliateMode === "none" && !snapshot.allowNoAffiliate) fail("NO_AFFILIATE_CONFIRMATION_REQUIRED", "Explicitly confirm publishing without the affiliate link");
-  if (!snapshot.commercialDisclosure.trim()) fail("COMMERCIAL_DISCLOSURE_REQUIRED", "Add the required commercial disclosure to the description");
   const canonical = {
     tenantId: input.tenantId,
     userId: input.userId,
@@ -304,7 +297,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     snapshot: canonical,
     videoPublicationStatus: "queued" satisfies ReelsPublishState,
     affiliateLinkStatus: canonical.affiliateUrl ? "pending" : "none",
-    commercialDisclosureStatus: "included_in_description",
+    commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_description" : "not_provided",
     attributionVerificationStatus: "unverified",
     aiDisclosure: snapshot.aiGenerated,
     reconciliation: { state: "not_started" },
@@ -357,7 +350,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
       snapshot: canonical,
       videoPublicationStatus: "needs_user_action" satisfies ReelsPublishState,
       affiliateLinkStatus: "manual_handoff",
-      commercialDisclosureStatus: "prepared_for_manual_handoff",
+      commercialDisclosureStatus: snapshot.commercialDisclosure ? "prepared_for_manual_handoff" : "not_provided",
       attributionVerificationStatus: "unverified",
       aiDisclosure: snapshot.aiGenerated,
       manualHandoff: {
