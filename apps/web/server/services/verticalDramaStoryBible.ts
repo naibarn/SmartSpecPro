@@ -1525,6 +1525,18 @@ const VD_TRANSIENT_LLM_ERROR_PATTERNS: RegExp[] = [
   /invalid argument/,
 ];
 
+function isProviderInflightCreditCapacityError(error: unknown): boolean {
+  const message = (
+    error instanceof Error ? error.message : String(error ?? "")
+  ).toLowerCase();
+  return (
+    message.includes("would exceed your available credits") &&
+    message.includes("in-flight requests")
+  );
+}
+
+const VD_PROVIDER_CAPACITY_RETRY_BACKOFFS_MS = [15_000, 30_000];
+
 export function classifyVerticalDramaLlmError(error: unknown): VdLlmErrorClass {
   if (error instanceof VdSchemaValidationError) {
     return "schema";
@@ -2721,15 +2733,16 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   const images = args.hasVision
     ? await prepareVisionReferenceUrls(args)
     : args.images;
-  try {
-    const result = await runVisionAwareJsonAttempt<T>({
+  const firstAttemptContent = buildVisionAwareContent(
+    args.userPromptText,
+    args.hasVision,
+    images
+  );
+  const runFirstAttempt = () =>
+    runVisionAwareJsonAttempt<T>({
       model: args.model,
       systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(
-        args.userPromptText,
-        args.hasVision,
-        images
-      ),
+      content: firstAttemptContent,
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
       timeoutMs: args.timeoutMs,
@@ -2738,8 +2751,29 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       onUsage: args.onUsage,
       extraBodyParams: resolvedExtraBodyParams,
     });
+  try {
+    const result = await runFirstAttempt();
     return { ...result, usedVision: args.hasVision };
   } catch (firstError) {
+    // Some providers reject a request before admitting it when other requests
+    // have reserved the remaining account credits. This exact response says
+    // no request was admitted, so wait for those reservations to settle and
+    // retry the same request instead of immediately spending more attempts on
+    // fallback models or failing the one-attempt Marketplace worker job.
+    if (isProviderInflightCreditCapacityError(firstError)) {
+      let lastCapacityError: unknown = firstError;
+      for (const delayMs of VD_PROVIDER_CAPACITY_RETRY_BACKOFFS_MS) {
+        await vdSleep(delayMs);
+        try {
+          const result = await runFirstAttempt();
+          return { ...result, usedVision: args.hasVision };
+        } catch (retryError) {
+          if (!isProviderInflightCreditCapacityError(retryError)) throw retryError;
+          lastCapacityError = retryError;
+        }
+      }
+      throw lastCapacityError;
+    }
     console.warn(
       `[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`,
       firstError instanceof Error ? firstError.message : firstError
