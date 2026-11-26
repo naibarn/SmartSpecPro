@@ -123,13 +123,14 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
     );
 
   let affiliateUrl = text(snapshot.affiliateUrl);
-  if (!affiliateUrl && typeof metadata.productId === "number") {
+  const productId = text(metadata.productId);
+  if (!affiliateUrl && productId) {
     const [affiliate] = await db
       .select({ affiliateUrl: marketplaceProductAffiliateLinks.affiliateUrl })
       .from(marketplaceProductAffiliateLinks)
       .where(
         and(
-          eq(marketplaceProductAffiliateLinks.productId, metadata.productId),
+          eq(marketplaceProductAffiliateLinks.productId, productId),
           eq(marketplaceProductAffiliateLinks.userId, input.userId),
           eq(marketplaceProductAffiliateLinks.tenantId, input.tenantId),
           isNotNull(marketplaceProductAffiliateLinks.affiliateUrl),
