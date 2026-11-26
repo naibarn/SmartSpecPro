@@ -1,0 +1,213 @@
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+
+import {
+  marketplaceProductAffiliateLinks,
+  socialPages,
+  socialPosts,
+  socialProviderConnections,
+} from "../../drizzle/schema";
+import { getDb } from "../db";
+import { decrypt } from "./crypto";
+import { publishAffiliateCommentOnce } from "./marketplaceAutoReviewAffiliateComment";
+
+type PublicationFormat = "reels" | "photo_post";
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function fail(
+  code: ConstructorParameters<typeof TRPCError>[0]["code"],
+  message: string
+): never {
+  throw new TRPCError({ code, message });
+}
+
+export async function postAffiliateCommentOnPublishedAutoReview(input: {
+  tenantId: string;
+  userId: number;
+  postId: number;
+  format: PublicationFormat;
+}) {
+  const db = await getDb();
+  if (!db) fail("INTERNAL_SERVER_ERROR", "Database not available");
+
+  const [row] = await db
+    .select({
+      post: socialPosts,
+      page: socialPages,
+      connection: socialProviderConnections,
+    })
+    .from(socialPosts)
+    .innerJoin(socialPages, eq(socialPosts.pageId, socialPages.id))
+    .innerJoin(
+      socialProviderConnections,
+      eq(socialPages.connectionId, socialProviderConnections.id)
+    )
+    .where(
+      and(
+        eq(socialPosts.id, input.postId),
+        eq(socialPosts.tenantId, input.tenantId),
+        eq(socialPosts.createdByUserId, input.userId),
+        eq(socialPages.tenantId, input.tenantId),
+        eq(socialProviderConnections.tenantId, input.tenantId),
+        eq(socialProviderConnections.userId, input.userId)
+      )
+    )
+    .limit(1);
+  if (!row) fail("NOT_FOUND", "โพสต์นี้ไม่พร้อมใช้งาน");
+
+  const metadata = record(row.post.metadata);
+  const expectedSource =
+    input.format === "reels"
+      ? "marketplace_auto_review_reels"
+      : "marketplace_auto_review_photo_post";
+  const snapshot = record(metadata.snapshot);
+  if (metadata.source !== expectedSource)
+    fail("BAD_REQUEST", "รายการนี้ไม่ใช่โพสต์ Auto Review ที่รองรับ");
+  if (row.post.status !== "published" || !row.post.providerPostId)
+    fail("PRECONDITION_FAILED", "Facebook ยังไม่ยืนยันโพสต์นี้");
+  if (
+    snapshot.affiliateMode !== "none" ||
+    metadata.affiliateLinkStatus !== "none"
+  ) {
+    fail(
+      "PRECONDITION_FAILED",
+      "โพสต์นี้มีการจัดการ Affiliate Link แล้ว หรือไม่เข้าเงื่อนไขการเพิ่มคอมเมนต์"
+    );
+  }
+  if (metadata.affiliateCommentStatus)
+    fail(
+      "PRECONDITION_FAILED",
+      "คอมเมนต์ Affiliate สำหรับโพสต์นี้ถูกดำเนินการไปแล้ว กรุณาตรวจสอบสถานะก่อน"
+    );
+
+  if (
+    row.page.provider !== "meta" ||
+    row.page.status !== "active" ||
+    !row.page.selectedForPublishing ||
+    !row.page.encryptedPageAccessToken ||
+    (row.page.tokenExpiresAt && row.page.tokenExpiresAt.getTime() <= Date.now())
+  ) {
+    fail(
+      "PRECONDITION_FAILED",
+      "Facebook Page ไม่พร้อมใช้งาน กรุณาเชื่อมต่อใหม่และเปิดสิทธิ์เผยแพร่"
+    );
+  }
+  const connectionMetadata = record(row.connection.metadata);
+  const scopes = Array.isArray(row.connection.grantedScopes)
+    ? row.connection.grantedScopes
+    : [];
+  if (
+    row.connection.status !== "active" ||
+    connectionMetadata.permissionVerificationStatus !== "verified" ||
+    !scopes.includes("pages_manage_engagement")
+  ) {
+    fail(
+      "PRECONDITION_FAILED",
+      "Facebook Page ยังไม่มีสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อเพจใหม่"
+    );
+  }
+  const accessToken = decrypt(row.page.encryptedPageAccessToken);
+  if (!accessToken)
+    fail(
+      "PRECONDITION_FAILED",
+      "ไม่พบ token ของ Facebook Page กรุณาเชื่อมต่อเพจใหม่"
+    );
+
+  let affiliateUrl = text(snapshot.affiliateUrl);
+  if (!affiliateUrl && typeof metadata.productId === "number") {
+    const [affiliate] = await db
+      .select({ affiliateUrl: marketplaceProductAffiliateLinks.affiliateUrl })
+      .from(marketplaceProductAffiliateLinks)
+      .where(
+        and(
+          eq(marketplaceProductAffiliateLinks.productId, metadata.productId),
+          eq(marketplaceProductAffiliateLinks.userId, input.userId),
+          eq(marketplaceProductAffiliateLinks.tenantId, input.tenantId),
+          isNotNull(marketplaceProductAffiliateLinks.affiliateUrl),
+          sql`length(trim(${marketplaceProductAffiliateLinks.affiliateUrl})) > 0`
+        )
+      )
+      .orderBy(desc(marketplaceProductAffiliateLinks.updatedAt))
+      .limit(1);
+    affiliateUrl = text(affiliate?.affiliateUrl);
+  }
+  if (!affiliateUrl)
+    fail(
+      "PRECONDITION_FAILED",
+      "ไม่พบ Affiliate URL ที่บันทึกไว้สำหรับสินค้านี้"
+    );
+  try {
+    const parsed = new URL(affiliateUrl);
+    if (
+      !["https:", "http:"].includes(parsed.protocol) ||
+      parsed.username ||
+      parsed.password
+    )
+      throw new Error("invalid URL");
+  } catch {
+    fail("PRECONDITION_FAILED", "Affiliate URL ที่บันทึกไว้ไม่ถูกต้อง");
+  }
+
+  const nextMetadata = { ...metadata };
+  const state = await publishAffiliateCommentOnce({
+    metadata,
+    pageId: row.page.providerPageId,
+    objectId: row.post.providerPostId,
+    accessToken,
+    affiliateUrl,
+    claimRequest: async requestedAt => {
+      const [claimed] = await db
+        .update(socialPosts)
+        .set({
+          metadata: {
+            ...metadata,
+            affiliateCommentStatus: "requesting",
+            affiliateCommentRequestedAt: requestedAt,
+          },
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(socialPosts.id, input.postId),
+            eq(socialPosts.tenantId, input.tenantId),
+            eq(socialPosts.createdByUserId, input.userId),
+            eq(socialPosts.status, "published"),
+            sql`${socialPosts.metadata}->>'affiliateCommentStatus' IS NULL`,
+            sql`${socialPosts.metadata}->'snapshot'->>'affiliateMode' = 'none'`,
+            sql`${socialPosts.metadata}->>'affiliateLinkStatus' = 'none'`
+          )
+        )
+        .returning({ id: socialPosts.id });
+      if (!claimed) return false;
+      Object.assign(nextMetadata, {
+        affiliateCommentStatus: "requesting",
+        affiliateCommentRequestedAt: requestedAt,
+      });
+      return true;
+    },
+    persist: async patch => {
+      Object.assign(nextMetadata, patch);
+      await db
+        .update(socialPosts)
+        .set({ metadata: nextMetadata, updatedAt: new Date() })
+        .where(
+          and(
+            eq(socialPosts.id, input.postId),
+            eq(socialPosts.tenantId, input.tenantId),
+            eq(socialPosts.createdByUserId, input.userId)
+          )
+        );
+    },
+  });
+
+  return { status: state, postId: input.postId };
+}

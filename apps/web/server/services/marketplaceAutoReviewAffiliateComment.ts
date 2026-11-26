@@ -8,6 +8,7 @@ export async function publishAffiliateCommentOnce(input: {
   objectId: string | null;
   accessToken: string;
   affiliateUrl: string | null;
+  claimRequest?: (requestedAt: string) => Promise<boolean>;
   publishComment?: typeof publishFacebookPageComment;
   persist: (patch: Record<string, unknown>) => Promise<void>;
 }): Promise<AffiliateCommentState> {
@@ -20,7 +21,12 @@ export async function publishAffiliateCommentOnce(input: {
     return "uncertain";
   }
 
-  await input.persist({ affiliateCommentStatus: "requesting", affiliateCommentRequestedAt: new Date().toISOString() });
+  const requestedAt = new Date().toISOString();
+  if (input.claimRequest) {
+    if (!await input.claimRequest(requestedAt)) return "uncertain";
+  } else {
+    await input.persist({ affiliateCommentStatus: "requesting", affiliateCommentRequestedAt: requestedAt });
+  }
   try {
     const result = await (input.publishComment ?? publishFacebookPageComment)({
       pageId: input.pageId,

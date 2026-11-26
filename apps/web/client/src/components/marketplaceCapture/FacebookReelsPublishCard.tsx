@@ -108,6 +108,10 @@ export function FacebookReelsPublishCard(props: {
     onSuccess: async () => { setError(null); await history.refetch(); },
     onError: () => setError("ส่งงาน resume ไม่สำเร็จ กรุณาตรวจสถานะกับ Facebook ก่อนลองใหม่"),
   });
+  const postAffiliateComment = trpc.marketplaceAutoReviewReels.postAffiliateComment.useMutation({
+    onSuccess: async () => { setError(null); await history.refetch(); },
+    onError: () => setError("โพสต์ Affiliate Link ในคอมเมนต์ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เพจและสถานะโพสต์ก่อน"),
+  });
   const photoReadiness = trpc.marketplaceAutoReviewPhotoPosts.readiness.useQuery({ runId: props.runId }, { retry: false });
   const { refetch: refetchPhotoReadiness } = photoReadiness;
   const photoImagesRevision = props.photoImagesRevision;
@@ -128,6 +132,10 @@ export function FacebookReelsPublishCard(props: {
   const reconcilePhoto = trpc.marketplaceAutoReviewPhotoPosts.reconcile.useMutation({
     onSuccess: async () => { await photoHistory.refetch(); },
     onError: () => setError("ตรวจสถานะ Photo Post กับ Facebook ไม่สำเร็จ กรุณาลองใหม่ภายหลัง"),
+  });
+  const postPhotoAffiliateComment = trpc.marketplaceAutoReviewPhotoPosts.postAffiliateComment.useMutation({
+    onSuccess: async () => { setError(null); await photoHistory.refetch(); },
+    onError: () => setError("โพสต์ Affiliate Link ในคอมเมนต์ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เพจและสถานะโพสต์ก่อน"),
   });
 
   const caption = props.initialCaption?.trim()
@@ -298,6 +306,10 @@ export function FacebookReelsPublishCard(props: {
                 <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
                 {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
                 {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
+                {status === "published" && item.providerPostId && item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus && photoReadiness.data?.hasAffiliateLink ? (
+                  <Button label="โพสต์ Affiliate Link ในคอมเมนต์แรก" variant="secondary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => postPhotoAffiliateComment.mutate({ postId: item.id })} />
+                ) : null}
+                {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
                 {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}
                 {item.manualHandoff && typeof item.manualHandoff === "object" ? <VStack gap={1}>
                   <Text>{String((item.manualHandoff as Record<string, unknown>).instructions ?? "ใช้ Facebook เพื่อเผยแพร่และติดแท็กสินค้าด้วยตนเอง")}</Text>
@@ -422,6 +434,10 @@ export function FacebookReelsPublishCard(props: {
               <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
               {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
               {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
+              {status === "published" && item.providerPostId && item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus && readiness.data?.hasAffiliateLink ? (
+                <Button label="โพสต์ Affiliate Link ในคอมเมนต์แรก" variant="secondary" isLoading={postAffiliateComment.isPending} onClick={() => postAffiliateComment.mutate({ postId: item.id })} />
+              ) : null}
+              {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
               {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}
               {["needs_user_action", "reconciling"].includes(status) ? <Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจสถานะก่อนส่งซ้ำเพื่อป้องกันโพสต์ซ้ำ</Text> : null}
               {item.manualHandoff && typeof item.manualHandoff === "object" ? (

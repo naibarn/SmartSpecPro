@@ -16,6 +16,7 @@ import {
 } from "../services/marketplaceAutoReviewReelsService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
+import { postAffiliateCommentOnPublishedAutoReview } from "../services/marketplaceAutoReviewAffiliateCommentService";
 
 const reelsProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
@@ -63,6 +64,11 @@ export const marketplaceAutoReviewReelsRouter = router({
       tenantId: ctx.tenantId,
       userId: ctx.user.id,
       postId: input.postId,
+    })),
+
+  postAffiliateComment: reelsProcedure.input(z.object({ postId: z.number().int().positive() }).strict())
+    .mutation(({ ctx, input }) => postAffiliateCommentOnPublishedAutoReview({
+      tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId, format: "reels",
     })),
 
   history: reelsProcedure.input(z.object({ runId: z.string().trim().min(1).max(64) }).strict())
@@ -123,6 +129,7 @@ export const marketplaceAutoReviewReelsRouter = router({
           id: row.id,
           status: recoveredStatus ?? metadata.videoPublicationStatus ?? row.status,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
+          affiliateCommentStatus: metadata.affiliateCommentStatus ?? null,
           commercialDisclosureStatus: metadata.commercialDisclosureStatus ?? "unknown",
           attributionVerificationStatus: metadata.attributionVerificationStatus ?? "unverified",
           providerPostId: row.providerPostId,

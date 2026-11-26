@@ -13,6 +13,7 @@ import {
 } from "../services/marketplaceAutoReviewPhotoPostService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
+import { postAffiliateCommentOnPublishedAutoReview } from "../services/marketplaceAutoReviewAffiliateCommentService";
 
 const tenantPhotoPostProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
@@ -58,6 +59,9 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
   reconcile: photoPostPublishProcedure.input(z.object({ postId: z.number().int().positive() }).strict())
     .mutation(({ ctx, input }) => reconcileMarketplaceAutoReviewPhotoPost({ tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId })),
 
+  postAffiliateComment: photoPostPublishProcedure.input(z.object({ postId: z.number().int().positive() }).strict())
+    .mutation(({ ctx, input }) => postAffiliateCommentOnPublishedAutoReview({ tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId, format: "photo_post" })),
+
   history: tenantPhotoPostProcedure.input(z.object({ runId: z.string().trim().min(1).max(64) }).strict())
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -84,6 +88,7 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
           status: metadata.photoPublicationStatus ?? row.status,
           selectedVariant: metadata.selectedPhotoVariant ?? null,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
+          affiliateCommentStatus: metadata.affiliateCommentStatus ?? null,
           commercialDisclosureStatus: metadata.commercialDisclosureStatus ?? "unknown",
           attributionVerificationStatus: metadata.attributionVerificationStatus ?? "unverified",
           providerPostId: row.providerPostId,
