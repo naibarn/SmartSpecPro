@@ -106,6 +106,17 @@ function formatScheduledAt(value: unknown): string | null {
     : null;
 }
 
+function finalizationBlockerMessage(reason: unknown): string | null {
+  if (typeof reason !== "string") return null;
+  if (reason.startsWith("FINAL_VIDEO_NOT_FINALIZED:")) {
+    return "วิดีโอรายช็อตอาจครบแล้ว แต่ไฟล์วิดีโอสุดท้ายยังไม่ถูกบันทึกเข้า Library ระบบจึงยังไม่เปิดให้เผยแพร่";
+  }
+  if (reason.startsWith("FINALIZATION_EVIDENCE_REQUIRED:")) {
+    return "ระบบยังตรวจไม่พบหลักฐานว่าเรนเดอร์วิดีโอและบันทึกไฟล์สุดท้ายเข้า Library สำเร็จ กรุณาตรวจสถานะงานอีกครั้ง";
+  }
+  return null;
+}
+
 /** Optional downstream publishing; this card never starts a new render. */
 export function FacebookReelsPublishCard(props: {
   runId: string;
@@ -124,7 +135,10 @@ export function FacebookReelsPublishCard(props: {
   const [scheduleAt, setScheduleAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const scheduleMinimumMinutes = format === "reel" ? 30 : 10;
-  const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, { retry: false });
+  const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, {
+    retry: false,
+    refetchInterval: query => finalizationBlockerMessage(query.state.data?.reason) ? 5_000 : false,
+  });
   const history = trpc.marketplaceAutoReviewReels.history.useQuery({ runId: props.runId }, {
     retry: false,
     refetchInterval: query => (query.state.data ?? []).some(item => IN_PROGRESS.has(String(item.status))) ? 5_000 : false,
@@ -143,6 +157,12 @@ export function FacebookReelsPublishCard(props: {
   const resume = trpc.marketplaceAutoReviewReels.resume.useMutation({
     onSuccess: async () => { setError(null); await history.refetch(); },
     onError: () => setError("ส่งงาน resume ไม่สำเร็จ กรุณาตรวจสถานะกับ Facebook ก่อนลองใหม่"),
+  });
+  const advanceFinalization = trpc.marketplaceCapture.advanceAutoReviewRun.useMutation({
+    onSuccess: async () => {
+      await readiness.refetch();
+    },
+    onError: () => setError("ตรวจ/อัปเดตสถานะวิดีโอสุดท้ายไม่สำเร็จ กรุณาลองอีกครั้ง"),
   });
   const postAffiliateComment = trpc.marketplaceAutoReviewReels.postAffiliateComment.useMutation({
     onSuccess: async () => { setError(null); await history.refetch(); },
@@ -428,7 +448,21 @@ export function FacebookReelsPublishCard(props: {
         ) : null}
         {readiness.data && !readiness.data.ready ? (
           <Banner title="ยังไม่พร้อมเผยแพร่" collapsible={false}>
-            <Text>{readiness.data.reason || "ตรวจวิดีโอสุดท้ายและการเชื่อมต่อ Facebook Page"}</Text>
+            <VStack gap={2}>
+              <Text>{finalizationBlockerMessage(readiness.data.reason) || readiness.data.reason || "ตรวจวิดีโอสุดท้ายและการเชื่อมต่อ Facebook Page"}</Text>
+              {finalizationBlockerMessage(readiness.data.reason) ? (
+                <HStack>
+                  <Button
+                    label="ตรวจสถานะและบันทึกวิดีโอสุดท้ายเข้า Library"
+                    variant="secondary"
+                    isLoading={advanceFinalization.isPending}
+                    isDisabled={advanceFinalization.isPending}
+                    onClick={() => advanceFinalization.mutate({ runId: props.runId })}
+                  />
+                  <Text type="supporting" color="secondary">ระบบจะตรวจซ้ำอัตโนมัติระหว่างรอ เมื่อ finalize สำเร็จ ปุ่มเผยแพร่จะพร้อมใช้งาน</Text>
+                </HStack>
+              ) : null}
+            </VStack>
           </Banner>
         ) : null}
         <Selector
