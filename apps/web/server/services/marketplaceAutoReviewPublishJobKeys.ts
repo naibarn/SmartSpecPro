@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+
 export type MarketplaceAutoReviewPublishFormat = "photo" | "reels";
 export type MarketplaceAutoReviewPublishJobPurpose = "publish" | "resume";
 
@@ -20,4 +22,20 @@ export function buildMarketplaceAutoReviewPublishJobKeys(input: {
     idempotencyKey: `${prefix}:${input.intentHash}:${input.purpose}:${input.attempt}`,
     activeDedupeKey: `${prefix}:${input.intentHash}`,
   };
+}
+
+export function parseMarketplaceAutoReviewScheduledAt(value?: string | null): Date | null {
+  if (!value) return null;
+  const scheduledAt = new Date(value);
+  if (!Number.isFinite(scheduledAt.getTime())) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "SCHEDULED_AT_INVALID: กำหนดวันเวลาโพสต์ไม่ถูกต้อง" });
+  }
+  const now = Date.now();
+  if (scheduledAt.getTime() < now + 10 * 60_000) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "SCHEDULED_AT_TOO_SOON: ตั้งเวลาโพสต์ล่วงหน้าอย่างน้อย 10 นาที" });
+  }
+  if (scheduledAt.getTime() > now + 30 * 24 * 60 * 60_000) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "SCHEDULED_AT_TOO_LATE: ตั้งเวลาโพสต์ล่วงหน้าได้ไม่เกิน 30 วัน" });
+  }
+  return scheduledAt;
 }

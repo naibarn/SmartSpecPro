@@ -43,12 +43,14 @@ export const marketplaceAutoReviewReelsRouter = router({
   publish: reelsProcedure.input(z.object({
     runId: z.string().trim().min(1).max(64),
     pageId: z.number().int().positive(),
+    scheduledAt: z.string().datetime().optional(),
     snapshot: snapshotSchema,
   }).strict()).mutation(({ ctx, input }) => startMarketplaceAutoReviewReelsPublish({
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
     runId: input.runId,
     pageId: input.pageId,
+    scheduledAt: input.scheduledAt,
     snapshot: input.snapshot,
   })),
 
@@ -82,6 +84,7 @@ export const marketplaceAutoReviewReelsRouter = router({
       const rows = await db.select({
         id: socialPosts.id,
         status: socialPosts.status,
+        scheduledAt: socialPosts.scheduledAt,
         contentText: socialPosts.contentText,
         providerPostId: socialPosts.providerPostId,
         publishedAt: socialPosts.publishedAt,
@@ -132,6 +135,7 @@ export const marketplaceAutoReviewReelsRouter = router({
         return {
           id: row.id,
           status: recoveredStatus ?? metadata.videoPublicationStatus ?? row.status,
+          scheduledAt: row.scheduledAt,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
           affiliateCommentStatus: metadata.affiliateCommentStatus ?? null,
           commercialDisclosureStatus: metadata.commercialDisclosureStatus ?? "unknown",

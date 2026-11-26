@@ -26,7 +26,7 @@ import {
 import { getDb, type DrizzleDB } from "../db";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { buildMarketplaceAutoReviewPublishJobKeys } from "./marketplaceAutoReviewPublishJobKeys";
+import { buildMarketplaceAutoReviewPublishJobKeys, parseMarketplaceAutoReviewScheduledAt } from "./marketplaceAutoReviewPublishJobKeys";
 import {
   finishFacebookReelUpload,
   getFacebookReelStatus,
@@ -42,11 +42,11 @@ const MAX_REELS_BYTES = 1024 * 1024 * 1024;
 const ACTIVE_JOB_STATUSES = ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"] as const;
 const affiliateModeSchema = z.enum(["description", "first_comment", "manual_native", "none"]);
 const ACTIVE_REELS_PUBLISH_STATES = new Set([
-  "queued", "preflight", "token_check", "uploading", "processing", "publish_requested", "reconciling",
+  "queued", "scheduled", "preflight", "token_check", "uploading", "processing", "publish_requested", "reconciling",
 ]);
 
 export type AffiliatePublishMode = z.infer<typeof affiliateModeSchema>;
-export type ReelsPublishState = "queued" | "preflight" | "needs_connection" | "token_check" | "uploading" | "processing" | "publish_requested" | "reconciling" | "published" | "needs_user_action" | "failed" | "cancelled";
+export type ReelsPublishState = "queued" | "scheduled" | "preflight" | "needs_connection" | "token_check" | "uploading" | "processing" | "publish_requested" | "reconciling" | "published" | "needs_user_action" | "failed" | "cancelled";
 
 export function resolveUnstartedReelsPublicationStatus(input: {
   publicationStatus: string;
@@ -245,9 +245,12 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   userId: number;
   runId: string;
   pageId: number;
+  scheduledAt?: string;
   snapshot: z.infer<typeof publishSnapshotSchema>;
 }) {
   const snapshot = publishSnapshotSchema.parse(input.snapshot);
+  const scheduledAt = parseMarketplaceAutoReviewScheduledAt(input.scheduledAt);
+  if (scheduledAt && snapshot.affiliateMode === "manual_native") fail("MANUAL_HANDOFF_CANNOT_BE_SCHEDULED", "Manual Facebook product tagging cannot be scheduled", "BAD_REQUEST");
   const db = await resolveDb();
   const pkg = await loadAuthoritativePackage({ db, tenantId: input.tenantId, userId: input.userId, runId: input.runId });
   const { listPublishingPages } = await import("./socialPublishingService");
@@ -332,7 +335,8 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     intentHash,
     publishAttempt,
     snapshot: canonical,
-    videoPublicationStatus: "queued" satisfies ReelsPublishState,
+    videoPublicationStatus: (scheduledAt ? "scheduled" : "queued") satisfies ReelsPublishState,
+    ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
     affiliateLinkStatus: canonical.affiliateUrl ? (snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "pending") : "none",
     commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_description" : "not_provided",
     attributionVerificationStatus: "unverified",
@@ -342,7 +346,8 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   let post: { id: number } | undefined;
   if (existing) {
     [post] = await db.update(socialPosts).set({
-        status: "draft",
+        status: scheduledAt ? "scheduled" : "draft",
+        scheduledAt,
         contentText: description,
         contentLink: snapshot.affiliateMode === "description" ? canonical.affiliateUrl : null,
         errorMessage: null,
@@ -354,7 +359,8 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
       [post] = await db.insert(socialPosts).values({
         tenantId: input.tenantId,
         pageId: input.pageId,
-        status: "draft",
+        status: scheduledAt ? "scheduled" : "draft",
+        scheduledAt,
         contentText: description,
         contentLink: snapshot.affiliateMode === "description" ? canonical.affiliateUrl : null,
         mediaRefs: null,
@@ -426,6 +432,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
         jobType: MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
+        ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
         idempotencyKey: jobKeys.idempotencyKey,
         activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
@@ -436,7 +443,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     });
     const metadata = record((await db.select({ metadata: socialPosts.metadata }).from(socialPosts).where(eq(socialPosts.id, post.id)).limit(1))[0]?.metadata);
     await db.update(socialPosts).set({ metadata: { ...metadata, publishingWorkerJobId: job.jobId }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-    return { postId: post.id, jobId: job.jobId, status: "queued" as const, intentHash };
+    return { postId: post.id, jobId: job.jobId, status: scheduledAt ? "scheduled" as const : "queued" as const, intentHash };
   } catch (error) {
     await db.update(socialPosts).set({
       status: "failed",

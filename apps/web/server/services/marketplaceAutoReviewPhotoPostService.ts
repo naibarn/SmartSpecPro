@@ -18,7 +18,7 @@ import { getDb, type DrizzleDB } from "../db";
 import { storageStreamFile } from "../storage";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { buildMarketplaceAutoReviewPublishJobKeys } from "./marketplaceAutoReviewPublishJobKeys";
+import { buildMarketplaceAutoReviewPublishJobKeys, parseMarketplaceAutoReviewScheduledAt } from "./marketplaceAutoReviewPublishJobKeys";
 import { publishFacebookPagePhoto, readFacebookPagePhoto } from "./facebookPhotoPublishGateway";
 import { publishAffiliateCommentOnce } from "./marketplaceAutoReviewAffiliateComment";
 
@@ -30,7 +30,7 @@ const PHOTO_VARIANTS = ["caption_source", "character_reference", "product_refere
 const affiliateModeSchema = z.enum(["description", "first_comment", "manual_native", "none"]);
 
 export type MarketplaceAutoReviewPhotoVariant = typeof PHOTO_VARIANTS[number];
-export type PhotoPublishState = "queued" | "preflight" | "token_check" | "publish_requested" | "reconciling" | "published" | "needs_connection" | "needs_user_action" | "failed" | "cancelled";
+export type PhotoPublishState = "queued" | "scheduled" | "preflight" | "token_check" | "publish_requested" | "reconciling" | "published" | "needs_connection" | "needs_user_action" | "failed" | "cancelled";
 
 const snapshotSchema = z.object({
   variant: z.enum(PHOTO_VARIANTS),
@@ -274,9 +274,12 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   userId: number;
   runId: string;
   pageId: number;
+  scheduledAt?: string;
   snapshot: z.infer<typeof snapshotSchema>;
 }) {
   const snapshot = snapshotSchema.parse(input.snapshot);
+  const scheduledAt = parseMarketplaceAutoReviewScheduledAt(input.scheduledAt);
+  if (scheduledAt && snapshot.affiliateMode === "manual_native") fail("MANUAL_HANDOFF_CANNOT_BE_SCHEDULED", "Manual Facebook product tagging cannot be scheduled", "BAD_REQUEST");
   const db = await resolveDb();
   const pkg = await loadPhotoPackage({ db, tenantId: input.tenantId, userId: input.userId, runId: input.runId });
   const image = resolveMarketplaceAutoReviewPhotoVariant(pkg.runMetadata, { tenantId: input.tenantId, runId: pkg.run.id, variant: snapshot.variant });
@@ -351,7 +354,8 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     imageChecksum: inspected.checksum,
     imageSizeBytes: inspected.size,
     imageContentType: inspected.contentType,
-    photoPublicationStatus: snapshot.affiliateMode === "manual_native" ? "needs_user_action" : "queued",
+    photoPublicationStatus: snapshot.affiliateMode === "manual_native" ? "needs_user_action" : scheduledAt ? "scheduled" : "queued",
+    ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
     affiliateLinkStatus: affiliateUrl ? (snapshot.affiliateMode === "manual_native" ? "manual_handoff" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "pending") : "none",
     commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_caption" : "not_provided",
     attributionVerificationStatus: "unverified",
@@ -360,10 +364,10 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   };
   let post: { id: number } | undefined;
   if (existing) {
-    [post] = await db.update(socialPosts).set({ status: "draft", contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, errorMessage: null, metadata: newMetadata, updatedAt: new Date() }).where(eq(socialPosts.id, existing.id)).returning({ id: socialPosts.id });
+    [post] = await db.update(socialPosts).set({ status: scheduledAt ? "scheduled" : "draft", scheduledAt, contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, errorMessage: null, metadata: newMetadata, updatedAt: new Date() }).where(eq(socialPosts.id, existing.id)).returning({ id: socialPosts.id });
   } else {
     try {
-      [post] = await db.insert(socialPosts).values({ tenantId: input.tenantId, pageId: input.pageId, status: "draft", contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, mediaRefs: null, createdByUserId: input.userId, metadata: newMetadata }).returning({ id: socialPosts.id });
+      [post] = await db.insert(socialPosts).values({ tenantId: input.tenantId, pageId: input.pageId, status: scheduledAt ? "scheduled" : "draft", scheduledAt, contentText: publishCaption, contentLink: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null, mediaRefs: null, createdByUserId: input.userId, metadata: newMetadata }).returning({ id: socialPosts.id });
     } catch (error) {
       if ((error as { code?: unknown })?.code !== "23505") throw error;
       const [concurrent] = await db.select({ id: socialPosts.id, metadata: socialPosts.metadata }).from(socialPosts).where(whereIntent).limit(1);
@@ -383,6 +387,7 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
         jobType: MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
+        ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
         idempotencyKey: jobKeys.idempotencyKey,
         activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: [] },
@@ -393,7 +398,7 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     });
     const latest = record((await db.select({ metadata: socialPosts.metadata }).from(socialPosts).where(eq(socialPosts.id, post.id)).limit(1))[0]?.metadata);
     await db.update(socialPosts).set({ metadata: { ...latest, publishingWorkerJobId: job.id }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-    return { postId: post.id, jobId: job.id, status: "queued" as const, intentHash };
+    return { postId: post.id, jobId: job.id, status: scheduledAt ? "scheduled" as const : "queued" as const, intentHash };
   } catch (error) {
     await db.update(socialPosts).set({ status: "failed", errorMessage: "Photo publishing job could not be queued. No Facebook photo request was made.", metadata: { ...newMetadata, photoPublicationStatus: "failed", failureCode: "JOB_ADMISSION_FAILED" }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
     throw error;

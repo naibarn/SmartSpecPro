@@ -47,12 +47,14 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
   publish: photoPostPublishProcedure.input(z.object({
     runId: z.string().trim().min(1).max(64),
     pageId: z.number().int().positive(),
+    scheduledAt: z.string().datetime().optional(),
     snapshot: publishSnapshotSchema,
   }).strict()).mutation(({ ctx, input }) => startMarketplaceAutoReviewPhotoPost({
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
     runId: input.runId,
     pageId: input.pageId,
+    scheduledAt: input.scheduledAt,
     snapshot: input.snapshot,
   })),
 
@@ -72,6 +74,7 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
       const rows = await db.select({
         id: socialPosts.id,
         status: socialPosts.status,
+        scheduledAt: socialPosts.scheduledAt,
         providerPostId: socialPosts.providerPostId,
         publishedAt: socialPosts.publishedAt,
         errorMessage: socialPosts.errorMessage,
@@ -89,6 +92,7 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
         return {
           id: row.id,
           status: metadata.photoPublicationStatus ?? row.status,
+          scheduledAt: row.scheduledAt,
           selectedVariant: metadata.selectedPhotoVariant ?? null,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
           affiliateCommentStatus: metadata.affiliateCommentStatus ?? null,

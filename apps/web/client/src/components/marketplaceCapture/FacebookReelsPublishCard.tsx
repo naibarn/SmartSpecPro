@@ -4,6 +4,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { DateTimeInput } from "@astryxdesign/core/DateTimeInput";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Link } from "@astryxdesign/core/Link";
@@ -32,6 +33,7 @@ const PHOTO_VARIANT_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   queued: "รอเริ่มเผยแพร่",
+  scheduled: "ตั้งเวลาเผยแพร่แล้ว",
   preflight: "กำลังตรวจวิดีโอ",
   needs_connection: "ต้องเชื่อมต่อ Facebook Page",
   token_check: "กำลังตรวจการเชื่อมต่อ",
@@ -57,6 +59,12 @@ function publishErrorMessage(message: string): string {
       return "Facebook ยังไม่อนุญาตให้ใส่คอมเมนต์แรก กรุณาเชื่อมต่อเพจใหม่พร้อมสิทธิ์ pages_manage_engagement";
     case "PHOTO_CAPTION_TOO_LONG":
       return "ข้อความรวมเกิน 2,000 ตัวอักษร กรุณาย่อ Caption หรือ Hashtag แล้วลองอีกครั้ง";
+    case "SCHEDULED_AT_INVALID":
+      return "วันและเวลาโพสต์ไม่ถูกต้อง กรุณาเลือกใหม่";
+    case "SCHEDULED_AT_TOO_SOON":
+      return "ตั้งเวลาโพสต์ล่วงหน้าอย่างน้อย 10 นาที";
+    case "SCHEDULED_AT_TOO_LATE":
+      return "ตั้งเวลาโพสต์ล่วงหน้าได้ไม่เกิน 30 วัน";
     default:
       return "ส่งงานเผยแพร่ไม่สำเร็จ กรุณาตรวจประวัติด้านล่างก่อนลองอีกครั้ง";
   }
@@ -73,6 +81,24 @@ function safeFacebookPermalink(value: unknown): string | null {
   }
 }
 
+function toLocalDateTimeValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function facebookPostFallback(postId: unknown): string | null {
+  if (typeof postId !== "string" || !postId.trim()) return null;
+  return `https://www.facebook.com/${encodeURIComponent(postId.trim())}`;
+}
+
+function formatScheduledAt(value: unknown): string | null {
+  if (!(value instanceof Date) && typeof value !== "string") return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(date)
+    : null;
+}
+
 /** Optional downstream publishing; this card never starts a new render. */
 export function FacebookReelsPublishCard(props: {
   runId: string;
@@ -87,6 +113,8 @@ export function FacebookReelsPublishCard(props: {
   const [aiGenerated, setAiGenerated] = useState(false);
   const [commercialDisclosure, setCommercialDisclosure] = useState("");
   const [allowNoAffiliate, setAllowNoAffiliate] = useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, { retry: false });
   const history = trpc.marketplaceAutoReviewReels.history.useQuery({ runId: props.runId }, {
@@ -154,6 +182,8 @@ export function FacebookReelsPublishCard(props: {
     setAllowNoAffiliate(false);
     setAiGenerated(false);
     setCommercialDisclosure("");
+    setScheduleEnabled(false);
+    setScheduleAt("");
     setError(null);
   }, [props.runId]);
 
@@ -177,7 +207,7 @@ export function FacebookReelsPublishCard(props: {
   const parsedHashtags = useMemo(() => normalizedHashtags(hashtags), [hashtags]);
   const tooManyHashtags = parsedHashtags.length > AUTO_REVIEW_PUBLISH_MAX_HASHTAGS;
   const invalidHashtags = tooManyHashtags || parsedHashtags.some(tag => !AUTO_REVIEW_PUBLISH_HASHTAG.test(tag));
-  const activePublication = (history.data ?? []).some(item => IN_PROGRESS.has(String(item.status)) || String(item.status) === "needs_user_action");
+  const activePublication = (history.data ?? []).some(item => IN_PROGRESS.has(String(item.status)) || ["scheduled", "needs_user_action"].includes(String(item.status)));
   const noLinkConfirmed = affiliateMode !== "none" || allowNoAffiliate;
   const canPublish = Boolean(
     readiness.data?.ready && selectedPage?.publishingReady && caption.trim() &&
@@ -192,7 +222,7 @@ export function FacebookReelsPublishCard(props: {
   );
   const readyPhotoVariants = photoReadiness.data?.imageVariants.filter(image => image.status === "completed" && image.imageUrl) ?? [];
   const selectedPhotoPage = (photoReadiness.data?.pages ?? []).find(page => String(page.id) === pageId);
-  const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
+  const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["scheduled", "needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
     commercialDisclosure.length <= 500 && !invalidHashtags &&
@@ -202,10 +232,11 @@ export function FacebookReelsPublishCard(props: {
   );
 
   const publishSelectedPhoto = () => {
-    if (!photoCanPublish) return;
+    if (!photoCanPublish || (scheduleEnabled && (!scheduleAt || affiliateMode === "manual_native"))) return;
     publishPhoto.mutate({
       runId: props.runId,
       pageId: Number(pageId),
+      ...(scheduleEnabled ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
       snapshot: { variant: photoVariant as "caption_source" | "character_reference" | "product_reference", caption, hashtags: parsedHashtags, affiliateMode, commercialDisclosure, ...(affiliateMode === "none" ? { allowNoAffiliate } : {}) },
     });
   };
@@ -213,7 +244,7 @@ export function FacebookReelsPublishCard(props: {
   if (format === "photo") {
     return (
       <Card>
-        <Collapsible defaultIsOpen trigger={<Text type="label">เผยแพร่บน Facebook · Marketplace Auto Review</Text>}>
+        <Collapsible defaultIsOpen={false} trigger={<Text type="label">เผยแพร่บน Facebook · Marketplace Auto Review</Text>}>
           <VStack gap={3}>
             <Heading level={3}>เผยแพร่บน Facebook</Heading>
             <HStack>
@@ -288,21 +319,27 @@ export function FacebookReelsPublishCard(props: {
               width="100%"
             />
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
+            <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
+            {scheduleEnabled ? <VStack gap={1}>
+              <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
+              <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า 10 นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+            </VStack> : null}
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
             <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="เว้นว่างได้ หากระบุไว้ใน Caption แล้วหรือไม่มีข้อความเพิ่มเติม" />
             <Banner title="ภาพนี้สร้างด้วย AI" collapsible={false}><Text>กรุณาตรวจและเปิดเผยตามข้อกำหนดของ Facebook ก่อนเผยแพร่ การเผยแพร่ภาพผ่าน API นี้ไม่มีช่องส่งค่า is_ai_generated โดยเฉพาะ</Text></Banner>
             {photoHistoryHasUncertain ? <Banner title="ต้องตรวจสอบสถานะก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจประวัติด้านล่างก่อนสร้างโพสต์ใหม่</Text></Banner> : null}
             {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
-            <HStack hAlign="end"><Button label={affiliateMode === "manual_native" ? "เตรียมข้อความและภาพสำหรับติดแท็กใน Facebook" : "เผยแพร่ Photo Post"} variant="primary" isLoading={publishPhoto.isPending} isDisabled={!photoCanPublish} onClick={publishSelectedPhoto} /></HStack>
+            <HStack hAlign="end"><Button label={affiliateMode === "manual_native" ? "เตรียมข้อความและภาพสำหรับติดแท็กใน Facebook" : scheduleEnabled ? "ตั้งเวลา Photo Post" : "เผยแพร่ Photo Post"} variant="primary" isLoading={publishPhoto.isPending} isDisabled={!photoCanPublish || (scheduleEnabled && (!scheduleAt || affiliateMode === "manual_native"))} onClick={publishSelectedPhoto} /></HStack>
             <Heading level={4}>สถานะและประวัติ Photo Post</Heading>
             {photoHistory.isLoading ? <Text>กำลังโหลดประวัติ</Text> : null}
             {photoHistory.isError ? <Text>โหลดประวัติไม่สำเร็จ กรุณาลองใหม่ก่อนส่งงาน</Text> : null}
             {!photoHistory.isLoading && !photoHistory.isError && !photoHistory.data?.length ? <Text type="supporting" color="secondary">ยังไม่มีประวัติ Photo Post</Text> : null}
             {(photoHistory.data ?? []).map(item => {
               const status = String(item.status);
-              const permalink = safeFacebookPermalink(item.permalink);
+              const permalink = safeFacebookPermalink(item.permalink) ?? (item.status === "published" ? facebookPostFallback(item.providerPostId) : null);
               return <VStack key={item.id} gap={1}>
                 <Text type="label">{PHOTO_VARIANT_LABELS[String(item.selectedVariant)] ?? "Facebook Photo Post"} · {STATUS_LABELS[status] ?? status}</Text>
+                {status === "scheduled" && item.scheduledAt ? <Text type="supporting">กำหนดเผยแพร่ {formatScheduledAt(item.scheduledAt)}</Text> : null}
                 <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
                 {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
                 {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
@@ -332,10 +369,11 @@ export function FacebookReelsPublishCard(props: {
   }
 
   const submit = () => {
-    if (!canPublish && !canPrepareManualHandoff) return;
+    if ((!canPublish && !canPrepareManualHandoff) || (scheduleEnabled && (!scheduleAt || affiliateMode === "manual_native"))) return;
     publish.mutate({
       runId: props.runId,
       pageId: Number(pageId),
+      ...(scheduleEnabled ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
       snapshot: {
         caption,
         hashtags: parsedHashtags,
@@ -349,7 +387,7 @@ export function FacebookReelsPublishCard(props: {
 
   return (
     <Card>
-      <Collapsible defaultIsOpen trigger={<Text type="label">เผยแพร่บน Facebook · Marketplace Auto Review</Text>}>
+      <Collapsible defaultIsOpen={false} trigger={<Text type="label">เผยแพร่บน Facebook · Marketplace Auto Review</Text>}>
       <VStack gap={3}>
         <HStack>
           <Button label="Facebook Reel" variant="primary" onClick={() => setFormat("reel")} />
@@ -402,6 +440,11 @@ export function FacebookReelsPublishCard(props: {
         <Text type="supporting" color="secondary">
           Affiliate Link: {readiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ใช้ URL ที่บันทึกไว้และคง tracking เดิม การคลิกและ Affiliate Attribution ต้องตรวจสอบกับ Meta อีกครั้ง
         </Text>
+        <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
+        {scheduleEnabled ? <VStack gap={1}>
+          <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
+          <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า 10 นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+        </VStack> : null}
         {affiliateMode === "manual_native" ? (
           <Banner title="ดำเนินการติดแท็กสินค้าใน Facebook ด้วยตนเอง" collapsible={false}>
             <Text>การติดแท็กสินค้าแบบ Native ยังไม่มี API ที่ยืนยันว่าใช้ได้ กรุณาใช้เครื่องมือของ Facebook</Text>
@@ -423,18 +466,19 @@ export function FacebookReelsPublishCard(props: {
         <Text type="supporting" color="secondary">การระบุ AI แยกจากการเปิดเผยความสัมพันธ์เชิงพาณิชย์</Text>
         {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
         <HStack hAlign="end">
-          <Button label={affiliateMode === "manual_native" ? "เตรียมส่งต่อให้ติดแท็กใน Facebook" : "เผยแพร่ Reel"} variant="primary" isLoading={publish.isPending} isDisabled={!canPublish && !canPrepareManualHandoff} onClick={submit} />
+          <Button label={affiliateMode === "manual_native" ? "เตรียมส่งต่อให้ติดแท็กใน Facebook" : scheduleEnabled ? "ตั้งเวลา Reel" : "เผยแพร่ Reel"} variant="primary" isLoading={publish.isPending} isDisabled={(!canPublish && !canPrepareManualHandoff) || (scheduleEnabled && (!scheduleAt || affiliateMode === "manual_native"))} onClick={submit} />
         </HStack>
         <Heading level={4}>สถานะและประวัติการเผยแพร่</Heading>
         {history.isLoading ? <Text>กำลังโหลดประวัติ</Text> : null}
         {history.isError ? <Text>โหลดประวัติไม่สำเร็จ กรุณาลองใหม่ก่อนส่งงาน</Text> : null}
         {!history.isLoading && !history.isError && !history.data?.length ? <Text type="supporting" color="secondary">ยังไม่มีประวัติการเผยแพร่</Text> : null}
         {(history.data ?? []).map(item => {
-          const permalink = safeFacebookPermalink(item.permalink);
+          const permalink = safeFacebookPermalink(item.permalink) ?? (item.status === "published" ? facebookPostFallback(item.providerPostId) : null);
           const status = String(item.status);
           return (
             <VStack key={item.id} gap={1}>
               <Text type="label">{STATUS_LABELS[status] ?? status}</Text>
+              {status === "scheduled" && item.scheduledAt ? <Text type="supporting">กำหนดเผยแพร่ {formatScheduledAt(item.scheduledAt)}</Text> : null}
               <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
               {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
               {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
