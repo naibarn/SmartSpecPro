@@ -13,6 +13,7 @@ import {
   socialPages,
   socialPosts,
   socialProviderConnections,
+  workerJobs,
 } from "../../drizzle/schema";
 import { getDb, type DrizzleDB } from "../db";
 import { storageStreamFile } from "../storage";
@@ -31,6 +32,20 @@ const affiliateModeSchema = z.enum(["description", "first_comment", "manual_nati
 
 export type MarketplaceAutoReviewPhotoVariant = typeof PHOTO_VARIANTS[number];
 export type PhotoPublishState = "queued" | "scheduled" | "preflight" | "token_check" | "publish_requested" | "reconciling" | "published" | "needs_connection" | "needs_user_action" | "failed" | "cancelled";
+
+const ACTIVE_PHOTO_PUBLISH_STATES = new Set(["queued", "scheduled", "preflight", "token_check"]);
+
+export function resolveUnstartedPhotoPublicationStatus(input: {
+  publicationStatus: string;
+  jobStatus: string;
+  jobStartedAt: Date | null;
+  hasExternalPhotoAttempt: boolean;
+}): PhotoPublishState | null {
+  if (!ACTIVE_PHOTO_PUBLISH_STATES.has(input.publicationStatus)) return null;
+  if (!["failed", "expired", "canceled", "cancelled"].includes(input.jobStatus)) return null;
+  if (input.hasExternalPhotoAttempt) return "needs_user_action";
+  return input.jobStartedAt ? null : "failed";
+}
 
 const snapshotSchema = z.object({
   variant: z.enum(PHOTO_VARIANTS),
@@ -338,10 +353,32 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   }
   const existingMetadata = record(existing?.metadata);
   const oldState = String(existingMetadata.photoPublicationStatus ?? "queued");
-  const safeRetry = Boolean(existing && ["failed", "needs_connection"].includes(oldState) && !existingMetadata.photoPublishRequestedAt);
-  const queueRepair = Boolean(existing && oldState === "queued" && !existingMetadata.publishingWorkerJobId);
-  if (existing && !safeRetry && !queueRepair) return { postId: existing.id, status: oldState, intentHash };
-  const publishAttempt = safeRetry ? Math.min(10, Math.max(1, Number(existingMetadata.publishAttempt ?? 1) + 1)) : Math.max(1, Number(existingMetadata.publishAttempt ?? 1));
+  const priorJobs = existing ? await db.select({
+    id: workerJobs.id,
+    status: workerJobs.status,
+    startedAt: workerJobs.startedAt,
+  }).from(workerJobs).where(and(
+    eq(workerJobs.tenantId, input.tenantId),
+    eq(workerJobs.requestedByUserId, input.userId),
+    eq(workerJobs.jobType, MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE),
+    sql`${workerJobs.inputJson}->>'postId' = ${String(existing.id)}`,
+  )).orderBy(desc(workerJobs.createdAt)).limit(1) : [];
+  const priorJob = priorJobs?.[0];
+  const recoveredQueueStatus = priorJob ? resolveUnstartedPhotoPublicationStatus({
+    publicationStatus: oldState,
+    jobStatus: String(priorJob.status),
+    jobStartedAt: priorJob.startedAt,
+    hasExternalPhotoAttempt: hasMarketplaceAutoReviewPhotoPostExternalAttempt(existingMetadata),
+  }) : null;
+  const safeRetry = Boolean(existing && (
+    (["failed", "needs_connection"].includes(oldState) && !existingMetadata.photoPublishRequestedAt) ||
+    recoveredQueueStatus === "failed"
+  ));
+  const queueRepair = Boolean(existing && oldState === "queued" && !priorJob && !existingMetadata.publishingWorkerJobId);
+  if (existing && !safeRetry && !queueRepair) return { postId: existing.id, status: recoveredQueueStatus ?? oldState, intentHash };
+  const publishAttempt = safeRetry
+    ? Math.min(10, Math.max(1, Number(existingMetadata.publishAttempt ?? 1) + 1))
+    : Math.max(1, Number(existingMetadata.publishAttempt ?? 1));
   const newMetadata: JsonRecord = {
     source,
     autoReviewRunId: pkg.run.id,
@@ -398,8 +435,8 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
       createOptions: { runtimeType: "node_job_worker", admissionMode: "durable_queue" },
     });
     const latest = record((await db.select({ metadata: socialPosts.metadata }).from(socialPosts).where(eq(socialPosts.id, post.id)).limit(1))[0]?.metadata);
-    await db.update(socialPosts).set({ metadata: { ...latest, publishingWorkerJobId: job.id }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-    return { postId: post.id, jobId: job.id, status: scheduledAt ? "scheduled" as const : "queued" as const, intentHash };
+    await db.update(socialPosts).set({ metadata: { ...latest, publishingWorkerJobId: job.jobId }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
+    return { postId: post.id, jobId: job.jobId, status: scheduledAt ? "scheduled" as const : "queued" as const, intentHash };
   } catch (error) {
     await db.update(socialPosts).set({ status: "failed", errorMessage: "Photo publishing job could not be queued. No Facebook photo request was made.", metadata: { ...newMetadata, photoPublicationStatus: "failed", failureCode: "JOB_ADMISSION_FAILED" }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
     throw error;

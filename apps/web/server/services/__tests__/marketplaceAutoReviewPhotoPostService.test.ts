@@ -11,16 +11,19 @@ import {
   inspectMarketplaceAutoReviewPhotoImage,
   marketplaceAutoReviewPhotoPostWorkerInputSchema,
   resolveMarketplaceAutoReviewPhotoVariant,
+  resolveUnstartedPhotoPublicationStatus,
   startMarketplaceAutoReviewPhotoPost,
 } from "../marketplaceAutoReviewPhotoPostService";
 
-const { getDb, listPublishingPages, storageStreamFile } = vi.hoisted(() => ({
+const { getDb, listPublishingPages, storageStreamFile, createControlPlaneJob } = vi.hoisted(() => ({
   getDb: vi.fn(),
   listPublishingPages: vi.fn(),
   storageStreamFile: vi.fn(),
+  createControlPlaneJob: vi.fn(),
 }));
 vi.mock("../../db", async importOriginal => ({ ...await importOriginal<typeof import("../../db")>(), getDb }));
 vi.mock("../../storage", async importOriginal => ({ ...await importOriginal<typeof import("../../storage")>(), storageStreamFile }));
+vi.mock("../jobControlPlaneGateway", async importOriginal => ({ ...await importOriginal<typeof import("../jobControlPlaneGateway")>(), createControlPlaneJob }));
 vi.mock("../socialPublishingService", async importOriginal => ({
   ...await importOriginal<typeof import("../socialPublishingService")>(),
   listPublishingPages,
@@ -103,6 +106,7 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
       [{ affiliateUrl: "https://shop.example/item" }],
       [{ id: 12, metadata: { photoPublicationStatus: "queued", publishingWorkerJobId: "worker-1" } }],
       [],
+      [],
     ];
     getDb.mockResolvedValue({ select: () => {
       const rows = results.shift();
@@ -127,6 +131,68 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
       expect(storageStreamFile).not.toHaveBeenCalled();
     }
     expect(listPublishingPages).toHaveBeenLastCalledWith(TENANT_ID, 41);
+  });
+
+  it("persists the canonical worker jobId returned by the control plane", async () => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    storageStreamFile.mockResolvedValue({
+      totalLength: image.length, contentType: "image/png", stream: Readable.from([image]),
+    });
+    listPublishingPages.mockResolvedValue([{ id: 7, provider: "meta", publishingReady: true }]);
+    createControlPlaneJob.mockResolvedValue({ jobId: "worker-job-123", created: true });
+    const selectedRows = [
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, productId: "product-1", metadataJson: runMetadata() }],
+      [{ id: "product-1" }],
+      [{ affiliateUrl: "https://shop.example/item" }],
+      [],
+      [],
+      [{ metadata: { source: "marketplace_auto_review_photo_post", autoReviewRunId: RUN_ID } }],
+    ];
+    const updates: Array<Record<string, unknown>> = [];
+    getDb.mockResolvedValue({
+      select: () => ({ from: () => ({ where: () => ({
+        limit: () => Promise.resolve(selectedRows.shift()),
+        orderBy: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }),
+      }) }) }),
+      insert: () => ({ values: () => ({ returning: () => Promise.resolve([{ id: 12 }]) }) }),
+      update: () => ({ set: (values: Record<string, unknown>) => ({ where: async () => { updates.push(values); } }) }),
+    });
+
+    const result = await startMarketplaceAutoReviewPhotoPost({
+      tenantId: TENANT_ID, userId: 41, runId: RUN_ID, pageId: 7,
+      snapshot: {
+        variant: "caption_source", caption: "Review caption", hashtags: ["#review"],
+        affiliateMode: "description", commercialDisclosure: "",
+      },
+    });
+
+    expect(result).toMatchObject({ postId: 12, jobId: "worker-job-123", status: "queued" });
+    expect(updates).toContainEqual(expect.objectContaining({
+      metadata: expect.objectContaining({ publishingWorkerJobId: "worker-job-123" }),
+    }));
+  });
+
+  it("shows a deadline-expired photo job as retryable only if Facebook was never contacted", () => {
+    expect(resolveUnstartedPhotoPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: null,
+      hasExternalPhotoAttempt: false,
+    })).toBe("failed");
+    expect(resolveUnstartedPhotoPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: new Date(),
+      hasExternalPhotoAttempt: false,
+    })).toBeNull();
+    expect(resolveUnstartedPhotoPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: null,
+      hasExternalPhotoAttempt: true,
+    })).toBe("needs_user_action");
   });
 
   it("verifies PNG bytes, dimensions and checksum before upload", async () => {

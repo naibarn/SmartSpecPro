@@ -1,15 +1,17 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { AUTO_REVIEW_PUBLISH_HASHTAG, AUTO_REVIEW_PUBLISH_MAX_HASHTAGS } from "../../shared/marketplaceAutoReview/publishingHashtags";
 
 import { protectedProcedure, router } from "../_core/trpc";
-import { socialPosts } from "../../drizzle/schema";
+import { socialPosts, workerJobs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import {
   getMarketplaceAutoReviewPhotoPostReadiness,
   reconcileMarketplaceAutoReviewPhotoPost,
+  resolveUnstartedPhotoPublicationStatus,
   startMarketplaceAutoReviewPhotoPost,
+  MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE,
 } from "../services/marketplaceAutoReviewPhotoPostService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
@@ -89,11 +91,44 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
         sql`${socialPosts.metadata}->>'source' = 'marketplace_auto_review_photo_post'`,
         sql`${socialPosts.metadata}->>'autoReviewRunId' = ${input.runId}`,
       )).orderBy(desc(socialPosts.createdAt)).limit(20);
+      const postIds = rows.map(row => String(row.id));
+      const linkedJobIds = rows.flatMap(row => {
+        const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+        return typeof metadata.publishingWorkerJobId === "string" ? [metadata.publishingWorkerJobId] : [];
+      });
+      const jobLookup = postIds.length ? await db.select({
+        id: workerJobs.id,
+        status: workerJobs.status,
+        startedAt: workerJobs.startedAt,
+        inputPostId: sql<string | null>`${workerJobs.inputJson}->>'postId'`,
+      }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, ctx.tenantId),
+        eq(workerJobs.requestedByUserId, ctx.user.id),
+        eq(workerJobs.jobType, MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE),
+        linkedJobIds.length
+          ? or(inArray(workerJobs.id, linkedJobIds), inArray(sql<string>`${workerJobs.inputJson}->>'postId'`, postIds))
+          : inArray(sql<string>`${workerJobs.inputJson}->>'postId'`, postIds),
+      )).orderBy(desc(workerJobs.createdAt)) : [];
+      const jobById = new Map(jobLookup.map(job => [job.id, job]));
+      const jobByPostId = new Map<string, typeof jobLookup[number]>();
+      for (const job of jobLookup) {
+        if (job.inputPostId && !jobByPostId.has(job.inputPostId)) jobByPostId.set(job.inputPostId, job);
+      }
       return rows.map(row => {
         const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+        const linkedJob = typeof metadata.publishingWorkerJobId === "string"
+          ? jobById.get(metadata.publishingWorkerJobId) ?? jobByPostId.get(String(row.id))
+          : jobByPostId.get(String(row.id));
+        const publicationStatus = String(metadata.photoPublicationStatus ?? row.status);
+        const recoveredStatus = linkedJob ? resolveUnstartedPhotoPublicationStatus({
+          publicationStatus,
+          jobStatus: String(linkedJob.status),
+          jobStartedAt: linkedJob.startedAt,
+          hasExternalPhotoAttempt: Boolean(metadata.photoPublishRequestedAt || metadata.externalPhotoId || publicationStatus === "published"),
+        }) : null;
         return {
           id: row.id,
-          status: metadata.photoPublicationStatus ?? row.status,
+          status: recoveredStatus ?? publicationStatus,
           scheduledAt: row.scheduledAt,
           selectedVariant: metadata.selectedPhotoVariant ?? null,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
@@ -104,7 +139,11 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
           permalink: typeof metadata.permalink === "string" ? metadata.permalink : null,
           canReconcile: typeof metadata.externalPhotoId === "string",
           manualHandoff: metadata.manualHandoff ?? null,
-          errorMessage: row.errorMessage,
+          errorMessage: recoveredStatus === "failed"
+            ? "งานเผยแพร่หมดอายุก่อนเริ่มส่งรูปไป Facebook รูปยังไม่ถูกส่ง และสามารถลองเผยแพร่ใหม่ได้"
+            : recoveredStatus === "needs_user_action"
+              ? "งานเผยแพร่หยุดหลังอาจเริ่มส่งรูปแล้ว กรุณาตรวจสอบ Facebook ก่อนลองอีกครั้ง"
+              : row.errorMessage,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
           publishedAt: row.publishedAt,
