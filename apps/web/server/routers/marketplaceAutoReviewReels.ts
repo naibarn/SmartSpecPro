@@ -66,9 +66,13 @@ export const marketplaceAutoReviewReelsRouter = router({
       postId: input.postId,
     })),
 
-  postAffiliateComment: reelsProcedure.input(z.object({ postId: z.number().int().positive() }).strict())
+  postAffiliateComment: reelsProcedure.input(z.object({
+    postId: z.number().int().positive(),
+    confirmNoExistingComment: z.boolean().optional(),
+  }).strict())
     .mutation(({ ctx, input }) => postAffiliateCommentOnPublishedAutoReview({
       tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId, format: "reels",
+      confirmNoExistingComment: input.confirmNoExistingComment,
     })),
 
   history: reelsProcedure.input(z.object({ runId: z.string().trim().min(1).max(64) }).strict())

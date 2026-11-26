@@ -573,7 +573,7 @@ export async function reconcileMarketplaceAutoReviewReelsPublication(input: {
   };
   const scopes = Array.isArray(row.connection.grantedScopes) ? row.connection.grantedScopes : [];
   if (isPublished && record(metadata.snapshot).affiliateMode === "first_comment" && scopes.includes("pages_manage_engagement")) {
-    await publishAffiliateCommentOnce({ metadata: nextMetadata, pageId: row.page.providerPageId, objectId: providerPostId, accessToken, affiliateUrl: nonemptyString(record(metadata.snapshot).affiliateUrl), persist: async patch => { Object.assign(nextMetadata, patch); } });
+    await publishAffiliateCommentOnce({ metadata: nextMetadata, pageId: row.page.providerPageId, objectId: videoId, accessToken, affiliateUrl: nonemptyString(record(metadata.snapshot).affiliateUrl), persist: async patch => { Object.assign(nextMetadata, patch); } });
   } else if (isPublished && record(metadata.snapshot).affiliateMode === "first_comment") {
     Object.assign(nextMetadata, { affiliateCommentStatus: "needs_user_action", affiliateLinkStatus: "comment_permission_missing" });
   }
@@ -678,7 +678,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       await publishAffiliateCommentOnce({
         metadata,
         pageId: postRow.page.providerPageId,
-        objectId: postRow.post.providerPostId,
+        objectId: metaText(metadata.externalVideoId),
         accessToken: pageAccessToken,
         affiliateUrl: nonemptyString(record(metadata.snapshot).affiliateUrl),
         persist: async patch => {
@@ -761,7 +761,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
           affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
           attributionVerificationStatus: "unverified",
         });
-        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: publishedPostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
+        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: externalVideoId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
         await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
         return { status: "published", providerPostId: publishedPostId, permalink: metaText(external.permalink_url) ?? null };
       }
@@ -839,7 +839,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
           affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
           attributionVerificationStatus: "unverified",
         }, "published");
-        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: publishedPostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
+        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: externalVideoId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
         await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
         return { status: "published", providerPostId: publishedPostId, permalink: metaText(statusResponse.permalink_url) ?? null };
       }
@@ -872,7 +872,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       ...(published ? { publishedAt: new Date().toISOString(), videoPublicationStatus: "published", affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "manual_handoff" } : {}),
       attributionVerificationStatus: "unverified",
     }, published ? "published" : "processing");
-    if (published && snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: responsePostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
+    if (published && snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: externalVideoId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
     await db.update(socialPosts).set({
       status: published ? "published" : "draft",
       providerPostId: responsePostId,

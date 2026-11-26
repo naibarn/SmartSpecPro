@@ -20,6 +20,9 @@ def setup_logging() -> None:
         stream=sys.stdout,
         level=getattr(logging, settings.LOG_LEVEL.upper()),
     )
+    # HTTPX includes the full request URL in its INFO message. Meta access
+    # tokens are sent as query parameters, so emitting that line leaks tokens.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     
     # Processors for structlog
     processors: list[Processor] = [

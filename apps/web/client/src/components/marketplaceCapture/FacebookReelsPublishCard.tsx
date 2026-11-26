@@ -306,8 +306,12 @@ export function FacebookReelsPublishCard(props: {
                 <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
                 {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
                 {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
-                {status === "published" && item.providerPostId && item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus && photoReadiness.data?.hasAffiliateLink ? (
-                  <Button label="โพสต์ Affiliate Link ในคอมเมนต์แรก" variant="secondary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => postPhotoAffiliateComment.mutate({ postId: item.id })} />
+                {status === "published" && item.providerPostId && photoReadiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || (item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus)) ? (
+                  <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "โพสต์ Affiliate Link ในคอมเมนต์แรก"} variant="secondary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => {
+                    const confirmNoExistingComment = item.affiliateCommentStatus === "uncertain";
+                    if (confirmNoExistingComment && !window.confirm("กรุณาตรวจโพสต์บน Facebook ก่อน หากไม่พบคอมเมนต์ Affiliate ให้กดยืนยันส่งใหม่")) return;
+                    postPhotoAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : {}) });
+                  }} />
                 ) : null}
                 {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
                 {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}
@@ -434,8 +438,12 @@ export function FacebookReelsPublishCard(props: {
               <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
               {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
               {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
-              {status === "published" && item.providerPostId && item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus && readiness.data?.hasAffiliateLink ? (
-                <Button label="โพสต์ Affiliate Link ในคอมเมนต์แรก" variant="secondary" isLoading={postAffiliateComment.isPending} onClick={() => postAffiliateComment.mutate({ postId: item.id })} />
+              {status === "published" && item.providerPostId && readiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || (item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus)) ? (
+                <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "โพสต์ Affiliate Link ในคอมเมนต์แรก"} variant="secondary" isLoading={postAffiliateComment.isPending} onClick={() => {
+                  const confirmNoExistingComment = item.affiliateCommentStatus === "uncertain";
+                  if (confirmNoExistingComment && !window.confirm("กรุณาตรวจโพสต์บน Facebook ก่อน หากไม่พบคอมเมนต์ Affiliate ให้กดยืนยันส่งใหม่")) return;
+                  postAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : {}) });
+                }} />
               ) : null}
               {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
               {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}

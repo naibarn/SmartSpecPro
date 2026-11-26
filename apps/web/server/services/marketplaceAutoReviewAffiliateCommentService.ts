@@ -35,6 +35,7 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
   userId: number;
   postId: number;
   format: PublicationFormat;
+  confirmNoExistingComment?: boolean;
 }) {
   const db = await getDb();
   if (!db) fail("INTERNAL_SERVER_ERROR", "Database not available");
@@ -74,16 +75,21 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
     fail("BAD_REQUEST", "รายการนี้ไม่ใช่โพสต์ Auto Review ที่รองรับ");
   if (row.post.status !== "published" || !row.post.providerPostId)
     fail("PRECONDITION_FAILED", "Facebook ยังไม่ยืนยันโพสต์นี้");
+  const retryingUncertain =
+    metadata.affiliateCommentStatus === "uncertain" &&
+    input.confirmNoExistingComment === true;
   if (
     snapshot.affiliateMode !== "none" ||
-    metadata.affiliateLinkStatus !== "none"
+    (metadata.affiliateLinkStatus !== "none" &&
+      !(retryingUncertain &&
+        metadata.affiliateLinkStatus === "comment_outcome_uncertain"))
   ) {
     fail(
       "PRECONDITION_FAILED",
       "โพสต์นี้มีการจัดการ Affiliate Link แล้ว หรือไม่เข้าเงื่อนไขการเพิ่มคอมเมนต์"
     );
   }
-  if (metadata.affiliateCommentStatus)
+  if (metadata.affiliateCommentStatus && !retryingUncertain)
     fail(
       "PRECONDITION_FAILED",
       "คอมเมนต์ Affiliate สำหรับโพสต์นี้ถูกดำเนินการไปแล้ว กรุณาตรวจสอบสถานะก่อน"
@@ -158,11 +164,47 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
     fail("PRECONDITION_FAILED", "Affiliate URL ที่บันทึกไว้ไม่ถูกต้อง");
   }
 
+  const commentObjectId =
+    input.format === "reels"
+      ? text(metadata.externalVideoId)
+      : row.post.providerPostId;
+  if (!commentObjectId)
+    fail(
+      "PRECONDITION_FAILED",
+      "ไม่พบ Video ID ของ Reel สำหรับโพสต์คอมเมนต์ กรุณาตรวจสอบสถานะโพสต์"
+    );
+
+  if (retryingUncertain) {
+    const retryMetadata = { ...metadata, affiliateLinkStatus: "none" };
+    delete retryMetadata.affiliateCommentStatus;
+    delete retryMetadata.affiliateCommentRequestedAt;
+    const [reset] = await db
+      .update(socialPosts)
+      .set({ metadata: retryMetadata, updatedAt: new Date() })
+      .where(
+        and(
+          eq(socialPosts.id, input.postId),
+          eq(socialPosts.tenantId, input.tenantId),
+          eq(socialPosts.createdByUserId, input.userId),
+          sql`${socialPosts.metadata}->>'affiliateCommentStatus' = 'uncertain'`
+        )
+      )
+      .returning({ id: socialPosts.id });
+    if (!reset)
+      fail(
+        "PRECONDITION_FAILED",
+        "สถานะคอมเมนต์เปลี่ยนไปแล้ว กรุณาโหลดประวัติใหม่ก่อน"
+      );
+    Object.assign(metadata, retryMetadata);
+    delete metadata.affiliateCommentStatus;
+    delete metadata.affiliateCommentRequestedAt;
+  }
+
   const nextMetadata = { ...metadata };
   const state = await publishAffiliateCommentOnce({
     metadata,
     pageId: row.page.providerPageId,
-    objectId: row.post.providerPostId,
+    objectId: commentObjectId,
     accessToken,
     affiliateUrl,
     claimRequest: async requestedAt => {
