@@ -27,6 +27,13 @@ describe("job transport adapters", () => {
     expect(new CloudflareQueueHttpJobTransportAdapter("https://fixture.invalid", "fixture").supports(input)).toBe(false);
     expect(new PostgresPullJobTransportAdapter().supports({ ...input, contractVersion: HTTP_CANDIDATE_CONTRACT + "-unknown" })).toBe(false);
   });
+  it("admits Facebook Photo Post jobs on PostgreSQL pull", () => {
+    expect(new PostgresPullJobTransportAdapter().supports({
+      jobType: "social.facebook.photo.publish",
+      executionClass: "long",
+      contractVersion: "feature-187-v1",
+    })).toBe(true);
+  });
   it("admits the exact Production Queue provisioning contract on PostgreSQL pull only", () => {
     const postgres = new PostgresPullJobTransportAdapter();
     const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");

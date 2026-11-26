@@ -27,6 +27,7 @@ import { M3_PARITY_CONTRACT } from "./cloudflareM3ParityJobContract";
  */
 export const CANONICAL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   "feature-186-v1",
+  "feature-187-v1",
   CONTENT_PROTECTION_CONTRACT_VERSION,
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
   M3_PARITY_CONTRACT,
