@@ -381,7 +381,7 @@ export function FacebookReelsPublishCard(props: {
                   if (!window.confirm("กรุณาเปิด Facebook Page และตรวจว่าไม่มีภาพโพสต์นี้จริง การยืนยันจะปลดล็อกให้ส่งภาพเดิมใหม่ได้")) return;
                   confirmPhotoAbsent.mutate({ postId: item.id, confirmNoExistingPost: true });
                 }} /> : null}
-                {permalink ? <Link href={permalink} target="_blank">ดู Photo Post บน Facebook</Link> : null}
+                {permalink ? <Link href={permalink} target="_blank" isStandalone isExternalLink hasUnderline>ดู Photo Post บน Facebook</Link> : null}
               </VStack>;
             })}
           </VStack>
@@ -533,7 +533,7 @@ export function FacebookReelsPublishCard(props: {
               {item.canResume ? (
                 <Button label="ดำเนินการอัปโหลดต่ออย่างปลอดภัย" variant="secondary" isLoading={resume.isPending} onClick={() => resume.mutate({ postId: item.id })} />
               ) : null}
-              {permalink ? <Link href={permalink} target="_blank">ดู Reel บน Facebook</Link> : null}
+              {permalink ? <Link href={permalink} target="_blank" isStandalone isExternalLink hasUnderline>ดู Reel บน Facebook</Link> : null}
             </VStack>
           );
         })}
