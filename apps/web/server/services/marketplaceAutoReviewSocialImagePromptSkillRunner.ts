@@ -285,7 +285,7 @@ export async function generateMarketplaceSocialImagePrompt(
     aspectRatio: input.aspectRatio,
     output: {
       imagePrompt:
-        "One complete image-generation prompt for one portrait social post image; do not render the caption as text in the image.",
+        "One complete image-generation prompt for one portrait social post image. Include a short, legible on-image product headline and supporting description in the supplied language, using only verified product facts from the supplied product details and caption. Quote the exact copy to render; omit any unsupported claim.",
       negativePrompt: "A concise list of image artifacts and content to avoid.",
     },
     trustBoundary:
@@ -308,7 +308,7 @@ export async function generateMarketplaceSocialImagePrompt(
       z.infer<typeof socialImagePromptSchema>
     >({
       model: model.modelId,
-      systemPrompt: `${loadSocialImagePromptSkill()}\n\nReturn only the schema-valid JSON object required by this runtime. Every provided image is a reference image, numbered in the order listed in sourceImages. Use all images together in one cohesive scene: integrate the product with the referenced character, preserve relevant visual identity or product fidelity, and do not separate them into different scenes or collage panels. The variant changes visual emphasis, not which references are used. Do not add text, prices, claims, badges, or watermarks.`,
+      systemPrompt: `${loadSocialImagePromptSkill()}\n\nReturn only the schema-valid JSON object required by this runtime. Every provided image is a reference image, numbered in the order listed in sourceImages. Use all images together in one cohesive scene: integrate the product with the referenced character, preserve relevant visual identity or product fidelity, and do not separate them into different scenes or collage panels. The variant changes visual emphasis, not which references are used. Include the exact short product copy in the image with clean, legible typography. Do not add prices, unsupported claims, promotional badges, or watermarks.`,
       userPromptText,
       hasVision: true,
       images,
