@@ -15,6 +15,9 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
     """Middleware to validate all incoming requests"""
 
     MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_REQUEST_SIZE_BY_PATH = {
+        "/api/internal/social/reels/upload": 1024 * 1024 * 1024,  # 1GB; route enforces its configured streaming limit
+    }
     MAX_JSON_DEPTH = 20
 
     # Paths that allow non-JSON content (binary uploads)
@@ -22,6 +25,9 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         "/api/artifacts/upload/",
         "/api/kilo/media/",
     ]
+    BINARY_UPLOAD_EXACT_PATHS = {
+        "/api/internal/social/reels/upload",
+    }
 
     async def dispatch(self, request: Request, call_next):
         """Validate request before processing"""
@@ -32,25 +38,29 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
             # Check if this is a binary upload endpoint
-            is_binary_upload = any(
+            is_binary_upload = request.url.path in self.BINARY_UPLOAD_EXACT_PATHS or any(
                 request.url.path.startswith(path)
                 for path in self.BINARY_UPLOAD_PATHS
             )
 
             # Validate request size
             content_length = request.headers.get("content-length")
-            if content_length and int(content_length) > self.MAX_REQUEST_SIZE:
+            max_request_size = self.MAX_REQUEST_SIZE_BY_PATH.get(
+                request.url.path,
+                self.MAX_REQUEST_SIZE,
+            )
+            if content_length and int(content_length) > max_request_size:
                 logger.warning(
                     "Request too large",
                     size=content_length,
-                    max_size=self.MAX_REQUEST_SIZE,
+                    max_size=max_request_size,
                     path=request.url.path
                 )
                 return JSONResponse(
                     status_code=413,
                     content={
                         "error": "Request too large",
-                        "max_size": self.MAX_REQUEST_SIZE
+                        "max_size": max_request_size
                     }
                 )
 

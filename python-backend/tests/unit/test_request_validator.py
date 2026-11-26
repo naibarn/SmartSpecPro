@@ -50,6 +50,38 @@ class TestRequestValidationMiddleware:
         
         assert response.status_code == 413
         assert not call_next.called
+
+    @pytest.mark.asyncio
+    async def test_reels_upload_allows_large_binary_with_route_specific_limit(self, middleware):
+        request = Mock(spec=Request)
+        request.headers = {
+            "content-length": str(36_880_111),
+            "content-type": "application/octet-stream",
+        }
+        request.method = "POST"
+        request.url.path = "/api/internal/social/reels/upload"
+        call_next = AsyncMock(return_value=JSONResponse(content={"success": True}))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert call_next.called
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_reels_upload_still_rejects_body_over_its_route_limit(self, middleware):
+        request = Mock(spec=Request)
+        request.headers = {
+            "content-length": str(RequestValidationMiddleware.MAX_REQUEST_SIZE_BY_PATH["/api/internal/social/reels/upload"] + 1),
+            "content-type": "application/octet-stream",
+        }
+        request.method = "POST"
+        request.url.path = "/api/internal/social/reels/upload"
+        call_next = AsyncMock()
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == 413
+        assert not call_next.called
     
     @pytest.mark.asyncio
     async def test_request_within_size_limit(self, middleware):

@@ -434,8 +434,8 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
       createOptions: { runtimeType: "node_job_worker", admissionMode: "durable_queue" },
     });
     const metadata = record((await db.select({ metadata: socialPosts.metadata }).from(socialPosts).where(eq(socialPosts.id, post.id)).limit(1))[0]?.metadata);
-    await db.update(socialPosts).set({ metadata: { ...metadata, publishingWorkerJobId: job.id }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-    return { postId: post.id, jobId: job.id, status: "queued" as const, intentHash };
+    await db.update(socialPosts).set({ metadata: { ...metadata, publishingWorkerJobId: job.jobId }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
+    return { postId: post.id, jobId: job.jobId, status: "queued" as const, intentHash };
   } catch (error) {
     await db.update(socialPosts).set({
       status: "failed",
@@ -625,8 +625,8 @@ export async function resumeMarketplaceAutoReviewReelsUpload(input: {
       },
       createOptions: { runtimeType: "node_job_worker", admissionMode: "durable_queue" },
     });
-    await db.update(socialPosts).set({ metadata: { ...nextMetadata, publishingWorkerJobId: job.id }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-    return { postId: post.id, jobId: job.id, status: "queued" as const };
+    await db.update(socialPosts).set({ metadata: { ...nextMetadata, publishingWorkerJobId: job.jobId }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
+    return { postId: post.id, jobId: job.jobId, status: "queued" as const };
   } catch (error) {
     await db.update(socialPosts).set({ metadata: { ...nextMetadata, videoPublicationStatus: "needs_user_action", failureCode: "RESUME_JOB_ADMISSION_FAILED" }, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
     throw error;
