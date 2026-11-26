@@ -41,6 +41,7 @@ export interface SocialPublishingPageSummary {
   pageCategory: string | null;
   providerPageId: string;
   publishingReady: boolean;
+  firstCommentReady: boolean;
   publishingIssueCode: SocialPublishingReadinessCode;
   publishingIssue: string | null;
 }
@@ -471,6 +472,7 @@ export async function listPublishingPages(tenantId: string, userId: number): Pro
       pageCategory: row.pageCategory,
       providerPageId: row.providerPageId,
       publishingReady: readiness.ready,
+      firstCommentReady: readiness.ready && row.connectionMetadata?.permissionVerificationStatus === "verified" && Array.isArray(row.grantedScopes) && row.grantedScopes.includes("pages_manage_engagement"),
       publishingIssueCode: readiness.code,
       publishingIssue: readiness.message,
     };

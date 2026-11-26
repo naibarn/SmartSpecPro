@@ -36,6 +36,22 @@ async def test_send_message_posts_to_messages_endpoint() -> None:
 
 
 @pytest.mark.asyncio
+async def test_publish_comment_posts_once_to_target_post_comments_edge() -> None:
+    client = AsyncMock()
+    client.request = AsyncMock(return_value=make_response(200, {"id": "comment-123"}))
+    client.aclose = AsyncMock()
+
+    api = MetaGraphClient("secret-token", page_id="123", client=client)
+    result = await api.publish_comment("123_456", "https://example.com/affiliate")
+
+    assert result == {"id": "comment-123"}
+    assert client.request.await_count == 1
+    assert client.request.await_args.args[0] == "POST"
+    assert client.request.await_args.args[1].endswith("/123_456/comments")
+    assert client.request.await_args.kwargs["json"] == {"message": "https://example.com/affiliate"}
+
+
+@pytest.mark.asyncio
 async def test_create_post_includes_scheduled_publish_time() -> None:
     client = AsyncMock()
     client.request = AsyncMock(return_value=make_response(200, {"id": "post_1"}))

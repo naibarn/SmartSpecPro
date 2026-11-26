@@ -53,6 +53,8 @@ function publishErrorMessage(message: string): string {
   switch (message.split(":")[0]) {
     case "FACEBOOK_PAGE_NOT_READY":
       return "เพจที่เลือกยังเผยแพร่ไม่ได้ กรุณาตรวจสิทธิ์เผยแพร่ของเพจใน Social Channels หรือเลือกเพจอื่น";
+    case "FIRST_COMMENT_PERMISSION_MISSING":
+      return "Facebook ยังไม่อนุญาตให้ใส่คอมเมนต์แรก กรุณาเชื่อมต่อเพจใหม่พร้อมสิทธิ์ pages_manage_engagement";
     case "PHOTO_CAPTION_TOO_LONG":
       return "ข้อความรวมเกิน 2,000 ตัวอักษร กรุณาย่อ Caption หรือ Hashtag แล้วลองอีกครั้ง";
     default:
@@ -147,6 +149,13 @@ export function FacebookReelsPublishCard(props: {
     setError(null);
   }, [props.runId]);
 
+  const availablePages = format === "photo" ? photoReadiness.data?.pages : readiness.data?.pages;
+  useEffect(() => {
+    if (availablePages?.some(page => String(page.id) === pageId && page.publishingReady)) return;
+    const firstReady = availablePages?.find(page => page.publishingReady);
+    if (firstReady) setPageId(String(firstReady.id));
+  }, [availablePages, pageId]);
+
   useEffect(() => {
     const firstReady = photoReadiness.data?.imageVariants.find(image => image.status === "completed");
     if (firstReady && !photoReadiness.data?.imageVariants.some(image => image.variant === photoVariant && image.status === "completed")) {
@@ -164,7 +173,7 @@ export function FacebookReelsPublishCard(props: {
   const canPublish = Boolean(
     readiness.data?.ready && selectedPage?.publishingReady && caption.trim() &&
     caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
-    (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "none") &&
+    (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? readiness.data?.hasAffiliateLink && selectedPage?.firstCommentReady : affiliateMode === "none") &&
     noLinkConfirmed && !activePublication && !history.isLoading && !history.isError && !publish.isPending
   );
   const canPrepareManualHandoff = Boolean(
@@ -178,8 +187,8 @@ export function FacebookReelsPublishCard(props: {
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
     commercialDisclosure.length <= 500 && !invalidHashtags &&
-    (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
-    (affiliateMode !== "none" || allowNoAffiliate) && affiliateMode !== "first_comment" && !photoHistoryHasUncertain &&
+    (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? photoReadiness.data?.hasAffiliateLink && selectedPhotoPage?.firstCommentReady : affiliateMode === "none" || affiliateMode === "manual_native") &&
+    (affiliateMode !== "none" || allowNoAffiliate) && !photoHistoryHasUncertain &&
     !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
   );
 
@@ -263,7 +272,7 @@ export function FacebookReelsPublishCard(props: {
               onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
               options={[
                 { value: "description", label: "แนบในคำอธิบายโพสต์", disabled: !photoReadiness.data?.hasAffiliateLink },
-                { value: "first_comment", label: "ความคิดเห็นแรก (ยังไม่พร้อม)", disabled: true },
+                { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !photoReadiness.data?.hasAffiliateLink || !selectedPhotoPage?.firstCommentReady },
                 { value: "manual_native", label: "นำไปติดแท็กผ่าน Facebook ด้วยตนเอง" },
                 { value: "none", label: "ไม่ใส่ Affiliate link" },
               ]}
@@ -286,6 +295,7 @@ export function FacebookReelsPublishCard(props: {
               return <VStack key={item.id} gap={1}>
                 <Text type="label">{PHOTO_VARIANT_LABELS[String(item.selectedVariant)] ?? "Facebook Photo Post"} · {STATUS_LABELS[status] ?? status}</Text>
                 <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+                {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
                 {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
                 {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}
                 {item.manualHandoff && typeof item.manualHandoff === "object" ? <VStack gap={1}>
@@ -366,7 +376,7 @@ export function FacebookReelsPublishCard(props: {
           onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
           options={[
             { value: "description", label: "ใส่ Affiliate URL ในคำอธิบาย", disabled: !readiness.data?.hasAffiliateLink },
-            { value: "first_comment", label: "ใส่ในความคิดเห็นแรก (ยังไม่พร้อม)", disabled: true },
+            { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !readiness.data?.hasAffiliateLink || !selectedPage?.firstCommentReady },
             { value: "manual_native", label: "ติดแท็กสินค้าผ่าน Facebook ด้วยตนเอง" },
             { value: "none", label: "เผยแพร่โดยไม่ใส่ Affiliate link" },
           ]}
@@ -409,6 +419,7 @@ export function FacebookReelsPublishCard(props: {
             <VStack key={item.id} gap={1}>
               <Text type="label">{STATUS_LABELS[status] ?? status}</Text>
               <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+              {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
               {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
               {item.errorMessage ? <Text>{item.errorMessage}</Text> : null}
               {["needs_user_action", "reconciling"].includes(status) ? <Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจสถานะก่อนส่งซ้ำเพื่อป้องกันโพสต์ซ้ำ</Text> : null}

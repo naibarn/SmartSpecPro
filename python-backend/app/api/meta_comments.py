@@ -37,6 +37,13 @@ class ReplyCommentRequest(BaseModel):
     page_id: str = Field(min_length=1, max_length=255)
 
 
+class PublishCommentRequest(BaseModel):
+    object_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+(?:_\d+)?$")
+    message: str = Field(min_length=1, max_length=2000)
+    page_access_token: str = Field(min_length=1)
+    page_id: str = Field(min_length=1, max_length=255, pattern=r"^\d+$")
+
+
 class HideCommentRequest(BaseModel):
     comment_id: str = Field(min_length=1, max_length=255)
     page_access_token: str = Field(min_length=1)
@@ -110,6 +117,30 @@ async def reply_to_comment(
     _auth: None = Depends(_verify_internal_token),
 ):
     return await _call_comment_api(request, "reply")
+
+
+@router.post("/publish")
+async def publish_comment(
+    request: PublishCommentRequest,
+    _auth: None = Depends(_verify_internal_token),
+):
+    try:
+        client = MetaGraphClient(request.page_access_token, page_id=request.page_id)
+        result = await client.publish_comment(request.object_id, request.message)
+    except TokenExpiredError as exc:
+        raise HTTPException(status_code=409, detail="META_TOKEN_INVALID") from exc
+    except PermissionDeniedError as exc:
+        raise HTTPException(status_code=403, detail="META_PERMISSION_MISSING") from exc
+    except RateLimitExceededError as exc:
+        raise HTTPException(status_code=429, detail="Meta comment rate limit exceeded") from exc
+    except MetaApiError as exc:
+        raise HTTPException(status_code=502, detail="Meta comment publication could not be confirmed") from exc
+
+    return {
+        "status": "published",
+        "page_id": request.page_id,
+        "provider_comment_id": _extract_provider_comment_id(result),
+    }
 
 
 @router.post("/hide")

@@ -394,6 +394,15 @@ class MetaGraphClient(SocialProviderClient):
             json_body={"message": message},
         )
 
+    async def publish_comment(self, object_id: str, message: str) -> dict[str, Any]:
+        """Publish a Page comment once; never retry an ambiguous write."""
+        return await self._request(
+            "POST",
+            f"{object_id}/comments",
+            json_body={"message": message},
+            retry_transient=False,
+        )
+
     async def hide_comment(self, comment_id: str) -> dict[str, Any]:
         return await self._request("POST", comment_id, json_body={"is_hidden": True})
 

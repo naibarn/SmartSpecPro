@@ -7,10 +7,11 @@ const mocks = vi.hoisted(() => ({
   readiness: {
     ready: true,
     reason: null,
-    pages: [{ id: 12, label: "Test Page", publishingReady: true, publishingIssue: null }],
+    pages: [{ id: 12, label: "Test Page", publishingReady: true, firstCommentReady: true, publishingIssue: null }],
     savedCaption: "Saved caption",
     savedHashtags: ["#saved"],
     hasAffiliateLink: true,
+    firstCommentReady: true,
   } as any,
   history: [] as any[],
   historyError: false,
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => ({
     ready: true,
     featureEnabled: true,
     reason: null,
-    pages: [{ id: 12, label: "Test Page", publishingReady: true, publishingIssue: null }],
+    pages: [{ id: 12, label: "Test Page", publishingReady: true, firstCommentReady: true, publishingIssue: null }],
     imageVariants: [
       { variant: "caption_source", status: "completed", imageUrl: "/caption.png", sourceLabel: "Caption image" },
       { variant: "character_reference", status: "completed", imageUrl: "/character.png", sourceLabel: "Character image" },
@@ -95,16 +96,17 @@ describe("FacebookReelsPublishCard", () => {
     mocks.readiness = {
       ready: true,
       reason: null,
-      pages: [{ id: 12, label: "Test Page", publishingReady: true, publishingIssue: null }],
+      pages: [{ id: 12, label: "Test Page", publishingReady: true, firstCommentReady: true, publishingIssue: null }],
       savedCaption: "Saved caption",
       savedHashtags: ["#saved"],
       hasAffiliateLink: true,
+      firstCommentReady: true,
     };
     mocks.photoReadiness = {
       ready: true,
       featureEnabled: true,
       reason: null,
-      pages: [{ id: 12, label: "Test Page", publishingReady: true, publishingIssue: null }],
+      pages: [{ id: 12, label: "Test Page", publishingReady: true, firstCommentReady: true, publishingIssue: null }],
       imageVariants: [
         { variant: "caption_source", status: "completed", imageUrl: "/caption.png", sourceLabel: "Caption image" },
         { variant: "character_reference", status: "completed", imageUrl: "/character.png", sourceLabel: "Character image" },
@@ -113,6 +115,7 @@ describe("FacebookReelsPublishCard", () => {
       savedCaption: "Saved caption",
       savedHashtags: ["#saved"],
       hasAffiliateLink: true,
+      firstCommentReady: true,
     };
   });
 
@@ -172,11 +175,45 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeEnabled();
   });
 
-  it("does not publish when history cannot be checked and never enables first comment", () => {
+  it("selects a ready Facebook Page automatically and can publish the affiliate URL as the first comment", () => {
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    expect((screen.getByLabelText("Facebook Page") as HTMLSelectElement).value).toBe("12");
+    fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "first_comment" } });
+    const publish = screen.getByRole("button", { name: "เผยแพร่ Reel" });
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
+    expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      pageId: 12,
+      snapshot: expect.objectContaining({ affiliateMode: "first_comment" }),
+    }));
+  });
+
+  it("supports placing the Photo Post affiliate URL in the first comment", () => {
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+    expect((screen.getByLabelText("Facebook Page") as HTMLSelectElement).value).toBe("12");
+    fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "first_comment" } });
+    const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
+    expect(mocks.photoMutate).toHaveBeenCalledWith(expect.objectContaining({
+      pageId: 12,
+      snapshot: expect.objectContaining({ affiliateMode: "first_comment" }),
+    }));
+  });
+
+  it("keeps publishing disabled when history cannot be checked", () => {
     mocks.historyError = true;
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "Affiliate disclosure" } });
+    expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
+  });
+
+  it("keeps first-comment publishing unavailable when the selected Page lacks the permission", () => {
+    mocks.readiness.pages[0].firstCommentReady = false;
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "first_comment" } });
     expect(screen.getByRole("option", { name: /ความคิดเห็นแรก/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
   });

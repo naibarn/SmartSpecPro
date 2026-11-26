@@ -8,6 +8,29 @@ from app.api import meta_comments
 
 
 @pytest.mark.asyncio
+async def test_publish_comment_uses_page_token_and_returns_provider_comment_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = AsyncMock()
+    client.publish_comment = AsyncMock(return_value={"id": "comment-456"})
+    mock_client_cls = MagicMock(return_value=client)
+    monkeypatch.setattr(meta_comments, "MetaGraphClient", mock_client_cls)
+
+    result = await meta_comments.publish_comment(
+        meta_comments.PublishCommentRequest(
+            object_id="123_456",
+            message="https://example.com/affiliate",
+            page_access_token="page-token",
+            page_id="123",
+        ),
+        _auth=None,
+    )
+
+    assert result["status"] == "published"
+    assert result["provider_comment_id"] == "comment-456"
+    mock_client_cls.assert_called_once_with("page-token", page_id="123")
+    client.publish_comment.assert_awaited_once_with("123_456", "https://example.com/affiliate")
+
+
+@pytest.mark.asyncio
 async def test_reply_to_comment_uses_page_access_token_and_returns_provider_comment_id(monkeypatch: pytest.MonkeyPatch) -> None:
     client = AsyncMock()
     client.reply_to_comment = AsyncMock(return_value={"id": "c-123"})

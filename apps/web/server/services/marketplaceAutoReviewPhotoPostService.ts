@@ -20,6 +20,7 @@ import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { buildMarketplaceAutoReviewPublishJobKeys } from "./marketplaceAutoReviewPublishJobKeys";
 import { publishFacebookPagePhoto, readFacebookPagePhoto } from "./facebookPhotoPublishGateway";
+import { publishAffiliateCommentOnce } from "./marketplaceAutoReviewAffiliateComment";
 
 export const MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE = "social.facebook.photo.publish";
 const PHOTO_POST_CONTRACT_VERSION = "feature-187-v1";
@@ -265,6 +266,7 @@ async function verifySelectedPage(input: { tenantId: string; userId: number; pag
   const pages = await (await import("./socialPublishingService")).listPublishingPages(input.tenantId, input.userId);
   const selected = pages.find(page => page.id === input.pageId);
   if (!selected?.publishingReady || selected.provider !== "meta") fail("FACEBOOK_PAGE_NOT_READY", selected?.publishingIssue ?? "Select an active Facebook Page with verified publishing permission");
+  return selected;
 }
 
 export async function startMarketplaceAutoReviewPhotoPost(input: {
@@ -278,13 +280,13 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   const db = await resolveDb();
   const pkg = await loadPhotoPackage({ db, tenantId: input.tenantId, userId: input.userId, runId: input.runId });
   const image = resolveMarketplaceAutoReviewPhotoVariant(pkg.runMetadata, { tenantId: input.tenantId, runId: pkg.run.id, variant: snapshot.variant });
-  await verifySelectedPage(input);
+  const selectedPage = await verifySelectedPage(input);
+  if (snapshot.affiliateMode === "first_comment" && !selectedPage.firstCommentReady) fail("FIRST_COMMENT_PERMISSION_MISSING", "Reconnect Facebook with pages_manage_engagement permission before using the first-comment option");
   const inspected = await readAndInspectPhoto(image.storageKey);
   if (snapshot.affiliateMode === "description" && !pkg.affiliateUrl) fail("AFFILIATE_LINK_MISSING", "No canonical affiliate URL is stored for this product");
-  if (snapshot.affiliateMode === "first_comment") fail("FIRST_COMMENT_NOT_ENABLED", "Affiliate first-comment publishing is not enabled until the connected app's permission is confirmed");
   if (snapshot.affiliateMode === "none" && !snapshot.allowNoAffiliate) fail("NO_AFFILIATE_CONFIRMATION_REQUIRED", "Explicitly confirm publishing without the affiliate link");
 
-  const affiliateUrl = ["description", "manual_native"].includes(snapshot.affiliateMode) ? pkg.affiliateUrl : null;
+  const affiliateUrl = snapshot.affiliateMode === "none" ? null : pkg.affiliateUrl;
   const publishCaption = assertFacebookPhotoPostCaptionLength(composeFacebookPhotoPostCaption({ caption: snapshot.caption, hashtags: snapshot.hashtags, commercialDisclosure: snapshot.commercialDisclosure, affiliateUrl: snapshot.affiliateMode === "description" ? pkg.affiliateUrl : null }));
   const canonical = {
     tenantId: input.tenantId,
@@ -350,7 +352,7 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     imageSizeBytes: inspected.size,
     imageContentType: inspected.contentType,
     photoPublicationStatus: snapshot.affiliateMode === "manual_native" ? "needs_user_action" : "queued",
-    affiliateLinkStatus: affiliateUrl ? (snapshot.affiliateMode === "manual_native" ? "manual_handoff" : "pending") : "none",
+    affiliateLinkStatus: affiliateUrl ? (snapshot.affiliateMode === "manual_native" ? "manual_handoff" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "pending") : "none",
     commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_caption" : "not_provided",
     attributionVerificationStatus: "unverified",
     reconciliation: { state: "not_started" },
@@ -424,6 +426,14 @@ export async function reconcileMarketplaceAutoReviewPhotoPost(input: { tenantId:
   const permalink = safeFacebookPhotoLink(result.link);
   if (!providerPostId) return { postId: row.post.id, status: "reconciling", externalPhotoId: photoId, permalink };
   const nextMetadata = { ...metadata, externalPostId: providerPostId, permalink, photoPublicationStatus: "published", reconciliation: { state: "published", checkedAt: new Date().toISOString() } };
+  if (record(metadata.snapshot).affiliateMode === "first_comment") {
+    const scopes = Array.isArray(row.connection.grantedScopes) ? row.connection.grantedScopes : [];
+    if (scopes.includes("pages_manage_engagement")) {
+      await publishAffiliateCommentOnce({ metadata: nextMetadata, pageId: row.page.providerPageId, objectId: providerPostId, accessToken, affiliateUrl: text(record(metadata.snapshot).affiliateUrl), persist: async patch => { Object.assign(nextMetadata, patch); } });
+    } else {
+      Object.assign(nextMetadata, { affiliateCommentStatus: "needs_user_action", affiliateLinkStatus: "comment_permission_missing" });
+    }
+  }
   await db.update(socialPosts).set({ status: "published", providerPostId: providerPostId, publishedAt: row.post.publishedAt ?? new Date(), errorMessage: null, metadata: nextMetadata, updatedAt: new Date() }).where(eq(socialPosts.id, row.post.id));
   return { postId: row.post.id, status: "published", providerPostId, permalink };
 }
@@ -441,7 +451,25 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
   const metadata = record(row.post.metadata);
   const snapshot = record(metadata.snapshot);
   if (metadata.source !== "marketplace_auto_review_photo_post" || metadata.autoReviewRunId !== input.runId || metadata.intentHash !== input.intentHash) fail("PUBLISH_INTENT_SCOPE_MISMATCH", "Publishing intent binding does not match the job");
-  if (metadata.photoPublicationStatus === "published") return { status: "published", providerPostId: row.post.providerPostId };
+  if (metadata.photoPublicationStatus === "published") {
+    const scopes = Array.isArray(row.connection.grantedScopes) ? row.connection.grantedScopes : [];
+    const accessToken = row.page.encryptedPageAccessToken ? decrypt(row.page.encryptedPageAccessToken) : null;
+    if (record(metadata.snapshot).affiliateMode === "first_comment" && !metadata.affiliateCommentStatus && scopes.includes("pages_manage_engagement") && accessToken) {
+      await publishAffiliateCommentOnce({
+        metadata,
+        pageId: row.page.providerPageId,
+        objectId: row.post.providerPostId,
+        accessToken,
+        affiliateUrl: text(record(metadata.snapshot).affiliateUrl),
+        persist: async patch => {
+          const next = { ...metadata, ...patch };
+          Object.assign(metadata, next);
+          await db.update(socialPosts).set({ metadata: next, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        },
+      });
+    }
+    return { status: "published", providerPostId: row.post.providerPostId };
+  }
   const patchMetadata = async (patch: JsonRecord, status?: PhotoPublishState) => {
     const next = { ...metadata, ...patch, ...(status ? { photoPublicationStatus: status } : {}) };
     Object.assign(metadata, next);
@@ -450,7 +478,7 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
   const scopes = Array.isArray(row.connection.grantedScopes) ? row.connection.grantedScopes : [];
   const connectionMetadata = record(row.connection.metadata);
   const pageMetadata = record(row.page.metadata);
-  if (connectionMetadata.permissionVerificationStatus !== "verified" || !scopes.includes("pages_manage_posts") || !scopes.includes("pages_read_engagement") || !scopes.includes("pages_show_list") || pageMetadata.canCreateContent !== true) {
+  if (connectionMetadata.permissionVerificationStatus !== "verified" || !scopes.includes("pages_manage_posts") || !scopes.includes("pages_read_engagement") || !scopes.includes("pages_show_list") || (snapshot.affiliateMode === "first_comment" && !scopes.includes("pages_manage_engagement")) || pageMetadata.canCreateContent !== true) {
     await patchMetadata({ failureCode: "META_PERMISSION_OR_PAGE_TASK_MISSING" }, "needs_connection");
     return { status: "needs_connection" };
   }
@@ -478,7 +506,7 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
     return { status: "failed" };
   }
   await input.reportProgress?.({ progress: 25, stage: "token_check" });
-  const caption = composeFacebookPhotoPostCaption({ caption: String(snapshot.caption ?? ""), hashtags: Array.isArray(snapshot.hashtags) ? snapshot.hashtags.map(String) : [], commercialDisclosure: String(snapshot.commercialDisclosure ?? ""), affiliateUrl: typeof snapshot.affiliateUrl === "string" ? snapshot.affiliateUrl : null });
+  const caption = composeFacebookPhotoPostCaption({ caption: String(snapshot.caption ?? ""), hashtags: Array.isArray(snapshot.hashtags) ? snapshot.hashtags.map(String) : [], commercialDisclosure: String(snapshot.commercialDisclosure ?? ""), affiliateUrl: snapshot.affiliateMode === "description" && typeof snapshot.affiliateUrl === "string" ? snapshot.affiliateUrl : null });
   if (caption.length > MAX_PHOTO_CAPTION_LENGTH) {
     await patchMetadata({ failureCode: "PHOTO_CAPTION_TOO_LONG", reconciliation: { state: "not_started", checkedAt: new Date().toISOString() } }, "failed");
     await db.update(socialPosts).set({ status: "failed", errorMessage: "The final Photo Post caption exceeds Meta's character limit. Shorten it and submit again.", updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
@@ -502,6 +530,9 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
       return { status: "reconciling", externalPhotoId: photoId };
     }
     await patchMetadata({ externalStatus: status, externalPostId: pageStoryId, permalink, publishedAt: new Date().toISOString(), reconciliation: { state: "published", checkedAt: new Date().toISOString() }, affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff" }, "published");
+    if (snapshot.affiliateMode === "first_comment") {
+      await publishAffiliateCommentOnce({ metadata, pageId: row.page.providerPageId, objectId: pageStoryId, accessToken, affiliateUrl: text(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
+    }
     await db.update(socialPosts).set({ status: "published", providerPostId: pageStoryId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
     return { status: "published", providerPostId: pageStoryId, permalink };
   } catch (error) {

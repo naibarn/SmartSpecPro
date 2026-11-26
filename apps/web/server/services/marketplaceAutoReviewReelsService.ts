@@ -33,6 +33,7 @@ import {
   startFacebookReelUpload,
   uploadFacebookReelBinary,
 } from "./facebookReelsPublishGateway";
+import { publishAffiliateCommentOnce } from "./marketplaceAutoReviewAffiliateComment";
 import { storageStreamFile } from "../storage";
 
 export const MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE = "social.facebook.reels.publish";
@@ -255,8 +256,8 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   if (!selectedPageReadiness?.publishingReady || selectedPageReadiness.provider !== "meta") {
     fail("FACEBOOK_PAGE_NOT_READY", selectedPageReadiness?.publishingIssue ?? "Select an active Facebook Page with verified publishing permission");
   }
+  if (snapshot.affiliateMode === "first_comment" && !selectedPageReadiness.firstCommentReady) fail("FIRST_COMMENT_PERMISSION_MISSING", "Reconnect Facebook with pages_manage_engagement permission before using the first-comment option");
   if (snapshot.affiliateMode === "description" && !pkg.affiliateUrl) fail("AFFILIATE_LINK_MISSING", "No canonical affiliate URL is stored for this product");
-  if (snapshot.affiliateMode === "first_comment") fail("FIRST_COMMENT_NOT_ENABLED", "Affiliate first-comment publishing is not enabled until the connected app's permission is confirmed");
   if (snapshot.affiliateMode === "none" && !snapshot.allowNoAffiliate) fail("NO_AFFILIATE_CONFIRMATION_REQUIRED", "Explicitly confirm publishing without the affiliate link");
   const canonical = {
     tenantId: input.tenantId,
@@ -268,7 +269,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     renderWorkerJobId: pkg.renderJob.id,
     caption: snapshot.caption,
     hashtags: snapshot.hashtags,
-    affiliateUrl: ["description", "manual_native"].includes(snapshot.affiliateMode) ? pkg.affiliateUrl : null,
+    affiliateUrl: snapshot.affiliateMode === "none" ? null : pkg.affiliateUrl,
     targetPageId: input.pageId,
     affiliateMode: snapshot.affiliateMode,
     aiGenerated: snapshot.aiGenerated,
@@ -319,7 +320,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     caption: snapshot.caption,
     hashtags: snapshot.hashtags,
     commercialDisclosure: snapshot.commercialDisclosure,
-    affiliateUrl: canonical.affiliateUrl,
+    affiliateUrl: snapshot.affiliateMode === "description" ? canonical.affiliateUrl : null,
   });
   const newMetadata = {
     source: "marketplace_auto_review_reels",
@@ -332,7 +333,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     publishAttempt,
     snapshot: canonical,
     videoPublicationStatus: "queued" satisfies ReelsPublishState,
-    affiliateLinkStatus: canonical.affiliateUrl ? "pending" : "none",
+    affiliateLinkStatus: canonical.affiliateUrl ? (snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "pending") : "none",
     commercialDisclosureStatus: snapshot.commercialDisclosure ? "included_in_description" : "not_provided",
     attributionVerificationStatus: "unverified",
     aiDisclosure: snapshot.aiGenerated,
@@ -343,7 +344,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
     [post] = await db.update(socialPosts).set({
         status: "draft",
         contentText: description,
-        contentLink: canonical.affiliateUrl,
+        contentLink: snapshot.affiliateMode === "description" ? canonical.affiliateUrl : null,
         errorMessage: null,
         metadata: newMetadata,
         updatedAt: new Date(),
@@ -355,7 +356,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
         pageId: input.pageId,
         status: "draft",
         contentText: description,
-        contentLink: canonical.affiliateUrl,
+        contentLink: snapshot.affiliateMode === "description" ? canonical.affiliateUrl : null,
         mediaRefs: null,
         createdByUserId: input.userId,
         metadata: newMetadata,
@@ -570,6 +571,12 @@ export async function reconcileMarketplaceAutoReviewReelsPublication(input: {
     ...(permalink ? { permalink } : {}),
     ...(isPublished ? { publishedAt: new Date().toISOString() } : {}),
   };
+  const scopes = Array.isArray(row.connection.grantedScopes) ? row.connection.grantedScopes : [];
+  if (isPublished && record(metadata.snapshot).affiliateMode === "first_comment" && scopes.includes("pages_manage_engagement")) {
+    await publishAffiliateCommentOnce({ metadata: nextMetadata, pageId: row.page.providerPageId, objectId: providerPostId, accessToken, affiliateUrl: nonemptyString(record(metadata.snapshot).affiliateUrl), persist: async patch => { Object.assign(nextMetadata, patch); } });
+  } else if (isPublished && record(metadata.snapshot).affiliateMode === "first_comment") {
+    Object.assign(nextMetadata, { affiliateCommentStatus: "needs_user_action", affiliateLinkStatus: "comment_permission_missing" });
+  }
   await db.update(socialPosts).set({
     metadata: nextMetadata,
     status: isPublished ? "published" : "draft",
@@ -664,7 +671,25 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
   const metadata = record(postRow.post.metadata);
   const snapshot = record(metadata.snapshot);
   if (metadata.source !== "marketplace_auto_review_reels" || metadata.autoReviewRunId !== input.runId || metadata.intentHash !== input.intentHash) fail("PUBLISH_INTENT_SCOPE_MISMATCH", "Publishing intent binding does not match the job");
-  if (metadata.videoPublicationStatus === "published") return { status: "published", providerPostId: postRow.post.providerPostId };
+  if (metadata.videoPublicationStatus === "published") {
+    const scopes = Array.isArray(postRow.connection.grantedScopes) ? postRow.connection.grantedScopes : [];
+    const pageAccessToken = postRow.page.encryptedPageAccessToken ? decrypt(postRow.page.encryptedPageAccessToken) : null;
+    if (record(metadata.snapshot).affiliateMode === "first_comment" && !metadata.affiliateCommentStatus && scopes.includes("pages_manage_engagement") && pageAccessToken) {
+      await publishAffiliateCommentOnce({
+        metadata,
+        pageId: postRow.page.providerPageId,
+        objectId: postRow.post.providerPostId,
+        accessToken: pageAccessToken,
+        affiliateUrl: nonemptyString(record(metadata.snapshot).affiliateUrl),
+        persist: async patch => {
+          const next = { ...metadata, ...patch };
+          Object.assign(metadata, next);
+          await db.update(socialPosts).set({ metadata: next, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        },
+      });
+    }
+    return { status: "published", providerPostId: postRow.post.providerPostId };
+  }
   const patchMetadata = async (patch: Record<string, unknown>, status?: ReelsPublishState) => {
     const next = { ...metadata, ...patch, ...(status ? { videoPublicationStatus: status } : {}) };
     Object.assign(metadata, next);
@@ -679,6 +704,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     !grantedScopes.includes("pages_manage_posts") ||
     !grantedScopes.includes("pages_read_engagement") ||
     !grantedScopes.includes("pages_show_list") ||
+    (snapshot.affiliateMode === "first_comment" && !grantedScopes.includes("pages_manage_engagement")) ||
     pageMetadata.canCreateContent !== true
   ) {
     await patchMetadata({ failureCode: "META_PERMISSION_OR_PAGE_TASK_MISSING" }, "needs_connection");
@@ -735,6 +761,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
           affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
           attributionVerificationStatus: "unverified",
         });
+        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: publishedPostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
         await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
         return { status: "published", providerPostId: publishedPostId, permalink: metaText(external.permalink_url) ?? null };
       }
@@ -812,6 +839,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
           affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
           attributionVerificationStatus: "unverified",
         }, "published");
+        if (snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: publishedPostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
         await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
         return { status: "published", providerPostId: publishedPostId, permalink: metaText(statusResponse.permalink_url) ?? null };
       }
@@ -841,9 +869,10 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       externalStatus,
       permalink: metaText(finishResult.permalink_url) ?? metaText(statusObject.permalink_url),
       reconciliation: { state: published ? "published" : "processing", checkedAt: new Date().toISOString() },
-      ...(published ? { publishedAt: new Date().toISOString(), videoPublicationStatus: "published", affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff" } : {}),
+      ...(published ? { publishedAt: new Date().toISOString(), videoPublicationStatus: "published", affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "manual_handoff" } : {}),
       attributionVerificationStatus: "unverified",
     }, published ? "published" : "processing");
+    if (published && snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: responsePostId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
     await db.update(socialPosts).set({
       status: published ? "published" : "draft",
       providerPostId: responsePostId,
