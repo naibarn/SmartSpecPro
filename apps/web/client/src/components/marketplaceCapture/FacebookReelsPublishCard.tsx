@@ -351,7 +351,8 @@ export function FacebookReelsPublishCard(props: {
               width="100%"
             />
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
-            {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ" collapsible={false}><Text>โพสต์ภาพได้ตามปกติ แต่ต้องเชื่อมต่อ Facebook พร้อมสิทธิ์ pages_manage_engagement ก่อนกดยืนยันส่ง Affiliate Link ในคอมเมนต์</Text></Banner> : null}
+            {affiliateMode === "first_comment" && selectedPhotoPage?.firstCommentReady ? <Text type="supporting" color="secondary">เมื่อ Facebook ยืนยันโพสต์ภาพแล้ว ระบบจะใส่ Affiliate Link เป็นความคิดเห็นแรกให้อัตโนมัติ</Text> : null}
+            {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="ยังส่ง Affiliate Link ในคอมเมนต์อัตโนมัติไม่ได้" collapsible={false}><Text>ภาพยังเผยแพร่ได้ แต่ Facebook Page นี้ต้องมีสิทธิ์ pages_manage_engagement ก่อน ระบบจึงจะส่งลิงก์เป็นความคิดเห็นแรกได้ หลังโพสต์สำเร็จจะมีปุ่มให้ยืนยันส่งอีกครั้ง</Text></Banner> : null}
             <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
             {scheduleEnabled ? <VStack gap={1}>
               <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
