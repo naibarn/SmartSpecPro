@@ -21078,6 +21078,14 @@ function summarizeStagedAutoReviewProgress(metadataValue: unknown) {
     videoArtifactsReady: count(shot =>
       Boolean(cleanText(shot.videoArtifactHash) || cleanText(shot.videoArtifactUrl))
     ),
+    missingVideoShotIds: shots
+      .filter(
+        shot =>
+          !cleanText(shot.videoArtifactHash) &&
+          !cleanText(shot.videoArtifactUrl)
+      )
+      .map(shot => Number(shot.shotId))
+      .filter(shotId => Number.isSafeInteger(shotId) && shotId > 0),
     videoTasksInFlight: count(shot => inFlight(taskStatus(shot, "video"))),
   };
 }

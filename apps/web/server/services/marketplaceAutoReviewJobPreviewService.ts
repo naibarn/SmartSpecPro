@@ -6,6 +6,7 @@ import {
   marketplaceAutoReviewRuns,
   marketplaceProductImages,
   marketplaceProducts,
+  socialPosts,
   verticalDramaSeries,
   workerArtifacts,
   workerJobs,
@@ -106,6 +107,9 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       videoPreviewUrl: string | null;
       videoPreviewPosterUrl: string | null;
       characterSeriesNames: string[];
+      facebookPublishStatus:
+        "published" | "scheduled" | "publishing" | "failed" | "not_published";
+      awaitingAffiliateComment: boolean;
     }
   >
 > {
@@ -115,6 +119,8 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     videoPreviewUrl: null,
     videoPreviewPosterUrl: null,
     characterSeriesNames: [],
+    facebookPublishStatus: "not_published" as const,
+    awaitingAffiliateComment: false,
   }));
   if (runs.length === 0) return result;
 
@@ -142,14 +148,47 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       runs.map(run => String(run.renderJobId ?? "").trim()).filter(Boolean)
     )
   );
+  const facebookPostRows = runIds.length
+    ? await db
+        .select({
+          runId: sql<string>`${socialPosts.metadata}->>'autoReviewRunId'`,
+          status: socialPosts.status,
+          providerPostId: socialPosts.providerPostId,
+          metadata: socialPosts.metadata,
+          createdAt: socialPosts.createdAt,
+        })
+        .from(socialPosts)
+        .where(
+          and(
+            eq(socialPosts.tenantId, tenantId),
+            eq(socialPosts.createdByUserId, auth.userId),
+            inArray(sql<string>`${socialPosts.metadata}->>'source'`, [
+              "marketplace_auto_review_reels",
+              "marketplace_auto_review_photo_post",
+            ]),
+            inArray(
+              sql<string>`${socialPosts.metadata}->>'autoReviewRunId'`,
+              runIds
+            )
+          )
+        )
+        .orderBy(desc(socialPosts.createdAt))
+    : [];
+  const facebookPostsByRunId = new Map<string, typeof facebookPostRows>();
+  for (const post of facebookPostRows) {
+    if (!post.runId) continue;
+    facebookPostsByRunId.set(post.runId, [
+      ...(facebookPostsByRunId.get(post.runId) ?? []),
+      post,
+    ]);
+  }
   const characterSeriesIdsByRunId = new Map(
     runs.map(run => {
       const ids = record(run.metadataJson).characterSeriesIds;
       const seriesIds = Array.isArray(ids)
         ? ids
             .filter(
-              (id): id is string =>
-                typeof id === "string" && Boolean(id.trim())
+              (id): id is string => typeof id === "string" && Boolean(id.trim())
             )
             .map(id => id.trim())
         : [];
@@ -426,12 +465,62 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       libraryItem?.thumbnailUrl,
       publishablePackage.thumbnailUrl
     );
+    const facebookPosts = facebookPostsByRunId.get(String(run.id ?? "")) ?? [];
+    const hasPublishedFacebookPost = facebookPosts.some(
+      post => post.status === "published" && Boolean(post.providerPostId)
+    );
+    const awaitingAffiliateComment = facebookPosts.some(post => {
+      if (post.status !== "published" || !post.providerPostId) return false;
+      const metadata = record(post.metadata);
+      return [
+        "pending_confirmation",
+        "pending_first_comment",
+        "comment_pending_confirmation",
+      ].includes(
+        String(
+          metadata.affiliateCommentStatus ?? metadata.affiliateLinkStatus ?? ""
+        )
+      );
+    });
+    const latestPost = facebookPosts[0];
+    const latestMetadata = record(latestPost?.metadata);
+    const latestPublicationStatus = String(
+      latestMetadata.videoPublicationStatus ??
+        latestMetadata.photoPublicationStatus ??
+        latestPost?.status ??
+        ""
+    );
+    const facebookPublishStatus:
+      "published" | "scheduled" | "publishing" | "failed" | "not_published" =
+      hasPublishedFacebookPost
+        ? "published"
+        : latestPublicationStatus === "scheduled"
+          ? "scheduled"
+          : [
+                "queued",
+                "preflight",
+                "processing",
+                "uploading",
+                "ready",
+                "upload_complete",
+                "token_check",
+                "publish_requested",
+                "reconciling",
+              ].includes(latestPublicationStatus)
+            ? "publishing"
+            : ["failed", "needs_user_action", "needs_connection"].includes(
+                  latestPublicationStatus
+                )
+              ? "failed"
+              : "not_published";
     return {
       ...run,
+      facebookPublishStatus,
+      awaitingAffiliateComment,
       productThumbnailUrl: productById.get(productId) ?? null,
-      characterSeriesNames: (characterSeriesIdsByRunId.get(
-        String(run.id ?? "").trim()
-      ) ?? [])
+      characterSeriesNames: (
+        characterSeriesIdsByRunId.get(String(run.id ?? "").trim()) ?? []
+      )
         .map(id => characterSeriesTitleById.get(id))
         .filter((title): title is string => Boolean(title)),
       videoPreviewUrl: libraryItem

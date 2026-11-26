@@ -136,7 +136,25 @@ function stagedProgress(run: MarketplaceAutoReviewJobSummary) {
     imagePromptsReady: Number(progress.imagePromptsReady) || 0,
     imageArtifactsReady: Number(progress.imageArtifactsReady) || 0,
     imageTasksInFlight: Number(progress.imageTasksInFlight) || 0,
+    videoArtifactsReady: Number(progress.videoArtifactsReady) || 0,
+    videoTasksInFlight: Number(progress.videoTasksInFlight) || 0,
+    missingVideoShotIds: Array.isArray(progress.missingVideoShotIds)
+      ? progress.missingVideoShotIds
+          .map((shotId: unknown) => Number(shotId))
+          .filter(
+            (shotId: number) => Number.isSafeInteger(shotId) && shotId > 0
+          )
+      : [],
   };
+}
+
+function hasMissingShotVideo(run: MarketplaceAutoReviewJobSummary): boolean {
+  const progress = stagedProgress(run);
+  return Boolean(
+    progress &&
+    (progress.videoArtifactsReady < progress.total ||
+      progress.missingVideoShotIds.length > 0)
+  );
 }
 
 function statusPresentation(run: MarketplaceAutoReviewJobSummary) {
@@ -464,9 +482,10 @@ function MarketplaceAutoReviewVideoPreview({
   appearance: "dark" | "light";
   onMediaLoadError: () => void;
 }) {
-  const updatedAtKey = updatedAt instanceof Date
-    ? updatedAt.toISOString()
-    : String(updatedAt ?? "");
+  const updatedAtKey =
+    updatedAt instanceof Date
+      ? updatedAt.toISOString()
+      : String(updatedAt ?? "");
   const thumbnail = useAutoVideoPoster(
     `${runId}:${updatedAtKey}:${src}`,
     src,
@@ -573,9 +592,32 @@ export function MarketplaceAutoReviewJobNavigator({
   const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState<
     string | null
   >(null);
-  const visibleRuns = sortMarketplaceAutoReviewRunsNewestFirst(
+  const [jobFilter, setJobFilter] = useState("all");
+  const allVisibleRuns = sortMarketplaceAutoReviewRunsNewestFirst(
     runs.filter(run => text(run.id, run.productionRunId))
   );
+  const facebookStatusCounts = {
+    notPublished: allVisibleRuns.filter(
+      run => run.facebookPublishStatus !== "published"
+    ).length,
+    awaitingComment: allVisibleRuns.filter(
+      run => run.awaitingAffiliateComment === true
+    ).length,
+    published: allVisibleRuns.filter(
+      run => run.facebookPublishStatus === "published"
+    ).length,
+    missingShotVideos: allVisibleRuns.filter(hasMissingShotVideo).length,
+  };
+  const visibleRuns = allVisibleRuns.filter(run => {
+    if (jobFilter === "fb_not_published")
+      return run.facebookPublishStatus !== "published";
+    if (jobFilter === "comment_pending")
+      return run.awaitingAffiliateComment === true;
+    if (jobFilter === "fb_published")
+      return run.facebookPublishStatus === "published";
+    if (jobFilter === "missing_shot_video") return hasMissingShotVideo(run);
+    return true;
+  });
   const productNameById = new Map(
     (productOptions ?? []).map(option => [option.productId, option.productName])
   );
@@ -598,7 +640,9 @@ export function MarketplaceAutoReviewJobNavigator({
           <span
             className={`rounded-full border px-2 py-1 text-[11px] ${isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-white/10 text-slate-300"}`}
           >
-            {visibleRuns.length} งาน
+            {jobFilter === "all"
+              ? `${allVisibleRuns.length} งาน`
+              : `${visibleRuns.length}/${allVisibleRuns.length} งาน`}
           </span>
         </div>
         <h2 className="mt-2 text-base font-semibold">
@@ -645,6 +689,33 @@ export function MarketplaceAutoReviewJobNavigator({
                     : option.productId}
                 </option>
               ))}
+            </select>
+          </label>
+        ) : null}
+        {allProducts ? (
+          <label
+            className={`mt-3 block text-[11px] font-medium ${isLight ? "text-slate-700" : "text-slate-300"}`}
+          >
+            กรองตามสถานะงาน (รายการที่โหลดแล้ว)
+            <select
+              aria-label="กรองตามสถานะงาน Auto Review"
+              className={`mt-1.5 min-h-10 w-full rounded-lg border px-2.5 text-xs focus:outline-none focus:ring-2 ${isLight ? "border-slate-300 bg-white text-slate-900 focus:ring-violet-400" : "border-white/15 bg-slate-900 text-white focus:ring-sky-400"}`}
+              value={jobFilter}
+              onChange={event => setJobFilter(event.target.value)}
+            >
+              <option value="all">ทุกสถานะ ({allVisibleRuns.length})</option>
+              <option value="fb_not_published">
+                ยังไม่โพสต์ Facebook ({facebookStatusCounts.notPublished})
+              </option>
+              <option value="comment_pending">
+                รอยืนยันส่งคอมเมนต์ ({facebookStatusCounts.awaitingComment})
+              </option>
+              <option value="fb_published">
+                โพสต์ Facebook แล้ว ({facebookStatusCounts.published})
+              </option>
+              <option value="missing_shot_video">
+                ขาดวิดีโอรายช็อต ({facebookStatusCounts.missingShotVideos})
+              </option>
             </select>
           </label>
         ) : null}
@@ -700,9 +771,7 @@ export function MarketplaceAutoReviewJobNavigator({
             const productThumbnailUrl = text(run.productThumbnailUrl);
             const videoPreviewUrl = text(run.videoPreviewUrl);
             const videoPreviewPosterUrl = text(run.videoPreviewPosterUrl);
-            const characterSeriesNames = Array.isArray(
-              run.characterSeriesNames
-            )
+            const characterSeriesNames = Array.isArray(run.characterSeriesNames)
               ? run.characterSeriesNames.filter(
                   (name: unknown): name is string =>
                     typeof name === "string" && Boolean(name.trim())
@@ -842,6 +911,26 @@ export function MarketplaceAutoReviewJobNavigator({
                           {progress}
                         </span>
                       ) : null}
+                      {allProducts ? (
+                        <span
+                          className={`rounded-full border px-2 py-1 ${run.facebookPublishStatus === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : run.facebookPublishStatus === "scheduled" ? "border-violet-200 bg-violet-50 text-violet-800" : run.facebookPublishStatus === "publishing" ? "border-sky-200 bg-sky-50 text-sky-800" : run.facebookPublishStatus === "failed" ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-100 text-slate-600"}`}
+                        >
+                          {run.facebookPublishStatus === "published"
+                            ? "Facebook: โพสต์แล้ว"
+                            : run.facebookPublishStatus === "scheduled"
+                              ? "Facebook: ตั้งเวลาแล้ว"
+                              : run.facebookPublishStatus === "publishing"
+                                ? "Facebook: กำลังโพสต์"
+                                : run.facebookPublishStatus === "failed"
+                                  ? "Facebook: โพสต์ไม่สำเร็จ"
+                                  : "Facebook: ยังไม่โพสต์"}
+                        </span>
+                      ) : null}
+                      {allProducts && run.awaitingAffiliateComment ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800">
+                          รอยืนยันส่งคอมเมนต์
+                        </span>
+                      ) : null}
                     </span>
                     <span
                       className={`mt-2 block truncate text-xs ${isLight ? "text-slate-700" : "text-slate-300"}`}
@@ -856,6 +945,26 @@ export function MarketplaceAutoReviewJobNavigator({
                         {mediaProgress.total} · ภาพ{" "}
                         {mediaProgress.imageArtifactsReady}/
                         {mediaProgress.total}
+                      </span>
+                    ) : null}
+                    {mediaProgress ? (
+                      <span
+                        className={`mt-1 block truncate text-[11px] ${hasMissingShotVideo(run) ? "text-amber-700" : "text-emerald-700"}`}
+                        title={
+                          hasMissingShotVideo(run)
+                            ? `ช็อตที่ยังไม่มีวิดีโอ: ${mediaProgress.missingVideoShotIds.join(", ")}`
+                            : "วิดีโอครบทุกช็อตแล้ว"
+                        }
+                      >
+                        วิดีโอรายช็อต {mediaProgress.videoArtifactsReady}/
+                        {mediaProgress.total}
+                        {hasMissingShotVideo(run)
+                          ? ` · ขาดช็อต ${mediaProgress.missingVideoShotIds.length ? mediaProgress.missingVideoShotIds.join(", ") : "ยังระบุหมายเลขไม่ได้"}`
+                          : " · ครบแล้ว"}
+                      </span>
+                    ) : staged ? (
+                      <span className="mt-1 block truncate text-[11px] text-slate-500">
+                        สถานะวิดีโอรายช็อตยังไม่มีข้อมูล
                       </span>
                     ) : null}
                     <span className="mt-1 block truncate text-[10px] text-slate-500">
