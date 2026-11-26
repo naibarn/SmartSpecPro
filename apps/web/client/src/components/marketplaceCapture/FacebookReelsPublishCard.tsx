@@ -123,7 +123,7 @@ export function FacebookReelsPublishCard(props: {
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const scheduleMinimumMinutes = format === "reel" && affiliateMode !== "first_comment" ? 30 : 10;
+  const scheduleMinimumMinutes = format === "reel" ? 30 : 10;
   const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, { retry: false });
   const history = trpc.marketplaceAutoReviewReels.history.useQuery({ runId: props.runId }, {
     retry: false,

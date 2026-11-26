@@ -252,7 +252,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   const snapshot = publishSnapshotSchema.parse(input.snapshot);
   const scheduledAt = parseMarketplaceAutoReviewScheduledAt(input.scheduledAt);
   if (scheduledAt && snapshot.affiliateMode === "manual_native") fail("MANUAL_HANDOFF_CANNOT_BE_SCHEDULED", "Manual Facebook product tagging cannot be scheduled", "BAD_REQUEST");
-  if (scheduledAt && snapshot.affiliateMode !== "first_comment" && scheduledAt.getTime() < Date.now() + 30 * 60_000) {
+  if (scheduledAt && scheduledAt.getTime() < Date.now() + 30 * 60_000) {
     fail("SCHEDULED_AT_TOO_SOON", "ตั้งเวลา Reel ล่วงหน้าอย่างน้อย 30 นาที เพื่อให้ Facebook รับไฟล์และจัดคิวได้ทัน", "BAD_REQUEST");
   }
   const db = await resolveDb();
