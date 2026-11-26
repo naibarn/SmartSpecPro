@@ -13,16 +13,26 @@ import {
   resolveMarketplaceAutoReviewPhotoVariant,
   resolveUnstartedPhotoPublicationStatus,
   startMarketplaceAutoReviewPhotoPost,
+  executeMarketplaceAutoReviewPhotoPostPublish,
 } from "../marketplaceAutoReviewPhotoPostService";
 
-const { getDb, listPublishingPages, storageStreamFile, createControlPlaneJob } = vi.hoisted(() => ({
+const { getDb, listPublishingPages, storageStreamFile, createControlPlaneJob, decrypt, publishFacebookPagePhoto, readFacebookPagePhoto } = vi.hoisted(() => ({
   getDb: vi.fn(),
   listPublishingPages: vi.fn(),
   storageStreamFile: vi.fn(),
   createControlPlaneJob: vi.fn(),
+  decrypt: vi.fn(),
+  publishFacebookPagePhoto: vi.fn(),
+  readFacebookPagePhoto: vi.fn(),
 }));
 vi.mock("../../db", async importOriginal => ({ ...await importOriginal<typeof import("../../db")>(), getDb }));
 vi.mock("../../storage", async importOriginal => ({ ...await importOriginal<typeof import("../../storage")>(), storageStreamFile }));
+vi.mock("../crypto", async importOriginal => ({ ...await importOriginal<typeof import("../crypto")>(), decrypt }));
+vi.mock("../facebookPhotoPublishGateway", async importOriginal => ({
+  ...await importOriginal<typeof import("../facebookPhotoPublishGateway")>(),
+  publishFacebookPagePhoto,
+  readFacebookPagePhoto,
+}));
 vi.mock("../jobControlPlaneGateway", async importOriginal => ({ ...await importOriginal<typeof import("../jobControlPlaneGateway")>(), createControlPlaneJob }));
 vi.mock("../socialPublishingService", async importOriginal => ({
   ...await importOriginal<typeof import("../socialPublishingService")>(),
@@ -222,6 +232,59 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
 
     expect(result).toMatchObject({ postId: 12, jobId: "worker-job-retry", status: "queued" });
     expect(createControlPlaneJob).toHaveBeenCalledOnce();
+  });
+
+  it("publishes through the Meta connection provider stored on the connection record", async () => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    const inspected = await inspectMarketplaceAutoReviewPhotoImage(image, "image/png");
+    const intentHash = "d".repeat(64);
+    const metadata = {
+      source: "marketplace_auto_review_photo_post",
+      autoReviewRunId: RUN_ID,
+      intentHash,
+      imageStorageKey: IMAGE_KEY,
+      imageChecksum: inspected.checksum,
+      imageSizeBytes: inspected.size,
+      imageContentType: inspected.contentType,
+      photoPublicationStatus: "queued",
+      snapshot: { selectedVariant: "caption_source", caption: "Review caption", hashtags: [], affiliateMode: "none", commercialDisclosure: "" },
+    };
+    const postRow = {
+      post: { id: 12, tenantId: TENANT_ID, createdByUserId: 41, status: "draft", providerPostId: null, publishedAt: null, metadata },
+      page: {
+        id: 7, tenantId: TENANT_ID, providerPageId: "123456789", status: "active", selectedForPublishing: true,
+        encryptedPageAccessToken: "encrypted-page-token", tokenExpiresAt: null,
+        metadata: { canCreateContent: true },
+      },
+      connection: {
+        tenantId: TENANT_ID, userId: 41, provider: "meta", status: "active", grantedScopes: ["pages_manage_posts", "pages_read_engagement", "pages_show_list"],
+        encryptedAccessToken: "encrypted-user-token", metadata: { permissionVerificationStatus: "verified" },
+      },
+    };
+    const selectedRows = [
+      [postRow],
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, metadataJson: runMetadata() }],
+    ];
+    storageStreamFile.mockResolvedValue({ totalLength: image.length, contentType: "image/png", stream: Readable.from([image]) });
+    decrypt.mockReturnValue("page-access-token");
+    publishFacebookPagePhoto.mockClear().mockResolvedValue({ id: "photo-123", post_id: "story-123", permalink_url: "https://www.facebook.com/story/123" });
+    readFacebookPagePhoto.mockResolvedValue({ page_story_id: "story-123", link: "https://www.facebook.com/story/123" });
+    getDb.mockResolvedValue({
+      select: () => ({ from: () => ({
+        innerJoin: () => ({ innerJoin: () => ({ where: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }) }) }),
+        where: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }),
+      }) }),
+      update: () => ({ set: () => ({ where: async () => undefined }) }),
+    });
+
+    const result = await executeMarketplaceAutoReviewPhotoPostPublish({
+      tenantId: TENANT_ID, userId: 41, postId: 12, runId: RUN_ID, intentHash,
+    });
+
+    expect(result).toMatchObject({ status: "published", providerPostId: "story-123" });
+    expect(publishFacebookPagePhoto).toHaveBeenCalledOnce();
   });
 
   it("shows a deadline-expired photo job as retryable only if Facebook was never contacted", () => {

@@ -545,7 +545,7 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
     return { status: "needs_connection" };
   }
   const accessToken = decrypt(row.page.encryptedPageAccessToken);
-  if (!accessToken || row.page.provider !== "meta" || !/^\d+$/.test(row.page.providerPageId)) {
+  if (!accessToken || row.connection.provider !== "meta" || !/^\d+$/.test(row.page.providerPageId)) {
     await patchMetadata({ failureCode: "FACEBOOK_PAGE_CREDENTIALS_INVALID" }, "needs_connection");
     return { status: "needs_connection" };
   }
