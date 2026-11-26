@@ -69,6 +69,7 @@ class ReelVideo(ReelConnection):
 class ReelFinish(ReelVideo):
     description: str = Field(max_length=5000)
     is_ai_generated: bool
+    scheduled_publish_time: int | None = Field(default=None, ge=0)
 
 
 class PhotoStatus(BaseModel):
@@ -111,8 +112,14 @@ async def reel_status(request: ReelVideo, _auth: None = Depends(_verify_internal
 async def finish_reel(request: ReelFinish, _auth: None = Depends(_verify_internal_token)) -> dict[str, Any]:
     async with MetaGraphClient(request.access_token, page_id=request.page_id) as client:
         try:
-            return await client.finish_reel_upload(video_id=request.video_id, description=request.description,
-                                                   is_ai_generated=request.is_ai_generated)
+            finish_args: dict[str, Any] = {
+                "video_id": request.video_id,
+                "description": request.description,
+                "is_ai_generated": request.is_ai_generated,
+            }
+            if request.scheduled_publish_time is not None:
+                finish_args["scheduled_publish_time"] = request.scheduled_publish_time
+            return await client.finish_reel_upload(**finish_args)
         except (TokenExpiredError, PermissionDeniedError) as exc:
             raise _raise_reels_meta_error(exc, "Meta Reels publication could not be confirmed; reconcile status before retry") from exc
         except (MetaApiError, ValueError) as exc:

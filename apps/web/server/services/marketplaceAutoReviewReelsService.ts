@@ -252,6 +252,9 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   const snapshot = publishSnapshotSchema.parse(input.snapshot);
   const scheduledAt = parseMarketplaceAutoReviewScheduledAt(input.scheduledAt);
   if (scheduledAt && snapshot.affiliateMode === "manual_native") fail("MANUAL_HANDOFF_CANNOT_BE_SCHEDULED", "Manual Facebook product tagging cannot be scheduled", "BAD_REQUEST");
+  if (scheduledAt && snapshot.affiliateMode !== "first_comment" && scheduledAt.getTime() < Date.now() + 30 * 60_000) {
+    fail("SCHEDULED_AT_TOO_SOON", "ตั้งเวลา Reel ล่วงหน้าอย่างน้อย 30 นาที เพื่อให้ Facebook รับไฟล์และจัดคิวได้ทัน", "BAD_REQUEST");
+  }
   const db = await resolveDb();
   const pkg = await loadAuthoritativePackage({ db, tenantId: input.tenantId, userId: input.userId, runId: input.runId });
   const { listPublishingPages } = await import("./socialPublishingService");
@@ -433,7 +436,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
         jobType: MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
-        ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
+        ...(scheduledAt && snapshot.affiliateMode === "first_comment" ? { scheduledAt: scheduledAt.toISOString() } : {}),
         idempotencyKey: jobKeys.idempotencyKey,
         activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
@@ -537,6 +540,13 @@ export function isFacebookReelPublished(statusValue: unknown): boolean {
     publishingPhase.publish_status === "published";
 }
 
+export function isFacebookReelScheduled(statusValue: unknown): boolean {
+  const status = record(statusValue);
+  const publishingPhase = record(status.publishing_phase);
+  return status.video_status === "scheduled" || status.video_state === "SCHEDULED" ||
+    publishingPhase.publish_status === "scheduled";
+}
+
 export const marketplaceAutoReviewReelsWorkerInputSchema = z.object({
   postId: z.number().int().positive(),
   runId: z.string().trim().min(1).max(64),
@@ -571,11 +581,12 @@ export async function reconcileMarketplaceAutoReviewReelsPublication(input: {
   const providerPostId = nonemptyString(providerStatus.post_id) ?? nonemptyString(finishResponse.post_id) ?? nonemptyString(providerStatus.id) ?? row.post.providerPostId;
   const permalink = nonemptyString(providerStatus.permalink_url) ?? nonemptyString(providerStatus.permalink);
   const isPublished = isFacebookReelPublished(status);
+  const isScheduled = isFacebookReelScheduled(status);
   const nextMetadata = {
     ...metadata,
     externalStatus: providerStatus,
     reconciliation: { state: videoStatus, checkedAt: new Date().toISOString() },
-    videoPublicationStatus: isPublished ? "published" : ["processing", "uploading", "ready", "upload_complete"].includes(videoStatus) ? "processing" : "needs_user_action",
+    videoPublicationStatus: isPublished ? "published" : isScheduled ? "scheduled" : ["processing", "uploading", "ready", "upload_complete"].includes(videoStatus) ? "processing" : "needs_user_action",
     ...(permalink ? { permalink } : {}),
     ...(isPublished ? { publishedAt: new Date().toISOString() } : {}),
   };
@@ -587,7 +598,7 @@ export async function reconcileMarketplaceAutoReviewReelsPublication(input: {
   }
   await db.update(socialPosts).set({
     metadata: nextMetadata,
-    status: isPublished ? "published" : "draft",
+    status: isPublished ? "published" : isScheduled ? "scheduled" : "draft",
     providerPostId,
     publishedAt: isPublished ? new Date() : row.post.publishedAt,
     errorMessage: isPublished ? null : row.post.errorMessage,
@@ -733,6 +744,10 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     await patchMetadata({ failureCode: "FACEBOOK_PAGE_CREDENTIALS_INVALID" }, "needs_connection");
     return { status: "needs_connection" };
   }
+  const scheduledAt = nonemptyString(metadata.scheduledAt);
+  const scheduledPublishTime = scheduledAt && snapshot.affiliateMode !== "first_comment"
+    ? Math.floor(new Date(scheduledAt).getTime() / 1000)
+    : undefined;
   await patchMetadata({ progress: { stage: "preflight", percent: 5 } }, "preflight");
   let pkg: Awaited<ReturnType<typeof loadAuthoritativePackage>>;
   let inspected: Awaited<ReturnType<typeof stageAndInspectArtifact>>;
@@ -758,6 +773,11 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       const external = await getFacebookReelStatus({ pageId: providerPageId, videoId: externalVideoId, accessToken });
       const externalStatus = record(external.status);
       const postId = metaText(external.post_id) ?? metaText(external.id);
+      if (scheduledPublishTime && isFacebookReelScheduled(externalStatus)) {
+        await patchMetadata({ externalStatus: external, reconciliation: { state: "scheduled", checkedAt: new Date().toISOString() } }, "scheduled");
+        await db.update(socialPosts).set({ status: "scheduled", providerPostId: postId, errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        return { status: "scheduled", providerPostId: postId };
+      }
       if (isFacebookReelPublished(externalStatus)) {
         const finishResponse = record(metadata.finishResponse);
         const publishedPostId = metaText(external.post_id) ?? metaText(finishResponse.post_id) ?? postId ?? postRow.post.providerPostId;
@@ -836,6 +856,13 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       const statusResponse = record(status);
       const statusObject = record(statusResponse.status);
       const videoStatus = metaText(statusObject.video_status) ?? "unknown";
+      if (scheduledPublishTime && isFacebookReelScheduled(statusObject)) {
+        const finishResponse = record(metadata.finishResponse);
+        const scheduledPostId = metaText(statusResponse.post_id) ?? metaText(finishResponse.post_id) ?? metaText(statusResponse.id) ?? postRow.post.providerPostId;
+        await patchMetadata({ externalStatus: status, reconciliation: { state: "scheduled", checkedAt: new Date().toISOString() } }, "scheduled");
+        await db.update(socialPosts).set({ status: "scheduled", providerPostId: scheduledPostId, errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        return { status: "scheduled", providerPostId: scheduledPostId };
+      }
       if (isFacebookReelPublished(statusObject)) {
         const finishResponse = record(metadata.finishResponse);
         const publishedPostId = metaText(finishResponse.post_id) ?? metaText(statusResponse.id) ?? postRow.post.providerPostId;
@@ -861,7 +888,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     await patchMetadata({ finishRequestedAt: new Date().toISOString(), reconciliation: { state: "finish_requested" } }, "publish_requested");
     let finishResult: Record<string, unknown>;
     try {
-      finishResult = await finishFacebookReelUpload({ pageId: providerPageId, videoId: externalVideoId, accessToken, description, isAiGenerated: Boolean(snapshot.aiGenerated) });
+      finishResult = await finishFacebookReelUpload({ pageId: providerPageId, videoId: externalVideoId, accessToken, description, isAiGenerated: Boolean(snapshot.aiGenerated), scheduledPublishTime });
     } catch {
       const status = await getFacebookReelStatus({ pageId: providerPageId, videoId: externalVideoId, accessToken }).catch(() => null);
       await patchMetadata({ externalStatus: status, reconciliation: { state: "finish_uncertain", checkedAt: new Date().toISOString() } }, "reconciling");
@@ -872,23 +899,24 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     const statusObject = record(externalStatus);
     const videoStatus = metaText(record(statusObject.status).video_status) ?? "processing";
     const published = isFacebookReelPublished(record(statusObject.status));
+    const scheduled = Boolean(scheduledPublishTime);
     await patchMetadata({
       finishResponse: finishResult,
       externalStatus,
       permalink: metaText(finishResult.permalink_url) ?? metaText(statusObject.permalink_url),
-      reconciliation: { state: published ? "published" : "processing", checkedAt: new Date().toISOString() },
-      ...(published ? { publishedAt: new Date().toISOString(), videoPublicationStatus: "published", affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "manual_handoff" } : {}),
+      reconciliation: { state: published ? "published" : scheduled ? "scheduled" : "processing", checkedAt: new Date().toISOString() },
+      ...(published ? { publishedAt: new Date().toISOString(), videoPublicationStatus: "published", affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : snapshot.affiliateMode === "first_comment" ? "pending_first_comment" : "manual_handoff" } : scheduled ? { videoPublicationStatus: "scheduled" } : {}),
       attributionVerificationStatus: "unverified",
-    }, published ? "published" : "processing");
+    }, published ? "published" : scheduled ? "scheduled" : "processing");
     if (published && snapshot.affiliateMode === "first_comment") await publishAffiliateCommentOnce({ metadata, pageId: providerPageId, objectId: externalVideoId, accessToken, affiliateUrl: nonemptyString(snapshot.affiliateUrl), persist: patch => patchMetadata(patch) });
     await db.update(socialPosts).set({
-      status: published ? "published" : "draft",
+      status: published ? "published" : scheduled ? "scheduled" : "draft",
       providerPostId: responsePostId,
       publishedAt: published ? new Date() : null,
       errorMessage: null,
       updatedAt: new Date(),
     }).where(eq(socialPosts.id, input.postId));
-    return { status: published ? "published" : "processing", providerPostId: responsePostId, permalink: metaText(finishResult.permalink_url) };
+    return { status: published ? "published" : scheduled ? "scheduled" : "processing", providerPostId: responsePostId, permalink: metaText(finishResult.permalink_url) };
   } catch (error) {
     if (error instanceof TRPCError) throw error;
     const providerError = error instanceof Error ? error.message : "";

@@ -61,6 +61,7 @@ export async function finishFacebookReelUpload(input: {
   accessToken: string;
   description: string;
   isAiGenerated: boolean;
+  scheduledPublishTime?: number;
 }) {
   return callReelsJson("finish", {
     page_id: input.pageId,
@@ -68,6 +69,7 @@ export async function finishFacebookReelUpload(input: {
     access_token: input.accessToken,
     description: input.description,
     is_ai_generated: input.isAiGenerated,
+    ...(input.scheduledPublishTime ? { scheduled_publish_time: input.scheduledPublishTime } : {}),
   });
 }
 

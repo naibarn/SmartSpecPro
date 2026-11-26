@@ -7676,6 +7676,10 @@ export function createJobControlPlane(
           job.jobType === MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE;
         if (marketplaceJob && !job.startedAt && ["queued", "leased"].includes(job.status))
           return { outcome: "ignored" as const, jobType: undefined };
+        // A scheduled job has no execution budget to expire until a worker
+        // starts it; otherwise long-dated posts expire while still queued.
+        if (job.scheduledAt && !job.startedAt)
+          return { outcome: "ignored" as const, jobType: undefined };
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
         // Keep pre-policy backlog untouched during rollout. Only jobs admitted
         // with an explicit deadline mode participate in automatic expiry.

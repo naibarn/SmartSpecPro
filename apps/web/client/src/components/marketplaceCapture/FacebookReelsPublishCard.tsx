@@ -116,6 +116,7 @@ export function FacebookReelsPublishCard(props: {
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const scheduleMinimumMinutes = format === "reel" && affiliateMode !== "first_comment" ? 30 : 10;
   const readiness = trpc.marketplaceAutoReviewReels.readiness.useQuery({ runId: props.runId }, { retry: false });
   const history = trpc.marketplaceAutoReviewReels.history.useQuery({ runId: props.runId }, {
     retry: false,
@@ -322,8 +323,9 @@ export function FacebookReelsPublishCard(props: {
             {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
             <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
             {scheduleEnabled ? <VStack gap={1}>
-              <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
-              <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า 10 นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+              <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
+              <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า {scheduleMinimumMinutes} นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+              <Text type="supporting" color="secondary">Photo Post ใช้ Worker ส่งตามเวลาที่ตั้งไว้</Text>
             </VStack> : null}
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
             <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="เว้นว่างได้ หากระบุไว้ใน Caption แล้วหรือไม่มีข้อความเพิ่มเติม" />
@@ -444,8 +446,9 @@ export function FacebookReelsPublishCard(props: {
         {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
         <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
         {scheduleEnabled ? <VStack gap={1}>
-          <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
-          <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า 10 นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+          <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
+          <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า {scheduleMinimumMinutes} นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
+          <Text type="supporting" color="secondary">{affiliateMode === "first_comment" ? "โหมดคอมเมนต์แรกใช้ Worker เผยแพร่เมื่อถึงเวลา แล้วส่งคอมเมนต์ต่อ" : "ระบบจะส่งวิดีโอให้ Facebook และให้ Facebook จัดคิวเผยแพร่ตามเวลานี้"}</Text>
         </VStack> : null}
         {affiliateMode === "manual_native" ? (
           <Banner title="ดำเนินการติดแท็กสินค้าใน Facebook ด้วยตนเอง" collapsible={false}>

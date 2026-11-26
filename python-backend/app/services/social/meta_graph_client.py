@@ -368,13 +368,24 @@ class MetaGraphClient(SocialProviderClient):
 
     async def finish_reel_upload(
         self, *, video_id: str, description: str, is_ai_generated: bool,
+        scheduled_publish_time: int | None = None,
     ) -> dict[str, Any]:
-        """Request public publication once; reconcile provider status on ambiguity."""
+        """Publish now or ask Meta to publish the Reel at the requested time."""
+        payload: dict[str, Any] = {
+            "upload_phase": "finish",
+            "video_id": self._reels_video_id(video_id),
+            "video_state": "SCHEDULED" if scheduled_publish_time is not None else "PUBLISHED",
+            "description": description,
+            "is_ai_generated": is_ai_generated,
+        }
+        if scheduled_publish_time is not None:
+            now = int(datetime.now(timezone.utc).timestamp())
+            if scheduled_publish_time < now + 10 * 60 or scheduled_publish_time > now + 180 * 24 * 60 * 60:
+                raise ValueError("Scheduled Reels time is outside Meta's supported window")
+            payload["scheduled_publish_time"] = scheduled_publish_time
         result = await self._request(
             "POST", self._path_for_page("video_reels"),
-            json_body={"upload_phase": "finish", "video_id": self._reels_video_id(video_id),
-                       "video_state": "PUBLISHED", "description": description,
-                       "is_ai_generated": is_ai_generated},
+            json_body=payload,
             retry_transient=False, base_url=self._reels_base_url,
         )
         if result.get("success") is not True:
