@@ -8,6 +8,7 @@ import { socialPosts, workerJobs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import {
   getMarketplaceAutoReviewPhotoPostReadiness,
+  confirmMarketplaceAutoReviewPhotoPostAbsent,
   reconcileMarketplaceAutoReviewPhotoPost,
   resolveUnstartedPhotoPublicationStatus,
   startMarketplaceAutoReviewPhotoPost,
@@ -62,6 +63,9 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
 
   reconcile: photoPostPublishProcedure.input(z.object({ postId: z.number().int().positive() }).strict())
     .mutation(({ ctx, input }) => reconcileMarketplaceAutoReviewPhotoPost({ tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId })),
+
+  confirmAbsentAndAllowRetry: photoPostPublishProcedure.input(z.object({ postId: z.number().int().positive(), confirmNoExistingPost: z.literal(true) }).strict())
+    .mutation(({ ctx, input }) => confirmMarketplaceAutoReviewPhotoPostAbsent({ tenantId: ctx.tenantId, userId: ctx.user.id, postId: input.postId })),
 
   postAffiliateComment: photoPostPublishProcedure.input(z.object({
     postId: z.number().int().positive(),
@@ -138,6 +142,9 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
           providerPostId: row.providerPostId,
           permalink: typeof metadata.permalink === "string" ? metadata.permalink : null,
           canReconcile: typeof metadata.externalPhotoId === "string",
+          canConfirmNoPhotoExists: recoveredStatus === "needs_user_action" &&
+            metadata.failureCode === "PHOTO_PUBLISH_OUTCOME_UNCERTAIN" &&
+            !metadata.externalPhotoId && !row.providerPostId,
           manualHandoff: metadata.manualHandoff ?? null,
           errorMessage: recoveredStatus === "failed"
             ? "งานเผยแพร่หมดอายุก่อนเริ่มส่งรูปไป Facebook รูปยังไม่ถูกส่ง และสามารถลองเผยแพร่ใหม่ได้"

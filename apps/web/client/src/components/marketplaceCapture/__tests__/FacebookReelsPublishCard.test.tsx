@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   history: [] as any[],
   historyError: false,
   photoMutate: vi.fn(),
+  confirmPhotoMutate: vi.fn(),
   refetchPhotos: vi.fn(),
   photoReadiness: {
     ready: true,
@@ -49,6 +50,7 @@ vi.mock("@/lib/trpc", () => ({
       history: { useQuery: () => ({ data: mocks.photoHistory, isLoading: false, isError: false, refetch: mocks.refetch }) },
       publish: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
       reconcile: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
+      confirmAbsentAndAllowRetry: { useMutation: () => ({ mutate: mocks.confirmPhotoMutate, isPending: false }) },
       postAffiliateComment: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
     },
   },
@@ -94,6 +96,7 @@ describe("FacebookReelsPublishCard", () => {
     mocks.history = [];
     mocks.historyError = false;
     mocks.photoMutate.mockReset();
+    mocks.confirmPhotoMutate.mockReset();
     mocks.refetchPhotos.mockReset();
     mocks.photoHistory = [];
     mocks.readiness = {
@@ -245,6 +248,26 @@ describe("FacebookReelsPublishCard", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     expect(screen.getByText("Facebook ยืนยันเผยแพร่แล้ว")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "ดู Reel บน Facebook" })).toHaveAttribute("href", "https://www.facebook.com/123");
+  });
+
+  it("requires explicit confirmation that Facebook has no post before unlocking a retry", () => {
+    mocks.photoHistory = [{
+      id: 42,
+      status: "needs_user_action",
+      selectedVariant: "caption_source",
+      affiliateLinkStatus: "none",
+      commercialDisclosureStatus: "not_provided",
+      attributionVerificationStatus: "unverified",
+      canConfirmNoPhotoExists: true,
+      errorMessage: "Facebook may have received this photo.",
+    }];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจแล้วไม่พบโพสต์ · อนุญาตให้ส่งใหม่" }));
+
+    expect(mocks.confirmPhotoMutate).toHaveBeenCalledWith({ postId: 42, confirmNoExistingPost: true });
   });
 
   it("lets the user select exactly one generated image and publishes it as a Photo Post", () => {

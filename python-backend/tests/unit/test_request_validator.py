@@ -52,6 +52,38 @@ class TestRequestValidationMiddleware:
         assert not call_next.called
 
     @pytest.mark.asyncio
+    async def test_photo_upload_allows_png_binary_to_reach_its_route(self, middleware):
+        request = Mock(spec=Request)
+        request.headers = {
+            "content-length": "1024",
+            "content-type": "image/png",
+        }
+        request.method = "POST"
+        request.url.path = "/api/internal/social/photos/publish"
+        call_next = AsyncMock(return_value=JSONResponse(content={"id": "photo-1"}))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert call_next.called
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_photo_upload_rejects_unapproved_binary_content_type(self, middleware):
+        request = Mock(spec=Request)
+        request.headers = {
+            "content-length": "1024",
+            "content-type": "application/pdf",
+        }
+        request.method = "POST"
+        request.url.path = "/api/internal/social/photos/publish"
+        call_next = AsyncMock(return_value=JSONResponse(content={"id": "photo-1"}))
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response.status_code == 415
+        assert not call_next.called
+
+    @pytest.mark.asyncio
     async def test_reels_upload_allows_large_binary_with_route_specific_limit(self, middleware):
         request = Mock(spec=Request)
         request.headers = {

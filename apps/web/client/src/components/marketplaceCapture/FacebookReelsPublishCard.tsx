@@ -169,6 +169,10 @@ export function FacebookReelsPublishCard(props: {
     onSuccess: async () => { await photoHistory.refetch(); },
     onError: () => setError("ตรวจสถานะ Photo Post กับ Facebook ไม่สำเร็จ กรุณาลองใหม่ภายหลัง"),
   });
+  const confirmPhotoAbsent = trpc.marketplaceAutoReviewPhotoPosts.confirmAbsentAndAllowRetry.useMutation({
+    onSuccess: async () => { setError(null); await photoHistory.refetch(); },
+    onError: () => setError("ยืนยันการตรวจสอบโพสต์ไม่สำเร็จ กรุณาโหลดประวัติใหม่"),
+  });
   const postPhotoAffiliateComment = trpc.marketplaceAutoReviewPhotoPosts.postAffiliateComment.useMutation({
     onSuccess: async () => { setError(null); await photoHistory.refetch(); },
     onError: () => setError("โพสต์ Affiliate Link ในคอมเมนต์ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์เพจและสถานะโพสต์ก่อน"),
@@ -373,6 +377,10 @@ export function FacebookReelsPublishCard(props: {
                   <Link href="/library">เปิด Library</Link>
                 </VStack> : null}
                 {item.canReconcile && status !== "published" ? <Button label="ตรวจสถานะกับ Facebook" variant="secondary" isLoading={reconcilePhoto.isPending} onClick={() => reconcilePhoto.mutate({ postId: item.id })} /> : null}
+                {item.canConfirmNoPhotoExists ? <Button label="ตรวจแล้วไม่พบโพสต์ · อนุญาตให้ส่งใหม่" variant="secondary" isLoading={confirmPhotoAbsent.isPending} onClick={() => {
+                  if (!window.confirm("กรุณาเปิด Facebook Page และตรวจว่าไม่มีภาพโพสต์นี้จริง การยืนยันจะปลดล็อกให้ส่งภาพเดิมใหม่ได้")) return;
+                  confirmPhotoAbsent.mutate({ postId: item.id, confirmNoExistingPost: true });
+                }} /> : null}
                 {permalink ? <Link href={permalink} target="_blank">ดู Photo Post บน Facebook</Link> : null}
               </VStack>;
             })}

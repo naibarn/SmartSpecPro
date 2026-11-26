@@ -28,6 +28,9 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
     BINARY_UPLOAD_EXACT_PATHS = {
         "/api/internal/social/reels/upload",
     }
+    BINARY_UPLOAD_CONTENT_TYPES_BY_PATH = {
+        "/api/internal/social/photos/publish": {"image/png"},
+    }
 
     async def dispatch(self, request: Request, call_next):
         """Validate request before processing"""
@@ -41,7 +44,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             is_binary_upload = request.url.path in self.BINARY_UPLOAD_EXACT_PATHS or any(
                 request.url.path.startswith(path)
                 for path in self.BINARY_UPLOAD_PATHS
-            )
+            ) or request.url.path in self.BINARY_UPLOAD_CONTENT_TYPES_BY_PATH
 
             # Validate request size
             content_length = request.headers.get("content-length")
@@ -64,6 +67,24 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                     }
                 )
 
+            allowed_binary_content_types = self.BINARY_UPLOAD_CONTENT_TYPES_BY_PATH.get(
+                request.url.path
+            )
+            if request.method in ["POST", "PUT", "PATCH"] and allowed_binary_content_types:
+                content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+                if content_type not in allowed_binary_content_types:
+                    logger.warning(
+                        "Invalid content-type",
+                        content_type=content_type,
+                        path=request.url.path,
+                    )
+                    return JSONResponse(
+                        status_code=415,
+                        content={
+                            "error": "Unsupported Media Type",
+                            "supported": sorted(allowed_binary_content_types),
+                        },
+                    )
             # Validate content type for POST/PUT/PATCH (skip for binary uploads)
             if request.method in ["POST", "PUT", "PATCH"] and not is_binary_upload:
                 content_type = request.headers.get("content-type", "")

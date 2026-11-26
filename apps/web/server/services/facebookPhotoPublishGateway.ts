@@ -7,6 +7,8 @@ const PHOTO_TIMEOUT_MS = 90_000;
 async function decodeResponse(response: Response): Promise<Record<string, unknown>> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    // The Python gateway returns 415 before invoking Meta; the request is safe to retry.
+    if (response.status === 415) throw new Error("PHOTO_UPLOAD_REJECTED");
     const detail = body && typeof body === "object" ? (body as Record<string, unknown>).detail : null;
     if (detail === "META_TOKEN_INVALID" || detail === "META_PERMISSION_MISSING") throw new Error(detail);
     throw new Error("FACEBOOK_PHOTO_OPERATION_UNCONFIRMED");

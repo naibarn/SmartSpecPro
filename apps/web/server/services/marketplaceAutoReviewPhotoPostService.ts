@@ -501,6 +501,39 @@ export async function reconcileMarketplaceAutoReviewPhotoPost(input: { tenantId:
   return { postId: row.post.id, status: "published", providerPostId, permalink };
 }
 
+export async function confirmMarketplaceAutoReviewPhotoPostAbsent(input: { tenantId: string; userId: number; postId: number }) {
+  const db = await resolveDb();
+  const [post] = await db.select().from(socialPosts).where(and(
+    eq(socialPosts.id, input.postId),
+    eq(socialPosts.tenantId, input.tenantId),
+    eq(socialPosts.createdByUserId, input.userId),
+  )).limit(1);
+  if (!post) fail("PHOTO_POST_NOT_FOUND", "The Photo Post is unavailable", "NOT_FOUND");
+  const metadata = record(post.metadata);
+  if (
+    metadata.source !== "marketplace_auto_review_photo_post" ||
+    metadata.photoPublicationStatus !== "needs_user_action" ||
+    metadata.failureCode !== "PHOTO_PUBLISH_OUTCOME_UNCERTAIN" ||
+    text(metadata.externalPhotoId) || text(post.providerPostId)
+  ) {
+    fail("PHOTO_POST_NOT_ELIGIBLE_FOR_RETRY", "Only an unconfirmed Photo Post with no Facebook ID can be cleared after checking the Page", "CONFLICT");
+  }
+  const nextMetadata = {
+    ...metadata,
+    photoPublishRequestedAt: null,
+    photoPublicationStatus: "failed",
+    failureCode: "FACEBOOK_POST_ABSENCE_CONFIRMED",
+    reconciliation: { state: "not_published_user_confirmed", checkedAt: new Date().toISOString() },
+  };
+  await db.update(socialPosts).set({
+    status: "failed",
+    errorMessage: "ตรวจสอบ Facebook แล้วไม่พบโพสต์ สามารถส่งใหม่ได้",
+    metadata: nextMetadata,
+    updatedAt: new Date(),
+  }).where(eq(socialPosts.id, input.postId));
+  return { postId: input.postId, status: "failed" as const };
+}
+
 export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
   tenantId: string; userId: number; postId: number; runId: string; intentHash: string;
   reportProgress?: (input: Record<string, unknown>) => Promise<void> | void;
@@ -594,6 +627,11 @@ export async function executeMarketplaceAutoReviewPhotoPostPublish(input: {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const connectionIssue = ["META_TOKEN_INVALID", "META_PERMISSION_MISSING"].includes(message);
+    if (message === "PHOTO_UPLOAD_REJECTED") {
+      await patchMetadata({ photoPublishRequestedAt: null, failureCode: message, reconciliation: { state: "not_published", reason: "internal_upload_rejected", checkedAt: new Date().toISOString() } }, "failed");
+      await db.update(socialPosts).set({ status: "failed", errorMessage: "ระบบปฏิเสธไฟล์ภาพก่อนส่งคำขอไป Facebook สามารถลองเผยแพร่ใหม่ได้", updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+      return { status: "failed" };
+    }
     await patchMetadata({ failureCode: connectionIssue ? message : "PHOTO_PUBLISH_OUTCOME_UNCERTAIN", reconciliation: { state: connectionIssue ? "connection_required" : "check_page_before_retry", checkedAt: new Date().toISOString() } }, connectionIssue ? "needs_connection" : "needs_user_action");
     await db.update(socialPosts).set({ status: "draft", errorMessage: connectionIssue ? "Reconnect the Facebook Page or restore its publishing permission." : "Facebook may have received this photo. Check the Page before sending again to prevent duplicates.", updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
     return { status: connectionIssue ? "needs_connection" : "needs_user_action" };

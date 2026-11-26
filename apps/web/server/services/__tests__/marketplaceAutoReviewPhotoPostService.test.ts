@@ -14,6 +14,7 @@ import {
   resolveUnstartedPhotoPublicationStatus,
   startMarketplaceAutoReviewPhotoPost,
   executeMarketplaceAutoReviewPhotoPostPublish,
+  confirmMarketplaceAutoReviewPhotoPostAbsent,
 } from "../marketplaceAutoReviewPhotoPostService";
 
 const { getDb, listPublishingPages, storageStreamFile, createControlPlaneJob, decrypt, publishFacebookPagePhoto, readFacebookPagePhoto } = vi.hoisted(() => ({
@@ -358,6 +359,34 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
     expect(hasMarketplaceAutoReviewPhotoPostExternalAttempt({ externalPhotoId: "123" })).toBe(true);
     expect(hasMarketplaceAutoReviewPhotoPostExternalAttempt({ photoPublicationStatus: "published" })).toBe(true);
     expect(hasMarketplaceAutoReviewPhotoPostExternalAttempt({ photoPublicationStatus: "needs_user_action", manualHandoff: { state: "prepared" } })).toBe(false);
+  });
+
+  it("only unlocks an uncertain Photo Post after an explicit Facebook absence confirmation", async () => {
+    const metadata = {
+      source: "marketplace_auto_review_photo_post",
+      photoPublicationStatus: "needs_user_action",
+      photoPublishRequestedAt: "2026-11-26T10:37:05.000Z",
+      failureCode: "PHOTO_PUBLISH_OUTCOME_UNCERTAIN",
+    };
+    const updates: Array<Record<string, unknown>> = [];
+    getDb.mockResolvedValue({
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => [{
+        id: 12, tenantId: TENANT_ID, createdByUserId: 41, providerPostId: null, metadata,
+      }] }) }) }),
+      update: () => ({ set: (values: Record<string, unknown>) => ({ where: async () => { updates.push(values); } }) }),
+    });
+
+    await expect(confirmMarketplaceAutoReviewPhotoPostAbsent({ tenantId: TENANT_ID, userId: 41, postId: 12 }))
+      .resolves.toEqual({ postId: 12, status: "failed" });
+    expect(updates[0]).toMatchObject({
+      status: "failed",
+      metadata: {
+        photoPublishRequestedAt: null,
+        photoPublicationStatus: "failed",
+        failureCode: "FACEBOOK_POST_ABSENCE_CONFIRMED",
+      },
+    });
+    expect(hasMarketplaceAutoReviewPhotoPostExternalAttempt(updates[0].metadata)).toBe(false);
   });
 
   it("accepts worker references but rejects client-provided image URLs", () => {
