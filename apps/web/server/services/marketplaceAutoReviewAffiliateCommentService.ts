@@ -90,7 +90,7 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
     );
 
   if (
-    row.page.provider !== "meta" ||
+    row.connection.provider !== "meta" ||
     row.page.status !== "active" ||
     !row.page.selectedForPublishing ||
     !row.page.encryptedPageAccessToken ||
