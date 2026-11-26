@@ -61,7 +61,7 @@ export function resolveUnstartedReelsPublicationStatus(input: {
 }
 
 const publishSnapshotSchema = z.object({
-  caption: z.string().trim().max(2000),
+  caption: z.string().trim().min(1).max(2000),
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
   aiGenerated: z.boolean(),
@@ -136,8 +136,9 @@ async function loadAuthoritativePackage(input: {
   const runMetadata = record(run.metadataJson);
   const staged = record(runMetadata.stagedPipeline);
   const savedSocialCaption = record(staged.socialCaption);
-  const caption = nonemptyString(savedSocialCaption.caption);
-  if (!caption) fail("CAPTION_UNAVAILABLE", "No saved Auto Review social caption is available");
+  // The publish form can carry an edited caption even when older runs do not
+  // have the social caption copied into stagedPipeline metadata.
+  const caption = nonemptyString(savedSocialCaption.caption) ?? "";
   const hashtags = Array.isArray(savedSocialCaption.hashtags)
     ? savedSocialCaption.hashtags
         .filter((tag: unknown): tag is string => typeof tag === "string")

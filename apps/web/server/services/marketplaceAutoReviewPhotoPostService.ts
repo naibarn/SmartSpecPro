@@ -34,7 +34,7 @@ export type PhotoPublishState = "queued" | "scheduled" | "preflight" | "token_ch
 
 const snapshotSchema = z.object({
   variant: z.enum(PHOTO_VARIANTS),
-  caption: z.string().trim().max(2000),
+  caption: z.string().trim().min(1).max(2000),
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
   commercialDisclosure: z.string().trim().max(500).default(""),
@@ -155,8 +155,9 @@ async function loadPhotoPackage(input: { db: Db; tenantId: string; userId: numbe
   const metadata = record(run.metadataJson);
   const staged = record(metadata.stagedPipeline);
   const socialCaption = record(staged.socialCaption);
-  const caption = text(socialCaption.caption);
-  if (!caption) fail("CAPTION_UNAVAILABLE", "No saved Auto Review caption is available");
+  // Use the caption supplied by the publish form for legacy runs that predate
+  // persistence of socialCaption in stagedPipeline metadata.
+  const caption = text(socialCaption.caption) ?? "";
   const hashtags = Array.isArray(socialCaption.hashtags)
     ? socialCaption.hashtags.filter((tag: unknown): tag is string => typeof tag === "string")
       .slice(0, 20).map((tag: string) => `#${tag.replace(/^#+/, "")}`)

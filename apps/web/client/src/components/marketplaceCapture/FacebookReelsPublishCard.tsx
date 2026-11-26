@@ -312,13 +312,14 @@ export function FacebookReelsPublishCard(props: {
               onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
               options={[
                 { value: "description", label: "แนบในคำอธิบายโพสต์", disabled: !photoReadiness.data?.hasAffiliateLink },
-                { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !photoReadiness.data?.hasAffiliateLink || !selectedPhotoPage?.firstCommentReady },
+                { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !photoReadiness.data?.hasAffiliateLink },
                 { value: "manual_native", label: "นำไปติดแท็กผ่าน Facebook ด้วยตนเอง" },
                 { value: "none", label: "ไม่ใส่ Affiliate link" },
               ]}
               width="100%"
             />
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
+            {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
             <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
             {scheduleEnabled ? <VStack gap={1}>
               <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
@@ -431,7 +432,7 @@ export function FacebookReelsPublishCard(props: {
           onChange={value => { setAffiliateMode(value as AffiliateMode); setAllowNoAffiliate(false); }}
           options={[
             { value: "description", label: "ใส่ Affiliate URL ในคำอธิบาย", disabled: !readiness.data?.hasAffiliateLink },
-            { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !readiness.data?.hasAffiliateLink || !selectedPage?.firstCommentReady },
+            { value: "first_comment", label: "ใส่ในความคิดเห็นแรก", disabled: !readiness.data?.hasAffiliateLink },
             { value: "manual_native", label: "ติดแท็กสินค้าผ่าน Facebook ด้วยตนเอง" },
             { value: "none", label: "เผยแพร่โดยไม่ใส่ Affiliate link" },
           ]}
@@ -440,6 +441,7 @@ export function FacebookReelsPublishCard(props: {
         <Text type="supporting" color="secondary">
           Affiliate Link: {readiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ใช้ URL ที่บันทึกไว้และคง tracking เดิม การคลิกและ Affiliate Attribution ต้องตรวจสอบกับ Meta อีกครั้ง
         </Text>
+        {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
         <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
         {scheduleEnabled ? <VStack gap={1}>
           <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + 10 * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
