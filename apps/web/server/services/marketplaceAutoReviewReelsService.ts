@@ -26,7 +26,7 @@ import {
 import { getDb, type DrizzleDB } from "../db";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { buildMarketplaceAutoReviewPublishJobKeys, parseMarketplaceAutoReviewScheduledAt } from "./marketplaceAutoReviewPublishJobKeys";
+import { buildMarketplaceAutoReviewPublishJobKeys, parseMarketplaceAutoReviewScheduledAt, toFacebookScheduledPublishTime } from "./marketplaceAutoReviewPublishJobKeys";
 import {
   finishFacebookReelUpload,
   getFacebookReelStatus,
@@ -64,7 +64,7 @@ const publishSnapshotSchema = z.object({
   caption: z.string().trim().min(1).max(2000),
   hashtags: z.array(z.string().trim().regex(AUTO_REVIEW_PUBLISH_HASHTAG)).max(AUTO_REVIEW_PUBLISH_MAX_HASHTAGS),
   affiliateMode: affiliateModeSchema,
-  aiGenerated: z.boolean(),
+  aiGenerated: z.boolean().default(true),
   commercialDisclosure: z.string().trim().max(500).default(""),
   allowNoAffiliate: z.boolean().optional(),
 }).strict();
@@ -436,7 +436,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
         jobType: MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
-        ...(scheduledAt ? { scheduledAt: scheduledAt.toISOString() } : {}),
+        // Start upload immediately; Meta receives scheduled_publish_time after upload.
         idempotencyKey: jobKeys.idempotencyKey,
         activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
@@ -736,9 +736,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     return { status: "needs_connection" };
   }
   const scheduledAt = nonemptyString(metadata.scheduledAt);
-  const scheduledPublishTime = scheduledAt
-    ? Math.floor(new Date(scheduledAt).getTime() / 1000)
-    : undefined;
+  const scheduledPublishTime = toFacebookScheduledPublishTime(scheduledAt);
   await patchMetadata({ progress: { stage: "preflight", percent: 5 } }, "preflight");
   let pkg: Awaited<ReturnType<typeof loadAuthoritativePackage>>;
   let inspected: Awaited<ReturnType<typeof stageAndInspectArtifact>>;

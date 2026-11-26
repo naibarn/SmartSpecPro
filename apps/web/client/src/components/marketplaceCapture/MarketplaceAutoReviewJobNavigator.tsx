@@ -75,6 +75,13 @@ function runTimestamp(run: MarketplaceAutoReviewJobSummary): number {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function facebookScheduleLabel(value: unknown): string | null {
+  const date = value instanceof Date ? value : typeof value === "string" ? new Date(value) : null;
+  return date && Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(date)
+    : null;
+}
+
 export function sortMarketplaceAutoReviewRunsNewestFirst(
   runs: MarketplaceAutoReviewJobSummary[]
 ): MarketplaceAutoReviewJobSummary[] {
@@ -598,8 +605,9 @@ export function MarketplaceAutoReviewJobNavigator({
   );
   const facebookStatusCounts = {
     notPublished: allVisibleRuns.filter(
-      run => run.facebookPublishStatus !== "published"
+      run => !["published", "scheduled"].includes(run.facebookPublishStatus)
     ).length,
+    scheduled: allVisibleRuns.filter(run => run.facebookPublishStatus === "scheduled").length,
     awaitingComment: allVisibleRuns.filter(
       run => run.awaitingAffiliateComment === true
     ).length,
@@ -610,7 +618,8 @@ export function MarketplaceAutoReviewJobNavigator({
   };
   const visibleRuns = allVisibleRuns.filter(run => {
     if (jobFilter === "fb_not_published")
-      return run.facebookPublishStatus !== "published";
+      return !["published", "scheduled"].includes(run.facebookPublishStatus);
+    if (jobFilter === "fb_scheduled") return run.facebookPublishStatus === "scheduled";
     if (jobFilter === "comment_pending")
       return run.awaitingAffiliateComment === true;
     if (jobFilter === "fb_published")
@@ -706,6 +715,9 @@ export function MarketplaceAutoReviewJobNavigator({
               <option value="all">ทุกสถานะ ({allVisibleRuns.length})</option>
               <option value="fb_not_published">
                 ยังไม่โพสต์ Facebook ({facebookStatusCounts.notPublished})
+              </option>
+              <option value="fb_scheduled">
+                ตั้งเวลาโพสต์แล้ว · รอเผยแพร่ ({facebookStatusCounts.scheduled})
               </option>
               <option value="comment_pending">
                 รอยืนยันส่งคอมเมนต์ ({facebookStatusCounts.awaitingComment})
@@ -918,7 +930,7 @@ export function MarketplaceAutoReviewJobNavigator({
                           {run.facebookPublishStatus === "published"
                             ? "Facebook: โพสต์แล้ว"
                             : run.facebookPublishStatus === "scheduled"
-                              ? "Facebook: ตั้งเวลาแล้ว"
+                              ? `Facebook: ตั้งเวลาแล้ว${facebookScheduleLabel(run.facebookScheduledAt) ? ` · ${facebookScheduleLabel(run.facebookScheduledAt)}` : ""}`
                               : run.facebookPublishStatus === "publishing"
                                 ? "Facebook: กำลังโพสต์"
                                 : run.facebookPublishStatus === "failed"

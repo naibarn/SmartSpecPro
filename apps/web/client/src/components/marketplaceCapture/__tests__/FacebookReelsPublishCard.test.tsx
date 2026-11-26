@@ -42,12 +42,14 @@ vi.mock("@/lib/trpc", () => ({
       publish: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
       reconcile: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
       resume: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
+      postAffiliateComment: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
     },
     marketplaceAutoReviewPhotoPosts: {
       readiness: { useQuery: () => ({ data: mocks.photoReadiness, isLoading: false, isError: false, refetch: mocks.refetchPhotos }) },
       history: { useQuery: () => ({ data: mocks.photoHistory, isLoading: false, isError: false, refetch: mocks.refetch }) },
       publish: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
       reconcile: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
+      postAffiliateComment: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
     },
   },
 }));
@@ -57,12 +59,13 @@ vi.mock("@astryxdesign/core/Button", () => ({ Button: ({ label, isDisabled, isLo
 vi.mock("@astryxdesign/core/Card", () => ({ Card: ({ children }: any) => <section>{children}</section> }));
 vi.mock("@astryxdesign/core/Collapsible", async () => {
   const React = await import("react");
-  return { Collapsible: ({ trigger, children, defaultIsOpen = true }: any) => {
-    const [open, setOpen] = React.useState(defaultIsOpen);
+  return { Collapsible: ({ trigger, children }: any) => {
+    const [open, setOpen] = React.useState(true);
     return <section><button aria-expanded={open} onClick={() => setOpen(!open)}>{trigger}</button>{open ? children : null}</section>;
   } };
 });
 vi.mock("@astryxdesign/core/CheckboxInput", () => ({ CheckboxInput: ({ label, value, onChange }: any) => <label><input type="checkbox" checked={value} onChange={event => onChange(event.target.checked)} />{label}</label> }));
+vi.mock("@astryxdesign/core/DateTimeInput", () => ({ DateTimeInput: ({ label, value, onChange }: any) => <label>{label}<input type="datetime-local" value={value ?? ""} onChange={event => onChange(event.target.value)} /></label> }));
 vi.mock("@astryxdesign/core/Heading", () => ({ Heading: ({ children }: any) => <h3>{children}</h3> }));
 vi.mock("@astryxdesign/core/HStack", () => ({ HStack: ({ children }: any) => <section>{children}</section> }));
 vi.mock("@astryxdesign/core/Link", () => ({ Link: ({ children, href }: any) => <a href={href}>{children}</a> }));
@@ -125,12 +128,24 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.queryByLabelText("Hashtag")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)"), { target: { value: "Affiliate disclosure" } });
-    fireEvent.click(screen.getByLabelText("วิดีโอนี้สร้างหรือดัดแปลงด้วย AI"));
+    expect(screen.getByLabelText("วิดีโอนี้สร้างหรือดัดแปลงด้วย AI")).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "เผยแพร่ Reel" }));
     expect(mocks.mutate).toHaveBeenCalledWith({
       runId: "run-1", pageId: 12,
       snapshot: { caption: "Saved caption", hashtags: ["#saved"], affiliateMode: "description", aiGenerated: true, commercialDisclosure: "Affiliate disclosure" },
     });
+  });
+
+  it("sends the selected local schedule instant as an ISO timestamp", () => {
+    const localSchedule = "2099-11-26T16:05";
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
+    fireEvent.click(screen.getByLabelText("ตั้งเวลาโพสต์"));
+    fireEvent.change(screen.getByLabelText("วันและเวลาเผยแพร่"), { target: { value: localSchedule } });
+    fireEvent.click(screen.getByRole("button", { name: "ตั้งเวลา Reel" }));
+    expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      scheduledAt: new Date(localSchedule).toISOString(),
+    }));
   });
 
   it("requires explicit confirmation to publish without an affiliate link", () => {
@@ -216,19 +231,20 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
   });
 
-  it("keeps first-comment publishing unavailable when the selected Page lacks the permission", () => {
+  it("allows the Reel and keeps its first comment pending when the selected Page lacks the permission", () => {
     mocks.readiness.pages[0].firstCommentReady = false;
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "first_comment" } });
-    expect(screen.getByRole("option", { name: /ความคิดเห็นแรก/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: /ความคิดเห็นแรก/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeEnabled();
+    expect(screen.getByText(/คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ/)).toBeInTheDocument();
   });
 
-  it("shows only a verified Facebook permalink", () => {
+  it("uses the safe Facebook post-ID fallback when the permalink is unavailable", () => {
     mocks.history = [{ id: 8, status: "published", affiliateLinkStatus: "included_unverified", commercialDisclosureStatus: "included", attributionVerificationStatus: "unverified", providerPostId: "123", permalink: "https://attacker.example/video", errorMessage: null }];
     render(<FacebookReelsPublishCard runId="run-1" />);
     expect(screen.getByText("Facebook ยืนยันเผยแพร่แล้ว")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "ดู Reel บน Facebook" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "ดู Reel บน Facebook" })).toHaveAttribute("href", "https://www.facebook.com/123");
   });
 
   it("lets the user select exactly one generated image and publishes it as a Photo Post", () => {

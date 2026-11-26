@@ -109,6 +109,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       characterSeriesNames: string[];
       facebookPublishStatus:
         "published" | "scheduled" | "publishing" | "failed" | "not_published";
+      facebookScheduledAt: Date | null;
       awaitingAffiliateComment: boolean;
     }
   >
@@ -153,6 +154,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
         .select({
           runId: sql<string>`${socialPosts.metadata}->>'autoReviewRunId'`,
           status: socialPosts.status,
+          scheduledAt: socialPosts.scheduledAt,
           providerPostId: socialPosts.providerPostId,
           metadata: socialPosts.metadata,
           createdAt: socialPosts.createdAt,
@@ -516,6 +518,9 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     return {
       ...run,
       facebookPublishStatus,
+      facebookScheduledAt: facebookPublishStatus === "scheduled" && latestPost?.scheduledAt instanceof Date
+        ? latestPost.scheduledAt
+        : null,
       awaitingAffiliateComment,
       productThumbnailUrl: productById.get(productId) ?? null,
       characterSeriesNames: (

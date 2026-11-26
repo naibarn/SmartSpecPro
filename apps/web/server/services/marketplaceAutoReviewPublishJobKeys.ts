@@ -39,3 +39,11 @@ export function parseMarketplaceAutoReviewScheduledAt(value?: string | null): Da
   }
   return scheduledAt;
 }
+
+/** Convert the saved ISO instant into the Unix seconds field expected by Meta. */
+export function toFacebookScheduledPublishTime(value?: string | null): number | undefined {
+  if (!value) return undefined;
+  const milliseconds = new Date(value).getTime();
+  if (!Number.isFinite(milliseconds)) throw new Error("SCHEDULED_AT_INVALID");
+  return Math.floor(milliseconds / 1000);
+}

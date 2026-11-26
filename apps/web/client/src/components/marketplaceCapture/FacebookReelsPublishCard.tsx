@@ -58,7 +58,7 @@ function normalizedHashtags(value: string): string[] {
   return value.split(/\s+/).filter(Boolean).map(tag => `#${tag.replace(/^#+/, "")}`);
 }
 
-function publishErrorMessage(message: string): string {
+function publishErrorMessage(message: string, minimumScheduleMinutes = 30): string {
   switch (message.split(":")[0]) {
     case "FACEBOOK_PAGE_NOT_READY":
       return "เพจที่เลือกยังเผยแพร่ไม่ได้ กรุณาตรวจสิทธิ์เผยแพร่ของเพจใน Social Channels หรือเลือกเพจอื่น";
@@ -69,7 +69,7 @@ function publishErrorMessage(message: string): string {
     case "SCHEDULED_AT_INVALID":
       return "วันและเวลาโพสต์ไม่ถูกต้อง กรุณาเลือกใหม่";
     case "SCHEDULED_AT_TOO_SOON":
-      return "ตั้งเวลาโพสต์ล่วงหน้าอย่างน้อย 10 นาที";
+      return `ตั้งเวลาโพสต์ล่วงหน้าอย่างน้อย ${minimumScheduleMinutes} นาที`;
     case "SCHEDULED_AT_TOO_LATE":
       return "ตั้งเวลาโพสต์ล่วงหน้าได้ไม่เกิน 30 วัน";
     default:
@@ -117,7 +117,7 @@ export function FacebookReelsPublishCard(props: {
   const [format, setFormat] = useState<"reel" | "photo">("reel");
   const [photoVariant, setPhotoVariant] = useState("caption_source");
   const [affiliateMode, setAffiliateMode] = useState<AffiliateMode>("description");
-  const [aiGenerated, setAiGenerated] = useState(false);
+  const [aiGenerated, setAiGenerated] = useState(true);
   const [commercialDisclosure, setCommercialDisclosure] = useState("");
   const [allowNoAffiliate, setAllowNoAffiliate] = useState(false);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
@@ -163,7 +163,7 @@ export function FacebookReelsPublishCard(props: {
   });
   const publishPhoto = trpc.marketplaceAutoReviewPhotoPosts.publish.useMutation({
     onSuccess: async () => { setError(null); await photoHistory.refetch(); },
-    onError: error => setError(publishErrorMessage(error.message)),
+    onError: error => setError(publishErrorMessage(error.message, 10)),
   });
   const reconcilePhoto = trpc.marketplaceAutoReviewPhotoPosts.reconcile.useMutation({
     onSuccess: async () => { await photoHistory.refetch(); },
@@ -188,7 +188,7 @@ export function FacebookReelsPublishCard(props: {
     setPhotoVariant("caption_source");
     setAffiliateMode("description");
     setAllowNoAffiliate(false);
-    setAiGenerated(false);
+    setAiGenerated(true);
     setCommercialDisclosure("");
     setScheduleEnabled(false);
     setScheduleAt("");

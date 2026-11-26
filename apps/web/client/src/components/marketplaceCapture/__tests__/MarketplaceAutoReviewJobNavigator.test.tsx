@@ -4,6 +4,26 @@ import { describe, expect, it, vi } from "vitest";
 import { MarketplaceAutoReviewJobNavigator } from "../MarketplaceAutoReviewJobNavigator";
 
 describe("MarketplaceAutoReviewJobNavigator", () => {
+  it("shows the scheduled Facebook publish date and time on the job row", () => {
+    const scheduledAt = new Date("2099-11-26T16:05");
+    render(
+      <MarketplaceAutoReviewJobNavigator
+        runs={[{
+          id: "mar-scheduled",
+          status: "completed",
+          facebookPublishStatus: "scheduled",
+          facebookScheduledAt: scheduledAt.toISOString(),
+        }]}
+        allProducts
+        onOpenRun={vi.fn()}
+        onCreateNew={vi.fn()}
+      />
+    );
+
+    const schedule = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(scheduledAt);
+    expect(screen.getByText(`Facebook: ตั้งเวลาแล้ว · ${schedule}`)).toBeInTheDocument();
+  });
+
   it("opens each job in a new tab and starts full-history thumbnails immediately", () => {
     render(
       <MarketplaceAutoReviewJobNavigator
