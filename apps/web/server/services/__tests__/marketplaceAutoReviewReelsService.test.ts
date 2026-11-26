@@ -5,6 +5,7 @@ import {
   composeFacebookReelsDescription,
   getMarketplaceAutoReviewReelsReadiness,
   hashFacebookReelsContentSnapshot,
+  isFacebookReelPublished,
   marketplaceAutoReviewReelsWorkerInputSchema,
   resolveUnstartedReelsPublicationStatus,
   selectExecutableFfprobe,
@@ -63,6 +64,17 @@ describe("Auto Review Reel page selection", () => {
 });
 
 describe("Marketplace Auto Review Facebook Reels contract", () => {
+  it("recognizes publication from the publishing phase even when video_status is ready", () => {
+    expect(isFacebookReelPublished({
+      video_status: "ready",
+      publishing_phase: { status: "complete", publish_status: "published" },
+    })).toBe(true);
+    expect(isFacebookReelPublished({
+      video_status: "processing",
+      publishing_phase: { status: "not_started", publish_status: "not_published" },
+    })).toBe(false);
+  });
+
   it("skips unavailable ffprobe candidates and falls back to PATH", () => {
     const available = selectExecutableFfprobe(
       ["/usr/bin/ffprobe", "/usr/local/bin/ffprobe", "/home/dev/.local/bin/ffprobe"],

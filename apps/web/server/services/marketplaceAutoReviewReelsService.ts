@@ -520,6 +520,14 @@ function metaText(value: unknown): string | null {
   return nonemptyString(value);
 }
 
+export function isFacebookReelPublished(statusValue: unknown): boolean {
+  const status = record(statusValue);
+  const publishingPhase = record(status.publishing_phase);
+  return status.video_status === "published" ||
+    status.status === "published" ||
+    publishingPhase.publish_status === "published";
+}
+
 export const marketplaceAutoReviewReelsWorkerInputSchema = z.object({
   postId: z.number().int().positive(),
   runId: z.string().trim().min(1).max(64),
@@ -550,9 +558,10 @@ export async function reconcileMarketplaceAutoReviewReelsPublication(input: {
   const providerStatus = await getFacebookReelStatus({ pageId: row.page.providerPageId, videoId, accessToken });
   const status = record(providerStatus.status);
   const videoStatus = nonemptyString(status.video_status) ?? "unknown";
-  const providerPostId = nonemptyString(providerStatus.post_id) ?? nonemptyString(providerStatus.id) ?? row.post.providerPostId;
+  const finishResponse = record(metadata.finishResponse);
+  const providerPostId = nonemptyString(providerStatus.post_id) ?? nonemptyString(finishResponse.post_id) ?? nonemptyString(providerStatus.id) ?? row.post.providerPostId;
   const permalink = nonemptyString(providerStatus.permalink_url) ?? nonemptyString(providerStatus.permalink);
-  const isPublished = videoStatus === "published";
+  const isPublished = isFacebookReelPublished(status);
   const nextMetadata = {
     ...metadata,
     externalStatus: providerStatus,
@@ -715,7 +724,9 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
       const external = await getFacebookReelStatus({ pageId: providerPageId, videoId: externalVideoId, accessToken });
       const externalStatus = record(external.status);
       const postId = metaText(external.post_id) ?? metaText(external.id);
-      if (externalStatus.video_status === "published" || externalStatus.status === "published") {
+      if (isFacebookReelPublished(externalStatus)) {
+        const finishResponse = record(metadata.finishResponse);
+        const publishedPostId = metaText(external.post_id) ?? metaText(finishResponse.post_id) ?? postId ?? postRow.post.providerPostId;
         await patchMetadata({
           externalStatus: external,
           publishedAt: new Date().toISOString(),
@@ -724,8 +735,8 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
           affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
           attributionVerificationStatus: "unverified",
         });
-        await db.update(socialPosts).set({ status: "published", providerPostId: postId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
-        return { status: "published", providerPostId: postId, permalink: metaText(external.permalink_url) ?? null };
+        await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        return { status: "published", providerPostId: publishedPostId, permalink: metaText(external.permalink_url) ?? null };
       }
       const uploadPhase = record(externalStatus.uploading_phase);
       const uploadStatus = metaText(uploadPhase.status) ?? metaText(externalStatus.uploading_phase);
@@ -787,10 +798,26 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     });
     if (metadata.finishRequestedAt) {
       const status = await getFacebookReelStatus({ pageId: providerPageId, videoId: externalVideoId, accessToken });
-      const videoStatus = metaText(record(status.status).video_status) ?? "unknown";
-      if (["published", "ready", "processing", "upload_complete"].includes(videoStatus)) {
-        await patchMetadata({ externalStatus: status, reconciliation: { state: videoStatus, checkedAt: new Date().toISOString() } }, videoStatus === "published" ? "published" : "processing");
-        return { status: videoStatus === "published" ? "published" : "processing" };
+      const statusResponse = record(status);
+      const statusObject = record(statusResponse.status);
+      const videoStatus = metaText(statusObject.video_status) ?? "unknown";
+      if (isFacebookReelPublished(statusObject)) {
+        const finishResponse = record(metadata.finishResponse);
+        const publishedPostId = metaText(finishResponse.post_id) ?? metaText(statusResponse.id) ?? postRow.post.providerPostId;
+        await patchMetadata({
+          externalStatus: status,
+          publishedAt: new Date().toISOString(),
+          permalink: metaText(statusResponse.permalink_url) ?? metaText(statusResponse.permalink),
+          reconciliation: { state: "published", checkedAt: new Date().toISOString() },
+          affiliateLinkStatus: snapshot.affiliateMode === "description" ? "included_unverified" : snapshot.affiliateMode === "none" ? "none" : "manual_handoff",
+          attributionVerificationStatus: "unverified",
+        }, "published");
+        await db.update(socialPosts).set({ status: "published", providerPostId: publishedPostId, publishedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        return { status: "published", providerPostId: publishedPostId, permalink: metaText(statusResponse.permalink_url) ?? null };
+      }
+      if (["ready", "processing", "upload_complete"].includes(videoStatus)) {
+        await patchMetadata({ externalStatus: status, reconciliation: { state: videoStatus, checkedAt: new Date().toISOString() } }, "processing");
+        return { status: "processing" };
       }
       await patchMetadata({ reconciliation: { state: "finish_uncertain", checkedAt: new Date().toISOString() } }, "needs_user_action");
       return { status: "needs_user_action" };
@@ -808,7 +835,7 @@ export async function executeMarketplaceAutoReviewReelsPublish(input: {
     const externalStatus = await getFacebookReelStatus({ pageId: providerPageId, videoId: externalVideoId, accessToken }).catch(() => null);
     const statusObject = record(externalStatus);
     const videoStatus = metaText(record(statusObject.status).video_status) ?? "processing";
-    const published = videoStatus === "published";
+    const published = isFacebookReelPublished(record(statusObject.status));
     await patchMetadata({
       finishResponse: finishResult,
       externalStatus,
