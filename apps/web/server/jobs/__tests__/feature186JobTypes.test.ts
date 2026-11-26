@@ -8,6 +8,14 @@ import { defaultJobExecutorRegistry } from "../../services/jobExecutorRegistry";
 
 describe("Feature 195 PostgreSQL node worker admission", () => {
   it.each([
+    ["social.facebook.reels.publish", "feature-186-v1"],
+    ["social.facebook.photo.publish", "feature-187-v1"],
+  ])("pulls the registered Facebook publishing job %s instead of leaving it queued", (jobType, contract) => {
+    expect(isPostgresNodeJobType(jobType)).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(jobType, contract)).toBeDefined();
+  });
+
+  it.each([
     ["workspace.authority.safe_action", "feature-186-v1"],
     ["cloudflare.staging.http.image.provision", "cloudflare-staging-http-image-v1"],
     ["vertical_drama.speaker_people_detection", "feature-186-v1"],

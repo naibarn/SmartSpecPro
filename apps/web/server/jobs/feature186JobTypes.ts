@@ -56,6 +56,8 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "vertical_drama.shot_video_prompt",
   "vertical_drama.story",
   "marketplace.auto_review.execute",
+  "social.facebook.reels.publish",
+  "social.facebook.photo.publish",
   "vertical_drama.book.compose",
   "vertical_drama.book.cover",
   "vertical_drama.book.export",
