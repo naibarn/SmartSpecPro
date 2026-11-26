@@ -174,6 +174,56 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
     }));
   });
 
+  it("allows a new Photo Post intent after a different intent expired before starting", async () => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    const replacementKey = `marketplace-auto-review/${TENANT_ID}/${RUN_ID}/media/image/social-post-batch-1-character_reference-${IMAGE_HASH}.png`;
+    const metadata = runMetadata();
+    (metadata.stagedPipeline as any).socialCaption.postImages.variants.character_reference = {
+      status: "completed", imageStorageKey: replacementKey, sourceLabel: "ภาพอ้างอิงตัวละคร",
+    };
+    storageStreamFile.mockResolvedValue({
+      totalLength: image.length, contentType: "image/png", stream: Readable.from([image]),
+    });
+    listPublishingPages.mockResolvedValue([{ id: 7, provider: "meta", publishingReady: true }]);
+    createControlPlaneJob.mockClear();
+    createControlPlaneJob.mockResolvedValue({ jobId: "worker-job-retry" });
+    const selectedRows = [
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, productId: "product-1", metadataJson: metadata }],
+      [{ id: "product-1" }],
+      [],
+      [],
+      [{ id: 12, metadata: {
+        source: "marketplace_auto_review_photo_post", autoReviewRunId: RUN_ID,
+        intentHash: "c".repeat(64), photoPublicationStatus: "queued", publishingWorkerJobId: "old-job",
+      } }],
+      [{ id: "old-job", status: "expired", startedAt: null }],
+      [{ metadata: { source: "marketplace_auto_review_photo_post", autoReviewRunId: RUN_ID } }],
+    ];
+    const updates: Array<Record<string, unknown>> = [];
+    getDb.mockResolvedValue({
+      select: () => ({ from: () => ({ where: () => ({
+        limit: () => Promise.resolve(selectedRows.shift()),
+        orderBy: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }),
+      }) }) }),
+      update: () => ({ set: (values: Record<string, unknown>) => ({
+        where: () => ({ returning: async () => { updates.push(values); return [{ id: 12 }]; } }),
+      }) }),
+    });
+
+    const result = await startMarketplaceAutoReviewPhotoPost({
+      tenantId: TENANT_ID, userId: 41, runId: RUN_ID, pageId: 7,
+      snapshot: {
+        variant: "character_reference", caption: "Review caption", hashtags: [],
+        affiliateMode: "none", commercialDisclosure: "", allowNoAffiliate: true,
+      },
+    });
+
+    expect(result).toMatchObject({ postId: 12, jobId: "worker-job-retry", status: "queued" });
+    expect(createControlPlaneJob).toHaveBeenCalledOnce();
+  });
+
   it("shows a deadline-expired photo job as retryable only if Facebook was never contacted", () => {
     expect(resolveUnstartedPhotoPublicationStatus({
       publicationStatus: "queued",

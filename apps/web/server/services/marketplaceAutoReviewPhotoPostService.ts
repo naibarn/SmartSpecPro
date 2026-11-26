@@ -334,6 +334,8 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     sql`${socialPosts.metadata}->>'intentHash' = ${intentHash}`,
   );
   let [existing] = await db.select().from(socialPosts).where(whereIntent).limit(1);
+  let previousIntentJob: { id: string; status: string; startedAt: Date | null } | undefined;
+  let previousIntentPostId: number | undefined;
   const previousPhotoIntents = await db.select().from(socialPosts).where(and(
     eq(socialPosts.tenantId, input.tenantId),
     eq(socialPosts.pageId, input.pageId),
@@ -348,12 +350,35 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     if (hasMarketplaceAutoReviewPhotoPostExternalAttempt(previousMetadata)) {
       fail("PHOTO_POST_PREVIOUS_ATTEMPT_EXISTS", "A Photo Post for this Auto Review run may already have been sent. Check Facebook and its history before creating another post.", "CONFLICT");
     }
-    if (!existing && ["failed", "needs_connection"].includes(previousStatus)) existing = previous;
+    let previousIntentIsRetryable = ["failed", "needs_connection"].includes(previousStatus);
+    if (!previousIntentIsRetryable && ACTIVE_PHOTO_PUBLISH_STATES.has(previousStatus)) {
+      [previousIntentJob] = await db.select({
+        id: workerJobs.id,
+        status: workerJobs.status,
+        startedAt: workerJobs.startedAt,
+      }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, input.tenantId),
+        eq(workerJobs.requestedByUserId, input.userId),
+        eq(workerJobs.jobType, MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE),
+        sql`${workerJobs.inputJson}->>'postId' = ${String(previous.id)}`,
+      )).orderBy(desc(workerJobs.createdAt)).limit(1);
+      const recoveredStatus = previousIntentJob ? resolveUnstartedPhotoPublicationStatus({
+        publicationStatus: previousStatus,
+        jobStatus: previousIntentJob.status,
+        jobStartedAt: previousIntentJob.startedAt,
+        hasExternalPhotoAttempt: false,
+      }) : null;
+      previousIntentIsRetryable = recoveredStatus === "failed";
+    }
+    if (!existing && previousIntentIsRetryable) {
+      existing = previous;
+      previousIntentPostId = previous.id;
+    }
     else fail("PHOTO_POST_INTENT_ALREADY_EXISTS", "A Photo Post intent already exists for this Auto Review run. Check its status before changing the selected image or caption.", "CONFLICT");
   }
   const existingMetadata = record(existing?.metadata);
   const oldState = String(existingMetadata.photoPublicationStatus ?? "queued");
-  const priorJobs = existing ? await db.select({
+  const priorJobs = existing && previousIntentPostId === existing.id && previousIntentJob ? [previousIntentJob] : existing ? await db.select({
     id: workerJobs.id,
     status: workerJobs.status,
     startedAt: workerJobs.startedAt,
