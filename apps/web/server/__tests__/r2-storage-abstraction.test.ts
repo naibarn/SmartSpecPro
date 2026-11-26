@@ -437,6 +437,27 @@ describe("Node.js Storage Abstraction - R2 Env Var Fallback", () => {
     expect(result).toBeNull();
   });
 
+  it("reports ContentLength as totalLength for full S3 object streams", async () => {
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+    mockSend.mockResolvedValue({
+      Body: Buffer.from("video"),
+      ContentType: "video/mp4",
+      ContentLength: 5,
+      $metadata: { httpStatusCode: 200 },
+    });
+
+    const { storageStreamFile } = await import("../storage");
+    await expect(storageStreamFile("videos/final.mp4")).resolves.toMatchObject({
+      contentType: "video/mp4",
+      contentLength: 5,
+      totalLength: 5,
+      isPartial: false,
+    });
+  });
+
   it("still throws for a genuine R2 error unrelated to a missing key", async () => {
     process.env.R2_ACCESS_KEY = "env-access-key";
     process.env.R2_SECRET_KEY = "env-secret-key";

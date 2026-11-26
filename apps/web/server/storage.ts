@@ -1457,7 +1457,7 @@ export async function storageStreamFile(
     contentLength: response.ContentLength,
     etag: response.ETag,
     lastModified: response.LastModified,
-    totalLength,
+    totalLength: isPartial ? totalLength : response.ContentLength,
     rangeStart,
     rangeEnd,
     isPartial,
