@@ -2,6 +2,23 @@ import { publishFacebookPageComment } from "./facebookCommentsPublishGateway";
 
 type AffiliateCommentState = "published" | "uncertain" | "not_applicable";
 
+export async function queueAffiliateCommentForConfirmation(input: {
+  metadata: Record<string, unknown>;
+  affiliateUrl: string | null;
+  persist: (patch: Record<string, unknown>) => Promise<void>;
+}) {
+  if (!input.affiliateUrl) return "not_applicable" as const;
+  if (input.metadata.affiliateCommentStatus === "published") return "published" as const;
+  if (input.metadata.affiliateCommentStatus === "pending_confirmation") return "pending_confirmation" as const;
+  if (input.metadata.affiliateCommentStatus === "requesting" || input.metadata.affiliateCommentStatus === "uncertain") return "uncertain" as const;
+  await input.persist({
+    affiliateCommentStatus: "pending_confirmation",
+    affiliateCommentQueuedAt: new Date().toISOString(),
+    affiliateLinkStatus: "comment_pending_confirmation",
+  });
+  return "pending_confirmation" as const;
+}
+
 export async function publishAffiliateCommentOnce(input: {
   metadata: Record<string, unknown>;
   pageId: string;

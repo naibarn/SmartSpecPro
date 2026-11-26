@@ -78,9 +78,14 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
   const retryingUncertain =
     metadata.affiliateCommentStatus === "uncertain" &&
     input.confirmNoExistingComment === true;
+  const confirmingPending = metadata.affiliateCommentStatus === "pending_confirmation" &&
+    input.confirmPendingConfirmation === true;
+  const preparing = input.prepareConfirmation === true;
   if (
-    snapshot.affiliateMode !== "none" ||
-    (metadata.affiliateLinkStatus !== "none" &&
+    !["none", "first_comment"].includes(String(snapshot.affiliateMode)) ||
+    (metadata.affiliateLinkStatus !== "none" && metadata.affiliateLinkStatus !== "pending_first_comment" &&
+      !(confirmingPending && metadata.affiliateLinkStatus === "comment_pending_confirmation") &&
+      !(preparing && ["comment_permission_missing", "manual_handoff"].includes(String(metadata.affiliateLinkStatus))) &&
       !(retryingUncertain &&
         metadata.affiliateLinkStatus === "comment_outcome_uncertain"))
   ) {
@@ -89,43 +94,11 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
       "โพสต์นี้มีการจัดการ Affiliate Link แล้ว หรือไม่เข้าเงื่อนไขการเพิ่มคอมเมนต์"
     );
   }
-  if (metadata.affiliateCommentStatus && !retryingUncertain)
+  if (metadata.affiliateCommentStatus && !retryingUncertain && !confirmingPending &&
+      !(preparing && ["needs_user_action", "comment_permission_missing"].includes(String(metadata.affiliateCommentStatus))))
     fail(
       "PRECONDITION_FAILED",
       "คอมเมนต์ Affiliate สำหรับโพสต์นี้ถูกดำเนินการไปแล้ว กรุณาตรวจสอบสถานะก่อน"
-    );
-
-  if (
-    row.connection.provider !== "meta" ||
-    row.page.status !== "active" ||
-    !row.page.selectedForPublishing ||
-    !row.page.encryptedPageAccessToken ||
-    (row.page.tokenExpiresAt && row.page.tokenExpiresAt.getTime() <= Date.now())
-  ) {
-    fail(
-      "PRECONDITION_FAILED",
-      "Facebook Page ไม่พร้อมใช้งาน กรุณาเชื่อมต่อใหม่และเปิดสิทธิ์เผยแพร่"
-    );
-  }
-  const connectionMetadata = record(row.connection.metadata);
-  const scopes = Array.isArray(row.connection.grantedScopes)
-    ? row.connection.grantedScopes
-    : [];
-  if (
-    row.connection.status !== "active" ||
-    connectionMetadata.permissionVerificationStatus !== "verified" ||
-    !scopes.includes("pages_manage_engagement")
-  ) {
-    fail(
-      "PRECONDITION_FAILED",
-      "Facebook Page ยังไม่มีสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อเพจใหม่"
-    );
-  }
-  const accessToken = decrypt(row.page.encryptedPageAccessToken);
-  if (!accessToken)
-    fail(
-      "PRECONDITION_FAILED",
-      "ไม่พบ token ของ Facebook Page กรุณาเชื่อมต่อเพจใหม่"
     );
 
   let affiliateUrl = text(snapshot.affiliateUrl);
@@ -163,6 +136,57 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
   } catch {
     fail("PRECONDITION_FAILED", "Affiliate URL ที่บันทึกไว้ไม่ถูกต้อง");
   }
+
+  if (preparing) {
+    const pendingMetadata = {
+      ...metadata,
+      affiliateCommentStatus: "pending_confirmation",
+      affiliateCommentQueuedAt: new Date().toISOString(),
+      affiliateLinkStatus: "comment_pending_confirmation",
+    };
+    const [queued] = await db.update(socialPosts).set({ metadata: pendingMetadata, updatedAt: new Date() }).where(and(
+      eq(socialPosts.id, input.postId),
+      eq(socialPosts.tenantId, input.tenantId),
+      eq(socialPosts.createdByUserId, input.userId),
+      eq(socialPosts.status, "published"),
+      sql`${socialPosts.metadata}->>'affiliateCommentStatus' IS DISTINCT FROM 'published'`,
+    )).returning({ id: socialPosts.id });
+    if (!queued) fail("PRECONDITION_FAILED", "สถานะคอมเมนต์เปลี่ยนไปแล้ว กรุณาโหลดประวัติใหม่ก่อน");
+    return { status: "pending_confirmation", postId: input.postId };
+  }
+
+  if (
+    row.connection.provider !== "meta" ||
+    row.page.status !== "active" ||
+    !row.page.selectedForPublishing ||
+    !row.page.encryptedPageAccessToken ||
+    (row.page.tokenExpiresAt && row.page.tokenExpiresAt.getTime() <= Date.now())
+  ) {
+    fail(
+      "PRECONDITION_FAILED",
+      "Facebook Page ไม่พร้อมใช้งาน กรุณาเชื่อมต่อใหม่และเปิดสิทธิ์เผยแพร่"
+    );
+  }
+  const connectionMetadata = record(row.connection.metadata);
+  const scopes = Array.isArray(row.connection.grantedScopes)
+    ? row.connection.grantedScopes
+    : [];
+  if (
+    row.connection.status !== "active" ||
+    connectionMetadata.permissionVerificationStatus !== "verified" ||
+    !scopes.includes("pages_manage_engagement")
+  ) {
+    fail(
+      "PRECONDITION_FAILED",
+      "Facebook Page ยังไม่มีสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อเพจใหม่"
+    );
+  }
+  const accessToken = decrypt(row.page.encryptedPageAccessToken);
+  if (!accessToken)
+    fail(
+      "PRECONDITION_FAILED",
+      "ไม่พบ token ของ Facebook Page กรุณาเชื่อมต่อเพจใหม่"
+    );
 
   const commentObjectId =
     input.format === "reels"
@@ -224,9 +248,9 @@ export async function postAffiliateCommentOnPublishedAutoReview(input: {
             eq(socialPosts.tenantId, input.tenantId),
             eq(socialPosts.createdByUserId, input.userId),
             eq(socialPosts.status, "published"),
-            sql`${socialPosts.metadata}->>'affiliateCommentStatus' IS NULL`,
-            sql`${socialPosts.metadata}->'snapshot'->>'affiliateMode' = 'none'`,
-            sql`${socialPosts.metadata}->>'affiliateLinkStatus' = 'none'`
+            sql`(${socialPosts.metadata}->>'affiliateCommentStatus' IS NULL OR ${socialPosts.metadata}->>'affiliateCommentStatus' = 'pending_confirmation')`,
+            sql`${socialPosts.metadata}->'snapshot'->>'affiliateMode' IN ('none', 'first_comment')`,
+            sql`${socialPosts.metadata}->>'affiliateLinkStatus' IN ('none', 'pending_first_comment', 'comment_pending_confirmation')`
           )
         )
         .returning({ id: socialPosts.id });

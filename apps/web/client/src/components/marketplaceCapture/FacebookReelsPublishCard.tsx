@@ -46,6 +46,13 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "เผยแพร่ไม่สำเร็จ",
   cancelled: "ยกเลิกแล้ว",
 };
+const COMMENT_STATUS_LABELS: Record<string, string> = {
+  pending_confirmation: "คอมเมนต์ค้างรอยืนยันส่ง",
+  requesting: "กำลังส่งคอมเมนต์",
+  published: "ส่งคอมเมนต์แล้ว",
+  uncertain: "ต้องตรวจ Facebook ก่อนส่งซ้ำ",
+  needs_user_action: "รอผู้ใช้ตรวจสอบและยืนยันส่ง",
+};
 
 function normalizedHashtags(value: string): string[] {
   return value.split(/\s+/).filter(Boolean).map(tag => `#${tag.replace(/^#+/, "")}`);
@@ -213,7 +220,7 @@ export function FacebookReelsPublishCard(props: {
   const canPublish = Boolean(
     readiness.data?.ready && selectedPage?.publishingReady && caption.trim() &&
     caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
-    (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? readiness.data?.hasAffiliateLink && selectedPage?.firstCommentReady : affiliateMode === "none") &&
+    (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? readiness.data?.hasAffiliateLink : affiliateMode === "none") &&
     noLinkConfirmed && !activePublication && !history.isLoading && !history.isError && !publish.isPending
   );
   const canPrepareManualHandoff = Boolean(
@@ -227,7 +234,7 @@ export function FacebookReelsPublishCard(props: {
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
     commercialDisclosure.length <= 500 && !invalidHashtags &&
-    (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? photoReadiness.data?.hasAffiliateLink && selectedPhotoPage?.firstCommentReady : affiliateMode === "none" || affiliateMode === "manual_native") &&
+    (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && !photoHistoryHasUncertain &&
     !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
   );
@@ -320,7 +327,7 @@ export function FacebookReelsPublishCard(props: {
               width="100%"
             />
             <Text type="supporting" color="secondary">Affiliate Link เดิม: {photoReadiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ระบบใช้ URL ที่บันทึกไว้และคง tracking เดิม</Text>
-            {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
+            {affiliateMode === "first_comment" && selectedPhotoPage && !selectedPhotoPage.firstCommentReady ? <Banner title="คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ" collapsible={false}><Text>โพสต์ภาพได้ตามปกติ แต่ต้องเชื่อมต่อ Facebook พร้อมสิทธิ์ pages_manage_engagement ก่อนกดยืนยันส่ง Affiliate Link ในคอมเมนต์</Text></Banner> : null}
             <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
             {scheduleEnabled ? <VStack gap={1}>
               <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
@@ -343,14 +350,18 @@ export function FacebookReelsPublishCard(props: {
               return <VStack key={item.id} gap={1}>
                 <Text type="label">{PHOTO_VARIANT_LABELS[String(item.selectedVariant)] ?? "Facebook Photo Post"} · {STATUS_LABELS[status] ?? status}</Text>
                 {status === "scheduled" && item.scheduledAt ? <Text type="supporting">กำหนดเผยแพร่ {formatScheduledAt(item.scheduledAt)}</Text> : null}
-                <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+                <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)}{item.affiliateCommentStatus ? ` · คอมเมนต์: ${COMMENT_STATUS_LABELS[String(item.affiliateCommentStatus)] ?? String(item.affiliateCommentStatus)}` : ""} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+                {item.affiliateCommentStatus === "pending_confirmation" ? <Banner title="งานคอมเมนต์ค้างรอยืนยัน" collapsible={false}><Text>โพสต์ Facebook สำเร็จแล้ว แต่ยังไม่ได้ส่ง Affiliate Link กรุณาตรวจสอบโพสต์และลิงก์ แล้วกดยืนยันส่งคอมเมนต์</Text></Banner> : null}
                 {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
                 {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
-                {status === "published" && item.providerPostId && photoReadiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || (item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus)) ? (
-                  <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "โพสต์ Affiliate Link ในคอมเมนต์แรก"} variant="secondary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => {
+                {status === "published" && item.providerPostId && photoReadiness.data?.hasAffiliateLink && item.affiliateCommentStatus === "pending_confirmation" ? (
+                  <Button label="ยืนยันส่ง Affiliate Link ในคอมเมนต์" variant="primary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => postPhotoAffiliateComment.mutate({ postId: item.id, confirmPendingConfirmation: true })} />
+                ) : null}
+                {status === "published" && item.providerPostId && photoReadiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || ((!item.affiliateCommentStatus || item.affiliateCommentStatus === "needs_user_action") && ["none", "pending_first_comment", "comment_permission_missing", "manual_handoff"].includes(String(item.affiliateLinkStatus)))) ? (
+                  <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "เพิ่มงาน Affiliate Link ในคอมเมนต์"} variant="secondary" isLoading={postPhotoAffiliateComment.isPending} onClick={() => {
                     const confirmNoExistingComment = item.affiliateCommentStatus === "uncertain";
                     if (confirmNoExistingComment && !window.confirm("กรุณาตรวจโพสต์บน Facebook ก่อน หากไม่พบคอมเมนต์ Affiliate ให้กดยืนยันส่งใหม่")) return;
-                    postPhotoAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : {}) });
+                    postPhotoAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : { prepareConfirmation: true }) });
                   }} />
                 ) : null}
                 {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
@@ -443,12 +454,12 @@ export function FacebookReelsPublishCard(props: {
         <Text type="supporting" color="secondary">
           Affiliate Link: {readiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ใช้ URL ที่บันทึกไว้และคง tracking เดิม การคลิกและ Affiliate Attribution ต้องตรวจสอบกับ Meta อีกครั้ง
         </Text>
-        {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="ต้องเชื่อมต่อเพจพร้อมสิทธิ์คอมเมนต์" collapsible={false}><Text>เลือกตำแหน่งนี้ได้ แต่ยังส่งคอมเมนต์ไม่ได้จนกว่า Facebook Page จะได้รับสิทธิ์ pages_manage_engagement กรุณาเชื่อมต่อ Facebook ใหม่และอนุมัติสิทธิ์นี้</Text></Banner> : null}
+        {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ" collapsible={false}><Text>ตั้งเวลา/เผยแพร่ Reel ได้ตามปกติ แต่ต้องเชื่อมต่อ Facebook พร้อมสิทธิ์ pages_manage_engagement ก่อนกดยืนยันส่ง Affiliate Link ในคอมเมนต์</Text></Banner> : null}
         <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
         {scheduleEnabled ? <VStack gap={1}>
           <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
           <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า {scheduleMinimumMinutes} นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
-          <Text type="supporting" color="secondary">{affiliateMode === "first_comment" ? "โหมดคอมเมนต์แรกใช้ Worker เผยแพร่เมื่อถึงเวลา แล้วส่งคอมเมนต์ต่อ" : "ระบบจะส่งวิดีโอให้ Facebook และให้ Facebook จัดคิวเผยแพร่ตามเวลานี้"}</Text>
+          <Text type="supporting" color="secondary">ระบบจะส่งวิดีโอให้ Facebook จัดคิวเผยแพร่ตามเวลานี้{affiliateMode === "first_comment" ? " แล้วแสดงงานคอมเมนต์ให้ยืนยันส่งหลังโพสต์สำเร็จ" : ""}</Text>
         </VStack> : null}
         {affiliateMode === "manual_native" ? (
           <Banner title="ดำเนินการติดแท็กสินค้าใน Facebook ด้วยตนเอง" collapsible={false}>
@@ -484,14 +495,18 @@ export function FacebookReelsPublishCard(props: {
             <VStack key={item.id} gap={1}>
               <Text type="label">{STATUS_LABELS[status] ?? status}</Text>
               {status === "scheduled" && item.scheduledAt ? <Text type="supporting">กำหนดเผยแพร่ {formatScheduledAt(item.scheduledAt)}</Text> : null}
-              <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+              <Text type="supporting">Affiliate: {String(item.affiliateLinkStatus)}{item.affiliateCommentStatus ? ` · คอมเมนต์: ${COMMENT_STATUS_LABELS[String(item.affiliateCommentStatus)] ?? String(item.affiliateCommentStatus)}` : ""} · การเปิดเผยเชิงพาณิชย์: {String(item.commercialDisclosureStatus)} · การระบุยอดขาย: {String(item.attributionVerificationStatus)}</Text>
+              {item.affiliateCommentStatus === "pending_confirmation" ? <Banner title="งานคอมเมนต์ค้างรอยืนยัน" collapsible={false}><Text>โพสต์ Facebook สำเร็จแล้ว แต่ยังไม่ได้ส่ง Affiliate Link กรุณาตรวจสอบโพสต์และลิงก์ แล้วกดยืนยันส่งคอมเมนต์</Text></Banner> : null}
               {item.affiliateCommentStatus === "uncertain" ? <Banner title="ตรวจคอมเมนต์ Affiliate ก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจรับคอมเมนต์แล้ว กรุณาเปิดโพสต์ตรวจสอบก่อน เพื่อป้องกันการลงลิงก์ซ้ำ</Text></Banner> : null}
               {item.providerPostId ? <Text type="supporting">Facebook ID: {item.providerPostId}</Text> : null}
-              {status === "published" && item.providerPostId && readiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || (item.affiliateLinkStatus === "none" && !item.affiliateCommentStatus)) ? (
-                <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "โพสต์ Affiliate Link ในคอมเมนต์แรก"} variant="secondary" isLoading={postAffiliateComment.isPending} onClick={() => {
+              {status === "published" && item.providerPostId && readiness.data?.hasAffiliateLink && item.affiliateCommentStatus === "pending_confirmation" ? (
+                <Button label="ยืนยันส่ง Affiliate Link ในคอมเมนต์" variant="primary" isLoading={postAffiliateComment.isPending} onClick={() => postAffiliateComment.mutate({ postId: item.id, confirmPendingConfirmation: true })} />
+              ) : null}
+              {status === "published" && item.providerPostId && readiness.data?.hasAffiliateLink && (item.affiliateCommentStatus === "uncertain" || ((!item.affiliateCommentStatus || item.affiliateCommentStatus === "needs_user_action") && ["none", "pending_first_comment", "comment_permission_missing", "manual_handoff"].includes(String(item.affiliateLinkStatus)))) ? (
+                <Button label={item.affiliateCommentStatus === "uncertain" ? "ตรวจแล้วไม่พบคอมเมนต์ · ส่งใหม่" : "เพิ่มงาน Affiliate Link ในคอมเมนต์"} variant="secondary" isLoading={postAffiliateComment.isPending} onClick={() => {
                   const confirmNoExistingComment = item.affiliateCommentStatus === "uncertain";
                   if (confirmNoExistingComment && !window.confirm("กรุณาตรวจโพสต์บน Facebook ก่อน หากไม่พบคอมเมนต์ Affiliate ให้กดยืนยันส่งใหม่")) return;
-                  postAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : {}) });
+                  postAffiliateComment.mutate({ postId: item.id, ...(confirmNoExistingComment ? { confirmNoExistingComment: true } : { prepareConfirmation: true }) });
                 }} />
               ) : null}
               {item.affiliateCommentStatus === "requesting" ? <Text>กำลังส่ง Affiliate Link ไปยังคอมเมนต์ Facebook</Text> : null}
