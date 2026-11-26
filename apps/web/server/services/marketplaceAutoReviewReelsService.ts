@@ -26,6 +26,7 @@ import {
 import { getDb, type DrizzleDB } from "../db";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { buildMarketplaceAutoReviewPublishJobKeys } from "./marketplaceAutoReviewPublishJobKeys";
 import {
   finishFacebookReelUpload,
   getFacebookReelStatus,
@@ -374,6 +375,7 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   }
 
   try {
+    const jobKeys = buildMarketplaceAutoReviewPublishJobKeys({ format: "reels", intentHash, attempt: publishAttempt, purpose: "publish" });
     const job = await createControlPlaneJob({
       context: {
         tenantId: input.tenantId,
@@ -381,15 +383,15 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
         actorId: input.userId,
         authorizationScope: "marketplace-auto-review:facebook-reels-publish",
         correlationId: `marketplace-reels:${pkg.run.id}`,
-        idempotencyKey: `marketplace-reels:${input.tenantId}:${pkg.run.id}:${intentHash}:attempt:${publishAttempt}`,
+        idempotencyKey: jobKeys.idempotencyKey,
       },
       definition: {
         contractVersion: MARKETPLACE_REELS_CONTRACT_VERSION,
         jobType: MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
-        idempotencyKey: `marketplace-reels:${input.tenantId}:${pkg.run.id}:${intentHash}:attempt:${publishAttempt}`,
-        activeDedupeKey: `marketplace-reels:${pkg.run.id}:${input.pageId}:${intentHash}`,
+        idempotencyKey: jobKeys.idempotencyKey,
+        activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
         timeoutPolicy: { softTimeoutMs: 15 * 60_000, hardTimeoutMs: 30 * 60_000 },
         requiredCapabilities: { runtime: "node_job_worker", provider: "meta", format: "facebook_reel" },
@@ -547,7 +549,8 @@ export async function resumeMarketplaceAutoReviewReelsUpload(input: {
   if (!intentHash || !runId) fail("REELS_PUBLISH_INTENT_INVALID", "Publishing intent binding is incomplete");
   const nextMetadata = { ...metadata, resumeAttempt: attempt, videoPublicationStatus: "queued", reconciliation: { state: "resume_queued", checkedAt: new Date().toISOString() } };
   await db.update(socialPosts).set({ metadata: nextMetadata, errorMessage: null, updatedAt: new Date() }).where(eq(socialPosts.id, post.id));
-  const idempotencyKey = `marketplace-reels:${input.tenantId}:${runId}:${intentHash}:resume:${attempt}`;
+  const jobKeys = buildMarketplaceAutoReviewPublishJobKeys({ format: "reels", intentHash, attempt, purpose: "resume" });
+  const idempotencyKey = jobKeys.idempotencyKey;
   try {
     const job = await createControlPlaneJob({
       context: {
@@ -564,7 +567,7 @@ export async function resumeMarketplaceAutoReviewReelsUpload(input: {
         executionClass: "long",
         input: { postId: post.id, runId, intentHash },
         idempotencyKey,
-        activeDedupeKey: `marketplace-reels:${runId}:${post.pageId}:${intentHash}`,
+        activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
         timeoutPolicy: { softTimeoutMs: 15 * 60_000, hardTimeoutMs: 30 * 60_000 },
         requiredCapabilities: { runtime: "node_job_worker", provider: "meta", format: "facebook_reel", mode: "resume" },

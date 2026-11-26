@@ -18,6 +18,7 @@ import { getDb, type DrizzleDB } from "../db";
 import { storageStreamFile } from "../storage";
 import { decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { buildMarketplaceAutoReviewPublishJobKeys } from "./marketplaceAutoReviewPublishJobKeys";
 import { publishFacebookPagePhoto, readFacebookPagePhoto } from "./facebookPhotoPublishGateway";
 
 export const MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE = "social.facebook.photo.publish";
@@ -372,15 +373,16 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
   if (snapshot.affiliateMode === "manual_native") return { postId: post.id, status: "needs_user_action" as const, intentHash, manualHandoff: true };
 
   try {
+    const jobKeys = buildMarketplaceAutoReviewPublishJobKeys({ format: "photo", intentHash, attempt: publishAttempt, purpose: "publish" });
     const job = await createControlPlaneJob({
-      context: { tenantId: input.tenantId, actorType: "user", actorId: input.userId, authorizationScope: "marketplace-auto-review:facebook-photo-publish", correlationId: `marketplace-photo:${pkg.run.id}`, idempotencyKey: `marketplace-photo:${input.tenantId}:${pkg.run.id}:${intentHash}:attempt:${publishAttempt}` },
+      context: { tenantId: input.tenantId, actorType: "user", actorId: input.userId, authorizationScope: "marketplace-auto-review:facebook-photo-publish", correlationId: `marketplace-photo:${pkg.run.id}`, idempotencyKey: jobKeys.idempotencyKey },
       definition: {
         contractVersion: PHOTO_POST_CONTRACT_VERSION,
         jobType: MARKETPLACE_AUTO_REVIEW_PHOTO_POST_JOB_TYPE,
         executionClass: "long",
         input: { postId: post.id, runId: pkg.run.id, intentHash },
-        idempotencyKey: `marketplace-photo:${input.tenantId}:${pkg.run.id}:${intentHash}:attempt:${publishAttempt}`,
-        activeDedupeKey: `marketplace-photo:${pkg.run.id}:${input.pageId}:${intentHash}`,
+        idempotencyKey: jobKeys.idempotencyKey,
+        activeDedupeKey: jobKeys.activeDedupeKey,
         retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: [] },
         timeoutPolicy: { softTimeoutMs: 5 * 60_000, hardTimeoutMs: 10 * 60_000 },
         requiredCapabilities: { runtime: "node_job_worker", provider: "meta", format: "facebook_photo_post" },
