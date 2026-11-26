@@ -188,6 +188,12 @@ describe("FacebookReelsPublishCard", () => {
     }));
   });
 
+  it("does not guess a Page when multiple ready Facebook Pages are available", () => {
+    mocks.readiness.pages.push({ id: 13, label: "Second Page", publishingReady: true, firstCommentReady: true, publishingIssue: null });
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    expect((screen.getByLabelText("Facebook Page") as HTMLSelectElement).value).toBe("");
+  });
+
   it("supports placing the Photo Post affiliate URL in the first comment", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));

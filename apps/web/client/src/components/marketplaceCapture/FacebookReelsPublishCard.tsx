@@ -151,9 +151,10 @@ export function FacebookReelsPublishCard(props: {
 
   const availablePages = format === "photo" ? photoReadiness.data?.pages : readiness.data?.pages;
   useEffect(() => {
+    if (!availablePages) return;
     if (availablePages?.some(page => String(page.id) === pageId && page.publishingReady)) return;
-    const firstReady = availablePages?.find(page => page.publishingReady);
-    if (firstReady) setPageId(String(firstReady.id));
+    const readyPages = availablePages.filter(page => page.publishingReady);
+    setPageId(readyPages.length === 1 ? String(readyPages[0].id) : "");
   }, [availablePages, pageId]);
 
   useEffect(() => {
