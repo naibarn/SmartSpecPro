@@ -165,6 +165,13 @@ describe("FacebookReelsPublishCard", () => {
     expect(mocks.mutate).not.toHaveBeenCalled();
   });
 
+  it("allows retry after an expired publication is reported as failed", () => {
+    mocks.history = [{ id: 9, status: "failed", affiliateLinkStatus: "pending", commercialDisclosureStatus: "not_provided", attributionVerificationStatus: "unverified", providerPostId: null, permalink: null, errorMessage: "The queued worker expired before it started." }];
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.change(screen.getByLabelText("Facebook Page"), { target: { value: "12" } });
+    expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeEnabled();
+  });
+
   it("does not publish when history cannot be checked and never enables first comment", () => {
     mocks.historyError = true;
     render(<FacebookReelsPublishCard runId="run-1" />);

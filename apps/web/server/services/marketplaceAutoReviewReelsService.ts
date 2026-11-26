@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { TRPCError } from "@trpc/server";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { AUTO_REVIEW_PUBLISH_HASHTAG, AUTO_REVIEW_PUBLISH_MAX_HASHTAGS } from "../../shared/marketplaceAutoReview/publishingHashtags";
 
@@ -40,9 +40,24 @@ const MARKETPLACE_REELS_CONTRACT_VERSION = "feature-186-v1";
 const MAX_REELS_BYTES = 1024 * 1024 * 1024;
 const ACTIVE_JOB_STATUSES = ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"] as const;
 const affiliateModeSchema = z.enum(["description", "first_comment", "manual_native", "none"]);
+const ACTIVE_REELS_PUBLISH_STATES = new Set([
+  "queued", "preflight", "token_check", "uploading", "processing", "publish_requested", "reconciling",
+]);
 
 export type AffiliatePublishMode = z.infer<typeof affiliateModeSchema>;
 export type ReelsPublishState = "queued" | "preflight" | "needs_connection" | "token_check" | "uploading" | "processing" | "publish_requested" | "reconciling" | "published" | "needs_user_action" | "failed" | "cancelled";
+
+export function resolveUnstartedReelsPublicationStatus(input: {
+  publicationStatus: string;
+  jobStatus: string;
+  jobStartedAt: Date | null;
+  hasExternalVideoSession: boolean;
+}): ReelsPublishState | null {
+  if (!ACTIVE_REELS_PUBLISH_STATES.has(input.publicationStatus)) return null;
+  if (!["failed", "expired", "canceled", "cancelled"].includes(input.jobStatus)) return null;
+  if (input.hasExternalVideoSession) return "needs_user_action";
+  return input.jobStartedAt ? null : "failed";
+}
 
 const publishSnapshotSchema = z.object({
   caption: z.string().trim().max(2000),
@@ -269,8 +284,28 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   )).limit(1);
   const existingMetadata = record(existing?.metadata);
   const existingPublicationStatus = String(existingMetadata.videoPublicationStatus ?? "queued");
+  const [priorPublishJob] = existing ? await db.select({
+    status: workerJobs.status,
+    startedAt: workerJobs.startedAt,
+  }).from(workerJobs).where(and(
+    eq(workerJobs.tenantId, input.tenantId),
+    eq(workerJobs.requestedByUserId, input.userId),
+    eq(workerJobs.jobType, MARKETPLACE_AUTO_REVIEW_REELS_JOB_TYPE),
+    existingMetadata.publishingWorkerJobId
+      ? eq(workerJobs.id, String(existingMetadata.publishingWorkerJobId))
+      : sql`${workerJobs.inputJson}->>'postId' = ${String(existing.id)}`,
+  )).orderBy(desc(workerJobs.createdAt)).limit(1) : [];
+  const recoveredQueueStatus = priorPublishJob ? resolveUnstartedReelsPublicationStatus({
+    publicationStatus: existingPublicationStatus,
+    jobStatus: String(priorPublishJob.status),
+    jobStartedAt: priorPublishJob.startedAt,
+    hasExternalVideoSession: Boolean(existingMetadata.externalVideoId || existingMetadata.finishRequestedAt),
+  }) : null;
   const retryableWithoutExternalSession = Boolean(
-    existing && ["failed", "needs_connection"].includes(existingPublicationStatus) && !existingMetadata.externalVideoId && snapshot.affiliateMode !== "manual_native"
+    existing && (
+      (["failed", "needs_connection"].includes(existingPublicationStatus) && !existingMetadata.externalVideoId) ||
+      recoveredQueueStatus === "failed"
+    ) && snapshot.affiliateMode !== "manual_native"
   );
   const needsQueueRepair = Boolean(existing && existingPublicationStatus === "queued" && !existingMetadata.publishingWorkerJobId && snapshot.affiliateMode !== "manual_native");
   if (existing && !retryableWithoutExternalSession && !needsQueueRepair) {

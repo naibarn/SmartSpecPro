@@ -6,6 +6,7 @@ import {
   getMarketplaceAutoReviewReelsReadiness,
   hashFacebookReelsContentSnapshot,
   marketplaceAutoReviewReelsWorkerInputSchema,
+  resolveUnstartedReelsPublicationStatus,
 } from "../marketplaceAutoReviewReelsService";
 
 const { getDb, listPublishingPages } = vi.hoisted(() => ({
@@ -61,6 +62,36 @@ describe("Auto Review Reel page selection", () => {
 });
 
 describe("Marketplace Auto Review Facebook Reels contract", () => {
+  it("marks an expired job that never started as safely retryable when no Meta session exists", () => {
+    expect(resolveUnstartedReelsPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: null,
+      hasExternalVideoSession: false,
+    })).toBe("failed");
+  });
+
+  it("does not treat a started or externally staged Reel job as safe to retry", () => {
+    expect(resolveUnstartedReelsPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: new Date(),
+      hasExternalVideoSession: false,
+    })).toBeNull();
+    expect(resolveUnstartedReelsPublicationStatus({
+      publicationStatus: "queued",
+      jobStatus: "expired",
+      jobStartedAt: null,
+      hasExternalVideoSession: true,
+    })).toBe("needs_user_action");
+    expect(resolveUnstartedReelsPublicationStatus({
+      publicationStatus: "published",
+      jobStatus: "expired",
+      jobStartedAt: null,
+      hasExternalVideoSession: true,
+    })).toBeNull();
+  });
+
   it("registers the publisher in the canonical worker executor registry", () => {
     expect(defaultJobExecutorRegistry.resolve("social.facebook.reels.publish", "feature-186-v1")).toBeDefined();
   });
