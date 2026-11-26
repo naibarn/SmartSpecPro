@@ -131,6 +131,17 @@ export function hasMarketplaceAutoReviewPhotoPostExternalAttempt(metadataValue: 
   return Boolean(text(metadata.photoPublishRequestedAt) || text(metadata.externalPhotoId) || metadata.photoPublicationStatus === "published");
 }
 
+export function canConfirmMarketplaceAutoReviewPhotoPostAbsent(input: {
+  status: string;
+  failureCode: unknown;
+  externalPhotoId: unknown;
+  providerPostId: unknown;
+}): boolean {
+  return input.status === "needs_user_action" &&
+    input.failureCode === "PHOTO_PUBLISH_OUTCOME_UNCERTAIN" &&
+    !text(input.externalPhotoId) && !text(input.providerPostId);
+}
+
 export function assertMarketplaceAutoReviewPhotoRunOwnership(
   run: unknown,
   expected: { tenantId: string; userId: number },

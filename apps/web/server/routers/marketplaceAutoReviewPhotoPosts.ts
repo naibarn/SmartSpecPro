@@ -8,6 +8,7 @@ import { socialPosts, workerJobs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import {
   getMarketplaceAutoReviewPhotoPostReadiness,
+  canConfirmMarketplaceAutoReviewPhotoPostAbsent,
   confirmMarketplaceAutoReviewPhotoPostAbsent,
   reconcileMarketplaceAutoReviewPhotoPost,
   resolveUnstartedPhotoPublicationStatus,
@@ -130,9 +131,10 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
           jobStartedAt: linkedJob.startedAt,
           hasExternalPhotoAttempt: Boolean(metadata.photoPublishRequestedAt || metadata.externalPhotoId || publicationStatus === "published"),
         }) : null;
+        const status = recoveredStatus ?? publicationStatus;
         return {
           id: row.id,
-          status: recoveredStatus ?? publicationStatus,
+          status,
           scheduledAt: row.scheduledAt,
           selectedVariant: metadata.selectedPhotoVariant ?? null,
           affiliateLinkStatus: metadata.affiliateLinkStatus ?? "unknown",
@@ -142,9 +144,12 @@ export const marketplaceAutoReviewPhotoPostsRouter = router({
           providerPostId: row.providerPostId,
           permalink: typeof metadata.permalink === "string" ? metadata.permalink : null,
           canReconcile: typeof metadata.externalPhotoId === "string",
-          canConfirmNoPhotoExists: recoveredStatus === "needs_user_action" &&
-            metadata.failureCode === "PHOTO_PUBLISH_OUTCOME_UNCERTAIN" &&
-            !metadata.externalPhotoId && !row.providerPostId,
+          canConfirmNoPhotoExists: canConfirmMarketplaceAutoReviewPhotoPostAbsent({
+            status,
+            failureCode: metadata.failureCode,
+            externalPhotoId: metadata.externalPhotoId,
+            providerPostId: row.providerPostId,
+          }),
           manualHandoff: metadata.manualHandoff ?? null,
           errorMessage: recoveredStatus === "failed"
             ? "งานเผยแพร่หมดอายุก่อนเริ่มส่งรูปไป Facebook รูปยังไม่ถูกส่ง และสามารถลองเผยแพร่ใหม่ได้"

@@ -15,6 +15,7 @@ import {
   startMarketplaceAutoReviewPhotoPost,
   executeMarketplaceAutoReviewPhotoPostPublish,
   confirmMarketplaceAutoReviewPhotoPostAbsent,
+  canConfirmMarketplaceAutoReviewPhotoPostAbsent,
 } from "../marketplaceAutoReviewPhotoPostService";
 
 const { getDb, listPublishingPages, storageStreamFile, createControlPlaneJob, decrypt, publishFacebookPagePhoto, readFacebookPagePhoto } = vi.hoisted(() => ({
@@ -387,6 +388,15 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
       },
     });
     expect(hasMarketplaceAutoReviewPhotoPostExternalAttempt(updates[0].metadata)).toBe(false);
+  });
+
+  it("allows absence confirmation when needs_user_action comes from the saved post status", () => {
+    expect(canConfirmMarketplaceAutoReviewPhotoPostAbsent({
+      status: "needs_user_action",
+      failureCode: "PHOTO_PUBLISH_OUTCOME_UNCERTAIN",
+      externalPhotoId: null,
+      providerPostId: null,
+    })).toBe(true);
   });
 
   it("accepts worker references but rejects client-provided image URLs", () => {
