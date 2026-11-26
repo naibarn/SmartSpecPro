@@ -7,6 +7,7 @@ import {
   hashFacebookReelsContentSnapshot,
   marketplaceAutoReviewReelsWorkerInputSchema,
   resolveUnstartedReelsPublicationStatus,
+  selectExecutableFfprobe,
 } from "../marketplaceAutoReviewReelsService";
 
 const { getDb, listPublishingPages } = vi.hoisted(() => ({
@@ -62,6 +63,15 @@ describe("Auto Review Reel page selection", () => {
 });
 
 describe("Marketplace Auto Review Facebook Reels contract", () => {
+  it("skips unavailable ffprobe candidates and falls back to PATH", () => {
+    const available = selectExecutableFfprobe(
+      ["/usr/bin/ffprobe", "/usr/local/bin/ffprobe", "/home/dev/.local/bin/ffprobe"],
+      candidate => candidate === "/home/dev/.local/bin/ffprobe",
+    );
+    expect(available).toBe("/home/dev/.local/bin/ffprobe");
+    expect(selectExecutableFfprobe(["/usr/bin/ffprobe"], () => false)).toBe("ffprobe");
+  });
+
   it("marks an expired job that never started as safely retryable when no Meta session exists", () => {
     expect(resolveUnstartedReelsPublicationStatus({
       publicationStatus: "queued",

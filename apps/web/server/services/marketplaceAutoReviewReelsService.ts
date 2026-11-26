@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
+import { accessSync, constants, createReadStream, createWriteStream } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -447,11 +447,27 @@ export async function startMarketplaceAutoReviewReelsPublish(input: {
   }
 }
 
+export function selectExecutableFfprobe(
+  candidates: Array<string | undefined>,
+  canExecute: (candidate: string) => boolean = candidate => {
+    try {
+      accessSync(candidate, constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+): string {
+  return candidates.find(candidate => candidate && canExecute(candidate)) ?? "ffprobe";
+}
+
 function resolveFfprobe(): string {
-  for (const path of [process.env.FFPROBE_PATH, "/usr/bin/ffprobe", "/usr/local/bin/ffprobe", join(homedir(), ".local/bin/ffprobe")]) {
-    if (path) return path;
-  }
-  return "ffprobe";
+  return selectExecutableFfprobe([
+    process.env.FFPROBE_PATH,
+    "/usr/bin/ffprobe",
+    "/usr/local/bin/ffprobe",
+    join(homedir(), ".local/bin/ffprobe"),
+  ]);
 }
 
 async function stageAndInspectArtifact(input: { storageRef: string; expectedSize: number; expectedChecksum: string }) {
