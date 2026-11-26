@@ -497,12 +497,13 @@ export function FacebookReelsPublishCard(props: {
         <Text type="supporting" color="secondary">
           Affiliate Link: {readiness.data?.hasAffiliateLink ? "Available" : "Not configured"} · ใช้ URL ที่บันทึกไว้และคง tracking เดิม การคลิกและ Affiliate Attribution ต้องตรวจสอบกับ Meta อีกครั้ง
         </Text>
-        {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ" collapsible={false}><Text>ตั้งเวลา/เผยแพร่ Reel ได้ตามปกติ แต่ต้องเชื่อมต่อ Facebook พร้อมสิทธิ์ pages_manage_engagement ก่อนกดยืนยันส่ง Affiliate Link ในคอมเมนต์</Text></Banner> : null}
+        {affiliateMode === "first_comment" && selectedPage?.firstCommentReady ? <Text type="supporting" color="secondary">เมื่อ Facebook ยืนยันเผยแพร่ Reel แล้ว ระบบจะใส่ Affiliate Link เป็นความคิดเห็นแรกให้อัตโนมัติ</Text> : null}
+        {affiliateMode === "first_comment" && selectedPage && !selectedPage.firstCommentReady ? <Banner title="ยังส่ง Affiliate Link ในคอมเมนต์อัตโนมัติไม่ได้" collapsible={false}><Text>เผยแพร่หรือตั้งเวลา Reel ได้ แต่ Facebook Page นี้ต้องมีสิทธิ์ pages_manage_engagement ก่อน ระบบจึงจะส่งลิงก์เป็นความคิดเห็นแรกได้ หลังโพสต์สำเร็จจะมีปุ่มให้ยืนยันส่งอีกครั้ง</Text></Banner> : null}
         <CheckboxInput label="ตั้งเวลาโพสต์" value={scheduleEnabled} onChange={setScheduleEnabled} />
         {scheduleEnabled ? <VStack gap={1}>
           <DateTimeInput label="วันและเวลาเผยแพร่" value={scheduleAt || undefined} onChange={value => setScheduleAt(value ?? "")} min={toLocalDateTimeValue(new Date(Date.now() + scheduleMinimumMinutes * 60_000))} max={toLocalDateTimeValue(new Date(Date.now() + 30 * 24 * 60 * 60_000))} hourFormat="24h" />
           <Text type="supporting" color="secondary">ตั้งเวลาได้ล่วงหน้า {scheduleMinimumMinutes} นาทีถึง 30 วัน ตามเขตเวลาของเครื่องนี้</Text>
-          <Text type="supporting" color="secondary">ระบบจะส่งวิดีโอให้ Facebook จัดคิวเผยแพร่ตามเวลานี้{affiliateMode === "first_comment" ? " แล้วแสดงงานคอมเมนต์ให้ยืนยันส่งหลังโพสต์สำเร็จ" : ""}</Text>
+          <Text type="supporting" color="secondary">ระบบจะส่งวิดีโอให้ Facebook จัดคิวเผยแพร่ตามเวลานี้{affiliateMode === "first_comment" ? selectedPage?.firstCommentReady ? " และจะใส่ Affiliate Link ในความคิดเห็นแรกเมื่อ Reel เผยแพร่สำเร็จ" : " แล้วให้ยืนยันส่งลิงก์ในคอมเมนต์หลัง Reel เผยแพร่สำเร็จ" : ""}</Text>
         </VStack> : null}
         {affiliateMode === "manual_native" ? (
           <Banner title="ดำเนินการติดแท็กสินค้าใน Facebook ด้วยตนเอง" collapsible={false}>
