@@ -281,14 +281,9 @@ function normalizeSpeakerLabel(value: string): string {
 export function inferMarketplaceSingleSpeakerDialogueDefault(
   cast: readonly StagedCastMember[]
 ): string | undefined {
-  if (cast.length !== 1) return undefined;
-  const onlyMember = cast[0]!;
   const eligibleSpeakers = selectStagedLeadCast([...cast]);
-  return eligibleSpeakers.length === 1 &&
-    eligibleSpeakers[0]!.castId === onlyMember.castId &&
-    onlyMember.name.trim()
-    ? onlyMember.name.trim()
-    : undefined;
+  if (eligibleSpeakers.length !== 1) return undefined;
+  return eligibleSpeakers[0]!.name.trim() || undefined;
 }
 
 function inferSingleShotDialogueSpeaker(

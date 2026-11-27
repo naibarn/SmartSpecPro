@@ -44,7 +44,18 @@
 - [x] Resume one paused generic automatic-step failure after a code fix so already-running legacy continuations can recover; keep permanent and exhausted failures paused.
 - [x] Run focused checks for automation and worker services.
 
-### Task 3: Integrate, release, and verify
+### Task 3: Explain solo speaker-matching behavior
+
+**Files:** `marketplaceAutoReviewVideoPromptSkillRunner.ts`,
+`StagedCheckpointReviewPanel.tsx`, focused service and component tests.
+
+- [x] Reproduce why a solo-narration run with silent supporting cast skipped
+  multi-speaker matching and made the per-shot section disappear.
+- [x] Show the solo-mode reason in the shot panel and use the sole eligible
+  adult lead as the detection fallback even when supporting cast is present.
+- [x] Verify the targeted service and component tests.
+
+### Task 4: Integrate, release, and verify
 
 - [ ] Run targeted fast gate and inspect owned diff.
 - [ ] Commit/push through the configured canonical path, reconcile `main` with `origin/main`.

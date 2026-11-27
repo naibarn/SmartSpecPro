@@ -81,3 +81,12 @@ completed outputs and resume from the first incomplete, safe checkpoint.
 - UI status distinguishes recovering, recovered, and blocked; users do not need
   to inspect Worker Jobs or manually fill missing prompts after recoverable
   failures.
+
+## Follow-up: speaker matching visibility
+
+- Solo narration intentionally does not require multi-speaker face mapping.
+  The shot panel now explains that decision whenever a non-empty transcript has
+  no speaker labels, instead of making the speaker-matching section disappear.
+- When there is exactly one eligible adult lead, infer that lead even if the
+  selected roster also contains silent adult/minor supporting characters. A
+  child remains ineligible to speak or become a speaker fallback.

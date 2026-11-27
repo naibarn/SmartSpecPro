@@ -478,9 +478,10 @@ export type StagedSpeakerMatchBatchStatus = {
   failedShotIds: number[];
 };
 
-function ShotSpeakerBindingPanel(props: {
+export function ShotSpeakerBindingPanel(props: {
   shotId: number;
   dialogue: string;
+  soloNarration?: boolean;
   imageUrl?: string | null;
   people?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>;
   bindings?: Record<string, string>;
@@ -534,7 +535,22 @@ function ShotSpeakerBindingPanel(props: {
     speakers.every(name => Boolean(draft[name])) &&
     new Set(speakers.map(name => draft[name])).size === speakers.length;
   const hasSavedMapping = speakers.length > 0 && speakers.every(name => Boolean(saved[name]));
-  if (!speakers.length || !props.imageUrl) return null;
+  if (!props.imageUrl) return null;
+  if (!speakers.length) {
+    if (!props.dialogue.trim()) return null;
+    return (
+      <Card variant="cyan" padding={4}>
+        <VStack as="section" gap={2} aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
+          <Heading level={4}>จับคู่ผู้พูดกับคนในภาพ</Heading>
+          <Text type="supporting" color="secondary">
+            {props.soloNarration
+              ? "โหมดพูดคนเดียว: ระบบใช้ผู้พูดหลักผู้ใหญ่คนเดียว จึงไม่ต้องจับคู่บทสนทนาหลายคนกับใบหน้า"
+              : "ยังจับคู่ไม่ได้เพราะบทพูดไม่มีชื่อผู้พูดหน้าบรรทัด กรุณาใช้รูปแบบ ชื่อตัวละคร: บทพูด แล้วบันทึกก่อนจับคู่"}
+          </Text>
+        </VStack>
+      </Card>
+    );
+  }
   return (
     <Card variant="cyan" padding={4}>
       <VStack as="section" gap={3} aria-label={`จับคู่ผู้พูดกับคนในภาพช็อตที่ ${props.shotId}`}>
@@ -4702,6 +4718,7 @@ export function StagedCheckpointReviewPanel(props: {
                     <ShotSpeakerBindingPanel
                       shotId={shot.shotId}
                       dialogue={shot.dialogue}
+                      soloNarration={!conversationModeActive}
                       imageUrl={shot.imageArtifactUrl}
                       people={shot.detectedPeople}
                       bindings={shot.speakerVisualBindings}
