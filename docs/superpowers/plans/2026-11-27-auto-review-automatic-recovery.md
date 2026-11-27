@@ -39,8 +39,9 @@
 **Files:** `apps/web/server/services/marketplaceAutoReviewAutomation.ts`, new focused automation tests if test seams permit.
 
 - [x] Add focused coverage that approved-image shots without current approved video prompts are selected individually; existing prompts are excluded.
-- [x] Replace all-shot bulk prompt generation with deterministic single-shot prompt-only worker admissions.
+- [x] Replace all-shot bulk prompt generation with deterministic single-shot prompt-only worker admissions and pass the configured public runtime URL.
 - [x] Persist per-shot worker IDs, allow at most two deterministic replacement attempts after terminal worker failures (including legacy jobs with a one-attempt policy), and preserve successful shot results.
+- [x] Resume one paused generic automatic-step failure after a code fix so already-running legacy continuations can recover; keep permanent and exhausted failures paused.
 - [x] Run focused checks for automation and worker services.
 
 ### Task 3: Integrate, release, and verify

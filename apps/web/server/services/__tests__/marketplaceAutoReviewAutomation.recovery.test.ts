@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   missingApprovedVideoPromptShots,
+  canAutoResumeContinuation,
   nextAutomaticRecoveryAttempt,
 } from "../marketplaceAutoReviewAutomation";
 
@@ -40,5 +41,31 @@ describe("nextAutomaticRecoveryAttempt", () => {
     expect(nextAutomaticRecoveryAttempt(1)).toBe(2);
     expect(nextAutomaticRecoveryAttempt(2)).toBeNull();
     expect(nextAutomaticRecoveryAttempt(-1)).toBe(1);
+  });
+});
+
+describe("canAutoResumeContinuation", () => {
+  it("resumes one paused automatic-step failure but leaves other and exhausted failures paused", () => {
+    expect(
+      canAutoResumeContinuation({
+        status: "paused_error",
+        errorCode: "automatic_step_failed",
+        workerJobIds: { automaticRecoveryAttempts: 0 },
+      })
+    ).toBe(true);
+    expect(
+      canAutoResumeContinuation({
+        status: "paused_error",
+        errorCode: "automatic_step_failed",
+        workerJobIds: { automaticRecoveryAttempts: 1 },
+      })
+    ).toBe(false);
+    expect(
+      canAutoResumeContinuation({
+        status: "paused_error",
+        errorCode: "speaker_matching_failed",
+        workerJobIds: { automaticRecoveryAttempts: 0 },
+      })
+    ).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
 import { StagedSequentialStoryboardMetadataV1Schema } from "@shared/marketplaceAutoReview/stagedContracts";
 import { stagedMetadataStateDigest } from "./marketplaceAutoReviewStagedCheckpointOperations";
+import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import {
   approveStagedAutoReviewCheckpoint,
   buildStagedApprovalExpectation,
@@ -129,6 +130,20 @@ export function nextAutomaticRecoveryAttempt(value: unknown): number | null {
   return previous < 0 ? 1 : previous < 2 ? previous + 1 : null;
 }
 
+export function canAutoResumeContinuation(input: {
+  status: unknown;
+  errorCode: unknown;
+  workerJobIds?: unknown;
+}): boolean {
+  const attempts = Number(record(input.workerJobIds).automaticRecoveryAttempts ?? 0);
+  return (
+    input.status === "paused_error" &&
+    input.errorCode === "automatic_step_failed" &&
+    Number.isSafeInteger(attempts) &&
+    attempts < 1
+  );
+}
+
 async function getJobById(db: any, tenantId: string, jobId: string) {
   if (!jobId) return null;
   const [job] = await db
@@ -150,7 +165,8 @@ async function getJobByKey(db: any, tenantId: string, idempotencyKey: string) {
 async function updateContinuation(
   db: any,
   input: { runId: string; userId: number; tenantId: string },
-  update: (current: AutoContinuation) => Partial<AutoContinuation>
+  update: (current: AutoContinuation) => Partial<AutoContinuation>,
+  allowPaused = false
 ): Promise<boolean> {
   const [run] = await db
     .select()
@@ -167,7 +183,13 @@ async function updateContinuation(
   const metadata = record(run.metadataJson);
   const pipeline = record(metadata.stagedPipeline);
   const current = continuationFromRun(run);
-  if (!current || current.status !== "running") return false;
+  if (
+    !current ||
+    (current.status !== "running" &&
+      !(allowPaused && current.status === "paused_error"))
+  ) {
+    return false;
+  }
   const changed = update(current);
   const nextContinuation: AutoContinuation = {
     ...current,
@@ -387,7 +409,25 @@ export async function reconcileStagedAutoReviewAutomation(input: {
     .limit(1);
   if (!run) return;
   const automation = continuationFromRun(run);
-  if (!automation || automation.status !== "running") return;
+  if (!automation) return;
+  if (automation.status !== "running") {
+    if (!canAutoResumeContinuation(automation)) return;
+    const recoveryAttempts =
+      Number(record(automation.workerJobIds).automaticRecoveryAttempts ?? 0) + 1;
+    const resumed = await updateContinuation(
+      db,
+      input,
+      () => ({
+        status: "running",
+        errorCode: undefined,
+        failedAt: undefined,
+        workerJobIds: { automaticRecoveryAttempts: recoveryAttempts },
+      }),
+      true
+    );
+    if (!resumed) return;
+    automation.status = "running";
+  }
 
   const rawMetadata = record(run.metadataJson);
   const parsed =
@@ -779,6 +819,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
           expectedStateDigest: stagedMetadataStateDigest(metadata),
           idempotencyKey: key,
           auth: { userId: input.userId, tenantId: input.tenantId },
+          runtime: { publicUrl: getCachedPublicAppUrl() },
           ...(automation.promptModel ? { model: automation.promptModel } : {}),
         });
         if ("workerJobId" in result && result.workerJobId) {
