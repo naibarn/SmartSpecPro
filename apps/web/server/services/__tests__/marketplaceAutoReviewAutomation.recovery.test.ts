@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { missingApprovedVideoPromptShots } from "../marketplaceAutoReviewAutomation";
+import {
+  missingApprovedVideoPromptShots,
+  nextAutomaticRecoveryAttempt,
+} from "../marketplaceAutoReviewAutomation";
 
 describe("missingApprovedVideoPromptShots", () => {
   it("returns only approved-image shots whose video prompt checkpoint is missing or stale", () => {
@@ -28,5 +31,14 @@ describe("missingApprovedVideoPromptShots", () => {
         checkpoints
       ).map(shot => shot.shotId)
     ).toEqual([2, 3]);
+  });
+});
+
+describe("nextAutomaticRecoveryAttempt", () => {
+  it("allows at most two replacement jobs after the initial worker job", () => {
+    expect(nextAutomaticRecoveryAttempt(0)).toBe(1);
+    expect(nextAutomaticRecoveryAttempt(1)).toBe(2);
+    expect(nextAutomaticRecoveryAttempt(2)).toBeNull();
+    expect(nextAutomaticRecoveryAttempt(-1)).toBe(1);
   });
 });

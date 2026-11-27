@@ -124,6 +124,11 @@ function isSucceededJob(status: unknown): boolean {
   return status === "succeeded" || status === "completed";
 }
 
+export function nextAutomaticRecoveryAttempt(value: unknown): number | null {
+  const previous = Number.isSafeInteger(Number(value)) ? Number(value) : 0;
+  return previous < 0 ? 1 : previous < 2 ? previous + 1 : null;
+}
+
 async function getJobById(db: any, tenantId: string, jobId: string) {
   if (!jobId) return null;
   const [job] = await db
@@ -610,6 +615,9 @@ export async function reconcileStagedAutoReviewAutomation(input: {
       const matchingJobIds = record(
         record(automation.workerJobIds).matchingByShot
       );
+      const matchingRecoveryAttempts = {
+        ...record(record(automation.workerJobIds).matchingRecoveryAttemptsByShot),
+      };
       const nextMatchingJobIds = { ...matchingJobIds };
       for (const shot of incompleteShots) {
         const shotId = Number(shot.shotId);
@@ -642,11 +650,47 @@ export async function reconcileStagedAutoReviewAutomation(input: {
         ) {
           return;
         }
-        const key = continuationKey(
+        const baseKey = continuationKey(
           input.runId,
           automation.planRevision,
           `speaker-${shotId}-${imageHash}`
         );
+        const previousJobId = text(matchingJobIds[String(shotId)]);
+        const previousJob = previousJobId
+          ? await getJobById(db, input.tenantId, previousJobId)
+          : await getJobByKey(db, input.tenantId, baseKey);
+        let key = baseKey;
+        if (previousJob && !isActiveJob(previousJob.status)) {
+          let retryAttempt = nextAutomaticRecoveryAttempt(
+            matchingRecoveryAttempts[String(shotId)] ?? 0
+          );
+          let retryJob: Awaited<ReturnType<typeof getJobByKey>> | null = null;
+          while (retryAttempt !== null) {
+            key = continuationKey(
+              input.runId,
+              automation.planRevision,
+              `speaker-retry-${shotId}-${imageHash}-${retryAttempt}`
+            );
+            retryJob = await getJobByKey(db, input.tenantId, key);
+            if (!retryJob || isActiveJob(retryJob.status)) break;
+            if (isSucceededJob(retryJob.status)) {
+              nextMatchingJobIds[String(shotId)] = retryJob.id;
+              await updateContinuation(db, input, current => ({
+                workerJobIds: {
+                  ...record(current.workerJobIds),
+                  matchingByShot: nextMatchingJobIds,
+                },
+              }));
+              return;
+            }
+            retryAttempt = nextAutomaticRecoveryAttempt(retryAttempt);
+          }
+          if (retryAttempt === null) {
+            await pauseContinuation(db, input, "speaker_matching_failed");
+            return;
+          }
+          matchingRecoveryAttempts[String(shotId)] = retryAttempt;
+        }
         const result = await detectStagedAutoReviewShotPeople({
           runId: input.runId,
           shotId,
@@ -659,6 +703,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
           workerJobIds: {
             ...record(current.workerJobIds),
             matchingByShot: nextMatchingJobIds,
+            matchingRecoveryAttemptsByShot: matchingRecoveryAttempts,
           },
         }));
       }
@@ -678,25 +723,54 @@ export async function reconcileStagedAutoReviewAutomation(input: {
       const videoPromptJobs = {
         ...record(record(automation.workerJobIds).videoPromptsByShot),
       };
+      const videoPromptRecoveryAttempts = {
+        ...record(
+          record(automation.workerJobIds).videoPromptRecoveryAttemptsByShot
+        ),
+      };
       for (const shot of missingShots) {
         const shotId = Number(shot.shotId);
-        const key = continuationKey(
+        const baseKey = continuationKey(
           input.runId,
           automation.planRevision,
           `video-prompt-${shotId}-${text(shot.imageArtifactHash)}`
         );
-        const existing = await getJobByKey(db, input.tenantId, key);
-        if (existing) {
-          videoPromptJobs[String(shotId)] = existing.id;
-          if (isFailedJob(existing.status)) {
+        const previousJobId = text(videoPromptJobs[String(shotId)]);
+        const previousJob = previousJobId
+          ? await getJobById(db, input.tenantId, previousJobId)
+          : await getJobByKey(db, input.tenantId, baseKey);
+        let key = baseKey;
+        if (previousJob && isActiveJob(previousJob.status)) continue;
+        if (previousJob && !isActiveJob(previousJob.status)) {
+          let retryAttempt = nextAutomaticRecoveryAttempt(
+            videoPromptRecoveryAttempts[String(shotId)] ?? 0
+          );
+          let retryJob: Awaited<ReturnType<typeof getJobByKey>> | null = null;
+          while (retryAttempt !== null) {
+            key = continuationKey(
+              input.runId,
+              automation.planRevision,
+              `video-prompt-retry-${shotId}-${text(shot.imageArtifactHash)}-${retryAttempt}`
+            );
+            retryJob = await getJobByKey(db, input.tenantId, key);
+            if (!retryJob || isActiveJob(retryJob.status)) break;
+            if (isSucceededJob(retryJob.status)) {
+              videoPromptJobs[String(shotId)] = retryJob.id;
+              await updateContinuation(db, input, current => ({
+                workerJobIds: {
+                  ...record(current.workerJobIds),
+                  videoPromptsByShot: videoPromptJobs,
+                },
+              }));
+              return;
+            }
+            retryAttempt = nextAutomaticRecoveryAttempt(retryAttempt);
+          }
+          if (retryAttempt === null) {
             await pauseContinuation(db, input, "video_prompt_generation_failed");
             return;
           }
-          if (isActiveJob(existing.status)) continue;
-          if (isSucceededJob(existing.status)) {
-            await pauseContinuation(db, input, "video_prompts_incomplete");
-            return;
-          }
+          videoPromptRecoveryAttempts[String(shotId)] = retryAttempt;
         }
         const result = await generateStagedAutoReviewShotPrompt({
           runId: input.runId,
@@ -714,6 +788,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
           workerJobIds: {
             ...record(current.workerJobIds),
             videoPromptsByShot: videoPromptJobs,
+            videoPromptRecoveryAttemptsByShot: videoPromptRecoveryAttempts,
           },
         }));
       }
