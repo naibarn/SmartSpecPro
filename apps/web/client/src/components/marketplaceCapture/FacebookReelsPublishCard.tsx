@@ -25,6 +25,7 @@ const IN_PROGRESS = new Set([
   "publish_requested", "reconciling",
 ]);
 const PHOTO_IN_PROGRESS = new Set(["queued", "uploading", "publish_requested", "reconciling"]);
+const PHOTO_VARIANT_BLOCKING = new Set(["queued", "scheduled", "preflight", "token_check", "uploading", "processing", "publish_requested", "reconciling", "needs_user_action", "published"]);
 const PHOTO_VARIANT_LABELS: Record<string, string> = {
   caption_source: "ภาพจาก Caption",
   character_reference: "ภาพอ้างอิงตัวละคร",
@@ -254,7 +255,11 @@ export function FacebookReelsPublishCard(props: {
   );
   const readyPhotoVariants = photoReadiness.data?.imageVariants.filter(image => image.status === "completed" && image.imageUrl) ?? [];
   const selectedPhotoPage = (photoReadiness.data?.pages ?? []).find(page => String(page.id) === pageId);
-  const photoHistoryHasUncertain = (photoHistory.data ?? []).some(item => ["scheduled", "needs_user_action", "reconciling", "publish_requested", "published"].includes(String(item.status)));
+  const selectedPhotoHistory = (photoHistory.data ?? []).filter(item => item.selectedVariant === photoVariant || (
+    !item.selectedVariant && PHOTO_VARIANT_BLOCKING.has(String(item.status))
+  ));
+  const photoHistoryHasUncertain = selectedPhotoHistory.some(item => PHOTO_VARIANT_BLOCKING.has(String(item.status)));
+  const selectedPhotoAlreadyPublished = selectedPhotoHistory.some(item => String(item.status) === "published");
   const photoCanPublish = Boolean(
     !photoReadiness.isFetching && photoReadiness.data?.featureEnabled && readyPhotoVariants.some(image => image.variant === photoVariant) && selectedPhotoPage?.publishingReady && caption.trim() && caption.length <= 2000 &&
     commercialDisclosure.length <= 500 && !invalidHashtags &&
@@ -362,7 +367,7 @@ export function FacebookReelsPublishCard(props: {
             {affiliateMode === "none" ? <CheckboxInput label="ยืนยันเผยแพร่โดยไม่ใส่ Affiliate link" value={allowNoAffiliate} onChange={setAllowNoAffiliate} /> : null}
             <TextArea label="ข้อความเปิดเผยความสัมพันธ์เชิงพาณิชย์ (ถ้ามี)" value={commercialDisclosure} onChange={setCommercialDisclosure} rows={2} maxLength={500} width="100%" placeholder="เว้นว่างได้ หากระบุไว้ใน Caption แล้วหรือไม่มีข้อความเพิ่มเติม" />
             <Banner title="ภาพนี้สร้างด้วย AI" collapsible={false}><Text>กรุณาตรวจและเปิดเผยตามข้อกำหนดของ Facebook ก่อนเผยแพร่ การเผยแพร่ภาพผ่าน API นี้ไม่มีช่องส่งค่า is_ai_generated โดยเฉพาะ</Text></Banner>
-            {photoHistoryHasUncertain ? <Banner title="ต้องตรวจสอบสถานะก่อนส่งซ้ำ" collapsible={false}><Text>Facebook อาจได้รับคำขอแล้ว กรุณาตรวจประวัติด้านล่างก่อนสร้างโพสต์ใหม่</Text></Banner> : null}
+            {photoHistoryHasUncertain ? <Banner title={selectedPhotoAlreadyPublished ? "ภาพนี้เผยแพร่แล้ว" : "ต้องตรวจสอบสถานะก่อนส่งซ้ำ"} collapsible={false}><Text>{selectedPhotoAlreadyPublished ? "ภาพที่เลือกนี้มีประวัติ Facebook ยืนยันเผยแพร่แล้ว เลือกภาพอื่นเพื่อสร้างโพสต์ใหม่" : "Facebook อาจได้รับคำขอของภาพที่เลือกแล้ว กรุณาตรวจประวัติก่อนส่งภาพเดิมซ้ำ"}</Text></Banner> : null}
             {error ? <Banner title="ส่งงานไม่สำเร็จ" collapsible={false}><Text>{error}</Text></Banner> : null}
             <HStack hAlign="end"><Button label={affiliateMode === "manual_native" ? "เตรียมข้อความและภาพสำหรับติดแท็กใน Facebook" : scheduleEnabled ? "ตั้งเวลา Photo Post" : "เผยแพร่ Photo Post"} variant="primary" isLoading={publishPhoto.isPending} isDisabled={!photoCanPublish || (scheduleEnabled && (!scheduleAt || affiliateMode === "manual_native"))} onClick={publishSelectedPhoto} /></HStack>
             <Heading level={4}>สถานะและประวัติ Photo Post</Heading>

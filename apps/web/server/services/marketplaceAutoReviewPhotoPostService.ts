@@ -423,10 +423,16 @@ export async function startMarketplaceAutoReviewPhotoPost(input: {
     eq(socialPosts.pageId, input.pageId),
     sql`${socialPosts.metadata}->>'source' = ${source}`,
     sql`${socialPosts.metadata}->>'autoReviewRunId' = ${pkg.run.id}`,
-    sql`${socialPosts.metadata}->>'intentHash' <> ${intentHash}`,
-  )).limit(1);
-  if (previousPhotoIntents.length) {
-    const previous = previousPhotoIntents[0];
+  )).orderBy(desc(socialPosts.createdAt)).limit(50);
+  const previousPhotoAsset = previousPhotoIntents.find(candidate => {
+    const candidateMetadata = record(candidate.metadata);
+    const hasAssetIdentity = Boolean(text(candidateMetadata.imageChecksum) || text(candidateMetadata.imageStorageKey));
+    return candidateMetadata.imageChecksum === inspected.checksum ||
+      candidateMetadata.imageStorageKey === image.storageKey ||
+      (!hasAssetIdentity && (!candidateMetadata.selectedPhotoVariant || candidateMetadata.selectedPhotoVariant === snapshot.variant));
+  });
+  if (previousPhotoAsset) {
+    const previous = previousPhotoAsset;
     const previousMetadata = record(previous.metadata);
     const previousStatus = String(previousMetadata.photoPublicationStatus ?? "queued");
     if (hasMarketplaceAutoReviewPhotoPostExternalAttempt(previousMetadata)) {

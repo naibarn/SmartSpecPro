@@ -236,6 +236,83 @@ describe("Marketplace Auto Review Facebook Photo Post contract", () => {
     expect(createControlPlaneJob).toHaveBeenCalledOnce();
   });
 
+  it("allows a second Photo Post for a different image after the first image was published", async () => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    const secondImageKey = `marketplace-auto-review/${TENANT_ID}/${RUN_ID}/media/image/social-post-batch-1-character_reference-${"b".repeat(64)}.png`;
+    const metadata = runMetadata();
+    (metadata.stagedPipeline as any).socialCaption.postImages.variants.character_reference = {
+      status: "completed", imageStorageKey: secondImageKey, sourceLabel: "ภาพอ้างอิงตัวละคร",
+    };
+    storageStreamFile.mockResolvedValue({
+      totalLength: image.length, contentType: "image/png", stream: Readable.from([image]),
+    });
+    listPublishingPages.mockResolvedValue([{ id: 7, provider: "meta", publishingReady: true }]);
+    createControlPlaneJob.mockResolvedValue({ jobId: "worker-job-second-photo", created: true });
+    const selectedRows = [
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, productId: "product-1", metadataJson: metadata }],
+      [{ id: "product-1" }],
+      [{ affiliateUrl: "https://shop.example/item" }],
+      [],
+      [{ id: 12, metadata: {
+        source: "marketplace_auto_review_photo_post", autoReviewRunId: RUN_ID,
+        intentHash: "c".repeat(64), photoPublicationStatus: "published", selectedPhotoVariant: "caption_source",
+        imageStorageKey: IMAGE_KEY, imageChecksum: "a".repeat(64), providerPostId: "facebook-post-1",
+      } }],
+      [],
+    ];
+    getDb.mockResolvedValue({
+      select: () => ({ from: () => ({ where: () => ({
+        limit: () => Promise.resolve(selectedRows.shift()),
+        orderBy: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }),
+      }) }) }),
+      insert: () => ({ values: () => ({ returning: () => Promise.resolve([{ id: 13 }]) }) }),
+      update: () => ({ set: () => ({ where: async () => undefined }) }),
+    });
+
+    await expect(startMarketplaceAutoReviewPhotoPost({
+      tenantId: TENANT_ID, userId: 41, runId: RUN_ID, pageId: 7,
+      snapshot: {
+        variant: "character_reference", caption: "Review caption", hashtags: [],
+        affiliateMode: "description", commercialDisclosure: "",
+      },
+    })).resolves.toMatchObject({ postId: 13, jobId: "worker-job-second-photo", status: "queued" });
+  });
+
+  it("blocks a changed Photo Post intent when its exact image was already published", async () => {
+    const image = await (await import("sharp")).default({
+      create: { width: 3, height: 2, channels: 3, background: "white" },
+    }).png().toBuffer();
+    storageStreamFile.mockResolvedValue({
+      totalLength: image.length, contentType: "image/png", stream: Readable.from([image]),
+    });
+    listPublishingPages.mockResolvedValue([{ id: 7, provider: "meta", publishingReady: true }]);
+    const selectedRows = [
+      [{ id: RUN_ID, tenantId: TENANT_ID, userId: 41, productId: "product-1", metadataJson: runMetadata() }],
+      [{ id: "product-1" }],
+      [{ affiliateUrl: "https://shop.example/item" }],
+      [],
+      [{ id: 12, metadata: {
+        source: "marketplace_auto_review_photo_post", autoReviewRunId: RUN_ID,
+        intentHash: "c".repeat(64), photoPublicationStatus: "published", selectedPhotoVariant: "caption_source",
+        imageStorageKey: IMAGE_KEY, imageChecksum: "a".repeat(64), providerPostId: "facebook-post-1",
+      } }],
+    ];
+    getDb.mockResolvedValue({ select: () => ({ from: () => ({ where: () => ({
+      limit: () => Promise.resolve(selectedRows.shift()),
+      orderBy: () => ({ limit: () => Promise.resolve(selectedRows.shift()) }),
+    }) }) }) });
+
+    await expect(startMarketplaceAutoReviewPhotoPost({
+      tenantId: TENANT_ID, userId: 41, runId: RUN_ID, pageId: 7,
+      snapshot: {
+        variant: "caption_source", caption: "Edited caption", hashtags: [],
+        affiliateMode: "description", commercialDisclosure: "",
+      },
+    })).rejects.toThrow("PHOTO_POST_PREVIOUS_ATTEMPT_EXISTS");
+  });
+
   it("publishes through the Meta connection provider stored on the connection record", async () => {
     const image = await (await import("sharp")).default({
       create: { width: 3, height: 2, channels: 3, background: "white" },

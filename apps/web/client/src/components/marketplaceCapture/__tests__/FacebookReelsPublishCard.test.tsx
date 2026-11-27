@@ -37,6 +37,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    marketplaceCapture: {
+      advanceAutoReviewRun: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
     marketplaceAutoReviewReels: {
       readiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, isError: false }) },
       history: { useQuery: () => ({ data: mocks.history, isLoading: false, isError: mocks.historyError, refetch: mocks.refetch }) },
@@ -240,7 +243,7 @@ describe("FacebookReelsPublishCard", () => {
     fireEvent.change(screen.getByLabelText("ตำแหน่ง Affiliate Link เดิม"), { target: { value: "first_comment" } });
     expect(screen.getByRole("option", { name: /ความคิดเห็นแรก/ })).toBeEnabled();
     expect(screen.getByRole("button", { name: "เผยแพร่ Reel" })).toBeEnabled();
-    expect(screen.getByText(/คอมเมนต์จะรอยืนยันหลังโพสต์สำเร็จ/)).toBeInTheDocument();
+    expect(screen.getByText(/หลังโพสต์สำเร็จจะมีปุ่มให้ยืนยันส่งอีกครั้ง/)).toBeInTheDocument();
   });
 
   it("uses the safe Facebook post-ID fallback when the permalink is unavailable", () => {
@@ -289,6 +292,32 @@ describe("FacebookReelsPublishCard", () => {
       snapshot: { variant: "product_reference", caption: "Saved caption", hashtags: ["#บํารุงผม", "#ออยล์เซรั่ม", "#จัดทรงผม"], affiliateMode: "description", commercialDisclosure: "" },
     });
     expect(screen.getAllByRole("radio").filter((radio: HTMLElement) => (radio as HTMLInputElement).checked)).toHaveLength(1);
+  });
+
+  it("allows a different generated image after a Photo Post succeeded while preventing that image from being posted again", () => {
+    mocks.photoHistory = [{
+      id: 41,
+      status: "published",
+      selectedVariant: "caption_source",
+      affiliateLinkStatus: "included_unverified",
+      commercialDisclosureStatus: "not_provided",
+      attributionVerificationStatus: "unverified",
+      providerPostId: "facebook-post-41",
+    }];
+    render(<FacebookReelsPublishCard runId="run-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
+
+    const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
+    expect(publish).toBeDisabled();
+    fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
+    expect(publish).toBeEnabled();
+    fireEvent.click(publish);
+    expect(mocks.photoMutate).toHaveBeenCalledWith(expect.objectContaining({
+      snapshot: expect.objectContaining({ variant: "product_reference" }),
+    }));
+
+    fireEvent.click(screen.getByRole("radio", { name: "ภาพจาก Caption" }));
+    expect(publish).toBeDisabled();
   });
 
   it("keeps the selected image while collapsing the panel and switching formats", () => {
