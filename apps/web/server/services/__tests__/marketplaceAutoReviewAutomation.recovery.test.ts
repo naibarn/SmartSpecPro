@@ -5,6 +5,7 @@ import {
   canAutoResumeContinuation,
   nextAutomaticRecoveryAttempt,
   getCompletedContinuationRecoveryStage,
+  canRebaseCompletedContinuationPlan,
 } from "../marketplaceAutoReviewAutomation";
 
 describe("missingApprovedVideoPromptShots", () => {
@@ -170,5 +171,38 @@ describe("completed continuation recovery", () => {
         ],
       })
     ).toBeNull();
+  });
+});
+
+describe("completed continuation plan recovery", () => {
+  it("allows one rebase only after the completed run was reopened and images are approved", () => {
+    expect(
+      canRebaseCompletedContinuationPlan({
+        completedRecoveryAttempts: 1,
+        planMismatchRecoveryAttempts: 0,
+        allImagesApproved: true,
+      })
+    ).toBe(true);
+    expect(
+      canRebaseCompletedContinuationPlan({
+        completedRecoveryAttempts: 0,
+        planMismatchRecoveryAttempts: 0,
+        allImagesApproved: true,
+      })
+    ).toBe(false);
+    expect(
+      canRebaseCompletedContinuationPlan({
+        completedRecoveryAttempts: 1,
+        planMismatchRecoveryAttempts: 1,
+        allImagesApproved: true,
+      })
+    ).toBe(false);
+    expect(
+      canRebaseCompletedContinuationPlan({
+        completedRecoveryAttempts: 1,
+        planMismatchRecoveryAttempts: 0,
+        allImagesApproved: false,
+      })
+    ).toBe(false);
   });
 });

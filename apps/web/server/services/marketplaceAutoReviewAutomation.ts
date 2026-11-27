@@ -411,6 +411,18 @@ export function getCompletedContinuationRecoveryStage(input: {
     : null;
 }
 
+export function canRebaseCompletedContinuationPlan(input: {
+  completedRecoveryAttempts: unknown;
+  planMismatchRecoveryAttempts: unknown;
+  allImagesApproved: boolean;
+}): boolean {
+  return (
+    Number(input.completedRecoveryAttempts) === 1 &&
+    Number(input.planMismatchRecoveryAttempts ?? 0) < 1 &&
+    input.allImagesApproved
+  );
+}
+
 /**
  * Advance the opt-in Auto Review continuation by one durable checkpoint.
  * Each expensive action uses the existing worker_jobs admission and a stable
@@ -443,7 +455,15 @@ export async function reconcileStagedAutoReviewAutomation(input: {
       // Completed continuations can be reopened only for an active parent run,
       // with one bounded repair attempt. The scheduler also filters parent
       // run status, while this CAS protects concurrent edits.
-    } else if (!canAutoResumeContinuation(automation)) return;
+    } else if (
+      !canAutoResumeContinuation(automation) &&
+      !(
+        automation.status === "paused_error" &&
+        automation.errorCode === "automatic_plan_changed" &&
+        Number(record(automation.workerJobIds).completedRecoveryAttempts) === 1 &&
+        Number(record(automation.workerJobIds).planMismatchRecoveryAttempts ?? 0) < 1
+      )
+    ) return;
   }
 
   const rawMetadata = record(run.metadataJson);
@@ -462,6 +482,47 @@ export async function reconcileStagedAutoReviewAutomation(input: {
   >;
   const checkpoints = metadata.stagedSequentialStoryboard
     .reviewCheckpoints as Array<Record<string, any>>;
+
+  if (
+    automation.status === "paused_error" &&
+    automation.errorCode === "automatic_plan_changed"
+  ) {
+    const cast = Array.isArray(plan.cast) ? plan.cast : [];
+    const allImagesApproved =
+      shots.length > 0 && shots.every(shot => imageResultApproved(shot, checkpoints));
+    const recoveryStage = getCompletedContinuationRecoveryStage({
+      shots,
+      checkpoints,
+      cast,
+    });
+    if (!canRebaseCompletedContinuationPlan({
+      completedRecoveryAttempts: record(automation.workerJobIds).completedRecoveryAttempts,
+      planMismatchRecoveryAttempts: record(automation.workerJobIds).planMismatchRecoveryAttempts,
+      allImagesApproved,
+    }) || !recoveryStage) return;
+    const currentPlanRevision = metadata.stagedSequentialStoryboard.planRevision;
+    const resumed = await updateContinuation(
+      db,
+      input,
+      () => ({
+        status: "running",
+        stage: recoveryStage,
+        planRevision: currentPlanRevision,
+        errorCode: undefined,
+        failedAt: undefined,
+        workerJobIds: { planMismatchRecoveryAttempts: 1 },
+      }),
+      { allowPaused: true }
+    );
+    if (!resumed) return;
+    automation.status = "running";
+    automation.stage = recoveryStage;
+    automation.planRevision = currentPlanRevision;
+    automation.workerJobIds = {
+      ...record(automation.workerJobIds),
+      planMismatchRecoveryAttempts: 1,
+    };
+  }
 
   if (automation.status === "completed") {
     if (!["queued", "running", "waiting_provider"].includes(run.status)) {
@@ -482,6 +543,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
       current => ({
         status: "running",
         stage: recoveryStage,
+        planRevision: metadata.stagedSequentialStoryboard.planRevision,
         completedAt: undefined,
         errorCode: undefined,
         workerJobIds: {
@@ -493,6 +555,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
     if (!reopened) return;
     automation.status = "running";
     automation.stage = recoveryStage;
+    automation.planRevision = metadata.stagedSequentialStoryboard.planRevision;
     automation.workerJobIds = {
       ...record(automation.workerJobIds),
       completedRecoveryAttempts: recoveryAttempts + 1,
