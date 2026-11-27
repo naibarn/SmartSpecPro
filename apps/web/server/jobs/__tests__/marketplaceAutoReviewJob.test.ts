@@ -5,6 +5,7 @@ import * as marketplaceAutoReviewService from "../../services/marketplaceAutoRev
 import * as marketplaceAutoReviewWorkerJob from "../../services/marketplaceAutoReviewWorkerJob";
 
 import {
+  AUTO_CONTINUATION_RECOVERY_STATUSES,
   buildStagedProviderPollAdmission,
   buildStagedRenderReconcileAdmission,
   isMarketplaceAutoReviewAdvanceOutboxJobType,
@@ -24,6 +25,11 @@ function createEmptySchedulerDb() {
 }
 
 describe("marketplaceAutoReviewJob", () => {
+  it("keeps paused automatic continuations in the scheduler recovery scan", () => {
+    expect(AUTO_CONTINUATION_RECOVERY_STATUSES).toContain("running");
+    expect(AUTO_CONTINUATION_RECOVERY_STATUSES).toContain("paused_error");
+  });
+
   it("keeps staged provider poll admissions identical inside one poll bucket", () => {
     const input = {
       runId: "mar_staged_provider_run",
