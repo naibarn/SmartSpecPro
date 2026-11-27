@@ -84,6 +84,10 @@ import {
 // anything else imported from that module) at the top level of this file.
 import { recordStagedProviderFailureAndRefund } from "./marketplaceAutoReviewService";
 import { selectMarketplaceAutoReviewTargetShots } from "./marketplaceAutoReviewTargetShotScope";
+import {
+  MarketplaceAutoReviewStateWriteConflict,
+  isMarketplaceAutoReviewStateWriteConflict,
+} from "./marketplaceAutoReviewStagedConcurrency";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Auth = { userId: number; tenantId?: string };
@@ -718,7 +722,9 @@ async function persistRun(params: {
       )
     )
     .returning();
-  if (!next && params.expectedUpdatedAt) throw new Error("staged_state_drift");
+  if (!next && params.expectedUpdatedAt) {
+    throw new MarketplaceAutoReviewStateWriteConflict();
+  }
   if (!next) throw new Error(`STAGED_RUN_PERSIST_FAILED:${params.run.id}`);
   return next;
 }
@@ -2806,6 +2812,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         });
         if (reconciled) metadata = reconciled as any;
       } catch (error) {
+        if (isMarketplaceAutoReviewStateWriteConflict(error)) throw error;
         // A provider failure/throw for THIS shot must never abort the pass
         // for shots after it (see the extensive comments in this loop about
         // per-shot independence) — refund any spent credit for this stage,
@@ -2862,6 +2869,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
           shotId: shot.shotId,
         })) as unknown as typeof metadata;
       } catch (error) {
+        if (isMarketplaceAutoReviewStateWriteConflict(error)) throw error;
         // Preserve the `:shot:<id>` suffix so recordStagedProviderFailureAndRefund
         // (which parses shotId/stageKey out of the message) attributes the
         // refund/correction to this shot specifically, then move on instead
@@ -2903,6 +2911,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         });
         if (reconciled) metadata = reconciled as any;
       } catch (error) {
+        if (isMarketplaceAutoReviewStateWriteConflict(error)) throw error;
         // This is the exact throw that reproduced the live production bug:
         // shot 1's dead failed video task made every sweep pass abort before
         // shots 2-9 (fully independent, ready to dispatch) were ever looked
@@ -2964,6 +2973,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
           shotId: shot.shotId,
         })) as unknown as typeof metadata;
       } catch (error) {
+        if (isMarketplaceAutoReviewStateWriteConflict(error)) throw error;
         // Same pattern as the handleImageProvider catch above: preserve the
         // `:shot:<id>` suffix for correct correction attribution, then move
         // on instead of throwing — never let one shot's dispatch failure

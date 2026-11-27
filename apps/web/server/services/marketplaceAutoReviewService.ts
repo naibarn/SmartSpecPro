@@ -219,6 +219,7 @@ import {
   isAwaitingStagedStoryConceptSelection,
   redraftStagedMarketplaceAutoReviewRun,
 } from "./marketplaceAutoReviewStagedPipelineService";
+import { isMarketplaceAutoReviewStateWriteConflict } from "./marketplaceAutoReviewStagedConcurrency";
 import {
   buildStagedCheckpoint,
   buildStagedPlanView,
@@ -37327,6 +37328,18 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
       ...(params.reconcileOnly ? { reconcileOnly: true } : {}),
     });
   } catch (error) {
+    if (isMarketplaceAutoReviewStateWriteConflict(error)) {
+      // Another run writer won the optimistic lock. The database state is
+      // authoritative; resume from it instead of recording a provider failure
+      // or asking the user to repair a healthy checkpoint.
+      await queueMarketplaceAutoReviewAdvance(
+        run.id,
+        params.auth,
+        params.runtime,
+        5_000
+      );
+      return getMarketplaceAutoReviewRun(run.id, params.auth);
+    }
     await recordStagedProviderFailureAndRefund({
       db: params.db,
       run,
