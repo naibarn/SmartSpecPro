@@ -24,6 +24,7 @@ import {
   type StagedCheckpointApprovalExpectationV1,
 } from "@shared/marketplaceAutoReview/stagedContracts";
 import { createMarketplaceDraftQcState } from "@shared/marketplaceAutoReview/draftQualityQc";
+import { projectStagedReferenceManifestEntry } from "@shared/marketplaceAutoReview/stagedReferenceManifestProjection";
 import { buildProductionStableHash } from "../../shared/mediaProduction";
 import { deriveAssemblyDocumentationFromProductTruth } from "../../shared/marketplaceCapture/sequentialEvidencePreview";
 import { deriveStagedCastFromManifest } from "./marketplaceAutoReviewStagedPipelineService";
@@ -1020,43 +1021,10 @@ export async function getStagedAutoReviewCheckpointState(
           : null,
     };
   });
+  // Keep the persisted character identity and minor-safety fields in the
+  // editor read model so a manifest edit cannot silently drop them.
   const referenceManifest = requireStagedReferenceManifest(base).map(
-    (entry: any) => ({
-      index: entry.index,
-      url: entry.url.trim(),
-      role: entry.role,
-      label: entry.label ? String(entry.label).trim() : undefined,
-      active: entry.active,
-      // Gap fix (flexible-shots/creation-casting audit 2026-07-30): these
-      // per-character fields were persisted (both by creation-time seeding
-      // and by updateStagedAutoReviewReferenceManifest) but STRIPPED here
-      // on read — so the panel lost the VD read-only name lock and, worse,
-      // any panel manifest edit round-tripped the stripped entries back
-      // through the update mutation, silently destroying characterRole /
-      // vdCharacterId metadata on the persisted manifest.
-      characterName: entry.characterName
-        ? String(entry.characterName).trim()
-        : undefined,
-      characterRole:
-        entry.characterRole === "host" || entry.characterRole === "guest"
-          ? entry.characterRole
-          : undefined,
-      vdCharacterId: entry.vdCharacterId
-        ? String(entry.vdCharacterId).trim()
-        : undefined,
-      vdSeriesId: entry.vdSeriesId
-        ? String(entry.vdSeriesId).trim()
-        : undefined,
-      portraitAssetId: entry.portraitAssetId
-        ? String(entry.portraitAssetId).trim()
-        : undefined,
-      ageRange:
-        entry.ageRange === null
-          ? null
-          : entry.ageRange
-            ? String(entry.ageRange).trim()
-            : undefined,
-    })
+    (entry: any) => projectStagedReferenceManifestEntry(entry)
   );
 
   const workerOperationRows = await db
