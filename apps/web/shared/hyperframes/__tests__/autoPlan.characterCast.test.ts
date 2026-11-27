@@ -52,26 +52,26 @@ describe("W2 — characterCast autoPlan plumbing", () => {
     ).toBe(true);
   });
 
-  /* Roster widened 2 -> 4 by
-     `planning/marketplace-four-character-cast/plan.md` P1: two speaking leads
-     plus up to two supporting characters, VD-picked and self-uploaded counted
+  /* Roster ceiling is five: two speaking leads plus up to three supporting
+     characters, VD-picked and self-uploaded counted
      together against the one cap. */
-  it("accepts a full 4-entry roster in both schemas", () => {
-    const fourCast = [HOST_ENTRY, HOST_ENTRY, HOST_ENTRY, HOST_ENTRY];
+  it("accepts a full 5-entry roster in both schemas", () => {
+    const fiveCast = [HOST_ENTRY, HOST_ENTRY, HOST_ENTRY, HOST_ENTRY, HOST_ENTRY];
     expect(
       HyperframesAutoPlanDefaultsSchema.pick({
         characterCast: true,
-      }).safeParse({ characterCast: fourCast }).success
+      }).safeParse({ characterCast: fiveCast }).success
     ).toBe(true);
     expect(
       HyperframesAutoPlanOverrideInputSchema.pick({
         characterCast: true,
-      }).safeParse({ characterCast: fourCast }).success
+      }).safeParse({ characterCast: fiveCast }).success
     ).toBe(true);
   });
 
-  it("rejects more than 4 cast entries in both schemas", () => {
-    const fiveCast = [
+  it("rejects more than 5 cast entries in both schemas", () => {
+    const sixCast = [
+      HOST_ENTRY,
       HOST_ENTRY,
       HOST_ENTRY,
       HOST_ENTRY,
@@ -81,12 +81,12 @@ describe("W2 — characterCast autoPlan plumbing", () => {
     expect(
       HyperframesAutoPlanDefaultsSchema.pick({
         characterCast: true,
-      }).safeParse({ characterCast: fiveCast }).success
+      }).safeParse({ characterCast: sixCast }).success
     ).toBe(false);
     expect(
       HyperframesAutoPlanOverrideInputSchema.pick({
         characterCast: true,
-      }).safeParse({ characterCast: fiveCast }).success
+      }).safeParse({ characterCast: sixCast }).success
     ).toBe(false);
   });
 

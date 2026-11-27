@@ -521,10 +521,10 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
     ])).toThrow("STAGED_CAST_CHARACTER_NAME_REQUIRED");
   });
 
-  /* Roster widened 2 -> 4 by `planning/marketplace-four-character-cast/plan.md`
-     P1. Two speaking leads plus up to two supporting characters; the cap now
+  /* Roster widened to 5 by the 2026-11-27 cast-ceiling amendment.
+     Two speaking leads plus up to three supporting characters; the cap now
      lives in the shared `MARKETPLACE_CHARACTER_CAST_MAX`. */
-  it("ignores inactive items and admits up to 4 character items, roling them host/guest/support", () => {
+  it("ignores inactive items and admits up to 5 character items, roling them host/guest/support", () => {
     const cast = deriveStagedCastFromManifestForTest([
       {
         url: "https://example.test/a.png",
@@ -556,17 +556,24 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
         characterName: "E",
         active: true,
       },
+      {
+        url: "https://example.test/f.png",
+        role: "character",
+        characterName: "F",
+        active: true,
+      },
     ]);
-    expect(cast.map(member => member.name)).toEqual(["B", "C", "D", "E"]);
+    expect(cast.map(member => member.name)).toEqual(["B", "C", "D", "E", "F"]);
     expect(cast.map(member => member.role)).toEqual([
       "host",
       "guest",
       "support",
       "support",
+      "support",
     ]);
   });
 
-  it("rejects manifests that exceed the four-character cast cap", () => {
+  it("rejects manifests that exceed the five-character cast cap", () => {
     expect(() => deriveStagedCastFromManifestForTest([
       {
         url: "https://example.test/b.png",
@@ -598,7 +605,13 @@ describe("deriveStagedCastFromManifest (via deriveStagedCastFromManifestForTest)
         characterName: "F",
         active: true,
       },
-    ])).toThrow("STAGED_CAST_LIMIT_EXCEEDED:5:4");
+      {
+        url: "https://example.test/g.png",
+        role: "character",
+        characterName: "G",
+        active: true,
+      },
+    ])).toThrow("STAGED_CAST_LIMIT_EXCEEDED:6:5");
   });
 
   /* The single decision that keeps this affordable: mode follows the SPEAKING

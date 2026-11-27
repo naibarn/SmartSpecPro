@@ -84,13 +84,12 @@ export type StagedStoryArcProduct = {
 
 // A single uploaded/selected cast member.
 //
-// The roster holds up to `MARKETPLACE_CHARACTER_CAST_MAX` (4) people
-// (`planning/marketplace-four-character-cast/plan.md`), but only the two LEADS
+// The roster holds up to `MARKETPLACE_CHARACTER_CAST_MAX` (5) people, but only the two LEADS
 // (`host`/`guest`) own dialogue turns — `support` members are in the frame to
 // carry a story beat, never to become a third conversational voice. That split
 // is what let the roster grow without rewriting the two-person dialogue engine.
 export type StagedCastMember = {
-  castId: string; // "cast-1" .. "cast-4"
+  castId: string; // "cast-1" .. "cast-5"
   name: string; // spoken name in the script
   source: "uploaded" | "vd_character";
   vdCharacterId?: string;
@@ -161,7 +160,7 @@ export type StagedConversationMode = "solo" | "two_person_conversation";
 /**
  * The cast members that own dialogue: at most one host and one guest, in that
  * order. Every consumer that used to write `cast.slice(0, 2)` to mean "the
- * speakers" must call this instead — with a 4-person roster the first two
+ * speakers" must call this instead — with a 5-person roster the first two
  * entries are no longer necessarily the leads.
  */
 export function selectStagedLeadCast(
@@ -313,11 +312,17 @@ export function enforceSupportingBeats<
   );
   const supportingIds = new Set(supporting.map(member => member.castId));
 
+  const droppedCastIdsByShot: Record<number, string[]> = {};
   const shots = params.shots.map((shot, index) => {
-    if (!Array.isArray(shot.castInShot)) {
-      throw new Error(`STAGED_CAST_IN_SHOT_REQUIRED:shot-${index + 1}`);
-    }
-    const unknownCastId = shot.castInShot.find(
+    const sourceCastInShot = Array.isArray(shot.castInShot)
+      ? shot.castInShot
+      : [
+          ...selectStagedLeadCast(params.cast).map(member => member.castId),
+          ...(shot.supportingBeats ?? [])
+            .map(beat => beat.castId)
+            .filter(castId => supportingIds.has(castId)),
+        ];
+    const unknownCastId = sourceCastInShot.find(
       castId => !knownCastIds.has(castId)
     );
     if (unknownCastId) {
@@ -333,16 +338,8 @@ export function enforceSupportingBeats<
           `STAGED_SUPPORTING_BEAT_CAST_INVALID:shot-${index + 1}:${beat.castId}`
         );
       }
-      if (!shot.castInShot.includes(beat.castId)) {
-        throw new Error(
-          `STAGED_SUPPORTING_BEAT_CAST_NOT_IN_SHOT:shot-${index + 1}:${beat.castId}`
-        );
-      }
-      if (!clean(beat.action)) {
-        throw new Error(
-          `STAGED_SUPPORTING_BEAT_ACTION_REQUIRED:shot-${index + 1}:${beat.castId}`
-        );
-      }
+      if (!sourceCastInShot.includes(beat.castId)) continue;
+      if (!clean(beat.action)) continue;
       if (beatByCastId.has(beat.castId)) {
         throw new Error(
           `STAGED_SUPPORTING_BEAT_DUPLICATE:shot-${index + 1}:${beat.castId}`
@@ -350,20 +347,48 @@ export function enforceSupportingBeats<
       }
       beatByCastId.set(beat.castId, beat);
     }
-    for (const castId of shot.castInShot) {
-      if (supportingIds.has(castId) && !beatByCastId.has(castId)) {
-        throw new Error(
-          `STAGED_SUPPORTING_BEAT_REQUIRED:shot-${index + 1}:${castId}`
-        );
-      }
-    }
+    const droppedCastIds = sourceCastInShot.filter(
+      castId => supportingIds.has(castId) && !beatByCastId.has(castId)
+    );
+    if (droppedCastIds.length > 0) droppedCastIdsByShot[index] = droppedCastIds;
+    const castInShot = sourceCastInShot.filter(
+      castId => !supportingIds.has(castId) || beatByCastId.has(castId)
+    );
     return {
       ...shot,
-      castInShot: [...shot.castInShot],
-      supportingBeats: beats,
+      castInShot,
+      supportingBeats: [...beatByCastId.values()].map(beat => ({
+        castId: beat.castId,
+        action: clean(beat.action),
+      })),
     };
   });
-  return { shots, droppedCastIdsByShot: {} };
+
+  // Every selected portrait must reach image generation at least once. The
+  // model may omit a supporting cast member from every shot; add omitted
+  // members to the opening shot with a silent, non-product interaction beat.
+  // This is deliberately a one-shot fallback so the planner still controls
+  // where each person belongs when it supplies a valid beat itself.
+  const visibleCastIds = new Set(shots.flatMap(shot => shot.castInShot ?? []));
+  const missingSupport = supporting.filter(
+    member => !visibleCastIds.has(member.castId)
+  );
+  if (missingSupport.length > 0 && shots.length > 0) {
+    const firstShot = shots[0]!;
+    const castInShot = [...(firstShot.castInShot ?? [])];
+    const supportingBeats = [...(firstShot.supportingBeats ?? [])];
+    for (const member of missingSupport) {
+      castInShot.push(member.castId);
+      supportingBeats.push({
+        castId: member.castId,
+        action: isStagedCastMemberMinor(member)
+          ? "ยืนอยู่ใกล้ผู้ใหญ่และสังเกตการณ์อย่างเงียบ ๆ โดยไม่สัมผัสหรือใช้สินค้า"
+          : "อยู่ในฉากและแสดงปฏิกิริยาเงียบ ๆ ที่สอดคล้องกับเหตุการณ์",
+      });
+    }
+    shots[0] = { ...firstShot, castInShot, supportingBeats };
+  }
+  return { shots, droppedCastIdsByShot };
 }
 
 export type StagedDialogueTurn = {
@@ -1009,6 +1034,12 @@ export function buildStagedImagePrompt(input: {
         shotCastIds.has(castIdForCharacterIndex(entry.castIndex)),
     );
   const characterItems = characterEntries.map(entry => entry.item);
+  const minorNamesInShot = characterEntries
+    .map(entry => input.plan.cast?.[entry.castIndex])
+    .filter((member): member is StagedCastMember =>
+      Boolean(member && isStagedCastMemberMinor(member))
+    )
+    .map(member => member.name);
 
   const hasProduct = productItems.length > 0;
   const hasCharacter = characterItems.length > 0;
@@ -1127,6 +1158,9 @@ export function buildStagedImagePrompt(input: {
       `บทพูดของช็อตนี้ (ต้องสะท้อนอารมณ์/สถานการณ์นี้ในภาพด้วย): ${dialogue}`,
       ...refLines,
       ...conversationLines,
+      ...(minorNamesInShot.length > 0
+        ? [`ความปลอดภัยตัวละคร: ${minorNamesInShot.join(", ")} อายุต่ำกว่า 18 ปี เป็นตัวประกอบเงียบเท่านั้น ต้องปิดปาก ไม่มีบทพูดหรือการขยับปาก และห้ามสัมผัสหรือใช้สินค้า ให้มีผู้ใหญ่กำกับอยู่ในฉากเดียวกัน`]
+        : []),
       "ห้ามเพิ่มอุปกรณ์ คุณสมบัติ คำกล่าวอ้าง ราคา ข้อความ ป้าย โลโก้ ลายน้ำ หรือ UI ของ marketplace ที่ไม่มีหลักฐาน",
       hasProduct
         ? "ต้องเห็นสินค้าอย่างชัดเจน ภาพสมจริง อัตราส่วน 9:16 และห้ามแสดงบทพูดเป็นข้อความบนภาพ"
@@ -1192,6 +1226,9 @@ export function buildStagedImagePrompt(input: {
     `This shot's dialogue (the image MUST reflect this emotion/situation): ${dialogue}`,
     ...refLinesEng,
     ...conversationLinesEng,
+    ...(minorNamesInShot.length > 0
+      ? [`Character safety: ${minorNamesInShot.join(", ")} are under 18 and may only appear as silent supporting characters. Keep their mouths closed, give them no dialogue or lip movement, do not show them touching or using the product, and include adult supervision in the same frame.`]
+      : []),
     "Photorealistic commercial image, vertical 9:16. Do not invent accessories, claims, text, price, badges, logos, watermarks, or marketplace UI.",
     hasProduct
       ? "Keep the product clearly visible and do not render the dialogue as on-screen text."
@@ -1760,7 +1797,7 @@ export async function generateStagedStoryArcPlanWithLLM(input: {
           )
           .join(
             "\n"
-          )}\n\nกฎตัวประกอบ (บังคับ): ตัวประกอบไม่ใช่คู่สนทนาหลัก — บทสนทนาหลักยังเป็นของ host/guest เท่านั้น ตัวประกอบที่เป็นผู้ใหญ่จะมีบทพูดสั้น ๆ หรือไม่มีบทพูดก็ได้ แต่ทุกครั้งที่ปรากฏในช็อตต้องมี action ที่ส่งเสริมเรื่องราว\n\nสำหรับแต่ละช็อตที่มีตัวประกอบ ให้ส่ง "castInShot" เป็น castId ทุกคนที่อยู่จริง และส่ง "supportingBeats" เป็น object รูปแบบ {\"castId\":\"cast-3\",\"action\":\"ยื่นสินค้าให้ผู้ดำเนินรายการ\"} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง รูปแบบ object เป็นรูปแบบหลัก; ระบบรองรับ action แบบ string ได้เฉพาะเมื่อระบุเจ้าของจาก castInShot ได้แน่ชัด และจะละตัวประกอบที่จับคู่ไม่ได้เพื่อไม่ให้บทบาทผิดคน`
+          )}\n\nกฎตัวประกอบ (บังคับ): ผู้พูดมีได้เฉพาะ host/guest รวมไม่เกิน 2 คน ตัวประกอบทุกคนไม่มีบทพูด ให้ใช้เฉพาะ action ที่ส่งเสริมเรื่องราว และทุกตัวละครที่ผู้ใช้เลือกต้องปรากฏใน castInShot อย่างน้อยหนึ่งช็อต พร้อม supportingBeats แบบ {\"castId\":\"cast-3\",\"action\":\"ยื่นสินค้าให้ผู้ดำเนินรายการ\"} สำหรับตัวประกอบทุกคนในช็อตนั้น หากไม่มีตัวประกอบในช็อต ให้ส่ง castInShot ที่มีเฉพาะนักแสดงหลักและ supportingBeats เป็น array ว่าง รูปแบบ object เป็นรูปแบบหลัก; ระบบจะเติมตัวประกอบที่ถูกเลือกแต่ตกหล่นให้ปรากฏแบบเงียบในช็อตแรก`
       : "";
   const minorCast = (input.cast ?? []).filter(isStagedCastMemberMinor);
   const minorSilenceLock = minorCast.length
@@ -2153,10 +2190,6 @@ Marketplace Auto Review Story Arc skill runtime context:
           return {
             castId: beat.castId,
             action: clean(beat.action),
-            ...(!isStagedCastMemberMinor(castById.get(beat.castId)!) &&
-            clean(beat.line)
-              ? { line: clean(beat.line) }
-              : {}),
           };
         });
 

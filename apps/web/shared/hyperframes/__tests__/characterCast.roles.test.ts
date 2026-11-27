@@ -8,7 +8,7 @@ import {
 } from "../characterCast";
 
 /**
- * `planning/marketplace-four-character-cast/plan.md` P1 — the roster grows to 4
+ * Cast ceiling amendment — the roster grows to 5
  * while the DIALOGUE engine stays two-voice. That only works if exactly one
  * host and one guest can ever exist: `buildShotDialogueTurnsTH/EN` and
  * `buildStagedTwoVoiceDescriptor` destructure one of each, and
@@ -105,7 +105,7 @@ describe("assignMarketplaceCastRoles", () => {
   });
 
   it("exposes the roster and lead ceilings the whole feature keys off", () => {
-    expect(MARKETPLACE_CHARACTER_CAST_MAX).toBe(4);
+    expect(MARKETPLACE_CHARACTER_CAST_MAX).toBe(5);
     expect(MARKETPLACE_CHARACTER_CAST_MAX_LEADS).toBe(2);
   });
 });

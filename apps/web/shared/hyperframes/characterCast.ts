@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Marketplace Auto Review — creation-time drama casting
 // (planning/marketplace-flexible-shots-and-creation-casting/plan.md, W2;
-// widened to a 4-person roster by
+// widened to a 5-person roster by
 // planning/marketplace-four-character-cast/plan.md P1).
 //
 // Lets the creation-time request seed the staged pipeline's
@@ -27,9 +27,8 @@ import { z } from "zod";
  * `resolveStagedConversationMode` and the two-person dialogue engine, exactly
  * as before this widening. `support` is the additive third tier: a character
  * who is in the frame to carry a story beat (business, reaction, an optional
- * short line) without becoming a third conversational voice. See the plan's
- * "2 leads + up to 2 supporting" decision — it is what lets the roster grow to
- * 4 without rewriting the dialogue planner.
+ * short line) without becoming a third conversational voice. The roster now
+ * supports up to three supporting characters without changing its two leads.
  */
 export const MARKETPLACE_CHARACTER_CAST_ROLES = ["host", "guest", "support"] as const;
 export type MarketplaceCharacterCastRole =
@@ -114,9 +113,9 @@ export type MarketplaceCharacterCastEntryInput = z.infer<
 >;
 
 /** Roster ceiling — VD-picked and self-uploaded characters count together
- *  against this ONE number (the user's "นับรวมกันไม่เกิน 4 ตัว"). Mirrored by
+ *  against this ONE number (the user's "นับรวมกันไม่เกิน 5 ตัว"). Mirrored by
  *  `deriveStagedCastFromManifest` downstream and by both client surfaces. */
-export const MARKETPLACE_CHARACTER_CAST_MAX = 4;
+export const MARKETPLACE_CHARACTER_CAST_MAX = 5;
 
 /** At most one host and one guest; every further character is `support`. */
 export const MARKETPLACE_CHARACTER_CAST_MAX_LEADS = 2;

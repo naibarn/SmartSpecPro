@@ -52,17 +52,64 @@ describe("enforceSupportingBeats", () => {
       ],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3"]);
-    expect(shots[0].supportingBeats).toHaveLength(1);
+    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3", "cast-4"]);
+    expect(shots[0].supportingBeats).toHaveLength(2);
   });
 
-  it("drops a supporting character with NO beat — the anti-idle rule", () => {
+  it("adds omitted selected supporting characters to one shot with silent actions", () => {
     const { shots, droppedCastIdsByShot } = enforceSupportingBeats({
       shots: [{ castInShot: ["cast-1", "cast-2", "cast-3", "cast-4"] }],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2"]);
+    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3", "cast-4"]);
+    expect(shots[0].supportingBeats).toEqual([
+      {
+        castId: "cast-3",
+        action: "อยู่ในฉากและแสดงปฏิกิริยาเงียบ ๆ ที่สอดคล้องกับเหตุการณ์",
+      },
+      {
+        castId: "cast-4",
+        action: "อยู่ในฉากและแสดงปฏิกิริยาเงียบ ๆ ที่สอดคล้องกับเหตุการณ์",
+      },
+    ]);
     expect(droppedCastIdsByShot[0]).toEqual(["cast-3", "cast-4"]);
+  });
+
+  it("backfills all three supporting references in a five-character cast", () => {
+    const fiveCharacterCast = [
+      ...CAST,
+      member("cast-5", "support", "ตัวประกอบสาม"),
+    ];
+    const { shots } = enforceSupportingBeats({
+      shots: [{ castInShot: ["cast-1", "cast-2"] }],
+      cast: fiveCharacterCast,
+    });
+    expect(shots[0].castInShot).toEqual([
+      "cast-1",
+      "cast-2",
+      "cast-3",
+      "cast-4",
+      "cast-5",
+    ]);
+    expect(shots[0].supportingBeats).toHaveLength(3);
+  });
+
+  it("includes a selected minor as a silent supporting character only", () => {
+    const minorCast = [
+      ...CAST.slice(0, 2),
+      { ...member("cast-3", "support", "น้องปุย"), ageRange: "9 ปี", depictsMinor: true },
+    ];
+    const { shots } = enforceSupportingBeats({
+      shots: [{ castInShot: ["cast-1", "cast-2"] }],
+      cast: minorCast,
+    });
+    expect(shots[0].castInShot).toContain("cast-3");
+    expect(shots[0].supportingBeats?.[0]).toMatchObject({
+      castId: "cast-3",
+      action: "ยืนอยู่ใกล้ผู้ใหญ่และสังเกตการณ์อย่างเงียบ ๆ โดยไม่สัมผัสหรือใช้สินค้า",
+    });
+    expect(shots[0].dialogueTurns).toBeUndefined();
+    expect(shots[0].supportingBeats?.[0]).not.toHaveProperty("line");
   });
 
   it("drops a supporting character whose action is only whitespace", () => {
@@ -75,19 +122,21 @@ describe("enforceSupportingBeats", () => {
       ],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1"]);
-    expect(shots[0].supportingBeats).toBeUndefined();
+    expect(shots[0].castInShot).toContain("cast-3");
+    expect(shots[0].supportingBeats?.find(beat => beat.castId === "cast-3")?.action)
+      .toBe("อยู่ในฉากและแสดงปฏิกิริยาเงียบ ๆ ที่สอดคล้องกับเหตุการณ์");
   });
 
-  it("NEVER drops a lead, even with no beat of their own", () => {
+  it("keeps leads and backfills selected support omitted from the shot", () => {
     const { shots } = enforceSupportingBeats({
       shots: [{ castInShot: ["cast-1", "cast-2"] }],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2"]);
+    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3", "cast-4"]);
+    expect(shots[0].supportingBeats).toHaveLength(2);
   });
 
-  it("keeps an optional supporting LINE alongside the action", () => {
+  it("removes speech from every supporting character", () => {
     const { shots } = enforceSupportingBeats({
       shots: [
         {
@@ -103,8 +152,9 @@ describe("enforceSupportingBeats", () => {
       ],
       cast: CAST,
     });
-    expect(shots[0].supportingBeats?.[0]).toMatchObject({
-      line: "ฉันก็ใช้อันนี้นะ",
+    expect(shots[0].supportingBeats?.[0]).toEqual({
+      castId: "cast-4",
+      action: "หยิบสินค้าขึ้นมาดูแล้วยิ้ม",
     });
   });
 
@@ -113,8 +163,8 @@ describe("enforceSupportingBeats", () => {
       shots: [{}],
       cast: CAST,
     });
-    // Leads stay; both beatless supporting members are excluded.
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2"]);
+    // Leads are retained and selected supporting members are backfilled once.
+    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3", "cast-4"]);
   });
 
   it("keeps a supporting member that an absent castInShot implies, when they DO have a beat", () => {
@@ -124,7 +174,8 @@ describe("enforceSupportingBeats", () => {
       ],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3"]);
+    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2", "cast-3", "cast-4"]);
+    expect(shots[0].supportingBeats?.[0]?.action).toBe("เล่นของเล่นอยู่");
   });
 
   it("drops beats belonging to a character who is not in the shot", () => {
@@ -137,8 +188,8 @@ describe("enforceSupportingBeats", () => {
       ],
       cast: CAST,
     });
-    expect(shots[0].castInShot).toEqual(["cast-1", "cast-2"]);
-    expect(shots[0].supportingBeats).toBeUndefined();
+    expect(shots[0].castInShot).toContain("cast-3");
+    expect(shots[0].supportingBeats?.some(beat => beat.castId === "cast-3")).toBe(true);
   });
 
   it("is a complete no-op for a run with no supporting cast (legacy byte-identical)", () => {

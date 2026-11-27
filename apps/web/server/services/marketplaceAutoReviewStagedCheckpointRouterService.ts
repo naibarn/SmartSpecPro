@@ -4359,19 +4359,36 @@ export function buildStagedSingleShotRefreshInput(input: {
   const characterManifestEntries = referenceManifest.filter(
     entry => entry.role === "character"
   );
-  const guardianReferenceIndex =
-    characterManifestEntries.find(
-      entry => (entry as any).depictsMinor === false
-    )?.index ?? null;
+  const minorCastIdsInShot = new Set(
+    (plan.cast ?? [])
+      .filter(member =>
+        shotCastSelection.castInShot.includes(member.castId) &&
+        isStagedCastMemberMinor(member)
+      )
+      .map(member => member.castId)
+  );
+  const depictsMinor = minorCastIdsInShot.size > 0;
+  const guardianReferenceIndex = depictsMinor
+    ? characterManifestEntries.find(
+        entry => (entry as any).depictsMinor === false
+      )?.index ?? null
+    : null;
   const assemblyDocumented = deriveAssemblyDocumentationFromProductTruth({
     productName: plan.product.productName,
     description: plan.product.description,
     specs: {},
   }).documented;
-  const guardianPresenceDirective = buildStagedGuardianPresenceDirective({
-    productChildRelated: false,
-    guardianReferenceIndex,
-  });
+  const guardianPresenceDirective = depictsMinor
+    ? [
+        "MINOR SUPPORT SAFETY LOCK: A selected person under 18 is present only as a silent supporting character; keep their mouth closed, give them no dialogue or lip movement, and do not show them touching or using the product.",
+        guardianReferenceIndex
+          ? `Show the supervising adult identity from @Image${guardianReferenceIndex} in the same frame.`
+          : "Show an adult supervisor in the same frame.",
+      ].join(" ")
+    : buildStagedGuardianPresenceDirective({
+        productChildRelated: false,
+        guardianReferenceIndex,
+      });
   const demonstrationEvidenceDirective =
     buildStagedDemonstrationEvidenceDirective({ assemblyDocumented });
   const userInstruction = (input.instruction ?? "").trim() || null;
@@ -4398,8 +4415,8 @@ export function buildStagedSingleShotRefreshInput(input: {
       dialogue: normalizeStagedDialogueTranscript(planShot.dialogue),
       duration_seconds: planShot.durationSeconds,
       demonstration_type: classifyStagedDemonstrationType(planShot.dialogue),
-      depicts_minor: false,
-      guardian_required: false,
+      depicts_minor: depictsMinor,
+      guardian_required: depictsMinor,
       visual_summary: [
         planShot.visualSummary,
         input.stage !== "video" && productVisible
@@ -4420,8 +4437,8 @@ export function buildStagedSingleShotRefreshInput(input: {
     nextShotVisualSummary: nextShot?.visualSummary ?? null,
     childSubjectPolicy: {
       productChildRelated: false,
-      childDepictionPlanned: false,
-      guardianReferenceIndex: null,
+      childDepictionPlanned: depictsMinor,
+      guardianReferenceIndex,
     },
     blockedClaims: [],
     forbiddenClaims: [],

@@ -479,3 +479,13 @@ Fix: `referenceAnchors.characterImageUrl` now seeds the manifest as a `role:
 user chose, so it takes the host seat) and combines with a drama cast under the same
 4-person cap. The seeding trigger widened from "has cast" to "has cast OR has anchor";
 the grep-guard test was updated to match, plus two behaviour tests.
+
+### Cast ceiling and silent supporting portraits (2026-11-27)
+
+The roster ceiling is now five selected characters total: up to two adult leads
+remain the only speakers, and all additional characters are silent supporting
+cast. Every selected supporting portrait must appear in at least one planned
+shot; if the story planner omits one, the server adds it as a silent supporting
+presence in the opening shot. A character identified as under 18 is always
+supporting, never speaks or lip-syncs, does not touch or use the product, and
+must appear with adult supervision. This supersedes the earlier four-person cap.

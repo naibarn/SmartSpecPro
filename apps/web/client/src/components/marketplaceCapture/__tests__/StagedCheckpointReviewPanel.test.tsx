@@ -2090,7 +2090,7 @@ describe("StagedCheckpointReviewPanel", () => {
     });
 
     /* Copy updated by `planning/marketplace-four-character-cast/plan.md` P1:
-       with a 4-person roster the nudge is about a duplicated LEAD role, not
+       with a five-person roster the nudge is about a duplicated LEAD role, not
        "both characters" — any number of `support` entries is fine. */
     it("shows a role-conflict warning when two characters share the same LEAD role", () => {
       const input = props();
@@ -2122,7 +2122,7 @@ describe("StagedCheckpointReviewPanel", () => {
       ).toBeTruthy();
     });
 
-    it("does NOT warn when several characters share the support role — that is the normal 4-person shape", () => {
+    it("does NOT warn when several characters share the support role — that is the normal five-person shape", () => {
       const input = props();
       input.state = {
         ...input.state,
@@ -2159,16 +2159,24 @@ describe("StagedCheckpointReviewPanel", () => {
             characterRole: "support",
             active: true,
           },
+          {
+            index: 5,
+            role: "character",
+            url: "https://example.com/char5.png",
+            label: "ห้า",
+            characterRole: "support",
+            active: true,
+          },
         ],
       };
       render(<StagedCheckpointReviewPanel {...input} />);
 
       expect(screen.queryByText(/ถือบทบาทหลักเดียวกัน/)).toBeNull();
-      // Four characters is the cap, so the "roster full" notice shows.
-      expect(screen.getByText(/ตัวละครครบ 4 คนแล้ว/)).toBeTruthy();
-      // ...and two supporting characters never make it a conversation on
+      // Five characters is the cap, so the "roster full" notice shows.
+      expect(screen.getByText(/ตัวละครครบ 5 คนแล้ว/)).toBeTruthy();
+      // ...and supporting characters never make it a conversation on
       // their own — the badge still reports the two LEADS.
-      expect(screen.getByText(/\+ ตัวประกอบ 2/)).toBeTruthy();
+      expect(screen.getByText(/\+ ตัวประกอบ 3/)).toBeTruthy();
     });
 
     it("does not warn about role conflict when the two active characters have different roles", () => {
