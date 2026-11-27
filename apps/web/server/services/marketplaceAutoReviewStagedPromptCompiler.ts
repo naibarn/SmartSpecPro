@@ -233,6 +233,9 @@ export function isCompleteStagedVideoPrompt(
     const member = castByName.get(normalizedName(line.speakerName));
     return member ? [member] : [];
   });
+  const hasUnboundDialogueSpeaker = (namedDialogue ?? []).some(
+    line => !castByName.has(normalizedName(line.speakerName))
+  );
   const bindingDirectivePresent =
     /speaker-to-face|speaker.{0,30}face|lip[ -]?sync|mouth|ขยับปาก|ผูกผู้พูดกับใบหน้า/i.test(prompt);
   const visualMapPresent = /SPEAKER VISUAL MAP FOR THIS SHOT/i.test(prompt);
@@ -259,22 +262,37 @@ export function isCompleteStagedVideoPrompt(
       /@Image\d+|cast-\d+/i.test(anchor)
     );
   });
+  const visualMapStart = prompt.search(
+    /SPEAKER VISUAL MAP FOR THIS SHOT\s*:?/i
+  );
+  const visualMapText =
+    visualMapStart >= 0
+      ? prompt
+          .slice(visualMapStart)
+          .split(/\n(?:Approved dialogue|Camera\/action|Pacing|Audio):/i, 1)[0]
+      : "";
+  const visualMapLines = new Map<string, string>();
+  for (const line of visualMapText.split(/\r?\n/)) {
+    const match = line.trim().match(/^[-*]\s*([^:]{1,100}):\s*(.+)$/);
+    if (match) visualMapLines.set(normalizedName(match[1]), match[2].trim());
+  }
   const detectedPersonIdSet = new Set(detectedPersonIds);
   const speakerHasDetectedFace = requiredSpeakerBindings.every(member => {
-    const visualMapStart = prompt.search(/SPEAKER VISUAL MAP FOR THIS SHOT\s*:?/i);
-    if (visualMapStart < 0) return false;
-    const visualMapText = prompt
-      .slice(visualMapStart)
-      .split(/\n(?:Approved dialogue|Camera\/action|Pacing|Audio):/i, 1)[0];
-    const escapedName = member.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const line = visualMapText.split(/\r?\n/).find(candidate =>
-      new RegExp(`^\\s*[-*]\\s*${escapedName}\\s*:`, "i").test(candidate.trim())
-    );
-    const detectedId = line?.match(/\bperson-\d+\b/i)?.[0];
+    const cue = visualMapLines.get(normalizedName(member.name)) ?? "";
+    const detectedPersonId = cue.match(/\bperson-\d+\b/i)?.[0];
+    const visualDescription = detectedPersonId
+      ? cue
+          .replace(new RegExp(escapeRegExp(detectedPersonId), "i"), "")
+          .replace(/^[\s,:;—-]+/, "")
+          .trim()
+      : "";
     return Boolean(
-      line && detectedId && detectedPersonIdSet.has(detectedId) &&
-      /viewer-(?:left|center|right)/i.test(line) &&
-      !/offscreen|voice[- ]?over|not visible|cannot be matched|not visually resolved|fallback/i.test(line)
+      visualDescription.length >= 12 &&
+        detectedPersonId &&
+        detectedPersonIdSet.has(detectedPersonId) &&
+        !/offscreen|voice[- ]?over|not visible|cannot be matched|not visually resolved|fallback/i.test(
+          cue
+        )
     );
   });
   const dialogueHasVisualAnchors = (namedDialogue ?? []).every(line => {
@@ -292,6 +310,39 @@ export function isCompleteStagedVideoPrompt(
       anchorPosition - speakerPosition <= 60
     );
   });
+  const containsViewerSideLabel =
+    /\bviewer-(?:left|center|right)\b/i.test(prompt);
+  const containsNoSpeechDirective =
+    /use natural ambient sound with no speech|no dialogue is approved/i.test(prompt);
+  const hasDialogueSilenceConflict =
+    Boolean(dialogue) && containsNoSpeechDirective;
+  const hasConcurrentCameraConflict = prompt
+    .split(/\r?\n|(?<=[.!?])\s+/)
+    .some(sentence => {
+      const normalized = sentence.toLowerCase();
+      if (!/\bcamera\b|มุมกล้อง|กล้อง/i.test(normalized)) return false;
+      const concurrent =
+        /\b(?:and|while|simultaneously|at the same time)\b/.test(normalized);
+      const sequential = /\b(?:then|before|after)\b/.test(normalized);
+      if (!concurrent || sequential) return false;
+      const opposingDirections: Array<[RegExp, RegExp]> = [
+        [
+          /\b(?:pan(?:s|ning)?|mov(?:e|es|ing)|drift(?:s|ing)?)\s+(?:slowly\s+)?left\b/,
+          /\b(?:pan(?:s|ning)?|mov(?:e|es|ing)|drift(?:s|ing)?)\s+(?:slowly\s+)?right\b/,
+        ],
+        [
+          /\b(?:tilt(?:s|ing)?|mov(?:e|es|ing))\s+(?:gently\s+)?up\b/,
+          /\b(?:tilt(?:s|ing)?|mov(?:e|es|ing))\s+(?:gently\s+)?down\b/,
+        ],
+        [
+          /\b(?:push(?:es|ing)?[- ]?in|mov(?:e|es|ing) in|zoom(?:s|ing)? in)\b/,
+          /\b(?:pull(?:s|ing)?[- ]?back|mov(?:e|es|ing) back|zoom(?:s|ing)? out)\b/,
+        ],
+      ];
+      return opposingDirections.some(([first, second]) => (
+        first.test(normalized) && second.test(normalized)
+      ));
+    });
   return (
     prompt.length >= STAGED_VIDEO_PROMPT_MIN_CHARS &&
     prompt.length <=
@@ -306,12 +357,16 @@ export function isCompleteStagedVideoPrompt(
     dialogueAppearsInOrder &&
     !containsDuplicateApprovedLine &&
     !containsStaleTurn &&
+    !containsViewerSideLabel &&
+    !hasDialogueSilenceConflict &&
+    !hasConcurrentCameraConflict &&
+    !hasUnboundDialogueSpeaker &&
     (requiredSpeakerBindings.length === 0 ||
       (bindingDirectivePresent &&
         visualMapPresent &&
         !missingSpeakerBinding &&
         dialogueHasVisualAnchors &&
-        (detectedPersonIds.length === 0 || speakerHasDetectedFace)))
+        speakerHasDetectedFace))
   );
 }
 

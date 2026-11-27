@@ -709,14 +709,7 @@ function formatDetectedPeople(
   return people
     .map(person => {
       const box = person.boundingBox;
-      const centerX = box.x + box.width / 2;
-      const position =
-        centerX < 0.34
-          ? "viewer-left"
-          : centerX > 0.66
-            ? "viewer-right"
-            : "viewer-center";
-      return `- ${person.id}: ${person.appearance}; ${position}; normalized region x=${box.x.toFixed(3)}, y=${box.y.toFixed(3)}, width=${box.width.toFixed(3)}, height=${box.height.toFixed(3)}; confidence=${person.confidence.toFixed(2)}`;
+      return `- ${person.id}: ${person.appearance}; normalized region x=${box.x.toFixed(3)}, y=${box.y.toFixed(3)}, width=${box.width.toFixed(3)}, height=${box.height.toFixed(3)}; confidence=${person.confidence.toFixed(2)}`;
     })
     .join("\n");
 }
@@ -800,24 +793,6 @@ function marketplaceApprovedShotAction(shot: StagedStoryArcShot): string {
   return clean(shot.approvedShotAction, 420) ||
     clean(shot.visualSummary, 420) ||
     clean(shot.movementDirection, 260);
-}
-
-function detectedPersonPosition(
-  person: VerticalDramaDetectedShotPerson,
-  people: readonly VerticalDramaDetectedShotPerson[]
-): "viewer-left" | "viewer-center" | "viewer-right" {
-  const center = (value: VerticalDramaDetectedShotPerson) =>
-    value.boundingBox.x + value.boundingBox.width / 2;
-  const centerX = center(person);
-  const other = people.length === 2 ? people.find(item => item.id !== person.id) : undefined;
-  if (other && Math.abs(centerX - center(other)) >= 0.12) {
-    return centerX < center(other) ? "viewer-left" : "viewer-right";
-  }
-  return centerX < 0.34
-    ? "viewer-left"
-    : centerX > 0.66
-      ? "viewer-right"
-      : "viewer-center";
 }
 
 function positionTargetX(value: string): number | undefined {
@@ -910,8 +885,7 @@ function buildAuthoritativeSpeakerSections(input: {
         throw matchError("manual-detected-person-already-used");
       }
       usedPersonIds.add(person.id);
-      const position = detectedPersonPosition(person, input.detectedPeople);
-      const cue = `${person.id}, ${position}`;
+      const cue = person.id;
       bySpeaker.set(speakerKey, { person, cue });
       return { ...turn, person, cue };
     }
@@ -967,8 +941,7 @@ function buildAuthoritativeSpeakerSections(input: {
       throw matchError("detected-person-binding");
     }
     usedPersonIds.add(person.id);
-    const position = detectedPersonPosition(person, input.detectedPeople);
-    const cue = `${person.id}, ${position}`;
+    const cue = person.id;
     bySpeaker.set(speakerKey, { person, cue });
     return { ...turn, person, cue };
   });
@@ -990,7 +963,7 @@ export function composeMarketplaceAutoReviewVideoPrompt(input: {
     ? ""
     : cameraCue(input.cameraMotion) ?? CAMERA_CUES.locked;
   const prompt = [
-    `Create a ${input.durationSeconds}-second vertical 9:16 video using the approved image (Image 1) as the exact first frame. Keep the same people, appearance, clothing, lighting, and location in one continuous shot with no cuts.`,
+    `Create a ${input.durationSeconds}-second vertical 9:16 video using the approved image (Image 1) as the exact first frame. Preserve each person's identity and visible appearance; honor changes only when the approved action explicitly requires them. Use one continuous shot with no cuts.`,
     [
       input.approvedShotAction
         ? `APPROVED SHOT ACTION (authoritative): ${input.approvedShotAction}`
@@ -1129,11 +1102,11 @@ export function buildMarketplaceVerticalDramaVideoPromptInput(input: {
         "SAVED SPEAKER-TO-PERSON MATCH (authoritative and already reviewed):",
         ...verifiedSpeakerMap.map(
           binding =>
-            `- ${binding.speaker} = ${binding.personId}, ${detectedPersonPosition(binding.person, input.detectedPeople)}`
+            `- ${binding.speaker} = ${binding.personId} — ${clean(binding.person.appearance, 180)}`
         ),
-        "Do not run visual matching again, change these assignments, or infer identity from cast/dialogue order. In JSON frame_analysis.people, echo the exact saved speaker label, detected_person_id, and position above. The application will use this saved mapping as the source of truth.",
+        "Do not run visual matching again, change these assignments, or infer identity from cast/dialogue order. In JSON frame_analysis.people, echo the exact saved speaker label and detected_person_id. The application will use this saved mapping as the source of truth.",
       ].join("\n")
-    : "SHOT-LOCAL SPEAKER MAP (mandatory): Before writing the prompt, compare each attached portrait with the detected people in Image 1. In JSON frame_analysis.people, include every dialogue speaker using the exact speaker label from Approved dialogue as name, the observed position, and detected_person_id copied from the matching person-N entry above. Do not add honorifics, translate, abbreviate, or otherwise rewrite names. Do not infer identity from cast order, dialogue order, or left-to-right order. If a visual match is ambiguous, omit that speaker rather than guessing; the application will request a safe correction.";
+    : "SHOT-LOCAL SPEAKER MAP (mandatory): Before writing the prompt, compare each attached portrait with the detected people in Image 1. In JSON frame_analysis.people, include every dialogue speaker using the exact speaker label from Approved dialogue as name and detected_person_id copied from the matching person-N entry above. Include an observed position only as structured matching evidence; the final video prompt identifies people by person ID and appearance only. Do not add honorifics, translate, abbreviate, or otherwise rewrite names. Do not infer identity from cast order, dialogue order, or left-to-right order. If a visual match is ambiguous, omit that speaker rather than guessing; the application will request a safe correction.";
   return [
     `Create one video motion prompt for Marketplace Auto Review shot ${input.shotId}. This action creates prompt text only; do not render or generate a video.`,
     "Use Image 1 as the exact approved start frame and the source of truth for the people, product, blocking, and scene.",
