@@ -167,7 +167,7 @@ describe("Marketplace Auto Review worker job admission", () => {
       requestIdempotencyKey: "request-image-prompt-1",
     });
     expect(definition.retryPolicy).toMatchObject({
-      maxAttempts: 1,
+      maxAttempts: 3,
       baseDelayMs: 5_000,
       maxDelayMs: 5 * 60_000,
     });
@@ -197,7 +197,7 @@ describe("Marketplace Auto Review worker job admission", () => {
       expectedImageArtifactHash: "approved-frame-hash",
       requestIdempotencyKey: "request-person-detection-1",
     });
-    expect(definition.retryPolicy.maxAttempts).toBe(1);
+    expect(definition.retryPolicy.maxAttempts).toBe(3);
     expect(() => validateJobDefinition(definition)).not.toThrow();
   });
 

@@ -222,6 +222,9 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
     throw new Error("MARKETPLACE_AUTO_REVIEW_JOB_RUN_MISMATCH");
   }
   const idempotencyKey = canonicalIdempotencyKey(input.idempotencyKey);
+  const retryableLlmOnlyOperation =
+    operation.operation === "staged_person_detection" ||
+    operation.operation === "staged_prompt_generation";
   return {
     definition: {
       tenantId: input.tenantId,
@@ -233,10 +236,10 @@ function buildDefinition(input: MarketplaceAutoReviewAdmission) {
       input: operation as unknown as Record<string, unknown>,
       idempotencyKey,
       retryPolicy: {
-        // Marketplace Auto Review operations may incur provider costs. Every
-        // failure is surfaced against this job; a new attempt requires an
-        // explicit user action with a new idempotency key.
-        maxAttempts: 1,
+        // LLM-only operations write deterministic checkpoints and can safely
+        // retry transient provider/transport errors. Media dispatch operations
+        // remain single-attempt because a retry could submit duplicate work.
+        maxAttempts: retryableLlmOnlyOperation ? 3 : 1,
         baseDelayMs: 5_000,
         maxDelayMs: 5 * 60_000,
         jitter: "bounded" as const,

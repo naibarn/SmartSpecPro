@@ -9,6 +9,7 @@ import {
   approveStagedAutoReviewCheckpoint,
   buildStagedApprovalExpectation,
   detectStagedAutoReviewShotPeople,
+  generateStagedAutoReviewShotPrompt,
   startStagedAutoReviewBulkGeneration,
 } from "./marketplaceAutoReviewStagedCheckpointRouterService";
 import { findMarketplaceAutoReviewWorkerJobByIdempotencyKey } from "./marketplaceAutoReviewWorkerJob";
@@ -335,6 +336,26 @@ function imageTaskStates(
   }));
 }
 
+export function missingApprovedVideoPromptShots(
+  shots: Array<Record<string, any>>,
+  checkpoints: Array<Record<string, any>>
+): Array<Record<string, any>> {
+  return shots.filter(shot => {
+    if (!imageResultApproved(shot, checkpoints)) return false;
+    const promptCheckpoint = checkpoints.find(
+      item =>
+        item.kind === "video_prompt" &&
+        Number(item.shotId) === Number(shot.shotId) &&
+        item.state === "approved"
+    );
+    return !(
+      text(shot.videoPrompt) &&
+      text(shot.videoPromptHash) &&
+      promptCheckpoint?.contentHash === shot.videoPromptHash
+    );
+  });
+}
+
 /**
  * Advance the opt-in Auto Review continuation by one durable checkpoint.
  * Each expensive action uses the existing worker_jobs admission and a stable
@@ -653,44 +674,49 @@ export async function reconcileStagedAutoReviewAutomation(input: {
         }));
         return;
       }
-      const key = continuationKey(
-        input.runId,
-        automation.planRevision,
-        "video-prompts"
-      );
-      const existing = await getJobByKey(db, input.tenantId, key);
-      if (existing) {
-        if (isFailedJob(existing.status)) {
-          await pauseContinuation(db, input, "video_prompt_generation_failed");
-          return;
+      const missingShots = missingApprovedVideoPromptShots(shots, checkpoints);
+      const videoPromptJobs = {
+        ...record(record(automation.workerJobIds).videoPromptsByShot),
+      };
+      for (const shot of missingShots) {
+        const shotId = Number(shot.shotId);
+        const key = continuationKey(
+          input.runId,
+          automation.planRevision,
+          `video-prompt-${shotId}-${text(shot.imageArtifactHash)}`
+        );
+        const existing = await getJobByKey(db, input.tenantId, key);
+        if (existing) {
+          videoPromptJobs[String(shotId)] = existing.id;
+          if (isFailedJob(existing.status)) {
+            await pauseContinuation(db, input, "video_prompt_generation_failed");
+            return;
+          }
+          if (isActiveJob(existing.status)) continue;
+          if (isSucceededJob(existing.status)) {
+            await pauseContinuation(db, input, "video_prompts_incomplete");
+            return;
+          }
         }
-        if (isActiveJob(existing.status)) return;
-        if (isSucceededJob(existing.status)) {
-          await pauseContinuation(db, input, "video_prompts_incomplete");
-          return;
+        const result = await generateStagedAutoReviewShotPrompt({
+          runId: input.runId,
+          shotId,
+          stage: "video",
+          expectedStateDigest: stagedMetadataStateDigest(metadata),
+          idempotencyKey: key,
+          auth: { userId: input.userId, tenantId: input.tenantId },
+          ...(automation.promptModel ? { model: automation.promptModel } : {}),
+        });
+        if ("workerJobId" in result && result.workerJobId) {
+          videoPromptJobs[String(shotId)] = result.workerJobId;
         }
+        await updateContinuation(db, input, current => ({
+          workerJobIds: {
+            ...record(current.workerJobIds),
+            videoPromptsByShot: videoPromptJobs,
+          },
+        }));
       }
-      const result = await startStagedAutoReviewBulkGeneration({
-        runId: input.runId,
-        expectedStateDigest: stagedMetadataStateDigest(metadata),
-        idempotencyKey: key,
-        targets: shots.map(shot => ({
-          shotId: Number(shot.shotId),
-          stage: "video" as const,
-          promptOnly: true,
-          refreshPrompt: true,
-          ...(automation.promptModel
-            ? { promptModel: automation.promptModel }
-            : {}),
-        })),
-        auth: { userId: input.userId, tenantId: input.tenantId },
-      });
-      await updateContinuation(db, input, current => ({
-        workerJobIds: {
-          ...record(current.workerJobIds),
-          videoPrompts: result.workerJobId,
-        },
-      }));
       return;
     }
   } catch (error) {
