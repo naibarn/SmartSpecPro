@@ -40,6 +40,7 @@ const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
 export const AUTO_CONTINUATION_RECOVERY_STATUSES = [
   "running",
   "paused_error",
+  "completed",
 ] as const;
 
 function stagedProviderPollTargets(metadataValue: unknown) {
@@ -449,6 +450,7 @@ export async function runMarketplaceAutoReviewJob(
       .from(marketplaceAutoReviewRuns)
       .where(
         and(
+          activeRunFilter,
           eq(
             sql`"marketplace_auto_review_runs"."metadataJson"->>'planningArchitecture'`,
             "staged_two_skill_v2"

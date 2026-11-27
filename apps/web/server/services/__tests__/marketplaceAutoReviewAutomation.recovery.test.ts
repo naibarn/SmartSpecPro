@@ -4,6 +4,7 @@ import {
   missingApprovedVideoPromptShots,
   canAutoResumeContinuation,
   nextAutomaticRecoveryAttempt,
+  getCompletedContinuationRecoveryStage,
 } from "../marketplaceAutoReviewAutomation";
 
 describe("missingApprovedVideoPromptShots", () => {
@@ -15,19 +16,48 @@ describe("missingApprovedVideoPromptShots", () => {
       { shotId: 4, imageArtifactHash: "", imageArtifactUrl: "" },
     ];
     const checkpoints = [
-      { kind: "image_result", shotId: 1, state: "approved", contentHash: "image-1" },
-      { kind: "video_prompt", shotId: 1, state: "approved", contentHash: "video-1" },
-      { kind: "image_result", shotId: 2, state: "approved", contentHash: "image-2" },
-      { kind: "video_prompt", shotId: 2, state: "approved", contentHash: "previous-video" },
-      { kind: "image_result", shotId: 3, state: "approved", contentHash: "image-3" },
+      {
+        kind: "image_result",
+        shotId: 1,
+        state: "approved",
+        contentHash: "image-1",
+      },
+      {
+        kind: "video_prompt",
+        shotId: 1,
+        state: "approved",
+        contentHash: "video-1",
+      },
+      {
+        kind: "image_result",
+        shotId: 2,
+        state: "approved",
+        contentHash: "image-2",
+      },
+      {
+        kind: "video_prompt",
+        shotId: 2,
+        state: "approved",
+        contentHash: "previous-video",
+      },
+      {
+        kind: "image_result",
+        shotId: 3,
+        state: "approved",
+        contentHash: "image-3",
+      },
     ];
 
     expect(
       missingApprovedVideoPromptShots(
         shots.map((shot, index) => ({
           ...shot,
-          ...(index === 0 ? { videoPrompt: "ready", videoPromptHash: "video-1" } : {}),
-          ...(index === 1 ? { videoPrompt: "stale", videoPromptHash: "stale-video" } : {}),
+          ...(index === 0
+            ? { videoPrompt: "ready", videoPromptHash: "video-1" }
+            : {}),
+          ...(index === 1
+            ? { videoPrompt: "stale", videoPromptHash: "stale-video" }
+            : {}),
         })),
         checkpoints
       ).map(shot => shot.shotId)
@@ -67,5 +97,78 @@ describe("canAutoResumeContinuation", () => {
         workerJobIds: { automaticRecoveryAttempts: 0 },
       })
     ).toBe(false);
+  });
+});
+
+describe("completed continuation recovery", () => {
+  it("reopens at speaker matching before repairing missing video prompts", () => {
+    const shots = [
+      {
+        shotId: 1,
+        dialogue: "เวลาสระผมให้เด็ก",
+        imageArtifactHash: "image-1",
+        imageArtifactUrl: "/1.png",
+      },
+    ];
+    const checkpoints = [
+      {
+        kind: "image_result",
+        shotId: 1,
+        state: "approved",
+        contentHash: "image-1",
+      },
+    ];
+
+    expect(
+      getCompletedContinuationRecoveryStage({
+        shots,
+        checkpoints,
+        cast: [
+          { castId: "lead", name: "ธีร์", role: "lead", depictsMinor: false },
+          {
+            castId: "child",
+            name: "ภูมิ",
+            role: "supporting",
+            depictsMinor: true,
+          },
+        ],
+      })
+    ).toBe("speaker_matching");
+  });
+
+  it("does not reopen completed work when every approved image has a valid video prompt", () => {
+    expect(
+      getCompletedContinuationRecoveryStage({
+        shots: [
+          {
+            shotId: 1,
+            dialogue: "ธีร์: สวัสดี",
+            imageArtifactHash: "image-1",
+            imageArtifactUrl: "/1.png",
+            speakerVisualBindings: { ธีร์: "person-1" },
+            speakerVisualBindingsImageHash: "image-1",
+            videoPrompt: "move",
+            videoPromptHash: "video-1",
+          },
+        ],
+        checkpoints: [
+          {
+            kind: "image_result",
+            shotId: 1,
+            state: "approved",
+            contentHash: "image-1",
+          },
+          {
+            kind: "video_prompt",
+            shotId: 1,
+            state: "approved",
+            contentHash: "video-1",
+          },
+        ],
+        cast: [
+          { castId: "lead", name: "ธีร์", role: "lead", depictsMinor: false },
+        ],
+      })
+    ).toBeNull();
   });
 });

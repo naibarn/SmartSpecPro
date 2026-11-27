@@ -28,6 +28,7 @@ describe("marketplaceAutoReviewJob", () => {
   it("keeps paused automatic continuations in the scheduler recovery scan", () => {
     expect(AUTO_CONTINUATION_RECOVERY_STATUSES).toContain("running");
     expect(AUTO_CONTINUATION_RECOVERY_STATUSES).toContain("paused_error");
+    expect(AUTO_CONTINUATION_RECOVERY_STATUSES).toContain("completed");
   });
 
   it("keeps staged provider poll admissions identical inside one poll bucket", () => {

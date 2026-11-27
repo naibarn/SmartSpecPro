@@ -291,6 +291,7 @@ export type StagedReviewState = {
     approvedShotAction?: string | null;
     storySummary: string;
     dialogue: string;
+    speakerFallbackName?: string | null;
     imagePrompt?: string | null;
     videoPrompt?: string | null;
     imageArtifactUrl?: string | null;
@@ -481,6 +482,7 @@ export type StagedSpeakerMatchBatchStatus = {
 export function ShotSpeakerBindingPanel(props: {
   shotId: number;
   dialogue: string;
+  speakerFallbackName?: string | null;
   soloNarration?: boolean;
   imageUrl?: string | null;
   people?: NonNullable<StagedReviewState["shots"][number]["detectedPeople"]>;
@@ -495,6 +497,9 @@ export function ShotSpeakerBindingPanel(props: {
   onSave: (bindings: Record<string, string> | undefined) => void;
 }) {
   const speakers = dialogueSpeakerLabels(props.dialogue);
+  if (!speakers.length && props.speakerFallbackName?.trim()) {
+    speakers.push(props.speakerFallbackName.trim());
+  }
   const [draft, setDraft] = useState<Record<string, string>>(
     props.bindings ?? {}
   );
@@ -544,7 +549,7 @@ export function ShotSpeakerBindingPanel(props: {
           <Heading level={4}>จับคู่ผู้พูดกับคนในภาพ</Heading>
           <Text type="supporting" color="secondary">
             {props.soloNarration
-              ? "โหมดพูดคนเดียว: ระบบใช้ผู้พูดหลักผู้ใหญ่คนเดียว จึงไม่ต้องจับคู่บทสนทนาหลายคนกับใบหน้า"
+              ? "ระบุผู้พูดหลักจากตัวละครผู้ใหญ่ก่อน แม้มีบทพูดเพียงคนเดียว เพื่อให้ระบบวิดีโอรู้ว่าบุคคลใดกำลังพูด"
               : "ยังจับคู่ไม่ได้เพราะบทพูดไม่มีชื่อผู้พูดหน้าบรรทัด กรุณาใช้รูปแบบ ชื่อตัวละคร: บทพูด แล้วบันทึกก่อนจับคู่"}
           </Text>
         </VStack>
@@ -2187,6 +2192,9 @@ export function StagedCheckpointReviewPanel(props: {
 
   const speakerMatchBatchTargets = (props.state?.shots ?? []).filter(shot => {
     const speakers = dialogueSpeakerLabels(shot.dialogue);
+    if (!speakers.length && shot.speakerFallbackName?.trim()) {
+      speakers.push(shot.speakerFallbackName.trim());
+    }
     const bindings = shot.speakerVisualBindings ?? {};
     const hasCompleteBindings =
       speakers.length > 0 &&
@@ -4718,6 +4726,7 @@ export function StagedCheckpointReviewPanel(props: {
                     <ShotSpeakerBindingPanel
                       shotId={shot.shotId}
                       dialogue={shot.dialogue}
+                      speakerFallbackName={shot.speakerFallbackName}
                       soloNarration={!conversationModeActive}
                       imageUrl={shot.imageArtifactUrl}
                       people={shot.detectedPeople}

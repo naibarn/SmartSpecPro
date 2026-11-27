@@ -34,6 +34,7 @@ import {
   generateStagedStoryArcPlanWithLLM,
   isStagedCastMemberMinor,
   isStagedProductVisibleInShot,
+  getStagedDialogueSpeakerLabels,
   parseStagedDialogueTurns,
   removeStagedMinorDialogueLines,
   type StagedStoryArcPlan,
@@ -972,6 +973,17 @@ export async function getStagedAutoReviewCheckpointState(
       state: shot.state,
       storySummary: shot.storySummary,
       dialogue: normalizeStagedDialogueTranscript(shot.dialogue),
+      speakerFallbackName: (() => {
+        const safeDialogue = removeStagedMinorDialogueLines(shot.dialogue, plan.cast);
+        const speakers = getStagedDialogueSpeakerLabels(
+          safeDialogue,
+          plan.cast,
+          (shot as any).castInShot ?? (detail as any).castInShot
+        );
+        return stagedDialogueSpeakerLabels(safeDialogue).length === 0 && speakers.length === 1
+          ? speakers[0]
+          : null;
+      })(),
       title: detail.title ?? null,
       visualSummary: detail.visualSummary ?? null,
       approvedShotAction: shot.approvedShotAction ?? null,
@@ -3193,9 +3205,11 @@ export async function editStagedAutoReviewShot(input: {
           shot.dialogue,
           plan.cast
         );
-        const dialogueSpeakers = Array.from(new Set(
-          safeDialogue.split(/\r?\n/).map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim()).filter(Boolean)
-        ));
+        const dialogueSpeakers = getStagedDialogueSpeakerLabels(
+          safeDialogue,
+          plan.cast,
+          shot.castInShot
+        );
         const bindings = input.speakerVisualBindings;
         const promptGeneration = record((metadata as any).stagedPipeline?.promptGeneration);
         const standaloneDetection = record(promptGeneration[`person_detection:${input.shotId}`]);
@@ -3234,6 +3248,7 @@ export async function editStagedAutoReviewShot(input: {
         const bindingsSourceHash = buildStagedSpeakerBindingsSourceHash({
           imageArtifactHash: shot.imageArtifactHash,
           dialogue: safeDialogue,
+          speakerLabels: dialogueSpeakers,
         });
         const invalidatedCheckpoints = metadata.stagedSequentialStoryboard.reviewCheckpoints.map(
           checkpoint =>
@@ -3985,10 +4000,11 @@ function buildStagedSpeakerBindingsSourceHash(input: {
   imageArtifactHash?: string | null;
   dialogue: string;
   speakerReferences?: readonly MarketplaceSpeakerVisualReference[];
+  speakerLabels?: readonly string[];
 }): string {
-  const speakerLabels = stagedDialogueSpeakerLabels(input.dialogue).sort((a, b) =>
-    a.localeCompare(b)
-  );
+  const speakerLabels = [
+    ...(input.speakerLabels ?? stagedDialogueSpeakerLabels(input.dialogue)),
+  ].sort((a, b) => a.localeCompare(b));
   const speakerReferences = input.speakerReferences
     ? [...input.speakerReferences]
         .map(reference => ({
@@ -4073,7 +4089,11 @@ function readCurrentStagedSpeakerVisualBindings(input: {
     String(shot.dialogue ?? ""),
     input.plan.cast
   );
-  const speakers = stagedDialogueSpeakerLabels(safeDialogue);
+  const speakers = getStagedDialogueSpeakerLabels(
+    safeDialogue,
+    input.plan.cast,
+    input.shot.castInShot
+  );
   if (
     Object.keys(bindings).length !== speakers.length ||
     speakers.some(speaker => typeof bindings[speaker] !== "string") ||
@@ -4093,6 +4113,7 @@ function readCurrentStagedSpeakerVisualBindings(input: {
     imageArtifactHash: shot.imageArtifactHash,
     dialogue: safeDialogue,
     speakerReferences: references,
+    speakerLabels: speakers,
   });
   const savedHash =
     typeof shot.speakerVisualBindingsSourceHash === "string"
@@ -4658,6 +4679,21 @@ async function generateCompleteStagedShotPrompt(input: {
     plan,
     shotId: input.shotId,
   });
+  const safeDialogue = removeStagedMinorDialogueLines(
+    planShot.dialogue,
+    plan.cast
+  );
+  const requiredSpeakerLabels = getStagedDialogueSpeakerLabels(
+    safeDialogue,
+    plan.cast,
+    stagedShot.castInShot
+  );
+  if (requiredSpeakerLabels.length > 0 && !savedBindings) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_speaker_visual_bindings_required",
+    });
+  }
   if (!tenantId.trim()) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -4868,12 +4904,11 @@ export async function detectStagedAutoReviewShotPeople(input: {
     onProgress: input.onProgress,
   });
 
-  const dialogueSpeakers = Array.from(new Set(
-    safeDialogue
-      .split(/\r?\n/)
-      .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
-      .filter((speaker): speaker is string => Boolean(speaker))
-  ));
+  const dialogueSpeakers = getStagedDialogueSpeakerLabels(
+    safeDialogue,
+    plan.cast,
+    shot.castInShot
+  );
   const autoBindings = detection.speakerVisualBindings;
   const completeAutoBindings =
     dialogueSpeakers.length > 0 &&
@@ -4888,6 +4923,7 @@ export async function detectStagedAutoReviewShotPeople(input: {
         imageArtifactHash,
         dialogue: safeDialogue,
         speakerReferences,
+        speakerLabels: dialogueSpeakers,
       })
     : null;
 

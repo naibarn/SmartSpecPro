@@ -182,6 +182,31 @@ export function selectStagedSupportingCast(
   );
 }
 
+/** Resolve transcript speakers, falling back to the sole eligible adult lead
+ * for legacy solo-narration transcripts that store plain text without labels.
+ * A non-empty solo narration still needs a visual speaker binding before a
+ * video prompt can be treated as ready. */
+export function getStagedDialogueSpeakerLabels(
+  dialogue: unknown,
+  cast: StagedCastMember[] | null | undefined,
+  castInShot?: readonly string[] | null
+): string[] {
+  const safeDialogue = removeStagedMinorDialogueLines(
+    typeof dialogue === "string" ? dialogue : "",
+    cast
+  );
+  const speakers = parseSpeakerNamedDialogue(safeDialogue)?.map(
+    line => line.speakerName
+  ) ?? [];
+  if (speakers.length > 0 || !safeDialogue.trim()) return speakers;
+  const leads = selectStagedLeadCast(cast);
+  return leads.length === 1 &&
+    leads[0]!.name.trim() &&
+    (!castInShot?.length || castInShot.includes(leads[0]!.castId))
+    ? [leads[0]!.name.trim()]
+    : [];
+}
+
 type StagedSupportingBeatInput = StagedSupportingBeat | string;
 
 /**

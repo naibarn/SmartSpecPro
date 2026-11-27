@@ -6,6 +6,7 @@ import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
 import { StagedSequentialStoryboardMetadataV1Schema } from "@shared/marketplaceAutoReview/stagedContracts";
 import { stagedMetadataStateDigest } from "./marketplaceAutoReviewStagedCheckpointOperations";
 import { getCachedPublicAppUrl } from "./appRuntimeConfig";
+import { getStagedDialogueSpeakerLabels, removeStagedMinorDialogueLines, type StagedCastMember } from "./marketplaceAutoReviewStoryArcPlanner";
 import {
   approveStagedAutoReviewCheckpoint,
   buildStagedApprovalExpectation,
@@ -166,7 +167,7 @@ async function updateContinuation(
   db: any,
   input: { runId: string; userId: number; tenantId: string },
   update: (current: AutoContinuation) => Partial<AutoContinuation>,
-  allowPaused = false
+  options: { allowPaused?: boolean; allowCompleted?: boolean } = {}
 ): Promise<boolean> {
   const [run] = await db
     .select()
@@ -186,7 +187,8 @@ async function updateContinuation(
   if (
     !current ||
     (current.status !== "running" &&
-      !(allowPaused && current.status === "paused_error"))
+      !(options.allowPaused && current.status === "paused_error") &&
+      !(options.allowCompleted && current.status === "completed"))
   ) {
     return false;
   }
@@ -264,20 +266,22 @@ function allPromptsReady(
   );
 }
 
-function dialogueSpeakers(dialogue: unknown): string[] {
-  return Array.from(
-    new Set(
-      text(dialogue)
-        .split(/\r?\n/)
-        .map(line => line.match(/^([^:\n]{1,100}):\s*.+$/)?.[1]?.trim())
-        .filter((speaker): speaker is string => Boolean(speaker))
-    )
-  );
+function dialogueSpeakers(
+  dialogue: unknown,
+  cast: StagedCastMember[],
+  castInShot?: readonly string[] | null
+): string[] {
+  return getStagedDialogueSpeakerLabels(dialogue, cast, castInShot);
 }
 
-function completeSpeakerBindings(shot: Record<string, any>): boolean {
-  const speakers = dialogueSpeakers(shot.dialogue);
-  if (speakers.length === 0) return true;
+function completeSpeakerBindings(
+  shot: Record<string, any>,
+  cast: StagedCastMember[]
+): boolean {
+  const safeDialogue = removeStagedMinorDialogueLines(text(shot.dialogue), cast);
+  if (!safeDialogue.trim()) return true;
+  const speakers = dialogueSpeakers(safeDialogue, cast, shot.castInShot);
+  if (speakers.length === 0) return false;
   const bindings = record(shot.speakerVisualBindings);
   const values = speakers.map(speaker => text(bindings[speaker]));
   return Boolean(
@@ -383,6 +387,30 @@ export function missingApprovedVideoPromptShots(
   });
 }
 
+export function getCompletedContinuationRecoveryStage(input: {
+  shots: Array<Record<string, any>>;
+  checkpoints: Array<Record<string, any>>;
+  cast: StagedCastMember[];
+}): "speaker_matching" | "video_prompts" | null {
+  const approvedShots = input.shots.filter(shot =>
+    imageResultApproved(shot, input.checkpoints)
+  );
+  if (
+    approvedShots.some(shot => {
+      const safeDialogue = removeStagedMinorDialogueLines(
+        text(shot.dialogue),
+        input.cast
+      );
+      return safeDialogue.trim() && !completeSpeakerBindings(shot, input.cast);
+    })
+  ) {
+    return "speaker_matching";
+  }
+  return missingApprovedVideoPromptShots(input.shots, input.checkpoints).length
+    ? "video_prompts"
+    : null;
+}
+
 /**
  * Advance the opt-in Auto Review continuation by one durable checkpoint.
  * Each expensive action uses the existing worker_jobs admission and a stable
@@ -411,28 +439,18 @@ export async function reconcileStagedAutoReviewAutomation(input: {
   const automation = continuationFromRun(run);
   if (!automation) return;
   if (automation.status !== "running") {
-    if (!canAutoResumeContinuation(automation)) return;
-    const recoveryAttempts =
-      Number(record(automation.workerJobIds).automaticRecoveryAttempts ?? 0) + 1;
-    const resumed = await updateContinuation(
-      db,
-      input,
-      () => ({
-        status: "running",
-        errorCode: undefined,
-        failedAt: undefined,
-        workerJobIds: { automaticRecoveryAttempts: recoveryAttempts },
-      }),
-      true
-    );
-    if (!resumed) return;
-    automation.status = "running";
+    if (automation.status === "completed") {
+      // Completed continuations can be reopened only for an active parent run,
+      // with one bounded repair attempt. The scheduler also filters parent
+      // run status, while this CAS protects concurrent edits.
+    } else if (!canAutoResumeContinuation(automation)) return;
   }
 
   const rawMetadata = record(run.metadataJson);
   const parsed =
     StagedSequentialStoryboardMetadataV1Schema.safeParse(rawMetadata);
   if (!parsed.success) {
+    if (automation.status === "completed") return;
     await pauseContinuation(db, input, "staged_metadata_unavailable");
     return;
   }
@@ -444,6 +462,59 @@ export async function reconcileStagedAutoReviewAutomation(input: {
   >;
   const checkpoints = metadata.stagedSequentialStoryboard
     .reviewCheckpoints as Array<Record<string, any>>;
+
+  if (automation.status === "completed") {
+    if (!["queued", "running", "waiting_provider"].includes(run.status)) {
+      return;
+    }
+    const recoveryAttempts = Number(
+      record(automation.workerJobIds).completedRecoveryAttempts ?? 0
+    );
+    const recoveryStage = getCompletedContinuationRecoveryStage({
+      shots,
+      checkpoints,
+      cast: Array.isArray(plan.cast) ? plan.cast : [],
+    });
+    if (recoveryAttempts >= 1 || !recoveryStage) return;
+    const reopened = await updateContinuation(
+      db,
+      input,
+      current => ({
+        status: "running",
+        stage: recoveryStage,
+        completedAt: undefined,
+        errorCode: undefined,
+        workerJobIds: {
+          completedRecoveryAttempts: recoveryAttempts + 1,
+        },
+      }),
+      { allowCompleted: true }
+    );
+    if (!reopened) return;
+    automation.status = "running";
+    automation.stage = recoveryStage;
+    automation.workerJobIds = {
+      ...record(automation.workerJobIds),
+      completedRecoveryAttempts: recoveryAttempts + 1,
+    };
+  } else if (automation.status !== "running") {
+    const recoveryAttempts =
+      Number(record(automation.workerJobIds).automaticRecoveryAttempts ?? 0) + 1;
+    const resumed = await updateContinuation(
+      db,
+      input,
+      () => ({
+        status: "running",
+        errorCode: undefined,
+        failedAt: undefined,
+        workerJobIds: { automaticRecoveryAttempts: recoveryAttempts },
+      }),
+      { allowPaused: true }
+    );
+    if (!resumed) return;
+    automation.status = "running";
+  }
+
   if (
     automation.stage !== "story_draft" &&
     metadata.stagedSequentialStoryboard.planRevision !== automation.planRevision
@@ -642,11 +713,12 @@ export async function reconcileStagedAutoReviewAutomation(input: {
     }
 
     if (automation.stage === "speaker_matching") {
+      const cast = Array.isArray(plan.cast) ? plan.cast : [];
       const targetShots = shots.filter(
-        shot => dialogueSpeakers(shot.dialogue).length > 0
+        shot => removeStagedMinorDialogueLines(text(shot.dialogue), cast).trim()
       );
       const incompleteShots = targetShots.filter(
-        shot => !completeSpeakerBindings(shot)
+        shot => !completeSpeakerBindings(shot, cast)
       );
       if (incompleteShots.length === 0) {
         await updateContinuation(db, input, () => ({ stage: "video_prompts" }));
@@ -664,20 +736,6 @@ export async function reconcileStagedAutoReviewAutomation(input: {
         const imageHash = text(shot.imageArtifactHash);
         if (!imageHash || !imageResultApproved(shot, checkpoints)) {
           await pauseContinuation(db, input, "speaker_match_image_unavailable");
-          return;
-        }
-        const detection = record(
-          record(pipeline.promptGeneration)[`person_detection:${shotId}`]
-        );
-        if (text(detection.sourceImageHash) === imageHash) {
-          const existingId = text(matchingJobIds[String(shotId)]);
-          const existingJob = await getJobById(db, input.tenantId, existingId);
-          if (existingJob && isActiveJob(existingJob.status)) return;
-          if (existingJob && isFailedJob(existingJob.status)) {
-            await pauseContinuation(db, input, "speaker_matching_failed");
-            return;
-          }
-          await pauseContinuation(db, input, "speaker_matching_incomplete");
           return;
         }
         if (
@@ -700,6 +758,7 @@ export async function reconcileStagedAutoReviewAutomation(input: {
           ? await getJobById(db, input.tenantId, previousJobId)
           : await getJobByKey(db, input.tenantId, baseKey);
         let key = baseKey;
+        if (previousJob && isActiveJob(previousJob.status)) return;
         if (previousJob && !isActiveJob(previousJob.status)) {
           let retryAttempt = nextAutomaticRecoveryAttempt(
             matchingRecoveryAttempts[String(shotId)] ?? 0
@@ -714,14 +773,9 @@ export async function reconcileStagedAutoReviewAutomation(input: {
             retryJob = await getJobByKey(db, input.tenantId, key);
             if (!retryJob || isActiveJob(retryJob.status)) break;
             if (isSucceededJob(retryJob.status)) {
-              nextMatchingJobIds[String(shotId)] = retryJob.id;
-              await updateContinuation(db, input, current => ({
-                workerJobIds: {
-                  ...record(current.workerJobIds),
-                  matchingByShot: nextMatchingJobIds,
-                },
-              }));
-              return;
+              matchingRecoveryAttempts[String(shotId)] = retryAttempt;
+              retryAttempt = nextAutomaticRecoveryAttempt(retryAttempt);
+              continue;
             }
             retryAttempt = nextAutomaticRecoveryAttempt(retryAttempt);
           }
@@ -751,6 +805,15 @@ export async function reconcileStagedAutoReviewAutomation(input: {
     }
 
     if (automation.stage === "video_prompts") {
+      const cast = Array.isArray(plan.cast) ? plan.cast : [];
+      if (shots.some(shot =>
+        imageResultApproved(shot, checkpoints) &&
+        removeStagedMinorDialogueLines(text(shot.dialogue), cast).trim() &&
+        !completeSpeakerBindings(shot, cast)
+      )) {
+        await updateContinuation(db, input, () => ({ stage: "speaker_matching" }));
+        return;
+      }
       if (allPromptsReady(shots, checkpoints, "video")) {
         await updateContinuation(db, input, () => ({
           status: "completed",
