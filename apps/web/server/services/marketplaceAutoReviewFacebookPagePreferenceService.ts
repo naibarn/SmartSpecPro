@@ -69,7 +69,7 @@ export async function saveMarketplaceAutoReviewFacebookPagePreference(input: {
             THEN ${marketplaceAutoReviewRuns.metadataJson}->'facebookPublishing'
           ELSE '{}'::jsonb
         END
-          || jsonb_build_object('selectedPageId', ${input.pageId}),
+          || jsonb_build_object('selectedPageId', CAST(${input.pageId} AS integer)),
         true
       )`,
       updatedAt: new Date(),
