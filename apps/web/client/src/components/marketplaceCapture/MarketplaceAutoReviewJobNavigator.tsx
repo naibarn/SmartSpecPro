@@ -7,10 +7,12 @@ import {
   Clock3,
   CircleCheck,
   ExternalLink,
+  Image as ImageIcon,
   Loader2,
   Plus,
   Sparkles,
   Trash2,
+  Video,
   X,
 } from "lucide-react";
 import {
@@ -80,6 +82,48 @@ function facebookScheduleLabel(value: unknown): string | null {
   return date && Number.isFinite(date.getTime())
     ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(date)
     : null;
+}
+
+function facebookPublicationLabel(status: unknown): string {
+  switch (String(status ?? "")) {
+    case "published": return "โพสต์แล้ว";
+    case "scheduled": return "ตั้งเวลาแล้ว";
+    case "queued":
+    case "preflight":
+    case "processing":
+    case "uploading":
+    case "ready":
+    case "upload_complete":
+    case "token_check":
+    case "publish_requested":
+    case "reconciling": return "กำลังโพสต์";
+    case "failed": return "โพสต์ไม่สำเร็จ";
+    case "needs_user_action":
+    case "needs_connection": return "ต้องดำเนินการ";
+    default: return "ยังไม่โพสต์";
+  }
+}
+
+function facebookPublicationTone(status: unknown, isLight: boolean): string {
+  switch (String(status ?? "")) {
+    case "published": return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "scheduled": return "border-violet-200 bg-violet-50 text-violet-800";
+    case "queued":
+    case "preflight":
+    case "processing":
+    case "uploading":
+    case "ready":
+    case "upload_complete":
+    case "token_check":
+    case "publish_requested":
+    case "reconciling": return "border-sky-200 bg-sky-50 text-sky-800";
+    case "failed":
+    case "needs_user_action":
+    case "needs_connection": return "border-red-200 bg-red-50 text-red-800";
+    default: return isLight
+      ? "border-slate-200 bg-slate-100 text-slate-600"
+      : "border-white/10 bg-white/5 text-slate-400";
+  }
 }
 
 export function sortMarketplaceAutoReviewRunsNewestFirst(
@@ -924,19 +968,59 @@ export function MarketplaceAutoReviewJobNavigator({
                         </span>
                       ) : null}
                       {allProducts ? (
-                        <span
-                          className={`rounded-full border px-2 py-1 ${run.facebookPublishStatus === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : run.facebookPublishStatus === "scheduled" ? "border-violet-200 bg-violet-50 text-violet-800" : run.facebookPublishStatus === "publishing" ? "border-sky-200 bg-sky-50 text-sky-800" : run.facebookPublishStatus === "failed" ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-100 text-slate-600"}`}
-                        >
-                          {run.facebookPublishStatus === "published"
-                            ? "Facebook: โพสต์แล้ว"
-                            : run.facebookPublishStatus === "scheduled"
-                              ? `Facebook: ตั้งเวลาแล้ว${facebookScheduleLabel(run.facebookScheduledAt) ? ` · ${facebookScheduleLabel(run.facebookScheduledAt)}` : ""}`
-                              : run.facebookPublishStatus === "publishing"
-                                ? "Facebook: กำลังโพสต์"
-                                : run.facebookPublishStatus === "failed"
-                                  ? "Facebook: โพสต์ไม่สำเร็จ"
-                                  : "Facebook: ยังไม่โพสต์"}
-                        </span>
+                        run.facebookPublicationProgress ? (
+                          <span className="mt-1 flex w-full flex-col gap-1.5 rounded-lg border border-slate-200 bg-white p-2 text-[11px]">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-semibold ${facebookPublicationTone(run.facebookPublicationProgress.video, isLight)}`}>
+                                <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                                วิดีโอ: {facebookPublicationLabel(run.facebookPublicationProgress.video)}
+                                {run.facebookPublicationProgress.video === "scheduled" && facebookScheduleLabel(run.facebookPublicationProgress.videoScheduledAt)
+                                  ? ` · ${facebookScheduleLabel(run.facebookPublicationProgress.videoScheduledAt)}`
+                                  : ""}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-semibold ${run.facebookPublicationProgress.publishedPhotoCount === 3 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-100 text-slate-700"}`}>
+                                <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                                ภาพ: โพสต์แล้ว {run.facebookPublicationProgress.publishedPhotoCount}/3 ภาพ
+                              </span>
+                            </span>
+                            <span className="flex flex-wrap gap-1">
+                              {run.facebookPublicationProgress.photos.map((photo: { variant: string; status: string; scheduledAt?: string | Date | null }) => {
+                                const photoLabel = photo.variant === "caption_source"
+                                  ? "ภาพจาก Caption"
+                                  : photo.variant === "character_reference"
+                                    ? "ภาพอ้างอิงตัวละคร"
+                                    : "ภาพอ้างอิงสินค้า";
+                                return (
+                                  <span key={photo.variant} className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 ${facebookPublicationTone(photo.status, isLight)}`}>
+                                    {photo.status === "published" ? <CircleCheck className="h-3 w-3" aria-hidden="true" /> : null}
+                                    {photoLabel}: {facebookPublicationLabel(photo.status)}
+                                    {photo.status === "scheduled" && facebookScheduleLabel(photo.scheduledAt)
+                                      ? ` · ${facebookScheduleLabel(photo.scheduledAt)}`
+                                      : ""}
+                                  </span>
+                                );
+                              })}
+                            </span>
+                            {run.facebookPublicationProgress.allComplete ? (
+                              <span className="inline-flex w-fit items-center gap-1 rounded-md border-2 border-emerald-500 bg-emerald-100 px-2.5 py-1 font-bold text-emerald-900" role="status">
+                                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                                โพสต์ครบแล้ว: วิดีโอ + ภาพ 3/3
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className={`rounded-full border px-2 py-1 ${run.facebookPublishStatus === "published" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : run.facebookPublishStatus === "scheduled" ? "border-violet-200 bg-violet-50 text-violet-800" : run.facebookPublishStatus === "publishing" ? "border-sky-200 bg-sky-50 text-sky-800" : run.facebookPublishStatus === "failed" ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+                            {run.facebookPublishStatus === "published"
+                              ? "Facebook: โพสต์แล้ว"
+                              : run.facebookPublishStatus === "scheduled"
+                                ? `Facebook: ตั้งเวลาแล้ว${facebookScheduleLabel(run.facebookScheduledAt) ? ` · ${facebookScheduleLabel(run.facebookScheduledAt)}` : ""}`
+                                : run.facebookPublishStatus === "publishing"
+                                  ? "Facebook: กำลังโพสต์"
+                                  : run.facebookPublishStatus === "failed"
+                                    ? "Facebook: โพสต์ไม่สำเร็จ"
+                                    : "Facebook: ยังไม่โพสต์"}
+                          </span>
+                        )
                       ) : null}
                       {allProducts && run.awaitingAffiliateComment ? (
                         <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800">

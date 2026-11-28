@@ -111,6 +111,13 @@ export async function attachMarketplaceAutoReviewJobPreviews<
         "published" | "scheduled" | "publishing" | "failed" | "not_published";
       facebookScheduledAt: Date | null;
       awaitingAffiliateComment: boolean;
+      facebookPublicationProgress: {
+        video: string;
+        videoScheduledAt: Date | null;
+        photos: { variant: string; status: string; scheduledAt: Date | null }[];
+        publishedPhotoCount: number;
+        allComplete: boolean;
+      };
     }
   >
 > {
@@ -122,6 +129,13 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     characterSeriesNames: [],
     facebookPublishStatus: "not_published" as const,
     awaitingAffiliateComment: false,
+    facebookPublicationProgress: {
+      video: "not_published",
+      videoScheduledAt: null,
+      photos: ["caption_source", "character_reference", "product_reference"].map(variant => ({ variant, status: "not_published", scheduledAt: null })),
+      publishedPhotoCount: 0,
+      allComplete: false,
+    },
   }));
   if (runs.length === 0) return result;
 
@@ -468,6 +482,46 @@ export async function attachMarketplaceAutoReviewJobPreviews<
       publishablePackage.thumbnailUrl
     );
     const facebookPosts = facebookPostsByRunId.get(String(run.id ?? "")) ?? [];
+    const videoPosts = facebookPosts.filter(post =>
+      record(post.metadata).source === "marketplace_auto_review_reels"
+    );
+    const videoPost = videoPosts[0];
+    const photoVariants = ["caption_source", "character_reference", "product_reference"] as const;
+    const videoPostMetadata = record(videoPost?.metadata);
+    const hasPublishedVideo = videoPosts.some(post => post.status === "published" && Boolean(post.providerPostId));
+    const latestVideoStatus = String(videoPostMetadata.videoPublicationStatus ?? videoPost?.status ?? "not_published");
+    const videoStatus = hasPublishedVideo
+      ? "published"
+      : latestVideoStatus === "published"
+        ? "reconciling"
+        : latestVideoStatus;
+    const photoStatuses = photoVariants.map(variant => {
+      const matchingPosts = facebookPosts.filter(post => {
+        const metadata = record(post.metadata);
+        return metadata.source === "marketplace_auto_review_photo_post" &&
+          String(metadata.selectedPhotoVariant ?? record(metadata.snapshot).selectedVariant ?? "") === variant;
+      });
+      const publishedPost = matchingPosts.find(post => post.status === "published" && Boolean(post.providerPostId));
+      const latestPhotoPost = matchingPosts[0];
+      const metadata = record(latestPhotoPost?.metadata);
+      return {
+        variant,
+        scheduledAt: latestPhotoPost?.scheduledAt instanceof Date ? latestPhotoPost.scheduledAt : null,
+        status: publishedPost
+          ? "published"
+          : String(metadata.photoPublicationStatus ?? latestPhotoPost?.status ?? "not_published") === "published"
+            ? "reconciling"
+            : String(metadata.photoPublicationStatus ?? latestPhotoPost?.status ?? "not_published"),
+      };
+    });
+    const publishedPhotoCount = photoStatuses.filter(photo => photo.status === "published").length;
+    const facebookPublicationProgress = {
+      video: videoStatus,
+      videoScheduledAt: videoPost?.scheduledAt instanceof Date ? videoPost.scheduledAt : null,
+      photos: photoStatuses,
+      publishedPhotoCount,
+      allComplete: videoStatus === "published" && publishedPhotoCount === photoVariants.length,
+    };
     const hasPublishedFacebookPost = facebookPosts.some(
       post => post.status === "published" && Boolean(post.providerPostId)
     );
@@ -518,6 +572,7 @@ export async function attachMarketplaceAutoReviewJobPreviews<
     return {
       ...run,
       facebookPublishStatus,
+      facebookPublicationProgress,
       facebookScheduledAt: facebookPublishStatus === "scheduled" && latestPost?.scheduledAt instanceof Date
         ? latestPost.scheduledAt
         : null,
