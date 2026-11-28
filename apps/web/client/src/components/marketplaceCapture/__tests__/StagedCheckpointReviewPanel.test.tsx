@@ -142,6 +142,32 @@ function clickAndConfirmGeneration(button: HTMLElement) {
 }
 
 describe("StagedCheckpointReviewPanel", () => {
+  it("uses the server speaker-binding completeness status when reporting manual matches", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: Array.from({ length: 5 }, (_, index) => ({
+        ...input.state.shots[0],
+        shotId: index + 1,
+        dialogue: `ผู้พูด${index + 1}: สวัสดี`,
+        imageArtifactHash: `frame-${index + 1}`,
+        imageArtifactUrl: `/media/frame-${index + 1}.png`,
+        speakerVisualBindingsComplete: true,
+      })),
+    };
+    render(
+      <StagedCheckpointReviewPanel
+        {...input}
+        onDetectAllShotPeople={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/จับคู่ครบแล้ว 5\/5 ช็อต/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "จับคู่ครบแล้ว (5/5)" })
+    ).toBeDisabled();
+  });
+
   it("blocks video-prompt actions until the server confirms speaker bindings are complete", () => {
     const input = props();
     input.state = {

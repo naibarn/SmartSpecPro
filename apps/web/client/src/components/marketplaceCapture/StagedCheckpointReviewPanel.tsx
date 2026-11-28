@@ -2228,17 +2228,27 @@ export function StagedCheckpointReviewPanel(props: {
       );
     }) ?? false;
 
+  const isSpeakerMappingComplete = (shot: StagedReviewState["shots"][number]) => {
+    const speakers = dialogueSpeakerLabels(shot.dialogue);
+    if (!speakers.length && shot.speakerFallbackName?.trim()) {
+      speakers.push(shot.speakerFallbackName.trim());
+    }
+    if (shot.speakerVisualBindingsComplete !== undefined) {
+      return shot.speakerVisualBindingsComplete;
+    }
+    const bindings = shot.speakerVisualBindings ?? {};
+    return (
+      speakers.length > 0 &&
+      speakers.every(speaker => Boolean(bindings[speaker])) &&
+      new Set(speakers.map(speaker => bindings[speaker])).size ===
+        speakers.length
+    );
+  };
   const speakerMatchBatchTargets = (props.state?.shots ?? []).filter(shot => {
     const speakers = dialogueSpeakerLabels(shot.dialogue);
     if (!speakers.length && shot.speakerFallbackName?.trim()) {
       speakers.push(shot.speakerFallbackName.trim());
     }
-    const bindings = shot.speakerVisualBindings ?? {};
-    const hasCompleteBindings =
-      speakers.length > 0 &&
-      speakers.every(speaker => Boolean(bindings[speaker])) &&
-      new Set(speakers.map(speaker => bindings[speaker])).size ===
-        speakers.length;
     const hasImageArtifact = Boolean(
       shot.imageArtifactHash && shot.imageArtifactUrl
     );
@@ -2259,12 +2269,19 @@ export function StagedCheckpointReviewPanel(props: {
     return (
       speakers.length > 0 &&
       (hasImageArtifact || imageGenerationInFlight) &&
-      !hasCompleteBindings &&
+      !isSpeakerMappingComplete(shot) &&
       !hasActiveDetection &&
       !hasUnsavedDialogue
     );
   });
   const speakerMatchBatchTotal = props.state?.shots.length ?? 0;
+  const speakerMatchBatchMatched = (props.state?.shots ?? []).filter(shot => {
+    const speakers = dialogueSpeakerLabels(shot.dialogue);
+    if (!speakers.length && shot.speakerFallbackName?.trim()) {
+      speakers.push(shot.speakerFallbackName.trim());
+    }
+    return speakers.length > 0 && isSpeakerMappingComplete(shot);
+  }).length;
   const speakerMatchBatchSkipped = Math.max(
     0,
     speakerMatchBatchTotal - speakerMatchBatchTargets.length
@@ -4542,11 +4559,15 @@ export function StagedCheckpointReviewPanel(props: {
                   >
                     {props.speakerMatchBatchStatus?.phase === "dispatching"
                       ? `กำลังส่งงาน ${props.speakerMatchBatchStatus.currentIndex}/${props.speakerMatchBatchStatus.total}`
-                      : `เริ่มจับคู่อัตโนมัติ (${speakerMatchBatchTargets.length}/${speakerMatchBatchTotal} ช็อต)`}
+                      : speakerMatchBatchTargets.length > 0
+                        ? `เริ่มจับคู่อัตโนมัติ (${speakerMatchBatchTargets.length} ช็อต)`
+                        : speakerMatchBatchMatched > 0
+                          ? `จับคู่ครบแล้ว (${speakerMatchBatchMatched}/${speakerMatchBatchTotal})`
+                          : "ไม่มีช็อตที่พร้อมจับคู่"}
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-cyan-900" role="status">
-                  พร้อมจับคู่ {speakerMatchBatchTargets.length} จาก {speakerMatchBatchTotal} ช็อต · ข้าม {speakerMatchBatchSkipped} ช็อต (จับคู่ครบ, กำลังทำงาน, ยังไม่มีภาพที่สร้างหรือกำลังสร้าง, ไม่มีชื่อผู้พูด หรือมีบทพูดที่ยังไม่ได้บันทึก)
+                  จับคู่ครบแล้ว {speakerMatchBatchMatched}/{speakerMatchBatchTotal} ช็อต · ยังต้องจับคู่อัตโนมัติ {speakerMatchBatchTargets.length} ช็อต · ข้าม {speakerMatchBatchSkipped} ช็อต (จับคู่ครบ, กำลังทำงาน, ยังไม่มีภาพที่สร้างหรือกำลังสร้าง, ไม่มีชื่อผู้พูด หรือมีบทพูดที่ยังไม่ได้บันทึก)
                 </p>
                 {props.speakerMatchBatchStatus ? (
                   <p className="mt-2 rounded-lg border border-cyan-200 bg-white/80 p-2 text-sm text-cyan-950" role="status">
