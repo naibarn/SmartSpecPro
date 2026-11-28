@@ -171,6 +171,14 @@ export function FacebookReelsPublishCard(props: {
   });
   const photoReadiness = trpc.marketplaceAutoReviewPhotoPosts.readiness.useQuery({ runId: props.runId }, { retry: false });
   const { refetch: refetchPhotoReadiness } = photoReadiness;
+  const pagePreference = trpc.marketplaceAutoReviewPhotoPosts.pagePreference.useQuery(
+    { runId: props.runId },
+    { retry: false },
+  );
+  const savePagePreference = trpc.marketplaceAutoReviewPhotoPosts.savePagePreference.useMutation({
+    onSuccess: async () => { await pagePreference.refetch(); },
+    onError: () => setError("บันทึก Facebook Page สำหรับ Job นี้ไม่สำเร็จ กรุณาลองอีกครั้ง"),
+  });
   const photoImagesRevision = props.photoImagesRevision;
 
   // The gallery follows the generation job separately from the publishing query.
@@ -224,9 +232,23 @@ export function FacebookReelsPublishCard(props: {
   useEffect(() => {
     if (!availablePages) return;
     if (availablePages?.some(page => String(page.id) === pageId && page.publishingReady)) return;
+    const savedPageId = pagePreference.data?.pageId;
+    if (savedPageId && availablePages.some(page => page.id === savedPageId && page.publishingReady)) {
+      setPageId(String(savedPageId));
+      return;
+    }
     const readyPages = availablePages.filter(page => page.publishingReady);
     setPageId(readyPages.length === 1 ? String(readyPages[0].id) : "");
-  }, [availablePages, pageId]);
+  }, [availablePages, pageId, pagePreference.data?.pageId]);
+
+  const selectFacebookPage = (value: string) => {
+    setPageId(value);
+    setError(null);
+    const selectedPageId = Number(value);
+    if (Number.isSafeInteger(selectedPageId) && selectedPageId > 0 && selectedPageId !== pagePreference.data?.pageId) {
+      savePagePreference.mutate({ runId: props.runId, pageId: selectedPageId });
+    }
+  };
 
   useEffect(() => {
     const firstReady = photoReadiness.data?.imageVariants.find(image => image.status === "completed");
@@ -262,12 +284,12 @@ export function FacebookReelsPublishCard(props: {
     readiness.data?.ready && selectedPage?.publishingReady && caption.trim() &&
     caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? readiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? readiness.data?.hasAffiliateLink : affiliateMode === "none") &&
-    noLinkConfirmed && !activePublication && !history.isLoading && !history.isError && !publish.isPending
+    noLinkConfirmed && !activePublication && !history.isLoading && !history.isError && !publish.isPending && !savePagePreference.isPending
   );
   const canPrepareManualHandoff = Boolean(
     affiliateMode === "manual_native" && readiness.data?.ready && selectedPage?.publishingReady &&
     caption.trim() && caption.length <= 2000 && commercialDisclosure.length <= 500 && !invalidHashtags &&
-    !activePublication && !history.isLoading && !history.isError && !publish.isPending
+    !activePublication && !history.isLoading && !history.isError && !publish.isPending && !savePagePreference.isPending
   );
   const readyPhotoVariants = photoReadiness.data?.imageVariants.filter(image => image.status === "completed" && image.imageUrl) ?? [];
   const selectedPhotoPage = (photoReadiness.data?.pages ?? []).find(page => String(page.id) === pageId);
@@ -282,7 +304,7 @@ export function FacebookReelsPublishCard(props: {
     (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && !photoHistoryHasUncertain &&
     !blockedPhotoVariants.has(photoVariant) &&
-    !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
+    !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending && !savePagePreference.isPending
   );
 
   const publishSelectedPhoto = () => {
@@ -348,7 +370,7 @@ export function FacebookReelsPublishCard(props: {
               label="Facebook Page"
               options={(photoReadiness.data?.pages ?? []).map(page => ({ value: String(page.id), label: page.label, disabled: !page.publishingReady, description: page.publishingIssue ?? undefined }))}
               value={pageId}
-              onChange={setPageId}
+              onChange={selectFacebookPage}
               placeholder="เลือก Page ที่จะเผยแพร่"
               emptyText="ยังไม่มี Page ที่เปิดใช้การเผยแพร่"
               isDisabled={!(photoReadiness.data?.pages.length)}
@@ -493,7 +515,7 @@ export function FacebookReelsPublishCard(props: {
           label="Facebook Page"
           options={pages.map(page => ({ value: String(page.id), label: page.label, disabled: !page.publishingReady, description: page.publishingIssue ?? undefined }))}
           value={pageId}
-          onChange={setPageId}
+          onChange={selectFacebookPage}
           placeholder="เลือก Page ที่จะเผยแพร่"
           emptyText="ยังไม่มี Page ที่เปิดใช้การเผยแพร่"
           isDisabled={!pages.length}

@@ -18,6 +18,10 @@ import {
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
 import { postAffiliateCommentOnPublishedAutoReview } from "../services/marketplaceAutoReviewAffiliateCommentService";
+import {
+  getMarketplaceAutoReviewFacebookPagePreference,
+  saveMarketplaceAutoReviewFacebookPagePreference,
+} from "../services/marketplaceAutoReviewFacebookPagePreferenceService";
 
 const tenantPhotoPostProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
@@ -42,6 +46,23 @@ const publishSnapshotSchema = z.object({
 }).strict();
 
 export const marketplaceAutoReviewPhotoPostsRouter = router({
+  pagePreference: tenantPhotoPostProcedure.input(z.object({ runId: z.string().trim().min(1).max(64) }).strict())
+    .query(({ ctx, input }) => getMarketplaceAutoReviewFacebookPagePreference({
+      tenantId: ctx.tenantId,
+      userId: ctx.user.id,
+      runId: input.runId,
+    })),
+
+  savePagePreference: tenantPhotoPostProcedure.input(z.object({
+    runId: z.string().trim().min(1).max(64),
+    pageId: z.number().int().positive(),
+  }).strict()).mutation(({ ctx, input }) => saveMarketplaceAutoReviewFacebookPagePreference({
+    tenantId: ctx.tenantId,
+    userId: ctx.user.id,
+    runId: input.runId,
+    pageId: input.pageId,
+  })),
+
   readiness: tenantPhotoPostProcedure.input(z.object({ runId: z.string().trim().min(1).max(64) }).strict())
     .query(async ({ ctx, input }) => ({
       ...await getMarketplaceAutoReviewPhotoPostReadiness({ tenantId: ctx.tenantId, userId: ctx.user.id, runId: input.runId }),

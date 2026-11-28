@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   photoMutate: vi.fn(),
   confirmPhotoMutate: vi.fn(),
   refetchPhotos: vi.fn(),
+  savePagePreference: vi.fn(),
   photoReadiness: {
     ready: true,
     featureEnabled: true,
@@ -49,6 +50,8 @@ vi.mock("@/lib/trpc", () => ({
       postAffiliateComment: { useMutation: () => ({ mutate: mocks.mutate, isPending: false }) },
     },
     marketplaceAutoReviewPhotoPosts: {
+      pagePreference: { useQuery: () => ({ data: { pageId: null }, refetch: vi.fn() }) },
+      savePagePreference: { useMutation: () => ({ mutate: mocks.savePagePreference, isPending: false }) },
       readiness: { useQuery: () => ({ data: mocks.photoReadiness, isLoading: false, isError: false, refetch: mocks.refetchPhotos }) },
       history: { useQuery: () => ({ data: mocks.photoHistory, isLoading: false, isError: false, refetch: mocks.refetch }) },
       publish: { useMutation: () => ({ mutate: mocks.photoMutate, isPending: false }) },
@@ -101,6 +104,7 @@ describe("FacebookReelsPublishCard", () => {
     mocks.photoMutate.mockReset();
     mocks.confirmPhotoMutate.mockReset();
     mocks.refetchPhotos.mockReset();
+    mocks.savePagePreference.mockReset();
     mocks.photoHistory = [];
     mocks.readiness = {
       ready: true,
