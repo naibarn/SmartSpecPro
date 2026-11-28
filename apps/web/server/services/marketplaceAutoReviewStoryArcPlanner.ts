@@ -198,7 +198,15 @@ export function getStagedDialogueSpeakerLabels(
   const speakers = parseSpeakerNamedDialogue(safeDialogue)?.map(
     line => line.speakerName
   ) ?? [];
-  if (speakers.length > 0 || !safeDialogue.trim()) return speakers;
+  if (speakers.length > 0 || !safeDialogue.trim()) {
+    return Array.from(
+      new Map(
+        speakers.map(
+          speaker => [normalizeStagedCastName(speaker), speaker] as const
+        )
+      ).values()
+    );
+  }
   const leads = selectStagedLeadCast(cast);
   return leads.length === 1 &&
     leads[0]!.name.trim() &&

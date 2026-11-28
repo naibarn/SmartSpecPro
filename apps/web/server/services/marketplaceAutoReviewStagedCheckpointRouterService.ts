@@ -5072,7 +5072,9 @@ export async function detectStagedAutoReviewShotPeople(input: {
           estimatedCredits:
             detection.estimatedCredits +
             (detection.attributionSkillRun?.estimatedCredits ?? 0),
-          speakerVisualMatchIssue: detection.speakerVisualMatchIssue ?? null,
+          speakerVisualMatchIssue:
+            detection.speakerVisualMatchIssue ??
+            (completeAutoBindings ? null : "ambiguous_match"),
           skillRuns: [
             detection.skillRun,
             ...(detection.attributionSkillRun
