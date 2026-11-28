@@ -54,6 +54,9 @@ import {
   extractJsonStringFieldForTest,
   mapSequentialSingleShotRefreshOutputForTest,
   parseSequentialSingleShotRefreshOutputForTest,
+  buildSequentialSingleShotRefreshContractForTest,
+  buildStagedImageSafetyDirectiveForTest,
+  appendStagedImageSafetyDirectiveForTest,
 } from "../productReviewSequentialStoryboardSkillRunner";
 
 const mockSyncSingleSkillIfChanged = vi.mocked(syncSingleSkillIfChanged);
@@ -84,6 +87,58 @@ describe("single-shot refresh output mapping", () => {
         action: "presenter lifts product",
       }],
     });
+  });
+});
+
+
+describe("staged image person-count and brand safety locks", () => {
+  const characterRefs = [
+    { index: 2, role: "character", url: "https://example.com/person-1.png", characterName: "Aran" },
+    { index: 3, role: "character", url: "https://example.com/person-2.png", characterName: "Nicha" },
+    { index: 4, role: "primary_product", url: "https://example.com/product.png" },
+  ];
+
+  it("puts exact cast count and no-trademark rules in the image authoring contract", () => {
+    const contract = buildSequentialSingleShotRefreshContractForTest({
+      tenantId: "tenant-1",
+      userId: 42,
+      targetShotId: 1,
+      imageBudget: 2400,
+      promptTarget: "image",
+      referenceManifest: characterRefs,
+      skillVisionUrls: characterRefs.map(ref => ref.url),
+      childSubjectPolicy: { productChildRelated: false },
+      shotContract: {
+        purpose: "review",
+        dialogue: "",
+        duration_seconds: 5,
+        demonstration_type: "usage_demo",
+        depicts_minor: false,
+        guardian_required: false,
+        product_in_shot: true,
+      },
+    });
+
+    expect(contract).toContain("show exactly 2 persons total");
+    expect(contract).toContain("@Image2 = Aran; @Image3 = Nicha");
+    expect(contract).toContain("Do not omit, duplicate, or add anyone");
+    expect(contract).toContain("NO TRADEMARK OR OFFICIAL-STORE LOCK");
+    expect(contract).toContain("Official Store/authorized seller");
+  });
+
+  it("appends the same deterministic restrictions to the saved image prompt", () => {
+    const prompt = appendStagedImageSafetyDirectiveForTest("A two-person product scene.", characterRefs);
+    expect(prompt).toContain("A two-person product scene.");
+    expect(prompt).toContain("show exactly 2 persons total");
+    expect(prompt).toContain("no logos, trademarks, brand names");
+  });
+
+  it("does not count duplicate references to the same named person twice", () => {
+    const directive = buildStagedImageSafetyDirectiveForTest([
+      ...characterRefs.slice(0, 1),
+      { ...characterRefs[0], index: 5, variantLabel: "alternate portrait" },
+    ]);
+    expect(directive).toContain("show exactly 1 person total");
   });
 });
 

@@ -1044,6 +1044,35 @@ function composeSequentialStoryboardSystemPromptBase(input: {
   };
 }
 
+function buildStagedImageSafetyDirective(
+  referenceManifest: readonly SequentialReferenceManifestEntry[]
+): string {
+  const characterReferences = referenceManifest.filter(entry => entry.role === "character");
+  const seenPeople = new Set<string>();
+  const people = characterReferences.filter(entry => {
+    const nameKey = entry.characterName?.trim().toLocaleLowerCase();
+    const key = nameKey ? `name:${nameKey}` : `reference:${entry.index}`;
+    if (seenPeople.has(key)) return false;
+    seenPeople.add(key);
+    return true;
+  });
+  const lines = [
+    "NO TRADEMARK OR OFFICIAL-STORE LOCK: show no logos, trademarks, brand names, readable product/package text, store badges, signage, or claims such as Official Store/authorized seller. This safety lock overrides any instruction to preserve printed labels or logos; keep only unmarked package shape, color, and geometry. If such marks exist in a reference, omit or render them blank and unreadable; never invent replacements.",
+  ];
+  if (people.length > 0) {
+    lines.push(
+      `EXACT PERSON COUNT LOCK: show exactly ${people.length} person${people.length === 1 ? "" : "s"} total, one for each selected character identity and no others. ${people.map(entry => `@Image${entry.index} = ${entry.characterName?.trim() || "one selected person"}`).join("; ")}. Do not omit, duplicate, or add anyone, including background people, crowds, reflections, screens, posters, or silhouettes. Product and scene references do not authorize additional people.`
+    );
+  }
+  return lines.join("\n");
+}
+
+export function buildStagedImageSafetyDirectiveForTest(
+  referenceManifest: readonly SequentialReferenceManifestEntry[]
+): string {
+  return buildStagedImageSafetyDirective(referenceManifest);
+}
+
 /** Test-only wrapper (repo `...ForTest` convention). */
 export function composeSequentialStoryboardSystemPromptBaseForTest(input: {
   skill: SkillDefinition;
@@ -3094,6 +3123,9 @@ function buildSequentialSingleShotRefreshContract(
     JSON.stringify(input.globalContinuity ?? {}),
     "## Shot Contract (rewrite ONLY this shot)",
     JSON.stringify(input.shotContract),
+    ...(input.promptTarget === "image" || input.promptTarget === "both"
+      ? [buildStagedImageSafetyDirective(input.referenceManifest)]
+      : []),
     "## Adjacent Shot Continuity",
     `previous_shot_visual_summary: ${input.previousShotVisualSummary || "(none — this is shot 1)"}`,
     `next_shot_visual_summary: ${input.nextShotVisualSummary || "(none — this is the last shot)"}`,
@@ -3133,6 +3165,20 @@ export function buildSequentialSingleShotRefreshContractForTest(
   input: SequentialSingleShotRefreshInput
 ): string {
   return buildSequentialSingleShotRefreshContract(input);
+}
+
+function appendStagedImageSafetyDirective(
+  prompt: string,
+  referenceManifest: readonly SequentialReferenceManifestEntry[]
+): string {
+  return `${prompt.trim()}\n\n${buildStagedImageSafetyDirective(referenceManifest)}`;
+}
+
+export function appendStagedImageSafetyDirectiveForTest(
+  prompt: string,
+  referenceManifest: readonly SequentialReferenceManifestEntry[]
+): string {
+  return appendStagedImageSafetyDirective(prompt, referenceManifest);
 }
 
 export function mapSequentialSingleShotRefreshOutputForTest(
@@ -3808,6 +3854,14 @@ export async function refreshSequentialShotPromptWithSkillDirect(
   }
   return {
     ...mapSequentialSingleShotRefreshOutput(parsed),
+    ...(input.promptTarget === "image" || input.promptTarget === "both"
+      ? {
+          startFrameImagePrompt: appendStagedImageSafetyDirective(
+            parsed.start_frame_image_prompt,
+            input.referenceManifest,
+          ),
+        }
+      : {}),
     model: policy.modelId,
     provider: result.providerName,
     estimatedCredits: creditsUsed,
