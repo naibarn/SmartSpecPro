@@ -893,9 +893,9 @@ function shotStateLabel(state: string | null | undefined) {
     case "image_generating":
       return "กำลังสร้างภาพ";
     case "image_result_awaiting":
-      return "ภาพสร้างเสร็จแล้ว · อนุมัติอัตโนมัติ";
+      return "ภาพสร้างเสร็จแล้ว · รอตรวจและอนุมัติ";
     case "image_result_approved":
-      return "ภาพสร้างเสร็จแล้ว · อนุมัติอัตโนมัติ";
+      return "ภาพสร้างเสร็จแล้ว · อนุมัติแล้ว";
     case "video_prompt_awaiting":
       return "รอตรวจ Prompt วิดีโอ";
     case "video_generating":
@@ -3950,8 +3950,8 @@ export function StagedCheckpointReviewPanel(props: {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-normal">
-                  เลือกหรือติ๊กภาพสินค้าที่จะส่งไปสร้างภาพ
-                  (สามารถติ๊กเลือกเฉพาะภาพที่ต้องการเพื่อป้องกัน AI สับสน)
+                  เพิ่มภาพอ้างอิงได้หลายมุม แล้วติ๊กเลือกภาพที่ต้องการส่งให้ AI
+                  เพื่อให้ยึดสินค้าจากภาพจริงแทนคำบรรยาย
                 </p>
 
                 <details className="rounded-lg border border-sky-200 bg-white/80 px-3 py-2">
@@ -4044,10 +4044,10 @@ export function StagedCheckpointReviewPanel(props: {
                   />
                   <span className="text-lg">🛍️ ➕</span>
                   <p className="mt-1 text-xs font-semibold text-sky-800">
-                    ลากภาพสินค้ามาวางที่นี่ หรือคลิกเพื่อเพิ่ม
+                    แก้ไข/เพิ่มภาพสินค้า — ลากภาพมาวางหรือคลิกเพื่อเลือกไฟล์
                   </p>
                   <p className="text-[10px] text-slate-500">
-                    รองรับไฟล์ PNG, JPG, WebP จากคอมพิวเตอร์
+                    รองรับ PNG, JPG, WebP · หลังเปลี่ยนภาพอ้างอิง ให้สร้างภาพช็อตที่ใช้สินค้านั้นใหม่
                   </p>
                 </div>
               </div>

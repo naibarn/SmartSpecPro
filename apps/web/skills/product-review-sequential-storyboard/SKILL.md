@@ -418,8 +418,13 @@ backstop; the rewrite is always this skill's job.
 Write one start-frame image prompt per shot (`start_frame_image_prompt`).
 Each must contain: the reference lock block with explicit `@ImageN` bindings
 matching `reference_manifest` when reference entries exist (never invent an
-`@ImageN` binding); the shot's visual event; product components
-only when the shot contract says `product_in_shot: true`; character continuity
+`@ImageN` binding); the shot's visual event; for a visible product, a concise
+instruction to match the attached product reference image(s) exactly. The
+reference image(s), not prose, are the sole source of product appearance:
+never describe or infer the product's silhouette, parts, colors, materials,
+finish, labels, or branding in the image prompt. If the visual summary or
+another text field contains product-appearance wording, omit that wording and
+keep only the scene, action, framing, and lighting. Character continuity
 when one or more characters are present (both characters' identity, wardrobe,
 and the two-shot/over-the-shoulder framing from Two-Person Conversation Mode
 when a cast of two is staged); camera framing/angle; environment and lighting

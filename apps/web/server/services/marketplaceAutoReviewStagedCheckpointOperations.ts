@@ -101,6 +101,15 @@ export function mutateStagedCheckpointMetadata(input: {
     input.mutation
   );
   if (!result.ok) return result;
+  const shots =
+    input.mutation.type === "approve" &&
+    result.checkpoint.kind === "image_result"
+      ? input.metadata.stagedSequentialStoryboard.shots.map(shot =>
+          shot.shotId === result.checkpoint.shotId
+            ? { ...shot, state: "image_result_approved" as const }
+            : shot
+        )
+      : input.metadata.stagedSequentialStoryboard.shots;
   const metadata: StagedSequentialStoryboardMetadataV1 = {
     ...input.metadata,
     planReview: {
@@ -109,6 +118,7 @@ export function mutateStagedCheckpointMetadata(input: {
     },
     stagedSequentialStoryboard: {
       ...input.metadata.stagedSequentialStoryboard,
+      shots,
       reviewCheckpoints: result.checkpoints,
     },
   };

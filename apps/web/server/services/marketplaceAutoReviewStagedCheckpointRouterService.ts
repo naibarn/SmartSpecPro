@@ -4494,7 +4494,7 @@ export function buildStagedSingleShotRefreshInput(input: {
       visual_summary: [
         planShot.visualSummary,
         input.stage !== "video" && productVisible
-          ? "For product appearance, inspect the current primary product reference @Image1. Its visible cap or pump, colors, materials, finish and label take precedence over any previous visual description or adjacent shot."
+          ? "PRODUCT REFERENCE ONLY: use the attached product reference image(s) as the sole source of product appearance and identity. Do not describe, infer, or restate the product's shape, parts, colors, materials, finish, labels, or branding in text. Treat any conflicting product description in the story or shot summary as non-authoritative. Describe only the scene, action, framing, and lighting; show the exact product from its reference image."
           : null,
         planShot.cameraDirection
           ? `Camera/framing: ${planShot.cameraDirection}`
