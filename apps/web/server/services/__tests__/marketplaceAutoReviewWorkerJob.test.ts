@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createControlPlaneJobMock, createCanonicalJobInTransactionMock } =
-  vi.hoisted(() => ({
+const {
+  createControlPlaneJobMock,
+  createCanonicalJobInTransactionMock,
+  getDbMock,
+} = vi.hoisted(() => ({
     createControlPlaneJobMock: vi.fn(),
     createCanonicalJobInTransactionMock: vi.fn(),
+    getDbMock: vi.fn(),
   }));
 
 const workerRuntimeMocks = vi.hoisted(() => ({
@@ -28,6 +32,8 @@ vi.mock("../marketplaceAutoReviewWorkerRuntime", () => ({
   createMarketplaceAutoReviewWorkerRuntime: workerRuntimeMocks.createRuntime,
 }));
 
+vi.mock("../../db", () => ({ getDb: getDbMock }));
+
 vi.mock("../marketplaceAutoReviewStagedCheckpointRouterService", () => ({
   generateStagedAutoReviewSocialPostImages:
     workerRuntimeMocks.generateSocialPostImages,
@@ -43,6 +49,7 @@ import {
 describe("Marketplace Auto Review worker job admission", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getDbMock.mockReset();
     createControlPlaneJobMock.mockResolvedValue({ jobId: "worker-job-1" });
     workerRuntimeMocks.createRuntime.mockResolvedValue({
       publicUrl: "https://app.test",
@@ -246,6 +253,36 @@ describe("Marketplace Auto Review worker job admission", () => {
       { publicUrl: "https://app.test" },
       [4],
       true
+    );
+  });
+
+  it("marks the parent run as needing image approval when finalization is blocked", async () => {
+    const setMock = vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) }));
+    getDbMock.mockResolvedValue({ update: vi.fn(() => ({ set: setMock })) });
+    workerRuntimeMocks.advanceRun.mockRejectedValueOnce(
+      new Error(
+        "Marketplace Auto Review finalize blocked: generated media acceptance envelope is missing or not accepted"
+      )
+    );
+    const job = marketplaceAutoReviewWorkerInputSchema.parse({
+      operation: "advance_run",
+      runId: "run-auto-review-finalize",
+    });
+
+    await expect(
+      executeMarketplaceAutoReviewWorkerJob({
+        job,
+        tenantId: "tenant-marketplace",
+        userId: 42,
+        jobId: "finalize-blocked-job",
+      })
+    ).rejects.toThrow("generated media acceptance envelope");
+
+    expect(setMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "blocked_needs_user",
+        errorMessage: expect.stringContaining("อนุมัติภาพที่รอตรวจ"),
+      })
     );
   });
 

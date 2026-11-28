@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { workerJobs } from "../../drizzle/schema";
+import { marketplaceAutoReviewRuns, workerJobs } from "../../drizzle/schema";
+import { getDb } from "../db";
 import { createCanonicalJobInTransaction } from "./jobControlPlane";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { MARKETPLACE_AUTO_REVIEW_WORKER_JOB_TYPE } from "./marketplaceAutoReviewQueuePolicy";
@@ -22,6 +23,45 @@ const stagedSelectedConceptSchema = z
     dialoguePreview: z.string().trim().min(40).max(6000),
   })
   .strict();
+
+const IMAGE_APPROVAL_FINALIZE_BLOCKER =
+  "generated media acceptance envelope is missing or not accepted";
+const IMAGE_APPROVAL_REQUIRED_MESSAGE =
+  "ภาพผลลัพธ์ยังอนุมัติไม่ครบทุกช็อต กรุณาอนุมัติภาพที่รอตรวจ แล้วระบบจะบันทึกวิดีโอเข้า Library ต่อ";
+
+async function recordImageApprovalFinalizeBlock(input: {
+  error: unknown;
+  runId: string;
+  tenantId: string;
+  userId: number;
+}) {
+  const message = input.error instanceof Error ? input.error.message : "";
+  if (!message.includes(IMAGE_APPROVAL_FINALIZE_BLOCKER)) return;
+
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .update(marketplaceAutoReviewRuns)
+      .set({
+        status: "blocked_needs_user",
+        errorMessage: IMAGE_APPROVAL_REQUIRED_MESSAGE,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, input.runId),
+          eq(marketplaceAutoReviewRuns.tenantId, input.tenantId),
+          eq(marketplaceAutoReviewRuns.userId, input.userId),
+          eq(marketplaceAutoReviewRuns.status, "waiting_provider"),
+          eq(marketplaceAutoReviewRuns.currentStage, "render")
+        )
+      );
+  } catch {
+    // Preserve the canonical worker failure if the user-facing projection
+    // cannot be persisted; the failed worker job remains the durable evidence.
+  }
+}
 
 export const marketplaceAutoReviewWorkerInputSchema = z.discriminatedUnion(
   "operation",
@@ -453,19 +493,30 @@ export async function executeMarketplaceAutoReviewWorkerJob(input: {
         import("./marketplaceAutoReviewService"),
         import("./marketplaceAutoReviewWorkerRuntime"),
       ]);
-      const result = await advanceMarketplaceAutoReviewRun(
-        input.job.runId,
-        auth,
-        await runtime.createMarketplaceAutoReviewWorkerRuntime({
-          userId: input.userId,
-          tenantId: input.tenantId,
+      let result: Awaited<ReturnType<typeof advanceMarketplaceAutoReviewRun>>;
+      try {
+        result = await advanceMarketplaceAutoReviewRun(
+          input.job.runId,
+          auth,
+          await runtime.createMarketplaceAutoReviewWorkerRuntime({
+            userId: input.userId,
+            tenantId: input.tenantId,
+            runId: input.job.runId,
+            jobId: input.jobId,
+            schedulerSource: "worker_jobs:advance_run",
+          }),
+          input.job.targetShotIds,
+          input.job.reconcileOnly
+        );
+      } catch (error) {
+        await recordImageApprovalFinalizeBlock({
+          error,
           runId: input.job.runId,
-          jobId: input.jobId,
-          schedulerSource: "worker_jobs:advance_run",
-        }),
-        input.job.targetShotIds,
-        input.job.reconcileOnly
-      );
+          tenantId: input.tenantId,
+          userId: input.userId,
+        });
+        throw error;
+      }
       const resultMetadata =
         result && typeof result === "object"
           ? (result as { metadataJson?: unknown }).metadataJson

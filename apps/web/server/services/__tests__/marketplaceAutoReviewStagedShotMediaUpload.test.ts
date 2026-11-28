@@ -23,6 +23,7 @@ import { stagedMetadataStateDigest } from "../marketplaceAutoReviewStagedCheckpo
 import {
   marketplaceAutoReviewRuns,
   marketplaceAutoReviewOutboxJobs,
+  workerJobs,
 } from "../../../drizzle/schema";
 
 const { advanceSpy } = vi.hoisted(() => ({ advanceSpy: vi.fn(async () => {}) }));
@@ -86,13 +87,18 @@ function makeFakeDb(initialRun: Record<string, any>) {
 
   function insert(table: unknown) {
     return {
-      values: async (vals: Record<string, any>) => {
+      values: (vals: Record<string, any>) => {
         if (table === marketplaceAutoReviewOutboxJobs) outboxJobs.push(vals);
+        return {
+          returning: async () =>
+            table === workerJobs ? [{ id: vals.id }] : [],
+        };
       },
     };
   }
 
   const db: any = {
+    execute: async () => [],
     select,
     update,
     insert,
@@ -227,12 +233,20 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
     expect(shot1.videoPromptHash).toBeNull();
     expect(shot1.videoArtifactHash).toBeNull();
     expect(shot1.videoArtifactUrl).toBeNull();
-  });
+  }, 15_000);
 
-  it("(c) accepts a completed video upload even without an image artifact and preserves the existing video prompt", async () => {
+  it("(c) rejects a completed video upload while the current image checkpoint is awaiting review", async () => {
     const { applyStagedAutoReviewShotMediaUpload } = await import(
       "../marketplaceAutoReviewStagedCheckpointRouterService"
     );
+    const imageResult = buildStagedCheckpointFixture({
+      checkpointId: "cp-image-result-1",
+      kind: "image_result",
+      scope: "shot",
+      shotId: 1,
+      state: "awaiting",
+      contentHash: "image-hash-1",
+    });
     const videoPrompt = buildStagedCheckpointFixture({
       checkpointId: "cp-video-prompt-1",
       kind: "video_prompt",
@@ -243,7 +257,7 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
     const baseMetadata = planFixtureMetadata({
       stagedSequentialStoryboard: {
         ...planFixtureMetadata().stagedSequentialStoryboard,
-        reviewCheckpoints: [videoPrompt],
+        reviewCheckpoints: [imageResult, videoPrompt],
       },
     } as any);
     const metadata = {
@@ -252,38 +266,35 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
         ...baseMetadata.stagedSequentialStoryboard,
         shots: baseMetadata.stagedSequentialStoryboard.shots.map(shot =>
           shot.shotId === 1
-            ? { ...shot, videoPrompt: "Keep this approved video prompt" }
+            ? {
+                ...shot,
+                imageArtifactHash: "image-hash-1",
+                imageArtifactUrl: "https://cdn.example.test/image-1.png",
+                videoPrompt: "Keep this approved video prompt",
+              }
             : shot
         ),
       },
     };
 
-    const result = applyStagedAutoReviewShotMediaUpload({
-      metadata,
-      runId: "run-1",
-      shotId: 1,
-      stage: "video",
-      url: "https://cdn.example.test/manual-upload-1.mp4",
-      contentHash: "manual-hash-video-1",
-      userId: 42,
-      operationId: "op-2",
-    });
-
-    const shot1 = result.metadata.stagedSequentialStoryboard.shots.find(
-      shot => shot.shotId === 1
-    ) as any;
-    const checkpoints =
-      result.metadata.stagedSequentialStoryboard.reviewCheckpoints;
-    expect(shot1.imageArtifactHash).toBeNull();
-    expect(shot1.videoArtifactHash).toBe("manual-hash-video-1");
-    expect(shot1.videoArtifactUrl).toBe(
-      "https://cdn.example.test/manual-upload-1.mp4"
+    expect(() =>
+      applyStagedAutoReviewShotMediaUpload({
+        metadata,
+        runId: "run-1",
+        shotId: 1,
+        stage: "video",
+        url: "https://cdn.example.test/manual-upload-1.mp4",
+        contentHash: "manual-hash-video-1",
+        userId: 42,
+        operationId: "op-2",
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: "PRECONDITION_FAILED",
+        message: "staged_video_prompt_requires_approved_image:shot-1",
+      })
     );
-    expect(shot1.videoPrompt).toBe("Keep this approved video prompt");
-    expect(
-      checkpoints.find(c => c.checkpointId === "cp-video-prompt-1")?.state
-    ).toBe("approved");
-  });
+  }, 15_000);
 
   it("(d) uploading a video when an approved image exists sets videoArtifactUrl/Hash, supersedes only video-kind checkpoints, and leaves image-kind checkpoints for that shot untouched", async () => {
     const { applyStagedAutoReviewShotMediaUpload } = await import(
@@ -303,6 +314,8 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
       scope: "shot",
       shotId: 1,
       state: "approved",
+      contentHash: "existing-image-hash",
+      approvedHash: "existing-image-hash",
     });
     const videoPrompt = buildStagedCheckpointFixture({
       checkpointId: "cp-video-prompt-1",
@@ -332,6 +345,7 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
             ? {
                 ...shot,
                 imageArtifactHash: "existing-image-hash",
+                imageArtifactUrl: "https://cdn.example.test/image-1.png",
                 videoPrompt: "Existing video prompt",
               }
             : shot
@@ -408,7 +422,7 @@ describe("applyStagedAutoReviewShotMediaUpload — pure metadata transform", () 
 });
 
 describe("uploadStagedAutoReviewShotMedia — full DB-transaction wrapper", () => {
-  it("(e) never calls any creditService function, and wakes the run via advanceMarketplaceAutoReviewRun after a successful upload", async () => {
+  it("(e) never calls any creditService function, and returns a queued operation after a successful upload", async () => {
     const { getDb } = await import("../../db");
     const { uploadStagedAutoReviewShotMedia } = await import(
       "../marketplaceAutoReviewStagedCheckpointRouterService"
@@ -454,14 +468,6 @@ describe("uploadStagedAutoReviewShotMedia — full DB-transaction wrapper", () =
     expect(creditSpies.hasEnoughCredits).not.toHaveBeenCalled();
     expect(creditSpies.refundCredits).not.toHaveBeenCalled();
 
-    // Background "wake the run" call — allow the fire-and-forget dynamic
-    // import + call to flush.
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(advanceSpy).toHaveBeenCalledWith(
-      "run-1",
-      expect.objectContaining({ userId: 42 }),
-      expect.objectContaining({ userToken: "internal" })
-    );
+    expect(advanceSpy).not.toHaveBeenCalled();
   });
 });

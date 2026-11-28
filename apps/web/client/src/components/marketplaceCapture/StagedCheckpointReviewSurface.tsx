@@ -59,7 +59,7 @@ export function StagedCheckpointReviewSurface(props: {
       message.startsWith("staged_video_prompt_requires_approved_image") ||
       message.startsWith("MARKETPLACE_VIDEO_PROMPT_APPROVED_IMAGE_REQUIRED")
     ) {
-      return 'ต้องสร้างภาพของช็อตนี้ให้เสร็จก่อน จึงจะสร้าง Prompt วิดีโอและจับคู่ผู้พูดกับคนในภาพได้';
+      return 'กรุณาอนุมัติภาพของช็อตนี้ก่อน จึงจะสร้างวิดีโอหรือจับคู่ผู้พูดกับคนในภาพได้';
     }
     if (message === "staged_metadata_initializing") {
       return "กำลังเตรียมแผนเนื้อเรื่องใน Worker — หน้านี้จะตรวจสถานะให้อัตโนมัติ";

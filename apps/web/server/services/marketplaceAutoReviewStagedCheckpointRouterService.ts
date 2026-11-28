@@ -715,7 +715,9 @@ function assertStagedVideoPromptImageReady(input: {
   if (
     !imageHash ||
     !safeArtifactUrl(input.shot.imageArtifactUrl) ||
-    (currentImageResult && currentImageResult.contentHash !== imageHash)
+    !currentImageResult ||
+    currentImageResult.state !== "approved" ||
+    currentImageResult.contentHash !== imageHash
   ) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -6486,6 +6488,14 @@ export function applyStagedAutoReviewShotMediaUpload(input: {
       code: "BAD_REQUEST",
       message: "staged_invalid_shot_contract",
     });
+
+  if (stage === "video") {
+    assertStagedVideoPromptImageReady({
+      shotId,
+      shot,
+      checkpoints: metadata.stagedSequentialStoryboard.reviewCheckpoints,
+    });
+  }
 
   const revision = shot.revision + 1;
 

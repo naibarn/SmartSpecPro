@@ -205,6 +205,9 @@ vi.mock("@/lib/trpc", () => ({
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
+      abortStagedAutoReviewShotMediaUpload: {
+        useMutation: () => genericMutation(),
+      },
       approveStagedAutoReviewCheckpoint: {
         useMutation: () => genericMutation(),
       },
@@ -213,6 +216,12 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => genericMutation(),
       },
       editStagedAutoReviewShot: { useMutation: () => genericMutation() },
+      completeStagedAutoReviewShotMediaUpload: {
+        useMutation: () => genericMutation(),
+      },
+      initStagedAutoReviewShotMediaUpload: {
+        useMutation: () => genericMutation(),
+      },
       generateStagedAutoReviewShotPrompt: {
         useMutation: () => ({
           mutate: mockGeneratePromptMutate,
@@ -335,6 +344,14 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
   },
+}));
+
+vi.mock("../StagedSocialCaptionComposer", () => ({
+  StagedSocialCaptionComposer: () => null,
+}));
+
+vi.mock("../FacebookReelsPublishCard", () => ({
+  FacebookReelsPublishCard: () => null,
 }));
 
 import { StagedCheckpointReviewSurface } from "../StagedCheckpointReviewSurface";
@@ -869,6 +886,7 @@ describe("StagedCheckpointReviewSurface — friendly reason-code remap on the sh
   it.each([
     ["staged_image_prompt_missing", "ยังไม่มี Prompt ภาพ"],
     ["staged_video_prompt_missing", "ยังไม่มี Prompt วิดีโอ"],
+    ["staged_video_prompt_requires_approved_image:shot-1", "กรุณาอนุมัติภาพของช็อตนี้ก่อน"],
     ["staged_media_task_in_flight", "กำลังสร้างอยู่แล้ว"],
     ["staged_state_drift", "ไม่ตรงกับเซิร์ฟเวอร์"],
   ])("maps %s to a plain-Thai explanation", async (code, expected) => {
