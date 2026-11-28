@@ -18,10 +18,10 @@ vi.mock("fs", async () => {
     default: {
       ...actual,
       existsSync: vi.fn(),
-      readFileSync: vi.fn(),
+      readFileSync: vi.fn(actual.readFileSync.bind(actual)),
     },
     existsSync: vi.fn(),
-    readFileSync: vi.fn(),
+    readFileSync: vi.fn(actual.readFileSync.bind(actual)),
   };
 });
 vi.mock("../verticalDramaStoryBible", async () => {
@@ -1033,6 +1033,23 @@ describe("portrait candidate batch contract", () => {
     expect(prompt).toContain("portrait_candidate_batch");
     expect(prompt).toMatch(/different people|different faces/i);
     expect(prompt).toMatch(/same premium visual language/i);
+  });
+
+  it("gives target candidate prompts the Human Realism anchors enforced by target QC", () => {
+    const prompt = buildCharacterPortraitCandidatesUserPrompt({
+      ...baseParams({
+        role: "นางเอก",
+        roleTier: "lead_female",
+        imagePromptCapability: targetSeedreamCapability,
+        imagePromptContractMode: "target",
+      }),
+      portraitCandidateCount: 3,
+    });
+
+    expect(prompt).toMatch(/natural skin.*visible pores.*matte-to-satin reflectance/i);
+    expect(prompt).toMatch(/natural facial asymmetry.*catchlights/i);
+    expect(prompt).toMatch(/not plastic or waxy.*without a beauty filter/i);
+    expect(prompt).toMatch(/requested framing visibly includes the body.*contact shadows.*hands/i);
   });
 
   it("enumerates the complete required Character DNA key contract in candidate prompts", () => {

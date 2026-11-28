@@ -1632,6 +1632,13 @@ export function buildCharacterPortraitCandidatesUserPrompt(
     "When image_prompt_capability is present, apply its rich or compact Human Realism profile",
     "to each candidate's single prompt. For inline_only capability, write natural avoidance prose",
     "inside the prompt and do not require a separate negative_prompt field.",
+    ...(params.imagePromptCapability &&
+    isTargetVerticalDramaCharacterCapability(params.imagePromptCapability)
+      ? [
+          "TARGET HUMAN REALISM CONTRACT: every candidate's primary_portrait_prompt must include natural skin with visible pores or skin texture and matte-to-satin reflectance; natural facial asymmetry and lifelike catchlights; and inline avoidance prose such as not plastic or waxy and without a beauty filter. Keep these as concise, natural parts of the prompt, not a checklist or appended tag pile.",
+          "When the requested framing visibly includes the body, also describe candid expression, balanced body language, and grounded contact shadows with anatomically plausible visible hands, joints, or feet. Do not force body details into a close-up.",
+        ]
+      : []),
     ...(params.cameraFraming
       ? [`CAMERA FRAMING CONTRACT: every candidate must use ${params.cameraFraming} as the requested shot framing; do not vary framing to create diversity.`]
       : []),
