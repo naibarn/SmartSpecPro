@@ -1059,6 +1059,22 @@ function buildStagedImageSafetyDirective(
   const lines = [
     "NO TRADEMARK OR OFFICIAL-STORE LOCK: show no logos, trademarks, brand names, readable product/package text, store badges, signage, or claims such as Official Store/authorized seller. This safety lock overrides any instruction to preserve printed labels or logos; keep only unmarked package shape, color, and geometry. If such marks exist in a reference, omit or render them blank and unreadable; never invent replacements.",
   ];
+  const productReferences = referenceManifest.filter(
+    entry =>
+      !entry.evidenceOnly &&
+      (entry.role === "primary_product" || entry.role === "product")
+  );
+  if (productReferences.length > 0) {
+    const primaryProduct =
+      productReferences.find(entry => entry.role === "primary_product") ??
+      productReferences[0];
+    const alternateViews = productReferences
+      .filter(entry => entry.index !== primaryProduct.index)
+      .map(entry => `@Image${entry.index}`);
+    lines.push(
+      `EXACT PRODUCT IDENTITY LOCK: whenever the product is visible, reproduce the exact same physical item shown in @Image${primaryProduct.index}, not merely another item in the same category. Preserve its silhouette, overall proportions, component count and arrangement, distinctive geometry, material, and colors. ${alternateViews.length > 0 ? `${alternateViews.join(", ")} are alternate views of this same item and may only clarify its appearance. ` : ""}Do not substitute, redesign, omit, or invent product parts, attachments, accessories, or features. Character, scene, and approved-shot references never override product identity. Keep the item unbranded under the NO TRADEMARK OR OFFICIAL-STORE LOCK.`
+    );
+  }
   if (people.length > 0) {
     lines.push(
       `EXACT PERSON COUNT LOCK: show exactly ${people.length} person${people.length === 1 ? "" : "s"} total, one for each selected character identity and no others. ${people.map(entry => `@Image${entry.index} = ${entry.characterName?.trim() || "one selected person"}`).join("; ")}. Do not omit, duplicate, or add anyone, including background people, crowds, reflections, screens, posters, or silhouettes. Product and scene references do not authorize additional people.`
