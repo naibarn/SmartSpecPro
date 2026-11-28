@@ -24011,8 +24011,13 @@ export const socialPosts = pgTable(
       .on(t.tenantId, t.pageId, sql`${t.metadata}->>'intentHash'`)
       .where(sql`${t.metadata}->>'source' = 'marketplace_auto_review_reels' AND ${t.metadata}->>'intentHash' IS NOT NULL`),
     uniqueIndex("social_posts_marketplace_photo_intent_unique")
-      .on(t.tenantId, t.pageId, sql`${t.metadata}->>'autoReviewRunId'`)
-      .where(sql`${t.metadata}->>'source' = 'marketplace_auto_review_photo_post' AND ${t.metadata}->>'autoReviewRunId' IS NOT NULL`),
+      .on(
+        t.tenantId,
+        t.pageId,
+        sql`${t.metadata}->>'autoReviewRunId'`,
+        sql`COALESCE(${t.metadata}->>'imageChecksum', ${t.metadata}->>'imageStorageKey')`,
+      )
+      .where(sql`${t.metadata}->>'source' = 'marketplace_auto_review_photo_post' AND ${t.metadata}->>'autoReviewRunId' IS NOT NULL AND COALESCE(${t.metadata}->>'imageChecksum', ${t.metadata}->>'imageStorageKey') IS NOT NULL`),
   ]
 );
 

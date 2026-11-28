@@ -1,4 +1,6 @@
 import { Readable } from "node:stream";
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
@@ -69,6 +71,16 @@ function runMetadata(overrides: Record<string, unknown> = {}) {
 }
 
 describe("Marketplace Auto Review Facebook Photo Post contract", () => {
+  it("keeps photo post uniqueness scoped to the selected image asset", () => {
+    const migrationPath = path.resolve(import.meta.dirname, "../../../drizzle/0458_social_posts_marketplace_photo_asset_unique.sql");
+    const migration = fs.readFileSync(migrationPath, "utf8");
+
+    expect(migration).toContain("DROP INDEX IF EXISTS \"social_posts_marketplace_photo_intent_unique\"");
+    expect(migration).toContain("\"metadata\"->>'autoReviewRunId'");
+    expect(migration).toContain("COALESCE(\"metadata\"->>'imageChecksum', \"metadata\"->>'imageStorageKey')");
+    expect(migration).toContain("\"metadata\"->>'source' = 'marketplace_auto_review_photo_post'");
+  });
+
   it("registers a distinct photo publisher job in the canonical worker registry", () => {
     expect(defaultJobExecutorRegistry.resolve("social.facebook.photo.publish", "feature-187-v1")).toBeDefined();
   });
