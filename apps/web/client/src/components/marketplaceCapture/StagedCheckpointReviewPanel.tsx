@@ -330,6 +330,9 @@ export type StagedReviewState = {
       boundingBox: { x: number; y: number; width: number; height: number };
     }>;
     speakerVisualBindings?: Record<string, string>;
+    /** Server-validated against the current image, adult dialogue, and
+     *  speaker reference snapshot. */
+    speakerVisualBindingsComplete?: boolean;
     speakerVisualMatchIssue?:
       | "dialogue_invalid"
       | "speaker_reference_missing"
@@ -2107,6 +2110,10 @@ export function StagedCheckpointReviewPanel(props: {
   const videoPromptShotsWithoutImageArtifact =
     props.state?.shots.filter(
       shot => !shot.imageArtifactHash || !shot.imageArtifactUrl
+    ).length ?? 0;
+  const videoPromptShotsMissingSpeakerBindings =
+    props.state?.shots.filter(
+      shot => shot.speakerVisualBindingsComplete === false
     ).length ?? 0;
   const activeWorkerStatuses = [
     "pending",
@@ -4422,7 +4429,8 @@ export function StagedCheckpointReviewPanel(props: {
                           disabled:
                             activeBulkGeneration ||
                             Boolean(activeImagePromptWorkerOperation) ||
-                            videoPromptShotsWithoutImageArtifact > 0,
+                            videoPromptShotsWithoutImageArtifact > 0 ||
+                            videoPromptShotsMissingSpeakerBindings > 0,
                           confirmation: {
                             title: "ยืนยันสร้าง Prompt วิดีโอทุกช็อต",
                             description: `ระบบจะส่งงานสร้าง Prompt วิดีโอจำนวน ${bulkVideoPromptTargets.length} ช็อตเข้า Worker Jobs และอาจใช้เครดิตตามโมเดลที่เลือก${bulkVideoPromptWillSupersedeMedia ? " มีบางช็อตกำลังเรนเดอร์อยู่ ผล render เดิมอาจยังทำต่อและอาจมีค่าใช้จ่าย แต่ระบบจะไม่ผูกผลนั้นกับ Prompt ใหม่" : ""}`,
@@ -4431,6 +4439,8 @@ export function StagedCheckpointReviewPanel(props: {
                             ? "กำลังเตรียมงานชุดนี้ใน Worker"
                             : videoPromptShotsWithoutImageArtifact > 0
                               ? `ต้องสร้างภาพให้เสร็จก่อน (${videoPromptShotsWithoutImageArtifact} ช็อต)`
+                              : videoPromptShotsMissingSpeakerBindings > 0
+                                ? `จับคู่ผู้พูดให้ครบก่อน (${videoPromptShotsMissingSpeakerBindings} ช็อต)`
                               : "สร้างหรือซ่อม Prompt วิดีโอทุกช็อต โดยไม่สร้างวิดีโอและไม่ใช้เครดิตสื่อ",
                         }
                       )
@@ -5568,6 +5578,14 @@ export function StagedCheckpointReviewPanel(props: {
                             อัตโนมัติเพื่อให้ AI ตรวจตำแหน่งคนและจับคู่กับบทพูดได้
                           </p>
                         ) : null}
+                        {shot.imageArtifactHash &&
+                        shot.imageArtifactUrl &&
+                        shot.speakerVisualBindingsComplete === false ? (
+                          <p className="mt-2 text-xs font-medium text-amber-800" role="status">
+                            จับคู่ผู้พูดกับคนในภาพให้ครบก่อนสร้าง Prompt วิดีโอ
+                            ใช้ปุ่มจับคู่อัตโนมัติด้านบน และเลือกคนเองหากผลจับคู่กำกวม
+                          </p>
+                        ) : null}
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           {/* Split back out into 3 explicit steps, mirroring
                             the image section above — same user directive. */}
@@ -5585,7 +5603,8 @@ export function StagedCheckpointReviewPanel(props: {
                             disabled:
                               isShotPromptPipelineBusy(shot.shotId) ||
                               !shot.imageArtifactHash ||
-                              !shot.imageArtifactUrl,
+                              !shot.imageArtifactUrl ||
+                              shot.speakerVisualBindingsComplete === false,
                               confirmation: {
                                 title: `ยืนยันสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId}`,
                                 description: `ระบบจะส่งการสร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}${promptReplacementWarning}`,
@@ -5595,6 +5614,8 @@ export function StagedCheckpointReviewPanel(props: {
                                 : !shot.imageArtifactHash ||
                                     !shot.imageArtifactUrl
                                   ? "ต้องสร้างภาพช็อตนี้ให้เสร็จก่อน เพื่อให้ระบบตรวจจับคนและจับคู่ผู้พูด"
+                                  : shot.speakerVisualBindingsComplete === false
+                                    ? "จับคู่ผู้พูดกับคนในภาพให้ครบก่อนสร้าง Prompt วิดีโอ"
                                   : shotHasInFlightMedia
                                     ? "สร้าง Prompt แยกได้ทันที; ผล render เดิมจะไม่ผูกกับ Prompt ใหม่"
                                     : undefined,
@@ -5614,7 +5635,9 @@ export function StagedCheckpointReviewPanel(props: {
                             },
                             "rounded border border-dashed border-purple-400 bg-purple-100 px-3 py-2 text-sm text-purple-800",
                             {
-                              disabled: isShotPromptPipelineBusy(shot.shotId),
+                              disabled:
+                                isShotPromptPipelineBusy(shot.shotId) ||
+                                shot.speakerVisualBindingsComplete === false,
                             }
                           )}
                           {/* Video rendering consumes the approved image and saved

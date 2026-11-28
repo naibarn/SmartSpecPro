@@ -967,6 +967,14 @@ export async function getStagedAutoReviewCheckpointState(
       plan,
       shotId: shot.shotId,
     });
+    const speakerVisualBindingsComplete =
+      findStagedVideoPromptShotsMissingSpeakerBindings({
+        metadata: metadata as unknown as Record<string, any>,
+        plan,
+        targets: [
+          { shotId: shot.shotId, stage: "video", refreshPrompt: true },
+        ],
+      }).length === 0;
     return {
       shotId: shot.shotId,
       revision: shot.revision,
@@ -1027,6 +1035,7 @@ export async function getStagedAutoReviewCheckpointState(
             }))
         : [],
       speakerVisualBindings: currentBindings ?? {},
+      speakerVisualBindingsComplete,
       speakerVisualMatchIssue:
         currentFrameDetection && typeof standaloneDetection.speakerVisualMatchIssue === "string"
           ? standaloneDetection.speakerVisualMatchIssue
@@ -2332,6 +2341,11 @@ export async function startStagedAutoReviewBulkGeneration(input: {
   const metadata = parseStagedMetadata(run);
   assertSavedImagePromptsAvailable(metadata, input.targets);
   assertStagedBulkGenerationAllowed(run, metadata, input.targets);
+  assertStagedVideoPromptSpeakerBindingsComplete({
+    metadata: metadata as unknown as Record<string, any>,
+    plan: planAndMetadataFromRun(run).plan,
+    targets: input.targets,
+  });
   const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const existingJob = await findMarketplaceAutoReviewWorkerJobByIdempotencyKey(
     db,
@@ -2500,6 +2514,11 @@ export async function executeStagedAutoReviewBulkGeneration(input: {
   assertSavedImagePromptsAvailable(metadata, input.targets);
   assertStagedBulkGenerationAllowed(run, metadata, input.targets);
   assertStoryPlanApprovedForPromptRefresh(metadata, input.targets);
+  assertStagedVideoPromptSpeakerBindingsComplete({
+    metadata: metadata as unknown as Record<string, any>,
+    plan: planAndMetadataFromRun(run).plan,
+    targets: input.targets,
+  });
   const tenantId = requireStagedTenantId(input.auth.tenantId, run.tenantId);
   const requestHash = createHash("sha256")
     .update(input.requestIdempotencyKey)
@@ -4123,6 +4142,72 @@ function readCurrentStagedSpeakerVisualBindings(input: {
   return bindings;
 }
 
+/** Return video-prompt refresh targets whose current image is not bound to
+ * every eligible dialogue speaker. Minor dialogue is excluded by the same
+ * safety filter used by prompt authoring. */
+export function findStagedVideoPromptShotsMissingSpeakerBindings(input: {
+  metadata: Record<string, any>;
+  plan: StagedStoryArcPlan;
+  targets: StagedAutoReviewGenerationTarget[];
+}): number[] {
+  const shots = input.metadata.stagedSequentialStoryboard?.shots;
+  if (!Array.isArray(shots)) return [];
+  const missing: number[] = [];
+  for (const target of input.targets) {
+    if (target.stage !== "video" || target.refreshPrompt !== true) continue;
+    const shot = shots.find((item: Record<string, any>) => item.shotId === target.shotId);
+    if (!shot) continue;
+    const safeDialogue = removeStagedMinorDialogueLines(
+      String(shot.dialogue ?? ""),
+      input.plan.cast
+    );
+    if (!safeDialogue.trim()) continue;
+    const speakers = getStagedDialogueSpeakerLabels(
+      safeDialogue,
+      input.plan.cast,
+      shot.castInShot
+    );
+    // If dialogue exists but cannot be attributed (for example, two adults
+    // are in the cast and the transcript has no speaker labels), it is not
+    // safe to author a video prompt with an implicit speaker.
+    const adultsInShot = (input.plan.cast ?? []).filter(
+      member =>
+        !isStagedCastMemberMinor(member) &&
+        (!shot.castInShot?.length || shot.castInShot.includes(member.castId))
+    );
+    if (speakers.length === 0 && adultsInShot.length > 1) {
+      missing.push(target.shotId);
+      continue;
+    }
+    if (
+      speakers.length > 0 &&
+      !readCurrentStagedSpeakerVisualBindings({
+        shot,
+        metadata: input.metadata,
+        plan: input.plan,
+        shotId: target.shotId,
+      })
+    ) {
+      missing.push(target.shotId);
+    }
+  }
+  return [...new Set(missing)].sort((a, b) => a - b);
+}
+
+function assertStagedVideoPromptSpeakerBindingsComplete(input: {
+  metadata: Record<string, any>;
+  plan: StagedStoryArcPlan;
+  targets: StagedAutoReviewGenerationTarget[];
+}) {
+  const missing = findStagedVideoPromptShotsMissingSpeakerBindings(input);
+  if (missing.length > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `staged_speaker_visual_bindings_required:shots-${missing.join(",")}`,
+    });
+  }
+}
+
 function requireStagedReferenceManifestHash(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error("STAGED_REFERENCE_MANIFEST_HASH_REQUIRED");
@@ -4544,6 +4629,15 @@ async function generateCompleteStagedShotPrompt(input: {
   const stagedShot = input.metadata.stagedSequentialStoryboard.shots.find(
     shot => shot.shotId === input.shotId
   );
+  if (input.stage === "video") {
+    assertStagedVideoPromptSpeakerBindingsComplete({
+      metadata: input.metadata as unknown as Record<string, any>,
+      plan,
+      targets: [
+        { shotId: input.shotId, stage: "video", refreshPrompt: true },
+      ],
+    });
+  }
   if (input.stage === "image") {
     await input.onProgress?.({
       progress: 20,
@@ -5142,6 +5236,15 @@ export async function generateStagedAutoReviewShotPrompt(input: {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "checkpoint_not_editable",
+    });
+  }
+  if (input.stage === "video") {
+    assertStagedVideoPromptSpeakerBindingsComplete({
+      metadata: metadata as unknown as Record<string, any>,
+      plan: planAndMetadataFromRun(run).plan,
+      targets: [
+        { shotId: input.shotId, stage: "video", refreshPrompt: true },
+      ],
     });
   }
   if (input.stage === "video") {
