@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `126`
-- Updated (UTC): `2026-11-24T12:34:02.339723+00:00`
+- State generation: `128`
+- Updated (UTC): `2026-11-28T04:35:40.900331+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/quick/300-marketplace-auto-review-worker-jobs/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `d244f4c3a116b3bf2978c9bb00f863e25cba0769`
+- Latest recorded merged Main SHA: `27af20e06dfc70d778e42203c42ddb38ee5dc474`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-proof-and-deployment`
-- Next action: Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger.
+- Next action: Release 714 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app). Speaker-binding gate regression passes 4/4; dedicated panel regression passes. Full StagedCheckpointReviewPanel suite now runs after isolating caption and Reels child components: 56 passed, 11 failed in unrelated legacy expectations for detection/approval labels and final-render loading. Keep those failures visible for a separate UI contract reconciliation. No live provider-backed speaker detection or prompt generation was triggered.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-canonical-worker-contract | checkpointed | — | — | 29bf37f576 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Worker job contract, executor, and Node allowlist remain integrated. Queue cutover and recovery proof for the live Marketplace Auto Review run are recorded in sections 02 and 03. |
 | section-02-auto-review-queue-cutover | checkpointed | — | — | 92f7bcd95486e7d36d8f3f27067237389e10b676 | 895867ffd0b692f12198afc3fa3d8cfdc4be3a46 | Queue cutover deployed in release smartspec-web-895867ffd0b692f12198afc3fa3d8cfdc4be3a46-1c303d8d92a8 (generation 446). Existing run mar_670133124534765cf0d36d3637b6ee89 has valid staged metadata and planReview.awaiting; no advance_run job was added after deployment. User can approve the story plan to continue; QC failure is optional and does not block it. |
-| section-03-proof-and-deployment | checkpointed | marketplace-confirmed-review-concepts | /mnt/SmartSpecDev/projects/SmartSpecPro | d244f4c3a116b3bf2978c9bb00f863e25cba0769 | d244f4c3a116b3bf2978c9bb00f863e25cba0769 | Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger. |
+| section-03-proof-and-deployment | checkpointed | staged-speaker-binding-gate | /mnt/SmartSpecDev/projects/SmartSpecPro | d244f4c3a116b3bf2978c9bb00f863e25cba0769 | 27af20e06dfc70d778e42203c42ddb38ee5dc474 | Release 714 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app). Speaker-binding gate regression passes 4/4; dedicated panel regression passes. Full StagedCheckpointReviewPanel suite now runs after isolating caption and Reels child components: 56 passed, 11 failed in unrelated legacy expectations for detection/approval labels and final-render loading. Keep those failures visible for a separate UI contract reconciliation. No live provider-backed speaker detection or prompt generation was triggered. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -38,6 +38,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Provider-backed retry of run mar_93276922dc460d6ccf2452ef1d95d19a remains pending explicit user action; no paid generation was triggered.
 - Job 15893f34-cac1-4ac4-baae-25b2c95f6c84 for run mar_a3b5df48f9b0f962a1b0b94fd3805d40 remains terminal after the early lease-release race. Fix is integrated and deployed; a fresh user-started attempt is required to verify runtime stability. No replay or media generation was triggered by the fix.
 - Provider-backed retry for run mar_db6cb761ab854aecc3189333dcc083c8 / failed worker job e768624d-d6dd-4156-93e4-7a6bedc02dfe is not yet verified; a user-initiated retry is required to incur any possible generation credits.
+- A fresh provider-backed speaker detection and video-prompt attempt has not been run; existing failed jobs remain terminal and were not replayed.
+- After isolating separately tested Caption and Reels child components, StagedCheckpointReviewPanel suite has 56 passed and 11 failed on existing detection/approval-label and final-render-loading expectations; reconcile those UI contracts in a separate focused pass.
 
 ## Resume
 

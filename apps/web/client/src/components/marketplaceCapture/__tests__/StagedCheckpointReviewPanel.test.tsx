@@ -23,6 +23,15 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
   useTenantFeatureFlag: () => false,
 }));
 
+// Keep this panel suite focused on the storyboard UI. Caption authoring has
+// its own component tests and uses a separate tRPC surface.
+vi.mock("../StagedSocialCaptionComposer", () => ({
+  StagedSocialCaptionComposer: () => null,
+}));
+vi.mock("../FacebookReelsPublishCard", () => ({
+  FacebookReelsPublishCard: () => null,
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     marketplaceCapture: {
@@ -133,6 +142,37 @@ function clickAndConfirmGeneration(button: HTMLElement) {
 }
 
 describe("StagedCheckpointReviewPanel", () => {
+  it("blocks video-prompt actions until the server confirms speaker bindings are complete", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          imageArtifactUrl: "/media/approved-shot.png",
+          imageArtifactHash: "approved-frame-1",
+          speakerVisualBindingsComplete: false,
+        },
+      ],
+    };
+    render(
+      <StagedCheckpointReviewPanel
+        {...input}
+        onBulkGenerate={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: /สร้าง Prompt วิดีโอช็อตที่ 1/ })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /สร้าง Prompt วิดีโอทุกช็อต/ })
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/จับคู่ผู้พูดกับคนในภาพให้ครบก่อนสร้าง Prompt วิดีโอ/)
+    ).toBeTruthy();
+  });
+
   it("queues manual person detection for the shot's approved image", () => {
     const input = props();
     input.state = {

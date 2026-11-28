@@ -26,11 +26,11 @@
     },
     "section-03-proof-and-deployment": {
       "status": "checkpointed",
-      "next_action": "Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger.",
+      "next_action": "Release 714 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app). Speaker-binding gate regression passes 4/4; dedicated panel regression passes. Full StagedCheckpointReviewPanel suite now runs after isolating caption and Reels child components: 56 passed, 11 failed in unrelated legacy expectations for detection/approval labels and final-render loading. Keep those failures visible for a separate UI contract reconciliation. No live provider-backed speaker detection or prompt generation was triggered.",
       "checkpoint_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
-      "merged_main_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
+      "merged_main_sha": "27af20e06dfc70d778e42203c42ddb38ee5dc474",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "session_id": "marketplace-confirmed-review-concepts"
+      "session_id": "staged-speaker-binding-gate"
     }
   },
   "pre_commit": {
@@ -42,12 +42,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-11-09T07:19:47.208428+00:00",
-  "generation": 126,
-  "updated_at": "2026-11-24T12:34:02.339723+00:00",
+  "generation": 128,
+  "updated_at": "2026-11-28T04:35:40.900331+00:00",
   "progress": {
     "active_section": "section-03-proof-and-deployment",
-    "next_action": "Release generation 640 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app); web and Node worker serve d244f4c3a116b3bf2978c9bb00f863e25cba0769 and public /healthz is HTTP 200. Shot 5 image-prompt generation now allows one recovery attempt for invalid output or transient provider errors, with the same deterministic per-shot idempotency key; reference, configuration, credit, access and HTTP 4xx errors stop without retry. Quick profile passed git diff --check and staged-source esbuild syntax transpilation; canonical Linux release build passed. Build preflight: host_available_kb=21773604, memory_psi_some_avg10=0.64, user_slice_effective_bytes=8735122560, node_heap_mib=6144. Unit tests and provider-backed job were not run. A user-initiated retry of run mar_db6cb761ab854aecc3189333dcc083c8 / failed job e768624d-d6dd-4156-93e4-7a6bedc02dfe remains needed to verify provider recovery and the ledger.",
-    "merged_main_sha": "d244f4c3a116b3bf2978c9bb00f863e25cba0769",
+    "next_action": "Release 714 is DEPLOYED_VERIFIED on legacy-debian-dev (smartaihub.app). Speaker-binding gate regression passes 4/4; dedicated panel regression passes. Full StagedCheckpointReviewPanel suite now runs after isolating caption and Reels child components: 56 passed, 11 failed in unrelated legacy expectations for detection/approval labels and final-render loading. Keep those failures visible for a separate UI contract reconciliation. No live provider-backed speaker detection or prompt generation was triggered.",
+    "merged_main_sha": "27af20e06dfc70d778e42203c42ddb38ee5dc474",
     "gaps": [
       "Provider-backed QC/media generation and full authenticated browser UAT remain outstanding; the focused worker and UI tests passed.",
       "Focused suite baseline failures outside this patch: MarketplaceCaptureProductDetail.autoReviewPolling.test.ts places generated AI insights after product details; StagedCheckpointReviewSurface.test.tsx prompt-only/modal submission cases (3 tests). New navigation regression and staged picker/panel tests pass.",
@@ -63,7 +63,9 @@
       "Job 54f7d3b3-d1a1-48d1-afe6-715a11858284 is terminal; its run remains at image_generation with staged_state_drift and needs an explicit user retry. No provider-backed retry was triggered.",
       "Provider-backed retry of run mar_93276922dc460d6ccf2452ef1d95d19a remains pending explicit user action; no paid generation was triggered.",
       "Job 15893f34-cac1-4ac4-baae-25b2c95f6c84 for run mar_a3b5df48f9b0f962a1b0b94fd3805d40 remains terminal after the early lease-release race. Fix is integrated and deployed; a fresh user-started attempt is required to verify runtime stability. No replay or media generation was triggered by the fix.",
-      "Provider-backed retry for run mar_db6cb761ab854aecc3189333dcc083c8 / failed worker job e768624d-d6dd-4156-93e4-7a6bedc02dfe is not yet verified; a user-initiated retry is required to incur any possible generation credits."
+      "Provider-backed retry for run mar_db6cb761ab854aecc3189333dcc083c8 / failed worker job e768624d-d6dd-4156-93e4-7a6bedc02dfe is not yet verified; a user-initiated retry is required to incur any possible generation credits.",
+      "A fresh provider-backed speaker detection and video-prompt attempt has not been run; existing failed jobs remain terminal and were not replayed.",
+      "After isolating separately tested Caption and Reels child components, StagedCheckpointReviewPanel suite has 56 passed and 11 failed on existing detection/approval-label and final-render-loading expectations; reconcile those UI contracts in a separate focused pass."
     ],
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "verification_evidence": {
