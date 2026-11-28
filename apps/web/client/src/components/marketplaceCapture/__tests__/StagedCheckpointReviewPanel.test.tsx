@@ -1272,14 +1272,46 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(running).toBeDisabled();
     expect(running.textContent).toContain("กำลังดำเนินการ");
 
-    // Same shot's next step is NOT blocked by the prompt call.
+    // Wait for the replacement prompt before dispatching an image.
     expect(
       screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
-    ).not.toBeDisabled();
+    ).toBeDisabled();
     expect(
       screen.getByRole("button", {
         name: "ปรับปรุง Prompt ภาพช็อตที่ 1 ด้วยคำสั่ง",
       })
+    ).not.toBeDisabled();
+  });
+
+  it("keeps image dispatch locked after requesting a new image prompt until the new checkpoint is visible", () => {
+    const input = props();
+    const { rerender } = render(<StagedCheckpointReviewPanel {...input} />);
+
+    clickAndConfirmGeneration(
+      screen.getByRole("button", { name: "สร้าง Prompt ภาพช็อตที่ 1" })
+    );
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ shotId: 1, stage: "image" })
+    );
+    expect(
+      screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
+    ).toBeDisabled();
+
+    input.state = {
+      ...input.state,
+      shots: [{ ...input.state.shots[0], imagePrompt: "Prompt ภาพฉบับใหม่" }],
+      checkpoints: [
+        {
+          ...baseCheckpoint,
+          revision: baseCheckpoint.revision + 1,
+          contentHash: "new-image-prompt-hash",
+          state: "approved",
+        },
+      ],
+    };
+    rerender(<StagedCheckpointReviewPanel {...input} />);
+    expect(
+      screen.getByRole("button", { name: "สร้างภาพช็อตที่ 1" })
     ).not.toBeDisabled();
   });
 

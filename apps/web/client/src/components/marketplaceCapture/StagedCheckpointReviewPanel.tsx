@@ -1225,6 +1225,9 @@ export function StagedCheckpointReviewPanel(props: {
     shotId: number;
     stage: "image" | "video";
   } | null>(null);
+  const [pendingImagePromptRefreshes, setPendingImagePromptRefreshes] = useState<
+    Map<number, { revision: number | null; contentHash: string | null }>
+  >(() => new Map());
   const [aiInstructionText, setAiInstructionText] = useState("");
   const [generationConfirmation, setGenerationConfirmation] = useState<{
     id: string;
@@ -1820,6 +1823,34 @@ export function StagedCheckpointReviewPanel(props: {
     }
     return map;
   }, [props.state?.checkpoints]);
+  const markImagePromptRefreshPending = (shotIds: number[]) => {
+    setPendingImagePromptRefreshes(current => {
+      const next = new Map(current);
+      for (const shotId of shotIds) {
+        const checkpoint = activeCheckpointByKey.get(`image_prompt:${shotId}`);
+        next.set(shotId, {
+          revision: checkpoint?.revision ?? null,
+          contentHash: checkpoint?.contentHash ?? null,
+        });
+      }
+      return next;
+    });
+  };
+  const isImagePromptRefreshPending = (shotId: number) => {
+    const baseline = pendingImagePromptRefreshes.get(shotId);
+    if (!baseline) return false;
+    const checkpoint = activeCheckpointByKey.get(`image_prompt:${shotId}`);
+    const prompt = props.state?.shots
+      .find(candidate => candidate.shotId === shotId)
+      ?.imagePrompt?.trim() ?? "";
+    const hasNewCheckpoint = Boolean(
+      checkpoint &&
+        (baseline.revision === null ||
+          checkpoint.revision > baseline.revision ||
+          checkpoint.contentHash !== baseline.contentHash)
+    );
+    return !(prompt && hasNewCheckpoint);
+  };
   const runCheckpoint = (kind: string) =>
     activeCheckpointByKey.get(`${kind}:run`);
   const latestStoryCheckpoint = (props.state?.checkpoints ?? [])
@@ -3390,12 +3421,14 @@ export function StagedCheckpointReviewPanel(props: {
                   ? action(
                       "retry-image-prompt-shot",
                       `สร้าง Prompt ภาพช็อตที่ ${props.state.correctionRequired.shotId} ใหม่`,
-                      () =>
+                      () => {
+                        markImagePromptRefreshPending([props.state!.correctionRequired!.shotId!]);
                         props.onGeneratePrompt({
                           shotId: props.state!.correctionRequired!.shotId!,
                           stage: "image",
                           ...(promptModel ? { model: promptModel } : {}),
-                        }),
+                        });
+                      },
                       "rounded border border-amber-400 bg-white px-3 py-2 text-sm font-semibold text-amber-900",
                       {
                         confirmation: {
@@ -4367,7 +4400,12 @@ export function StagedCheckpointReviewPanel(props: {
                     ? action(
                         "bulk-image-prompt-generate",
                         `สร้าง Prompt ภาพทุกช็อต (${bulkImagePromptTargets.length})`,
-                        () => props.onBulkGenerate!(bulkImagePromptTargets),
+                        () => {
+                          markImagePromptRefreshPending(
+                            bulkImagePromptTargets.map(target => target.shotId)
+                          );
+                          props.onBulkGenerate!(bulkImagePromptTargets);
+                        },
                         "rounded-lg border border-violet-800 bg-violet-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-violet-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:opacity-100",
                         {
                           disabled:
@@ -4395,6 +4433,10 @@ export function StagedCheckpointReviewPanel(props: {
                         {
                           disabled:
                             activeBulkGeneration ||
+                            Boolean(activeImagePromptWorkerOperation) ||
+                            bulkImageGenerationTargets.some(target =>
+                              isImagePromptRefreshPending(target.shotId)
+                            ) ||
                             bulkImageGenerationHasInFlight ||
                             !storyPlanApproved ||
                             props.state!.shots.some(
@@ -5069,7 +5111,10 @@ export function StagedCheckpointReviewPanel(props: {
                                         }),
                                       "rounded-lg bg-white/90 hover:bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-lg transition flex items-center gap-1.5 cursor-pointer",
                                       {
-                                        disabled: !selectedImageModelAvailable,
+                                        disabled:
+                                          !selectedImageModelAvailable ||
+                                          isImagePromptRefreshPending(shot.shotId) ||
+                                          isShotPromptPipelineBusy(shot.shotId),
                                         confirmation: {
                                           title: `ยืนยันสร้างภาพช็อตที่ ${shot.shotId} ใหม่`,
                                           description: `ระบบจะส่งงานสร้างภาพช็อตที่ ${shot.shotId} ใหม่เข้า Worker Jobs โดยใช้โมเดล ${selectedImageModel} และอาจใช้เครดิต`,
@@ -5463,12 +5508,14 @@ export function StagedCheckpointReviewPanel(props: {
                           {action(
                             `generate-prompt-image-${shot.shotId}`,
                             `สร้าง Prompt ภาพช็อตที่ ${shot.shotId}`,
-                            () =>
+                            () => {
+                              markImagePromptRefreshPending([shot.shotId]);
                               props.onGeneratePrompt({
                                 shotId: shot.shotId,
                                 stage: "image",
                                 ...(promptModel ? { model: promptModel } : {}),
-                              }),
+                              });
+                            },
                             "rounded border border-violet-300 bg-white px-3 py-2 text-sm font-semibold text-violet-800",
                             {
                               // Prompt authoring is independent of an already
@@ -5523,14 +5570,26 @@ export function StagedCheckpointReviewPanel(props: {
                               // task conflicts are reported after confirmation
                               // by the server instead of silently disabling
                               // this recovery action.
-                              disabled: !shot.imagePrompt?.trim(),
+                              disabled:
+                                !shot.imagePrompt?.trim() ||
+                                isThisActionRunning(
+                                  `generate-prompt-image-${shot.shotId}`
+                                ) ||
+                                isShotPromptPipelineBusy(shot.shotId) ||
+                                isImagePromptRefreshPending(shot.shotId),
                               confirmation: {
                                 title: `ยืนยันสร้างภาพช็อตที่ ${shot.shotId}`,
                                 description: `ระบบจะส่งงานสร้างภาพช็อตที่ ${shot.shotId} เข้า Worker Jobs โดยใช้โมเดล ${selectedImageModel} และอาจใช้เครดิต`,
                               },
                               title: !shot.imagePrompt?.trim()
                                 ? "สร้าง Prompt ภาพก่อน"
-                                : undefined,
+                                : isImagePromptRefreshPending(shot.shotId) ||
+                                    isThisActionRunning(
+                                      `generate-prompt-image-${shot.shotId}`
+                                    ) ||
+                                    isShotPromptPipelineBusy(shot.shotId)
+                                  ? "รอให้ Prompt ภาพใหม่จาก Worker แสดงก่อนสร้างภาพ"
+                                  : undefined,
                             }
                           )}
                           {/* image_prompt now auto-approves at construction —
@@ -5965,6 +6024,9 @@ export function StagedCheckpointReviewPanel(props: {
                   title: `ยืนยันสร้าง Prompt ${nextPrompt.stage === "image" ? "ภาพ" : "วิดีโอ"}ช็อตที่ ${nextPrompt.shotId}`,
                   description: `ระบบจะส่งการสร้าง Prompt ช็อตที่ ${nextPrompt.shotId} พร้อมคำสั่งเพิ่มเติมเข้า Worker Jobs โดยใช้โมเดล ${promptModel ?? "อัตโนมัติ"}`,
                   callback: () => {
+                    if (nextPrompt.stage === "image") {
+                      markImagePromptRefreshPending([nextPrompt.shotId]);
+                    }
                     props.onGeneratePrompt(nextPrompt);
                     setAiInstructionText("");
                   },
