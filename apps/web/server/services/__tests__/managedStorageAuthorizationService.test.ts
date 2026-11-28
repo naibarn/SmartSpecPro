@@ -3,10 +3,15 @@ import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
+  mockGetLibraryItemById: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
   getDb: (...args: unknown[]) => mocks.mockGetDb(...args),
+}));
+vi.mock("../libraryService", () => ({
+  getLibraryItemById: (...args: unknown[]) =>
+    mocks.mockGetLibraryItemById(...args),
 }));
 
 import { canReadManagedStorageKey } from "../managedStorageAuthorizationService";
@@ -141,6 +146,45 @@ describe("managedStorageAuthorizationService", () => {
         userId: 99,
         role: "user",
       })
+    ).resolves.toBe(false);
+  });
+
+  it("authorizes managed Library URLs by storage key while keeping tenant and owner checks", async () => {
+    const key = "media-library/tenant-1/task-1/original.png";
+    const db = makeDb([], [], [{ id: 761 }]);
+    mocks.mockGetDb.mockResolvedValue(db);
+    mocks.mockGetLibraryItemById.mockImplementation(
+      async (_id: number, actor: { tenantId: string; userId: number }) =>
+        actor.tenantId === "tenant-1" && actor.userId === 24
+          ? { id: 761 }
+          : null,
+    );
+
+    await expect(
+      canReadManagedStorageKey(key, {
+        tenantId: "tenant-1",
+        userId: 24,
+        role: "user",
+      }),
+    ).resolves.toBe(true);
+
+    const libraryLookup = db.select.mock.results[2]!.value;
+    const query = new PgDialect().sqlToQuery(
+      libraryLookup.where.mock.calls[0]![0],
+    );
+    expect(query.params).toContain(
+      "/api/storage/files/media-library/tenant-1/task-1/original.png",
+    );
+    expect(query.params).toContain("tenant-1");
+
+    const deniedDb = makeDb([], [], [{ id: 761 }]);
+    mocks.mockGetDb.mockResolvedValue(deniedDb);
+    await expect(
+      canReadManagedStorageKey(key, {
+        tenantId: "tenant-2",
+        userId: 24,
+        role: "user",
+      }),
     ).resolves.toBe(false);
   });
 

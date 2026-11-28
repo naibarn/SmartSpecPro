@@ -405,6 +405,7 @@ export async function canReadManagedStorageKey(
         sql`${libraryItems.deletedAt} IS NULL`,
         or(
           eq(libraryItems.sourceUrl, normalizedKey),
+          eq(libraryItems.sourceUrl, `/api/storage/files/${encodeURI(normalizedKey)}`),
           sql`${libraryItems.metadata}->>'source_key' = ${normalizedKey}`
         )
       )
