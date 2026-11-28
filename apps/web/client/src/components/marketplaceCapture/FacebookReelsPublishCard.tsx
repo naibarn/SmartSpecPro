@@ -235,6 +235,22 @@ export function FacebookReelsPublishCard(props: {
     }
   }, [photoReadiness.data, photoVariant]);
 
+  const blockedPhotoVariants = useMemo(() => {
+    const blocked = new Set<string>();
+    for (const item of photoHistory.data ?? []) {
+      if (!PHOTO_VARIANT_BLOCKING.has(String(item.status))) continue;
+      if (typeof item.selectedVariant === "string" && item.selectedVariant) blocked.add(item.selectedVariant);
+      else for (const variant of Object.keys(PHOTO_VARIANT_LABELS)) blocked.add(variant);
+    }
+    return blocked;
+  }, [photoHistory.data]);
+
+  useEffect(() => {
+    if (!blockedPhotoVariants.has(photoVariant)) return;
+    const nextVariant = photoReadiness.data?.imageVariants.find(image => image.status === "completed" && !blockedPhotoVariants.has(image.variant));
+    if (nextVariant) setPhotoVariant(nextVariant.variant);
+  }, [blockedPhotoVariants, photoReadiness.data, photoVariant]);
+
   const pages = readiness.data?.pages ?? [];
   const selectedPage = pages.find(page => String(page.id) === pageId);
   const parsedHashtags = useMemo(() => normalizedHashtags(hashtags), [hashtags]);
@@ -265,6 +281,7 @@ export function FacebookReelsPublishCard(props: {
     commercialDisclosure.length <= 500 && !invalidHashtags &&
     (affiliateMode === "description" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "first_comment" ? photoReadiness.data?.hasAffiliateLink : affiliateMode === "none" || affiliateMode === "manual_native") &&
     (affiliateMode !== "none" || allowNoAffiliate) && !photoHistoryHasUncertain &&
+    !blockedPhotoVariants.has(photoVariant) &&
     !photoHistory.isLoading && !photoHistory.isError && !publishPhoto.isPending
   );
 
@@ -311,7 +328,7 @@ export function FacebookReelsPublishCard(props: {
                 }}
               >
                 {readyPhotoVariants.map(image => (
-                  <RadioListItem key={image.variant} value={image.variant} align="first-line" label={PHOTO_VARIANT_LABELS[image.variant] ?? image.sourceLabel} description={
+                  <RadioListItem key={image.variant} value={image.variant} align="first-line" isDisabled={blockedPhotoVariants.has(image.variant)} label={PHOTO_VARIANT_LABELS[image.variant] ?? image.sourceLabel} description={
                     <AuthenticatedMediaImage
                       src={image.imageUrl!}
                       alt={image.sourceLabel}
@@ -326,6 +343,7 @@ export function FacebookReelsPublishCard(props: {
                 ))}
               </RadioList>
             ) : null}
+            {blockedPhotoVariants.size ? <Text type="supporting" color="secondary">ปิดตัวเลือกภาพที่เผยแพร่แล้วหรือมีคำขอส่งอยู่ เพื่อป้องกันการโพสต์ภาพเดิมซ้ำ</Text> : null}
             <Selector
               label="Facebook Page"
               options={(photoReadiness.data?.pages ?? []).map(page => ({ value: String(page.id), label: page.label, disabled: !page.publishingReady, description: page.publishingIssue ?? undefined }))}

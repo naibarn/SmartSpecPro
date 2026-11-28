@@ -79,9 +79,9 @@ vi.mock("@astryxdesign/core/RadioList", async () => {
   const Context = React.createContext({ value: "", onChange: (_value: string) => {} });
   return {
     RadioList: ({ label, value, onChange, children }: any) => <Context.Provider value={{ value, onChange }}><fieldset aria-label={label}>{children}</fieldset></Context.Provider>,
-    RadioListItem: ({ value, label, description }: any) => {
+    RadioListItem: ({ value, label, description, isDisabled }: any) => {
       const group = React.useContext(Context);
-      return <label><input type="radio" name="photo-variant" value={value} checked={group.value === value} onChange={() => group.onChange(value)} aria-label={typeof label === "string" ? label : value} />{label}{description}</label>;
+      return <label><input type="radio" name="photo-variant" value={value} checked={group.value === value} disabled={isDisabled} onChange={() => group.onChange(value)} aria-label={typeof label === "string" ? label : value} />{label}{description}</label>;
     },
   };
 });
@@ -294,7 +294,7 @@ describe("FacebookReelsPublishCard", () => {
     expect(screen.getAllByRole("radio").filter((radio: HTMLElement) => (radio as HTMLInputElement).checked)).toHaveLength(1);
   });
 
-  it("allows a different generated image after a Photo Post succeeded while preventing that image from being posted again", () => {
+  it("prevents selecting a previously published image while allowing a different generated image", () => {
     mocks.photoHistory = [{
       id: 41,
       status: "published",
@@ -307,8 +307,11 @@ describe("FacebookReelsPublishCard", () => {
     render(<FacebookReelsPublishCard runId="run-1" />);
     fireEvent.click(screen.getByRole("button", { name: "Facebook Photo Post" }));
 
+    const previouslyPublished = screen.getByRole("radio", { name: "ภาพจาก Caption" });
+    expect(previouslyPublished).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "ภาพอ้างอิงตัวละคร" })).toBeChecked();
     const publish = screen.getByRole("button", { name: "เผยแพร่ Photo Post" });
-    expect(publish).toBeDisabled();
+    expect(publish).toBeEnabled();
     fireEvent.click(screen.getByRole("radio", { name: "ภาพอ้างอิงสินค้า" }));
     expect(publish).toBeEnabled();
     fireEvent.click(publish);
@@ -316,8 +319,8 @@ describe("FacebookReelsPublishCard", () => {
       snapshot: expect.objectContaining({ variant: "product_reference" }),
     }));
 
-    fireEvent.click(screen.getByRole("radio", { name: "ภาพจาก Caption" }));
-    expect(publish).toBeDisabled();
+    expect(previouslyPublished).toBeDisabled();
+    expect(previouslyPublished).not.toBeChecked();
   });
 
   it("keeps the selected image while collapsing the panel and switching formats", () => {
